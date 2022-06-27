@@ -175,6 +175,10 @@
     - [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response)
     - [Rpc.BlockBookmark.Fetch.Response.Error](#anytype-Rpc-BlockBookmark-Fetch-Response-Error)
     - [Rpc.BlockDataview](#anytype-Rpc-BlockDataview)
+    - [Rpc.BlockDataview.CreateBookmark](#anytype-Rpc-BlockDataview-CreateBookmark)
+    - [Rpc.BlockDataview.CreateBookmark.Request](#anytype-Rpc-BlockDataview-CreateBookmark-Request)
+    - [Rpc.BlockDataview.CreateBookmark.Response](#anytype-Rpc-BlockDataview-CreateBookmark-Response)
+    - [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error)
     - [Rpc.BlockDataview.Relation](#anytype-Rpc-BlockDataview-Relation)
     - [Rpc.BlockDataview.Relation.Add](#anytype-Rpc-BlockDataview-Relation-Add)
     - [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request)
@@ -497,6 +501,10 @@
     - [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request)
     - [Rpc.Object.ApplyTemplate.Response](#anytype-Rpc-Object-ApplyTemplate-Response)
     - [Rpc.Object.ApplyTemplate.Response.Error](#anytype-Rpc-Object-ApplyTemplate-Response-Error)
+    - [Rpc.Object.BookmarkFetch](#anytype-Rpc-Object-BookmarkFetch)
+    - [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request)
+    - [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response)
+    - [Rpc.Object.BookmarkFetch.Response.Error](#anytype-Rpc-Object-BookmarkFetch-Response-Error)
     - [Rpc.Object.Close](#anytype-Rpc-Object-Close)
     - [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request)
     - [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response)
@@ -505,6 +513,10 @@
     - [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request)
     - [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response)
     - [Rpc.Object.Create.Response.Error](#anytype-Rpc-Object-Create-Response-Error)
+    - [Rpc.Object.CreateBookmark](#anytype-Rpc-Object-CreateBookmark)
+    - [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request)
+    - [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response)
+    - [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error)
     - [Rpc.Object.CreateSet](#anytype-Rpc-Object-CreateSet)
     - [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request)
     - [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response)
@@ -603,6 +615,10 @@
     - [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request)
     - [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response)
     - [Rpc.Object.SubscribeIds.Response.Error](#anytype-Rpc-Object-SubscribeIds-Response-Error)
+    - [Rpc.Object.ToBookmark](#anytype-Rpc-Object-ToBookmark)
+    - [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request)
+    - [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response)
+    - [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error)
     - [Rpc.Object.ToSet](#anytype-Rpc-Object-ToSet)
     - [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request)
     - [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response)
@@ -781,6 +797,7 @@
     - [Rpc.Block.Upload.Response.Error.Code](#anytype-Rpc-Block-Upload-Response-Error-Code)
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
+    - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code)
@@ -858,8 +875,10 @@
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
     - [Rpc.Object.AddWithObjectId.Response.Error.Code](#anytype-Rpc-Object-AddWithObjectId-Response-Error-Code)
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
+    - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
+    - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
@@ -886,6 +905,7 @@
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype-Rpc-Object-ShareByLink-Response-Error-Code)
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
+    - [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype-Rpc-Object-ToSet-Response-Error-Code)
     - [Rpc.Object.Undo.Response.Error.Code](#anytype-Rpc-Object-Undo-Response-Error-Code)
     - [Rpc.ObjectRelation.Add.Response.Error.Code](#anytype-Rpc-ObjectRelation-Add-Response-Error-Code)
@@ -950,6 +970,7 @@
     - [Event.Block.Fill.Bookmark.Description](#anytype-Event-Block-Fill-Bookmark-Description)
     - [Event.Block.Fill.Bookmark.FaviconHash](#anytype-Event-Block-Fill-Bookmark-FaviconHash)
     - [Event.Block.Fill.Bookmark.ImageHash](#anytype-Event-Block-Fill-Bookmark-ImageHash)
+    - [Event.Block.Fill.Bookmark.TargetObjectId](#anytype-Event-Block-Fill-Bookmark-TargetObjectId)
     - [Event.Block.Fill.Bookmark.Title](#anytype-Event-Block-Fill-Bookmark-Title)
     - [Event.Block.Fill.Bookmark.Type](#anytype-Event-Block-Fill-Bookmark-Type)
     - [Event.Block.Fill.Bookmark.Url](#anytype-Event-Block-Fill-Bookmark-Url)
@@ -987,6 +1008,8 @@
     - [Event.Block.Set.Bookmark.Description](#anytype-Event-Block-Set-Bookmark-Description)
     - [Event.Block.Set.Bookmark.FaviconHash](#anytype-Event-Block-Set-Bookmark-FaviconHash)
     - [Event.Block.Set.Bookmark.ImageHash](#anytype-Event-Block-Set-Bookmark-ImageHash)
+    - [Event.Block.Set.Bookmark.State](#anytype-Event-Block-Set-Bookmark-State)
+    - [Event.Block.Set.Bookmark.TargetObjectId](#anytype-Event-Block-Set-Bookmark-TargetObjectId)
     - [Event.Block.Set.Bookmark.Title](#anytype-Event-Block-Set-Bookmark-Title)
     - [Event.Block.Set.Bookmark.Type](#anytype-Event-Block-Set-Bookmark-Type)
     - [Event.Block.Set.Bookmark.Url](#anytype-Event-Block-Set-Bookmark-Url)
@@ -1136,6 +1159,7 @@
   
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
+    - [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State)
     - [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
@@ -1214,6 +1238,7 @@
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
+| ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
@@ -1240,6 +1265,8 @@
 | ObjectRedo | [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request) | [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response) |  |
 | ObjectImportMarkdown | [Rpc.Object.ImportMarkdown.Request](#anytype-Rpc-Object-ImportMarkdown-Request) | [Rpc.Object.ImportMarkdown.Response](#anytype-Rpc-Object-ImportMarkdown-Response) |  |
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
+| ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
+| ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request) | [Rpc.ObjectRelation.Add.Response](#anytype-Rpc-ObjectRelation-Add-Response) | Object Relations *** |
 | ObjectRelationUpdate | [Rpc.ObjectRelation.Update.Request](#anytype-Rpc-ObjectRelation-Update-Request) | [Rpc.ObjectRelation.Update.Response](#anytype-Rpc-ObjectRelation-Update-Response) |  |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype-Rpc-ObjectRelation-Delete-Request) | [Rpc.ObjectRelation.Delete.Response](#anytype-Rpc-ObjectRelation-Delete-Response) |  |
@@ -3847,6 +3874,65 @@ Makes blocks copy by given ids and paste it to shown place
 
 ### Rpc.BlockDataview
 
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateBookmark"></a>
+
+### Rpc.BlockDataview.CreateBookmark
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateBookmark-Request"></a>
+
+### Rpc.BlockDataview.CreateBookmark.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response"></a>
+
+### Rpc.BlockDataview.CreateBookmark.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error) |  |  |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error"></a>
+
+### Rpc.BlockDataview.CreateBookmark.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -8558,6 +8644,63 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-BookmarkFetch"></a>
+
+### Rpc.Object.BookmarkFetch
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-BookmarkFetch-Request"></a>
+
+### Rpc.Object.BookmarkFetch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-BookmarkFetch-Response"></a>
+
+### Rpc.Object.BookmarkFetch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.BookmarkFetch.Response.Error](#anytype-Rpc-Object-BookmarkFetch-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-BookmarkFetch-Response-Error"></a>
+
+### Rpc.Object.BookmarkFetch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Close"></a>
 
 ### Rpc.Object.Close
@@ -8668,6 +8811,63 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark"></a>
+
+### Rpc.Object.CreateBookmark
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Request"></a>
+
+### Rpc.Object.CreateBookmark.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Response"></a>
+
+### Rpc.Object.CreateBookmark.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error) |  |  |
+| pageId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Response-Error"></a>
+
+### Rpc.Object.CreateBookmark.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10129,6 +10329,64 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark"></a>
+
+### Rpc.Object.ToBookmark
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Request"></a>
+
+### Rpc.Object.ToBookmark.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Response"></a>
+
+### Rpc.Object.ToBookmark.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Response-Error"></a>
+
+### Rpc.Object.ToBookmark.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12637,6 +12895,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.CreateBookmark.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.Relation.Add.Response.Error.Code
@@ -13648,6 +13919,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-BookmarkFetch-Response-Error-Code"></a>
+
+### Rpc.Object.BookmarkFetch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-Close-Response-Error-Code"></a>
 
 ### Rpc.Object.Close.Response.Error.Code
@@ -13664,6 +13948,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-Create-Response-Error-Code"></a>
 
 ### Rpc.Object.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Response-Error-Code"></a>
+
+### Rpc.Object.CreateBookmark.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -14011,6 +14308,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-SubscribeIds-Response-Error-Code"></a>
 
 ### Rpc.Object.SubscribeIds.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Response-Error-Code"></a>
+
+### Rpc.Object.ToBookmark.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -14885,6 +15195,7 @@ Precondition: user A opened a block
 | imageHash | [Event.Block.Fill.Bookmark.ImageHash](#anytype-Event-Block-Fill-Bookmark-ImageHash) |  |  |
 | faviconHash | [Event.Block.Fill.Bookmark.FaviconHash](#anytype-Event-Block-Fill-Bookmark-FaviconHash) |  |  |
 | type | [Event.Block.Fill.Bookmark.Type](#anytype-Event-Block-Fill-Bookmark-Type) |  |  |
+| targetObjectId | [Event.Block.Fill.Bookmark.TargetObjectId](#anytype-Event-Block-Fill-Bookmark-TargetObjectId) |  |  |
 
 
 
@@ -14924,6 +15235,21 @@ Precondition: user A opened a block
 <a name="anytype-Event-Block-Fill-Bookmark-ImageHash"></a>
 
 ### Event.Block.Fill.Bookmark.ImageHash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Fill-Bookmark-TargetObjectId"></a>
+
+### Event.Block.Fill.Bookmark.TargetObjectId
 
 
 
@@ -15464,6 +15790,8 @@ Precondition: user A opened a block
 | imageHash | [Event.Block.Set.Bookmark.ImageHash](#anytype-Event-Block-Set-Bookmark-ImageHash) |  |  |
 | faviconHash | [Event.Block.Set.Bookmark.FaviconHash](#anytype-Event-Block-Set-Bookmark-FaviconHash) |  |  |
 | type | [Event.Block.Set.Bookmark.Type](#anytype-Event-Block-Set-Bookmark-Type) |  |  |
+| targetObjectId | [Event.Block.Set.Bookmark.TargetObjectId](#anytype-Event-Block-Set-Bookmark-TargetObjectId) |  |  |
+| state | [Event.Block.Set.Bookmark.State](#anytype-Event-Block-Set-Bookmark-State) |  |  |
 
 
 
@@ -15503,6 +15831,36 @@ Precondition: user A opened a block
 <a name="anytype-Event-Block-Set-Bookmark-ImageHash"></a>
 
 ### Event.Block.Set.Bookmark.ImageHash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Bookmark-State"></a>
+
+### Event.Block.Set.Bookmark.State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Bookmark-TargetObjectId"></a>
+
+### Event.Block.Set.Bookmark.TargetObjectId
 
 
 
@@ -17248,6 +17606,8 @@ Bookmark is to keep a web-link and to preview a content.
 | imageHash | [string](#string) |  |  |
 | faviconHash | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
+| targetObjectId | [string](#string) |  |  |
+| state | [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State) |  |  |
 
 
 
@@ -17926,6 +18286,20 @@ scope from which this relation have been aggregated |
 
 
 
+<a name="anytype-model-Block-Content-Bookmark-State"></a>
+
+### Block.Content.Bookmark.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Empty | 0 |  |
+| Fetching | 1 |  |
+| Done | 2 |  |
+| Error | 3 |  |
+
+
+
 <a name="anytype-model-Block-Content-Dataview-Filter-Condition"></a>
 
 ### Block.Content.Dataview.Filter.Condition
@@ -18297,6 +18671,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | image | 8 |  |
 | note | 9 |  |
 | space | 10 |  |
+| bookmark | 11 |  |
 | database | 20 | to be released later |
 
 

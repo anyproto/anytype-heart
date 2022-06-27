@@ -16,6 +16,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -32,7 +33,6 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -50,6 +50,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 const (
@@ -199,6 +200,9 @@ type Service interface {
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
+	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error)
+	ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error)
+	ObjectToBookmark(id string, url string) (newId string, err error)
 
 	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error)
 	TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error)
@@ -282,6 +286,7 @@ type service struct {
 	cache       ocache.OCache
 	objectStore objectstore.ObjectStore
 	restriction restriction.Service
+	bookmark    bookmarksvc.Service
 }
 
 func (s *service) Name() string {
@@ -298,6 +303,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
+	s.bookmark = a.MustComponent(bookmarksvc.CName).(bookmarksvc.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -378,6 +384,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	}
 	afterDataviewTime := time.Now()
 	st := ob.NewState()
+
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
@@ -1076,7 +1083,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.linkPreview)
+		sb = editor.NewPage(s, s, s, s.bookmark)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
@@ -1084,7 +1091,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet(s)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s, s, s.bookmark, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType(s)
@@ -1100,9 +1107,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate(s)
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.bookmark)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.bookmark)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
@@ -1461,6 +1468,81 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
 		return sb.ResetToVersion(state)
 	})
+}
+
+func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
+	contentCh := make(chan *model.BlockContentBookmark, 1)
+	go func() {
+		defer close(contentCh)
+
+		content := &model.BlockContentBookmark{
+			Url: url,
+		}
+		updaters, err := s.bookmark.ContentUpdaters(url)
+		if err != nil {
+			log.Error("fetch bookmark content %s: %s", url, err)
+		}
+		for upd := range updaters {
+			upd(content)
+		}
+		contentCh <- content
+	}()
+
+	return func() *model.BlockContentBookmark {
+		return <-contentCh
+	}
+}
+
+// ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
+func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error) {
+	url, err := uri.ProcessURI(req.Url)
+	if err != nil {
+		return "", fmt.Errorf("process uri: %w", err)
+	}
+	res := s.fetchBookmarkContent(url)
+	return s.bookmark.CreateBookmarkObject(url, res)
+}
+
+func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
+	url, err := uri.ProcessURI(req.Url)
+	if err != nil {
+		return fmt.Errorf("process uri: %w", err)
+	}
+	res := s.fetchBookmarkContent(url)
+	go func() {
+		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
+			log.Errorf("update bookmark object %s: %s", req.ContextId, err)
+		}
+	}()
+	return nil
+}
+
+func (s *service) ObjectToBookmark(id string, url string) (objectId string, err error) {
+	objectId, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
+		Url: url,
+	})
+	if err != nil {
+		return
+	}
+
+	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	res, err := oStore.GetWithLinksInfoByID(id)
+	if err != nil {
+		return
+	}
+	for _, il := range res.Links.Inbound {
+		if err = s.replaceLink(il.Id, id, objectId); err != nil {
+			return
+		}
+	}
+	err = s.DeleteObject(id)
+	if err != nil {
+		// intentionally do not return error here
+		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())
+		err = nil
+	}
+
+	return
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {

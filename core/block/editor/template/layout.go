@@ -28,6 +28,12 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 			WithDescription,
 			WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
 		)
+	case model.ObjectType_bookmark:
+		templates = append(templates,
+			WithTitle,
+			WithDescription,
+			WithBookmarkBlocks,
+		)
 	default:
 		templates = append(templates,
 			WithTitle,
