@@ -108,13 +108,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		log.Errorf("fail to get config from file: %+v", err)
 	}
 
-	loc := time.UTC
-	if cfg.TimeZone != "" {
-		loc = time.FixedZone(cfg.TimeZone, 0)
-	}
-
-
-	f, err := database.NewFilters(q, nil, loc)
+	f, err := database.NewFilters(q, nil, time.Now().Location())
 	if err != nil {
 		return
 	}
