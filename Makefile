@@ -177,7 +177,7 @@ protos-swift:
 	
 protos-swift-local: protos-swift
 	@echo 'Copying proto files'
-	@cp -r ./pb/protos ./dist/ios/pb
+	@cp -r ./pb/protos ./dist/ios/protobuf
 	@open ./dist
 
 protos-js:
