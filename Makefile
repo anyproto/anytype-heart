@@ -172,13 +172,13 @@ protos: protos-go protos-server protos-docs
 
 protos-swift:
 	@echo 'Generating swift protobuf files'
-	@mkdir -p ./dist/ios/protobuf
 	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 		@echo 'Generated swift protobuf files at ./dist/ios/pb'
 	
 protos-swift-local: protos-swift
 	@echo 'Copying proto files'
-	@cp -r ./pb/protos ./dist/ios/protobuf
+	@cp ./pb/protos/*.proto ./dist/ios/protobuf
+	@cp ./pb/protos/service/*.proto ./dist/ios/protobuf
 	@open ./dist
 
 protos-js:
