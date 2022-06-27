@@ -201,6 +201,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
 		LocalStoragePath: 			 cfg.IPFSStorageAddr,
+		TimeZone: 			 		 cfg.TimeZone,
 	}
 }
 

@@ -17658,6 +17658,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
+| timeZone | [string](#string) |  | time zone from config |
 
 
 
