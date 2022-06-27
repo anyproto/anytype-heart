@@ -1,23 +1,12 @@
 package bookmark
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"path/filepath"
-	"sync"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -38,55 +27,41 @@ func NewBookmark(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	simple.FileHashes
-	Fetch(params FetchParams) (err error)
-	SetLinkPreview(data model.LinkPreview)
-	SetImageHash(hash string)
-	SetFaviconHash(hash string)
+	GetContent() *model.BlockContentBookmark
+	SetState(s model.BlockContentBookmarkState)
+	UpdateContent(func(content *model.BlockContentBookmark))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
 }
-
-type FetchParams struct {
-	Url         string
-	Anytype     core.Service
-	Updater     Updater
-	LinkPreview linkpreview.LinkPreview
-	Sync        bool
-}
-
-type Updater func(id string, apply func(b Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
 	content *model.BlockContentBookmark
 }
 
-func (f *Bookmark) SetLinkPreview(data model.LinkPreview) {
-	f.content.Url = data.Url
-	f.content.Title = data.Title
-	f.content.Description = data.Description
-	f.content.Type = data.Type
+func (b *Bookmark) GetContent() *model.BlockContentBookmark {
+	return b.content
 }
 
-func (f *Bookmark) SetImageHash(hash string) {
-	f.content.ImageHash = hash
+func (b *Bookmark) UpdateContent(updater func(bookmark *model.BlockContentBookmark)) {
+	updater(b.content)
 }
 
-func (f *Bookmark) SetFaviconHash(hash string) {
-	f.content.FaviconHash = hash
+func (b *Bookmark) SetState(s model.BlockContentBookmarkState) {
+	b.content.State = s
 }
 
-func (f *Bookmark) Fetch(params FetchParams) (err error) {
-	f.content.Url = params.Url
-	if !params.Sync {
-		go fetcher(f.Id, params)
-	} else {
-		fetcher(f.Id, params)
-	}
-	return
+var _ Block = &Bookmark{}
+
+type FetchParams struct {
+	Url     string
+	Updater Updater
+	Sync    bool
 }
 
-func (f *Bookmark) Copy() simple.Block {
-	copy := pbtypes.CopyBlock(f.Model())
+type Updater func(id string, apply func(b Block) error) (err error)
+
+func (b *Bookmark) Copy() simple.Block {
+	copy := pbtypes.CopyBlock(b.Model())
 	return &Bookmark{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetBookmark(),
@@ -94,16 +69,16 @@ func (f *Bookmark) Copy() simple.Block {
 }
 
 // Validate TODO: add validation rules
-func (f *Bookmark) Validate() error {
+func (b *Bookmark) Validate() error {
 	return nil
 }
 
-func (f *Bookmark) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
-	bookmark, ok := b.(*Bookmark)
+func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err error) {
+	bookmark, ok := other.(*Bookmark)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = f.Base.Diff(bookmark); err != nil {
+	if msgs, err = b.Base.Diff(bookmark); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetBookmark{
@@ -111,29 +86,37 @@ func (f *Bookmark) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	}
 	hasChanges := false
 
-	if f.content.Type != bookmark.content.Type {
+	if b.content.Type != bookmark.content.Type {
 		hasChanges = true
 		changes.Type = &pb.EventBlockSetBookmarkType{Value: bookmark.content.Type}
 	}
-	if f.content.Url != bookmark.content.Url {
+	if b.content.Url != bookmark.content.Url {
 		hasChanges = true
 		changes.Url = &pb.EventBlockSetBookmarkUrl{Value: bookmark.content.Url}
 	}
-	if f.content.Title != bookmark.content.Title {
+	if b.content.Title != bookmark.content.Title {
 		hasChanges = true
 		changes.Title = &pb.EventBlockSetBookmarkTitle{Value: bookmark.content.Title}
 	}
-	if f.content.Description != bookmark.content.Description {
+	if b.content.Description != bookmark.content.Description {
 		hasChanges = true
 		changes.Description = &pb.EventBlockSetBookmarkDescription{Value: bookmark.content.Description}
 	}
-	if f.content.ImageHash != bookmark.content.ImageHash {
+	if b.content.ImageHash != bookmark.content.ImageHash {
 		hasChanges = true
 		changes.ImageHash = &pb.EventBlockSetBookmarkImageHash{Value: bookmark.content.ImageHash}
 	}
-	if f.content.FaviconHash != bookmark.content.FaviconHash {
+	if b.content.FaviconHash != bookmark.content.FaviconHash {
 		hasChanges = true
 		changes.FaviconHash = &pb.EventBlockSetBookmarkFaviconHash{Value: bookmark.content.FaviconHash}
+	}
+	if b.content.TargetObjectId != bookmark.content.TargetObjectId {
+		hasChanges = true
+		changes.TargetObjectId = &pb.EventBlockSetBookmarkTargetObjectId{Value: bookmark.content.TargetObjectId}
+	}
+	if b.content.State != bookmark.content.State {
+		hasChanges = true
+		changes.State = &pb.EventBlockSetBookmarkState{Value: bookmark.content.State}
 	}
 
 	if hasChanges {
@@ -161,115 +144,33 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	if e.Url != nil {
 		b.content.Url = e.Url.GetValue()
 	}
+	if e.TargetObjectId != nil {
+		b.content.TargetObjectId = e.TargetObjectId.GetValue()
+	}
+	if e.State != nil {
+		b.content.State = e.State.GetValue()
+	}
+
 	return
 }
 
-func fetcher(id string, params FetchParams) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	data, err := params.LinkPreview.Fetch(ctx, params.Url)
-	cancel()
-	if err != nil {
-		fmt.Println("bookmark: can't fetch link:", params.Url, err)
-		return
+func (b *Bookmark) FillFileHashes(hashes []string) []string {
+	if b.content.ImageHash != "" {
+		hashes = append(hashes, b.content.ImageHash)
 	}
-
-	err = params.Updater(id, func(bm Block) error {
-		bm.SetLinkPreview(data)
-		return nil
-	})
-	if err != nil {
-		fmt.Println("can't set linkpreview data:", id, err)
-		return
-	}
-	var wg sync.WaitGroup
-	if data.ImageUrl != "" {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			hash, err := loadImage(params.Anytype, data.ImageUrl)
-			if err != nil {
-				fmt.Println("can't load image url:", data.ImageUrl, err)
-				return
-			}
-			err = params.Updater(id, func(bm Block) error {
-				bm.SetImageHash(hash)
-				return nil
-			})
-			if err != nil {
-				fmt.Println("can't set image hash:", id, err)
-				return
-			}
-		}()
-	}
-	if data.FaviconUrl != "" {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			hash, err := loadImage(params.Anytype, data.FaviconUrl)
-			if err != nil {
-				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
-				return
-			}
-			err = params.Updater(id, func(bm Block) error {
-				bm.SetFaviconHash(hash)
-				return nil
-			})
-			if err != nil {
-				fmt.Println("can't set favicon hash:", id, err)
-				return
-			}
-		}()
-	}
-	wg.Wait()
-}
-
-func (f *Bookmark) FillFileHashes(hashes []string) []string {
-	if f.content.ImageHash != "" {
-		hashes = append(hashes, f.content.ImageHash)
-	}
-	if f.content.FaviconHash != "" {
-		hashes = append(hashes, f.content.FaviconHash)
+	if b.content.FaviconHash != "" {
+		hashes = append(hashes, b.content.FaviconHash)
 	}
 	return hashes
 }
 
-func loadImage(stor core.Service, url string) (hash string, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
+func (b *Bookmark) FillSmartIds(ids []string) []string {
+	if b.content.TargetObjectId != "" {
+		ids = append(ids, b.content.TargetObjectId)
+	}
+	return ids
+}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
-	}
-
-	tmpFile, err := ioutil.TempFile(stor.TempDir(), "anytype_downloaded_file_*")
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(tmpFile.Name())
-
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	_, err = tmpFile.Seek(0, io.SeekStart)
-	if err != nil {
-		return "", err
-	}
-
-	im, err := stor.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(filepath.Base(url)))
-	if err != nil {
-		return
-	}
-	return im.Hash(), nil
+func (b *Bookmark) HasSmartIds() bool {
+	return b.content.TargetObjectId != ""
 }

@@ -2,28 +2,26 @@ package core
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-naturaldate/v2"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-
-	"github.com/anytypeio/go-anytype-middleware/core/subscription"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/araddon/dateparse"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-naturaldate/v2"
+	"github.com/araddon/dateparse"
+	"github.com/gogo/protobuf/types"
 )
 
 // To be renamed to ObjectSetDetails
@@ -744,4 +742,67 @@ func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectTo
 		return nil
 	})
 	return response(setId, err)
+}
+
+func (mw *Middleware) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
+	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectCreateBookmarkResponse {
+		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, PageId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs block.Service) error {
+		var err error
+		id, err = bs.ObjectCreateBookmark(*req)
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) ObjectBookmarkFetch(req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
+	response := func(code pb.RpcObjectBookmarkFetchResponseErrorCode, err error) *pb.RpcObjectBookmarkFetchResponse {
+		m := &pb.RpcObjectBookmarkFetchResponse{Error: &pb.RpcObjectBookmarkFetchResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	err := mw.doBlockService(func(bs block.Service) error {
+		return bs.ObjectBookmarkFetch(*req)
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectBookmarkFetchResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectBookmarkFetchResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectToBookmark(req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
+	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
+		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs block.Service) error {
+		var err error
+		id, err = bs.ObjectToBookmark(req.ContextId, req.Url)
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectToBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
 }
