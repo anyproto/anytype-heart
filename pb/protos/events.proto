@@ -456,6 +456,8 @@ message Event {
                 ImageHash imageHash = 5;
                 FaviconHash faviconHash = 6;
                 Type type = 7;
+                TargetObjectId targetObjectId = 8;
+                State state = 9;
 
                 message Url {
                     string value = 1;
@@ -481,6 +483,13 @@ message Event {
                     anytype.model.LinkPreview.Type value = 1;
                 }
 
+                message TargetObjectId {
+                    string value = 1;
+                }
+
+                message State {
+                    anytype.model.Block.Content.Bookmark.State value = 1;
+                }
             }
         }
 
@@ -635,6 +644,8 @@ message Event {
                 ImageHash imageHash = 5;
                 FaviconHash faviconHash = 6;
                 Type type = 7;
+                TargetObjectId targetObjectId = 8;
+                
 
                 message Url {
                     string value = 1;
@@ -660,6 +671,9 @@ message Event {
                     anytype.model.LinkPreview.Type value = 1;
                 }
 
+                message TargetObjectId {
+                    string value = 1;
+                }
             }
         }
 

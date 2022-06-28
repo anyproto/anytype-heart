@@ -335,7 +335,7 @@ func TestState_Normalize(t *testing.T) {
 		creator := "_anytype_profile"
 		for _, rel := range bundle.ListRelations() {
 			_, wasNormalized := normalizeRelation(rel, creator)
-			require.False(t, wasNormalized, "bundled relation %s is not normalized", rel.Key)
+			assert.False(t, wasNormalized, "bundled relation %s is not normalized", rel.Key)
 		}
 	})
 

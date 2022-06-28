@@ -4,35 +4,41 @@ import (
 	"fmt"
 	"sync"
 
+	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/globalsign/mgo/bson"
 )
 
-func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBookmark) Bookmark {
-	return &sbookmark{SmartBlock: sb, lp: lp, ctrl: ctrl}
+func NewBookmark(sb smartblock.SmartBlock, blockService BlockService, bookmarkSvc BookmarkService) Bookmark {
+	return &sbookmark{SmartBlock: sb, blockService: blockService, bookmarkSvc: bookmarkSvc}
 }
 
 type Bookmark interface {
 	Fetch(ctx *state.Context, id string, url string, isSync bool) (err error)
 	CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
+	MigrateBlock(bm bookmark.Block) (err error)
 }
 
-type DoBookmark interface {
-	DoBookmark(id string, apply func(b Bookmark) error) error
+type BookmarkService interface {
+	CreateBookmarkObject(url string, getContent bookmarksvc.ContentFuture) (objectId string, err error)
+	Fetch(id string, params bookmark.FetchParams) (err error)
 }
 
 type sbookmark struct {
 	smartblock.SmartBlock
-	lp   linkpreview.LinkPreview
-	ctrl DoBookmark
+	blockService BlockService
+	bookmarkSvc  BookmarkService
+}
+
+type BlockService interface {
+	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
 func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
@@ -54,25 +60,27 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	}
 	groupId := s.GroupId()
 	var updMu sync.Mutex
-	if bm, ok := bb.(bookmark.Block); ok {
-		return bm.Fetch(bookmark.FetchParams{
-			Url:     url,
-			Anytype: b.Anytype(),
-			Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
-				if isSync {
-					updMu.Lock()
-					defer updMu.Unlock()
-					return apply(bm)
-				}
-				return b.ctrl.DoBookmark(b.Id(), func(b Bookmark) error {
-					return b.UpdateBookmark(id, groupId, apply)
-				})
-			},
-			LinkPreview: b.lp,
-			Sync:        isSync,
-		})
+	bm, ok := bb.(bookmark.Block)
+	if !ok {
+		return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 	}
-	return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
+	bm.SetState(model.BlockContentBookmark_Fetching)
+
+	err = b.bookmarkSvc.Fetch(id, bookmark.FetchParams{
+		Url: url,
+		Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
+			if isSync {
+				updMu.Lock()
+				defer updMu.Unlock()
+				return b.updateBlock(bm, apply)
+			}
+			return b.blockService.DoBookmark(b.Id(), func(b Bookmark) error {
+				return b.UpdateBookmark(id, groupId, apply)
+			})
+		},
+		Sync: isSync,
+	})
+	return err
 }
 
 func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
@@ -98,12 +106,12 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
-func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error) {
+func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) error {
 	s := b.NewState().SetGroupId(groupId)
 	if bb := s.Get(id); bb != nil {
 		if bm, ok := bb.(bookmark.Block); ok {
-			if err = apply(bm); err != nil {
-				return
+			if err := b.updateBlock(bm, apply); err != nil {
+				return fmt.Errorf("update block: %w", err)
 			}
 		} else {
 			return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
@@ -112,4 +120,50 @@ func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Blo
 		return smartblock.ErrSimpleBlockNotFound
 	}
 	return b.Apply(s)
+}
+
+// updateBlock updates a block and creates associated Bookmark object
+func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block) error) error {
+	if err := apply(block); err != nil {
+		return err
+	}
+
+	content := block.GetContent()
+	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() *model.BlockContentBookmark {
+		return content
+	})
+	if err != nil {
+		return fmt.Errorf("create bookmark object: %w", err)
+	}
+
+	block.UpdateContent(func(content *model.BlockContentBookmark) {
+		content.TargetObjectId = pageId
+	})
+	return nil
+}
+
+func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
+	content := bm.GetContent()
+
+	if content.TargetObjectId != "" {
+		if content.State != model.BlockContentBookmark_Done {
+			bm.UpdateContent(func(content *model.BlockContentBookmark) {
+				content.State = model.BlockContentBookmark_Done
+			})
+		}
+		return nil
+	}
+
+	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() *model.BlockContentBookmark {
+		return content
+	})
+	if err != nil {
+		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
+	}
+
+	bm.UpdateContent(func(content *model.BlockContentBookmark) {
+		content.TargetObjectId = pageId
+		content.State = model.BlockContentBookmark_Done
+	})
+	return nil
 }
