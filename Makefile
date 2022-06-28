@@ -85,6 +85,8 @@ build-js-addon:
 build-ios: setup-go
 	gomobile init
 	@go get golang.org/x/mobile/bind
+	@echo 'Clear xcframework'
+	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
 	gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
@@ -171,15 +173,20 @@ protos-docs:
 protos: protos-go protos-server protos-docs
 
 protos-swift:
+	@echo 'Clear protobuf files'
+	@rm -rf ./dist/ios/protobuf/*
 	@echo 'Generating swift protobuf files'
 	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 		@echo 'Generated swift protobuf files at ./dist/ios/pb'
 	
 protos-swift-local: protos-swift
+	@echo 'Clear proto files'
+	@rm -rf ./dist/ios/protobuf/protos
 	@echo 'Copying proto files'
 	@mkdir ./dist/ios/protobuf/protos
 	@cp ./pb/protos/*.proto ./dist/ios/protobuf/protos
 	@cp ./pb/protos/service/*.proto ./dist/ios/protobuf/protos
+	@cp ./pkg/lib/pb/model/protos/*.proto ./dist/ios/protobuf/protos
 	@open ./dist
 
 protos-js:
