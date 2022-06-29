@@ -664,6 +664,10 @@
     - [Rpc.Wallet.Create.Request](#anytype-Rpc-Wallet-Create-Request)
     - [Rpc.Wallet.Create.Response](#anytype-Rpc-Wallet-Create-Response)
     - [Rpc.Wallet.Create.Response.Error](#anytype-Rpc-Wallet-Create-Response-Error)
+    - [Rpc.Wallet.CreateSession](#anytype-Rpc-Wallet-CreateSession)
+    - [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request)
+    - [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response)
+    - [Rpc.Wallet.CreateSession.Response.Error](#anytype-Rpc-Wallet-CreateSession-Response-Error)
     - [Rpc.Wallet.Recover](#anytype-Rpc-Wallet-Recover)
     - [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request)
     - [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response)
@@ -693,6 +697,7 @@
     - [Rpc.Workspace.SetIsHighlighted.Request](#anytype-Rpc-Workspace-SetIsHighlighted-Request)
     - [Rpc.Workspace.SetIsHighlighted.Response](#anytype-Rpc-Workspace-SetIsHighlighted-Response)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error)
+    - [StreamRequest](#anytype-StreamRequest)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
@@ -846,6 +851,7 @@
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype-Rpc-Wallet-Convert-Response-Error-Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype-Rpc-Wallet-Create-Response-Error-Code)
+    - [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype-Rpc-Wallet-CreateSession-Response-Error-Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype-Rpc-Wallet-Recover-Response-Error-Code)
     - [Rpc.Workspace.Create.Response.Error.Code](#anytype-Rpc-Workspace-Create-Response-Error-Code)
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
@@ -1130,6 +1136,7 @@
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype-Rpc-Wallet-Create-Request) | [Rpc.Wallet.Create.Response](#anytype-Rpc-Wallet-Create-Response) | Wallet *** |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request) | [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
+| WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request) | [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response) |  |
 | WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request) | [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response) |  |
@@ -1272,6 +1279,7 @@
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenEvents | [Empty](#anytype-Empty) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
+| ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream |  |
 
  
 
@@ -10884,6 +10892,63 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 
 
 
+<a name="anytype-Rpc-Wallet-CreateSession"></a>
+
+### Rpc.Wallet.CreateSession
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-CreateSession-Request"></a>
+
+### Rpc.Wallet.CreateSession.Request
+Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mnemonic | [string](#string) |  | Mnemonic of a wallet to recover |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-CreateSession-Response"></a>
+
+### Rpc.Wallet.CreateSession.Response
+Middleware-to-front-end response, that can contain a NULL error or a non-NULL error
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Wallet.CreateSession.Response.Error](#anytype-Rpc-Wallet-CreateSession-Response-Error) |  | Error while trying to recover a wallet |
+| token | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-CreateSession-Response-Error"></a>
+
+### Rpc.Wallet.CreateSession.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype-Rpc-Wallet-CreateSession-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Wallet-Recover"></a>
 
 ### Rpc.Wallet.Recover
@@ -11278,6 +11343,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-StreamRequest"></a>
+
+### StreamRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  |  |
 
 
 
@@ -13334,6 +13414,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 | Root path is wrong |
 | FAILED_TO_CREATE_LOCAL_REPO | 101 | ... |
+
+
+
+<a name="anytype-Rpc-Wallet-CreateSession-Response-Error-Code"></a>
+
+### Rpc.Wallet.CreateSession.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error; wallet successfully recovered |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Root path or mnemonic is wrong |
+| FAILED_TO_CREATE_LOCAL_REPO | 101 |  |
 
 
 

@@ -1,3 +1,4 @@
+//go:build !nogrpcserver && !_test
 // +build !nogrpcserver,!_test
 
 package core
@@ -32,6 +33,25 @@ func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_Listen
 	case <-stopChan:
 		return
 	case <-serverCh:
+		return
+	}
+}
+
+func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {
+	var srv event.SessionServer
+	if sender, ok := mw.EventSender.(*event.GrpcSender); ok {
+		srv = sender.SetSessionServer(req.Token, server)
+	} else {
+		log.Fatal("failed to ListenEvents: has a wrong Sender")
+		return
+	}
+
+	var stopChan = make(chan os.Signal, 2)
+	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	select {
+	case <-stopChan:
+		return
+	case <-srv.Done:
 		return
 	}
 }

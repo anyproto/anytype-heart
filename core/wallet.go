@@ -4,10 +4,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 const wordCount int = 12
@@ -113,4 +115,38 @@ func (mw *Middleware) WalletConvert(req *pb.RpcWalletConvertRequest) *pb.RpcWall
 	}
 
 	return response("", "", pb.RpcWalletConvertResponseError_BAD_INPUT, fmt.Errorf("you should specify neither entropy or mnemonic to convert"))
+}
+
+func (mw *Middleware) WalletCreateSession(req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
+	response := func(token string, code pb.RpcWalletCreateSessionResponseErrorCode, err error) *pb.RpcWalletCreateSessionResponse {
+		m := &pb.RpcWalletCreateSessionResponse{Token: token, Error: &pb.RpcWalletCreateSessionResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	// test if mnemonic is correct
+	acc, err := core.WalletAccountAt(req.Mnemonic, 0, "")
+	if err != nil {
+		return response("", pb.RpcWalletCreateSessionResponseError_BAD_INPUT, err)
+	}
+	priv, err := acc.MarshalBinary()
+	if err != nil {
+		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"foo": "bar",
+		"nbf": time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
+	})
+
+	// Sign and get the complete encoded token as a string using the secret
+	tokenString, err := token.SignedString(priv)
+	if err != nil {
+		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(tokenString, pb.RpcWalletCreateSessionResponseError_NULL, nil)
 }
