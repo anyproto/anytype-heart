@@ -110,7 +110,7 @@ func TestRelationAdd(t *testing.T) {
 		ViewId:    block.GetDataview().Views[0].Id,
 	})
 	require.Equal(t, 0, int(respSetActiveView.Error.Code), respSetActiveView.Error.Description)
-	require.Len(t, block.GetDataview().Relations, len(bundle.MergeRelationsKeys(bundle.GetRelationsKeys(bundle.MustGetType(bundle.TypeKeyNote).Relations), dataview.DefaultDataviewRelations)))
+	require.Equal(t, bundle.SortRelationKeys(bundle.MergeRelationsKeys(bundle.GetRelationsKeys(bundle.MustGetType(bundle.TypeKeyNote).Relations), dataview.DefaultDataviewRelations)), bundle.SortRelationKeys(bundle.GetRelationsKeys(block.GetDataview().Relations)))
 
 	t.Run("add_incorrect", func(t *testing.T) {
 		respDataviewRelationAdd := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
@@ -147,14 +147,22 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.ObjectOpen(&pb.RpcObjectOpenRequest{ObjectId: setId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
-		require.Len(t, block.GetDataview().Relations, len(bundle.MergeRelationsKeys(bundle.GetRelationsKeys(bundle.MustGetType(bundle.TypeKeyPage).Relations), dataview.DefaultDataviewRelations))+1)
+		require.Equal(t, bundle.SortRelationKeys(
+			bundle.MergeRelationsKeys(
+				append(
+					bundle.GetRelationsKeys(bundle.MustGetType(bundle.TypeKeyPage).Relations),
+					bundle.RelationKey(respDataviewRelationAdd.RelationKey),
+				),
+				dataview.DefaultDataviewRelations),
+		),
+			bundle.SortRelationKeys(bundle.GetRelationsKeys(block.GetDataview().Relations)))
 
 		respAccountCreate := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: mw.GetAnytype().Account(), RootPath: rootPath})
 		require.Equal(t, 0, int(respAccountCreate.Error.Code))
 		respOpenNewPage = mw.ObjectOpen(&pb.RpcObjectOpenRequest{ObjectId: setId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
-		require.Len(t, block.GetDataview().Relations, len(bundle.MergeRelationsKeys(bundle.GetRelationsKeys(bundle.MustGetType(bundle.TypeKeyPage).Relations), dataview.DefaultDataviewRelations))+1)
+		require.Equal(t, bundle.SortRelationKeys(bundle.MergeRelationsKeys(append(bundle.GetRelationsKeys(bundle.MustGetType(bundle.TypeKeyPage).Relations), bundle.RelationKey(respDataviewRelationAdd.RelationKey)), dataview.DefaultDataviewRelations)), bundle.SortRelationKeys(bundle.GetRelationsKeys(block.GetDataview().Relations)))
 	})
 
 	t.Run("relation_aggregate_scope", func(t *testing.T) {
@@ -1146,7 +1154,7 @@ func TestCustomType(t *testing.T) {
 	})
 
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
-	require.Len(t, respObjectTypeCreate.ObjectType.Relations, len(bundle.RequiredInternalRelations)+3+1) // including relation.RequiredInternalRelations and done from the to-do layout
+	require.Len(t, respObjectTypeCreate.ObjectType.Relations, len(bundle.RequiredInternalRelations)+3+1) // 3 new relations + Done
 	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "b"))
 	var newRelation *model.Relation
 	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
