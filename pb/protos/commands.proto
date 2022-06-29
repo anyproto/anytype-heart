@@ -965,7 +965,8 @@ message Rpc {
                     oneof Value {
                         Status status = 2;
                         Tag tag = 3;
-                        Date date = 4;
+                        Checkbox checkbox = 4;
+                        Date date = 5;
                     }
                 }
 
@@ -975,6 +976,10 @@ message Rpc {
 
                 message Tag {
                     repeated string ids = 1;
+                }
+
+                message Checkbox {
+                    bool checked = 1;
                 }
 
                 message Date {

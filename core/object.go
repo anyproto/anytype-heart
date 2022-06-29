@@ -374,11 +374,22 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 				}
 			}
 		}
-
+	case model.RelationFormat_checkbox:
+		groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
+			Id: "true",
+			Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfCheckbox{
+				Checkbox: &pb.RpcObjectRelationSearchDistinctResponseCheckbox{
+					Checked: true,
+				}},
+		}, &pb.RpcObjectRelationSearchDistinctResponseGroup{
+			Id: "false",
+			Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfCheckbox{
+				Checkbox: &pb.RpcObjectRelationSearchDistinctResponseCheckbox{
+					Checked: false,
+				}},
+		})
 	case model.RelationFormat_date:
 		// TODO
-	case model.RelationFormat_checkbox:
-
 	default:
 		return errResponse(errors.New("unsupported relation format"))
 	}

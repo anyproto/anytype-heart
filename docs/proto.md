@@ -498,6 +498,7 @@
     - [Rpc.Object.RelationSearchDistinct](#anytype-Rpc-Object-RelationSearchDistinct)
     - [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request)
     - [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response)
+    - [Rpc.Object.RelationSearchDistinct.Response.Checkbox](#anytype-Rpc-Object-RelationSearchDistinct-Response-Checkbox)
     - [Rpc.Object.RelationSearchDistinct.Response.Date](#anytype-Rpc-Object-RelationSearchDistinct-Response-Date)
     - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error)
     - [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group)
@@ -8485,6 +8486,21 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Checkbox"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Checkbox
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| checked | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Date"></a>
 
 ### Rpc.Object.RelationSearchDistinct.Response.Date
@@ -8522,6 +8538,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | id | [string](#string) |  |  |
 | status | [Rpc.Object.RelationSearchDistinct.Response.Status](#anytype-Rpc-Object-RelationSearchDistinct-Response-Status) |  |  |
 | tag | [Rpc.Object.RelationSearchDistinct.Response.Tag](#anytype-Rpc-Object-RelationSearchDistinct-Response-Tag) |  |  |
+| checkbox | [Rpc.Object.RelationSearchDistinct.Response.Checkbox](#anytype-Rpc-Object-RelationSearchDistinct-Response-Checkbox) |  |  |
 | date | [Rpc.Object.RelationSearchDistinct.Response.Date](#anytype-Rpc-Object-RelationSearchDistinct-Response-Date) |  |  |
 
 
@@ -16904,6 +16921,8 @@ scope from which this relation have been aggregated |
 | NotEmpty | 12 |  |
 | AllIn | 13 |  |
 | NotAllIn | 14 |  |
+| ExactIn | 15 |  |
+| NotExactIn | 16 |  |
 
 
 
