@@ -332,12 +332,24 @@ var WithTitle = StateTransformer(func(s *state.State) {
 // WithDefaultFeaturedRelations **MUST** be called before WithDescription
 var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
 	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
-		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String()}
 		layout, _ := s.Layout()
 		if layout == model.ObjectType_basic || layout == model.ObjectType_note {
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+			fr = []string{bundle.RelationKeyType.String()}
 		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	}
+})
+
+var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
+	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+
+	if slice.FindPos(fr, bundle.RelationKeyCreator.String()) != -1 {
+		frc := make([]string, len(fr))
+		copy(frc, fr)
+
+		frc = slice.Remove(frc, bundle.RelationKeyCreator.String())
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
 	}
 })
 

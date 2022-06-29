@@ -368,43 +368,51 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
-	if ctx != nil {
-		details, objectTypes, err := sb.fetchMeta()
-		if err != nil {
-			return err
-		}
-		// omit relations
-		// todo: switch to other pb type
-		for _, ot := range objectTypes {
-			ot.Relations = nil
-		}
+	if ctx == nil {
+		return nil
+	}
 
-		for _, det := range details {
-			for k, v := range det.Details.GetFields() {
-				// todo: remove null cleanup(should be done when receiving from client)
-				if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-					log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
-					delete(det.Details.Fields, k)
-				}
+	details, objectTypes, err := sb.fetchMeta()
+	if err != nil {
+		return err
+	}
+	// omit relations
+	// todo: switch to other pb type
+	for _, ot := range objectTypes {
+		ot.Relations = nil
+	}
+
+	for _, det := range details {
+		for k, v := range det.Details.GetFields() {
+			// todo: remove null cleanup(should be done when receiving from client)
+			if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+				log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
+				delete(det.Details.Fields, k)
 			}
 		}
-
-		// todo: sb.Relations() makes extra query to read objectType which we already have here
-		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-					RootId:       sb.RootId(),
-					Type:         sb.Type(),
-					Blocks:       sb.Blocks(),
-					Details:      details,
-					Relations:    sb.Relations(),
-					ObjectTypes:  objectTypes,
-					Restrictions: sb.restrictions.Proto(),
-				}},
-			},
-		})
 	}
+
+	undo, redo := sb.History().Counters()
+
+	// todo: sb.Relations() makes extra query to read objectType which we already have here
+	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
+	ctx.AddMessages(sb.Id(), []*pb.EventMessage{
+		{
+			Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
+				RootId:       sb.RootId(),
+				Type:         sb.Type(),
+				Blocks:       sb.Blocks(),
+				Details:      details,
+				Relations:    sb.Relations(),
+				ObjectTypes:  objectTypes,
+				Restrictions: sb.restrictions.Proto(),
+				History: &pb.EventObjectShowHistorySize{
+					Undo: undo,
+					Redo: redo,
+				},
+			}},
+		},
+	})
 	return nil
 }
 
@@ -808,6 +816,15 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetD
 					continue
 				}
 			}
+			if detail.Key == bundle.RelationKeyLayout.String() {
+				// special case when client sets the layout detail directly instead of using setLayout command
+				err = sb.SetLayout(ctx, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
+				if err != nil {
+					log.Errorf("failed to set object's layout via detail: %s", err.Error())
+				}
+				continue
+			}
+
 			rel := pbtypes.GetRelation(aggregatedRelations, detail.Key)
 			if rel == nil {
 				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
@@ -1135,6 +1152,10 @@ func (sb *smartBlock) SetVerticalAlign(ctx *state.Context, align model.BlockVert
 }
 
 func (sb *smartBlock) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
+	if err = sb.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
+		return
+	}
+
 	s := sb.NewStateCtx(ctx)
 	if err = sb.setLayout(s, layout); err != nil {
 		return

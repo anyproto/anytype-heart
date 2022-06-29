@@ -1066,6 +1066,7 @@
     - [Event.Object.Relations.Set](#anytype-Event-Object-Relations-Set)
     - [Event.Object.Remove](#anytype-Event-Object-Remove)
     - [Event.Object.Show](#anytype-Event-Object-Show)
+    - [Event.Object.Show.HistorySize](#anytype-Event-Object-Show-HistorySize)
     - [Event.Object.Show.RelationWithValuePerObject](#anytype-Event-Object-Show-RelationWithValuePerObject)
     - [Event.Object.Subscription](#anytype-Event-Object-Subscription)
     - [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add)
@@ -16788,6 +16789,23 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | objectTypes | [model.ObjectType](#anytype-model-ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
 | relations | [model.Relation](#anytype-model-Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
 | restrictions | [model.Restrictions](#anytype-model-Restrictions) |  | object restrictions |
+| history | [Event.Object.Show.HistorySize](#anytype-Event-Object-Show-HistorySize) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Object-Show-HistorySize"></a>
+
+### Event.Object.Show.HistorySize
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| undo | [int32](#int32) |  |  |
+| redo | [int32](#int32) |  |  |
 
 
 

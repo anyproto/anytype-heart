@@ -136,7 +136,7 @@ jobs:
           mkdir -p .release
           make protos-swift
           rm -rf protobuf
-          mv dist/ios/pb protobuf
+          mv dist/ios/protobuf protobuf
           mkdir -p protobuf/protos
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
