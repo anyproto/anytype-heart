@@ -1814,185 +1814,185 @@ func (x *clientCommandsListenSessionEventsClient) Recv() (*pb.Event, error) {
 
 // ClientCommandsServer is the server API for ClientCommands service.
 type ClientCommandsServer interface {
-	AppGetVersion(*pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse
-	AppSetDeviceState(*pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse
-	AppShutdown(*pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse
+	AppGetVersion(context.Context, *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse
+	AppSetDeviceState(context.Context, *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse
+	AppShutdown(context.Context, *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse
 	// Wallet
 	// ***
-	WalletCreate(*pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
-	WalletRecover(*pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
-	WalletConvert(*pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse
-	WalletCreateSession(*pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse
+	WalletCreate(context.Context, *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
+	WalletRecover(context.Context, *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
+	WalletConvert(context.Context, *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse
+	WalletCreateSession(context.Context, *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse
 	// Workspace
 	// ***
-	WorkspaceCreate(*pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse
-	WorkspaceSelect(*pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse
-	WorkspaceGetCurrent(*pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse
-	WorkspaceGetAll(*pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse
-	WorkspaceSetIsHighlighted(*pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse
-	WorkspaceExport(*pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse
+	WorkspaceCreate(context.Context, *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse
+	WorkspaceSelect(context.Context, *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse
+	WorkspaceGetCurrent(context.Context, *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse
+	WorkspaceGetAll(context.Context, *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse
+	WorkspaceSetIsHighlighted(context.Context, *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse
+	WorkspaceExport(context.Context, *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse
 	// Account
 	// ***
-	AccountRecover(*pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse
-	AccountCreate(*pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse
-	AccountDelete(*pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse
-	AccountSelect(*pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse
-	AccountStop(*pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse
-	AccountMove(*pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse
+	AccountRecover(context.Context, *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse
+	AccountCreate(context.Context, *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse
+	AccountDelete(context.Context, *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse
+	AccountSelect(context.Context, *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse
+	AccountStop(context.Context, *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse
+	AccountMove(context.Context, *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse
 	// Object
 	// ***
-	ObjectOpen(*pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse
-	ObjectClose(*pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse
-	ObjectShow(*pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse
+	ObjectOpen(context.Context, *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse
+	ObjectClose(context.Context, *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse
+	ObjectShow(context.Context, *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse
 	// ObjectCreate just creates the new page, without adding the link to it from some other page
-	ObjectCreate(*pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse
-	ObjectCreateBookmark(*pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse
+	ObjectCreate(context.Context, *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse
+	ObjectCreateBookmark(context.Context, *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse
 	// ObjectCreateSet just creates the new set, without adding the link to it from some other page
-	ObjectCreateSet(*pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse
-	ObjectGraph(*pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse
-	ObjectSearch(*pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse
-	ObjectSearchSubscribe(*pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse
-	ObjectSubscribeIds(*pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse
-	ObjectSearchUnsubscribe(*pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse
-	ObjectSetDetails(*pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse
-	ObjectDuplicate(*pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse
+	ObjectCreateSet(context.Context, *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse
+	ObjectGraph(context.Context, *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse
+	ObjectSearch(context.Context, *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse
+	ObjectSearchSubscribe(context.Context, *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse
+	ObjectSubscribeIds(context.Context, *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse
+	ObjectSearchUnsubscribe(context.Context, *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse
+	ObjectSetDetails(context.Context, *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse
+	ObjectDuplicate(context.Context, *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse
 	// ObjectSetObjectType sets an existing object type to the object so it will appear in sets and suggests relations from this type
-	ObjectSetObjectType(*pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse
-	ObjectSetLayout(*pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse
-	ObjectSetIsFavorite(*pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse
-	ObjectSetIsArchived(*pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse
-	ObjectListDuplicate(*pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse
-	ObjectListDelete(*pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse
-	ObjectListSetIsArchived(*pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse
-	ObjectListSetIsFavorite(*pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse
-	ObjectApplyTemplate(*pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse
+	ObjectSetObjectType(context.Context, *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse
+	ObjectSetLayout(context.Context, *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse
+	ObjectSetIsFavorite(context.Context, *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse
+	ObjectSetIsArchived(context.Context, *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse
+	ObjectListDuplicate(context.Context, *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse
+	ObjectListDelete(context.Context, *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse
+	ObjectListSetIsArchived(context.Context, *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse
+	ObjectListSetIsFavorite(context.Context, *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse
+	ObjectApplyTemplate(context.Context, *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse
 	// ObjectToSet creates new set from given object and removes object
-	ObjectToSet(*pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse
-	ObjectAddWithObjectId(*pb.RpcObjectAddWithObjectIdRequest) *pb.RpcObjectAddWithObjectIdResponse
-	ObjectShareByLink(*pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse
-	ObjectOpenBreadcrumbs(*pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse
-	ObjectSetBreadcrumbs(*pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse
-	ObjectUndo(*pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse
-	ObjectRedo(*pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse
-	ObjectImportMarkdown(*pb.RpcObjectImportMarkdownRequest) *pb.RpcObjectImportMarkdownResponse
-	ObjectListExport(*pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse
-	ObjectBookmarkFetch(*pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse
-	ObjectToBookmark(*pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse
+	ObjectToSet(context.Context, *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse
+	ObjectAddWithObjectId(context.Context, *pb.RpcObjectAddWithObjectIdRequest) *pb.RpcObjectAddWithObjectIdResponse
+	ObjectShareByLink(context.Context, *pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse
+	ObjectOpenBreadcrumbs(context.Context, *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse
+	ObjectSetBreadcrumbs(context.Context, *pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse
+	ObjectUndo(context.Context, *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse
+	ObjectRedo(context.Context, *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse
+	ObjectImportMarkdown(context.Context, *pb.RpcObjectImportMarkdownRequest) *pb.RpcObjectImportMarkdownResponse
+	ObjectListExport(context.Context, *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse
+	ObjectBookmarkFetch(context.Context, *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse
+	ObjectToBookmark(context.Context, *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse
 	// Object Relations
 	// ***
-	ObjectRelationAdd(*pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse
-	ObjectRelationUpdate(*pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse
-	ObjectRelationDelete(*pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse
-	ObjectRelationAddFeatured(*pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse
-	ObjectRelationRemoveFeatured(*pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse
-	ObjectRelationListAvailable(*pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse
-	ObjectRelationOptionAdd(*pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse
-	ObjectRelationOptionUpdate(*pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse
-	ObjectRelationOptionDelete(*pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse
+	ObjectRelationAdd(context.Context, *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse
+	ObjectRelationUpdate(context.Context, *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse
+	ObjectRelationDelete(context.Context, *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse
+	ObjectRelationAddFeatured(context.Context, *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse
+	ObjectRelationRemoveFeatured(context.Context, *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse
+	ObjectRelationListAvailable(context.Context, *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse
+	ObjectRelationOptionAdd(context.Context, *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse
+	ObjectRelationOptionUpdate(context.Context, *pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse
+	ObjectRelationOptionDelete(context.Context, *pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse
 	// ObjectType commands
 	// ***
-	ObjectTypeCreate(*pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse
+	ObjectTypeCreate(context.Context, *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse
 	// ObjectTypeList lists all object types both bundled and created by user
-	ObjectTypeList(*pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse
-	ObjectTypeRelationList(*pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse
-	ObjectTypeRelationAdd(*pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse
-	ObjectTypeRelationUpdate(*pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse
-	ObjectTypeRelationRemove(*pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse
-	HistoryShowVersion(*pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse
-	HistoryGetVersions(*pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse
-	HistorySetVersion(*pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse
+	ObjectTypeList(context.Context, *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse
+	ObjectTypeRelationList(context.Context, *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse
+	ObjectTypeRelationAdd(context.Context, *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse
+	ObjectTypeRelationUpdate(context.Context, *pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse
+	ObjectTypeRelationRemove(context.Context, *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse
+	HistoryShowVersion(context.Context, *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse
+	HistoryGetVersions(context.Context, *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse
+	HistorySetVersion(context.Context, *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse
 	// Files
 	// ***
-	FileOffload(*pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse
-	FileListOffload(*pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse
-	FileUpload(*pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse
-	FileDownload(*pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse
-	FileDrop(*pb.RpcFileDropRequest) *pb.RpcFileDropResponse
-	NavigationListObjects(*pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse
-	NavigationGetObjectInfoWithLinks(*pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse
-	TemplateCreateFromObject(*pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse
-	TemplateCreateFromObjectType(*pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse
-	TemplateClone(*pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse
-	TemplateExportAll(*pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse
-	LinkPreview(*pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse
-	UnsplashSearch(*pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse
+	FileOffload(context.Context, *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse
+	FileListOffload(context.Context, *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse
+	FileUpload(context.Context, *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse
+	FileDownload(context.Context, *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse
+	FileDrop(context.Context, *pb.RpcFileDropRequest) *pb.RpcFileDropResponse
+	NavigationListObjects(context.Context, *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse
+	NavigationGetObjectInfoWithLinks(context.Context, *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse
+	TemplateCreateFromObject(context.Context, *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse
+	TemplateCreateFromObjectType(context.Context, *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse
+	TemplateClone(context.Context, *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse
+	TemplateExportAll(context.Context, *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse
+	LinkPreview(context.Context, *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse
+	UnsplashSearch(context.Context, *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse
 	// UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
 	// The artist info is available in the object details
-	UnsplashDownload(*pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse
+	UnsplashDownload(context.Context, *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse
 	// General Block commands
 	// ***
-	BlockUpload(*pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
-	BlockReplace(*pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
-	BlockCreate(*pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
-	BlockSplit(*pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse
-	BlockMerge(*pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse
-	BlockCopy(*pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse
-	BlockPaste(*pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse
-	BlockCut(*pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse
-	BlockSetFields(*pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse
-	BlockExport(*pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse
-	BlockListDelete(*pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse
-	BlockListMoveToExistingObject(*pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse
-	BlockListMoveToNewObject(*pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse
-	BlockListConvertToObjects(*pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse
-	BlockListSetFields(*pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse
-	BlockListDuplicate(*pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse
-	BlockListSetBackgroundColor(*pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse
-	BlockListSetAlign(*pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse
-	BlockListTurnInto(*pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse
+	BlockUpload(context.Context, *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
+	BlockReplace(context.Context, *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
+	BlockCreate(context.Context, *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
+	BlockSplit(context.Context, *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse
+	BlockMerge(context.Context, *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse
+	BlockCopy(context.Context, *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse
+	BlockPaste(context.Context, *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse
+	BlockCut(context.Context, *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse
+	BlockSetFields(context.Context, *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse
+	BlockExport(context.Context, *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse
+	BlockListDelete(context.Context, *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse
+	BlockListMoveToExistingObject(context.Context, *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse
+	BlockListMoveToNewObject(context.Context, *pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse
+	BlockListConvertToObjects(context.Context, *pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse
+	BlockListSetFields(context.Context, *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse
+	BlockListDuplicate(context.Context, *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse
+	BlockListSetBackgroundColor(context.Context, *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse
+	BlockListSetAlign(context.Context, *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse
+	BlockListTurnInto(context.Context, *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse
 	// Text Block commands
 	// ***
-	BlockTextSetText(*pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse
-	BlockTextSetColor(*pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse
-	BlockTextSetStyle(*pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse
-	BlockTextSetChecked(*pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse
-	BlockTextSetIcon(*pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse
-	BlockTextListSetColor(*pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse
-	BlockTextListSetMark(*pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse
-	BlockTextListSetStyle(*pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse
+	BlockTextSetText(context.Context, *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse
+	BlockTextSetColor(context.Context, *pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse
+	BlockTextSetStyle(context.Context, *pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse
+	BlockTextSetChecked(context.Context, *pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse
+	BlockTextSetIcon(context.Context, *pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse
+	BlockTextListSetColor(context.Context, *pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse
+	BlockTextListSetMark(context.Context, *pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse
+	BlockTextListSetStyle(context.Context, *pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse
 	// File block commands
 	// ***
-	BlockFileSetName(*pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse
-	BlockImageSetName(*pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse
-	BlockVideoSetName(*pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse
-	BlockFileCreateAndUpload(*pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse
-	BlockFileListSetStyle(*pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse
+	BlockFileSetName(context.Context, *pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse
+	BlockImageSetName(context.Context, *pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse
+	BlockVideoSetName(context.Context, *pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse
+	BlockFileCreateAndUpload(context.Context, *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse
+	BlockFileListSetStyle(context.Context, *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse
 	// Dataview block commands
 	// ***
-	BlockDataviewViewCreate(*pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse
-	BlockDataviewViewDelete(*pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse
-	BlockDataviewViewUpdate(*pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse
-	BlockDataviewViewSetActive(*pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse
-	BlockDataviewViewSetPosition(*pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse
-	BlockDataviewSetSource(*pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse
-	BlockDataviewRelationAdd(*pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse
-	BlockDataviewRelationUpdate(*pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse
-	BlockDataviewRelationDelete(*pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse
-	BlockDataviewRelationListAvailable(*pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse
-	BlockDataviewRecordCreate(*pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse
-	BlockDataviewRecordUpdate(*pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse
-	BlockDataviewRecordDelete(*pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse
-	BlockDataviewRecordRelationOptionAdd(*pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse
-	BlockDataviewRecordRelationOptionUpdate(*pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse
-	BlockDataviewRecordRelationOptionDelete(*pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse
+	BlockDataviewViewCreate(context.Context, *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse
+	BlockDataviewViewDelete(context.Context, *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse
+	BlockDataviewViewUpdate(context.Context, *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse
+	BlockDataviewViewSetActive(context.Context, *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse
+	BlockDataviewViewSetPosition(context.Context, *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse
+	BlockDataviewSetSource(context.Context, *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse
+	BlockDataviewRelationAdd(context.Context, *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse
+	BlockDataviewRelationUpdate(context.Context, *pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse
+	BlockDataviewRelationDelete(context.Context, *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse
+	BlockDataviewRelationListAvailable(context.Context, *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse
+	BlockDataviewRecordCreate(context.Context, *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse
+	BlockDataviewRecordUpdate(context.Context, *pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse
+	BlockDataviewRecordDelete(context.Context, *pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse
+	BlockDataviewRecordRelationOptionAdd(context.Context, *pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse
+	BlockDataviewRecordRelationOptionUpdate(context.Context, *pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse
+	BlockDataviewRecordRelationOptionDelete(context.Context, *pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse
 	// Other specific block commands
 	// ***
-	BlockLinkCreateWithObject(*pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse
-	BlockLinkListSetAppearance(*pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse
-	BlockBookmarkFetch(*pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse
-	BlockBookmarkCreateAndFetch(*pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse
-	BlockRelationSetKey(*pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse
-	BlockRelationAdd(*pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse
-	BlockDivListSetStyle(*pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse
-	BlockLatexSetText(*pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse
-	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
-	LogSend(*pb.RpcLogSendRequest) *pb.RpcLogSendResponse
-	DebugSync(*pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse
-	DebugThread(*pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse
-	DebugTree(*pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse
-	DebugExportLocalstore(*pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse
-	DebugPing(*pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse
-	MetricsSetParameters(*pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse
+	BlockLinkCreateWithObject(context.Context, *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse
+	BlockLinkListSetAppearance(context.Context, *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse
+	BlockBookmarkFetch(context.Context, *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse
+	BlockBookmarkCreateAndFetch(context.Context, *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse
+	BlockRelationSetKey(context.Context, *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse
+	BlockRelationAdd(context.Context, *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse
+	BlockDivListSetStyle(context.Context, *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse
+	BlockLatexSetText(context.Context, *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse
+	ProcessCancel(context.Context, *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
+	LogSend(context.Context, *pb.RpcLogSendRequest) *pb.RpcLogSendResponse
+	DebugSync(context.Context, *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse
+	DebugThread(context.Context, *pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse
+	DebugTree(context.Context, *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse
+	DebugExportLocalstore(context.Context, *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse
+	DebugPing(context.Context, *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse
+	MetricsSetParameters(context.Context, *pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse
 	// used only for lib-server via grpc
 	ListenEvents(*pb.Empty, ClientCommands_ListenEventsServer)
 	ListenSessionEvents(*pb.StreamRequest, ClientCommands_ListenSessionEventsServer)
@@ -2002,448 +2002,448 @@ type ClientCommandsServer interface {
 type UnimplementedClientCommandsServer struct {
 }
 
-func (*UnimplementedClientCommandsServer) AppGetVersion(req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
+func (*UnimplementedClientCommandsServer) AppGetVersion(ctx context.Context, req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AppSetDeviceState(req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
+func (*UnimplementedClientCommandsServer) AppSetDeviceState(ctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AppShutdown(req *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
+func (*UnimplementedClientCommandsServer) AppShutdown(ctx context.Context, req *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
+func (*UnimplementedClientCommandsServer) WalletCreate(ctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
+func (*UnimplementedClientCommandsServer) WalletRecover(ctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WalletConvert(req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
+func (*UnimplementedClientCommandsServer) WalletConvert(ctx context.Context, req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WalletCreateSession(req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
+func (*UnimplementedClientCommandsServer) WalletCreateSession(ctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WorkspaceCreate(req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
+func (*UnimplementedClientCommandsServer) WorkspaceCreate(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WorkspaceSelect(req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {
+func (*UnimplementedClientCommandsServer) WorkspaceSelect(ctx context.Context, req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WorkspaceGetCurrent(req *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse {
+func (*UnimplementedClientCommandsServer) WorkspaceGetCurrent(ctx context.Context, req *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WorkspaceGetAll(req *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse {
+func (*UnimplementedClientCommandsServer) WorkspaceGetAll(ctx context.Context, req *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WorkspaceSetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {
+func (*UnimplementedClientCommandsServer) WorkspaceSetIsHighlighted(ctx context.Context, req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) WorkspaceExport(req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
+func (*UnimplementedClientCommandsServer) WorkspaceExport(ctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AccountRecover(req *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
+func (*UnimplementedClientCommandsServer) AccountRecover(ctx context.Context, req *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+func (*UnimplementedClientCommandsServer) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+func (*UnimplementedClientCommandsServer) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+func (*UnimplementedClientCommandsServer) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+func (*UnimplementedClientCommandsServer) AccountStop(ctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+func (*UnimplementedClientCommandsServer) AccountMove(ctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectOpen(req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
+func (*UnimplementedClientCommandsServer) ObjectOpen(ctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectClose(req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {
+func (*UnimplementedClientCommandsServer) ObjectClose(ctx context.Context, req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectShow(req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
+func (*UnimplementedClientCommandsServer) ObjectShow(ctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectCreate(req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
+func (*UnimplementedClientCommandsServer) ObjectCreate(ctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
+func (*UnimplementedClientCommandsServer) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectCreateSet(req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
+func (*UnimplementedClientCommandsServer) ObjectCreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
+func (*UnimplementedClientCommandsServer) ObjectGraph(ctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
+func (*UnimplementedClientCommandsServer) ObjectSearch(ctx context.Context, req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
+func (*UnimplementedClientCommandsServer) ObjectSearchSubscribe(ctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
+func (*UnimplementedClientCommandsServer) ObjectSubscribeIds(ctx context.Context, req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSearchUnsubscribe(req *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse {
+func (*UnimplementedClientCommandsServer) ObjectSearchUnsubscribe(ctx context.Context, req *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSetDetails(req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
+func (*UnimplementedClientCommandsServer) ObjectSetDetails(ctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
+func (*UnimplementedClientCommandsServer) ObjectDuplicate(ctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSetObjectType(req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
+func (*UnimplementedClientCommandsServer) ObjectSetObjectType(ctx context.Context, req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSetLayout(req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
+func (*UnimplementedClientCommandsServer) ObjectSetLayout(ctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSetIsFavorite(req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
+func (*UnimplementedClientCommandsServer) ObjectSetIsFavorite(ctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSetIsArchived(req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
+func (*UnimplementedClientCommandsServer) ObjectSetIsArchived(ctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectListDuplicate(req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
+func (*UnimplementedClientCommandsServer) ObjectListDuplicate(ctx context.Context, req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectListDelete(req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
+func (*UnimplementedClientCommandsServer) ObjectListDelete(ctx context.Context, req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectListSetIsArchived(req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
+func (*UnimplementedClientCommandsServer) ObjectListSetIsArchived(ctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectListSetIsFavorite(req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
+func (*UnimplementedClientCommandsServer) ObjectListSetIsFavorite(ctx context.Context, req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectApplyTemplate(req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
+func (*UnimplementedClientCommandsServer) ObjectApplyTemplate(ctx context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
+func (*UnimplementedClientCommandsServer) ObjectToSet(ctx context.Context, req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) *pb.RpcObjectAddWithObjectIdResponse {
+func (*UnimplementedClientCommandsServer) ObjectAddWithObjectId(ctx context.Context, req *pb.RpcObjectAddWithObjectIdRequest) *pb.RpcObjectAddWithObjectIdResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse {
+func (*UnimplementedClientCommandsServer) ObjectShareByLink(ctx context.Context, req *pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectOpenBreadcrumbs(req *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse {
+func (*UnimplementedClientCommandsServer) ObjectOpenBreadcrumbs(ctx context.Context, req *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectSetBreadcrumbs(req *pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse {
+func (*UnimplementedClientCommandsServer) ObjectSetBreadcrumbs(ctx context.Context, req *pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectUndo(req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
+func (*UnimplementedClientCommandsServer) ObjectUndo(ctx context.Context, req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRedo(req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
+func (*UnimplementedClientCommandsServer) ObjectRedo(ctx context.Context, req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectImportMarkdown(req *pb.RpcObjectImportMarkdownRequest) *pb.RpcObjectImportMarkdownResponse {
+func (*UnimplementedClientCommandsServer) ObjectImportMarkdown(ctx context.Context, req *pb.RpcObjectImportMarkdownRequest) *pb.RpcObjectImportMarkdownResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectListExport(req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
+func (*UnimplementedClientCommandsServer) ObjectListExport(ctx context.Context, req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectBookmarkFetch(req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
+func (*UnimplementedClientCommandsServer) ObjectBookmarkFetch(ctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectToBookmark(req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
+func (*UnimplementedClientCommandsServer) ObjectToBookmark(ctx context.Context, req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationAdd(ctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationUpdate(req *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationUpdate(ctx context.Context, req *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationDelete(req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationDelete(ctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationAddFeatured(req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationAddFeatured(ctx context.Context, req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationRemoveFeatured(req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationRemoveFeatured(ctx context.Context, req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationListAvailable(req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationListAvailable(ctx context.Context, req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationOptionAdd(req *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationOptionAdd(ctx context.Context, req *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationOptionUpdate(req *pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationOptionUpdate(ctx context.Context, req *pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectRelationOptionDelete(req *pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse {
+func (*UnimplementedClientCommandsServer) ObjectRelationOptionDelete(ctx context.Context, req *pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
+func (*UnimplementedClientCommandsServer) ObjectTypeCreate(ctx context.Context, req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectTypeList(req *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
+func (*UnimplementedClientCommandsServer) ObjectTypeList(ctx context.Context, req *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationList(ctx context.Context, req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationAdd(ctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse {
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationUpdate(ctx context.Context, req *pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationRemove(ctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) HistoryShowVersion(req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
+func (*UnimplementedClientCommandsServer) HistoryShowVersion(ctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) HistoryGetVersions(req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
+func (*UnimplementedClientCommandsServer) HistoryGetVersions(ctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) HistorySetVersion(req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
+func (*UnimplementedClientCommandsServer) HistorySetVersion(ctx context.Context, req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) FileOffload(req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
+func (*UnimplementedClientCommandsServer) FileOffload(ctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
+func (*UnimplementedClientCommandsServer) FileListOffload(ctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) FileUpload(req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
+func (*UnimplementedClientCommandsServer) FileUpload(ctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) FileDownload(req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
+func (*UnimplementedClientCommandsServer) FileDownload(ctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) FileDrop(req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
+func (*UnimplementedClientCommandsServer) FileDrop(ctx context.Context, req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) NavigationListObjects(req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
+func (*UnimplementedClientCommandsServer) NavigationListObjects(ctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
+func (*UnimplementedClientCommandsServer) NavigationGetObjectInfoWithLinks(ctx context.Context, req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) TemplateCreateFromObject(req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
+func (*UnimplementedClientCommandsServer) TemplateCreateFromObject(ctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) TemplateCreateFromObjectType(req *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse {
+func (*UnimplementedClientCommandsServer) TemplateCreateFromObjectType(ctx context.Context, req *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) TemplateClone(req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
+func (*UnimplementedClientCommandsServer) TemplateClone(ctx context.Context, req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) TemplateExportAll(req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
+func (*UnimplementedClientCommandsServer) TemplateExportAll(ctx context.Context, req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
+func (*UnimplementedClientCommandsServer) LinkPreview(ctx context.Context, req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
+func (*UnimplementedClientCommandsServer) UnsplashSearch(ctx context.Context, req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) UnsplashDownload(req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
+func (*UnimplementedClientCommandsServer) UnsplashDownload(ctx context.Context, req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
+func (*UnimplementedClientCommandsServer) BlockUpload(ctx context.Context, req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
+func (*UnimplementedClientCommandsServer) BlockReplace(ctx context.Context, req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
+func (*UnimplementedClientCommandsServer) BlockCreate(ctx context.Context, req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
+func (*UnimplementedClientCommandsServer) BlockSplit(ctx context.Context, req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
+func (*UnimplementedClientCommandsServer) BlockMerge(ctx context.Context, req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
+func (*UnimplementedClientCommandsServer) BlockCopy(ctx context.Context, req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
+func (*UnimplementedClientCommandsServer) BlockPaste(ctx context.Context, req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
+func (*UnimplementedClientCommandsServer) BlockCut(ctx context.Context, req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
+func (*UnimplementedClientCommandsServer) BlockSetFields(ctx context.Context, req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
+func (*UnimplementedClientCommandsServer) BlockExport(ctx context.Context, req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListDelete(req *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse {
+func (*UnimplementedClientCommandsServer) BlockListDelete(ctx context.Context, req *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListMoveToExistingObject(req *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse {
+func (*UnimplementedClientCommandsServer) BlockListMoveToExistingObject(ctx context.Context, req *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListMoveToNewObject(req *pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse {
+func (*UnimplementedClientCommandsServer) BlockListMoveToNewObject(ctx context.Context, req *pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListConvertToObjects(req *pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse {
+func (*UnimplementedClientCommandsServer) BlockListConvertToObjects(ctx context.Context, req *pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
+func (*UnimplementedClientCommandsServer) BlockListSetFields(ctx context.Context, req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListDuplicate(req *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse {
+func (*UnimplementedClientCommandsServer) BlockListDuplicate(ctx context.Context, req *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse {
+func (*UnimplementedClientCommandsServer) BlockListSetBackgroundColor(ctx context.Context, req *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
+func (*UnimplementedClientCommandsServer) BlockListSetAlign(ctx context.Context, req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockListTurnInto(req *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse {
+func (*UnimplementedClientCommandsServer) BlockListTurnInto(ctx context.Context, req *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextSetText(req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
+func (*UnimplementedClientCommandsServer) BlockTextSetText(ctx context.Context, req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextSetColor(req *pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse {
+func (*UnimplementedClientCommandsServer) BlockTextSetColor(ctx context.Context, req *pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextSetStyle(req *pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse {
+func (*UnimplementedClientCommandsServer) BlockTextSetStyle(ctx context.Context, req *pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextSetChecked(req *pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse {
+func (*UnimplementedClientCommandsServer) BlockTextSetChecked(ctx context.Context, req *pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextSetIcon(req *pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse {
+func (*UnimplementedClientCommandsServer) BlockTextSetIcon(ctx context.Context, req *pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextListSetColor(req *pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse {
+func (*UnimplementedClientCommandsServer) BlockTextListSetColor(ctx context.Context, req *pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextListSetMark(req *pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse {
+func (*UnimplementedClientCommandsServer) BlockTextListSetMark(ctx context.Context, req *pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockTextListSetStyle(req *pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse {
+func (*UnimplementedClientCommandsServer) BlockTextListSetStyle(ctx context.Context, req *pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockFileSetName(req *pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse {
+func (*UnimplementedClientCommandsServer) BlockFileSetName(ctx context.Context, req *pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockImageSetName(req *pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse {
+func (*UnimplementedClientCommandsServer) BlockImageSetName(ctx context.Context, req *pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockVideoSetName(req *pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse {
+func (*UnimplementedClientCommandsServer) BlockVideoSetName(ctx context.Context, req *pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
+func (*UnimplementedClientCommandsServer) BlockFileCreateAndUpload(ctx context.Context, req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockFileListSetStyle(req *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse {
+func (*UnimplementedClientCommandsServer) BlockFileListSetStyle(ctx context.Context, req *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewViewCreate(req *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewViewCreate(ctx context.Context, req *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewViewDelete(req *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewViewDelete(ctx context.Context, req *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewViewUpdate(req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewViewUpdate(ctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewViewSetActive(req *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewViewSetActive(ctx context.Context, req *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewViewSetPosition(req *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewViewSetPosition(ctx context.Context, req *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewSetSource(req *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewSetSource(ctx context.Context, req *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationAdd(ctx context.Context, req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRelationUpdate(req *pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationUpdate(ctx context.Context, req *pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRelationDelete(req *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationDelete(ctx context.Context, req *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRelationListAvailable(req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationListAvailable(ctx context.Context, req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRecordCreate(req *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordCreate(ctx context.Context, req *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRecordUpdate(req *pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordUpdate(ctx context.Context, req *pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRecordDelete(req *pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordDelete(ctx context.Context, req *pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRecordRelationOptionAdd(req *pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordRelationOptionAdd(ctx context.Context, req *pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRecordRelationOptionUpdate(req *pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordRelationOptionUpdate(ctx context.Context, req *pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDataviewRecordRelationOptionDelete(req *pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordRelationOptionDelete(ctx context.Context, req *pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockLinkCreateWithObject(req *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse {
+func (*UnimplementedClientCommandsServer) BlockLinkCreateWithObject(ctx context.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockLinkListSetAppearance(req *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse {
+func (*UnimplementedClientCommandsServer) BlockLinkListSetAppearance(ctx context.Context, req *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
+func (*UnimplementedClientCommandsServer) BlockBookmarkFetch(ctx context.Context, req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
+func (*UnimplementedClientCommandsServer) BlockBookmarkCreateAndFetch(ctx context.Context, req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockRelationSetKey(req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
+func (*UnimplementedClientCommandsServer) BlockRelationSetKey(ctx context.Context, req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
+func (*UnimplementedClientCommandsServer) BlockRelationAdd(ctx context.Context, req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockDivListSetStyle(req *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse {
+func (*UnimplementedClientCommandsServer) BlockDivListSetStyle(ctx context.Context, req *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockLatexSetText(req *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse {
+func (*UnimplementedClientCommandsServer) BlockLatexSetText(ctx context.Context, req *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) ProcessCancel(req *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse {
+func (*UnimplementedClientCommandsServer) ProcessCancel(ctx context.Context, req *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) LogSend(req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
+func (*UnimplementedClientCommandsServer) LogSend(ctx context.Context, req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
+func (*UnimplementedClientCommandsServer) DebugSync(ctx context.Context, req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse {
+func (*UnimplementedClientCommandsServer) DebugThread(ctx context.Context, req *pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) DebugTree(req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
+func (*UnimplementedClientCommandsServer) DebugTree(ctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) DebugExportLocalstore(req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
+func (*UnimplementedClientCommandsServer) DebugExportLocalstore(ctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) DebugPing(req *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse {
+func (*UnimplementedClientCommandsServer) DebugPing(ctx context.Context, req *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) MetricsSetParameters(req *pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse {
+func (*UnimplementedClientCommandsServer) MetricsSetParameters(ctx context.Context, req *pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) ListenEvents(req *pb.Empty, srv ClientCommands_ListenEventsServer) {
@@ -2463,14 +2463,14 @@ func _ClientCommands_AppGetVersion_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AppGetVersion(in), nil
+		return srv.(ClientCommandsServer).AppGetVersion(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AppGetVersion",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AppGetVersion(req.(*pb.RpcAppGetVersionRequest)), nil
+		return srv.(ClientCommandsServer).AppGetVersion(ctx, req.(*pb.RpcAppGetVersionRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2481,14 +2481,14 @@ func _ClientCommands_AppSetDeviceState_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AppSetDeviceState(in), nil
+		return srv.(ClientCommandsServer).AppSetDeviceState(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AppSetDeviceState",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AppSetDeviceState(req.(*pb.RpcAppSetDeviceStateRequest)), nil
+		return srv.(ClientCommandsServer).AppSetDeviceState(ctx, req.(*pb.RpcAppSetDeviceStateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2499,14 +2499,14 @@ func _ClientCommands_AppShutdown_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AppShutdown(in), nil
+		return srv.(ClientCommandsServer).AppShutdown(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AppShutdown",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AppShutdown(req.(*pb.RpcAppShutdownRequest)), nil
+		return srv.(ClientCommandsServer).AppShutdown(ctx, req.(*pb.RpcAppShutdownRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2517,14 +2517,14 @@ func _ClientCommands_WalletCreate_Handler(srv interface{}, ctx context.Context, 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WalletCreate(in), nil
+		return srv.(ClientCommandsServer).WalletCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WalletCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WalletCreate(req.(*pb.RpcWalletCreateRequest)), nil
+		return srv.(ClientCommandsServer).WalletCreate(ctx, req.(*pb.RpcWalletCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2535,14 +2535,14 @@ func _ClientCommands_WalletRecover_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WalletRecover(in), nil
+		return srv.(ClientCommandsServer).WalletRecover(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WalletRecover",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WalletRecover(req.(*pb.RpcWalletRecoverRequest)), nil
+		return srv.(ClientCommandsServer).WalletRecover(ctx, req.(*pb.RpcWalletRecoverRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2553,14 +2553,14 @@ func _ClientCommands_WalletConvert_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WalletConvert(in), nil
+		return srv.(ClientCommandsServer).WalletConvert(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WalletConvert",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WalletConvert(req.(*pb.RpcWalletConvertRequest)), nil
+		return srv.(ClientCommandsServer).WalletConvert(ctx, req.(*pb.RpcWalletConvertRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2571,14 +2571,14 @@ func _ClientCommands_WalletCreateSession_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WalletCreateSession(in), nil
+		return srv.(ClientCommandsServer).WalletCreateSession(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WalletCreateSession",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WalletCreateSession(req.(*pb.RpcWalletCreateSessionRequest)), nil
+		return srv.(ClientCommandsServer).WalletCreateSession(ctx, req.(*pb.RpcWalletCreateSessionRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2589,14 +2589,14 @@ func _ClientCommands_WorkspaceCreate_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WorkspaceCreate(in), nil
+		return srv.(ClientCommandsServer).WorkspaceCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WorkspaceCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WorkspaceCreate(req.(*pb.RpcWorkspaceCreateRequest)), nil
+		return srv.(ClientCommandsServer).WorkspaceCreate(ctx, req.(*pb.RpcWorkspaceCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2607,14 +2607,14 @@ func _ClientCommands_WorkspaceSelect_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WorkspaceSelect(in), nil
+		return srv.(ClientCommandsServer).WorkspaceSelect(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WorkspaceSelect",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WorkspaceSelect(req.(*pb.RpcWorkspaceSelectRequest)), nil
+		return srv.(ClientCommandsServer).WorkspaceSelect(ctx, req.(*pb.RpcWorkspaceSelectRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2625,14 +2625,14 @@ func _ClientCommands_WorkspaceGetCurrent_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WorkspaceGetCurrent(in), nil
+		return srv.(ClientCommandsServer).WorkspaceGetCurrent(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WorkspaceGetCurrent",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WorkspaceGetCurrent(req.(*pb.RpcWorkspaceGetCurrentRequest)), nil
+		return srv.(ClientCommandsServer).WorkspaceGetCurrent(ctx, req.(*pb.RpcWorkspaceGetCurrentRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2643,14 +2643,14 @@ func _ClientCommands_WorkspaceGetAll_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WorkspaceGetAll(in), nil
+		return srv.(ClientCommandsServer).WorkspaceGetAll(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WorkspaceGetAll",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WorkspaceGetAll(req.(*pb.RpcWorkspaceGetAllRequest)), nil
+		return srv.(ClientCommandsServer).WorkspaceGetAll(ctx, req.(*pb.RpcWorkspaceGetAllRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2661,14 +2661,14 @@ func _ClientCommands_WorkspaceSetIsHighlighted_Handler(srv interface{}, ctx cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WorkspaceSetIsHighlighted(in), nil
+		return srv.(ClientCommandsServer).WorkspaceSetIsHighlighted(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WorkspaceSetIsHighlighted",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WorkspaceSetIsHighlighted(req.(*pb.RpcWorkspaceSetIsHighlightedRequest)), nil
+		return srv.(ClientCommandsServer).WorkspaceSetIsHighlighted(ctx, req.(*pb.RpcWorkspaceSetIsHighlightedRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2679,14 +2679,14 @@ func _ClientCommands_WorkspaceExport_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).WorkspaceExport(in), nil
+		return srv.(ClientCommandsServer).WorkspaceExport(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/WorkspaceExport",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).WorkspaceExport(req.(*pb.RpcWorkspaceExportRequest)), nil
+		return srv.(ClientCommandsServer).WorkspaceExport(ctx, req.(*pb.RpcWorkspaceExportRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2697,14 +2697,14 @@ func _ClientCommands_AccountRecover_Handler(srv interface{}, ctx context.Context
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AccountRecover(in), nil
+		return srv.(ClientCommandsServer).AccountRecover(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AccountRecover",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AccountRecover(req.(*pb.RpcAccountRecoverRequest)), nil
+		return srv.(ClientCommandsServer).AccountRecover(ctx, req.(*pb.RpcAccountRecoverRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2715,14 +2715,14 @@ func _ClientCommands_AccountCreate_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AccountCreate(in), nil
+		return srv.(ClientCommandsServer).AccountCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AccountCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AccountCreate(req.(*pb.RpcAccountCreateRequest)), nil
+		return srv.(ClientCommandsServer).AccountCreate(ctx, req.(*pb.RpcAccountCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2733,14 +2733,14 @@ func _ClientCommands_AccountDelete_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AccountDelete(in), nil
+		return srv.(ClientCommandsServer).AccountDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AccountDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AccountDelete(req.(*pb.RpcAccountDeleteRequest)), nil
+		return srv.(ClientCommandsServer).AccountDelete(ctx, req.(*pb.RpcAccountDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2751,14 +2751,14 @@ func _ClientCommands_AccountSelect_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AccountSelect(in), nil
+		return srv.(ClientCommandsServer).AccountSelect(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AccountSelect",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AccountSelect(req.(*pb.RpcAccountSelectRequest)), nil
+		return srv.(ClientCommandsServer).AccountSelect(ctx, req.(*pb.RpcAccountSelectRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2769,14 +2769,14 @@ func _ClientCommands_AccountStop_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AccountStop(in), nil
+		return srv.(ClientCommandsServer).AccountStop(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AccountStop",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AccountStop(req.(*pb.RpcAccountStopRequest)), nil
+		return srv.(ClientCommandsServer).AccountStop(ctx, req.(*pb.RpcAccountStopRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2787,14 +2787,14 @@ func _ClientCommands_AccountMove_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).AccountMove(in), nil
+		return srv.(ClientCommandsServer).AccountMove(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/AccountMove",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).AccountMove(req.(*pb.RpcAccountMoveRequest)), nil
+		return srv.(ClientCommandsServer).AccountMove(ctx, req.(*pb.RpcAccountMoveRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2805,14 +2805,14 @@ func _ClientCommands_ObjectOpen_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectOpen(in), nil
+		return srv.(ClientCommandsServer).ObjectOpen(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectOpen",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectOpen(req.(*pb.RpcObjectOpenRequest)), nil
+		return srv.(ClientCommandsServer).ObjectOpen(ctx, req.(*pb.RpcObjectOpenRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2823,14 +2823,14 @@ func _ClientCommands_ObjectClose_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectClose(in), nil
+		return srv.(ClientCommandsServer).ObjectClose(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectClose",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectClose(req.(*pb.RpcObjectCloseRequest)), nil
+		return srv.(ClientCommandsServer).ObjectClose(ctx, req.(*pb.RpcObjectCloseRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2841,14 +2841,14 @@ func _ClientCommands_ObjectShow_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectShow(in), nil
+		return srv.(ClientCommandsServer).ObjectShow(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectShow",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectShow(req.(*pb.RpcObjectShowRequest)), nil
+		return srv.(ClientCommandsServer).ObjectShow(ctx, req.(*pb.RpcObjectShowRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2859,14 +2859,14 @@ func _ClientCommands_ObjectCreate_Handler(srv interface{}, ctx context.Context, 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectCreate(in), nil
+		return srv.(ClientCommandsServer).ObjectCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectCreate(req.(*pb.RpcObjectCreateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectCreate(ctx, req.(*pb.RpcObjectCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2877,14 +2877,14 @@ func _ClientCommands_ObjectCreateBookmark_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectCreateBookmark(in), nil
+		return srv.(ClientCommandsServer).ObjectCreateBookmark(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectCreateBookmark",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectCreateBookmark(req.(*pb.RpcObjectCreateBookmarkRequest)), nil
+		return srv.(ClientCommandsServer).ObjectCreateBookmark(ctx, req.(*pb.RpcObjectCreateBookmarkRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2895,14 +2895,14 @@ func _ClientCommands_ObjectCreateSet_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectCreateSet(in), nil
+		return srv.(ClientCommandsServer).ObjectCreateSet(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectCreateSet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectCreateSet(req.(*pb.RpcObjectCreateSetRequest)), nil
+		return srv.(ClientCommandsServer).ObjectCreateSet(ctx, req.(*pb.RpcObjectCreateSetRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2913,14 +2913,14 @@ func _ClientCommands_ObjectGraph_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectGraph(in), nil
+		return srv.(ClientCommandsServer).ObjectGraph(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectGraph",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectGraph(req.(*pb.RpcObjectGraphRequest)), nil
+		return srv.(ClientCommandsServer).ObjectGraph(ctx, req.(*pb.RpcObjectGraphRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2931,14 +2931,14 @@ func _ClientCommands_ObjectSearch_Handler(srv interface{}, ctx context.Context, 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSearch(in), nil
+		return srv.(ClientCommandsServer).ObjectSearch(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSearch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSearch(req.(*pb.RpcObjectSearchRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSearch(ctx, req.(*pb.RpcObjectSearchRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2949,14 +2949,14 @@ func _ClientCommands_ObjectSearchSubscribe_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSearchSubscribe(in), nil
+		return srv.(ClientCommandsServer).ObjectSearchSubscribe(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSearchSubscribe",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSearchSubscribe(req.(*pb.RpcObjectSearchSubscribeRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSearchSubscribe(ctx, req.(*pb.RpcObjectSearchSubscribeRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2967,14 +2967,14 @@ func _ClientCommands_ObjectSubscribeIds_Handler(srv interface{}, ctx context.Con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSubscribeIds(in), nil
+		return srv.(ClientCommandsServer).ObjectSubscribeIds(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSubscribeIds",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSubscribeIds(req.(*pb.RpcObjectSubscribeIdsRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSubscribeIds(ctx, req.(*pb.RpcObjectSubscribeIdsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2985,14 +2985,14 @@ func _ClientCommands_ObjectSearchUnsubscribe_Handler(srv interface{}, ctx contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSearchUnsubscribe(in), nil
+		return srv.(ClientCommandsServer).ObjectSearchUnsubscribe(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSearchUnsubscribe",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSearchUnsubscribe(req.(*pb.RpcObjectSearchUnsubscribeRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSearchUnsubscribe(ctx, req.(*pb.RpcObjectSearchUnsubscribeRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3003,14 +3003,14 @@ func _ClientCommands_ObjectSetDetails_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSetDetails(in), nil
+		return srv.(ClientCommandsServer).ObjectSetDetails(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSetDetails",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSetDetails(req.(*pb.RpcObjectSetDetailsRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSetDetails(ctx, req.(*pb.RpcObjectSetDetailsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3021,14 +3021,14 @@ func _ClientCommands_ObjectDuplicate_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectDuplicate(in), nil
+		return srv.(ClientCommandsServer).ObjectDuplicate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectDuplicate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectDuplicate(req.(*pb.RpcObjectDuplicateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectDuplicate(ctx, req.(*pb.RpcObjectDuplicateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3039,14 +3039,14 @@ func _ClientCommands_ObjectSetObjectType_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSetObjectType(in), nil
+		return srv.(ClientCommandsServer).ObjectSetObjectType(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSetObjectType",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSetObjectType(req.(*pb.RpcObjectSetObjectTypeRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSetObjectType(ctx, req.(*pb.RpcObjectSetObjectTypeRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3057,14 +3057,14 @@ func _ClientCommands_ObjectSetLayout_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSetLayout(in), nil
+		return srv.(ClientCommandsServer).ObjectSetLayout(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSetLayout",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSetLayout(req.(*pb.RpcObjectSetLayoutRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSetLayout(ctx, req.(*pb.RpcObjectSetLayoutRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3075,14 +3075,14 @@ func _ClientCommands_ObjectSetIsFavorite_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSetIsFavorite(in), nil
+		return srv.(ClientCommandsServer).ObjectSetIsFavorite(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSetIsFavorite",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSetIsFavorite(req.(*pb.RpcObjectSetIsFavoriteRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSetIsFavorite(ctx, req.(*pb.RpcObjectSetIsFavoriteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3093,14 +3093,14 @@ func _ClientCommands_ObjectSetIsArchived_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSetIsArchived(in), nil
+		return srv.(ClientCommandsServer).ObjectSetIsArchived(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSetIsArchived",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSetIsArchived(req.(*pb.RpcObjectSetIsArchivedRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSetIsArchived(ctx, req.(*pb.RpcObjectSetIsArchivedRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3111,14 +3111,14 @@ func _ClientCommands_ObjectListDuplicate_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectListDuplicate(in), nil
+		return srv.(ClientCommandsServer).ObjectListDuplicate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectListDuplicate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectListDuplicate(req.(*pb.RpcObjectListDuplicateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectListDuplicate(ctx, req.(*pb.RpcObjectListDuplicateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3129,14 +3129,14 @@ func _ClientCommands_ObjectListDelete_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectListDelete(in), nil
+		return srv.(ClientCommandsServer).ObjectListDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectListDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectListDelete(req.(*pb.RpcObjectListDeleteRequest)), nil
+		return srv.(ClientCommandsServer).ObjectListDelete(ctx, req.(*pb.RpcObjectListDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3147,14 +3147,14 @@ func _ClientCommands_ObjectListSetIsArchived_Handler(srv interface{}, ctx contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectListSetIsArchived(in), nil
+		return srv.(ClientCommandsServer).ObjectListSetIsArchived(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectListSetIsArchived",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectListSetIsArchived(req.(*pb.RpcObjectListSetIsArchivedRequest)), nil
+		return srv.(ClientCommandsServer).ObjectListSetIsArchived(ctx, req.(*pb.RpcObjectListSetIsArchivedRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3165,14 +3165,14 @@ func _ClientCommands_ObjectListSetIsFavorite_Handler(srv interface{}, ctx contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectListSetIsFavorite(in), nil
+		return srv.(ClientCommandsServer).ObjectListSetIsFavorite(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectListSetIsFavorite",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectListSetIsFavorite(req.(*pb.RpcObjectListSetIsFavoriteRequest)), nil
+		return srv.(ClientCommandsServer).ObjectListSetIsFavorite(ctx, req.(*pb.RpcObjectListSetIsFavoriteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3183,14 +3183,14 @@ func _ClientCommands_ObjectApplyTemplate_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectApplyTemplate(in), nil
+		return srv.(ClientCommandsServer).ObjectApplyTemplate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectApplyTemplate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectApplyTemplate(req.(*pb.RpcObjectApplyTemplateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectApplyTemplate(ctx, req.(*pb.RpcObjectApplyTemplateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3201,14 +3201,14 @@ func _ClientCommands_ObjectToSet_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectToSet(in), nil
+		return srv.(ClientCommandsServer).ObjectToSet(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectToSet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectToSet(req.(*pb.RpcObjectToSetRequest)), nil
+		return srv.(ClientCommandsServer).ObjectToSet(ctx, req.(*pb.RpcObjectToSetRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3219,14 +3219,14 @@ func _ClientCommands_ObjectAddWithObjectId_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectAddWithObjectId(in), nil
+		return srv.(ClientCommandsServer).ObjectAddWithObjectId(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectAddWithObjectId",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectAddWithObjectId(req.(*pb.RpcObjectAddWithObjectIdRequest)), nil
+		return srv.(ClientCommandsServer).ObjectAddWithObjectId(ctx, req.(*pb.RpcObjectAddWithObjectIdRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3237,14 +3237,14 @@ func _ClientCommands_ObjectShareByLink_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectShareByLink(in), nil
+		return srv.(ClientCommandsServer).ObjectShareByLink(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectShareByLink",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectShareByLink(req.(*pb.RpcObjectShareByLinkRequest)), nil
+		return srv.(ClientCommandsServer).ObjectShareByLink(ctx, req.(*pb.RpcObjectShareByLinkRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3255,14 +3255,14 @@ func _ClientCommands_ObjectOpenBreadcrumbs_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectOpenBreadcrumbs(in), nil
+		return srv.(ClientCommandsServer).ObjectOpenBreadcrumbs(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectOpenBreadcrumbs",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectOpenBreadcrumbs(req.(*pb.RpcObjectOpenBreadcrumbsRequest)), nil
+		return srv.(ClientCommandsServer).ObjectOpenBreadcrumbs(ctx, req.(*pb.RpcObjectOpenBreadcrumbsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3273,14 +3273,14 @@ func _ClientCommands_ObjectSetBreadcrumbs_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectSetBreadcrumbs(in), nil
+		return srv.(ClientCommandsServer).ObjectSetBreadcrumbs(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectSetBreadcrumbs",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectSetBreadcrumbs(req.(*pb.RpcObjectSetBreadcrumbsRequest)), nil
+		return srv.(ClientCommandsServer).ObjectSetBreadcrumbs(ctx, req.(*pb.RpcObjectSetBreadcrumbsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3291,14 +3291,14 @@ func _ClientCommands_ObjectUndo_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectUndo(in), nil
+		return srv.(ClientCommandsServer).ObjectUndo(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectUndo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectUndo(req.(*pb.RpcObjectUndoRequest)), nil
+		return srv.(ClientCommandsServer).ObjectUndo(ctx, req.(*pb.RpcObjectUndoRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3309,14 +3309,14 @@ func _ClientCommands_ObjectRedo_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRedo(in), nil
+		return srv.(ClientCommandsServer).ObjectRedo(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRedo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRedo(req.(*pb.RpcObjectRedoRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRedo(ctx, req.(*pb.RpcObjectRedoRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3327,14 +3327,14 @@ func _ClientCommands_ObjectImportMarkdown_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectImportMarkdown(in), nil
+		return srv.(ClientCommandsServer).ObjectImportMarkdown(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectImportMarkdown",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectImportMarkdown(req.(*pb.RpcObjectImportMarkdownRequest)), nil
+		return srv.(ClientCommandsServer).ObjectImportMarkdown(ctx, req.(*pb.RpcObjectImportMarkdownRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3345,14 +3345,14 @@ func _ClientCommands_ObjectListExport_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectListExport(in), nil
+		return srv.(ClientCommandsServer).ObjectListExport(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectListExport",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectListExport(req.(*pb.RpcObjectListExportRequest)), nil
+		return srv.(ClientCommandsServer).ObjectListExport(ctx, req.(*pb.RpcObjectListExportRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3363,14 +3363,14 @@ func _ClientCommands_ObjectBookmarkFetch_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectBookmarkFetch(in), nil
+		return srv.(ClientCommandsServer).ObjectBookmarkFetch(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectBookmarkFetch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectBookmarkFetch(req.(*pb.RpcObjectBookmarkFetchRequest)), nil
+		return srv.(ClientCommandsServer).ObjectBookmarkFetch(ctx, req.(*pb.RpcObjectBookmarkFetchRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3381,14 +3381,14 @@ func _ClientCommands_ObjectToBookmark_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectToBookmark(in), nil
+		return srv.(ClientCommandsServer).ObjectToBookmark(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectToBookmark",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectToBookmark(req.(*pb.RpcObjectToBookmarkRequest)), nil
+		return srv.(ClientCommandsServer).ObjectToBookmark(ctx, req.(*pb.RpcObjectToBookmarkRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3399,14 +3399,14 @@ func _ClientCommands_ObjectRelationAdd_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationAdd(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationAdd(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationAdd",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationAdd(req.(*pb.RpcObjectRelationAddRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationAdd(ctx, req.(*pb.RpcObjectRelationAddRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3417,14 +3417,14 @@ func _ClientCommands_ObjectRelationUpdate_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationUpdate(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationUpdate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationUpdate(req.(*pb.RpcObjectRelationUpdateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationUpdate(ctx, req.(*pb.RpcObjectRelationUpdateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3435,14 +3435,14 @@ func _ClientCommands_ObjectRelationDelete_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationDelete(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationDelete(req.(*pb.RpcObjectRelationDeleteRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationDelete(ctx, req.(*pb.RpcObjectRelationDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3453,14 +3453,14 @@ func _ClientCommands_ObjectRelationAddFeatured_Handler(srv interface{}, ctx cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationAddFeatured(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationAddFeatured(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationAddFeatured",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationAddFeatured(req.(*pb.RpcObjectRelationAddFeaturedRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationAddFeatured(ctx, req.(*pb.RpcObjectRelationAddFeaturedRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3471,14 +3471,14 @@ func _ClientCommands_ObjectRelationRemoveFeatured_Handler(srv interface{}, ctx c
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationRemoveFeatured(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationRemoveFeatured(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationRemoveFeatured",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationRemoveFeatured(req.(*pb.RpcObjectRelationRemoveFeaturedRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationRemoveFeatured(ctx, req.(*pb.RpcObjectRelationRemoveFeaturedRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3489,14 +3489,14 @@ func _ClientCommands_ObjectRelationListAvailable_Handler(srv interface{}, ctx co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationListAvailable(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationListAvailable(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationListAvailable",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationListAvailable(req.(*pb.RpcObjectRelationListAvailableRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationListAvailable(ctx, req.(*pb.RpcObjectRelationListAvailableRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3507,14 +3507,14 @@ func _ClientCommands_ObjectRelationOptionAdd_Handler(srv interface{}, ctx contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationOptionAdd(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationOptionAdd(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationOptionAdd",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationOptionAdd(req.(*pb.RpcObjectRelationOptionAddRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationOptionAdd(ctx, req.(*pb.RpcObjectRelationOptionAddRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3525,14 +3525,14 @@ func _ClientCommands_ObjectRelationOptionUpdate_Handler(srv interface{}, ctx con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationOptionUpdate(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationOptionUpdate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationOptionUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationOptionUpdate(req.(*pb.RpcObjectRelationOptionUpdateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationOptionUpdate(ctx, req.(*pb.RpcObjectRelationOptionUpdateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3543,14 +3543,14 @@ func _ClientCommands_ObjectRelationOptionDelete_Handler(srv interface{}, ctx con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectRelationOptionDelete(in), nil
+		return srv.(ClientCommandsServer).ObjectRelationOptionDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectRelationOptionDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectRelationOptionDelete(req.(*pb.RpcObjectRelationOptionDeleteRequest)), nil
+		return srv.(ClientCommandsServer).ObjectRelationOptionDelete(ctx, req.(*pb.RpcObjectRelationOptionDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3561,14 +3561,14 @@ func _ClientCommands_ObjectTypeCreate_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectTypeCreate(in), nil
+		return srv.(ClientCommandsServer).ObjectTypeCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectTypeCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectTypeCreate(req.(*pb.RpcObjectTypeCreateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectTypeCreate(ctx, req.(*pb.RpcObjectTypeCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3579,14 +3579,14 @@ func _ClientCommands_ObjectTypeList_Handler(srv interface{}, ctx context.Context
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectTypeList(in), nil
+		return srv.(ClientCommandsServer).ObjectTypeList(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectTypeList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectTypeList(req.(*pb.RpcObjectTypeListRequest)), nil
+		return srv.(ClientCommandsServer).ObjectTypeList(ctx, req.(*pb.RpcObjectTypeListRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3597,14 +3597,14 @@ func _ClientCommands_ObjectTypeRelationList_Handler(srv interface{}, ctx context
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectTypeRelationList(in), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationList(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectTypeRelationList(req.(*pb.RpcObjectTypeRelationListRequest)), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationList(ctx, req.(*pb.RpcObjectTypeRelationListRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3615,14 +3615,14 @@ func _ClientCommands_ObjectTypeRelationAdd_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectTypeRelationAdd(in), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationAdd(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationAdd",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectTypeRelationAdd(req.(*pb.RpcObjectTypeRelationAddRequest)), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationAdd(ctx, req.(*pb.RpcObjectTypeRelationAddRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3633,14 +3633,14 @@ func _ClientCommands_ObjectTypeRelationUpdate_Handler(srv interface{}, ctx conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectTypeRelationUpdate(in), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationUpdate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectTypeRelationUpdate(req.(*pb.RpcObjectTypeRelationUpdateRequest)), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationUpdate(ctx, req.(*pb.RpcObjectTypeRelationUpdateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3651,14 +3651,14 @@ func _ClientCommands_ObjectTypeRelationRemove_Handler(srv interface{}, ctx conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ObjectTypeRelationRemove(in), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationRemove(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationRemove",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ObjectTypeRelationRemove(req.(*pb.RpcObjectTypeRelationRemoveRequest)), nil
+		return srv.(ClientCommandsServer).ObjectTypeRelationRemove(ctx, req.(*pb.RpcObjectTypeRelationRemoveRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3669,14 +3669,14 @@ func _ClientCommands_HistoryShowVersion_Handler(srv interface{}, ctx context.Con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).HistoryShowVersion(in), nil
+		return srv.(ClientCommandsServer).HistoryShowVersion(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/HistoryShowVersion",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).HistoryShowVersion(req.(*pb.RpcHistoryShowVersionRequest)), nil
+		return srv.(ClientCommandsServer).HistoryShowVersion(ctx, req.(*pb.RpcHistoryShowVersionRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3687,14 +3687,14 @@ func _ClientCommands_HistoryGetVersions_Handler(srv interface{}, ctx context.Con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).HistoryGetVersions(in), nil
+		return srv.(ClientCommandsServer).HistoryGetVersions(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/HistoryGetVersions",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).HistoryGetVersions(req.(*pb.RpcHistoryGetVersionsRequest)), nil
+		return srv.(ClientCommandsServer).HistoryGetVersions(ctx, req.(*pb.RpcHistoryGetVersionsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3705,14 +3705,14 @@ func _ClientCommands_HistorySetVersion_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).HistorySetVersion(in), nil
+		return srv.(ClientCommandsServer).HistorySetVersion(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/HistorySetVersion",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).HistorySetVersion(req.(*pb.RpcHistorySetVersionRequest)), nil
+		return srv.(ClientCommandsServer).HistorySetVersion(ctx, req.(*pb.RpcHistorySetVersionRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3723,14 +3723,14 @@ func _ClientCommands_FileOffload_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).FileOffload(in), nil
+		return srv.(ClientCommandsServer).FileOffload(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/FileOffload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).FileOffload(req.(*pb.RpcFileOffloadRequest)), nil
+		return srv.(ClientCommandsServer).FileOffload(ctx, req.(*pb.RpcFileOffloadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3741,14 +3741,14 @@ func _ClientCommands_FileListOffload_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).FileListOffload(in), nil
+		return srv.(ClientCommandsServer).FileListOffload(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/FileListOffload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).FileListOffload(req.(*pb.RpcFileListOffloadRequest)), nil
+		return srv.(ClientCommandsServer).FileListOffload(ctx, req.(*pb.RpcFileListOffloadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3759,14 +3759,14 @@ func _ClientCommands_FileUpload_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).FileUpload(in), nil
+		return srv.(ClientCommandsServer).FileUpload(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/FileUpload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).FileUpload(req.(*pb.RpcFileUploadRequest)), nil
+		return srv.(ClientCommandsServer).FileUpload(ctx, req.(*pb.RpcFileUploadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3777,14 +3777,14 @@ func _ClientCommands_FileDownload_Handler(srv interface{}, ctx context.Context, 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).FileDownload(in), nil
+		return srv.(ClientCommandsServer).FileDownload(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/FileDownload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).FileDownload(req.(*pb.RpcFileDownloadRequest)), nil
+		return srv.(ClientCommandsServer).FileDownload(ctx, req.(*pb.RpcFileDownloadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3795,14 +3795,14 @@ func _ClientCommands_FileDrop_Handler(srv interface{}, ctx context.Context, dec 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).FileDrop(in), nil
+		return srv.(ClientCommandsServer).FileDrop(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/FileDrop",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).FileDrop(req.(*pb.RpcFileDropRequest)), nil
+		return srv.(ClientCommandsServer).FileDrop(ctx, req.(*pb.RpcFileDropRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3813,14 +3813,14 @@ func _ClientCommands_NavigationListObjects_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).NavigationListObjects(in), nil
+		return srv.(ClientCommandsServer).NavigationListObjects(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/NavigationListObjects",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).NavigationListObjects(req.(*pb.RpcNavigationListObjectsRequest)), nil
+		return srv.(ClientCommandsServer).NavigationListObjects(ctx, req.(*pb.RpcNavigationListObjectsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3831,14 +3831,14 @@ func _ClientCommands_NavigationGetObjectInfoWithLinks_Handler(srv interface{}, c
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).NavigationGetObjectInfoWithLinks(in), nil
+		return srv.(ClientCommandsServer).NavigationGetObjectInfoWithLinks(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/NavigationGetObjectInfoWithLinks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).NavigationGetObjectInfoWithLinks(req.(*pb.RpcNavigationGetObjectInfoWithLinksRequest)), nil
+		return srv.(ClientCommandsServer).NavigationGetObjectInfoWithLinks(ctx, req.(*pb.RpcNavigationGetObjectInfoWithLinksRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3849,14 +3849,14 @@ func _ClientCommands_TemplateCreateFromObject_Handler(srv interface{}, ctx conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).TemplateCreateFromObject(in), nil
+		return srv.(ClientCommandsServer).TemplateCreateFromObject(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/TemplateCreateFromObject",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).TemplateCreateFromObject(req.(*pb.RpcTemplateCreateFromObjectRequest)), nil
+		return srv.(ClientCommandsServer).TemplateCreateFromObject(ctx, req.(*pb.RpcTemplateCreateFromObjectRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3867,14 +3867,14 @@ func _ClientCommands_TemplateCreateFromObjectType_Handler(srv interface{}, ctx c
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).TemplateCreateFromObjectType(in), nil
+		return srv.(ClientCommandsServer).TemplateCreateFromObjectType(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/TemplateCreateFromObjectType",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).TemplateCreateFromObjectType(req.(*pb.RpcTemplateCreateFromObjectTypeRequest)), nil
+		return srv.(ClientCommandsServer).TemplateCreateFromObjectType(ctx, req.(*pb.RpcTemplateCreateFromObjectTypeRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3885,14 +3885,14 @@ func _ClientCommands_TemplateClone_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).TemplateClone(in), nil
+		return srv.(ClientCommandsServer).TemplateClone(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/TemplateClone",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).TemplateClone(req.(*pb.RpcTemplateCloneRequest)), nil
+		return srv.(ClientCommandsServer).TemplateClone(ctx, req.(*pb.RpcTemplateCloneRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3903,14 +3903,14 @@ func _ClientCommands_TemplateExportAll_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).TemplateExportAll(in), nil
+		return srv.(ClientCommandsServer).TemplateExportAll(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/TemplateExportAll",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).TemplateExportAll(req.(*pb.RpcTemplateExportAllRequest)), nil
+		return srv.(ClientCommandsServer).TemplateExportAll(ctx, req.(*pb.RpcTemplateExportAllRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3921,14 +3921,14 @@ func _ClientCommands_LinkPreview_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).LinkPreview(in), nil
+		return srv.(ClientCommandsServer).LinkPreview(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/LinkPreview",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).LinkPreview(req.(*pb.RpcLinkPreviewRequest)), nil
+		return srv.(ClientCommandsServer).LinkPreview(ctx, req.(*pb.RpcLinkPreviewRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3939,14 +3939,14 @@ func _ClientCommands_UnsplashSearch_Handler(srv interface{}, ctx context.Context
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).UnsplashSearch(in), nil
+		return srv.(ClientCommandsServer).UnsplashSearch(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/UnsplashSearch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).UnsplashSearch(req.(*pb.RpcUnsplashSearchRequest)), nil
+		return srv.(ClientCommandsServer).UnsplashSearch(ctx, req.(*pb.RpcUnsplashSearchRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3957,14 +3957,14 @@ func _ClientCommands_UnsplashDownload_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).UnsplashDownload(in), nil
+		return srv.(ClientCommandsServer).UnsplashDownload(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/UnsplashDownload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).UnsplashDownload(req.(*pb.RpcUnsplashDownloadRequest)), nil
+		return srv.(ClientCommandsServer).UnsplashDownload(ctx, req.(*pb.RpcUnsplashDownloadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3975,14 +3975,14 @@ func _ClientCommands_BlockUpload_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockUpload(in), nil
+		return srv.(ClientCommandsServer).BlockUpload(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockUpload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockUpload(req.(*pb.RpcBlockUploadRequest)), nil
+		return srv.(ClientCommandsServer).BlockUpload(ctx, req.(*pb.RpcBlockUploadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3993,14 +3993,14 @@ func _ClientCommands_BlockReplace_Handler(srv interface{}, ctx context.Context, 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockReplace(in), nil
+		return srv.(ClientCommandsServer).BlockReplace(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockReplace",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockReplace(req.(*pb.RpcBlockReplaceRequest)), nil
+		return srv.(ClientCommandsServer).BlockReplace(ctx, req.(*pb.RpcBlockReplaceRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4011,14 +4011,14 @@ func _ClientCommands_BlockCreate_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockCreate(in), nil
+		return srv.(ClientCommandsServer).BlockCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockCreate(req.(*pb.RpcBlockCreateRequest)), nil
+		return srv.(ClientCommandsServer).BlockCreate(ctx, req.(*pb.RpcBlockCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4029,14 +4029,14 @@ func _ClientCommands_BlockSplit_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockSplit(in), nil
+		return srv.(ClientCommandsServer).BlockSplit(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockSplit",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockSplit(req.(*pb.RpcBlockSplitRequest)), nil
+		return srv.(ClientCommandsServer).BlockSplit(ctx, req.(*pb.RpcBlockSplitRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4047,14 +4047,14 @@ func _ClientCommands_BlockMerge_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockMerge(in), nil
+		return srv.(ClientCommandsServer).BlockMerge(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockMerge",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockMerge(req.(*pb.RpcBlockMergeRequest)), nil
+		return srv.(ClientCommandsServer).BlockMerge(ctx, req.(*pb.RpcBlockMergeRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4065,14 +4065,14 @@ func _ClientCommands_BlockCopy_Handler(srv interface{}, ctx context.Context, dec
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockCopy(in), nil
+		return srv.(ClientCommandsServer).BlockCopy(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockCopy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockCopy(req.(*pb.RpcBlockCopyRequest)), nil
+		return srv.(ClientCommandsServer).BlockCopy(ctx, req.(*pb.RpcBlockCopyRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4083,14 +4083,14 @@ func _ClientCommands_BlockPaste_Handler(srv interface{}, ctx context.Context, de
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockPaste(in), nil
+		return srv.(ClientCommandsServer).BlockPaste(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockPaste",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockPaste(req.(*pb.RpcBlockPasteRequest)), nil
+		return srv.(ClientCommandsServer).BlockPaste(ctx, req.(*pb.RpcBlockPasteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4101,14 +4101,14 @@ func _ClientCommands_BlockCut_Handler(srv interface{}, ctx context.Context, dec 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockCut(in), nil
+		return srv.(ClientCommandsServer).BlockCut(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockCut",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockCut(req.(*pb.RpcBlockCutRequest)), nil
+		return srv.(ClientCommandsServer).BlockCut(ctx, req.(*pb.RpcBlockCutRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4119,14 +4119,14 @@ func _ClientCommands_BlockSetFields_Handler(srv interface{}, ctx context.Context
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockSetFields(in), nil
+		return srv.(ClientCommandsServer).BlockSetFields(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockSetFields",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockSetFields(req.(*pb.RpcBlockSetFieldsRequest)), nil
+		return srv.(ClientCommandsServer).BlockSetFields(ctx, req.(*pb.RpcBlockSetFieldsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4137,14 +4137,14 @@ func _ClientCommands_BlockExport_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockExport(in), nil
+		return srv.(ClientCommandsServer).BlockExport(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockExport",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockExport(req.(*pb.RpcBlockExportRequest)), nil
+		return srv.(ClientCommandsServer).BlockExport(ctx, req.(*pb.RpcBlockExportRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4155,14 +4155,14 @@ func _ClientCommands_BlockListDelete_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListDelete(in), nil
+		return srv.(ClientCommandsServer).BlockListDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListDelete(req.(*pb.RpcBlockListDeleteRequest)), nil
+		return srv.(ClientCommandsServer).BlockListDelete(ctx, req.(*pb.RpcBlockListDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4173,14 +4173,14 @@ func _ClientCommands_BlockListMoveToExistingObject_Handler(srv interface{}, ctx 
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListMoveToExistingObject(in), nil
+		return srv.(ClientCommandsServer).BlockListMoveToExistingObject(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListMoveToExistingObject",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListMoveToExistingObject(req.(*pb.RpcBlockListMoveToExistingObjectRequest)), nil
+		return srv.(ClientCommandsServer).BlockListMoveToExistingObject(ctx, req.(*pb.RpcBlockListMoveToExistingObjectRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4191,14 +4191,14 @@ func _ClientCommands_BlockListMoveToNewObject_Handler(srv interface{}, ctx conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListMoveToNewObject(in), nil
+		return srv.(ClientCommandsServer).BlockListMoveToNewObject(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListMoveToNewObject",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListMoveToNewObject(req.(*pb.RpcBlockListMoveToNewObjectRequest)), nil
+		return srv.(ClientCommandsServer).BlockListMoveToNewObject(ctx, req.(*pb.RpcBlockListMoveToNewObjectRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4209,14 +4209,14 @@ func _ClientCommands_BlockListConvertToObjects_Handler(srv interface{}, ctx cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListConvertToObjects(in), nil
+		return srv.(ClientCommandsServer).BlockListConvertToObjects(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListConvertToObjects",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListConvertToObjects(req.(*pb.RpcBlockListConvertToObjectsRequest)), nil
+		return srv.(ClientCommandsServer).BlockListConvertToObjects(ctx, req.(*pb.RpcBlockListConvertToObjectsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4227,14 +4227,14 @@ func _ClientCommands_BlockListSetFields_Handler(srv interface{}, ctx context.Con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListSetFields(in), nil
+		return srv.(ClientCommandsServer).BlockListSetFields(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListSetFields",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListSetFields(req.(*pb.RpcBlockListSetFieldsRequest)), nil
+		return srv.(ClientCommandsServer).BlockListSetFields(ctx, req.(*pb.RpcBlockListSetFieldsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4245,14 +4245,14 @@ func _ClientCommands_BlockListDuplicate_Handler(srv interface{}, ctx context.Con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListDuplicate(in), nil
+		return srv.(ClientCommandsServer).BlockListDuplicate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListDuplicate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListDuplicate(req.(*pb.RpcBlockListDuplicateRequest)), nil
+		return srv.(ClientCommandsServer).BlockListDuplicate(ctx, req.(*pb.RpcBlockListDuplicateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4263,14 +4263,14 @@ func _ClientCommands_BlockListSetBackgroundColor_Handler(srv interface{}, ctx co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListSetBackgroundColor(in), nil
+		return srv.(ClientCommandsServer).BlockListSetBackgroundColor(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListSetBackgroundColor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListSetBackgroundColor(req.(*pb.RpcBlockListSetBackgroundColorRequest)), nil
+		return srv.(ClientCommandsServer).BlockListSetBackgroundColor(ctx, req.(*pb.RpcBlockListSetBackgroundColorRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4281,14 +4281,14 @@ func _ClientCommands_BlockListSetAlign_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListSetAlign(in), nil
+		return srv.(ClientCommandsServer).BlockListSetAlign(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListSetAlign",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListSetAlign(req.(*pb.RpcBlockListSetAlignRequest)), nil
+		return srv.(ClientCommandsServer).BlockListSetAlign(ctx, req.(*pb.RpcBlockListSetAlignRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4299,14 +4299,14 @@ func _ClientCommands_BlockListTurnInto_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockListTurnInto(in), nil
+		return srv.(ClientCommandsServer).BlockListTurnInto(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockListTurnInto",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockListTurnInto(req.(*pb.RpcBlockListTurnIntoRequest)), nil
+		return srv.(ClientCommandsServer).BlockListTurnInto(ctx, req.(*pb.RpcBlockListTurnIntoRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4317,14 +4317,14 @@ func _ClientCommands_BlockTextSetText_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextSetText(in), nil
+		return srv.(ClientCommandsServer).BlockTextSetText(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextSetText",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextSetText(req.(*pb.RpcBlockTextSetTextRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextSetText(ctx, req.(*pb.RpcBlockTextSetTextRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4335,14 +4335,14 @@ func _ClientCommands_BlockTextSetColor_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextSetColor(in), nil
+		return srv.(ClientCommandsServer).BlockTextSetColor(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextSetColor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextSetColor(req.(*pb.RpcBlockTextSetColorRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextSetColor(ctx, req.(*pb.RpcBlockTextSetColorRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4353,14 +4353,14 @@ func _ClientCommands_BlockTextSetStyle_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextSetStyle(in), nil
+		return srv.(ClientCommandsServer).BlockTextSetStyle(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextSetStyle",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextSetStyle(req.(*pb.RpcBlockTextSetStyleRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextSetStyle(ctx, req.(*pb.RpcBlockTextSetStyleRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4371,14 +4371,14 @@ func _ClientCommands_BlockTextSetChecked_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextSetChecked(in), nil
+		return srv.(ClientCommandsServer).BlockTextSetChecked(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextSetChecked",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextSetChecked(req.(*pb.RpcBlockTextSetCheckedRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextSetChecked(ctx, req.(*pb.RpcBlockTextSetCheckedRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4389,14 +4389,14 @@ func _ClientCommands_BlockTextSetIcon_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextSetIcon(in), nil
+		return srv.(ClientCommandsServer).BlockTextSetIcon(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextSetIcon",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextSetIcon(req.(*pb.RpcBlockTextSetIconRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextSetIcon(ctx, req.(*pb.RpcBlockTextSetIconRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4407,14 +4407,14 @@ func _ClientCommands_BlockTextListSetColor_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextListSetColor(in), nil
+		return srv.(ClientCommandsServer).BlockTextListSetColor(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextListSetColor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextListSetColor(req.(*pb.RpcBlockTextListSetColorRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextListSetColor(ctx, req.(*pb.RpcBlockTextListSetColorRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4425,14 +4425,14 @@ func _ClientCommands_BlockTextListSetMark_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextListSetMark(in), nil
+		return srv.(ClientCommandsServer).BlockTextListSetMark(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextListSetMark",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextListSetMark(req.(*pb.RpcBlockTextListSetMarkRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextListSetMark(ctx, req.(*pb.RpcBlockTextListSetMarkRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4443,14 +4443,14 @@ func _ClientCommands_BlockTextListSetStyle_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockTextListSetStyle(in), nil
+		return srv.(ClientCommandsServer).BlockTextListSetStyle(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockTextListSetStyle",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockTextListSetStyle(req.(*pb.RpcBlockTextListSetStyleRequest)), nil
+		return srv.(ClientCommandsServer).BlockTextListSetStyle(ctx, req.(*pb.RpcBlockTextListSetStyleRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4461,14 +4461,14 @@ func _ClientCommands_BlockFileSetName_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockFileSetName(in), nil
+		return srv.(ClientCommandsServer).BlockFileSetName(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockFileSetName",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockFileSetName(req.(*pb.RpcBlockFileSetNameRequest)), nil
+		return srv.(ClientCommandsServer).BlockFileSetName(ctx, req.(*pb.RpcBlockFileSetNameRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4479,14 +4479,14 @@ func _ClientCommands_BlockImageSetName_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockImageSetName(in), nil
+		return srv.(ClientCommandsServer).BlockImageSetName(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockImageSetName",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockImageSetName(req.(*pb.RpcBlockImageSetNameRequest)), nil
+		return srv.(ClientCommandsServer).BlockImageSetName(ctx, req.(*pb.RpcBlockImageSetNameRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4497,14 +4497,14 @@ func _ClientCommands_BlockVideoSetName_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockVideoSetName(in), nil
+		return srv.(ClientCommandsServer).BlockVideoSetName(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockVideoSetName",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockVideoSetName(req.(*pb.RpcBlockVideoSetNameRequest)), nil
+		return srv.(ClientCommandsServer).BlockVideoSetName(ctx, req.(*pb.RpcBlockVideoSetNameRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4515,14 +4515,14 @@ func _ClientCommands_BlockFileCreateAndUpload_Handler(srv interface{}, ctx conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(in), nil
+		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockFileCreateAndUpload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(req.(*pb.RpcBlockFileCreateAndUploadRequest)), nil
+		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(ctx, req.(*pb.RpcBlockFileCreateAndUploadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4533,14 +4533,14 @@ func _ClientCommands_BlockFileListSetStyle_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockFileListSetStyle(in), nil
+		return srv.(ClientCommandsServer).BlockFileListSetStyle(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockFileListSetStyle",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockFileListSetStyle(req.(*pb.RpcBlockFileListSetStyleRequest)), nil
+		return srv.(ClientCommandsServer).BlockFileListSetStyle(ctx, req.(*pb.RpcBlockFileListSetStyleRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4551,14 +4551,14 @@ func _ClientCommands_BlockDataviewViewCreate_Handler(srv interface{}, ctx contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewViewCreate(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewViewCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewViewCreate(req.(*pb.RpcBlockDataviewViewCreateRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewCreate(ctx, req.(*pb.RpcBlockDataviewViewCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4569,14 +4569,14 @@ func _ClientCommands_BlockDataviewViewDelete_Handler(srv interface{}, ctx contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewViewDelete(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewViewDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewViewDelete(req.(*pb.RpcBlockDataviewViewDeleteRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewDelete(ctx, req.(*pb.RpcBlockDataviewViewDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4587,14 +4587,14 @@ func _ClientCommands_BlockDataviewViewUpdate_Handler(srv interface{}, ctx contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewViewUpdate(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewUpdate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewViewUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewViewUpdate(req.(*pb.RpcBlockDataviewViewUpdateRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewUpdate(ctx, req.(*pb.RpcBlockDataviewViewUpdateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4605,14 +4605,14 @@ func _ClientCommands_BlockDataviewViewSetActive_Handler(srv interface{}, ctx con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewViewSetActive(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewSetActive(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewViewSetActive",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewViewSetActive(req.(*pb.RpcBlockDataviewViewSetActiveRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewSetActive(ctx, req.(*pb.RpcBlockDataviewViewSetActiveRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4623,14 +4623,14 @@ func _ClientCommands_BlockDataviewViewSetPosition_Handler(srv interface{}, ctx c
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewViewSetPosition(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewSetPosition(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewViewSetPosition",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewViewSetPosition(req.(*pb.RpcBlockDataviewViewSetPositionRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewSetPosition(ctx, req.(*pb.RpcBlockDataviewViewSetPositionRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4641,14 +4641,14 @@ func _ClientCommands_BlockDataviewSetSource_Handler(srv interface{}, ctx context
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewSetSource(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewSetSource(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewSetSource",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewSetSource(req.(*pb.RpcBlockDataviewSetSourceRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewSetSource(ctx, req.(*pb.RpcBlockDataviewSetSourceRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4659,14 +4659,14 @@ func _ClientCommands_BlockDataviewRelationAdd_Handler(srv interface{}, ctx conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRelationAdd(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationAdd(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationAdd",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRelationAdd(req.(*pb.RpcBlockDataviewRelationAddRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationAdd(ctx, req.(*pb.RpcBlockDataviewRelationAddRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4677,14 +4677,14 @@ func _ClientCommands_BlockDataviewRelationUpdate_Handler(srv interface{}, ctx co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRelationUpdate(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationUpdate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRelationUpdate(req.(*pb.RpcBlockDataviewRelationUpdateRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationUpdate(ctx, req.(*pb.RpcBlockDataviewRelationUpdateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4695,14 +4695,14 @@ func _ClientCommands_BlockDataviewRelationDelete_Handler(srv interface{}, ctx co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRelationDelete(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRelationDelete(req.(*pb.RpcBlockDataviewRelationDeleteRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationDelete(ctx, req.(*pb.RpcBlockDataviewRelationDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4713,14 +4713,14 @@ func _ClientCommands_BlockDataviewRelationListAvailable_Handler(srv interface{},
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRelationListAvailable(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationListAvailable(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationListAvailable",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRelationListAvailable(req.(*pb.RpcBlockDataviewRelationListAvailableRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRelationListAvailable(ctx, req.(*pb.RpcBlockDataviewRelationListAvailableRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4731,14 +4731,14 @@ func _ClientCommands_BlockDataviewRecordCreate_Handler(srv interface{}, ctx cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRecordCreate(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordCreate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRecordCreate(req.(*pb.RpcBlockDataviewRecordCreateRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordCreate(ctx, req.(*pb.RpcBlockDataviewRecordCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4749,14 +4749,14 @@ func _ClientCommands_BlockDataviewRecordUpdate_Handler(srv interface{}, ctx cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRecordUpdate(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordUpdate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRecordUpdate(req.(*pb.RpcBlockDataviewRecordUpdateRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordUpdate(ctx, req.(*pb.RpcBlockDataviewRecordUpdateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4767,14 +4767,14 @@ func _ClientCommands_BlockDataviewRecordDelete_Handler(srv interface{}, ctx cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRecordDelete(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRecordDelete(req.(*pb.RpcBlockDataviewRecordDeleteRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordDelete(ctx, req.(*pb.RpcBlockDataviewRecordDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4785,14 +4785,14 @@ func _ClientCommands_BlockDataviewRecordRelationOptionAdd_Handler(srv interface{
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionAdd(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionAdd(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordRelationOptionAdd",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionAdd(req.(*pb.RpcBlockDataviewRecordRelationOptionAddRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionAdd(ctx, req.(*pb.RpcBlockDataviewRecordRelationOptionAddRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4803,14 +4803,14 @@ func _ClientCommands_BlockDataviewRecordRelationOptionUpdate_Handler(srv interfa
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionUpdate(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionUpdate(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordRelationOptionUpdate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionUpdate(req.(*pb.RpcBlockDataviewRecordRelationOptionUpdateRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionUpdate(ctx, req.(*pb.RpcBlockDataviewRecordRelationOptionUpdateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4821,14 +4821,14 @@ func _ClientCommands_BlockDataviewRecordRelationOptionDelete_Handler(srv interfa
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionDelete(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionDelete(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordRelationOptionDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionDelete(req.(*pb.RpcBlockDataviewRecordRelationOptionDeleteRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewRecordRelationOptionDelete(ctx, req.(*pb.RpcBlockDataviewRecordRelationOptionDeleteRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4839,14 +4839,14 @@ func _ClientCommands_BlockLinkCreateWithObject_Handler(srv interface{}, ctx cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockLinkCreateWithObject(in), nil
+		return srv.(ClientCommandsServer).BlockLinkCreateWithObject(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockLinkCreateWithObject",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockLinkCreateWithObject(req.(*pb.RpcBlockLinkCreateWithObjectRequest)), nil
+		return srv.(ClientCommandsServer).BlockLinkCreateWithObject(ctx, req.(*pb.RpcBlockLinkCreateWithObjectRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4857,14 +4857,14 @@ func _ClientCommands_BlockLinkListSetAppearance_Handler(srv interface{}, ctx con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockLinkListSetAppearance(in), nil
+		return srv.(ClientCommandsServer).BlockLinkListSetAppearance(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockLinkListSetAppearance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockLinkListSetAppearance(req.(*pb.RpcBlockLinkListSetAppearanceRequest)), nil
+		return srv.(ClientCommandsServer).BlockLinkListSetAppearance(ctx, req.(*pb.RpcBlockLinkListSetAppearanceRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4875,14 +4875,14 @@ func _ClientCommands_BlockBookmarkFetch_Handler(srv interface{}, ctx context.Con
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockBookmarkFetch(in), nil
+		return srv.(ClientCommandsServer).BlockBookmarkFetch(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockBookmarkFetch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockBookmarkFetch(req.(*pb.RpcBlockBookmarkFetchRequest)), nil
+		return srv.(ClientCommandsServer).BlockBookmarkFetch(ctx, req.(*pb.RpcBlockBookmarkFetchRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4893,14 +4893,14 @@ func _ClientCommands_BlockBookmarkCreateAndFetch_Handler(srv interface{}, ctx co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(in), nil
+		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockBookmarkCreateAndFetch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(req.(*pb.RpcBlockBookmarkCreateAndFetchRequest)), nil
+		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(ctx, req.(*pb.RpcBlockBookmarkCreateAndFetchRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4911,14 +4911,14 @@ func _ClientCommands_BlockRelationSetKey_Handler(srv interface{}, ctx context.Co
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockRelationSetKey(in), nil
+		return srv.(ClientCommandsServer).BlockRelationSetKey(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockRelationSetKey",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockRelationSetKey(req.(*pb.RpcBlockRelationSetKeyRequest)), nil
+		return srv.(ClientCommandsServer).BlockRelationSetKey(ctx, req.(*pb.RpcBlockRelationSetKeyRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4929,14 +4929,14 @@ func _ClientCommands_BlockRelationAdd_Handler(srv interface{}, ctx context.Conte
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockRelationAdd(in), nil
+		return srv.(ClientCommandsServer).BlockRelationAdd(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockRelationAdd",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockRelationAdd(req.(*pb.RpcBlockRelationAddRequest)), nil
+		return srv.(ClientCommandsServer).BlockRelationAdd(ctx, req.(*pb.RpcBlockRelationAddRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4947,14 +4947,14 @@ func _ClientCommands_BlockDivListSetStyle_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDivListSetStyle(in), nil
+		return srv.(ClientCommandsServer).BlockDivListSetStyle(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockDivListSetStyle",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDivListSetStyle(req.(*pb.RpcBlockDivListSetStyleRequest)), nil
+		return srv.(ClientCommandsServer).BlockDivListSetStyle(ctx, req.(*pb.RpcBlockDivListSetStyleRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4965,14 +4965,14 @@ func _ClientCommands_BlockLatexSetText_Handler(srv interface{}, ctx context.Cont
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockLatexSetText(in), nil
+		return srv.(ClientCommandsServer).BlockLatexSetText(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/BlockLatexSetText",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockLatexSetText(req.(*pb.RpcBlockLatexSetTextRequest)), nil
+		return srv.(ClientCommandsServer).BlockLatexSetText(ctx, req.(*pb.RpcBlockLatexSetTextRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4983,14 +4983,14 @@ func _ClientCommands_ProcessCancel_Handler(srv interface{}, ctx context.Context,
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).ProcessCancel(in), nil
+		return srv.(ClientCommandsServer).ProcessCancel(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/ProcessCancel",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).ProcessCancel(req.(*pb.RpcProcessCancelRequest)), nil
+		return srv.(ClientCommandsServer).ProcessCancel(ctx, req.(*pb.RpcProcessCancelRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -5001,14 +5001,14 @@ func _ClientCommands_LogSend_Handler(srv interface{}, ctx context.Context, dec f
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).LogSend(in), nil
+		return srv.(ClientCommandsServer).LogSend(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/LogSend",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).LogSend(req.(*pb.RpcLogSendRequest)), nil
+		return srv.(ClientCommandsServer).LogSend(ctx, req.(*pb.RpcLogSendRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -5019,14 +5019,14 @@ func _ClientCommands_DebugSync_Handler(srv interface{}, ctx context.Context, dec
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).DebugSync(in), nil
+		return srv.(ClientCommandsServer).DebugSync(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/DebugSync",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).DebugSync(req.(*pb.RpcDebugSyncRequest)), nil
+		return srv.(ClientCommandsServer).DebugSync(ctx, req.(*pb.RpcDebugSyncRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -5037,14 +5037,14 @@ func _ClientCommands_DebugThread_Handler(srv interface{}, ctx context.Context, d
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).DebugThread(in), nil
+		return srv.(ClientCommandsServer).DebugThread(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/DebugThread",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).DebugThread(req.(*pb.RpcDebugThreadRequest)), nil
+		return srv.(ClientCommandsServer).DebugThread(ctx, req.(*pb.RpcDebugThreadRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -5055,14 +5055,14 @@ func _ClientCommands_DebugTree_Handler(srv interface{}, ctx context.Context, dec
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).DebugTree(in), nil
+		return srv.(ClientCommandsServer).DebugTree(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/DebugTree",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).DebugTree(req.(*pb.RpcDebugTreeRequest)), nil
+		return srv.(ClientCommandsServer).DebugTree(ctx, req.(*pb.RpcDebugTreeRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -5073,14 +5073,14 @@ func _ClientCommands_DebugExportLocalstore_Handler(srv interface{}, ctx context.
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).DebugExportLocalstore(in), nil
+		return srv.(ClientCommandsServer).DebugExportLocalstore(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/DebugExportLocalstore",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).DebugExportLocalstore(req.(*pb.RpcDebugExportLocalstoreRequest)), nil
+		return srv.(ClientCommandsServer).DebugExportLocalstore(ctx, req.(*pb.RpcDebugExportLocalstoreRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -5091,14 +5091,14 @@ func _ClientCommands_DebugPing_Handler(srv interface{}, ctx context.Context, dec
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).DebugPing(in), nil
+		return srv.(ClientCommandsServer).DebugPing(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/DebugPing",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).DebugPing(req.(*pb.RpcDebugPingRequest)), nil
+		return srv.(ClientCommandsServer).DebugPing(ctx, req.(*pb.RpcDebugPingRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -5109,14 +5109,14 @@ func _ClientCommands_MetricsSetParameters_Handler(srv interface{}, ctx context.C
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).MetricsSetParameters(in), nil
+		return srv.(ClientCommandsServer).MetricsSetParameters(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/anytype.ClientCommands/MetricsSetParameters",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).MetricsSetParameters(req.(*pb.RpcMetricsSetParametersRequest)), nil
+		return srv.(ClientCommandsServer).MetricsSetParameters(ctx, req.(*pb.RpcMetricsSetParametersRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }

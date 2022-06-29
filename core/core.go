@@ -3,10 +3,11 @@ package core
 import (
 	"context"
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"os"
 	"runtime/debug"
 	"sync"
+
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -43,7 +44,7 @@ func New() *Middleware {
 	return mw
 }
 
-func (mw *Middleware) AppShutdown(request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
+func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
 	mw.m.Lock()
 	defer mw.m.Unlock()
 	mw.stop()
@@ -54,7 +55,7 @@ func (mw *Middleware) AppShutdown(request *pb.RpcAppShutdownRequest) *pb.RpcAppS
 	}
 }
 
-func (mw *Middleware) AppSetDeviceState(req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
+func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
 	mw.app.SetDeviceState(int(req.DeviceState))
 
 	return &pb.RpcAppSetDeviceStateResponse{

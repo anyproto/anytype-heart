@@ -7,13 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/account"
-	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
-	"github.com/gogo/status"
-	cp "github.com/otiai10/copy"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -24,6 +17,14 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/account"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
+	"github.com/gogo/status"
+	cp "github.com/otiai10/copy"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -187,8 +188,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 	}
 
 	cfg := config.ConfigRequired{}
-	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg);
-
+	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
 
 	pBlocks := at.PredefinedBlocks()
 	return &model.AccountInfo{
@@ -200,11 +200,11 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
-		LocalStoragePath: 			 cfg.IPFSStorageAddr,
+		LocalStoragePath:            cfg.IPFSStorageAddr,
 	}
 }
 
-func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
 
@@ -332,7 +332,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
+func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
@@ -501,7 +501,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		var clientConfig *pb.RpcAccountConfig
 		if account != nil {
@@ -619,7 +619,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
@@ -653,7 +653,7 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
@@ -741,7 +741,7 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
 	response := func(status *model.AccountStatus, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
 		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
 		if err != nil {

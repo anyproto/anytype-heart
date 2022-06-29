@@ -10,7 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
-func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
+func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	url, err := uri.ProcessURI(req.Url)

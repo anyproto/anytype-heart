@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -14,7 +15,7 @@ import (
 
 const wordCount int = 12
 
-func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
+func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
 	response := func(mnemonic string, code pb.RpcWalletCreateResponseErrorCode, err error) *pb.RpcWalletCreateResponse {
 		m := &pb.RpcWalletCreateResponse{Mnemonic: mnemonic, Error: &pb.RpcWalletCreateResponseError{Code: code}}
 		if err != nil {
@@ -45,7 +46,7 @@ func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWallet
 	return response(mnemonic, pb.RpcWalletCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
+func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
 	response := func(code pb.RpcWalletRecoverResponseErrorCode, err error) *pb.RpcWalletRecoverResponse {
 		m := &pb.RpcWalletRecoverResponse{Error: &pb.RpcWalletRecoverResponseError{Code: code}}
 		if err != nil {
@@ -82,7 +83,7 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 	return response(pb.RpcWalletRecoverResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WalletConvert(req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
+func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
 	response := func(mnemonic, entropy string, code pb.RpcWalletConvertResponseErrorCode, err error) *pb.RpcWalletConvertResponse {
 		m := &pb.RpcWalletConvertResponse{Mnemonic: mnemonic, Entropy: entropy, Error: &pb.RpcWalletConvertResponseError{Code: code}}
 		if err != nil {
@@ -117,7 +118,7 @@ func (mw *Middleware) WalletConvert(req *pb.RpcWalletConvertRequest) *pb.RpcWall
 	return response("", "", pb.RpcWalletConvertResponseError_BAD_INPUT, fmt.Errorf("you should specify neither entropy or mnemonic to convert"))
 }
 
-func (mw *Middleware) WalletCreateSession(req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
+func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
 	response := func(token string, code pb.RpcWalletCreateSessionResponseErrorCode, err error) *pb.RpcWalletCreateSessionResponse {
 		m := &pb.RpcWalletCreateSessionResponse{Token: token, Error: &pb.RpcWalletCreateSessionResponseError{Code: code}}
 		if err != nil {

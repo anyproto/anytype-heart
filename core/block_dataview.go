@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -8,7 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-func (mw *Middleware) BlockDataviewRelationListAvailable(req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
+func (mw *Middleware) BlockDataviewRelationListAvailable(cctx context.Context, req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
 	response := func(code pb.RpcBlockDataviewRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcBlockDataviewRelationListAvailableResponse {
 		m := &pb.RpcBlockDataviewRelationListAvailableResponse{Relations: relations, Error: &pb.RpcBlockDataviewRelationListAvailableResponseError{Code: code}}
 		if err != nil {
@@ -32,7 +34,7 @@ func (mw *Middleware) BlockDataviewRelationListAvailable(req *pb.RpcBlockDatavie
 	return response(pb.RpcBlockDataviewRelationListAvailableResponseError_NULL, relations, nil)
 }
 
-func (mw *Middleware) BlockDataviewViewUpdate(req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
+func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewViewUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewViewUpdateResponse {
 		m := &pb.RpcBlockDataviewViewUpdateResponse{Error: &pb.RpcBlockDataviewViewUpdateResponseError{Code: code}}
@@ -52,7 +54,7 @@ func (mw *Middleware) BlockDataviewViewUpdate(req *pb.RpcBlockDataviewViewUpdate
 	return response(pb.RpcBlockDataviewViewUpdateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewViewCreate(req *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse {
+func (mw *Middleware) BlockDataviewViewCreate(cctx context.Context, req *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse {
 	ctx := state.NewContext(nil)
 	response := func(viewId string, code pb.RpcBlockDataviewViewCreateResponseErrorCode, err error) *pb.RpcBlockDataviewViewCreateResponse {
 		m := &pb.RpcBlockDataviewViewCreateResponse{ViewId: viewId, Error: &pb.RpcBlockDataviewViewCreateResponseError{Code: code}}
@@ -74,7 +76,7 @@ func (mw *Middleware) BlockDataviewViewCreate(req *pb.RpcBlockDataviewViewCreate
 	return response(viewId, pb.RpcBlockDataviewViewCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewViewDelete(req *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse {
+func (mw *Middleware) BlockDataviewViewDelete(cctx context.Context, req *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewViewDeleteResponseErrorCode, err error) *pb.RpcBlockDataviewViewDeleteResponse {
 		m := &pb.RpcBlockDataviewViewDeleteResponse{Error: &pb.RpcBlockDataviewViewDeleteResponseError{Code: code}}
@@ -94,7 +96,7 @@ func (mw *Middleware) BlockDataviewViewDelete(req *pb.RpcBlockDataviewViewDelete
 	return response(pb.RpcBlockDataviewViewDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewViewSetActive(req *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse {
+func (mw *Middleware) BlockDataviewViewSetActive(cctx context.Context, req *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewViewSetActiveResponseErrorCode, err error) *pb.RpcBlockDataviewViewSetActiveResponse {
 		m := &pb.RpcBlockDataviewViewSetActiveResponse{Error: &pb.RpcBlockDataviewViewSetActiveResponseError{Code: code}}
@@ -114,7 +116,7 @@ func (mw *Middleware) BlockDataviewViewSetActive(req *pb.RpcBlockDataviewViewSet
 	return response(pb.RpcBlockDataviewViewSetActiveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewViewSetPosition(req *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse {
+func (mw *Middleware) BlockDataviewViewSetPosition(cctx context.Context, req *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewViewSetPositionResponseErrorCode, err error) *pb.RpcBlockDataviewViewSetPositionResponse {
 		m := &pb.RpcBlockDataviewViewSetPositionResponse{Error: &pb.RpcBlockDataviewViewSetPositionResponseError{Code: code}}
@@ -134,7 +136,7 @@ func (mw *Middleware) BlockDataviewViewSetPosition(req *pb.RpcBlockDataviewViewS
 	return response(pb.RpcBlockDataviewViewSetPositionResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRecordCreate(req *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse {
+func (mw *Middleware) BlockDataviewRecordCreate(cctx context.Context, req *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse {
 	ctx := state.NewContext(nil)
 	response := func(details *types.Struct, code pb.RpcBlockDataviewRecordCreateResponseErrorCode, err error) *pb.RpcBlockDataviewRecordCreateResponse {
 		m := &pb.RpcBlockDataviewRecordCreateResponse{Record: details, Error: &pb.RpcBlockDataviewRecordCreateResponseError{Code: code}}
@@ -156,7 +158,7 @@ func (mw *Middleware) BlockDataviewRecordCreate(req *pb.RpcBlockDataviewRecordCr
 	return response(details, pb.RpcBlockDataviewRecordCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRecordUpdate(req *pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse {
+func (mw *Middleware) BlockDataviewRecordUpdate(cctx context.Context, req *pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewRecordUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewRecordUpdateResponse {
 		m := &pb.RpcBlockDataviewRecordUpdateResponse{Error: &pb.RpcBlockDataviewRecordUpdateResponseError{Code: code}}
@@ -176,7 +178,7 @@ func (mw *Middleware) BlockDataviewRecordUpdate(req *pb.RpcBlockDataviewRecordUp
 	return response(pb.RpcBlockDataviewRecordUpdateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRecordDelete(req *pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse {
+func (mw *Middleware) BlockDataviewRecordDelete(cctx context.Context, req *pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewRecordDeleteResponseErrorCode, err error) *pb.RpcBlockDataviewRecordDeleteResponse {
 		m := &pb.RpcBlockDataviewRecordDeleteResponse{Error: &pb.RpcBlockDataviewRecordDeleteResponseError{Code: code}}
@@ -197,7 +199,7 @@ func (mw *Middleware) BlockDataviewRecordDelete(req *pb.RpcBlockDataviewRecordDe
 	return response(pb.RpcBlockDataviewRecordDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
+func (mw *Middleware) BlockDataviewRelationAdd(cctx context.Context, req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
 	ctx := state.NewContext(nil)
 	response := func(relation *model.Relation, code pb.RpcBlockDataviewRelationAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationAddResponse {
 		var relKey string
@@ -225,7 +227,7 @@ func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationA
 	return response(relation, pb.RpcBlockDataviewRelationAddResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRelationUpdate(req *pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse {
+func (mw *Middleware) BlockDataviewRelationUpdate(cctx context.Context, req *pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewRelationUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewRelationUpdateResponse {
 		m := &pb.RpcBlockDataviewRelationUpdateResponse{Error: &pb.RpcBlockDataviewRelationUpdateResponseError{Code: code}}
@@ -246,7 +248,7 @@ func (mw *Middleware) BlockDataviewRelationUpdate(req *pb.RpcBlockDataviewRelati
 	return response(pb.RpcBlockDataviewRelationUpdateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRelationDelete(req *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse {
+func (mw *Middleware) BlockDataviewRelationDelete(cctx context.Context, req *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewRelationDeleteResponseErrorCode, err error) *pb.RpcBlockDataviewRelationDeleteResponse {
 		m := &pb.RpcBlockDataviewRelationDeleteResponse{Error: &pb.RpcBlockDataviewRelationDeleteResponseError{Code: code}}
@@ -266,7 +268,7 @@ func (mw *Middleware) BlockDataviewRelationDelete(req *pb.RpcBlockDataviewRelati
 	return response(pb.RpcBlockDataviewRelationDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRecordRelationOptionAdd(req *pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
+func (mw *Middleware) BlockDataviewRecordRelationOptionAdd(cctx context.Context, req *pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
 	ctx := state.NewContext(nil)
 	response := func(opt *model.RelationOption, code pb.RpcBlockDataviewRecordRelationOptionAddResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
 		m := &pb.RpcBlockDataviewRecordRelationOptionAddResponse{Option: opt, Error: &pb.RpcBlockDataviewRecordRelationOptionAddResponseError{Code: code}}
@@ -289,7 +291,7 @@ func (mw *Middleware) BlockDataviewRecordRelationOptionAdd(req *pb.RpcBlockDatav
 	return response(opt, pb.RpcBlockDataviewRecordRelationOptionAddResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRecordRelationOptionUpdate(req *pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse {
+func (mw *Middleware) BlockDataviewRecordRelationOptionUpdate(cctx context.Context, req *pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewRecordRelationOptionUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse {
 		m := &pb.RpcBlockDataviewRecordRelationOptionUpdateResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError{Code: code}}
@@ -311,7 +313,7 @@ func (mw *Middleware) BlockDataviewRecordRelationOptionUpdate(req *pb.RpcBlockDa
 	return response(pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRecordRelationOptionDelete(req *pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse {
+func (mw *Middleware) BlockDataviewRecordRelationOptionDelete(cctx context.Context, req *pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewRecordRelationOptionDeleteResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse {
 		m := &pb.RpcBlockDataviewRecordRelationOptionDeleteResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError{Code: code}}
@@ -333,7 +335,7 @@ func (mw *Middleware) BlockDataviewRecordRelationOptionDelete(req *pb.RpcBlockDa
 	return response(pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewSetSource(req *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
+func (mw *Middleware) BlockDataviewSetSource(cctx context.Context, req *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
 	ctx := state.NewContext(nil)
 	resp := func(err error) *pb.RpcBlockDataviewSetSourceResponse {
 		r := &pb.RpcBlockDataviewSetSourceResponse{

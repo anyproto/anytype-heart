@@ -1,12 +1,14 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) HistoryShowVersion(req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
+func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
 	response := func(show *pb.EventObjectShow, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
 		res = &pb.RpcHistoryShowVersionResponse{
 			Error: &pb.RpcHistoryShowVersionResponseError{
@@ -40,7 +42,7 @@ func (mw *Middleware) HistoryShowVersion(req *pb.RpcHistoryShowVersionRequest) *
 	return response(show, ver, nil)
 }
 
-func (mw *Middleware) HistoryGetVersions(req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
+func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
 	response := func(vers []*pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryGetVersionsResponse) {
 		res = &pb.RpcHistoryGetVersionsResponse{
 			Error: &pb.RpcHistoryGetVersionsResponseError{
@@ -70,7 +72,7 @@ func (mw *Middleware) HistoryGetVersions(req *pb.RpcHistoryGetVersionsRequest) *
 	return response(vers, nil)
 }
 
-func (mw *Middleware) HistorySetVersion(req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
+func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
 	response := func(err error) (res *pb.RpcHistorySetVersionResponse) {
 		res = &pb.RpcHistorySetVersionResponse{
 			Error: &pb.RpcHistorySetVersionResponseError{
