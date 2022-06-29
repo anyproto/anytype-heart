@@ -38,15 +38,15 @@ func (es *GrpcSender) Name() (name string) {
 func (es *GrpcSender) Send(pb *pb.Event) {
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
-	if es.Server == nil {
-		log.Errorf("failed to send event: server not set")
-		return
-	}
-
-	err := es.Server.Send(pb)
-	if err != nil {
-		log.Errorf("failed to send event: %s", err.Error())
-	}
+	//if es.Server == nil {
+	//	log.Errorf("failed to send event: server not set")
+	//	return
+	//}
+	//
+	//err := es.Server.Send(pb)
+	//if err != nil {
+	//	log.Errorf("failed to send event: %s", err.Error())
+	//}
 
 	for id, s := range es.Servers {
 		fmt.Println("send to server", id)
