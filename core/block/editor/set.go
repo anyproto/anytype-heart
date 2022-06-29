@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -64,10 +65,11 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 
 	templates := []template.StateTransformer{
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyCreator.String()})),
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()})),
 		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithBlockEditRestricted(p.Id()),
+		template.WithCreatorRemovedFromFeaturedRelations,
 	}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages && p.Pick(template.DataviewBlockId) == nil {
 		rels := pbtypes.MergeRelations(bundle.MustGetType(bundle.TypeKeyNote).Relations, bundle.MustGetRelations(dataview.DefaultDataviewRelations))

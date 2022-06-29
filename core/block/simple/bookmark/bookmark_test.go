@@ -10,6 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func setLinkPreview(b Block, data model.LinkPreview) {
+	b.UpdateContent(func(c *model.BlockContentBookmark) {
+		c.Url = data.Url
+		c.Title = data.Title
+		c.Description = data.Description
+		c.Type = data.Type
+	})
+}
+
 func TestBookmark_Diff(t *testing.T) {
 	testBlock := func() *Bookmark {
 		return NewBookmark(&model.Block{
@@ -34,8 +43,8 @@ func TestBookmark_Diff(t *testing.T) {
 	t.Run("no diff", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		b1.SetLinkPreview(lp)
-		b2.SetLinkPreview(lp)
+		setLinkPreview(b1, lp)
+		setLinkPreview(b2, lp)
 		d, err := b1.Diff(b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 0)
@@ -52,9 +61,12 @@ func TestBookmark_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 
-		b2.SetLinkPreview(lp)
-		b2.SetFaviconHash("fh")
-		b2.SetImageHash("ih")
+		setLinkPreview(b2, lp)
+		b2.UpdateContent(func(c *model.BlockContentBookmark) {
+			c.FaviconHash = "fh"
+			c.ImageHash = "ih"
+			c.TargetObjectId = "newobject"
+		})
 
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
@@ -66,5 +78,6 @@ func TestBookmark_Diff(t *testing.T) {
 		assert.NotNil(t, change.Type)
 		assert.NotNil(t, change.ImageHash)
 		assert.NotNil(t, change.FaviconHash)
+		assert.NotNil(t, change.TargetObjectId)
 	})
 }
