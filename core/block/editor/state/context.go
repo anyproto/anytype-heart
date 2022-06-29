@@ -6,15 +6,25 @@ func NewContext(se func(e *pb.Event)) *Context {
 	return &Context{sendEvent: se}
 }
 
+type SessionSender interface {
+	SendSession(sessionId string, e *pb.Event)
+}
+
+func NewSessionContext(sessionId string, sessionSender SessionSender, se func(e *pb.Event)) *Context {
+	return &Context{sendEvent: se, sessionId: sessionId, sessionSender: sessionSender}
+}
+
 func NewContextTrace(traceId string, se func(e *pb.Event)) *Context {
 	return &Context{sendEvent: se, traceId: traceId}
 }
 
 type Context struct {
-	smartBlockId string
-	traceId      string
-	messages     []*pb.EventMessage
-	sendEvent    func(e *pb.Event)
+	smartBlockId  string
+	traceId       string
+	messages      []*pb.EventMessage
+	sendEvent     func(e *pb.Event)
+	sessionSender SessionSender
+	sessionId     string
 }
 
 func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
@@ -46,6 +56,14 @@ func (ctx *Context) GetMessages() []*pb.EventMessage {
 }
 
 func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {
+	if ctx.sessionSender != nil {
+		ctx.sessionSender.SendSession(ctx.sessionId, &pb.Event{
+			Messages:  ctx.messages,
+			ContextId: ctx.smartBlockId,
+			Initiator: nil,
+		})
+	}
+
 	return &pb.ResponseEvent{
 		Messages:  ctx.messages,
 		ContextId: ctx.smartBlockId,

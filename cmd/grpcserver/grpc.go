@@ -107,6 +107,7 @@ func main() {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
 	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		// TODO: check authorization
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
 			fmt.Println("MD: ", md)

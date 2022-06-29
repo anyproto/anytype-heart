@@ -748,7 +748,7 @@ func (mw *Middleware) BlockTextListSetMark(req *pb.RpcBlockTextListSetMarkReques
 }
 
 func (mw *Middleware) BlockTextSetText(req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
-	ctx := state.NewContext(nil)
+	ctx := state.NewSessionContext("", nil, mw.EventSender)
 	response := func(code pb.RpcBlockTextSetTextResponseErrorCode, err error) *pb.RpcBlockTextSetTextResponse {
 		m := &pb.RpcBlockTextSetTextResponse{Error: &pb.RpcBlockTextSetTextResponseError{Code: code}}
 		if err != nil {

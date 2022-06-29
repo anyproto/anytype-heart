@@ -58,6 +58,23 @@ func (es *GrpcSender) Send(pb *pb.Event) {
 	return
 }
 
+func (es *GrpcSender) SendSession(sessionId string, pb *pb.Event) {
+	es.ServerMutex.Lock()
+	defer es.ServerMutex.Unlock()
+
+	for id, s := range es.Servers {
+		if id == sessionId {
+			continue
+		}
+		fmt.Println("send to server", id)
+		err := s.Server.Send(pb)
+		if err != nil {
+			log.Errorf("failed to send event: %s", err.Error())
+		}
+	}
+	return
+}
+
 func (es *GrpcSender) SetServer(server service.ClientCommands_ListenEventsServer) {
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
