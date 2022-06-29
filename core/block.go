@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/globalsign/mgo/bson"
 	"github.com/miolini/datacounter"
 
@@ -748,7 +749,15 @@ func (mw *Middleware) BlockTextListSetMark(req *pb.RpcBlockTextListSetMarkReques
 }
 
 func (mw *Middleware) BlockTextSetText(req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
-	ctx := state.NewSessionContext("", nil, mw.EventSender)
+	var ctx *state.Context
+
+	grpcSender, ok := mw.EventSender.(*event.GrpcSender)
+	if ok {
+		ctx = state.NewSessionContext("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJuYmYiOjE0NDQ0Nzg0MDB9.F3P1MPNqxfviv2VCGBLQwIV9_7kT5tFbKv0ryJyQgS0", grpcSender, nil)
+	} else {
+		ctx = state.NewContext(nil)
+	}
+
 	response := func(code pb.RpcBlockTextSetTextResponseErrorCode, err error) *pb.RpcBlockTextSetTextResponse {
 		m := &pb.RpcBlockTextSetTextResponse{Error: &pb.RpcBlockTextSetTextResponseError{Code: code}}
 		if err != nil {
