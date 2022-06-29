@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/globalsign/mgo/bson"
 	"github.com/miolini/datacounter"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -748,15 +749,30 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 	return response(pb.RpcBlockTextListSetMarkResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockTextSetText(cctx context.Context, req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
-	var ctx *state.Context
-
+func (mw *Middleware) newContext(cctx context.Context) *state.Context {
 	grpcSender, ok := mw.EventSender.(*event.GrpcSender)
-	if ok {
-		ctx = state.NewSessionContext("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJuYmYiOjE0NDQ0Nzg0MDB9.F3P1MPNqxfviv2VCGBLQwIV9_7kT5tFbKv0ryJyQgS0", grpcSender, nil)
-	} else {
-		ctx = state.NewContext(nil)
+	if !ok {
+		return state.NewContext(nil)
 	}
+
+	md, ok := metadata.FromIncomingContext(cctx)
+	if !ok {
+		return state.NewContext(nil)
+	}
+
+	v := md.Get("token")
+	if len(v) != 1 {
+		return state.NewContext(nil)
+	}
+
+	if v[0] == "" {
+		return state.NewContext(nil)
+	}
+	return state.NewSessionContext(v[0], grpcSender, nil)
+}
+
+func (mw *Middleware) BlockTextSetText(cctx context.Context, req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
+	ctx := mw.newContext(cctx)
 
 	response := func(code pb.RpcBlockTextSetTextResponseErrorCode, err error) *pb.RpcBlockTextSetTextResponse {
 		m := &pb.RpcBlockTextSetTextResponse{Error: &pb.RpcBlockTextSetTextResponseError{Code: code}}
