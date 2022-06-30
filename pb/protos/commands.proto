@@ -1023,6 +1023,7 @@ message Rpc {
         message RelationSearchDistinct {
             message Request {
                 string relationKey = 1;
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 2;
             }
 
             message Response {

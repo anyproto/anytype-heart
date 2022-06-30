@@ -334,17 +334,19 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 			return obI.Time().Unix() < obJ.Time().Unix()
 		})
 	case model.RelationFormat_tag:
+		filters := []*model.BlockContentDataviewFilter{
+			{RelationKey: "isDeleted", Condition: model.BlockContentDataviewFilter_Equal},
+			{RelationKey: "isArchived", Condition: model.BlockContentDataviewFilter_Equal},
+			{RelationKey: "type", Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{
+				"_otfile",
+				"_otimage",
+				"_otvideo",
+				"_otaudio",
+			})},
+		}
+		filters = append(filters, req.Filters...)
 		records, _, err := store.Query(nil, database.Query{
-			Filters:          []*model.BlockContentDataviewFilter{
-				{RelationKey: "isDeleted", Condition: model.BlockContentDataviewFilter_Equal},
-				{RelationKey: "isArchived", Condition: model.BlockContentDataviewFilter_Equal},
-				{RelationKey: "type", Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{
-					"_otfile",
-					"_otimage",
-					"_otvideo",
-					"_otaudio",
-				})},
-			},
+			Filters: filters,
 		})
 
 		if err != nil {
