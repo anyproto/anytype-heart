@@ -11,6 +11,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/golang-jwt/jwt/v4"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 const wordCount int = 12
@@ -139,8 +141,7 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"foo": "bar",
-		"nbf": time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
+		"expiresAt": time.Now().Add(10 * time.Minute).Unix(),
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
@@ -150,4 +151,48 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	}
 
 	return response(tokenString, pb.RpcWalletCreateSessionResponseError_NULL, nil)
+}
+
+func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		log.Errorf("missing metadata")
+	}
+
+	v := md.Get("token")
+	if len(v) > 0 {
+		tok := v[0]
+
+		token, err := jwt.Parse(tok, func(token *jwt.Token) (interface{}, error) {
+			// Don't forget to validate the alg is what you expect:
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			}
+
+			acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
+			if err != nil {
+				return nil, err
+			}
+			priv, err := acc.MarshalBinary()
+			if err != nil {
+				return nil, err
+			}
+			// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
+			return priv, nil
+		})
+		if err != nil {
+			log.Errorf("parse token: %s", err)
+		}
+
+		if token != nil && !token.Valid {
+			log.Errorf("invalid token")
+		}
+
+		if token != nil {
+			fmt.Println(token.Claims)
+		}
+	}
+
+	resp, err = handler(ctx, req)
+	return
 }

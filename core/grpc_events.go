@@ -14,27 +14,6 @@ import (
 )
 
 func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_ListenEventsServer) {
-	var sender *event.GrpcSender
-	var ok bool
-	if sender, ok = mw.EventSender.(*event.GrpcSender); ok {
-		sender.SetServer(server)
-	} else {
-		log.Fatal("failed to ListenEvents: has a wrong Sender")
-		return
-	}
-
-	sender.ServerMutex.Lock()
-	serverCh := sender.ServerCh
-	sender.ServerMutex.Unlock()
-
-	var stopChan = make(chan os.Signal, 2)
-	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-	select {
-	case <-stopChan:
-		return
-	case <-serverCh:
-		return
-	}
 }
 
 func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {

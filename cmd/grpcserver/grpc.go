@@ -15,8 +15,6 @@ import (
 	"syscall"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"google.golang.org/grpc/metadata"
-
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -106,15 +104,7 @@ func main() {
 	if metrics.Enabled {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
-	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		// TODO: check authorization
-		md, ok := metadata.FromIncomingContext(ctx)
-		if ok {
-			fmt.Println("MD: ", md)
-		}
-		resp, err = handler(ctx, req)
-		return
-	})
+	unaryInterceptors = append(unaryInterceptors, mw.Authorize)
 
 	grpcDebug, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_LOG"))
 	if grpcDebug > 0 {
