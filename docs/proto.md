@@ -656,6 +656,10 @@
     - [Rpc.Unsplash.Search.Response.Error](#anytype-Rpc-Unsplash-Search-Response-Error)
     - [Rpc.Unsplash.Search.Response.Picture](#anytype-Rpc-Unsplash-Search-Response-Picture)
     - [Rpc.Wallet](#anytype-Rpc-Wallet)
+    - [Rpc.Wallet.CloseSession](#anytype-Rpc-Wallet-CloseSession)
+    - [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request)
+    - [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response)
+    - [Rpc.Wallet.CloseSession.Response.Error](#anytype-Rpc-Wallet-CloseSession-Response-Error)
     - [Rpc.Wallet.Convert](#anytype-Rpc-Wallet-Convert)
     - [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request)
     - [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response)
@@ -849,6 +853,7 @@
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype-Rpc-Unsplash-Download-Response-Error-Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
+    - [Rpc.Wallet.CloseSession.Response.Error.Code](#anytype-Rpc-Wallet-CloseSession-Response-Error-Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype-Rpc-Wallet-Convert-Response-Error-Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype-Rpc-Wallet-Create-Response-Error-Code)
     - [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype-Rpc-Wallet-CreateSession-Response-Error-Code)
@@ -1137,6 +1142,7 @@
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request) | [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
+| WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request) | [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response) |  |
 | WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request) | [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response) |  |
@@ -10776,6 +10782,62 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Wallet-CloseSession"></a>
+
+### Rpc.Wallet.CloseSession
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-CloseSession-Request"></a>
+
+### Rpc.Wallet.CloseSession.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-CloseSession-Response"></a>
+
+### Rpc.Wallet.CloseSession.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Wallet.CloseSession.Response.Error](#anytype-Rpc-Wallet-CloseSession-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-CloseSession-Response-Error"></a>
+
+### Rpc.Wallet.CloseSession.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Wallet.CloseSession.Response.Error.Code](#anytype-Rpc-Wallet-CloseSession-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Wallet-Convert"></a>
 
 ### Rpc.Wallet.Convert
@@ -10905,12 +10967,12 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 <a name="anytype-Rpc-Wallet-CreateSession-Request"></a>
 
 ### Rpc.Wallet.CreateSession.Request
-Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
+
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| mnemonic | [string](#string) |  | Mnemonic of a wallet to recover |
+| mnemonic | [string](#string) |  |  |
 
 
 
@@ -10920,12 +10982,12 @@ Front end to middleware request-to-recover-a wallet with this mnemonic and a roo
 <a name="anytype-Rpc-Wallet-CreateSession-Response"></a>
 
 ### Rpc.Wallet.CreateSession.Response
-Middleware-to-front-end response, that can contain a NULL error or a non-NULL error
+
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Wallet.CreateSession.Response.Error](#anytype-Rpc-Wallet-CreateSession-Response-Error) |  | Error while trying to recover a wallet |
+| error | [Rpc.Wallet.CreateSession.Response.Error](#anytype-Rpc-Wallet-CreateSession-Response-Error) |  |  |
 | token | [string](#string) |  |  |
 
 
@@ -13390,6 +13452,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Wallet-CloseSession-Response-Error-Code"></a>
+
+### Rpc.Wallet.CloseSession.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Wallet-Convert-Response-Error-Code"></a>
 
 ### Rpc.Wallet.Convert.Response.Error.Code
@@ -13424,10 +13499,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| NULL | 0 | No error; wallet successfully recovered |
-| UNKNOWN_ERROR | 1 | Any other errors |
-| BAD_INPUT | 2 | Root path or mnemonic is wrong |
-| FAILED_TO_CREATE_LOCAL_REPO | 101 |  |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -151,6 +152,22 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	}
 
 	return response(tokenString, pb.RpcWalletCreateSessionResponseError_NULL, nil)
+}
+
+func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse {
+	response := func(code pb.RpcWalletCloseSessionResponseErrorCode, err error) *pb.RpcWalletCloseSessionResponse {
+		m := &pb.RpcWalletCloseSessionResponse{Error: &pb.RpcWalletCloseSessionResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	if sender, ok := mw.EventSender.(*event.GrpcSender); ok {
+		sender.CloseSession(req.Token)
+	}
+	return response(pb.RpcWalletCloseSessionResponseError_NULL, nil)
 }
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {

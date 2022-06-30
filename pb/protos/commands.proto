@@ -178,29 +178,42 @@ message Rpc {
         }
 
         message CreateSession {
-            /**
-            * Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
-            */
             message Request {
-                string mnemonic = 1; // Mnemonic of a wallet to recover
+                string mnemonic = 1;
             }
 
-            /**
-            * Middleware-to-front-end response, that can contain a NULL error or a non-NULL error
-            */
             message Response {
-                Error error = 1; // Error while trying to recover a wallet
+                Error error = 1;
                 string token = 2;
                 message Error {
                     Code code = 1;
                     string description = 2;
 
                     enum Code {
-                        NULL = 0; // No error; wallet successfully recovered
-                        UNKNOWN_ERROR = 1; // Any other errors
-                        BAD_INPUT = 2; // Root path or mnemonic is wrong
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
 
-                        FAILED_TO_CREATE_LOCAL_REPO = 101;
+                    }
+                }
+            }
+        }
+
+        message CloseSession {
+            message Request {
+                string token = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                     }
                 }
             }

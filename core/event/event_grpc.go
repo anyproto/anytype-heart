@@ -95,3 +95,15 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 	es.Servers[token] = srv
 	return srv
 }
+
+func (es *GrpcSender) CloseSession(token string) {
+	es.ServerMutex.Lock()
+	defer es.ServerMutex.Unlock()
+
+	s, ok := es.Servers[token]
+	if ok {
+		log.Errorf("method close session %s", token)
+		close(s.Done)
+		delete(es.Servers, token)
+	}
+}
