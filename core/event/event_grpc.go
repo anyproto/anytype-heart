@@ -4,7 +4,6 @@
 package event
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -40,7 +39,6 @@ func (es *GrpcSender) Send(pb *pb.Event) {
 
 	var toClose []string
 	for id, s := range es.Servers {
-		fmt.Println("send to server", id)
 		err := s.Server.Send(pb)
 		if err != nil {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
@@ -67,7 +65,6 @@ func (es *GrpcSender) SendSession(sessionId string, pb *pb.Event) {
 		if id == sessionId {
 			continue
 		}
-		fmt.Println("send to server session", id)
 		err := s.Server.Send(pb)
 		if err != nil {
 			log.Errorf("failed to send event: %s", err.Error())

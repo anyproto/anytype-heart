@@ -17,6 +17,11 @@ func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_Listen
 }
 
 func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {
+	// TODO: check token here
+	if req.Token == "" {
+		log.Error("ListenSessionEvents: empty token")
+		return
+	}
 	var srv event.SessionServer
 	if sender, ok := mw.EventSender.(*event.GrpcSender); ok {
 		srv = sender.SetSessionServer(req.Token, server)
