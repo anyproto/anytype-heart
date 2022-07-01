@@ -91,11 +91,11 @@ func main() {
 	}
 	addr = lis.Addr().String()
 
-	//webLis, err := net.Listen("tcp", webaddr)
-	//if err != nil {
-	//	log.Fatalf("failed to listen: %v", err)
-	//}
-	//webaddr = webLis.Addr().String()
+	webLis, err := net.Listen("tcp", webaddr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	webaddr = webLis.Addr().String()
 	var (
 		unaryInterceptors  []grpc.UnaryServerInterceptor
 		streamInterceptors []grpc.StreamServerInterceptor
@@ -216,12 +216,12 @@ func main() {
 	fmt.Println("gRPC server started at: " + addr)
 
 	go func() {
-		if err := proxy.ListenAndServeTLS("./cert/localhost.pem", "./cert/localhost.key"); err != nil {
-			log.Fatal(err)
-		}
-		//if err := proxy.Serve(webLis); err != nil && err != http.ErrServerClosed {
-		//	log.Fatalf("proxy error: %v", err)
+		//if err := proxy.ListenAndServeTLS("./cert/localhost.pem", "./cert/localhost.key"); err != nil {
+		//	log.Fatal(err)
 		//}
+		if err := proxy.ServeTLS(webLis, "./cert/localhost.pem", "./cert/localhost.key"); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("proxy error: %v", err)
+		}
 	}()
 
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
