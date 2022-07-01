@@ -1033,7 +1033,9 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			c := pbtypes.CopyRelation(rel)
 
 			if existingRelation != nil && (existingRelation.ReadOnlyRelation || rel.Name == "") {
+				dict := c.SelectDict
 				c = existingRelation
+				c.SelectDict = dict
 			} else if existingRelation != nil && !pbtypes.RelationCompatible(existingRelation, rel) {
 				return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
 			}
