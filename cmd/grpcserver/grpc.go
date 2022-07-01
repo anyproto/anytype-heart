@@ -203,13 +203,11 @@ func main() {
 	}
 
 	proxy.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("START ", r.URL.Path)
 		if webrpc.IsGrpcWebRequest(r) ||
 			webrpc.IsAcceptableGrpcCorsRequest(r) ||
 			webrpc.IsGrpcWebSocketRequest(r) {
 			webrpc.ServeHTTP(w, r)
 		}
-		fmt.Println("END ", r.URL.Path)
 	})
 
 	go func() {
