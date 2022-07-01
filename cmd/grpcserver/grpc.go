@@ -91,11 +91,11 @@ func main() {
 	}
 	addr = lis.Addr().String()
 
-	webLis, err := net.Listen("tcp", webaddr)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	webaddr = webLis.Addr().String()
+	//webLis, err := net.Listen("tcp", webaddr)
+	//if err != nil {
+	//	log.Fatalf("failed to listen: %v", err)
+	//}
+	//webaddr = webLis.Addr().String()
 	var (
 		unaryInterceptors  []grpc.UnaryServerInterceptor
 		streamInterceptors []grpc.StreamServerInterceptor
@@ -104,7 +104,7 @@ func main() {
 	if metrics.Enabled {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
-	unaryInterceptors = append(unaryInterceptors, mw.Authorize)
+	//unaryInterceptors = append(unaryInterceptors, mw.Authorize)
 
 	grpcDebug, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_LOG"))
 	if grpcDebug > 0 {
@@ -203,11 +203,13 @@ func main() {
 	}
 
 	proxy.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("START ", r.URL.Path)
 		if webrpc.IsGrpcWebRequest(r) ||
 			webrpc.IsAcceptableGrpcCorsRequest(r) ||
 			webrpc.IsGrpcWebSocketRequest(r) {
 			webrpc.ServeHTTP(w, r)
 		}
+		fmt.Println("END ", r.URL.Path)
 	})
 
 	go func() {
@@ -216,9 +218,12 @@ func main() {
 	fmt.Println("gRPC server started at: " + addr)
 
 	go func() {
-		if err := proxy.Serve(webLis); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("proxy error: %v", err)
+		if err := proxy.ListenAndServeTLS("./cert/localhost.pem", "./cert/localhost.key"); err != nil {
+			log.Fatal(err)
 		}
+		//if err := proxy.Serve(webLis); err != nil && err != http.ErrServerClosed {
+		//	log.Fatalf("proxy error: %v", err)
+		//}
 	}()
 
 	// do not change this, js client relies on this msg to ensure that server is up and parse address

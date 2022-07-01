@@ -268,6 +268,9 @@ func (t *textImpl) flushSetTextState() {
 		for _, msg := range msgs {
 			if msg.GetBlockSetText() == nil {
 				filteredMsgs = append(filteredMsgs, msg)
+			} else {
+				// TODO temp
+				t.SendEvent([]*pb.EventMessage{msg})
 			}
 		}
 		if len(filteredMsgs) > 0 {
