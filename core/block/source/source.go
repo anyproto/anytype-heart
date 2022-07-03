@@ -333,9 +333,10 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:         params.State.BlocksToSave(),
 				Details:        params.State.Details(),
-				ExtraRelations: params.State.ExtraRelations(),
+				ExtraRelations: nil,
 				ObjectTypes:    params.State.ObjectTypes(),
 				Collections:    params.State.Store(),
+				RelationLinks:  params.State.PickRelationLinks(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}

@@ -669,7 +669,6 @@ func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
 		template.WithRequiredRelations(),
-		template.WithMaxCountMigration,
 	}
 	var blockContent *model.BlockContentOfDataview
 	if dvSchema != nil {

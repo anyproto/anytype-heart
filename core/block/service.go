@@ -374,7 +374,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 				ob.Lock()
 				defer ob.Unlock()
 				bs := ob.NewState()
-				return bs.GetAllFileHashes(bs.FileRelationKeys())
+				return bs.GetAllFileHashes(ob.FileRelationKeys(bs))
 			}
 		)
 
@@ -761,7 +761,7 @@ func (s *service) DeleteObject(id string) (err error) {
 		}
 		b.ObjectClose()
 		st := b.NewState()
-		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
+		fileHashes = st.GetAllFileHashes(b.FileRelationKeys(st))
 		workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
 		if workspaceId == "" {
 			workspaceId = s.anytype.PredefinedBlocks().Account

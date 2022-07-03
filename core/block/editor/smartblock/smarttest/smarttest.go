@@ -103,12 +103,8 @@ func (st *SmartTest) HasRelation(relationKey string) bool {
 	return st.NewState().HasRelation(relationKey)
 }
 
-func (st *SmartTest) Relations() []*model.Relation {
-	return st.Doc.ExtraRelations()
-}
-
-func (st *SmartTest) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
-	return st.Doc.ExtraRelations()
+func (st *SmartTest) Relations(s *state.State) []*model.Relation {
+	return nil
 }
 
 func (st *SmartTest) DefaultObjectTypeUrl() string {
@@ -150,7 +146,6 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
-			Relations: st.ExtraRelations(),
 			Details: &types.Struct{
 				Fields: make(map[string]*types.Value),
 			}}

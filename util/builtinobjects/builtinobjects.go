@@ -234,10 +234,10 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 
 func (b *builtinObjects) validate(st *state.State) (err error) {
 	var relKeys []string
-	for _, rel := range st.ExtraRelations() {
+	for _, rel := range st.PickRelationLinks() {
 		if !bundle.HasRelation(rel.Key) {
 			// todo: temporarily, make this as error
-			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Key, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
 			//return fmt.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
 		}
 	}

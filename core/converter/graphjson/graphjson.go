@@ -84,7 +84,8 @@ func (g *graphjson) Add(st *state.State) error {
 	}
 
 	g.nodes[st.RootId()] = &n
-	for _, rel := range st.ExtraRelations() {
+	// TODO: rewrite to relation service
+	for _, rel := range st.OldExtraRelations() {
 		if rel.Format != model.RelationFormat_object {
 			continue
 		}

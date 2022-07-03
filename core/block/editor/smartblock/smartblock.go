@@ -121,6 +121,7 @@ type SmartBlock interface {
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
 	ObjectClose()
+	FileRelationKeys(s *state.State) []string
 
 	ocache.ObjectLocker
 	state.Doc
@@ -162,6 +163,18 @@ type smartBlock struct {
 
 	recordsSub      database.Subscription
 	closeRecordsSub func()
+}
+
+func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
+	for _, rel := range sb.Relations(s) {
+		// coverId can contains both hash or predefined cover id
+		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
+			if slice.FindPos(fileKeys, rel.Key) == -1 {
+				fileKeys = append(fileKeys, rel.Key)
+			}
+		}
+	}
+	return
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
@@ -596,7 +609,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	changes := st.GetChanges()
 	pushChange := func() {
-		fileDetailsKeys := st.FileRelationKeys()
+		fileDetailsKeys := sb.FileRelationKeys(st)
 		fileDetailsKeysFiltered := fileDetailsKeys[:0]
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
@@ -770,7 +783,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetD
 				return fmt.Errorf("relation not found: you should add the missing relation first")
 			}
 
-			err = s.ValidateNewDetail(detail.Key, detail.Value)
+			err = sb.RelationService().ValidateFormat(detail.Key, detail.Value)
 			if err != nil {
 				return fmt.Errorf("relation %s validation failed: %s", detail.Key, err.Error())
 			}
@@ -1267,7 +1280,7 @@ func (sb *smartBlock) GetDocInfo() (doc.DocInfo, error) {
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
-	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
+	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
 		creator = sb.Anytype().ProfileID()

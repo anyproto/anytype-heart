@@ -23,9 +23,6 @@ func State(s *state.State) (res *state.State) {
 		return true
 	})
 	s.SetDetails(Struct(s.Details()))
-	for i, er := range s.ExtraRelations() {
-		s.ExtraRelations()[i] = Relation(er)
-	}
 	return
 }
 

@@ -15780,9 +15780,10 @@ scope from which this relation have been aggregated |
 | blocks | [Block](#anytype.model.Block) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| extraRelations | [Relation](#anytype.model.Relation) | repeated |  |
+| extraRelations | [Relation](#anytype.model.Relation) | repeated | deprecated |
 | objectTypes | [string](#string) | repeated |  |
 | collections | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| relationLinks | [RelationLink](#anytype.model.RelationLink) | repeated |  |
 
 
 

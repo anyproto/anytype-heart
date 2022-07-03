@@ -708,7 +708,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
 		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		RelationsCount:          len(info.State.ExtraRelations()),
+		RelationsCount:          len(info.State.PickRelationLinks()),
 		DetailsCount:            detailsCount,
 	})
 

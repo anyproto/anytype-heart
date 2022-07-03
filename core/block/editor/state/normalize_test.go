@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -314,110 +313,6 @@ func TestState_Normalize(t *testing.T) {
 		ApplyState(s, true)
 		assert.Equal(t, "header", s.Pick(s.RootId()).Model().ChildrenIds[0])
 	})
-
-	t.Run("normalize relation: reset status max count", func(t *testing.T) {
-		r := NewDoc("root", nil).(*State)
-		r1 := &model.Relation{
-			Key:      "a1",
-			Format:   model.RelationFormat_status,
-			Name:     "test",
-			MaxCount: 0,
-		}
-		r.AddRelation(r1)
-
-		s := r.NewState()
-		s.NormalizeRelations()
-		ApplyState(s, true)
-		assert.Equal(t, int32(1), pbtypes.GetRelation(s.ExtraRelations(), "a1").MaxCount)
-	})
-
-	t.Run("normalize relation: bundled relations should be normalized", func(t *testing.T) {
-		creator := "_anytype_profile"
-		for _, rel := range bundle.ListRelations() {
-			_, wasNormalized := normalizeRelation(rel, creator)
-			assert.False(t, wasNormalized, "bundled relation %s is not normalized", rel.Key)
-		}
-	})
-
-	t.Run("normalize relation: revert bundle relation", func(t *testing.T) {
-		r := NewDoc("root", nil).(*State)
-		r1 := bundle.MustGetRelation(bundle.RelationKeyDone)
-		r1.Name = "Done2"
-		r.AddRelation(r1)
-
-		s := r.NewState()
-		s.NormalizeRelations()
-		ApplyState(s, true)
-		assert.Equal(t, "Done", pbtypes.GetRelation(s.ExtraRelations(), bundle.RelationKeyDone.String()).Name)
-	})
-
-	t.Run("normalize dv: reset status max count", func(t *testing.T) {
-		r := NewDoc("root", nil).(*State)
-		r1 := &model.Relation{
-			Key:      "a1",
-			Format:   model.RelationFormat_status,
-			Name:     "test",
-			MaxCount: 0,
-		}
-		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"dataview"}}))
-
-		r.Add(simple.New(&model.Block{
-			Id: "dataview",
-			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
-				Relations: []*model.Relation{r1},
-			}},
-		}))
-
-		s := r.NewState()
-		d := s.Pick("dataview")
-		s.normalizeDvRelations(d)
-		ApplyState(s, true)
-
-		assert.Equal(t, int32(1), pbtypes.GetRelation(r.Pick("dataview").Model().GetDataview().Relations, "a1").MaxCount)
-	})
-
-	t.Run("normalize dv: revert bundle relation", func(t *testing.T) {
-		r := NewDoc("root", nil).(*State)
-		r1 := bundle.MustGetRelation(bundle.RelationKeyDone)
-		r1.Name = "Done2"
-
-		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"dataview"}}))
-
-		r.Add(simple.New(&model.Block{
-			Id: "dataview",
-			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
-				Relations: []*model.Relation{r1},
-			}},
-		}))
-
-		s := r.NewState()
-		d := s.Pick("dataview")
-		s.normalizeDvRelations(d)
-		ApplyState(s, true)
-
-		assert.Equal(t, "Done", pbtypes.GetRelation(r.Pick("dataview").Model().GetDataview().Relations, bundle.RelationKeyDone.String()).Name)
-	})
-
-	t.Run("normalize dv: remove duplicate relations", func(t *testing.T) {
-		r := NewDoc("root", nil).(*State)
-		r1 := &model.Relation{Name: "rel1", Key: "123", Format: model.RelationFormat_longtext}
-		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"dataview"}}))
-
-		r.Add(simple.New(&model.Block{
-			Id: "dataview",
-			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
-				Relations: []*model.Relation{pbtypes.CopyRelation(r1), pbtypes.CopyRelation(r1), pbtypes.CopyRelation(r1)},
-			}},
-		}))
-
-		s := r.NewState()
-		d := s.Pick("dataview")
-		s.normalizeDvRelations(d)
-		ApplyState(s, true)
-
-		assert.Len(t, r.Pick("dataview").Model().GetDataview().Relations, 1)
-	})
-
 }
 
 func TestCleanupLayouts(t *testing.T) {

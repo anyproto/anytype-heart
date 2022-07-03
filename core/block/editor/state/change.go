@@ -222,7 +222,7 @@ func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
 }
 
 func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
-	for _, rel := range s.ExtraRelations() {
+	for _, rel := range s.OldExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
 			log.Warnf("changeOldRelationAdd, relation already exists")
@@ -235,12 +235,12 @@ func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
 		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), rel)
+	s.extraRelations = append(pbtypes.CopyRelations(s.OldExtraRelations()), rel)
 	return nil
 }
 
 func (s *State) changeOldRelationRemove(remove *pb.Change_RelationRemove) error {
-	rels := pbtypes.CopyRelations(s.ExtraRelations())
+	rels := pbtypes.CopyRelations(s.OldExtraRelations())
 	for i, rel := range rels {
 		if rel.Key == remove.Key {
 			s.extraRelations = append(rels[:i], rels[i+1:]...)
@@ -253,7 +253,7 @@ func (s *State) changeOldRelationRemove(remove *pb.Change_RelationRemove) error 
 }
 
 func (s *State) changeOldRelationUpdate(update *pb.Change_RelationUpdate) error {
-	rels := pbtypes.CopyRelations(s.ExtraRelations())
+	rels := pbtypes.CopyRelations(s.OldExtraRelations())
 	for _, rel := range rels {
 		if rel.Key != update.Key {
 			continue

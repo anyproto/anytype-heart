@@ -43,7 +43,7 @@ type Doc interface {
 	CombinedDetails() *types.Struct
 	LocalDetails() *types.Struct
 
-	ExtraRelations() []*model.Relation
+	OldExtraRelations() []*model.Relation
 
 	ObjectTypes() []string
 	ObjectType() string
@@ -893,9 +893,9 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-func (s *State) ExtraRelations() []*model.Relation {
+func (s *State) OldExtraRelations() []*model.Relation {
 	if s.extraRelations == nil && s.parent != nil {
-		return s.parent.ExtraRelations()
+		return s.parent.OldExtraRelations()
 	}
 	return s.extraRelations
 }
@@ -937,18 +937,6 @@ func (s *State) Snippet() (snippet string) {
 		return true
 	})
 	return text.Truncate(snippet, snippetMaxSize)
-}
-
-func (s *State) FileRelationKeys() (fileKeys []string) {
-	for _, rel := range s.ExtraRelations() {
-		// coverId can contains both hash or predefined cover id
-		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
-			if slice.FindPos(fileKeys, rel.Key) == -1 {
-				fileKeys = append(fileKeys, rel.Key)
-			}
-		}
-	}
-	return
 }
 
 func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
@@ -1036,47 +1024,11 @@ func (s *State) DepSmartIds() (ids []string) {
 	return
 }
 
-func (s *State) ValidateNewDetail(key string, v *types.Value) (err error) {
-	rel := pbtypes.GetRelation(s.ExtraRelations(), key)
-	if rel == nil {
-		return fmt.Errorf("relation for detail not found")
-	}
-
-	if err := validateRelationFormat(rel, v); err != nil {
-		log.Errorf("relation %s(%s) failed to validate: %s", rel.Key, rel.Format, err.Error())
-		return fmt.Errorf("format validation failed: %s", err.Error())
-	}
-
-	return nil
-}
-
-func (s *State) ValidateRelations() (err error) {
-	var details = s.Details()
-	if details == nil {
-		return nil
-	}
-
-	for k, v := range details.Fields {
-		rel := pbtypes.GetRelation(s.ExtraRelations(), k)
-		if rel == nil {
-			return fmt.Errorf("relation for detail %s not found", k)
-		}
-		if err := validateRelationFormat(rel, v); err != nil {
-			return fmt.Errorf("relation %s(%s) failed to validate: %s", rel.Key, rel.Format.String(), err.Error())
-		}
-	}
-	return nil
-}
-
 func (s *State) Validate() (err error) {
 	var (
 		err2        error
 		childrenIds = make(map[string]string)
 	)
-
-	if err = s.ValidateRelations(); err != nil {
-		return fmt.Errorf("failed to validate relations: %s", err.Error())
-	}
 
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		for _, cid := range b.Model().ChildrenIds {
@@ -1151,7 +1103,12 @@ func (s *State) Copy() *State {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
 	}
 	relationLinks := make([]*model.RelationLink, len(s.relationLinks))
-	copy(relationLinks, s.relationLinks)
+	for i, rl := range s.relationLinks {
+		relationLinks[i] = &model.RelationLink{
+			Id:  rl.Id,
+			Key: rl.Key,
+		}
+	}
 	copy := &State{
 		ctx:                         s.ctx,
 		blocks:                      blocks,
@@ -1159,7 +1116,7 @@ func (s *State) Copy() *State {
 		details:                     pbtypes.CopyStruct(s.Details()),
 		localDetails:                pbtypes.CopyStruct(s.LocalDetails()),
 		relationLinks:               relationLinks,
-		extraRelations:              pbtypes.CopyRelations(s.ExtraRelations()),
+		extraRelations:              pbtypes.CopyRelations(s.OldExtraRelations()),
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,
 		noObjectType:                s.noObjectType,
@@ -1169,7 +1126,7 @@ func (s *State) Copy() *State {
 }
 
 func (s *State) HasRelation(key string) bool {
-	for _, rel := range s.ExtraRelations() {
+	for _, rel := range s.relationLinks {
 		if rel.Key == key {
 			return true
 		}

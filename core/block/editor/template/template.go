@@ -108,27 +108,6 @@ var WithRequiredRelations = func() StateTransformer {
 	return WithRelations(bundle.RequiredInternalRelations)
 }
 
-var WithMaxCountMigration = func(s *state.State) {
-	d := s.Details()
-	if d == nil || d.Fields == nil {
-		return
-	}
-
-	rels := s.ExtraRelations()
-	for k, v := range d.Fields {
-		rel := pbtypes.GetRelation(rels, k)
-		if rel == nil {
-			log.Errorf("obj %s relation %s is missing but detail is set", s.RootId(), k)
-		} else if rel.MaxCount == 1 {
-			if b := v.GetListValue(); b != nil {
-				if len(b.Values) > 0 {
-					d.Fields[k] = pbtypes.CopyVal(b.Values[0])
-				}
-			}
-		}
-	}
-}
-
 var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {

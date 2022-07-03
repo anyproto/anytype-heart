@@ -23,9 +23,10 @@ func (p *pbj) Convert() []byte {
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:         st.BlocksToSave(),
 			Details:        st.CombinedDetails(),
-			ExtraRelations: st.ExtraRelations(),
+			ExtraRelations: st.OldExtraRelations(),
 			ObjectTypes:    st.ObjectTypes(),
 			Collections:    st.Store(),
+			RelationLinks:  st.PickRelationLinks(),
 		},
 	}
 	for _, fk := range p.s.GetAndUnsetFileKeys() {
