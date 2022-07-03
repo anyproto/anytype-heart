@@ -331,3 +331,23 @@ func (mw *Middleware) ObjectCreateSet(req *pb.RpcObjectCreateSetRequest) *pb.Rpc
 func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectType, error) {
 	return objectstore.GetObjectType(at.ObjectStore(), url)
 }
+
+func (mw *Middleware) RelationCreate(request *pb.RpcRelationCreateRequest) *pb.RpcRelationCreateResponse {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mw *Middleware) RelationCreateOption(request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mw *Middleware) RelationListRemoveOption(request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mw *Middleware) RelationOptions(request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
+	//TODO implement me
+	panic("implement me")
+}

@@ -579,6 +579,23 @@
     - [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request)
     - [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response)
     - [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error)
+    - [Rpc.Relation](#anytype.Rpc.Relation)
+    - [Rpc.Relation.Create](#anytype.Rpc.Relation.Create)
+    - [Rpc.Relation.Create.Request](#anytype.Rpc.Relation.Create.Request)
+    - [Rpc.Relation.Create.Response](#anytype.Rpc.Relation.Create.Response)
+    - [Rpc.Relation.Create.Response.Error](#anytype.Rpc.Relation.Create.Response.Error)
+    - [Rpc.Relation.CreateOption](#anytype.Rpc.Relation.CreateOption)
+    - [Rpc.Relation.CreateOption.Request](#anytype.Rpc.Relation.CreateOption.Request)
+    - [Rpc.Relation.CreateOption.Response](#anytype.Rpc.Relation.CreateOption.Response)
+    - [Rpc.Relation.CreateOption.Response.Error](#anytype.Rpc.Relation.CreateOption.Response.Error)
+    - [Rpc.Relation.ListRemoveOption](#anytype.Rpc.Relation.ListRemoveOption)
+    - [Rpc.Relation.ListRemoveOption.Request](#anytype.Rpc.Relation.ListRemoveOption.Request)
+    - [Rpc.Relation.ListRemoveOption.Response](#anytype.Rpc.Relation.ListRemoveOption.Response)
+    - [Rpc.Relation.ListRemoveOption.Response.Error](#anytype.Rpc.Relation.ListRemoveOption.Response.Error)
+    - [Rpc.Relation.Options](#anytype.Rpc.Relation.Options)
+    - [Rpc.Relation.Options.Request](#anytype.Rpc.Relation.Options.Request)
+    - [Rpc.Relation.Options.Response](#anytype.Rpc.Relation.Options.Response)
+    - [Rpc.Relation.Options.Response.Error](#anytype.Rpc.Relation.Options.Response.Error)
     - [Rpc.Template](#anytype.Rpc.Template)
     - [Rpc.Template.Clone](#anytype.Rpc.Template.Clone)
     - [Rpc.Template.Clone.Request](#anytype.Rpc.Template.Clone.Request)
@@ -777,6 +794,10 @@
     - [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.List.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Remove.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
+    - [Rpc.Relation.Create.Response.Error.Code](#anytype.Rpc.Relation.Create.Response.Error.Code)
+    - [Rpc.Relation.CreateOption.Response.Error.Code](#anytype.Rpc.Relation.CreateOption.Response.Error.Code)
+    - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype.Rpc.Relation.ListRemoveOption.Response.Error.Code)
+    - [Rpc.Relation.Options.Response.Error.Code](#anytype.Rpc.Relation.Options.Response.Error.Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype.Rpc.Template.Clone.Response.Error.Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype.Rpc.Template.CreateFromObject.Response.Error.Code)
     - [Rpc.Template.CreateFromObjectType.Response.Error.Code](#anytype.Rpc.Template.CreateFromObjectType.Response.Error.Code)
@@ -1110,6 +1131,10 @@
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype.Rpc.Object.ListExport.Request) | [Rpc.Object.ListExport.Response](#anytype.Rpc.Object.ListExport.Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype.Rpc.Object.BookmarkFetch.Request) | [Rpc.Object.BookmarkFetch.Response](#anytype.Rpc.Object.BookmarkFetch.Response) |  |
 | ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype.Rpc.Object.ToBookmark.Request) | [Rpc.Object.ToBookmark.Response](#anytype.Rpc.Object.ToBookmark.Response) |  |
+| RelationCreate | [Rpc.Relation.Create.Request](#anytype.Rpc.Relation.Create.Request) | [Rpc.Relation.Create.Response](#anytype.Rpc.Relation.Create.Response) | Relations *** |
+| RelationCreateOption | [Rpc.Relation.CreateOption.Request](#anytype.Rpc.Relation.CreateOption.Request) | [Rpc.Relation.CreateOption.Response](#anytype.Rpc.Relation.CreateOption.Response) |  |
+| RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype.Rpc.Relation.ListRemoveOption.Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype.Rpc.Relation.ListRemoveOption.Response) |  |
+| RelationOptions | [Rpc.Relation.Options.Request](#anytype.Rpc.Relation.Options.Request) | [Rpc.Relation.Options.Response](#anytype.Rpc.Relation.Options.Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype.Rpc.ObjectRelation.Add.Request) | [Rpc.ObjectRelation.Add.Response](#anytype.Rpc.ObjectRelation.Add.Response) | Object Relations *** |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype.Rpc.ObjectRelation.Delete.Request) | [Rpc.ObjectRelation.Delete.Response](#anytype.Rpc.ObjectRelation.Delete.Response) |  |
 | ObjectRelationAddFeatured | [Rpc.ObjectRelation.AddFeatured.Request](#anytype.Rpc.ObjectRelation.AddFeatured.Request) | [Rpc.ObjectRelation.AddFeatured.Response](#anytype.Rpc.ObjectRelation.AddFeatured.Response) |  |
@@ -9580,6 +9605,244 @@ Available undo/redo operations
 
 
 
+<a name="anytype.Rpc.Relation"></a>
+
+### Rpc.Relation
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Create"></a>
+
+### Rpc.Relation.Create
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Create.Request"></a>
+
+### Rpc.Relation.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Create.Response"></a>
+
+### Rpc.Relation.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.Create.Response.Error](#anytype.Rpc.Relation.Create.Response.Error) |  |  |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Create.Response.Error"></a>
+
+### Rpc.Relation.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.Create.Response.Error.Code](#anytype.Rpc.Relation.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.CreateOption"></a>
+
+### Rpc.Relation.CreateOption
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.CreateOption.Request"></a>
+
+### Rpc.Relation.CreateOption.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| option | [model.Relation.Option](#anytype.model.Relation.Option) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.CreateOption.Response"></a>
+
+### Rpc.Relation.CreateOption.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.CreateOption.Response.Error](#anytype.Rpc.Relation.CreateOption.Response.Error) |  |  |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.CreateOption.Response.Error"></a>
+
+### Rpc.Relation.CreateOption.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.CreateOption.Response.Error.Code](#anytype.Rpc.Relation.CreateOption.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.ListRemoveOption"></a>
+
+### Rpc.Relation.ListRemoveOption
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.ListRemoveOption.Request"></a>
+
+### Rpc.Relation.ListRemoveOption.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| optionIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.ListRemoveOption.Response"></a>
+
+### Rpc.Relation.ListRemoveOption.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.ListRemoveOption.Response.Error](#anytype.Rpc.Relation.ListRemoveOption.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.ListRemoveOption.Response.Error"></a>
+
+### Rpc.Relation.ListRemoveOption.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype.Rpc.Relation.ListRemoveOption.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Options"></a>
+
+### Rpc.Relation.Options
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Options.Request"></a>
+
+### Rpc.Relation.Options.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Options.Response"></a>
+
+### Rpc.Relation.Options.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.Options.Response.Error](#anytype.Rpc.Relation.Options.Response.Error) |  |  |
+| options | [model.RelationOptions](#anytype.model.RelationOptions) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Options.Response.Error"></a>
+
+### Rpc.Relation.Options.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.Options.Response.Error.Code](#anytype.Rpc.Relation.Options.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Template"></a>
 
 ### Rpc.Template
@@ -12265,6 +12528,58 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Process.Cancel.Response.Error.Code"></a>
 
 ### Rpc.Process.Cancel.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Relation.Create.Response.Error.Code"></a>
+
+### Rpc.Relation.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Relation.CreateOption.Response.Error.Code"></a>
+
+### Rpc.Relation.CreateOption.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Relation.ListRemoveOption.Response.Error.Code"></a>
+
+### Rpc.Relation.ListRemoveOption.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Relation.Options.Response.Error.Code"></a>
+
+### Rpc.Relation.Options.Response.Error.Code
 
 
 | Name | Number | Description |

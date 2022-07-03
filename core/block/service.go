@@ -755,6 +755,9 @@ func (s *service) DeleteObject(id string) (err error) {
 		workspaceId string
 		isFavorite  bool
 	)
+	if strings.Contains(id, "/") {
+		return fmt.Errorf("can't delete inherit objects")
+	}
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err

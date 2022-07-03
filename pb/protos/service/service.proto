@@ -74,6 +74,13 @@ service ClientCommands {
     rpc ObjectBookmarkFetch (anytype.Rpc.Object.BookmarkFetch.Request) returns (anytype.Rpc.Object.BookmarkFetch.Response);
     rpc ObjectToBookmark (anytype.Rpc.Object.ToBookmark.Request) returns (anytype.Rpc.Object.ToBookmark.Response);
 
+    // Relations
+    // ***
+    rpc RelationCreate(anytype.Rpc.Relation.Create.Request) returns (anytype.Rpc.Relation.Create.Response);
+    rpc RelationCreateOption(anytype.Rpc.Relation.CreateOption.Request) returns (anytype.Rpc.Relation.CreateOption.Response);
+    rpc RelationListRemoveOption(anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
+    rpc RelationOptions(anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
+
     // Object Relations
     // ***
     rpc ObjectRelationAdd (anytype.Rpc.ObjectRelation.Add.Request) returns (anytype.Rpc.ObjectRelation.Add.Response);

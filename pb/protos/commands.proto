@@ -1677,6 +1677,96 @@ message Rpc {
         }
     }
 
+    message Relation {
+        message Create {
+            message Request {
+                anytype.model.Relation relation = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                string id = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message CreateOption {
+            message Request {
+                string relationKey = 1;
+                anytype.model.Relation.Option option = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                string id = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message ListRemoveOption {
+            message Request {
+                repeated string optionIds = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message Options {
+            message Request {
+                string relationKey = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                model.RelationOptions options = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+    }
+
     message History {
         message Version {
             string id = 1;
@@ -3227,7 +3317,7 @@ message Rpc {
                     }
                 }
             }
-       }
+        }
     }
 
     message BlockRelation {
