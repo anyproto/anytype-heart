@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -49,6 +50,11 @@ func (o *Options) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}
 	}
+	if err = template.InitTemplate(ctx.State,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyRelationOptionList.URL()}),
+	); err != nil {
+		return
+	}
 	return o.Apply(ctx.State, smartblock.NoHooks)
 }
 
@@ -67,10 +73,11 @@ func (o *Options) CreateOption(opt *types.Struct) (id string, err error) {
 	subId := bson.NewObjectId().Hex()
 	id = o.Id() + "/" + subId
 	st := o.NewState()
+	st.SetObjectType(bundle.TypeKeyRelationOption.URL())
 	st.SetInStore([]string{optionsCollName, subId}, pbtypes.Struct(opt))
-	ids := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRelationDict.String())
+	ids := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRelationOptionsDict.String())
 	ids = append(ids, id)
-	st.SetDetail(bundle.RelationKeyRelationDict.String(), pbtypes.StringList(ids))
+	st.SetDetail(bundle.RelationKeyRelationOptionsDict.String(), pbtypes.StringList(ids))
 	if err = o.initOption(subId); err != nil {
 		return
 	}
@@ -113,7 +120,7 @@ func (o *Options) Locked() bool {
 func (o *Options) subState(subId string) (*state.State, error) {
 	id := o.Id() + "/" + subId
 	s := o.NewState()
-	ids := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationDict.String())
+	ids := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationOptionsDict.String())
 	if slice.FindPos(ids, id) == -1 {
 		return nil, ErrOptionNotFound
 	}
@@ -160,6 +167,15 @@ func NewOption() *Option {
 
 type Option struct {
 	smartblock.SmartBlock
+}
+
+func (o *Option) Init(ctx *smartblock.InitContext) (err error) {
+	if err = o.SmartBlock.Init(ctx); err != nil {
+		return
+	}
+	return smartblock.ObjectApplyTemplate(o, ctx.State,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyRelationOption.URL()}),
+	)
 }
 
 func (o *Option) SetStruct(st *types.Struct) error {

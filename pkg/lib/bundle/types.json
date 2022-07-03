@@ -505,7 +505,6 @@
       "mpAddedToLibrary",
       "relationFormat",
       "relationMaxCount",
-      "relationDict",
       "relationDefaultValue",
       "relationFormatObjectTypes"
     ],
@@ -906,6 +905,82 @@
     "types": [
       "STObjectType",
       "BundledObjectType"
+    ]
+  },
+  {
+    "description": "Object that contains options for relation",
+    "emoji": "🥚",
+    "hidden": true,
+    "id": "relationOptionList",
+    "layout": "relationOptionsList",
+    "name": "Relation options list",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "isFavorite",
+      "isDraft",
+      "workspaceId",
+      "internalFlags"
+    ],
+    "types": [
+      "RelationOptionList"
+    ]
+  },
+  {
+    "description": "Object that contains a relation option",
+    "emoji": "🥚",
+    "hidden": true,
+    "id": "relationOption",
+    "layout": "relationOption",
+    "name": "Relation option",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "isFavorite",
+      "isDraft",
+      "workspaceId",
+      "internalFlags"
+    ],
+    "types": [
+      "RelationOptionList"
     ]
   },
   {

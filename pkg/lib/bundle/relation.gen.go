@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "9ebc979f212efaee8cdaab526bc3617cc2d35043d14b354694dc5ad3c1e202a9"
+const RelationChecksum = "5e0b65f3a6bf42dc4f22772ef78e2d9f7c8e611314347f8c3c69958349dd4322"
 
 type RelationKey string
 
@@ -16,7 +16,7 @@ func (rk RelationKey) String() string {
 
 const (
 	RelationKeyMeditation                RelationKey = "meditation"
-	RelationKeyRelationDict              RelationKey = "relationDict"
+	RelationKeyRelationOptionsDict       RelationKey = "relationOptionsDict"
 	RelationKeyTag                       RelationKey = "tag"
 	RelationKeyCamera                    RelationKey = "camera"
 	RelationKeyHeightInPixels            RelationKey = "heightInPixels"
@@ -1628,17 +1628,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyRelationDict: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Strict dictionary to select relation values from",
-			Format:           model.RelationFormat_object,
-			Key:              "relationDict",
-			Name:             "Dictionary",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyRelationFormat: {
 
 			DataSource:       model.Relation_details,
@@ -1685,6 +1674,18 @@ var (
 			Key:              "relationMaxCount",
 			MaxCount:         1,
 			Name:             "Max values",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRelationOptionsDict: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Strict dictionary to select relation values from",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Key:              "relationOptionsDict",
+			Name:             "Dictionary",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

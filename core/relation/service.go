@@ -39,8 +39,10 @@ type Service interface {
 	FetchIds(ids ...string) (relations Relations, err error)
 	FetchId(id string) (relation *Relation, err error)
 	FetchKey(key string) (relation *Relation, err error)
-	Create(rel *model.Relation) (rl *model.RelationLink, err error)
 	FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error)
+
+	Create(rel *model.Relation) (rl *model.RelationLink, err error)
+
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
 }
@@ -140,6 +142,34 @@ func (s *service) fetchKey(key string) (relation *Relation, err error) {
 	return nil, ErrNotFound
 }
 
+func (s *service) fetchOptionsKey(key string) (relation *Relation, err error) {
+	q := database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Value:       pbtypes.String(key),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyType.String(),
+				Value:       pbtypes.String(bundle.TypeKeyRelation.String()),
+			},
+		},
+	}
+	f, err := database.NewFilters(q, nil)
+	if err != nil {
+		return
+	}
+	records, err := s.objectStore.QueryRaw(query.Query{
+		Filters: []query.Filter{f},
+	})
+	for _, rec := range records {
+		return RelationFromStruct(rec.Details), nil
+	}
+	return nil, ErrNotFound
+}
+
 func (s *service) Create(rel *model.Relation) (rl *model.RelationLink, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -206,7 +236,6 @@ func (s *service) migrateOptions(rel *model.Relation) (err error) {
 	return
 }
 
-// moved from state
 func (s *service) ValidateFormat(key string, v *types.Value) error {
 	r, err := s.FetchKey(key)
 	if err != nil {

@@ -578,6 +578,8 @@ message ObjectType {
         note = 9;
         space = 10;
         bookmark = 11;
+        relationOptionsList = 12;
+        relationOption = 13;
 
         database = 20; // to be released later
     }
