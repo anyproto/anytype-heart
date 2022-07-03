@@ -594,6 +594,8 @@ message RelationWithValue {
 
 // Relation describe the human-interpreted relation type. It may be something like "Date of creation, format=date" or "Assignee, format=objectId, objectType=person"
 message Relation {
+    string id = 100;
+
     // Key under which the value is stored in the map. Must be unique for the object type.
     // It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types.
     string key = 1;

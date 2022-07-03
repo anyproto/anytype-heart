@@ -34,9 +34,11 @@ type objectCreator interface {
 }
 
 type Service interface {
-	FetchIds(ids ...string) (relations []*Relation, err error)
+	FetchIds(ids ...string) (relations Relations, err error)
 	FetchId(id string) (relation *Relation, err error)
+	FetchKey(key string) (relation *Relation, err error)
 	Create(rel *model.Relation) (rl *model.RelationLink, err error)
+	FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error)
 	app.Component
 }
 
@@ -59,7 +61,17 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) FetchIds(ids ...string) (relations []*Relation, err error) {
+func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ids := make([]string, 0, len(links))
+	for _, l := range links {
+		ids = append(ids, l.Id)
+	}
+	return s.fetchIds(ids...)
+}
+
+func (s *service) FetchIds(ids ...string) (relations Relations, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.fetchIds(ids...)
@@ -70,7 +82,7 @@ func (s *service) fetchIds(ids ...string) (relations []*Relation, err error) {
 	if err != nil {
 		return
 	}
-	relations = make([]*Relation, 0, len(records))
+	relations = make(Relations, 0, len(records))
 	for _, rec := range records {
 		if pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.String() {
 			continue

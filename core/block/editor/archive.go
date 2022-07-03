@@ -3,7 +3,9 @@ package editor
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -41,7 +43,7 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 	return smartblock.ObjectApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoDuplicateLinks(), template.WithNoObjectTypes(), template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
 }
 
-func (p *Archive) Relations() []*model.Relation {
+func (p *Archive) Relations(_ *state.State) relation.Relations {
 	return nil
 }
 

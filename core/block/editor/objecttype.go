@@ -74,7 +74,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
-	rels := p.RelationsState(ctx.State, false)
+	rels := p.Relations(ctx.State)
 	var recommendedRelationsKeys []string
 	for _, relId := range pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String()) {
 		relKey, err := pbtypes.RelationIdToKey(relId)
@@ -109,7 +109,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	var recommendedRelations []*model.Relation
 	for _, rk := range recommendedRelationsKeys {
-		rel := pbtypes.GetRelation(rels, rk)
+		rel := rels.GetModelByKey(rk)
 		if rel == nil {
 			rel, _ = bundle.GetRelation(bundle.RelationKey(rk))
 			if rel == nil {
@@ -146,7 +146,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
 			}
 		}),
-		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
+		//template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),

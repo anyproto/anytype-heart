@@ -9,16 +9,10 @@ import (
 
 func RelationFromStruct(st *types.Struct) *Relation {
 	key := pbtypes.GetString(st, bundle.RelationKeyRelationKey.String())
-	if bundledRel, _ := bundle.GetRelation(bundle.RelationKey(key)); bundledRel != nil {
-		return &Relation{
-			Id:       pbtypes.GetString(st, bundle.RelationKeyId.String()),
-			Relation: bundledRel,
-		}
-	}
 	maxCount := int32(pbtypes.GetFloat64(st, bundle.RelationKeyRelationMaxCount.String()))
 	return &Relation{
-		Id: pbtypes.GetString(st, bundle.RelationKeyId.String()),
 		Relation: &model.Relation{
+			Id:               pbtypes.GetString(st, bundle.RelationKeyId.String()),
 			Key:              key,
 			Format:           model.RelationFormat(pbtypes.GetFloat64(st, bundle.RelationKeyRelationFormat.String())),
 			Name:             pbtypes.GetString(st, bundle.RelationKeyName.String()),
@@ -38,7 +32,6 @@ func RelationFromStruct(st *types.Struct) *Relation {
 }
 
 type Relation struct {
-	Id string
 	*model.Relation
 }
 
@@ -66,4 +59,30 @@ func (r *Relation) ToStruct() *types.Struct {
 			bundle.RelationKeyCreator.String():                   pbtypes.String(r.GetCreator()),
 		},
 	}
+}
+
+type Relations []*Relation
+
+func (rs Relations) Models() []*model.Relation {
+	res := make([]*model.Relation, 0, len(rs))
+	for _, r := range rs {
+		res = append(res, r.Relation)
+	}
+	return res
+}
+
+func (rs Relations) GetByKey(key string) *Relation {
+	for _, r := range rs {
+		if r.Key == key {
+			return r
+		}
+	}
+	return nil
+}
+
+func (rs Relations) GetModelByKey(key string) *model.Relation {
+	if r := rs.GetByKey(key); r != nil {
+		return r.Relation
+	}
+	return nil
 }

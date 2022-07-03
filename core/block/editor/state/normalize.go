@@ -2,13 +2,7 @@ package state
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -51,16 +45,6 @@ func (s *State) normalize(withLayouts bool) (err error) {
 			s.normalizeLayoutRow(b)
 		}
 	}
-
-	s.NormalizeRelations()
-	s.MigrateObjectTypes()
-
-	for _, b := range s.blocks {
-		if dv := b.Model().GetDataview(); dv != nil {
-			s.normalizeDvRelations(b)
-		}
-	}
-
 	if withLayouts {
 		return s.normalizeTree()
 	}
@@ -289,149 +273,4 @@ func CleanupLayouts(s *State) (removedCount int) {
 	}
 	cleanup(s.RootId())
 	return
-}
-
-func (s *State) MigrateObjectTypes() {
-	migrate := func(old string) (new string, hasChanges bool) {
-		if strings.HasPrefix(old, addr.OldCustomObjectTypeURLPrefix) {
-			new = strings.TrimPrefix(old, addr.OldCustomObjectTypeURLPrefix)
-			hasChanges = true
-		} else if strings.HasPrefix(old, addr.OldBundledObjectTypeURLPrefix) {
-			new = addr.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, addr.OldBundledObjectTypeURLPrefix)
-			hasChanges = true
-		} else {
-			new = old
-		}
-		return
-	}
-
-	migrateMultiple := func(old []string) (new []string, hasChanges bool) {
-		for _, o := range old {
-			el, hasChanges2 := migrate(o)
-			new = append(new, el)
-			hasChanges = hasChanges || hasChanges2
-		}
-		return
-	}
-
-	newObjObjType, hasChanges1 := migrate(s.ObjectType())
-	if hasChanges1 {
-		s.SetObjectType(newObjObjType)
-	}
-
-	b := s.Get("dataview")
-	if b != nil {
-		dv := b.Model().GetDataview()
-		dvBlock, ok := b.(dataview.Block)
-		if dv != nil && ok {
-			newDvSource, hasChanges1 := migrateMultiple(dv.Source)
-			if hasChanges1 {
-				dvBlock.SetSource(newDvSource)
-				s.Set(dvBlock)
-			}
-
-			for _, rel := range dv.Relations {
-				if len(rel.ObjectTypes) == 0 {
-					continue
-				}
-				var newOts []string
-				var hasChanges2 bool
-				for _, ot := range rel.ObjectTypes {
-					newOt, hasChanges1 := migrate(ot)
-					hasChanges2 = hasChanges2 || hasChanges1
-					newOts = append(newOts, newOt)
-				}
-
-				if hasChanges2 {
-					relCopy := pbtypes.CopyRelation(rel)
-					relCopy.ObjectTypes = newOts
-					dvBlock.UpdateRelation(relCopy.Key, *relCopy)
-				}
-			}
-		}
-	}
-
-	for _, rel := range s.ExtraRelations() {
-		if len(rel.ObjectTypes) == 0 {
-			continue
-		}
-		var newOts []string
-		var hasChanges2 bool
-		for _, ot := range rel.ObjectTypes {
-			newOt, hasChanges1 := migrate(ot)
-			hasChanges2 = hasChanges2 || hasChanges1
-			newOts = append(newOts, newOt)
-		}
-
-		if hasChanges2 {
-			relCopy := pbtypes.CopyRelation(rel)
-			relCopy.ObjectTypes = newOts
-			s.SetExtraRelation(relCopy)
-		}
-	}
-}
-
-// normalizeRelation checks rel and returns a copy in case it was normalized, otherwise returns nil
-func normalizeRelation(rel *model.Relation, creator string) (normalized *model.Relation, wasNormalized bool) {
-	equal, exists := bundle.EqualWithRelation(rel.Key, rel)
-	if exists && !equal {
-		// reset bundle relation in case the bundle has it updated
-		normalized = bundle.MustGetRelation(bundle.RelationKey(rel.Key))
-		normalized.SelectDict = rel.SelectDict
-		wasNormalized = true
-	} else if !exists && rel.Creator == "" {
-		normalized = pbtypes.CopyRelation(rel)
-		normalized.Creator = creator
-		wasNormalized = true
-	}
-
-	if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
-		normalized = pbtypes.CopyRelation(rel)
-		normalized.MaxCount = 1
-		wasNormalized = true
-	}
-	return
-}
-
-func (s *State) NormalizeRelations() {
-	creator := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String())
-	for _, r := range s.ExtraRelations() {
-		normalized, changed := normalizeRelation(r, creator)
-		if !changed {
-			continue
-		}
-		s.SetExtraRelation(normalized)
-	}
-}
-
-func (s *State) normalizeDvRelations(b simple.Block) {
-	dv, ok := b.(dataview.Block)
-	if !ok {
-		return
-	}
-
-	creator := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String())
-
-	var relationsFiltered = make(map[string]int, len(b.Model().GetDataview().Relations))
-	for i, r := range b.Model().GetDataview().Relations {
-		if _, exists := relationsFiltered[r.Key]; exists {
-			continue
-		}
-		relationsFiltered[r.Key] = i
-		normalizedRelation, wasNormalized := normalizeRelation(r, creator)
-		if wasNormalized {
-			dv.UpdateRelation(r.Key, *normalizedRelation)
-			continue
-		}
-	}
-
-	if len(relationsFiltered) < len(b.Model().GetDataview().Relations) {
-		var filtered = make([]*model.Relation, len(relationsFiltered))
-		var i int
-		for _, index := range relationsFiltered {
-			filtered[i] = b.Model().GetDataview().Relations[index]
-			i++
-		}
-		b.Model().GetDataview().Relations = filtered
-	}
 }

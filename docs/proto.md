@@ -4905,7 +4905,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| relation | [model.Relation](#anytype.model.Relation) |  |  |
+| relationId | [string](#string) |  |  |
 
 
 
@@ -15631,6 +15631,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | key | [string](#string) |  | Key under which the value is stored in the map. Must be unique for the object type. It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types. |
 | format | [RelationFormat](#anytype.model.RelationFormat) |  | format of the underlying data |
 | name | [string](#string) |  | name to show (can be localized for bundled types) |

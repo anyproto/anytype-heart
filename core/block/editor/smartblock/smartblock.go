@@ -98,9 +98,8 @@ type SmartBlock interface {
 	Anytype() core.Service
 	RelationService() relation2.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
-	Relations() []*model.Relation
-	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
-	HasRelation(relationKey string) bool
+	Relations(s *state.State) relation2.Relations
+	HasRelation(s *state.State, relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
@@ -165,8 +164,8 @@ type smartBlock struct {
 	closeRecordsSub func()
 }
 
-func (sb *smartBlock) HasRelation(key string) bool {
-	for _, rel := range sb.Relations() {
+func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
+	for _, rel := range sb.Relations(s) {
 		if rel.Key == key {
 			return true
 		}
@@ -226,18 +225,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
-	for _, rel := range ctx.State.ExtraRelations() {
-		if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
-			continue
-		}
-
-		opts, err := sb.objectStore.GetAggregatedOptions(rel.Key, ctx.State.ObjectType())
-		if err != nil {
-			log.Errorf("GetAggregatedOptions error: %s", err.Error())
-		} else {
-			ctx.State.SetAggregatedRelationsOptions(rel.Key, opts)
-		}
-	}
 
 	if len(ctx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
 		err = sb.setObjectTypes(ctx.State, ctx.ObjectTypeUrls)
@@ -246,10 +233,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 	}
 	if err = sb.addRelations(ctx.State, ctx.RelationIds...); err != nil {
-		return
-	}
-
-	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
 
@@ -273,74 +256,6 @@ func (sb *smartBlock) SetIsDeleted() {
 
 func (sb *smartBlock) IsDeleted() bool {
 	return sb.isDeleted
-}
-
-func (sb *smartBlock) normalizeRelations(s *state.State) error {
-	if sb.Type() == model.SmartBlockType_Archive {
-		return nil
-	}
-
-	relations := sb.RelationsState(s, true)
-	details := s.CombinedDetails()
-	if details == nil || details.Fields == nil {
-		return nil
-	}
-	for k := range details.Fields {
-		rel := pbtypes.GetRelation(relations, k)
-		if rel == nil {
-			if bundleRel, _ := bundle.GetRelation(bundle.RelationKey(k)); bundleRel != nil {
-				s.AddRelation(bundleRel)
-				log.Warnf("NormalizeRelations bundle relation is missing, have been added: %s", k)
-			} else {
-				log.Errorf("NormalizeRelations relation is missing: %s", k)
-			}
-
-			continue
-		}
-
-		if rel.Scope != model.Relation_object {
-			log.Warnf("NormalizeRelations change scope for relation %s", rel.Key)
-			s.SetExtraRelation(rel)
-		}
-	}
-
-	for _, rel := range s.ExtraRelations() {
-		// todo: REMOVE THIS TEMP MIGRATION
-		if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
-			continue
-		}
-		if len(rel.SelectDict) == 0 {
-			continue
-		}
-		relCopy := pbtypes.CopyRelation(rel)
-		var changed bool
-		var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
-		var optExists = make(map[string]struct{}, len(relCopy.SelectDict))
-		for i, opt := range relCopy.SelectDict {
-			// we had a bug resulted in duplicate options with different scope - this migration suppose to remove them and correct the scope if needed
-			// we can safely remove this later cause it was only affected internal testers
-			if _, exists := optExists[opt.Id]; exists {
-				changed = true
-				continue
-			}
-			optExists[opt.Id] = struct{}{}
-			if opt.Scope != model.RelationOption_local {
-				changed = true
-				if slice.FindPos(pbtypes.GetStringList(details, relCopy.Key), opt.Id) != -1 {
-					relCopy.SelectDict[i].Scope = model.RelationOption_local
-					dict = append(dict, relCopy.SelectDict[i])
-				}
-			} else {
-				dict = append(dict, opt)
-			}
-		}
-		if changed {
-			relCopy.SelectDict = dict
-			s.SetExtraRelation(relCopy)
-		}
-	}
-
-	return nil
 }
 
 func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
@@ -392,7 +307,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 				Type:         sb.Type(),
 				Blocks:       sb.Blocks(),
 				Details:      details,
-				Relations:    sb.Relations(),
+				Relations:    sb.Relations(nil).Models(),
 				ObjectTypes:  objectTypes,
 				Restrictions: sb.restrictions.Proto(),
 				History: &pb.EventObjectShowHistorySize{
@@ -555,7 +470,7 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 
 		details := sb.CombinedDetails()
 
-		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
+		for _, rel := range sb.Relations(nil) {
 			// do not index local dates such as lastOpened/lastModified
 			if rel.Format == model.RelationFormat_date &&
 				(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
@@ -827,7 +742,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetD
 		}
 	}
 
-	aggregatedRelations := sb.Relations()
+	aggregatedRelations := sb.Relations(s)
 
 	for _, detail := range details {
 		if detail.Value != nil {
@@ -849,56 +764,10 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetD
 				continue
 			}
 
-			rel := pbtypes.GetRelation(aggregatedRelations, detail.Key)
+			rel := aggregatedRelations.GetByKey(detail.Key)
 			if rel == nil {
 				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
 				return fmt.Errorf("relation not found: you should add the missing relation first")
-			}
-
-			if rel.Scope != model.Relation_object {
-				s.SetExtraRelation(rel)
-			}
-			if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
-				rel = pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
-				optIds := pbtypes.GetStringListValue(detail.Value)
-
-				var missingOptsIds []string
-				var excludeOptsIds []string
-				for _, optId := range optIds {
-					if opt := pbtypes.GetOption(rel.SelectDict, optId); opt == nil || opt.Scope != model.RelationOption_local {
-						missingOptsIds = append(missingOptsIds, optId)
-					}
-				}
-
-				if len(missingOptsIds) > 0 {
-					opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
-					if err != nil {
-						return err
-					}
-
-					for _, missingOptsId := range missingOptsIds {
-						opt := pbtypes.GetOption(opts, missingOptsId)
-						if opt == nil {
-							excludeOptsIds = append(excludeOptsIds, missingOptsId)
-							log.Errorf("relation %s is missing option: %s", rel.Key, missingOptsId)
-							continue
-						}
-						optCopy := *opt
-						// reset scope
-						optCopy.Scope = model.RelationOption_local
-						_, err := s.AddExtraRelationOption(*rel, optCopy)
-						if err != nil {
-							return err
-						}
-					}
-				}
-				if len(excludeOptsIds) > 0 {
-					log.Errorf("options normilization is removing %d options", len(excludeOptsIds))
-					// filter-out excluded options and amend the detail value
-					detail.Value = pbtypes.StringList(slice.Filter(optIds, func(s string) bool {
-						return slice.FindPos(excludeOptsIds, s) == -1
-					}))
-				}
 			}
 
 			err = s.ValidateNewDetail(detail.Key, detail.Value)
@@ -1016,16 +885,9 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	if creator != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
-		if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreator.String()) {
-			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreator))
-		}
 	}
 
 	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreatedDate.String()) {
-		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreatedDate))
-	}
-
 	return nil
 }
 
@@ -1141,7 +1003,7 @@ func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st.SetLocalDetails(nil)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
-	for _, rel := range sb.Relations() {
+	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)
 		}
@@ -1381,63 +1243,12 @@ func (sb *smartBlock) baseRelations() []*model.Relation {
 	return rels
 }
 
-func (sb *smartBlock) Relations() []*model.Relation {
-	return sb.RelationsState(sb.Doc.(*state.State), true)
-}
-
-func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
-	if sb.Type() == model.SmartBlockType_Archive {
-		return sb.baseRelations()
+func (sb *smartBlock) Relations(s *state.State) relation2.Relations {
+	if s == nil {
+		s = sb.NewState()
 	}
-
-	objType := s.ObjectType()
-
-	var err error
-	var aggregatedRelation []*model.Relation
-	if objType != "" && aggregateFromDS {
-		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsFromSetsOfType(objType)
-		if err != nil {
-			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
-		}
-		rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
-		sb.fillAggregatedRelations(rels, s.ObjectType())
-		return rels
-	} else {
-		return s.ExtraRelations()
-	}
-}
-
-func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation, objType string) {
-	for i, rel := range rels {
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			continue
-		}
-
-		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, objType)
-		if err != nil {
-			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
-			continue
-		}
-
-		rels[i].SelectDict = pbtypes.MergeOptionsPreserveScope(rel.SelectDict, options)
-	}
-}
-
-func (sb *smartBlock) ObjectTypeRelations() []*model.Relation {
-	return sb.objectTypeRelations(sb.Doc.(*state.State))
-}
-
-func (sb *smartBlock) objectTypeRelations(s *state.State) []*model.Relation {
-	var relations []*model.Relation
-
-	objectTypes, _ := objectstore.GetObjectTypes(sb.objectStore, sb.ObjectTypes())
-	//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
-	// do not fetch objectTypes for object type type to avoid universe collapse
-	for _, objType := range objectTypes {
-		relations = append(relations, objType.Relations...)
-	}
-	//}
-	return relations
+	rels, _ := sb.RelationService().FetchLinks(s.PickRelationLinks())
+	return rels
 }
 
 func (sb *smartBlock) execHooks(event Hook, info ApplyInfo) (err error) {

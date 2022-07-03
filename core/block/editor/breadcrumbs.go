@@ -2,8 +2,10 @@ package editor
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -28,7 +30,7 @@ func (p *Breadcrumbs) Init(ctx *smartblock.InitContext) (err error) {
 	return smartblock.ObjectApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoObjectTypes())
 }
 
-func (p *Breadcrumbs) Relations() []*model.Relation {
+func (p *Breadcrumbs) Relations(_ *state.State) relation.Relations {
 	return nil
 }
 

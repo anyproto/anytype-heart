@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"net/url"
 	"strings"
 	"time"
@@ -245,19 +246,20 @@ func New() Service {
 }
 
 type service struct {
-	anytype     core.Service
-	status      status.Service
-	sendEvent   func(event *pb.Event)
-	closed      bool
-	linkPreview linkpreview.LinkPreview
-	process     process.Service
-	doc         doc.Service
-	app         *app.App
-	source      source.Service
-	cache       ocache.OCache
-	objectStore objectstore.ObjectStore
-	restriction restriction.Service
-	bookmark    bookmarksvc.Service
+	anytype         core.Service
+	status          status.Service
+	sendEvent       func(event *pb.Event)
+	closed          bool
+	linkPreview     linkpreview.LinkPreview
+	process         process.Service
+	doc             doc.Service
+	app             *app.App
+	source          source.Service
+	cache           ocache.OCache
+	objectStore     objectstore.ObjectStore
+	restriction     restriction.Service
+	bookmark        bookmarksvc.Service
+	relationService relation.Service
 }
 
 func (s *service) Name() string {
@@ -275,6 +277,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent(bookmarksvc.CName).(bookmarksvc.Service)
+	s.relationService = a.MustComponent(relation.CName).(relation.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return

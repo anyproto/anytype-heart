@@ -486,22 +486,12 @@ func (s *service) BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBook
 }
 
 func (s *service) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error {
-	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		rels := b.Relations()
-		rel := pbtypes.GetRelation(rels, req.Key)
-		if rel == nil {
-			var err error
-			rels, err = s.Anytype().ObjectStore().ListRelations("")
-			if err != nil {
-				return err
-			}
-			rel = pbtypes.GetRelation(rels, req.Key)
-			if rel == nil {
-				return fmt.Errorf("relation with provided key not found")
-			}
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		rel, err := s.relationService.FetchKey(req.Key)
+		if err != nil {
+			return err
 		}
-
-		return b.(basic.Basic).AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{Relation: rel, BlockId: req.BlockId, ContextId: req.ContextId})
+		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{RelationId: rel.Id, BlockId: req.BlockId, ContextId: req.ContextId})
 	})
 }
 
@@ -529,7 +519,7 @@ func (s *service) Wakeup(id string) (err error) {
 
 func (s *service) GetRelations(objectId string) (relations []*model.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
-		relations = b.Relations()
+		relations = b.Relations(nil).Models()
 		return nil
 	})
 	return
@@ -771,23 +761,9 @@ func (s *service) RemoveExtraRelations(ctx *state.Context, objectTypeId string, 
 
 func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
-		objType := b.ObjectType()
-		aggregatedRelations = b.Relations()
-
-		agRels, err := s.Anytype().ObjectStore().ListRelations(objType)
-		if err != nil {
-			return err
-		}
-
-		for _, rel := range agRels {
-			if pbtypes.HasRelation(aggregatedRelations, rel.Key) {
-				continue
-			}
-			aggregatedRelations = append(aggregatedRelations, pbtypes.CopyRelation(rel))
-		}
+		// TODO: not implemented
 		return nil
 	})
-
 	return
 }
 

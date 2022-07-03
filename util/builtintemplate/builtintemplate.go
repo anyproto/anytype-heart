@@ -113,7 +113,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		if _, ok := b.(relation.Block); ok {
 			relKey := b.Model().GetRelation().Key
 			if !st.HasRelation(relKey) {
-				st.AddRelation(bundle.MustGetRelation(bundle.RelationKey(relKey)))
+				st.AddBundledRelations(bundle.RelationKey(relKey))
 			}
 		}
 		return true

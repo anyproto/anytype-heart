@@ -8,13 +8,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"strings"
@@ -768,10 +766,8 @@ func (s *State) SetDetails(d *types.Struct) *State {
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
 func (s *State) SetDetailAndBundledRelation(key bundle.RelationKey, value *types.Value) {
+	s.AddBundledRelations(key)
 	s.SetDetail(key.String(), value)
-	// AddRelation adds only in case of missing relation
-	rel := bundle.MustGetRelation(key)
-	s.AddRelationLinks(&model.RelationLink{Id: addr.BundledRelationURLPrefix + rel.Key, Key: rel.Key})
 	return
 }
 
@@ -822,161 +818,6 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	return
 }
 
-// deprecated
-func (s *State) SetExtraRelation(rel *model.Relation) {
-	if s.extraRelations == nil && s.parent != nil {
-		s.extraRelations = pbtypes.CopyRelations(s.parent.ExtraRelations())
-	}
-	relCopy := pbtypes.CopyRelation(rel)
-	relCopy.Scope = model.Relation_object
-	s.normalizeRelationOptionsValues(relCopy)
-	var found bool
-	for i, exRel := range s.extraRelations {
-		if exRel.Key == rel.Key {
-			found = true
-			s.extraRelations[i] = relCopy
-		}
-	}
-	if !found {
-		s.extraRelations = append(s.extraRelations, relCopy)
-	}
-}
-
-// AddRelation adds new extraRelation to the state.
-// In case the one is already exists with the same key it does nothing
-func (s *State) AddRelation(relation *model.Relation) *State {
-	for _, rel := range s.ExtraRelations() {
-		if rel.Key == relation.Key {
-			return s
-		}
-	}
-
-	relCopy := pbtypes.CopyRelation(relation)
-	// reset the scope to object
-	relCopy.Scope = model.Relation_object
-	if !pbtypes.RelationFormatCanHaveListValue(relCopy.Format) && relCopy.MaxCount != 1 {
-		relCopy.MaxCount = 1
-	}
-
-	if relCopy.Format == model.RelationFormat_file && relCopy.ObjectTypes == nil {
-		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
-	}
-
-	s.normalizeRelationOptionsValues(relCopy)
-	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relCopy)
-	return s
-}
-
-func (s *State) SetAggregatedRelationsOptions(relationKey string, options []*model.RelationOption) *State {
-	s.aggregatedOptionsByRelation = s.AggregatedOptionsByRelation()
-	if s.aggregatedOptionsByRelation == nil {
-		s.aggregatedOptionsByRelation = make(map[string][]*model.RelationOption)
-	}
-
-	s.aggregatedOptionsByRelation[relationKey] = pbtypes.CopyRelationOptions(options)
-	return s
-}
-
-// normalizeRelationOptionsValues may modify relation provided by pointer and set the Detail on the state
-// - removes details values that not exists in the selectDict for the relation
-// - migrate non-local scope options in case we have this optionId in the corresponding detail
-func (s *State) normalizeRelationOptionsValues(rel *model.Relation) (changed bool) {
-	if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
-		return
-	}
-	vals := pbtypes.GetStringList(s.Details(), rel.Key)
-	if len(vals) == 0 {
-		return
-	}
-	var filtered = make([]string, 0, len(vals))
-	var found bool
-	for _, val := range pbtypes.GetStringList(s.Details(), rel.Key) {
-		found = false
-		for _, v := range rel.SelectDict {
-			if v.Id == val {
-				found = true
-				break
-			}
-		}
-		if found {
-			filtered = append(filtered, val)
-		}
-	}
-	if len(filtered) < len(vals) {
-		changed = true
-		s.SetDetail(rel.Key, pbtypes.StringList(filtered))
-	}
-
-	if len(rel.SelectDict) == 0 {
-		return
-	}
-	var optionsMigrated bool
-	var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
-	var optExists = make(map[string]struct{}, len(rel.SelectDict))
-	for i, opt := range rel.SelectDict {
-		if opt.Scope != model.RelationOption_local {
-			optionsMigrated = true
-			if slice.FindPos(pbtypes.GetStringList(s.Details(), rel.Key), opt.Id) != -1 {
-				log.Warnf("obj %s rel %s opt %s migrate scope to local", s.RootId(), rel.Key, opt.Id)
-				rel.SelectDict[i].Scope = model.RelationOption_local
-				if _, exists := optExists[opt.Id]; !exists {
-					rel.SelectDict[i].Scope = model.RelationOption_local
-					dict = append(dict, rel.SelectDict[i])
-					optExists[opt.Id] = struct{}{}
-				}
-			} else {
-				log.Warnf("obj %s rel %s opt %s remove cause wrong scope and no detail", s.rootId, rel.Key, opt.Id)
-			}
-		} else {
-			if _, exists := optExists[opt.Id]; exists {
-				optionsMigrated = true
-				continue
-			}
-
-			optExists[opt.Id] = struct{}{}
-			dict = append(dict, opt)
-		}
-	}
-	if optionsMigrated {
-		changed = true
-		rel.SelectDict = dict
-	}
-
-	return
-}
-
-func (s *State) AddExtraRelationOption(rel model.Relation, option model.RelationOption) (*model.RelationOption, error) {
-	exRel := pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
-	if exRel == nil {
-		rel.SelectDict = nil
-		s.AddRelation(&rel)
-		exRel = &rel
-	}
-	exRel = pbtypes.CopyRelation(exRel)
-
-	if exRel.Format != model.RelationFormat_status && exRel.Format != model.RelationFormat_tag {
-		return nil, fmt.Errorf("relation has incorrect format")
-	}
-
-	for _, opt := range exRel.SelectDict {
-		if strings.EqualFold(opt.Text, option.Text) && (option.Id == "" || opt.Id == option.Id) {
-			if opt.Scope != option.Scope {
-				opt.Scope = option.Scope
-				s.SetExtraRelation(exRel)
-			}
-			// here we can have the option with another color, but we can ignore this
-			return opt, nil
-		}
-	}
-	if option.Id == "" {
-		option.Id = bson.NewObjectId().Hex()
-	}
-	exRel.SelectDict = append(exRel.SelectDict, &option)
-	s.SetExtraRelation(exRel)
-
-	return &option, nil
-}
-
 func (s *State) SetObjectType(objectType string) *State {
 	return s.SetObjectTypes([]string{objectType})
 }
@@ -1011,10 +852,7 @@ func (s *State) InjectLocalDetails(localDetails *types.Struct) {
 		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
 			continue
 		}
-		s.SetLocalDetail(key, v)
-		if !pbtypes.HasRelation(s.ExtraRelations(), key) {
-			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
-		}
+		s.SetDetailAndBundledRelation(bundle.RelationKey(key), v)
 	}
 }
 
@@ -1714,6 +1552,13 @@ func (s *State) SelectRoots(ids []string) []string {
 		}
 	}
 	return res
+}
+
+func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
+	for _, key := range keys {
+		rel := bundle.MustGetRelation(key)
+		s.AddRelationLinks(&model.RelationLink{Id: rel.Id, Key: rel.Key})
+	}
 }
 
 type linkSource interface {
