@@ -42,6 +42,7 @@ type Service interface {
 	FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error)
 
 	Create(rel *model.Relation) (rl *model.RelationLink, err error)
+	CreateOption(relationKey string, opt *model.RelationOption) (id string, err error)
 
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
@@ -168,6 +169,11 @@ func (s *service) fetchOptionsKey(key string) (relation *Relation, err error) {
 		return RelationFromStruct(rec.Details), nil
 	}
 	return nil, ErrNotFound
+}
+
+func (s *service) CreateOption(relationKey string, opt *model.RelationOption) (id string, err error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *service) Create(rel *model.Relation) (rl *model.RelationLink, err error) {

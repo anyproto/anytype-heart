@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -332,9 +333,33 @@ func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectT
 	return objectstore.GetObjectType(at.ObjectStore(), url)
 }
 
-func (mw *Middleware) RelationCreate(request *pb.RpcRelationCreateRequest) *pb.RpcRelationCreateResponse {
-	//TODO implement me
-	panic("implement me")
+func (mw *Middleware) RelationCreate(req *pb.RpcRelationCreateRequest) *pb.RpcRelationCreateResponse {
+	response := func(id string, err error) *pb.RpcRelationCreateResponse {
+		if err != nil {
+			return &pb.RpcRelationCreateResponse{
+				Error: &pb.RpcRelationCreateResponseError{
+					Code:        pb.RpcRelationCreateResponseError_UNKNOWN_ERROR,
+					Description: err.Error(),
+				},
+			}
+		}
+		return &pb.RpcRelationCreateResponse{
+			Error: &pb.RpcRelationCreateResponseError{
+				Code: pb.RpcRelationCreateResponseError_NULL,
+			},
+			Id: id,
+		}
+	}
+	var id string
+	err := mw.doRelationService(func(rs relation.Service) error {
+		rl, err := rs.Create(req.Relation)
+		if err != nil {
+			return err
+		}
+		id = rl.Id
+		return nil
+	})
+	return response(id, err)
 }
 
 func (mw *Middleware) RelationCreateOption(request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {
