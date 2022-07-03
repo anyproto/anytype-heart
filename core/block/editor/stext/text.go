@@ -28,7 +28,7 @@ type Text interface {
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 	SetIcon(ctx *state.Context, image, emoji string, blockIds ...string) error
-	SetText(req pb.RpcBlockSetTextTextRequest) (err error)
+	SetText(req pb.RpcBlockTextSetTextRequest) (err error)
 	TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
@@ -157,6 +157,12 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err error) {
 	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
+
+	// Don't merge blocks inside header block
+	if s.IsParentOf(template.HeaderLayoutId, secondId) {
+		return
+	}
+
 	first, err := getText(s, firstId)
 	if err != nil {
 		return
@@ -165,7 +171,13 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	if err != nil {
 		return
 	}
-	if err = first.Merge(second); err != nil {
+
+	var mergeOpts []text.MergeOption
+	// Don't set style for target block placed inside header block
+	if s.IsParentOf(template.HeaderLayoutId, firstId) {
+		mergeOpts = append(mergeOpts, text.DontSetStyle())
+	}
+	if err = first.Merge(second, mergeOpts...); err != nil {
 		return
 	}
 	s.Unlink(second.Model().Id)
@@ -277,7 +289,7 @@ func (t *textImpl) cancelSetTextState() {
 	}
 }
 
-func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
+func (t *textImpl) SetText(req pb.RpcBlockTextSetTextRequest) (err error) {
 	defer func() {
 		if err != nil {
 			t.cancelSetTextState()
@@ -285,7 +297,7 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	}()
 	ctx := state.NewContext(nil)
 	s := t.newSetTextState(req.BlockId, ctx)
-	wasEmpty := s.IsEmpty()
+	wasEmpty := s.IsEmpty(true)
 
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
@@ -334,7 +346,6 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 		case model.BlockContentText_Header1,
 			model.BlockContentText_Header2,
 			model.BlockContentText_Header3,
-			model.BlockContentText_Quote,
 			model.BlockContentText_Code:
 			if len(b.Model().ChildrenIds) > 0 {
 				ids := b.Model().ChildrenIds
@@ -353,6 +364,7 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 		case model.BlockContentText_Checkbox,
 			model.BlockContentText_Marked,
 			model.BlockContentText_Numbered,
+			model.BlockContentText_Callout,
 			model.BlockContentText_Toggle:
 			b.Model().Align = model.Block_AlignLeft
 		case model.BlockContentText_Code:
@@ -390,6 +402,7 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 		model.BlockContentText_Header2,
 		model.BlockContentText_Header3,
 		model.BlockContentText_Code,
+		model.BlockContentText_Callout,
 		model.BlockContentText_Quote:
 		ids = onlyParents(ids)
 	}

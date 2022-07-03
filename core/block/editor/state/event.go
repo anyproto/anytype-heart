@@ -146,6 +146,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+
 	case *pb.EventMessageValueOfBlockDataviewOldRelationDelete:
 		if err = apply(o.BlockDataviewOldRelationDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {

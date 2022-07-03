@@ -69,6 +69,10 @@ func (st *SmartTest) IsDeleted() bool {
 	return st.isDeleted
 }
 
+func (st *SmartTest) GetFirstTextBlock() (*model.BlockContentOfText, error) {
+	return nil, nil
+}
+
 func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
 	return nil
 }
@@ -111,7 +115,7 @@ func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }
 
-func (st *SmartTest) MakeTemplateState() (*state.State, error) {
+func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
@@ -143,7 +147,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Relations: st.ExtraRelations(),
@@ -237,7 +241,7 @@ func (st *SmartTest) FileRelationKeys() []string {
 	return nil
 }
 
-func (st *SmartTest) BlockClose() {
+func (st *SmartTest) ObjectClose() {
 	st.SetEventFunc(nil)
 }
 

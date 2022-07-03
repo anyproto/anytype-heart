@@ -3,16 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"time"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -24,23 +14,33 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/textileio/go-threads/core/thread"
+	"time"
 )
 
 var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 func (s *service) MarkArchived(id string, archived bool) (err error) {
 	return s.Do(id, func(b smartblock.SmartBlock) error {
-		return b.SetDetails(nil, []*pb.RpcBlockSetDetailsDetail{
+		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   "isArchived",
 				Value: pbtypes.Bool(archived),
@@ -49,7 +49,7 @@ func (s *service) MarkArchived(id string, archived bool) (err error) {
 	})
 }
 
-func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error) {
+func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcObjectSetBreadcrumbsRequest) (err error) {
 	return s.Do(req.BreadcrumbsId, func(b smartblock.SmartBlock) error {
 		if breadcrumbs, ok := b.(*editor.Breadcrumbs); ok {
 			return breadcrumbs.SetCrumbs(req.Ids)
@@ -75,7 +75,7 @@ func (s *service) DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplica
 	return
 }
 
-func (s *service) UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) (err error) {
+func (s *service) UnlinkBlock(ctx *state.Context, req pb.RpcBlockListDeleteRequest) (err error) {
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.Unlink(ctx, req.BlockIds...)
 	})
@@ -101,28 +101,6 @@ func (s *service) MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) (e
 	})
 }
 
-func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
-	if req.ContextId == req.TargetContextId {
-		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-			return b.Move(ctx, req)
-		})
-	}
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return s.DoBasic(req.TargetContextId, func(tb basic.Basic) error {
-			apply, blocks, err := b.InternalCut(ctx, req)
-			if err != nil {
-				return err
-			}
-
-			err = tb.InternalPaste(blocks)
-			if err != nil {
-				return err
-			}
-			return apply()
-		})
-	})
-}
-
 func (s *service) TurnInto(ctx *state.Context, contextId string, style model.BlockContentTextStyle, ids ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.TurnInto(ctx, style, ids...)
@@ -137,107 +115,8 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 	}
 
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.InternalPaste(blocks)
+		return b.PasteBlocks(blocks)
 	})
-}
-
-func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
-	// 1. Create new page, link
-	linkId, pageId, err := s.CreatePage(ctx, "", pb.RpcBlockCreatePageRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.DropTargetId,
-		Position:  req.Position,
-		Details:   req.Details,
-	})
-
-	if err != nil {
-		return linkId, err
-	}
-
-	// 2. Move blocks to new page
-	err = s.MoveBlocks(nil, pb.RpcBlockListMoveRequest{
-		ContextId:       req.ContextId,
-		BlockIds:        req.BlockIds,
-		TargetContextId: pageId,
-		DropTargetId:    "",
-		Position:        0,
-	})
-
-	if err != nil {
-		return linkId, err
-	}
-
-	return linkId, err
-}
-
-func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
-	blocks := make(map[string]*model.Block)
-
-	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
-		for _, b := range contextBlock.Blocks() {
-			blocks[b.Id] = b
-		}
-		return nil
-	})
-
-	if err != nil {
-		return linkIds, err
-	}
-
-	for _, blockId := range req.BlockIds {
-		if blocks[blockId] == nil || blocks[blockId].GetText() == nil {
-			continue
-		}
-
-		fields := map[string]*types.Value{
-			"name": pbtypes.String(blocks[blockId].GetText().Text),
-		}
-
-		if req.ObjectType != "" {
-			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
-		}
-
-		children := s.AllDescendantIds(blockId, blocks)
-		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewPageRequest{
-			ContextId: req.ContextId,
-			BlockIds:  children,
-			Details: &types.Struct{
-				Fields: fields,
-			},
-			DropTargetId: blockId,
-			Position:     model.Block_Replace,
-		})
-		linkIds = append(linkIds, linkId)
-		if err != nil {
-			return linkIds, err
-		}
-	}
-
-	return linkIds, err
-}
-
-func (s *service) UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		var found bool
-		err = b.Update(ctx, func(b simple.Block) error {
-			found = true
-			expectedType := fmt.Sprintf("%T", b.Model().GetContent())
-			gotType := fmt.Sprintf("%T", req.GetBlock().Content)
-			if gotType != expectedType {
-				return fmt.Errorf("block content should have %s type, got %s instead", expectedType, gotType)
-			}
-			b.Model().Content = req.GetBlock().Content
-			return nil
-		}, req.BlockId)
-		if err != nil {
-			return err
-		} else if !found {
-			return smartblock.ErrSimpleBlockNotFound
-		}
-
-		return nil
-	})
-	return
 }
 
 func (s *service) ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
@@ -257,7 +136,7 @@ func (s *service) SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest)
 	})
 }
 
-func (s *service) SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error) {
+func (s *service) SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		return b.SetDetails(ctx, req.Details, true)
 	})
@@ -317,11 +196,6 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 	return
 }
 
-func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (rec *types.Struct, err error) {
-	// TODO:
-	return nil, fmt.Errorf("not implemented")
-}
-
 func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.AddRelation(ctx, req.BlockId, req.RelationId, true)
@@ -376,7 +250,7 @@ func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) 
 	return path, err
 }
 
-func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error) {
+func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinkIds []string, err error) {
 	var rootLinks []*model.Block
 	err = s.DoImport(req.ContextId, func(imp _import.Import) error {
 		rootLinks, err = imp.ImportMarkdown(ctx, req)
@@ -393,7 +267,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 			return rootLinkIds, err
 		}
 	} else {
-		_, pageId, err := s.CreatePage(ctx, "", pb.RpcBlockCreatePageRequest{
+		_, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{Fields: map[string]*types.Value{
 				"name":      pbtypes.String("Import from Notion"),
@@ -415,13 +289,13 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 	return rootLinkIds, err
 }
 
-func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequest) error {
+func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockTextSetTextRequest) error {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
 		return b.SetText(req)
 	})
 }
 
-func (s *service) SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error {
+func (s *service) SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextRequest) error {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		return b.(basic.Basic).SetLatexText(ctx, req)
 	})
@@ -436,7 +310,7 @@ func (s *service) SetTextStyle(ctx *state.Context, contextId string, style model
 	})
 }
 
-func (s *service) SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error {
+func (s *service) SetTextChecked(ctx *state.Context, req pb.RpcBlockTextSetCheckedRequest) error {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(ctx, []string{req.BlockId}, true, func(t text.Block) error {
 			t.SetChecked(req.Checked)
@@ -472,6 +346,22 @@ func (s *service) SetBackgroundColor(ctx *state.Context, contextId string, color
 			b.Model().BackgroundColor = color
 			return nil
 		}, blockIds...)
+	})
+}
+
+func (s *service) SetLinkAppearance(ctx *state.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error) {
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Update(ctx, func(b simple.Block) error {
+			if linkBlock, ok := b.(link.Block); ok {
+				return linkBlock.SetAppearance(&model.BlockContentLink{
+					IconSize:    req.IconSize,
+					CardStyle:   req.CardStyle,
+					Description: req.Description,
+					Relations:   req.Relations,
+				})
+			}
+			return nil
+		}, req.BlockIds...)
 	})
 }
 
@@ -528,7 +418,7 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 	return
 }
 
-func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
+func (s *service) UploadFile(req pb.RpcFileUploadRequest) (hash string, err error) {
 	upl := file.NewUploader(s)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -547,7 +437,7 @@ func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err erro
 	return res.Hash, nil
 }
 
-func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
+func (s *service) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	return s.DoFileNonLock(req.ContextId, func(b file.File) error {
 		return b.DropFiles(req)
 	})
@@ -559,7 +449,7 @@ func (s *service) SetFileStyle(ctx *state.Context, contextId string, style model
 	})
 }
 
-func (s *service) Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (counters pb.RpcBlockUndoRedoCounter, err error) {
+func (s *service) Undo(ctx *state.Context, req pb.RpcObjectUndoRequest) (counters pb.RpcObjectUndoRedoCounter, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
 		counters, err = b.Undo(ctx)
 		return err
@@ -567,7 +457,7 @@ func (s *service) Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (counters
 	return
 }
 
-func (s *service) Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (counters pb.RpcBlockUndoRedoCounter, err error) {
+func (s *service) Redo(ctx *state.Context, req pb.RpcObjectRedoRequest) (counters pb.RpcObjectUndoRedoCounter, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
 		counters, err = b.Redo(ctx)
 		return err
@@ -757,7 +647,9 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 	})
 }
 
-func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
+func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err error) {
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
 	if len(req.Source) != 0 {
@@ -765,16 +657,12 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 			return
 		}
 	}
-	var workspaceId string
-	if req.ContextId != "" {
-		workspaceId, _ = s.anytype.GetWorkspaceIdForObject(req.ContextId)
-	} else {
-		workspaceId = s.anytype.PredefinedBlocks().Account
-	}
+	workspaceId := s.anytype.PredefinedBlocks().Account
+
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
 	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	setId = csm.ID()
@@ -810,53 +698,45 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	}
 
 	if err = template.InitTemplate(state, tmpls...); err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	_, err = s.newSmartBlock(setId, &smartblock.InitContext{
+	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
 		State: state,
 	})
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-
-	if req.ContextId == "" && req.TargetId == "" {
-		// do not create a link
-		return "", setId, nil
+	_, ok := sb.(*editor.Set)
+	if !ok {
+		return setId, fmt.Errorf("unexpected set block type: %T", sb)
 	}
-
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		linkId, err = b.Create(ctx, "", pb.RpcBlockCreateRequest{
-			TargetId: req.TargetId,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: setId,
-						Style:         model.BlockContentLink_Dataview,
-					},
-				},
-			},
-			Position: req.Position,
-		})
-		if err != nil {
-			err = fmt.Errorf("link create error: %v", err)
-		}
-		return err
-	})
-
-	return linkId, setId, nil
+	return setId, err
 }
 
 func (s *service) ObjectToSet(id string, source []string) (newId string, err error) {
 	var details *types.Struct
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
+
+		s := b.NewState()
+		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
+			}
+		}
+
 		return nil
 	}); err != nil {
 		return
 	}
 
-	_, newId, err = s.CreateSet(nil, pb.RpcBlockCreateSetRequest{
+	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
+	newId, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
 		Source:  source,
 		Details: details,
 	})
@@ -909,4 +789,67 @@ func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations [
 	})
 
 	return
+}
+
+func (s *service) ListConvertToObjects(ctx *state.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		linkIds, err = b.ExtractBlocksToObjects(ctx, s, req)
+		return err
+	})
+	return
+}
+
+func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error) {
+	// 1. Create new page, link
+	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.DropTargetId,
+		Position:  req.Position,
+		Details:   req.Details,
+	})
+
+	if err != nil {
+		return linkId, err
+	}
+
+	// 2. Move blocks to new page
+	err = s.MoveBlocks(nil, pb.RpcBlockListMoveToExistingObjectRequest{
+		ContextId:       req.ContextId,
+		BlockIds:        req.BlockIds,
+		TargetContextId: pageId,
+		DropTargetId:    "",
+		Position:        0,
+	})
+
+	if err != nil {
+		return linkId, err
+	}
+
+	return linkId, err
+}
+
+func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
+	if req.ContextId == req.TargetContextId {
+		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+			return b.Move(ctx, req)
+		})
+	}
+	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
+		return s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
+			cs := cb.NewState()
+			blocks := basic.CutBlocks(cs, req.BlockIds)
+
+			ts := tb.NewState()
+			err := basic.PasteBlocks(ts, blocks)
+			if err != nil {
+				return fmt.Errorf("paste blocks: %w", err)
+			}
+
+			err = tb.Apply(ts)
+			if err != nil {
+				return fmt.Errorf("apply target block state: %w", err)
+			}
+			return cb.Apply(cs)
+		})
+	})
 }

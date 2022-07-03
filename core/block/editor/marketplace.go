@@ -84,7 +84,7 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithRequiredRelations(),
 	)
 
-	return smartblock.ApplyTemplate(p, ctx.State, templates...)
+	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)
 }
 
 type MarketplaceRelation struct {
@@ -148,7 +148,7 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"), template.WithRequiredRelations())
 
-	return smartblock.ApplyTemplate(p, ctx.State, templates...)
+	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)
 }
 
 type MarketplaceTemplate struct {
@@ -216,5 +216,5 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDetailIconEmoji("📒"),
 	)
 
-	return smartblock.ApplyTemplate(p, ctx.State, templates...)
+	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)
 }

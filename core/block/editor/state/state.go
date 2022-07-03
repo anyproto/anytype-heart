@@ -4,17 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"strings"
-	"time"
-	"unicode/utf8"
-
-	"github.com/ipfs/go-cid"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -22,6 +16,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
+	"strings"
+	"time"
+	"unicode/utf8"
 )
 
 var log = logging.Logger("anytype-mw-state")
@@ -57,6 +55,7 @@ type Doc interface {
 	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
+	GetFirstTextBlock() (*model.BlockContentOfText, error)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -355,6 +354,22 @@ func (s *State) SearchText() (text string) {
 		return true
 	})
 	return
+}
+
+func (s *State) GetFirstTextBlock() (*model.BlockContentOfText, error) {
+	var firstTextBlock *model.BlockContentOfText
+	err := s.Iterate(func(b simple.Block) (isContinue bool) {
+		if content, ok := b.Model().Content.(*model.BlockContentOfText); ok {
+			firstTextBlock = content
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return firstTextBlock, nil
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
@@ -1246,14 +1261,17 @@ func (s *State) Validate() (err error) {
 }
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
-func (s *State) IsEmpty() bool {
-	if pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
+func (s *State) IsEmpty(checkTitle bool) bool {
+	if checkTitle && pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
 		return false
 	}
 	var emptyTextFound bool
+
 	if title := s.Pick("title"); title != nil {
-		if title.Model().GetText().Text != "" {
-			return false
+		if checkTitle {
+			if title.Model().GetText().Text != "" {
+				return false
+			}
 		}
 		emptyTextFound = true
 	}
@@ -1629,6 +1647,73 @@ func (s *State) RemoveRelation(ids ...string) {
 	s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(featuredList))
 	s.relationLinks = relLinks
 	return
+}
+
+func (s *State) Descendants(rootId string) []simple.Block {
+	var (
+		queue    = []string{rootId}
+		children []simple.Block
+	)
+
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+
+		cur := s.Pick(id)
+		if cur == nil {
+			continue
+		}
+		for _, id := range cur.Model().ChildrenIds {
+			b := s.Pick(id)
+			if b == nil {
+				continue
+			}
+			children = append(children, b)
+			queue = append(queue, id)
+		}
+	}
+
+	return children
+}
+
+// SelectRoots returns unique root blocks that are listed in ids AND present in the state
+// "root" here means the block that hasn't any parents listed in input ids
+func (s *State) SelectRoots(ids []string) []string {
+	resCount := len(ids)
+	discarded := make([]bool, len(ids))
+	for i := 0; i < len(ids); i++ {
+
+		if discarded[i] {
+			continue
+		}
+		ai := ids[i]
+		if !s.Exists(ai) {
+			discarded[i] = true
+			resCount--
+		}
+		for j := 0; j < len(ids); j++ {
+			if i == j {
+				continue
+			}
+			if discarded[j] {
+				continue
+			}
+
+			aj := ids[j]
+			if s.IsChild(ai, aj) {
+				discarded[j] = true
+				resCount--
+			}
+		}
+	}
+
+	res := make([]string, 0, resCount)
+	for i, id := range ids {
+		if !discarded[i] {
+			res = append(res, id)
+		}
+	}
+	return res
 }
 
 type linkSource interface {

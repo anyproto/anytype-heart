@@ -141,9 +141,9 @@ func (l *unsplashService) lazyInitClient() {
 	if l.client != nil {
 		return
 	}
-	cfg := l.config.GetCafeConfig()
+	cfg := l.config.GetAccountState()
 	token := DefaultToken
-	if configToken := pbtypes.GetString(cfg.Extra, "unsplash"); configToken != "" {
+	if configToken := pbtypes.GetString(cfg.Config.Extra, "unsplash"); configToken != "" {
 		token = configToken
 	}
 	ts := oauth2.StaticTokenSource(

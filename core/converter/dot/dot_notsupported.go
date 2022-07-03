@@ -5,6 +5,7 @@ package dot
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/gogo/protobuf/types"
 )
 
 func NewMultiConverter(format int) converter.MultiConverter {
@@ -26,7 +27,7 @@ const (
 type dot struct {
 }
 
-func (d *dot) SetKnownLinks(ids []string) converter.Converter {
+func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
 	return d
 }
 

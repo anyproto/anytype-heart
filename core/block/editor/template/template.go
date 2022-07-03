@@ -332,12 +332,24 @@ var WithTitle = StateTransformer(func(s *state.State) {
 // WithDefaultFeaturedRelations **MUST** be called before WithDescription
 var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
 	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
-		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String()}
 		layout, _ := s.Layout()
 		if layout == model.ObjectType_basic || layout == model.ObjectType_note {
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+			fr = []string{bundle.RelationKeyType.String()}
 		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	}
+})
+
+var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
+	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+
+	if slice.FindPos(fr, bundle.RelationKeyCreator.String()) != -1 {
+		frc := make([]string, len(fr))
+		copy(frc, fr)
+
+		frc = slice.Remove(frc, bundle.RelationKeyCreator.String())
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
 	}
 })
 
@@ -696,4 +708,97 @@ func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	}
 
 	return
+}
+
+var WithLinkFieldsMigration = func(s *state.State) {
+	const linkMigratedKey = "_link_migrated"
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if _, ok := b.(*link.Link); !ok {
+			return true
+		} else {
+			if b.Model().GetFields().GetFields() != nil && !pbtypes.GetBool(b.Model().GetFields(), linkMigratedKey) {
+
+				b = s.Get(b.Model().Id)
+				link := b.(*link.Link).GetLink()
+
+				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
+					link.CardStyle = model.BlockContentLinkCardStyle(cardStyle.GetNumberValue())
+				}
+
+				if iconSize, ok := b.Model().GetFields().Fields["iconSize"]; ok {
+					if int(iconSize.GetNumberValue()) == 1 {
+						link.IconSize = model.BlockContentLink_SizeSmall
+					} else if int(iconSize.GetNumberValue()) == 2 {
+						link.IconSize = model.BlockContentLink_SizeMedium
+					}
+				}
+
+				if description, ok := b.Model().GetFields().Fields["description"]; ok {
+					link.Description = model.BlockContentLinkDescription(description.GetNumberValue())
+				}
+
+				featuredRelations := map[string]string{"withCover": "cover", "withName": "name", "withType": "type"}
+				for key, relName := range featuredRelations {
+					if rel, ok := b.Model().GetFields().Fields[key]; ok {
+						if rel.GetBoolValue() {
+							link.Relations = append(link.Relations, relName)
+						}
+					}
+				}
+
+				b.Model().Fields.Fields[linkMigratedKey] = pbtypes.Bool(true)
+			}
+
+			return true
+		}
+	})
+
+	return
+}
+
+var bookmarkRelationKeys = []string{
+	bundle.RelationKeyUrl.String(),
+	bundle.RelationKeyPicture.String(),
+	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeyTag.String(),
+	bundle.RelationKeyNotes.String(),
+	bundle.RelationKeyQuote.String(),
+}
+
+func makeRelationBlock(k string) *model.Block {
+	return &model.Block{
+		Id: k,
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: k,
+			},
+		},
+	}
+}
+
+var WithBookmarkBlocks = func(s *state.State) {
+	for _, k := range bookmarkRelationKeys {
+		if !s.HasRelation(k) {
+			s.AddRelation(bundle.MustGetRelation(bundle.RelationKey(k)))
+		}
+
+		if b := s.Pick(k); b != nil {
+			if ok := s.Unlink(b.Model().Id); !ok {
+				log.Errorf("can't unlink block %s", b.Model().Id)
+				return
+			}
+			continue
+		}
+
+		ok := s.Add(simple.New(makeRelationBlock(k)))
+		if !ok {
+			log.Errorf("can't add block %s", k)
+			return
+		}
+	}
+
+	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
+		log.Errorf("insert relation blocks: %w", err)
+		return
+	}
 }

@@ -62,7 +62,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 		}
 		return model.LinkPreview{}, err
 	}
-	res := l.convertOGToInfo(og)
+	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
 		res.Description = l.findContent(rt.lastBody)
 	}
@@ -75,10 +75,10 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	return res, nil
 }
 
-func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i model.LinkPreview) {
+func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) (i model.LinkPreview) {
 	og.ToAbs()
 	i = model.LinkPreview{
-		Url:         og.URL,
+		Url:         fetchUrl,
 		Title:       og.Title,
 		Description: og.Description,
 		Type:        model.LinkPreview_Page,

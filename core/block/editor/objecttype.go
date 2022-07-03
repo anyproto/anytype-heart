@@ -129,7 +129,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
 
-	return smartblock.ApplyTemplate(p, ctx.State,
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithEmpty,
 		template.WithTitle,

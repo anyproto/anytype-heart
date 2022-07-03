@@ -2,12 +2,15 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -29,12 +32,17 @@ func New() Gateway {
 type Gateway interface {
 	Addr() string
 	app.ComponentRunnable
+	app.ComponentStatable
 }
 
 type gateway struct {
-	Node   core.Service
-	server *http.Server
-	addr   string
+	Node            core.Service
+	server          *http.Server
+	listener        net.Listener
+	handler         *http.ServeMux
+	addr            string
+	mu              sync.Mutex
+	isServerStarted bool
 }
 
 func getRandomPort() (int, error) {
@@ -78,19 +86,14 @@ func (g *gateway) Name() string {
 }
 
 func (g *gateway) Run() error {
-	if g.server != nil {
+	if g.isServerStarted {
 		return fmt.Errorf("gateway already started")
 	}
 
 	log.Infof("gateway.Run: %s", g.addr)
-	handler := http.NewServeMux()
-	g.server = &http.Server{
-		Addr:    g.addr,
-		Handler: handler,
-	}
-
-	handler.HandleFunc("/file/", g.fileHandler)
-	handler.HandleFunc("/image/", g.imageHandler)
+	g.handler = http.NewServeMux()
+	g.handler.HandleFunc("/file/", g.fileHandler)
+	g.handler.HandleFunc("/image/", g.imageHandler)
 
 	// check port first
 	listener, err := net.Listen("tcp", g.addr)
@@ -104,46 +107,86 @@ func (g *gateway) Run() error {
 		return err
 	}
 
-	errc := make(chan error)
-	go func() {
-		errc <- g.server.ListenAndServe()
-		close(errc)
-	}()
-	go func() {
-		for {
-			select {
-			case err, ok := <-errc:
-				if err != nil && err != http.ErrServerClosed {
-					log.Errorf("gateway error: %s", err)
-				}
+	g.startServer()
 
-				if !ok {
-					log.Info("gateway was shutdown")
-					return
-				}
-			}
-		}
-	}()
-
-	log.Infof("gateway listening at %s", g.server.Addr)
 	return nil
 }
 
 // Close stops the gateway
 func (g *gateway) Close() error {
-	if g.server == nil {
-		// not running
-		return nil
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	err := g.server.Shutdown(ctx)
+	err := g.stopServer()
 	return err
 }
 
 // Addr returns the gateway's address
 func (g *gateway) Addr() string {
 	return g.addr
+}
+
+func (g *gateway) StateChange(state int) {
+	switch pb.RpcAppSetDeviceStateRequestDeviceState(state) {
+	case pb.RpcAppSetDeviceStateRequest_FOREGROUND:
+		g.startServer()
+	case pb.RpcAppSetDeviceStateRequest_BACKGROUND:
+		if err := g.stopServer(); err != nil {
+			log.Errorf("err gateway close: %+v", err)
+		}
+	}
+}
+
+func (g *gateway) startServer() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.isServerStarted {
+		log.Errorf("server already started")
+		return
+	}
+
+	ln, err := net.Listen("tcp", g.addr)
+	if err != nil {
+		log.Errorf("listen addr err: %s", err)
+		return
+	}
+
+	g.listener = ln
+
+	g.server = &http.Server{
+		Addr:    g.addr,
+		Handler: g.handler,
+	}
+
+	go func(srv *http.Server, l net.Listener) {
+		err := srv.Serve(l)
+		if err != nil && err != http.ErrServerClosed {
+			log.Errorf("gateway error: %s", err)
+			return
+		}
+		log.Info("gateway was shutdown")
+	}(g.server, ln)
+
+	g.isServerStarted = true
+
+	log.Infof("gateway listening at %s", g.server.Addr)
+}
+
+func (g *gateway) stopServer() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.isServerStarted {
+		g.isServerStarted = false
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+		if err := g.server.Shutdown(ctx); err != nil {
+			return err
+		}
+		if err := g.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func enableCors(w http.ResponseWriter) {

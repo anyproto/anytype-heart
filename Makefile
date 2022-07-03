@@ -85,6 +85,8 @@ build-js-addon:
 build-ios: setup-go
 	gomobile init
 	@go get golang.org/x/mobile/bind
+	@echo 'Clear xcframework'
+	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
 	gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
@@ -115,7 +117,7 @@ setup-protoc-jsweb:
 	@rm -rf grpc-web
 	@git clone http://github.com/grpc/grpc-web
 	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
-	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew/bin" $(MAKE) -C grpc-web install-plugin || $(MAKE) -C grpc-web install-plugin
+	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C grpc-web install-plugin || $(MAKE) -C grpc-web install-plugin
 	@rm -rf grpc-web
 
 setup-protoc-doc:
@@ -171,8 +173,21 @@ protos-docs:
 protos: protos-go protos-server protos-docs
 
 protos-swift:
-	@echo 'Generating protobuf packages (Swift)...'
-	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@echo 'Clear protobuf files'
+	@rm -rf ./dist/ios/protobuf/*
+	@echo 'Generating swift protobuf files'
+	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+		@echo 'Generated swift protobuf files at ./dist/ios/pb'
+	
+protos-swift-local: protos-swift
+	@echo 'Clear proto files'
+	@rm -rf ./dist/ios/protobuf/protos
+	@echo 'Copying proto files'
+	@mkdir ./dist/ios/protobuf/protos
+	@cp ./pb/protos/*.proto ./dist/ios/protobuf/protos
+	@cp ./pb/protos/service/*.proto ./dist/ios/protobuf/protos
+	@cp ./pkg/lib/pb/model/protos/*.proto ./dist/ios/protobuf/protos
+	@open ./dist
 
 protos-js:
 	@echo 'Generating protobuf packages (JS)...'

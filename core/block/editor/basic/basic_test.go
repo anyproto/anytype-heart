@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -17,6 +18,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func newTextBlock(id, contentText string, childrenIds []string) simple.Block {
+	return text.NewText(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: contentText,
+			},
+		},
+		ChildrenIds: childrenIds,
+	})
+}
 
 func TestBasic_Create(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
@@ -33,7 +46,7 @@ func TestBasic_Create(t *testing.T) {
 	t.Run("title", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
@@ -53,7 +66,7 @@ func TestBasic_Create(t *testing.T) {
 			},
 		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		_, err := b.Create(nil, "", pb.RpcBlockCreateRequest{})
 		assert.Equal(t, restriction.ErrRestricted, err)
@@ -78,18 +91,33 @@ func TestBasic_Duplicate(t *testing.T) {
 }
 
 func TestBasic_Unlink(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
-		AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
-		AddBlock(simple.New(&model.Block{Id: "3"}))
+	t.Run("base case", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
+			AddBlock(simple.New(&model.Block{Id: "3"}))
 
-	b := NewBasic(sb)
+		b := NewBasic(sb)
 
-	err := b.Unlink(nil, "2")
-	require.NoError(t, err)
-	assert.Nil(t, sb.NewState().Pick("2"))
+		err := b.Unlink(nil, "2")
+		require.NoError(t, err)
+		assert.Nil(t, sb.NewState().Pick("2"))
 
-	assert.Equal(t, smartblock.ErrSimpleBlockNotFound, b.Unlink(nil, "2"))
+		assert.Error(t, b.Unlink(nil, "2"))
+	})
+	t.Run("unlink parent and its child", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
+			AddBlock(simple.New(&model.Block{Id: "3"}))
+
+		b := NewBasic(sb)
+
+		err := b.Unlink(nil, "2", "3")
+		require.NoError(t, err)
+		assert.False(t, sb.NewState().Exists("2"))
+		assert.False(t, sb.NewState().Exists("3"))
+	})
 }
 
 func TestBasic_Move(t *testing.T) {
@@ -102,7 +130,7 @@ func TestBasic_Move(t *testing.T) {
 
 		b := NewBasic(sb)
 
-		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{"3"},
 			DropTargetId: "4",
 			Position:     model.Block_Inner,
@@ -115,7 +143,7 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("header", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id1, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
@@ -132,7 +160,7 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, id0)
 
-		err = b.Move(nil, pb.RpcBlockListMoveRequest{
+		err = b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{id0},
 			DropTargetId: template.TitleBlockId,
 			Position:     model.Block_Top,
@@ -140,6 +168,46 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, err)
 		s := sb.NewState()
 		assert.Equal(t, []string{template.HeaderLayoutId, id0, id1}, s.Pick(s.RootId()).Model().ChildrenIds)
+	})
+	t.Run("replace empty", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "", nil)).
+			AddBlock(newTextBlock("2", "one", nil))
+
+		b := NewBasic(sb)
+
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
+			BlockIds:     []string{"2"},
+			DropTargetId: "1",
+			Position:     model.Block_InnerFirst,
+		})
+		require.NoError(t, err)
+		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 1)
+	})
+	t.Run("replace background and color", func(t *testing.T) {
+		sb := smarttest.New("test")
+
+		firstBlock := newTextBlock("1", "", nil)
+		firstBlock.Model().BackgroundColor = "first_block_background_color"
+
+		secondBlock := newTextBlock("2", "two", nil)
+		secondBlock.Model().GetText().Color = "second_block_text_color"
+
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(firstBlock).
+			AddBlock(secondBlock)
+
+		b := NewBasic(sb)
+
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
+			BlockIds:     []string{"2"},
+			DropTargetId: "1",
+			Position:     model.Block_InnerFirst,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, sb.NewState().Pick("2").Model().BackgroundColor, "first_block_background_color")
+		assert.Equal(t, sb.NewState().Pick("2").Model().GetText().Color, "second_block_text_color")
 	})
 }
 
@@ -198,27 +266,11 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
 
-func TestBasic_InternalCut(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
-	b := NewBasic(sb)
-	apply, blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveRequest{
-		BlockIds: []string{"1", "1.1", "1.1.1"},
-	})
-	require.NoError(t, err)
-	require.NoError(t, apply())
-
-	assert.Len(t, blocks, 3)
-}
-
-func TestBasic_InternalPaste(t *testing.T) {
+func TestBasic_PasteBlocks(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 	b := NewBasic(sb)
-	err := b.InternalPaste([]simple.Block{
+	err := b.PasteBlocks([]simple.Block{
 		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
 		simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}),
 		simple.New(&model.Block{Id: "1.1.1"}),

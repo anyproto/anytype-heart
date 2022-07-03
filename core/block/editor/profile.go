@@ -12,11 +12,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewProfile(fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
+func NewProfile(fileSource file.BlockService, pageManager bookmark.BlockService, bookmarkSvc bookmark.BookmarkService, sendEvent func(e *pb.Event)) *Profile {
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
@@ -26,7 +25,7 @@ func NewProfile(fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp link
 		Text:       stext.NewText(sb),
 		File:       f,
 		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
+		Bookmark:   bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
 		sendEvent:  sendEvent,
 	}
 }
@@ -47,7 +46,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return smartblock.ApplyTemplate(p, ctx.State,
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
 		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 		template.WithTitle,
@@ -58,7 +57,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	)
 }
 
-func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if err = p.SmartBlock.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}

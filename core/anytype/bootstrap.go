@@ -1,12 +1,11 @@
 package anytype
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
-	"os"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -18,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -39,6 +39,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
+	"os"
 )
 
 func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
@@ -103,6 +104,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
+		Register(account.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(threads.New()).
@@ -122,6 +124,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(doc.New()).
 		Register(subscription.New()).
-		Register(builtinobjects.New())
+		Register(builtinobjects.New()).
+		Register(bookmark.New())
 	return
 }

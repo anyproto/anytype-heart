@@ -2,12 +2,11 @@ package threads
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
-	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 )
 
 type CafeConfigFetcher interface {
-	GetCafeConfig() *cafePb.GetConfigResponseConfig
+	AddAccountStateObserver(observer util.CafeAccountStateUpdateObserver)
 }
 
 type CurrentWorkspaceThreadGetter interface {

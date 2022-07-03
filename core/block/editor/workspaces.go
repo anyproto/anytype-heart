@@ -293,7 +293,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
-	return smartblock.ApplyTemplate(p, ctx.State,
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,

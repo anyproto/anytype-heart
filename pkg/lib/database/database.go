@@ -133,6 +133,9 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 
 func NewFilters(q Query, sch schema.Schema) (f *Filters, err error) {
 	q.Filters = injectDefaultFilters(q.Filters)
+
+	q.Filters = filter.TransformQuickOption(q.Filters)
+
 	f = new(Filters)
 	mainFilter := filter.AndFilters{}
 	if sch != nil {
@@ -158,7 +161,7 @@ func NewFilters(q Query, sch schema.Schema) (f *Filters, err error) {
 	if err != nil {
 		return
 	}
-
+	
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
 	}

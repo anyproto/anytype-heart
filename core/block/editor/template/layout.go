@@ -13,6 +13,8 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		WithFeaturedRelations,
 		WithRequiredRelations(),
 		WithMaxCountMigration,
+		WithLinkFieldsMigration,
+		WithCreatorRemovedFromFeaturedRelations,
 	)
 
 	switch layout {
@@ -26,6 +28,12 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 			WithTitle,
 			WithDescription,
 			WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
+		)
+	case model.ObjectType_bookmark:
+		templates = append(templates,
+			WithTitle,
+			WithDescription,
+			WithBookmarkBlocks,
 		)
 	default:
 		templates = append(templates,

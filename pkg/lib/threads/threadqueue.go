@@ -2,7 +2,9 @@ package threads
 
 import (
 	"context"
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/thread"
 	"strings"
@@ -34,6 +36,8 @@ type ThreadQueue interface {
 	GetThreadsForWorkspace(workspaceId string) []string
 	UpdatePriority(ids []string, priority int)
 	UpdateSimultaneousRequestsLimit(requests int) error
+
+	AddReplicator(id thread.ID)
 }
 
 type ThreadOperation struct {
@@ -51,7 +55,14 @@ type threadQueue struct {
 	threadStore      ThreadWorkspaceStore
 	operationsBuffer []Operation
 	wakeupChan       chan struct{}
-	l                *limiterPool
+	downloadPool     *limiterPool
+	replicatorPool   *limiterPool
+}
+
+func (p *threadQueue) AddReplicator(id thread.ID) {
+	p.replicatorPool.AddOperation(
+		NewAddReplicatorOperation(p.threadsService.ctx, id, p.threadsService.replicatorAddr, p.threadsService),
+		DefaultPriority)
 }
 
 func (p *threadQueue) GetWorkspacesForThread(threadId string) []string {
@@ -68,8 +79,14 @@ func (p *threadQueue) GetWorkspacesForThread(threadId string) []string {
 	return objects
 }
 
-func (p *threadQueue) UpdateSimultaneousRequestsLimit(requests int) error {
-	return p.l.UpdateLimit(requests)
+func (p *threadQueue) UpdateSimultaneousRequestsLimit(requests int) (err error) {
+	err = p.downloadPool.UpdateLimit(requests)
+	if err != nil {
+		return
+	}
+
+	err = p.replicatorPool.UpdateLimit(requests)
+	return
 }
 
 func (p *threadQueue) GetThreadsForWorkspace(workspaceId string) []string {
@@ -91,7 +108,8 @@ func NewThreadQueue(s *service, store ThreadWorkspaceStore) ThreadQueue {
 		threadsService: s,
 		threadStore:    store,
 		wakeupChan:     make(chan struct{}, 1),
-		l:              newLimiterPool(s.ctx, s.simultaneousRequests),
+		downloadPool:   newLimiterPool(s.ctx, s.simultaneousRequests),
+		replicatorPool: newLimiterPool(s.ctx, s.simultaneousRequests),
 	}
 }
 
@@ -106,7 +124,7 @@ func (p *threadQueue) Init() error {
 }
 
 func (p *threadQueue) Run() {
-	go p.l.run()
+	go p.downloadPool.run()
 	go func() {
 		for {
 			select {
@@ -138,7 +156,7 @@ func (p *threadQueue) CreateThreadSync(threadId thread.ID, workspaceId string) (
 }
 
 func (p *threadQueue) UpdatePriority(ids []string, priority int) {
-	p.l.UpdatePriorities(ids, priority)
+	p.downloadPool.UpdatePriorities(ids, priority)
 }
 
 func (p *threadQueue) DeleteThreadSync(id, workspaceId string) error {
@@ -203,7 +221,7 @@ func (p *threadQueue) processBufferedEvents() {
 	p.operationsBuffer = nil
 	p.Unlock()
 
-	p.l.AddOperations(operationsCopy, DefaultPriority)
+	p.downloadPool.AddOperations(operationsCopy, DefaultPriority)
 }
 
 func (p *threadQueue) finishDeleteOperation(id, workspaceId string) {
@@ -281,6 +299,50 @@ func (p *threadQueue) logOperation(op Operation, success bool, workspaceId strin
 	}
 }
 
+type addReplicatorOperation struct {
+	ctx            context.Context
+	id             thread.ID
+	replicatorAddr ma.Multiaddr
+	threadsService *service
+}
+
+func NewAddReplicatorOperation(ctx context.Context, id thread.ID, replicatorAddr ma.Multiaddr, s *service) Operation {
+	return addReplicatorOperation{
+		ctx:            ctx,
+		id:             id,
+		replicatorAddr: replicatorAddr,
+		threadsService: s,
+	}
+}
+
+func (a addReplicatorOperation) Type() string {
+	return "replicator"
+}
+
+func (a addReplicatorOperation) Id() string {
+	return a.id.String()
+}
+
+func (a addReplicatorOperation) IsRetriable() bool {
+	return false
+}
+
+func (a addReplicatorOperation) Run() error {
+	_, err := a.threadsService.t.AddReplicator(a.ctx, a.id, a.replicatorAddr)
+	if err != nil {
+		return fmt.Errorf("failed to add the replicator: %w", err)
+	}
+	return nil
+}
+
+func (a addReplicatorOperation) OnFinish(err error) {
+	if err != nil {
+		log.With("thread", a.id.String()).
+			With("replicatorAddr", a.replicatorAddr.String()).
+			Errorf("Add replicator operation failed: %v", err)
+	}
+}
+
 type threadAddOperation struct {
 	ID             string
 	WorkspaceId    string
@@ -331,7 +393,7 @@ func (o threadAddOperation) Run() (err error) {
 
 func (o threadAddOperation) OnFinish(err error) {
 	// at the time of this function call the operation is still pending
-	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.l.PendingOperations()-1)
+	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.downloadPool.PendingOperations()-1)
 	if err == nil {
 		o.queue.finishAddOperation(o.ID, o.WorkspaceId)
 		return

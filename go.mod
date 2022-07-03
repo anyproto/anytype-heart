@@ -5,8 +5,9 @@ go 1.16
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
-	github.com/PuerkitoBio/goquery v1.7.1
-	github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211208232951-e452447f05c6
+	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/anytypeio/go-ds-badger3 v0.2.8-0.20220504140742-6dcb75660602
+	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -24,9 +25,10 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/goccy/go-graphviz v0.0.9
 	github.com/gogo/protobuf v1.3.2
+	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
-	github.com/gosimple/slug v1.12.0 // indirect
+	github.com/gosimple/slug v1.12.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
@@ -73,6 +75,7 @@ require (
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.15
 	github.com/opentracing/opentracing-go v1.2.0
+	github.com/otiai10/copy v1.7.0 // indirect
 	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/prometheus/client_golang v1.10.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
@@ -80,7 +83,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/textileio/go-ds-badger v0.2.7-0.20201204225019-4ee78c4a40e2
 	github.com/textileio/go-threads v1.0.2-0.20210304072541-d0f91da84404
-	github.com/tj/go-naturaldate v1.3.0
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
@@ -100,6 +102,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 	nhooyr.io/websocket v1.8.7 // indirect
 )
+
+replace github.com/dgraph-io/ristretto => github.com/dgraph-io/ristretto v0.1.1-0.20220403145359-8e850b710d6d
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 

@@ -171,15 +171,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti ThreadInfo, pullAsy
 	}
 
 	if s.replicatorAddr != nil {
-		// add replicator for own logs
-		go func() {
-			<-s.newReplicatorProcessingLimiter
-			_, err := s.t.AddReplicator(s.ctx, tid, s.replicatorAddr)
-			if err != nil {
-				log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
-			}
-			s.newReplicatorProcessingLimiter <- struct{}{}
-		}()
+		s.threadQueue.AddReplicator(tid)
 	}
 
 	// TODO: should we add timeout here?

@@ -444,7 +444,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 					continue
 				}
 				if !isWorkspaceEventSent && isWorkspace(id) {
-					go a.fetcher.SendAccountConfig()
+					go a.fetcher.NotifyClientApp()
 					isWorkspaceEventSent = true
 				}
 

@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	threadsUtil "github.com/textileio/go-threads/util"
 	"sync"
 	"time"
@@ -168,26 +169,15 @@ func (s *service) Init(a *app.App) (err error) {
 		),
 		grpc.WithUnaryInterceptor(unaryClientInterceptor),
 	}
+	s.fetcher.AddAccountStateObserver(s)
 	return nil
 }
 
+func (s *service) ObserveAccountStateUpdate(state *pb.AccountState) {
+	s.threadQueue.UpdateSimultaneousRequestsLimit(int(state.Config.SimultaneousRequests))
+}
+
 func (s *service) Run() (err error) {
-	cafeCfg := s.fetcher.GetCafeConfig()
-	if cafeCfg.SimultaneousRequests != 0 {
-		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
-	} else {
-		s.simultaneousRequests = simultaneousRequests
-	}
-
-	s.newThreadProcessingLimiter = make(chan struct{}, s.simultaneousRequests)
-	for i := 0; i < cap(s.newThreadProcessingLimiter); i++ {
-		s.newThreadProcessingLimiter <- struct{}{}
-	}
-	s.newReplicatorProcessingLimiter = make(chan struct{}, s.simultaneousRequests)
-	for i := 0; i < cap(s.newReplicatorProcessingLimiter); i++ {
-		s.newReplicatorProcessingLimiter <- struct{}{}
-	}
-
 	s.logstoreDS, err = s.ds.LogstoreDS()
 	if err != nil {
 		return err

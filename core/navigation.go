@@ -11,6 +11,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 )
 
 func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -100,10 +101,10 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetO
 	return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_NULL, page, nil)
 }
 
-func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse {
+func (mw *Middleware) ObjectCreate(req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcPageCreateResponseErrorCode, id string, err error) *pb.RpcPageCreateResponse {
-		m := &pb.RpcPageCreateResponse{Error: &pb.RpcPageCreateResponseError{Code: code}, PageId: id}
+	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, err error) *pb.RpcObjectCreateResponse {
+		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, PageId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -114,12 +115,13 @@ func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreate
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, _, err = bs.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil)
+		req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+		id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 		return
 	})
 
 	if err != nil {
-		return response(pb.RpcPageCreateResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", err)
 	}
-	return response(pb.RpcPageCreateResponseError_NULL, id, nil)
+	return response(pb.RpcObjectCreateResponseError_NULL, id, nil)
 }

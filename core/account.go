@@ -5,7 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
+	"github.com/gogo/status"
+	cp "github.com/otiai10/copy"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -21,6 +29,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
+
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -150,17 +160,47 @@ func checkInviteCode(cfg *config.Config, code string, account string) (errorCode
 	return pb.RpcAccountCreateResponseError_NULL, nil
 }
 
-func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
+func (mw *Middleware) getCafeAccount() *cafePb.AccountState {
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	cfg := fetcher.GetAccountConfig()
 
-	// TODO: change proto defs to use same model from "models.proto" and not from "api.proto"
-	return &pb.RpcAccountConfig{
-		EnableDataview:             cfg.EnableDataview,
-		EnableDebug:                cfg.EnableDebug,
-		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-		Extra:                      cfg.Extra,
-		EnableSpaces:               cfg.EnableSpaces,
+	return fetcher.GetAccountState()
+}
+
+func (mw *Middleware) refetch() {
+	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+
+	fetcher.Refetch()
+}
+
+func (mw *Middleware) getInfo() *model.AccountInfo {
+	at := mw.app.MustComponent(core.CName).(core.Service)
+	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
+	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
+	var deviceId string
+	deviceKey, err := wallet.GetDevicePrivkey()
+	if err == nil {
+		deviceId = deviceKey.Address()
+	}
+
+	if gwAddr != "" {
+		gwAddr = "http://" + gwAddr
+	}
+
+	cfg := config.ConfigRequired{}
+	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg);
+
+
+	pBlocks := at.PredefinedBlocks()
+	return &model.AccountInfo{
+		HomeObjectId:                pBlocks.Home,
+		ArchiveObjectId:             pBlocks.Archive,
+		ProfileObjectId:             pBlocks.Profile,
+		MarketplaceTypeObjectId:     pBlocks.MarketplaceType,
+		MarketplaceRelationObjectId: pBlocks.MarketplaceRelation,
+		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
+		GatewayUrl:                  gwAddr,
+		DeviceId:                    deviceId,
+		LocalStoragePath: 			 cfg.IPFSStorageAddr,
 	}
 }
 
@@ -172,7 +212,10 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		var clientConfig *pb.RpcAccountConfig
 		if account != nil {
-			clientConfig = mw.getAccountConfig()
+			cafeAccount := mw.getCafeAccount()
+
+			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
+			enrichWithCafeAccount(account, cafeAccount)
 		}
 		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
@@ -219,6 +262,21 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
+	if req.StorePath != "" && req.StorePath != mw.rootPath {
+		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
+
+		storePath := filepath.Join(req.StorePath, account.Address())
+
+		err := os.MkdirAll(storePath, 0700)
+		if err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+		}
+
+		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
+		}
+	}
+
 	newAcc := &model.Account{Id: account.Address()}
 
 	comps := []app.Component{
@@ -245,9 +303,9 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
-	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
+	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(pb.RpcUploadFileRequest{
+		hash, err := bs.UploadFile(pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
 			Type:      model.BlockContentFile_Image,
 		})
@@ -255,14 +313,15 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			log.Warnf("can't add avatar: %v", err)
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-			details = append(details, &pb.RpcBlockSetDetailsDetail{
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
 				Key:   "iconImage",
 				Value: pbtypes.String(hash),
 			})
 		}
 	}
+	newAcc.Info = mw.getInfo()
 
-	if err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
@@ -420,7 +479,21 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 	if len(sentAccounts) == 0 {
 		if findProfilesErr != nil {
-			return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
+			code := pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND
+			st, ok := status.FromError(findProfilesErr)
+			if ok {
+				for _, detail := range st.Details() {
+					if at, ok := detail.(*cafePb.ErrorAttachment); ok {
+						switch at.Code {
+						case cafePb.ErrorCodes_AccountIsDeleted:
+							code = pb.RpcAccountRecoverResponseError_ACCOUNT_IS_DELETED
+						default:
+							break
+						}
+					}
+				}
+			}
+			return response(code, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
 		}
 		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to find any local or remote accounts derived from this mnemonic"))
 	}
@@ -432,7 +505,10 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		var clientConfig *pb.RpcAccountConfig
 		if account != nil {
-			clientConfig = mw.getAccountConfig()
+			cafeAccount := mw.getCafeAccount()
+
+			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
+			enrichWithCafeAccount(account, cafeAccount)
 		}
 		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
@@ -455,7 +531,9 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
 		mw.app.MustComponent("blockService").(block.Service).CloseBlocks()
-		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
+		acc := &model.Account{Id: req.Id}
+		acc.Info = mw.getInfo()
+		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 	}
 
 	// in case user selected account other than the first one(used to perform search)
@@ -530,12 +608,15 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		log.Errorf("AccountSelect app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
 	}
 
+	acc := &model.Account{Id: req.Id}
+	acc.Info = mw.getInfo()
+
 	metrics.SharedClient.RecordEvent(metrics.AppStart{
 		Type:      "select",
 		TotalMs:   stat.SpentMsTotal,
 		PerCompMs: stat.SpentMsPerComp})
 
-	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
+	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
@@ -572,6 +653,145 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
 }
 
+func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+	mw.accountSearchCancel()
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
+	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
+		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	removeDirs := func(src string, dirs []string) error {
+		for _, dir := range dirs {
+			if err := os.RemoveAll(filepath.Join(src, dir)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	dirs := clientds.GetDirsForMoving()
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
+
+	configPath := filepath.Join(conf.RepoPath, config.ConfigFileName)
+	srcPath := conf.RepoPath
+	fileConf := config.ConfigRequired{}
+	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
+	}
+	if fileConf.IPFSStorageAddr != "" {
+		srcPath = fileConf.IPFSStorageAddr
+	}
+
+	parts := strings.Split(srcPath, string(os.PathSeparator))
+	accountDir := parts[len(parts)-1]
+	if accountDir == "" {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR, errors.New("fail to identify account dir"))
+	}
+
+	destination := filepath.Join(req.NewPath, accountDir)
+	if srcPath == destination {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, errors.New("source path should not be equal destination path"))
+	}
+
+	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
+		if err := removeDirs(destination, dirs); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	err := os.MkdirAll(destination, 0700)
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+	}
+
+	err = mw.stop()
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
+	}
+
+	for _, dir := range dirs {
+		if _, err := os.Stat(filepath.Join(srcPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
+			if err := cp.Copy(filepath.Join(srcPath, dir), filepath.Join(destination, dir), cp.Options{PreserveOwner: true}); err != nil {
+				return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			}
+		}
+	}
+
+	err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: destination})
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
+	}
+
+	if err := removeDirs(srcPath, dirs); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+	}
+
+	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
+		if err := os.RemoveAll(srcPath); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	return response(pb.RpcAccountMoveResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+	response := func(status *model.AccountStatus, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
+		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Status = status
+		}
+
+		return m
+	}
+
+	var st *model.AccountStatus
+	err := mw.doAccountService(func(a account.Service) (err error) {
+		resp, err := a.DeleteAccount(context.Background(), req.Revert)
+		if resp.GetStatus() != nil {
+			st = &model.AccountStatus{
+				StatusType:   model.AccountStatusType(resp.Status.Status),
+				DeletionDate: resp.Status.DeletionDate,
+			}
+		}
+		return
+	})
+
+	mw.refetch()
+
+	if err != nil {
+		// TODO: maybe this logic should be in a.DeleteAccount
+		code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
+		st, ok := status.FromError(err)
+		if ok {
+			for _, detail := range st.Details() {
+				if at, ok := detail.(*cafePb.ErrorAttachment); ok {
+					switch at.Code {
+					case cafePb.ErrorCodes_AccountIsDeleted:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+					// this code is returned if we call revert but an account is active
+					case cafePb.ErrorCodes_AccountIsActive:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
+					default:
+						break
+					}
+				}
+			}
+		}
+		return response(nil, code, err)
+	}
+
+	return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
+}
+
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {
 	var firstAccounts = make([]wallet.Keypair, count)
 	for i := 0; i < count; i++ {
@@ -599,4 +819,31 @@ func keypairsToAddresses(keypairs []wallet.Keypair) []string {
 		addresses[i] = keypair.Address()
 	}
 	return addresses
+}
+
+func convertToRpcAccountConfig(cfg *cafePb.AccountStateConfig) *pb.RpcAccountConfig {
+	return &pb.RpcAccountConfig{
+		EnableDataview:             cfg.EnableDataview,
+		EnableDebug:                cfg.EnableDebug,
+		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
+		Extra:                      cfg.Extra,
+		EnableSpaces:               cfg.EnableSpaces,
+	}
+}
+
+func enrichWithCafeAccount(acc *model.Account, cafeAcc *cafePb.AccountState) {
+	cfg := cafeAcc.Config
+	acc.Config = &model.AccountConfig{
+		EnableDataview:             cfg.EnableDataview,
+		EnableDebug:                cfg.EnableDebug,
+		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
+		Extra:                      cfg.Extra,
+		EnableSpaces:               cfg.EnableSpaces,
+	}
+
+	st := cafeAcc.Status
+	acc.Status = &model.AccountStatus{
+		StatusType:   model.AccountStatusType(st.Status),
+		DeletionDate: st.DeletionDate,
+	}
 }

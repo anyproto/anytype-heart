@@ -1,27 +1,28 @@
-### Anytype Middleware Library
-[![CircleCI](https://circleci.com/gh/anytypeio/go-anytype-middleware/tree/master.svg?style=svg&circle-token=eb74d38301ec933d25eb6778f662c94b175186ef)](https://circleci.com/gh/anytypeio/go-anytype-middleware/tree/master)
+## Anytype Middleware Library
 
 ### Build from Source
-1. Install Golang 1.16.* [from here](http://golang.org/dl/)
+1. Install Golang 1.17.* [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
 #### Build and install for the [desktop client](https://github.com/anytypeio/js-anytype)
 1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../js-anytype`
 
 #### Build for iOS
+Instructions to setup environment for ios [here](https://github.com/anytypeio/ios-anytype/blob/develop/docs/Setup_For_Middleware.md)
 1. `make build-ios` to build the framework into `dist/ios` folder
 2. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
 
 #### Build for Android
+Instructions to setup environment for android [here](https://github.com/anytypeio/android-anytype/blob/develop/docs/Setup_For_Middleware.md)
 1. `make build-android` to build the library into `dist/android` folder
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
 
 ### Rebuild protobuf generated files
+First, you need to install [protobuf](https://github.com/protocolbuffers/protobuf) pkg using your preferred package manager.
 This repo uses custom protoc located at [anytypeio/protobuf](https://github.com/anytypeio/protobuf/tree/master/protoc-gen-gogo). It adds `gomobile` plugin and some env-controlled options to control the generated code style.
-
 This protobuf generator will replace your `protoc` binary, BTW it doesn't have any breaking changes for other protobuf and grpc code
 
-You can install it with a simple command:
+You can override the binary with a simple command:
 ```
 make setup-protoc
 ```

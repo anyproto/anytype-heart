@@ -32,6 +32,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "intentions",
       "happenings",
       "gratefulFor",
@@ -76,6 +77,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "time",
       "servings",
       "ingredients",
@@ -118,7 +120,8 @@
       "tag",
       "isFavorite",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Page"
@@ -157,6 +160,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "candidate",
       "job",
       "phone",
@@ -202,6 +206,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "phone",
       "email",
       "dateOfBirth",
@@ -214,6 +219,48 @@
       "instagram",
       "gender",
       "facebook"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "URL that is stored as Object and may be categorised and linked with objects",
+    "emoji": "🔖",
+    "id": "bookmark",
+    "layout": "bookmark",
+    "name": "Bookmark",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "isFavorite",
+      "isDraft",
+      "workspaceId",
+      "url",
+      "picture",
+      "notes",
+      "quote"
     ],
     "types": [
       "Page"
@@ -252,6 +299,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "notes",
       "events",
       "tasks"
@@ -292,7 +340,8 @@
       "tag",
       "isFavorite",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Date"
@@ -331,6 +380,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "company",
       "address",
       "billTo",
@@ -378,6 +428,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "problem",
       "solution",
       "alternative"
@@ -419,6 +470,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "assignee",
       "dueDate",
       "attachments",
@@ -449,6 +501,7 @@
       "isHidden",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "mpAddedToLibrary",
       "relationFormat",
       "relationMaxCount",
@@ -494,6 +547,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "author",
       "category",
       "rating",
@@ -535,6 +589,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -585,6 +640,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "story",
       "founded",
       "ceo",
@@ -632,7 +688,8 @@
       "layoutAlign",
       "isHidden",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Home"
@@ -671,6 +728,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "notes",
       "tasks",
       "events"
@@ -712,6 +770,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "participants",
       "agenda",
       "tasks"
@@ -753,6 +812,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "director",
       "stars",
       "genre",
@@ -798,7 +858,8 @@
       "tag",
       "isFavorite",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Page"
@@ -837,6 +898,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary"
@@ -879,7 +941,8 @@
       "tag",
       "isFavorite",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Workspace"
@@ -917,6 +980,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "targetObjectType",
       "templateIsBundled"
     ],
@@ -957,6 +1021,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "running",
       "meditation",
       "7hourssleep",
@@ -1000,6 +1065,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "setOf"
     ],
     "types": [
@@ -1039,6 +1105,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "class",
       "classType",
       "records",
@@ -1084,6 +1151,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "mood"
     ],
     "types": [
@@ -1122,7 +1190,8 @@
       "tag",
       "isFavorite",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Page"
@@ -1160,6 +1229,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -1170,9 +1240,7 @@
       "exposure",
       "addedDate",
       "focalRatio",
-      "fileExt",
-      "mediaArtistName",
-      "mediaArtistURL"
+      "fileExt"
     ],
     "types": [
       "File"
@@ -1211,6 +1279,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "howToReproduce",
       "result",
       "additional",
@@ -1252,9 +1321,11 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "tag",
       "isFavorite",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Page",
@@ -1293,6 +1364,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -1345,6 +1417,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "tasks",
       "resources",
       "result",
@@ -1388,6 +1461,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "progress",
       "status",
       "dueDate",
@@ -1430,6 +1504,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "hypothesisAssumptions",
       "problem",
       "userStories",
@@ -1476,7 +1551,8 @@
       "tag",
       "isFavorite",
       "isDraft",
-      "workspaceId"
+      "workspaceId",
+      "internalFlags"
     ],
     "types": [
       "Page"
@@ -1514,6 +1590,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -1556,6 +1633,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
+      "internalFlags",
       "objectives",
       "scope",
       "timeframe",

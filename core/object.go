@@ -2,32 +2,33 @@ package core
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/subscription"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/araddon/dateparse"
-	"github.com/gogo/protobuf/types"
-	"github.com/tj/go-naturaldate"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-naturaldate/v2"
+	"github.com/araddon/dateparse"
+	"github.com/gogo/protobuf/types"
 )
 
 // To be renamed to ObjectSetDetails
-func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
+func (mw *Middleware) ObjectSetDetails(req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockSetDetailsResponseErrorCode, err error) *pb.RpcBlockSetDetailsResponse {
-		m := &pb.RpcBlockSetDetailsResponse{Error: &pb.RpcBlockSetDetailsResponseError{Code: code}}
+	response := func(code pb.RpcObjectSetDetailsResponseErrorCode, err error) *pb.RpcObjectSetDetailsResponse {
+		m := &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -39,9 +40,9 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 		return bs.SetDetails(ctx, *req)
 	})
 	if err != nil {
-		return response(pb.RpcBlockSetDetailsResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
+	return response(pb.RpcObjectSetDetailsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
@@ -56,41 +57,35 @@ func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.Rpc
 		}
 		return m
 	}
-	var objectId string
+	var objectIds []string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		objectId, err = bs.ObjectDuplicate(req.ContextId)
+		objectIds, err = bs.ObjectsDuplicate([]string{req.ContextId})
 		return
 	})
-	return response(objectId, err)
+	if len(objectIds) == 0 {
+		return response("", err)
+	}
+	return response(objectIds[0], err)
 }
 
-func handleDateSearch(req *pb.RpcObjectSearchRequest, records []database.Record) []database.Record {
-	n := time.Now()
-	f, _ := filter.MakeAndFilter(req.Filters)
-	t, err := naturaldate.Parse(req.FullText, n)
-	if err == nil {
-		if t.Equal(n) && !strings.EqualFold(req.FullText, "now") {
-			// naturaldate pkg returns NOW by default, but we don't need it
-			t = time.Time{}
+func (mw *Middleware) ObjectListDuplicate(req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
+	response := func(objectIds []string, err error) *pb.RpcObjectListDuplicateResponse {
+		m := &pb.RpcObjectListDuplicateResponse{
+			Error: &pb.RpcObjectListDuplicateResponseError{Code: pb.RpcObjectListDuplicateResponseError_NULL},
+			Ids:   objectIds,
 		}
-	} else {
-		// todo: use system locale to get preferred date format
-		t, err = dateparse.ParseAny(req.FullText, dateparse.PreferMonthFirst(false))
-	}
-
-	if !t.IsZero() {
-		d := &types.Struct{Fields: map[string]*types.Value{
-			"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
-			"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-			"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
-			"iconEmoji": pbtypes.String("📅"),
-		}}
-		if vg := pbtypes.ValueGetter(d); f.FilterObject(vg) {
-			records = append([]database.Record{{Details: d}}, records...)
+		if err != nil {
+			m.Error.Code = pb.RpcObjectListDuplicateResponseError_UNKNOWN_ERROR
+			m.Error.Description = err.Error()
 		}
+		return m
 	}
-
-	return records
+	var objectIds []string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		objectIds, err = bs.ObjectsDuplicate(req.ObjectIds)
+		return
+	})
+	return response(objectIds, err)
 }
 
 func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
@@ -110,11 +105,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	at := mw.app.MustComponent(core.CName).(core.Service)
 	if req.FullText != "" {
 		mw.app.MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
 	}
-	records, _, err := at.ObjectStore().Query(nil, database.Query{
+
+	ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	records, _, err := ds.Query(nil, database.Query{
 		Filters:          req.Filters,
 		Sorts:            req.Sorts,
 		Offset:           int(req.Offset),
@@ -126,13 +122,129 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	records = handleDateSearch(req, records)
+	// Add dates only to the first page of search results
+	if req.Offset == 0 {
+		records, err = enrichWithDateSuggestion(records, req)
+		if err != nil {
+			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
+		}
+	}
+
 	var records2 = make([]*types.Struct, 0, len(records))
 	for _, rec := range records {
 		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
+}
+
+func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearchRequest) ([]database.Record, error) {
+	dt := suggestDateForSearch(time.Now(), req.FullText)
+	if dt.IsZero() {
+		return records, nil
+	}
+
+	id := deriveDateId(dt)
+
+	// Don't duplicate search suggestions
+	var found bool
+	for _, r := range records {
+		if r.Details == nil || r.Details.Fields == nil {
+			continue
+		}
+		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
+			if v.GetStringValue() == id {
+				found = true
+				break
+			}
+		}
+
+	}
+	if found {
+		return records, nil
+	}
+
+	var rec database.Record
+	rec = makeSuggestedDateRecord(dt)
+	f, _ := filter.MakeAndFilter(req.Filters)
+	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
+		return append([]database.Record{rec}, records...), nil
+	}
+	return records, nil
+}
+
+func suggestDateForSearch(now time.Time, raw string) time.Time {
+	suggesters := []func() time.Time{
+		func() time.Time {
+			var exprType naturaldate.ExprType
+			t, exprType, err := naturaldate.Parse(raw, now)
+			if err != nil {
+				return time.Time{}
+			}
+			if exprType == naturaldate.ExprTypeInvalid {
+				return time.Time{}
+			}
+
+			// naturaldate parses numbers without qualifiers (m,s) as hours in 24 hours clock format. It leads to weird behavior
+			// when inputs like "123" represented as "current time + 123 hours"
+			if (exprType & naturaldate.ExprTypeClock24Hour) != 0 {
+				t = time.Time{}
+			}
+			return t
+		},
+		func() time.Time {
+			// Don't use plain numbers, because they will be represented as years
+			if _, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil {
+				return time.Time{}
+			}
+			// todo: use system locale to get preferred date format
+			t, err := dateparse.ParseIn(raw, now.Location(), dateparse.PreferMonthFirst(false))
+			if err != nil {
+				return time.Time{}
+			}
+			return t
+		},
+	}
+
+	var t time.Time
+	for _, s := range suggesters {
+		if t = s(); !t.IsZero() {
+			break
+		}
+	}
+	if t.IsZero() {
+		return t
+	}
+
+	// Sanitize date
+
+	// Date without year
+	if t.Year() == 0 {
+		_, month, day := t.Date()
+		h, m, s := t.Clock()
+		t = time.Date(now.Year(), month, day, h, m, s, 0, t.Location())
+	}
+
+	return t
+}
+
+func deriveDateId(t time.Time) string {
+	return "_date_" + t.Format("2006-01-02")
+}
+
+func makeSuggestedDateRecord(t time.Time) database.Record {
+	id := deriveDateId(t)
+
+	d := &types.Struct{Fields: map[string]*types.Value{
+		"id":        pbtypes.String(id),
+		"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
+		"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
+		"iconEmoji": pbtypes.String("📅"),
+	}}
+
+	return database.Record{
+		Details: d,
+	}
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
@@ -165,11 +277,11 @@ func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequ
 	return resp
 }
 
-func (mw *Middleware) ObjectIdsSubscribe(req *pb.RpcObjectIdsSubscribeRequest) *pb.RpcObjectIdsSubscribeResponse {
-	errResponse := func(err error) *pb.RpcObjectIdsSubscribeResponse {
-		r := &pb.RpcObjectIdsSubscribeResponse{
-			Error: &pb.RpcObjectIdsSubscribeResponseError{
-				Code: pb.RpcObjectIdsSubscribeResponseError_UNKNOWN_ERROR,
+func (mw *Middleware) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
+	errResponse := func(err error) *pb.RpcObjectSubscribeIdsResponse {
+		r := &pb.RpcObjectSubscribeIdsResponse{
+			Error: &pb.RpcObjectSubscribeIdsResponseError{
+				Code: pb.RpcObjectSubscribeIdsResponseError_UNKNOWN_ERROR,
 			},
 		}
 		if err != nil {
@@ -226,7 +338,7 @@ func (mw *Middleware) ObjectSearchUnsubscribe(req *pb.RpcObjectSearchUnsubscribe
 }
 
 func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
-	response := func(code pb.RpcObjectGraphResponseErrorCode, nodes []*pb.RpcObjectGraphNode, edges []*pb.RpcObjectGraphEdge, err error) *pb.RpcObjectGraphResponse {
+	response := func(code pb.RpcObjectGraphResponseErrorCode, nodes []*types.Struct, edges []*pb.RpcObjectGraphEdge, err error) *pb.RpcObjectGraphResponse {
 		m := &pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: code}, Nodes: nodes, Edges: edges}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -253,7 +365,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
 	}
 
-	var nodes = make([]*pb.RpcObjectGraphNode, 0, len(records))
+	var nodes = make([]*types.Struct, 0, len(records))
 	var edges = make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
 	var nodeExists = make(map[string]struct{}, len(records))
 
@@ -275,18 +387,8 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		nodes = append(nodes, &pb.RpcObjectGraphNode{
-			Id:             id,
-			Type:           pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()),
-			Name:           pbtypes.GetString(rec.Details, bundle.RelationKeyName.String()),
-			Layout:         int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyLayout.String())),
-			Description:    pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
-			IconImage:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
-			IconEmoji:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
-			Done:           pbtypes.GetBool(rec.Details, bundle.RelationKeyDone.String()),
-			RelationFormat: int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyRelationFormat.String())),
-			Snippet:        pbtypes.GetString(rec.Details, bundle.RelationKeySnippet.String()),
-		})
+
+		nodes = append(nodes, pbtypes.Map(rec.Details, req.Keys...))
 
 		var outgoingRelationLink = make(map[string]struct{}, 10)
 		for k, v := range rec.Details.GetFields() {
@@ -478,10 +580,10 @@ func (mw *Middleware) ObjectSetIsFavorite(req *pb.RpcObjectSetIsFavoriteRequest)
 	return response(pb.RpcObjectSetIsFavoriteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectFeaturedRelationAdd(req *pb.RpcObjectFeaturedRelationAddRequest) *pb.RpcObjectFeaturedRelationAddResponse {
+func (mw *Middleware) ObjectRelationAddFeatured(req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectFeaturedRelationAddResponseErrorCode, err error) *pb.RpcObjectFeaturedRelationAddResponse {
-		m := &pb.RpcObjectFeaturedRelationAddResponse{Error: &pb.RpcObjectFeaturedRelationAddResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationAddFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationAddFeaturedResponse {
+		m := &pb.RpcObjectRelationAddFeaturedResponse{Error: &pb.RpcObjectRelationAddFeaturedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -493,15 +595,15 @@ func (mw *Middleware) ObjectFeaturedRelationAdd(req *pb.RpcObjectFeaturedRelatio
 		return bs.FeaturedRelationAdd(ctx, req.ContextId, req.Relations...)
 	})
 	if err != nil {
-		return response(pb.RpcObjectFeaturedRelationAddResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectRelationAddFeaturedResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcObjectFeaturedRelationAddResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationAddFeaturedResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectFeaturedRelationRemove(req *pb.RpcObjectFeaturedRelationRemoveRequest) *pb.RpcObjectFeaturedRelationRemoveResponse {
+func (mw *Middleware) ObjectRelationRemoveFeatured(req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectFeaturedRelationRemoveResponseErrorCode, err error) *pb.RpcObjectFeaturedRelationRemoveResponse {
-		m := &pb.RpcObjectFeaturedRelationRemoveResponse{Error: &pb.RpcObjectFeaturedRelationRemoveResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationRemoveFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationRemoveFeaturedResponse {
+		m := &pb.RpcObjectRelationRemoveFeaturedResponse{Error: &pb.RpcObjectRelationRemoveFeaturedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -513,9 +615,9 @@ func (mw *Middleware) ObjectFeaturedRelationRemove(req *pb.RpcObjectFeaturedRela
 		return bs.FeaturedRelationRemove(ctx, req.ContextId, req.Relations...)
 	})
 	if err != nil {
-		return response(pb.RpcObjectFeaturedRelationRemoveResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectRelationRemoveFeaturedResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcObjectFeaturedRelationRemoveResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationRemoveFeaturedResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
@@ -543,4 +645,67 @@ func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectTo
 		return nil
 	})
 	return response(setId, err)
+}
+
+func (mw *Middleware) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
+	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectCreateBookmarkResponse {
+		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, PageId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs block.Service) error {
+		var err error
+		id, err = bs.ObjectCreateBookmark(*req)
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) ObjectBookmarkFetch(req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
+	response := func(code pb.RpcObjectBookmarkFetchResponseErrorCode, err error) *pb.RpcObjectBookmarkFetchResponse {
+		m := &pb.RpcObjectBookmarkFetchResponse{Error: &pb.RpcObjectBookmarkFetchResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	err := mw.doBlockService(func(bs block.Service) error {
+		return bs.ObjectBookmarkFetch(*req)
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectBookmarkFetchResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectBookmarkFetchResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectToBookmark(req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
+	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
+		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs block.Service) error {
+		var err error
+		id, err = bs.ObjectToBookmark(req.ContextId, req.Url)
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectToBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
 }

@@ -144,7 +144,7 @@ func (s *service) create(rel *model.Relation, checkForExists bool) (rl *model.Re
 	for k, v := range details.Fields {
 		st.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
-	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeBundledRelation, nil, nil, st)
+	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeIndexedRelation, nil, nil, st)
 	if err != nil {
 		return
 	}

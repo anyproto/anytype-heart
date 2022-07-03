@@ -5,14 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
-	"github.com/ipfs/go-cid"
-	"sort"
-	"strings"
-	"sync"
-	"time"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -20,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -30,9 +23,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
+	"sort"
+	"strings"
+	"sync"
+	"time"
 )
 
 type ApplyFlag int
@@ -82,9 +82,9 @@ func New() SmartBlock {
 	return &smartBlock{hooks: map[Hook][]HookCallback{}}
 }
 
-type SmartblockOpenListner interface {
+type SmartObjectOpenListner interface {
 	// should not do any Do operations inside
-	SmartblockOpened(*state.Context)
+	SmartObjectOpened(*state.Context)
 }
 
 type SmartBlock interface {
@@ -97,13 +97,13 @@ type SmartBlock interface {
 	History() undo.History
 	Anytype() core.Service
 	RelationService() relation2.Service
-	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*model.Relation
 	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
-	MakeTemplateState() (*state.State, error)
+	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
@@ -121,7 +121,7 @@ type SmartBlock interface {
 	ObjectStore() objectstore.ObjectStore
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
-	BlockClose()
+	ObjectClose()
 
 	ocache.ObjectLocker
 	state.Doc
@@ -221,7 +221,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State = sb.NewState()
 		sb.storeFileKeys(sb.Doc)
 	} else {
-		if !sb.Doc.(*state.State).IsEmpty() {
+		if !sb.Doc.(*state.State).IsEmpty(true) {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
@@ -357,43 +357,51 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
-	if ctx != nil {
-		details, objectTypes, err := sb.fetchMeta()
-		if err != nil {
-			return err
-		}
-		// omit relations
-		// todo: switch to other pb type
-		for _, ot := range objectTypes {
-			ot.Relations = nil
-		}
+	if ctx == nil {
+		return nil
+	}
 
-		for _, det := range details {
-			for k, v := range det.Details.GetFields() {
-				// todo: remove null cleanup(should be done when receiving from client)
-				if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-					log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
-					delete(det.Details.Fields, k)
-				}
+	details, objectTypes, err := sb.fetchMeta()
+	if err != nil {
+		return err
+	}
+	// omit relations
+	// todo: switch to other pb type
+	for _, ot := range objectTypes {
+		ot.Relations = nil
+	}
+
+	for _, det := range details {
+		for k, v := range det.Details.GetFields() {
+			// todo: remove null cleanup(should be done when receiving from client)
+			if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+				log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
+				delete(det.Details.Fields, k)
 			}
 		}
-
-		// todo: sb.Relations() makes extra query to read objectType which we already have here
-		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-					RootId:       sb.RootId(),
-					Type:         sb.Type(),
-					Blocks:       sb.Blocks(),
-					Details:      details,
-					Relations:    sb.Relations(),
-					ObjectTypes:  objectTypes,
-					Restrictions: sb.restrictions.Proto(),
-				}},
-			},
-		})
 	}
+
+	undo, redo := sb.History().Counters()
+
+	// todo: sb.Relations() makes extra query to read objectType which we already have here
+	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
+	ctx.AddMessages(sb.Id(), []*pb.EventMessage{
+		{
+			Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
+				RootId:       sb.RootId(),
+				Type:         sb.Type(),
+				Blocks:       sb.Blocks(),
+				Details:      details,
+				Relations:    sb.Relations(),
+				ObjectTypes:  objectTypes,
+				Restrictions: sb.restrictions.Proto(),
+				History: &pb.EventObjectShowHistorySize{
+					Undo: undo,
+					Redo: redo,
+				},
+			}},
+		},
+	})
 	return nil
 }
 
@@ -601,8 +609,6 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 		}
 	}
 	ids = util.UniqueStrings(ids)
-
-	// todo: filter-out invalid ids
 	return
 }
 
@@ -812,7 +818,7 @@ func (sb *smartBlock) RelationService() relation2.Service {
 	return sb.relationService
 }
 
-func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
 	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
 	if detCopy == nil || detCopy.Fields == nil {
@@ -834,6 +840,15 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 					continue
 				}
 			}
+			if detail.Key == bundle.RelationKeyLayout.String() {
+				// special case when client sets the layout detail directly instead of using setLayout command
+				err = sb.SetLayout(ctx, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
+				if err != nil {
+					log.Errorf("failed to set object's layout via detail: %s", err.Error())
+				}
+				continue
+			}
+
 			rel := pbtypes.GetRelation(aggregatedRelations, detail.Key)
 			if rel == nil {
 				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
@@ -1016,10 +1031,60 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
+
+	if len(objectTypes) > 0 {
+		ot, err := objectstore.GetObjectType(sb.objectStore, objectTypes[0])
+		if err != nil {
+			return err
+		}
+
+		if ot.Layout == model.ObjectType_note {
+			if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; ok && name.GetStringValue() != "" {
+				newBlock := simple.New(&model.Block{
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: name.GetStringValue()},
+					},
+				})
+				s.Add(newBlock)
+
+				if err := s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, newBlock.Model().Id); err != nil {
+					return err
+				}
+
+				s.RemoveDetail(bundle.RelationKeyName.String())
+			}
+		}
+	}
+
+	if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+		if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+				if err := s.Iterate(func(b simple.Block) (isContinue bool) {
+					if b.Model().Content == textBlock {
+						s.Unlink(b.Model().Id)
+						return false
+					}
+					return true
+				}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
 	}
-	s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+
+	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorSelectType)
+	flags.AddToState(s)
+
 	// send event here to send updated details to client
 	if err = sb.Apply(s, NoRestrictions); err != nil {
 		return
@@ -1049,6 +1114,10 @@ func (sb *smartBlock) setAlign(s *state.State, align model.BlockAlign, ids ...st
 }
 
 func (sb *smartBlock) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
+	if err = sb.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
+		return
+	}
+
 	s := sb.NewStateCtx(ctx)
 	if err = sb.setLayout(s, layout); err != nil {
 		return
@@ -1067,7 +1136,7 @@ func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (
 	return template.InitTemplate(s, template.ByLayout(layout)...)
 }
 
-func (sb *smartBlock) MakeTemplateState() (*state.State, error) {
+func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
@@ -1173,7 +1242,7 @@ func (sb *smartBlock) DocService() doc.Service {
 	return sb.doc
 }
 
-func (sb *smartBlock) BlockClose() {
+func (sb *smartBlock) ObjectClose() {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
 	sb.SetEventFunc(nil)
 }
@@ -1418,11 +1487,20 @@ func (sb *smartBlock) reportChange(s *state.State) {
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
-	if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String()) {
-		if !s.IsEmpty() {
-			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+	flags := internalflag.NewFromState(s)
+
+	// Run empty check only if any of these flags are present
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) {
+		if !s.IsEmpty(true) {
+			flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		}
+		if !s.IsEmpty(false) {
+			flags.Remove(model.InternalFlag_editorSelectType)
+		}
+
+		flags.AddToState(s)
 	}
+
 	sb.setRestrictionsDetail(s)
 	return
 }
@@ -1443,7 +1521,7 @@ func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
 	return events
 }
 
-func ApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTransformer) (err error) {
+func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTransformer) (err error) {
 	if s == nil {
 		s = sb.NewState()
 	}

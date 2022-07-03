@@ -73,10 +73,11 @@ message GetFilePinsResponse {
     }
 }
 
-message GetConfigRequest {}
+message GetConfigRequest {} // Deprecated
 
 message GetConfigResponse {
     Config config = 1;
+
     message Config {
         bool  enableDataview = 1;
         bool  enableDebug = 2;
@@ -88,17 +89,69 @@ message GetConfigResponse {
     }
 }
 
+message AccountDeleteRequest {
+    bool isReverted = 1;
+}
+
+message AccountDeleteResponse {
+    AccountState.Status status = 1;
+}
+
+message GetAccountStateRequest {}
+
+message GetAccountStateResponse {
+    AccountState accountState = 1;
+}
+
 enum PinStatus {
     Queued = 0;
     Failed = 8;
     Done = 9;
 }
 
+message AccountState {
+    Config config = 1;
+    Status status = 2;
+
+    message Status {
+        StatusType status = 1;
+        int64 deletionDate = 2;
+    }
+
+    enum StatusType {
+        Active = 0;
+        PendingDeletion = 1;
+        StartedDeletion = 2;
+        Deleted = 3;
+    }
+
+    message Config {
+        bool  enableDataview = 1;
+        bool  enableDebug = 2;
+        bool  enableReleaseChannelSwitch = 3;
+        int32 simultaneousRequests = 4;
+        bool  enableSpaces = 5;
+
+        google.protobuf.Struct extra = 100;
+    }
+}
+
+enum ErrorCodes {
+    AccountIsDeleted = 0;
+    AccountIsActive = 1;
+}
+
+message ErrorAttachment {
+    ErrorCodes code = 1;
+}
+
 service API {
     rpc AuthGetToken(stream AuthGetTokenRequest) returns (stream AuthGetTokenResponse) {}
-    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {}
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {} // deprecated, use GetAccountState
     rpc ThreadLogFollow(ThreadLogFollowRequest) returns (ThreadLogFollowResponse) {}
     rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {}
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
+    rpc AccountDelete(AccountDeleteRequest) returns (AccountDeleteResponse) {}
+    rpc GetAccountState(GetAccountStateRequest) returns (GetAccountStateResponse) {}
     rpc ProfileFind(ProfileFindRequest) returns (stream ProfileFindResponse) {}
 }

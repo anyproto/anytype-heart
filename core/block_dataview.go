@@ -5,7 +5,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/types"
 )
 
 func (mw *Middleware) BlockDataviewRelationListAvailable(req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
@@ -132,28 +131,6 @@ func (mw *Middleware) BlockDataviewViewSetPosition(req *pb.RpcBlockDataviewViewS
 		return response(pb.RpcBlockDataviewViewSetPositionResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockDataviewViewSetPositionResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockDataviewRecordCreate(req *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse {
-	ctx := state.NewContext(nil)
-	response := func(details *types.Struct, code pb.RpcBlockDataviewRecordCreateResponseErrorCode, err error) *pb.RpcBlockDataviewRecordCreateResponse {
-		m := &pb.RpcBlockDataviewRecordCreateResponse{Record: details, Error: &pb.RpcBlockDataviewRecordCreateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		// no events generated
-		return m
-	}
-
-	var details *types.Struct
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		details, err = bs.CreateDataviewRecord(ctx, *req)
-		return err
-	}); err != nil {
-		return response(nil, pb.RpcBlockDataviewRecordCreateResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(details, pb.RpcBlockDataviewRecordCreateResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
