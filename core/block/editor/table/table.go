@@ -443,13 +443,15 @@ func (t *editor) cleanupTables() {
 
 		tb, err := NewTable(s, b.Model().Id)
 		if err != nil {
-			log.Errorf("cleanup init table %s: %s", b.Model().Id, err)
+			log.Errorf("cleanup: init table %s: %s", b.Model().Id, err)
+			return true
 		}
 		err = t.RowListClean(s, pb.RpcBlockTableRowListCleanRequest{
 			BlockIds: tb.Rows().ChildrenIds,
 		})
 		if err != nil {
 			log.Errorf("cleanup table %s: %s", b.Model().Id, err)
+			return true
 		}
 		return true
 	})
