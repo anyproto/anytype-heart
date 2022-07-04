@@ -55,6 +55,14 @@ func (es *GrpcSender) SendSession(sessionId string, event *pb.Event) {
 }
 
 func (es *GrpcSender) broadcast(ignoreSessionId *string, event *pb.Event) {
+	filtered := event.Messages[:0]
+	for _, m := range event.Messages {
+		if m.GetObjectShow() == nil {
+			filtered = append(filtered, m)
+		}
+	}
+	event.Messages = filtered
+
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
