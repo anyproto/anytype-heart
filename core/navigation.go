@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -102,7 +101,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 }
 
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, err error) *pb.RpcObjectCreateResponse {
 		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, PageId: id}
 		if err != nil {

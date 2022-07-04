@@ -2,13 +2,38 @@ package state
 
 import "github.com/anytypeio/go-anytype-middleware/pb"
 
-func NewContext(se func(e *pb.Event)) *Context {
-	return &Context{sendEvent: se}
+func NewContext(opts ...ContextOption) *Context {
+	ctx := &Context{}
+	for _, apply := range opts {
+		apply(ctx)
+	}
+	return ctx
+}
+
+type ContextOption func(ctx *Context)
+
+func WithSendEvent(se func(e *pb.Event)) ContextOption {
+	return func(ctx *Context) {
+		ctx.sendEvent = se
+	}
+}
+
+func WithSessionId(sessionId string, sender SessionSender) ContextOption {
+	return func(ctx *Context) {
+		ctx.sessionId = sessionId
+		ctx.sessionSender = sender
+	}
+}
+
+func WithTraceId(traceId string) ContextOption {
+	return func(ctx *Context) {
+		ctx.traceId = traceId
+	}
 }
 
 func NewChildContext(parent *Context) *Context {
 	if parent == nil {
-		return NewContext(nil)
+		return NewContext()
 	}
 	return &Context{
 		smartBlockId:  parent.smartBlockId,
@@ -21,14 +46,6 @@ func NewChildContext(parent *Context) *Context {
 
 type SessionSender interface {
 	SendSession(sessionId string, e *pb.Event)
-}
-
-func NewSessionContext(sessionId string, sessionSender SessionSender, se func(e *pb.Event)) *Context {
-	return &Context{sendEvent: se, sessionId: sessionId, sessionSender: sessionSender}
-}
-
-func NewContextTrace(traceId string, se func(e *pb.Event)) *Context {
-	return &Context{sendEvent: se, traceId: traceId}
 }
 
 type Context struct {

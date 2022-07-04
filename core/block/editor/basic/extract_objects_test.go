@@ -174,7 +174,7 @@ func TestExtractObjects(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: "page",
 			}
-			ctx := state.NewContext(nil)
+			ctx := state.NewContext()
 			linkIds, err := NewBasic(sb).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 

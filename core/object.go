@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -27,7 +26,7 @@ import (
 
 // To be renamed to ObjectSetDetails
 func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetDetailsResponseErrorCode, err error) *pb.RpcObjectSetDetailsResponse {
 		m := &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: code}}
 		if err != nil {
@@ -456,7 +455,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 }
 
 func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(relation *model.Relation, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
 		var relKey string
 		if relation != nil {
@@ -491,7 +490,7 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 }
 
 func (mw *Middleware) ObjectRelationUpdate(cctx context.Context, req *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationUpdateResponseErrorCode, err error) *pb.RpcObjectRelationUpdateResponse {
 		m := &pb.RpcObjectRelationUpdateResponse{Error: &pb.RpcObjectRelationUpdateResponseError{Code: code}}
 		if err != nil {
@@ -512,7 +511,7 @@ func (mw *Middleware) ObjectRelationUpdate(cctx context.Context, req *pb.RpcObje
 }
 
 func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationDeleteResponseErrorCode, err error) *pb.RpcObjectRelationDeleteResponse {
 		m := &pb.RpcObjectRelationDeleteResponse{Error: &pb.RpcObjectRelationDeleteResponseError{Code: code}}
 		if err != nil {
@@ -532,7 +531,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 }
 
 func (mw *Middleware) ObjectRelationOptionAdd(cctx context.Context, req *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(opt *model.RelationOption, code pb.RpcObjectRelationOptionAddResponseErrorCode, err error) *pb.RpcObjectRelationOptionAddResponse {
 		m := &pb.RpcObjectRelationOptionAddResponse{Option: opt, Error: &pb.RpcObjectRelationOptionAddResponseError{Code: code}}
 		if err != nil {
@@ -556,7 +555,7 @@ func (mw *Middleware) ObjectRelationOptionAdd(cctx context.Context, req *pb.RpcO
 }
 
 func (mw *Middleware) ObjectRelationOptionUpdate(cctx context.Context, req *pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationOptionUpdateResponseErrorCode, err error) *pb.RpcObjectRelationOptionUpdateResponse {
 		m := &pb.RpcObjectRelationOptionUpdateResponse{Error: &pb.RpcObjectRelationOptionUpdateResponseError{Code: code}}
 		if err != nil {
@@ -577,7 +576,7 @@ func (mw *Middleware) ObjectRelationOptionUpdate(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) ObjectRelationOptionDelete(cctx context.Context, req *pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationOptionDeleteResponseErrorCode, err error) *pb.RpcObjectRelationOptionDeleteResponse {
 		m := &pb.RpcObjectRelationOptionDeleteResponse{Error: &pb.RpcObjectRelationOptionDeleteResponseError{Code: code}}
 		if err != nil {
@@ -619,7 +618,7 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 }
 
 func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
 		m := &pb.RpcObjectSetLayoutResponse{Error: &pb.RpcObjectSetLayoutResponseError{Code: code}}
 		if err != nil {
@@ -639,7 +638,7 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 }
 
 func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
 		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
 		if err != nil {
@@ -659,7 +658,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
 		m := &pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: code}}
 		if err != nil {
@@ -679,7 +678,7 @@ func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationAddFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationAddFeaturedResponse {
 		m := &pb.RpcObjectRelationAddFeaturedResponse{Error: &pb.RpcObjectRelationAddFeaturedResponseError{Code: code}}
 		if err != nil {
@@ -699,7 +698,7 @@ func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.Rp
 }
 
 func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
-	ctx := state.NewContext(nil)
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationRemoveFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationRemoveFeaturedResponse {
 		m := &pb.RpcObjectRelationRemoveFeaturedResponse{Error: &pb.RpcObjectRelationRemoveFeaturedResponseError{Code: code}}
 		if err != nil {

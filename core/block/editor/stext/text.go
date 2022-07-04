@@ -319,6 +319,8 @@ func (t *textImpl) SetText(parentCtx *state.Context, req pb.RpcBlockTextSetTextR
 		for _, msg := range msgs {
 			if msg.GetBlockSetText() == nil {
 				filtered = append(filtered, msg)
+			} else {
+				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
 			}
 		}
 		t.SendEvent(filtered)
