@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -157,7 +157,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 	}
 
 	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && firstTextBlock != nil && lastTextBlock == nil {
-		req.SelectedTextRange.To = int32(utf8.RuneCountInString(firstTextBlock.GetText().Text))
+		req.SelectedTextRange.To = int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
 	}
 
 	// scenario: rangeCut

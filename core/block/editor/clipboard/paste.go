@@ -1,15 +1,14 @@
 package clipboard
 
 import (
-	"strings"
-	"unicode/utf8"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
+	"strings"
 )
 
 type pasteCtrl struct {
@@ -240,7 +239,7 @@ func (p *pasteCtrl) multiRange() (err error) {
 		}
 		p.selIds = p.selIds[1:]
 	}
-	if lastSelText != nil && p.selRange.To > 0 && p.selRange.To < int32(utf8.RuneCountInString(lastSelText.GetText())) {
+	if lastSelText != nil && p.selRange.To > 0 && p.selRange.To < int32(textutil.UTF16RuneCountString(lastSelText.GetText())) {
 		if _, err = lastSelText.RangeSplit(p.selRange.To, p.selRange.To, true); err != nil {
 			return
 		}

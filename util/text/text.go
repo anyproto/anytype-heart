@@ -2,13 +2,14 @@ package text
 
 import (
 	"unicode"
+	"unicode/utf16"
 	"unicode/utf8"
 )
 
 const TruncateEllipsis = " …"
 
 func Truncate(text string, length int) string {
-	if utf8.RuneCountInString(text) <= length {
+	if UTF16RuneCountString(text) <= length {
 		return text
 	}
 	var lastWordIndex, lastNonSpace, currentLen, endTextPos int
@@ -32,4 +33,13 @@ func Truncate(text string, length int) string {
 		}
 	}
 	return text
+}
+
+func UTF16RuneCountString(str string) int {
+	return len(utf16.Encode([]rune(str)))
+}
+
+func UTF16RuneCount(bStr []byte) int {
+	str := string(bStr)
+	return UTF16RuneCountString(str)
 }
