@@ -27,7 +27,7 @@ type Text interface {
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 	SetIcon(ctx *state.Context, image, emoji string, blockIds ...string) error
-	SetText(req pb.RpcBlockTextSetTextRequest) (err error)
+	SetText(ctx *state.Context, req pb.RpcBlockTextSetTextRequest) (err error)
 	TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
@@ -258,7 +258,7 @@ func (t *textImpl) newSetTextState(blockId string, ctx *state.Context) *state.St
 
 func (t *textImpl) flushSetTextState() {
 	if t.lastSetTextState != nil {
-		ctx := state.NewContext(nil)
+		ctx := state.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
 		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
@@ -269,8 +269,7 @@ func (t *textImpl) flushSetTextState() {
 			if msg.GetBlockSetText() == nil {
 				filteredMsgs = append(filteredMsgs, msg)
 			} else {
-				// TODO temp
-				t.SendEvent([]*pb.EventMessage{msg})
+				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
 			}
 		}
 		if len(filteredMsgs) > 0 {
@@ -290,13 +289,13 @@ func (t *textImpl) cancelSetTextState() {
 	}
 }
 
-func (t *textImpl) SetText(req pb.RpcBlockTextSetTextRequest) (err error) {
+func (t *textImpl) SetText(parentCtx *state.Context, req pb.RpcBlockTextSetTextRequest) (err error) {
 	defer func() {
 		if err != nil {
 			t.cancelSetTextState()
 		}
 	}()
-	ctx := state.NewContext(nil)
+	ctx := state.NewChildContext(parentCtx)
 	s := t.newSetTextState(req.BlockId, ctx)
 	wasEmpty := s.IsEmpty(true)
 

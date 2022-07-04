@@ -6,6 +6,19 @@ func NewContext(se func(e *pb.Event)) *Context {
 	return &Context{sendEvent: se}
 }
 
+func NewChildContext(parent *Context) *Context {
+	if parent == nil {
+		return NewContext(nil)
+	}
+	return &Context{
+		smartBlockId:  parent.smartBlockId,
+		traceId:       parent.traceId,
+		sendEvent:     parent.sendEvent,
+		sessionSender: parent.sessionSender,
+		sessionId:     parent.sessionId,
+	}
+}
+
 type SessionSender interface {
 	SendSession(sessionId string, e *pb.Event)
 }
@@ -55,15 +68,18 @@ func (ctx *Context) GetMessages() []*pb.EventMessage {
 	return ctx.messages
 }
 
-func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {
+func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {
 	if ctx.sessionSender != nil {
 		ctx.sessionSender.SendSession(ctx.sessionId, &pb.Event{
-			Messages:  ctx.messages,
+			Messages:  msgs,
 			ContextId: ctx.smartBlockId,
 			Initiator: nil,
 		})
 	}
+}
 
+func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {
+	ctx.SendToOtherSessions(ctx.messages)
 	return &pb.ResponseEvent{
 		Messages:  ctx.messages,
 		ContextId: ctx.smartBlockId,

@@ -400,7 +400,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkd
 
 func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockTextSetTextRequest) error {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
-		return b.SetText(req)
+		return b.SetText(ctx, req)
 	})
 }
 
