@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -437,6 +439,27 @@ func (s *service) SetTextColor(ctx *state.Context, contextId string, color strin
 	})
 }
 
+func (s *service) ClearTextStyle(ctx *state.Context, contextId string, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
+			t.Model().BackgroundColor = ""
+			t.Model().Align = model.Block_AlignLeft
+			t.Model().VerticalAlign = model.Block_VerticalAlignTop
+			t.SetTextColor("")
+			t.SetStyle(model.BlockContentText_Paragraph)
+			return nil
+		})
+	})
+}
+
+func (s *service) ClearTextContent(ctx *state.Context, contextId string, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
+			return t.SetText("", nil)
+		})
+	})
+}
+
 func (s *service) SetTextMark(ctx *state.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.SetMark(ctx, mark, blockIds...)
@@ -477,6 +500,12 @@ func (s *service) SetLinkAppearance(ctx *state.Context, req pb.RpcBlockLinkListS
 func (s *service) SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error) {
 	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
 		return sb.SetAlign(ctx, align, blockIds...)
+	})
+}
+
+func (s *service) SetVerticalAlign(ctx *state.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error) {
+	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+		return sb.SetVerticalAlign(ctx, align, blockIds...)
 	})
 }
 
@@ -1025,4 +1054,104 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 			return cb.Apply(cs)
 		})
 	})
+}
+
+func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		id, err = t.TableCreate(st, req)
+		return err
+	})
+	return
+}
+
+func (s *service) TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowCreate(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnCreate(st, req)
+	})
+	return
+}
+
+func (s *service) TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowDelete(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnDelete(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnMove(st, req)
+	})
+	return
+}
+
+func (s *service) TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowDuplicate(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		id, err = t.ColumnDuplicate(st, req)
+		return err
+	})
+	return id, err
+}
+
+func (s *service) TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.Expand(st, req)
+	})
+	return err
+}
+
+func (s *service) TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowListFill(st, req)
+	})
+	return err
+}
+
+func (s *service) TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowListClean(st, req)
+	})
+	return err
+}
+
+func (s *service) TableRowSetHeader(ctx *state.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowSetHeader(st, req)
+	})
+	return err
+}
+
+func (s *service) TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.Sort(st, req)
+	})
+	return err
+}
+
+func (s *service) TableColumnListFill(ctx *state.Context, req pb.RpcBlockTableColumnListFillRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnListFill(st, req)
+	})
+	return err
 }

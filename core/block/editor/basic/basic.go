@@ -106,11 +106,27 @@ func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateReque
 	return
 }
 
+// some types of blocks need a special duplication mechanism
+type duplicatable interface {
+	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
+}
+
 func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 	b := s.Get(sourceId)
 	if b == nil {
 		return "", smartblock.ErrSimpleBlockNotFound
 	}
+	if v, ok := b.(duplicatable); ok {
+		newId, _, blocks, err := v.Duplicate(s)
+		if err != nil {
+			return "", fmt.Errorf("custom block duplication: %w", err)
+		}
+		for _, b := range blocks {
+			s.Add(b)
+		}
+		return newId, nil
+	}
+
 	m := b.Copy().Model()
 	m.Id = "" // reset id
 	copy := simple.New(m)
