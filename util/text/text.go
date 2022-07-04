@@ -43,3 +43,11 @@ func UTF16RuneCount(bStr []byte) int {
 	str := string(bStr)
 	return UTF16RuneCountString(str)
 }
+
+func StrToUTF16(str string) []uint16 {
+	return utf16.Encode([]rune(str))
+}
+
+func UTF16ToStr(b []uint16) string {
+	return string(utf16.Decode(b))
+}
