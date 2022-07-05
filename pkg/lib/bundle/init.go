@@ -40,6 +40,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyIsFavorite,
 	RelationKeyWorkspaceId,
 	RelationKeyLinks,
+	RelationKeyInternalFlags,
 }
 
 var FormatFilePossibleTargetObjectTypes = []string{
