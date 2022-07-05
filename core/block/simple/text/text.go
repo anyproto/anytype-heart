@@ -334,9 +334,10 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 	}
 
 	// 3. combine
-	runesFirst := textutil.StrToUTF16(t.content.Text)[:rangeFrom]
+	contentText := textutil.StrToUTF16(t.content.Text)
+	runesFirst := contentText[:rangeFrom]
 	runesMiddle := textutil.StrToUTF16(copiedText.Text)[copyFrom:copyTo]
-	runesLast := textutil.StrToUTF16(t.content.Text)[rangeTo:]
+	runesLast := contentText[rangeTo:]
 
 	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, textutil.UTF16ToStr(runesMiddle))
 	t.content.Marks.Marks = t.normalizeMarksPure(combinedMarks)
@@ -358,9 +359,10 @@ func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlo
 		return nil, nil, ErrOutOfRange
 	}
 
-	runesFirst := textutil.StrToUTF16(t.content.Text)[:from]
-	runesMiddle := textutil.StrToUTF16(t.content.Text)[from:to]
-	runesLast := textutil.StrToUTF16(t.content.Text)[to:]
+	contentText := textutil.StrToUTF16(t.content.Text)
+	runesFirst := contentText[:from]
+	runesMiddle := contentText[from:to]
+	runesLast := contentText[to:]
 
 	// make a copy of the block
 	cutBlock = t.Copy().Model()
