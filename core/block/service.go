@@ -964,12 +964,26 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
 	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
 
-	creator := func(ctx context.Context) (string, error) {
-		objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
-		if err != nil {
-			return objectId, fmt.Errorf("create smartblock error: %v", err)
+	var creator func(ctx context.Context) (string, error)
+
+	if pbtypes.GetString(req.Details, bundle.RelationKeyType.String()) == bundle.TypeKeySet.URL() {
+		creator = func(ctx context.Context) (string, error) {
+			objectId, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
+				Details: req.Details,
+			})
+			if err != nil {
+				return objectId, fmt.Errorf("create smartblock error: %v", err)
+			}
+			return objectId, nil
 		}
-		return objectId, nil
+	} else {
+		creator = func(ctx context.Context) (string, error) {
+			objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+			if err != nil {
+				return objectId, fmt.Errorf("create smartblock error: %v", err)
+			}
+			return objectId, nil
+		}
 	}
 
 	if req.ContextId != "" {
