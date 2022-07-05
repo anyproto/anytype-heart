@@ -63,6 +63,8 @@ type Block interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetText) error
+
+	IsEmpty() bool
 }
 
 type Text struct {
@@ -660,4 +662,20 @@ func (t *Text) ApplyEvent(e *pb.EventBlockSetText) error {
 		t.content.IconEmoji = e.IconEmoji.GetValue()
 	}
 	return nil
+}
+
+func (t *Text) IsEmpty() bool {
+	if t.content.Text == "" &&
+		!t.content.Checked &&
+		t.content.Color == "" &&
+		t.content.Style == 0 &&
+		t.content.IconEmoji == "" &&
+		t.content.IconImage == "" &&
+		len(t.content.GetMarks().GetMarks()) == 0 &&
+		t.Model().BackgroundColor == "" &&
+		t.Model().Align == 0 &&
+		t.Model().VerticalAlign == 0 {
+		return true
+	}
+	return false
 }
