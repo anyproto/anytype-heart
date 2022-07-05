@@ -41,15 +41,6 @@ const (
 	tmpDir = "tmp"
 )
 
-type PredefinedBlockIds struct {
-	Account string
-	Profile string
-	Home    string
-	Archive string
-
-	SetPages string
-}
-
 type Service interface {
 	Account() string // deprecated, use wallet component
 	Device() string  // deprecated, use wallet component

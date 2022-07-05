@@ -321,7 +321,6 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().Profile,
 		s.anytype.PredefinedBlocks().Archive,
 		s.anytype.PredefinedBlocks().Home,
-		s.anytype.PredefinedBlocks().SetPages,
 		s.anytype.PredefinedBlocks().MarketplaceType,
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
