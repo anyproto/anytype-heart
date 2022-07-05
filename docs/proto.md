@@ -129,6 +129,10 @@
     - [Rpc.Block.ListSetFields.Request.BlockField](#anytype-Rpc-Block-ListSetFields-Request-BlockField)
     - [Rpc.Block.ListSetFields.Response](#anytype-Rpc-Block-ListSetFields-Response)
     - [Rpc.Block.ListSetFields.Response.Error](#anytype-Rpc-Block-ListSetFields-Response-Error)
+    - [Rpc.Block.ListSetVerticalAlign](#anytype-Rpc-Block-ListSetVerticalAlign)
+    - [Rpc.Block.ListSetVerticalAlign.Request](#anytype-Rpc-Block-ListSetVerticalAlign-Request)
+    - [Rpc.Block.ListSetVerticalAlign.Response](#anytype-Rpc-Block-ListSetVerticalAlign-Response)
+    - [Rpc.Block.ListSetVerticalAlign.Response.Error](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error)
     - [Rpc.Block.ListTurnInto](#anytype-Rpc-Block-ListTurnInto)
     - [Rpc.Block.ListTurnInto.Request](#anytype-Rpc-Block-ListTurnInto-Request)
     - [Rpc.Block.ListTurnInto.Response](#anytype-Rpc-Block-ListTurnInto-Response)
@@ -293,7 +297,72 @@
     - [Rpc.BlockRelation.SetKey.Request](#anytype-Rpc-BlockRelation-SetKey-Request)
     - [Rpc.BlockRelation.SetKey.Response](#anytype-Rpc-BlockRelation-SetKey-Response)
     - [Rpc.BlockRelation.SetKey.Response.Error](#anytype-Rpc-BlockRelation-SetKey-Response-Error)
+    - [Rpc.BlockTable](#anytype-Rpc-BlockTable)
+    - [Rpc.BlockTable.ColumnCreate](#anytype-Rpc-BlockTable-ColumnCreate)
+    - [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request)
+    - [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response)
+    - [Rpc.BlockTable.ColumnCreate.Response.Error](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error)
+    - [Rpc.BlockTable.ColumnDelete](#anytype-Rpc-BlockTable-ColumnDelete)
+    - [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request)
+    - [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response)
+    - [Rpc.BlockTable.ColumnDelete.Response.Error](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error)
+    - [Rpc.BlockTable.ColumnDuplicate](#anytype-Rpc-BlockTable-ColumnDuplicate)
+    - [Rpc.BlockTable.ColumnDuplicate.Request](#anytype-Rpc-BlockTable-ColumnDuplicate-Request)
+    - [Rpc.BlockTable.ColumnDuplicate.Response](#anytype-Rpc-BlockTable-ColumnDuplicate-Response)
+    - [Rpc.BlockTable.ColumnDuplicate.Response.Error](#anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error)
+    - [Rpc.BlockTable.ColumnListFill](#anytype-Rpc-BlockTable-ColumnListFill)
+    - [Rpc.BlockTable.ColumnListFill.Request](#anytype-Rpc-BlockTable-ColumnListFill-Request)
+    - [Rpc.BlockTable.ColumnListFill.Response](#anytype-Rpc-BlockTable-ColumnListFill-Response)
+    - [Rpc.BlockTable.ColumnListFill.Response.Error](#anytype-Rpc-BlockTable-ColumnListFill-Response-Error)
+    - [Rpc.BlockTable.ColumnMove](#anytype-Rpc-BlockTable-ColumnMove)
+    - [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request)
+    - [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response)
+    - [Rpc.BlockTable.ColumnMove.Response.Error](#anytype-Rpc-BlockTable-ColumnMove-Response-Error)
+    - [Rpc.BlockTable.Create](#anytype-Rpc-BlockTable-Create)
+    - [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request)
+    - [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response)
+    - [Rpc.BlockTable.Create.Response.Error](#anytype-Rpc-BlockTable-Create-Response-Error)
+    - [Rpc.BlockTable.Expand](#anytype-Rpc-BlockTable-Expand)
+    - [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request)
+    - [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response)
+    - [Rpc.BlockTable.Expand.Response.Error](#anytype-Rpc-BlockTable-Expand-Response-Error)
+    - [Rpc.BlockTable.RowCreate](#anytype-Rpc-BlockTable-RowCreate)
+    - [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request)
+    - [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response)
+    - [Rpc.BlockTable.RowCreate.Response.Error](#anytype-Rpc-BlockTable-RowCreate-Response-Error)
+    - [Rpc.BlockTable.RowDelete](#anytype-Rpc-BlockTable-RowDelete)
+    - [Rpc.BlockTable.RowDelete.Request](#anytype-Rpc-BlockTable-RowDelete-Request)
+    - [Rpc.BlockTable.RowDelete.Response](#anytype-Rpc-BlockTable-RowDelete-Response)
+    - [Rpc.BlockTable.RowDelete.Response.Error](#anytype-Rpc-BlockTable-RowDelete-Response-Error)
+    - [Rpc.BlockTable.RowDuplicate](#anytype-Rpc-BlockTable-RowDuplicate)
+    - [Rpc.BlockTable.RowDuplicate.Request](#anytype-Rpc-BlockTable-RowDuplicate-Request)
+    - [Rpc.BlockTable.RowDuplicate.Response](#anytype-Rpc-BlockTable-RowDuplicate-Response)
+    - [Rpc.BlockTable.RowDuplicate.Response.Error](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error)
+    - [Rpc.BlockTable.RowListClean](#anytype-Rpc-BlockTable-RowListClean)
+    - [Rpc.BlockTable.RowListClean.Request](#anytype-Rpc-BlockTable-RowListClean-Request)
+    - [Rpc.BlockTable.RowListClean.Response](#anytype-Rpc-BlockTable-RowListClean-Response)
+    - [Rpc.BlockTable.RowListClean.Response.Error](#anytype-Rpc-BlockTable-RowListClean-Response-Error)
+    - [Rpc.BlockTable.RowListFill](#anytype-Rpc-BlockTable-RowListFill)
+    - [Rpc.BlockTable.RowListFill.Request](#anytype-Rpc-BlockTable-RowListFill-Request)
+    - [Rpc.BlockTable.RowListFill.Response](#anytype-Rpc-BlockTable-RowListFill-Response)
+    - [Rpc.BlockTable.RowListFill.Response.Error](#anytype-Rpc-BlockTable-RowListFill-Response-Error)
+    - [Rpc.BlockTable.RowSetHeader](#anytype-Rpc-BlockTable-RowSetHeader)
+    - [Rpc.BlockTable.RowSetHeader.Request](#anytype-Rpc-BlockTable-RowSetHeader-Request)
+    - [Rpc.BlockTable.RowSetHeader.Response](#anytype-Rpc-BlockTable-RowSetHeader-Response)
+    - [Rpc.BlockTable.RowSetHeader.Response.Error](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error)
+    - [Rpc.BlockTable.Sort](#anytype-Rpc-BlockTable-Sort)
+    - [Rpc.BlockTable.Sort.Request](#anytype-Rpc-BlockTable-Sort-Request)
+    - [Rpc.BlockTable.Sort.Response](#anytype-Rpc-BlockTable-Sort-Response)
+    - [Rpc.BlockTable.Sort.Response.Error](#anytype-Rpc-BlockTable-Sort-Response-Error)
     - [Rpc.BlockText](#anytype-Rpc-BlockText)
+    - [Rpc.BlockText.ListClearContent](#anytype-Rpc-BlockText-ListClearContent)
+    - [Rpc.BlockText.ListClearContent.Request](#anytype-Rpc-BlockText-ListClearContent-Request)
+    - [Rpc.BlockText.ListClearContent.Response](#anytype-Rpc-BlockText-ListClearContent-Response)
+    - [Rpc.BlockText.ListClearContent.Response.Error](#anytype-Rpc-BlockText-ListClearContent-Response-Error)
+    - [Rpc.BlockText.ListClearStyle](#anytype-Rpc-BlockText-ListClearStyle)
+    - [Rpc.BlockText.ListClearStyle.Request](#anytype-Rpc-BlockText-ListClearStyle-Request)
+    - [Rpc.BlockText.ListClearStyle.Response](#anytype-Rpc-BlockText-ListClearStyle-Response)
+    - [Rpc.BlockText.ListClearStyle.Response.Error](#anytype-Rpc-BlockText-ListClearStyle-Response-Error)
     - [Rpc.BlockText.ListSetColor](#anytype-Rpc-BlockText-ListSetColor)
     - [Rpc.BlockText.ListSetColor.Request](#anytype-Rpc-BlockText-ListSetColor-Request)
     - [Rpc.BlockText.ListSetColor.Response](#anytype-Rpc-BlockText-ListSetColor-Response)
@@ -726,6 +795,7 @@
     - [Rpc.Block.ListSetAlign.Response.Error.Code](#anytype-Rpc-Block-ListSetAlign-Response-Error-Code)
     - [Rpc.Block.ListSetBackgroundColor.Response.Error.Code](#anytype-Rpc-Block-ListSetBackgroundColor-Response-Error-Code)
     - [Rpc.Block.ListSetFields.Response.Error.Code](#anytype-Rpc-Block-ListSetFields-Response-Error-Code)
+    - [Rpc.Block.ListSetVerticalAlign.Response.Error.Code](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error-Code)
     - [Rpc.Block.ListTurnInto.Response.Error.Code](#anytype-Rpc-Block-ListTurnInto-Response-Error-Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype-Rpc-Block-Merge-Response-Error-Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype-Rpc-Block-Paste-Response-Error-Code)
@@ -764,6 +834,22 @@
     - [Rpc.BlockLink.ListSetAppearance.Response.Error.Code](#anytype-Rpc-BlockLink-ListSetAppearance-Response-Error-Code)
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype-Rpc-BlockRelation-Add-Response-Error-Code)
     - [Rpc.BlockRelation.SetKey.Response.Error.Code](#anytype-Rpc-BlockRelation-SetKey-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnCreate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnDelete.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnListFill.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnListFill-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnMove.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code)
+    - [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code)
+    - [Rpc.BlockTable.Expand.Response.Error.Code](#anytype-Rpc-BlockTable-Expand-Response-Error-Code)
+    - [Rpc.BlockTable.RowCreate.Response.Error.Code](#anytype-Rpc-BlockTable-RowCreate-Response-Error-Code)
+    - [Rpc.BlockTable.RowDelete.Response.Error.Code](#anytype-Rpc-BlockTable-RowDelete-Response-Error-Code)
+    - [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code)
+    - [Rpc.BlockTable.RowListClean.Response.Error.Code](#anytype-Rpc-BlockTable-RowListClean-Response-Error-Code)
+    - [Rpc.BlockTable.RowListFill.Response.Error.Code](#anytype-Rpc-BlockTable-RowListFill-Response-Error-Code)
+    - [Rpc.BlockTable.RowSetHeader.Response.Error.Code](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error-Code)
+    - [Rpc.BlockTable.Sort.Response.Error.Code](#anytype-Rpc-BlockTable-Sort-Response-Error-Code)
+    - [Rpc.BlockText.ListClearContent.Response.Error.Code](#anytype-Rpc-BlockText-ListClearContent-Response-Error-Code)
+    - [Rpc.BlockText.ListClearStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListClearStyle-Response-Error-Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype-Rpc-BlockText-ListSetColor-Response-Error-Code)
     - [Rpc.BlockText.ListSetMark.Response.Error.Code](#anytype-Rpc-BlockText-ListSetMark-Response-Error-Code)
     - [Rpc.BlockText.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListSetStyle-Response-Error-Code)
@@ -964,6 +1050,8 @@
     - [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation)
     - [Event.Block.Set.Relation.Key](#anytype-Event-Block-Set-Relation-Key)
     - [Event.Block.Set.Restrictions](#anytype-Event-Block-Set-Restrictions)
+    - [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow)
+    - [Event.Block.Set.TableRow.IsHeader](#anytype-Event-Block-Set-TableRow-IsHeader)
     - [Event.Block.Set.Text](#anytype-Event-Block-Set-Text)
     - [Event.Block.Set.Text.Checked](#anytype-Event-Block-Set-Text-Checked)
     - [Event.Block.Set.Text.Color](#anytype-Event-Block-Set-Text-Color)
@@ -972,6 +1060,7 @@
     - [Event.Block.Set.Text.Marks](#anytype-Event-Block-Set-Text-Marks)
     - [Event.Block.Set.Text.Style](#anytype-Event-Block-Set-Text-Style)
     - [Event.Block.Set.Text.Text](#anytype-Event-Block-Set-Text-Text)
+    - [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.Details](#anytype-Event-Object-Details)
@@ -1055,7 +1144,10 @@
     - [Block.Content.Link](#anytype-model-Block-Content-Link)
     - [Block.Content.Relation](#anytype-model-Block-Content-Relation)
     - [Block.Content.Smartblock](#anytype-model-Block-Content-Smartblock)
+    - [Block.Content.Table](#anytype-model-Block-Content-Table)
+    - [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn)
     - [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents)
+    - [Block.Content.TableRow](#anytype-model-Block-Content-TableRow)
     - [Block.Content.Text](#anytype-model-Block-Content-Text)
     - [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark)
     - [Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks)
@@ -1100,6 +1192,7 @@
     - [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type)
     - [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style)
     - [Block.Position](#anytype-model-Block-Position)
+    - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
@@ -1238,6 +1331,7 @@
 | BlockListDuplicate | [Rpc.Block.ListDuplicate.Request](#anytype-Rpc-Block-ListDuplicate-Request) | [Rpc.Block.ListDuplicate.Response](#anytype-Rpc-Block-ListDuplicate-Response) |  |
 | BlockListSetBackgroundColor | [Rpc.Block.ListSetBackgroundColor.Request](#anytype-Rpc-Block-ListSetBackgroundColor-Request) | [Rpc.Block.ListSetBackgroundColor.Response](#anytype-Rpc-Block-ListSetBackgroundColor-Response) |  |
 | BlockListSetAlign | [Rpc.Block.ListSetAlign.Request](#anytype-Rpc-Block-ListSetAlign-Request) | [Rpc.Block.ListSetAlign.Response](#anytype-Rpc-Block-ListSetAlign-Response) |  |
+| BlockListSetVerticalAlign | [Rpc.Block.ListSetVerticalAlign.Request](#anytype-Rpc-Block-ListSetVerticalAlign-Request) | [Rpc.Block.ListSetVerticalAlign.Response](#anytype-Rpc-Block-ListSetVerticalAlign-Response) |  |
 | BlockListTurnInto | [Rpc.Block.ListTurnInto.Request](#anytype-Rpc-Block-ListTurnInto-Request) | [Rpc.Block.ListTurnInto.Response](#anytype-Rpc-Block-ListTurnInto-Response) |  |
 | BlockTextSetText | [Rpc.BlockText.SetText.Request](#anytype-Rpc-BlockText-SetText-Request) | [Rpc.BlockText.SetText.Response](#anytype-Rpc-BlockText-SetText-Response) | Text Block commands *** |
 | BlockTextSetColor | [Rpc.BlockText.SetColor.Request](#anytype-Rpc-BlockText-SetColor-Request) | [Rpc.BlockText.SetColor.Response](#anytype-Rpc-BlockText-SetColor-Response) |  |
@@ -1247,6 +1341,8 @@
 | BlockTextListSetColor | [Rpc.BlockText.ListSetColor.Request](#anytype-Rpc-BlockText-ListSetColor-Request) | [Rpc.BlockText.ListSetColor.Response](#anytype-Rpc-BlockText-ListSetColor-Response) |  |
 | BlockTextListSetMark | [Rpc.BlockText.ListSetMark.Request](#anytype-Rpc-BlockText-ListSetMark-Request) | [Rpc.BlockText.ListSetMark.Response](#anytype-Rpc-BlockText-ListSetMark-Response) |  |
 | BlockTextListSetStyle | [Rpc.BlockText.ListSetStyle.Request](#anytype-Rpc-BlockText-ListSetStyle-Request) | [Rpc.BlockText.ListSetStyle.Response](#anytype-Rpc-BlockText-ListSetStyle-Response) |  |
+| BlockTextListClearStyle | [Rpc.BlockText.ListClearStyle.Request](#anytype-Rpc-BlockText-ListClearStyle-Request) | [Rpc.BlockText.ListClearStyle.Response](#anytype-Rpc-BlockText-ListClearStyle-Response) |  |
+| BlockTextListClearContent | [Rpc.BlockText.ListClearContent.Request](#anytype-Rpc-BlockText-ListClearContent-Request) | [Rpc.BlockText.ListClearContent.Response](#anytype-Rpc-BlockText-ListClearContent-Response) |  |
 | BlockFileSetName | [Rpc.BlockFile.SetName.Request](#anytype-Rpc-BlockFile-SetName-Request) | [Rpc.BlockFile.SetName.Response](#anytype-Rpc-BlockFile-SetName-Response) | File block commands *** |
 | BlockImageSetName | [Rpc.BlockImage.SetName.Request](#anytype-Rpc-BlockImage-SetName-Request) | [Rpc.BlockImage.SetName.Response](#anytype-Rpc-BlockImage-SetName-Response) |  |
 | BlockVideoSetName | [Rpc.BlockVideo.SetName.Request](#anytype-Rpc-BlockVideo-SetName-Request) | [Rpc.BlockVideo.SetName.Response](#anytype-Rpc-BlockVideo-SetName-Response) |  |
@@ -1268,6 +1364,20 @@
 | BlockDataviewRecordRelationOptionAdd | [Rpc.BlockDataviewRecord.RelationOption.Add.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Request) | [Rpc.BlockDataviewRecord.RelationOption.Add.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response) |  |
 | BlockDataviewRecordRelationOptionUpdate | [Rpc.BlockDataviewRecord.RelationOption.Update.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Request) | [Rpc.BlockDataviewRecord.RelationOption.Update.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response) |  |
 | BlockDataviewRecordRelationOptionDelete | [Rpc.BlockDataviewRecord.RelationOption.Delete.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Request) | [Rpc.BlockDataviewRecord.RelationOption.Delete.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response) |  |
+| BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
+| BlockTableExpand | [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request) | [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response) |  |
+| BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
+| BlockTableRowDelete | [Rpc.BlockTable.RowDelete.Request](#anytype-Rpc-BlockTable-RowDelete-Request) | [Rpc.BlockTable.RowDelete.Response](#anytype-Rpc-BlockTable-RowDelete-Response) |  |
+| BlockTableRowDuplicate | [Rpc.BlockTable.RowDuplicate.Request](#anytype-Rpc-BlockTable-RowDuplicate-Request) | [Rpc.BlockTable.RowDuplicate.Response](#anytype-Rpc-BlockTable-RowDuplicate-Response) |  |
+| BlockTableRowSetHeader | [Rpc.BlockTable.RowSetHeader.Request](#anytype-Rpc-BlockTable-RowSetHeader-Request) | [Rpc.BlockTable.RowSetHeader.Response](#anytype-Rpc-BlockTable-RowSetHeader-Response) |  |
+| BlockTableColumnCreate | [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request) | [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response) |  |
+| BlockTableColumnMove | [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request) | [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response) |  |
+| BlockTableColumnDelete | [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request) | [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response) |  |
+| BlockTableColumnDuplicate | [Rpc.BlockTable.ColumnDuplicate.Request](#anytype-Rpc-BlockTable-ColumnDuplicate-Request) | [Rpc.BlockTable.ColumnDuplicate.Response](#anytype-Rpc-BlockTable-ColumnDuplicate-Response) |  |
+| BlockTableRowListFill | [Rpc.BlockTable.RowListFill.Request](#anytype-Rpc-BlockTable-RowListFill-Request) | [Rpc.BlockTable.RowListFill.Response](#anytype-Rpc-BlockTable-RowListFill-Response) |  |
+| BlockTableRowListClean | [Rpc.BlockTable.RowListClean.Request](#anytype-Rpc-BlockTable-RowListClean-Request) | [Rpc.BlockTable.RowListClean.Response](#anytype-Rpc-BlockTable-RowListClean-Response) |  |
+| BlockTableColumnListFill | [Rpc.BlockTable.ColumnListFill.Request](#anytype-Rpc-BlockTable-ColumnListFill-Request) | [Rpc.BlockTable.ColumnListFill.Response](#anytype-Rpc-BlockTable-ColumnListFill-Response) |  |
+| BlockTableSort | [Rpc.BlockTable.Sort.Request](#anytype-Rpc-BlockTable-Sort-Request) | [Rpc.BlockTable.Sort.Response](#anytype-Rpc-BlockTable-Sort-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -3086,6 +3196,65 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.ListSetFields.Response.Error.Code](#anytype-Rpc-Block-ListSetFields-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign"></a>
+
+### Rpc.Block.ListSetVerticalAlign
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Request"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| blockIds | [string](#string) | repeated |  |
+| verticalAlign | [model.Block.VerticalAlign](#anytype-model-Block-VerticalAlign) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Response"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.ListSetVerticalAlign.Response.Error](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Response-Error"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.ListSetVerticalAlign.Response.Error.Code](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -5506,10 +5675,966 @@ id of the closest simple block |
 
 
 
+<a name="anytype-Rpc-BlockTable"></a>
+
+### Rpc.BlockTable
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate"></a>
+
+### Rpc.BlockTable.ColumnCreate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Request"></a>
+
+### Rpc.BlockTable.ColumnCreate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest column |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Response"></a>
+
+### Rpc.BlockTable.ColumnCreate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnCreate.Response.Error](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnCreate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnCreate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete"></a>
+
+### Rpc.BlockTable.ColumnDelete
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Request"></a>
+
+### Rpc.BlockTable.ColumnDelete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest column |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Response"></a>
+
+### Rpc.BlockTable.ColumnDelete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnDelete.Response.Error](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnDelete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnDelete.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDuplicate"></a>
+
+### Rpc.BlockTable.ColumnDuplicate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDuplicate-Request"></a>
+
+### Rpc.BlockTable.ColumnDuplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  |  |
+| blockId | [string](#string) |  | block to duplicate |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDuplicate-Response"></a>
+
+### Rpc.BlockTable.ColumnDuplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnDuplicate.Response.Error](#anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error) |  |  |
+| blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnDuplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnListFill"></a>
+
+### Rpc.BlockTable.ColumnListFill
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnListFill-Request"></a>
+
+### Rpc.BlockTable.ColumnListFill.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnListFill-Response"></a>
+
+### Rpc.BlockTable.ColumnListFill.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnListFill.Response.Error](#anytype-Rpc-BlockTable-ColumnListFill-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnListFill-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnListFill.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnListFill.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnListFill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove"></a>
+
+### Rpc.BlockTable.ColumnMove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Request"></a>
+
+### Rpc.BlockTable.ColumnMove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| dropTargetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Response"></a>
+
+### Rpc.BlockTable.ColumnMove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnMove.Response.Error](#anytype-Rpc-BlockTable-ColumnMove-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnMove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnMove.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Create"></a>
+
+### Rpc.BlockTable.Create
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Create-Request"></a>
+
+### Rpc.BlockTable.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest block |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+| rows | [uint32](#uint32) |  |  |
+| columns | [uint32](#uint32) |  |  |
+| withHeaderRow | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Create-Response"></a>
+
+### Rpc.BlockTable.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.Create.Response.Error](#anytype-Rpc-BlockTable-Create-Response-Error) |  |  |
+| blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Create-Response-Error"></a>
+
+### Rpc.BlockTable.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand"></a>
+
+### Rpc.BlockTable.Expand
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Request"></a>
+
+### Rpc.BlockTable.Expand.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  |  |
+| columns | [uint32](#uint32) |  | number of columns to append |
+| rows | [uint32](#uint32) |  | number of rows to append |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Response"></a>
+
+### Rpc.BlockTable.Expand.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.Expand.Response.Error](#anytype-Rpc-BlockTable-Expand-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Response-Error"></a>
+
+### Rpc.BlockTable.Expand.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.Expand.Response.Error.Code](#anytype-Rpc-BlockTable-Expand-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowCreate"></a>
+
+### Rpc.BlockTable.RowCreate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowCreate-Request"></a>
+
+### Rpc.BlockTable.RowCreate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest row |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowCreate-Response"></a>
+
+### Rpc.BlockTable.RowCreate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowCreate.Response.Error](#anytype-Rpc-BlockTable-RowCreate-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowCreate-Response-Error"></a>
+
+### Rpc.BlockTable.RowCreate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowCreate.Response.Error.Code](#anytype-Rpc-BlockTable-RowCreate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDelete"></a>
+
+### Rpc.BlockTable.RowDelete
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDelete-Request"></a>
+
+### Rpc.BlockTable.RowDelete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest row |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDelete-Response"></a>
+
+### Rpc.BlockTable.RowDelete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowDelete.Response.Error](#anytype-Rpc-BlockTable-RowDelete-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDelete-Response-Error"></a>
+
+### Rpc.BlockTable.RowDelete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowDelete.Response.Error.Code](#anytype-Rpc-BlockTable-RowDelete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDuplicate"></a>
+
+### Rpc.BlockTable.RowDuplicate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDuplicate-Request"></a>
+
+### Rpc.BlockTable.RowDuplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  |  |
+| blockId | [string](#string) |  | block to duplicate |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDuplicate-Response"></a>
+
+### Rpc.BlockTable.RowDuplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowDuplicate.Response.Error](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDuplicate-Response-Error"></a>
+
+### Rpc.BlockTable.RowDuplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean"></a>
+
+### Rpc.BlockTable.RowListClean
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Request"></a>
+
+### Rpc.BlockTable.RowListClean.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Response"></a>
+
+### Rpc.BlockTable.RowListClean.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowListClean.Response.Error](#anytype-Rpc-BlockTable-RowListClean-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Response-Error"></a>
+
+### Rpc.BlockTable.RowListClean.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowListClean.Response.Error.Code](#anytype-Rpc-BlockTable-RowListClean-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListFill"></a>
+
+### Rpc.BlockTable.RowListFill
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListFill-Request"></a>
+
+### Rpc.BlockTable.RowListFill.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListFill-Response"></a>
+
+### Rpc.BlockTable.RowListFill.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowListFill.Response.Error](#anytype-Rpc-BlockTable-RowListFill-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListFill-Response-Error"></a>
+
+### Rpc.BlockTable.RowListFill.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowListFill.Response.Error.Code](#anytype-Rpc-BlockTable-RowListFill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader"></a>
+
+### Rpc.BlockTable.RowSetHeader
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Request"></a>
+
+### Rpc.BlockTable.RowSetHeader.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  |  |
+| isHeader | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Response"></a>
+
+### Rpc.BlockTable.RowSetHeader.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowSetHeader.Response.Error](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Response-Error"></a>
+
+### Rpc.BlockTable.RowSetHeader.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowSetHeader.Response.Error.Code](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Sort"></a>
+
+### Rpc.BlockTable.Sort
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Sort-Request"></a>
+
+### Rpc.BlockTable.Sort.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| columnId | [string](#string) |  |  |
+| type | [model.Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Sort-Response"></a>
+
+### Rpc.BlockTable.Sort.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.Sort.Response.Error](#anytype-Rpc-BlockTable-Sort-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Sort-Response-Error"></a>
+
+### Rpc.BlockTable.Sort.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.Sort.Response.Error.Code](#anytype-Rpc-BlockTable-Sort-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-BlockText"></a>
 
 ### Rpc.BlockText
 
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent"></a>
+
+### Rpc.BlockText.ListClearContent
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Request"></a>
+
+### Rpc.BlockText.ListClearContent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Response"></a>
+
+### Rpc.BlockText.ListClearContent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockText.ListClearContent.Response.Error](#anytype-Rpc-BlockText-ListClearContent-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Response-Error"></a>
+
+### Rpc.BlockText.ListClearContent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockText.ListClearContent.Response.Error.Code](#anytype-Rpc-BlockText-ListClearContent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearStyle"></a>
+
+### Rpc.BlockText.ListClearStyle
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearStyle-Request"></a>
+
+### Rpc.BlockText.ListClearStyle.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearStyle-Response"></a>
+
+### Rpc.BlockText.ListClearStyle.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockText.ListClearStyle.Response.Error](#anytype-Rpc-BlockText-ListClearStyle-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearStyle-Response-Error"></a>
+
+### Rpc.BlockText.ListClearStyle.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockText.ListClearStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListClearStyle-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -11769,6 +12894,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Response-Error-Code"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Block-ListTurnInto-Response-Error-Code"></a>
 
 ### Rpc.Block.ListTurnInto.Response.Error.Code
@@ -12262,6 +13400,214 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnCreate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnDuplicate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnListFill-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnListFill.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnMove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-Create-Response-Error-Code"></a>
+
+### Rpc.BlockTable.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Response-Error-Code"></a>
+
+### Rpc.BlockTable.Expand.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-RowCreate-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowCreate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDelete-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowDuplicate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowListClean.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListFill-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowListFill.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowSetHeader.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-Sort-Response-Error-Code"></a>
+
+### Rpc.BlockTable.Sort.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Response-Error-Code"></a>
+
+### Rpc.BlockText.ListClearContent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearStyle-Response-Error-Code"></a>
+
+### Rpc.BlockText.ListClearStyle.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -15151,6 +16497,37 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-TableRow"></a>
+
+### Event.Block.Set.TableRow
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| isHeader | [Event.Block.Set.TableRow.IsHeader](#anytype-Event-Block-Set-TableRow-IsHeader) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-TableRow-IsHeader"></a>
+
+### Event.Block.Set.TableRow.IsHeader
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Set-Text"></a>
 
 ### Event.Block.Set.Text
@@ -15278,6 +16655,22 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-VerticalAlign"></a>
+
+### Event.Block.Set.VerticalAlign
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| verticalAlign | [model.Block.VerticalAlign](#anytype-model-Block-VerticalAlign) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -15318,6 +16711,8 @@ Precondition: user A opened a block
 | blockSetDiv | [Event.Block.Set.Div](#anytype-Event-Block-Set-Div) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation) |  |  |
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
+| blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
+| blockSetTableRow | [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow) |  |  |
 | blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet) |  |  |
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype-Event-Block-Dataview-RecordsUpdate) |  |  |
 | blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert) |  |  |
@@ -16350,6 +17745,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | childrenIds | [string](#string) | repeated |  |
 | backgroundColor | [string](#string) |  |  |
 | align | [Block.Align](#anytype-model-Block-Align) |  |  |
+| verticalAlign | [Block.VerticalAlign](#anytype-model-Block-VerticalAlign) |  |  |
 | smartblock | [Block.Content.Smartblock](#anytype-model-Block-Content-Smartblock) |  |  |
 | text | [Block.Content.Text](#anytype-model-Block-Content-Text) |  |  |
 | file | [Block.Content.File](#anytype-model-Block-Content-File) |  |  |
@@ -16363,6 +17759,9 @@ Avatar of a user&#39;s account. It could be an image or color
 | featuredRelations | [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations) |  |  |
 | latex | [Block.Content.Latex](#anytype-model-Block-Content-Latex) |  |  |
 | tableOfContents | [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents) |  |  |
+| table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
+| tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
+| tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
 
 
 
@@ -16638,10 +18037,45 @@ Link: block to link some content from an external sources.
 
 
 
+<a name="anytype-model-Block-Content-Table"></a>
+
+### Block.Content.Table
+
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-TableColumn"></a>
+
+### Block.Content.TableColumn
+
+
+
+
+
+
+
 <a name="anytype-model-Block-Content-TableOfContents"></a>
 
 ### Block.Content.TableOfContents
 
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-TableRow"></a>
+
+### Block.Content.TableRow
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| isHeader | [bool](#bool) |  |  |
 
 
 
@@ -17243,6 +18677,8 @@ scope from which this relation have been aggregated |
 | Column | 1 |  |
 | Div | 2 |  |
 | Header | 3 |  |
+| TableRows | 4 |  |
+| TableColumns | 5 |  |
 
 
 
@@ -17359,6 +18795,19 @@ scope from which this relation have been aggregated |
 | Inner | 5 | inside target block, as last block |
 | Replace | 6 | replace target block |
 | InnerFirst | 7 | inside target block, as first block |
+
+
+
+<a name="anytype-model-Block-VerticalAlign"></a>
+
+### Block.VerticalAlign
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| VerticalAlignTop | 0 |  |
+| VerticalAlignMiddle | 1 |  |
+| VerticalAlignBottom | 2 |  |
 
 
 

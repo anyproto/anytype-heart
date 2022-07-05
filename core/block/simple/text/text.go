@@ -63,6 +63,8 @@ type Block interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetText) error
+
+	IsEmpty() bool
 }
 
 type Text struct {
@@ -504,6 +506,24 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, n
 				Type:  m.Type,
 				Param: m.Param,
 			})
+		} else if (m.Range.From >= r.From) && (m.Range.To >= r.To) {
+			botMarks = append(botMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: r.From + newTextLen,
+					To:   m.Range.To - (r.To - r.From) + newTextLen,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+		} else if (m.Range.From < r.From) && (m.Range.To > r.From) && (m.Range.To <= r.To) {
+			topMarks = append(topMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From,
+					To:   r.From,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
 		} else
 		//  (*******<b>**)rem lorem</b>  :--->   __PASTE__ <b>em lorem</b>
 		if m.Range.From < r.To {
@@ -660,4 +680,20 @@ func (t *Text) ApplyEvent(e *pb.EventBlockSetText) error {
 		t.content.IconEmoji = e.IconEmoji.GetValue()
 	}
 	return nil
+}
+
+func (t *Text) IsEmpty() bool {
+	if t.content.Text == "" &&
+		!t.content.Checked &&
+		t.content.Color == "" &&
+		t.content.Style == 0 &&
+		t.content.IconEmoji == "" &&
+		t.content.IconImage == "" &&
+		len(t.content.GetMarks().GetMarks()) == 0 &&
+		t.Model().BackgroundColor == "" &&
+		t.Model().Align == 0 &&
+		t.Model().VerticalAlign == 0 {
+		return true
+	}
+	return false
 }

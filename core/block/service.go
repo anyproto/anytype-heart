@@ -29,6 +29,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -145,8 +147,11 @@ type Service interface {
 	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetTextIcon(ctx *state.Context, contextId, image, emoji string, blockIds ...string) error
+	ClearTextStyle(ctx *state.Context, contextId string, blockIds ...string) error
+	ClearTextContent(ctx *state.Context, contextId string, blockIds ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	SetVerticalAlign(ctx *state.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error)
 	SetLayout(ctx *state.Context, id string, layout model.ObjectTypeLayout) error
 	SetLinkAppearance(ctx *state.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error)
 
@@ -198,6 +203,21 @@ type Service interface {
 	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error)
 	ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error)
 	ObjectToBookmark(id string, url string) (newId string, err error)
+
+	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error)
+	TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error)
+	TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error)
+	TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error)
+	TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error)
+	TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error)
+	TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error)
+	TableRowSetHeader(ctx *state.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error)
+	TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error)
+	TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
+	TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
+	TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error)
+	TableColumnListFill(ctx *state.Context, req pb.RpcBlockTableColumnListFillRequest) (err error)
+	TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
@@ -1161,6 +1181,25 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 		return apply(bb)
 	}
 	return fmt.Errorf("basic operation not available for this block type: %T", sb)
+}
+
+func (s *service) DoTable(id string, ctx *state.Context, apply func(st *state.State, b table.Editor) error) error {
+	sb, release, err := s.pickBlock(context.TODO(), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(table.Editor); ok {
+		sb.Lock()
+		defer sb.Unlock()
+
+		st := sb.NewStateCtx(ctx)
+		if err := apply(st, bb); err != nil {
+			return fmt.Errorf("apply function: %w", err)
+		}
+		return sb.Apply(st)
+	}
+	return fmt.Errorf("table operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {

@@ -583,6 +583,26 @@ func (mw *Middleware) BlockListSetAlign(cctx context.Context, req *pb.RpcBlockLi
 	return response(pb.RpcBlockListSetAlignResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockListSetVerticalAlign(cctx context.Context, req *pb.RpcBlockListSetVerticalAlignRequest) *pb.RpcBlockListSetVerticalAlignResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockListSetVerticalAlignResponseErrorCode, err error) *pb.RpcBlockListSetVerticalAlignResponse {
+		m := &pb.RpcBlockListSetVerticalAlignResponse{Error: &pb.RpcBlockListSetVerticalAlignResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetVerticalAlign(ctx, req.ContextId, req.VerticalAlign, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListSetVerticalAlignResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetVerticalAlignResponseError_NULL, nil)
+}
+
 func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcFileDropResponseErrorCode, err error) *pb.RpcFileDropResponse {
@@ -769,6 +789,46 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...state.ContextOpti
 		return state.NewContext()
 	}
 	return state.NewContext(state.WithSessionId(v[0], grpcSender))
+}
+
+func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockTextListClearStyleResponseErrorCode, err error) *pb.RpcBlockTextListClearStyleResponse {
+		m := &pb.RpcBlockTextListClearStyleResponse{Error: &pb.RpcBlockTextListClearStyleResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.ClearTextStyle(ctx, req.ContextId, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockTextListClearStyleResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockTextListClearStyleResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockTextListClearContent(cctx context.Context, req *pb.RpcBlockTextListClearContentRequest) *pb.RpcBlockTextListClearContentResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockTextListClearContentResponseErrorCode, err error) *pb.RpcBlockTextListClearContentResponse {
+		m := &pb.RpcBlockTextListClearContentResponse{Error: &pb.RpcBlockTextListClearContentResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.ClearTextContent(ctx, req.ContextId, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockTextListClearContentResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockTextListClearContentResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockTextSetText(cctx context.Context, req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
