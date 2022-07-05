@@ -888,19 +888,19 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		}
 	}
 
-	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
-	if err != nil {
-		return "", nil, fmt.Errorf("object type not found")
-	}
-
 	var workspaceId string
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
+			var rel *model.Relation
 			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
-				rel := pbtypes.GetRelation(objType.Relations, k)
+				// in case we don't have a relation both in the state and relations slice, we need to find it other places and add it
+				rel, _ = bundle.GetRelation(bundle.RelationKey(k))
 				if rel == nil {
-					return "", nil, fmt.Errorf("relation for detail %s not found", k)
+					rel, _ = s.objectStore.GetRelation(k)
+					if err != nil {
+						return "", nil, fmt.Errorf("relation for detail %s not found", k)
+					}
 				}
 				relCopy := pbtypes.CopyRelation(rel)
 				relCopy.Scope = model.Relation_object
