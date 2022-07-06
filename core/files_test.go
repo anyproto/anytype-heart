@@ -108,15 +108,14 @@ func TestFile(t *testing.T) {
 
 		respOpenImage := mw.ObjectOpen(context.Background(), &pb.RpcObjectOpenRequest{ObjectId: respUploadImage.Hash})
 		require.Equal(t, 0, int(respOpenImage.Error.Code), respOpenImage.Error.Description)
-		require.Len(t, respOpenImage.Event.Messages, 1)
-		show := getEventObjectShow(respOpenImage.Event.Messages)
+		show := respOpenImage.ObjectView
 		require.NotNil(t, show)
 		require.GreaterOrEqual(t, len(show.Details), 2)
 		det := getDetailsForContext(show.Details, respUploadImage.Hash)
 		require.Equal(t, "a", pbtypes.GetString(det, "name"))
 		require.Equal(t, "image/jpeg", pbtypes.GetString(det, "fileMimeType"))
 
-		b := getBlockById("file", respOpenImage.Event.Messages[0].GetObjectShow().Blocks)
+		b := getBlockById("file", respOpenImage.ObjectView.Blocks)
 		require.NotNil(t, b)
 		require.Equal(t, respUploadImage.Hash, b.GetFile().Hash)
 	})
