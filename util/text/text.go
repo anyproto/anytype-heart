@@ -1,7 +1,6 @@
 package text
 
 import (
-	"fmt"
 	"unicode"
 	"unicode/utf16"
 )
@@ -30,7 +29,6 @@ func Truncate(text string, length int) string {
 				endTextPos = lastWordIndex
 			}
 			out := utf16Text[0:endTextPos]
-			fmt.Println(out)
 			return UTF16ToStr(out) + TruncateEllipsis
 		}
 	}
