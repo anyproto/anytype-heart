@@ -91,8 +91,8 @@ type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
 	DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error
 
-	OpenBlock(ctx *state.Context, id string) error
-	ShowBlock(ctx *state.Context, id string) error
+	OpenBlock(ctx *state.Context, id string) (*model.ObjectShow, error)
+	ShowBlock(ctx *state.Context, id string) (*model.ObjectShow, error)
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcObjectSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
@@ -368,7 +368,7 @@ func (s *service) Anytype() core.Service {
 	return s.anytype
 }
 
-func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
+func (s *service) OpenBlock(ctx *state.Context, id string) (obj *model.ObjectShow, err error) {
 	startTime := time.Now()
 	ob, err := s.getSmartblock(context.TODO(), id)
 	if err != nil {
@@ -390,7 +390,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
 	afterApplyTime := time.Now()
-	if err = ob.Show(ctx); err != nil {
+	if obj, err = ob.Show(ctx); err != nil {
 		return
 	}
 	afterShowTime := time.Now()
@@ -420,13 +420,18 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
 		SmartblockType: int(tp),
 	})
-	return nil
+	return obj, nil
 }
 
-func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
-	return s.Do(id, func(b smartblock.SmartBlock) error {
-		return b.Show(ctx)
+func (s *service) ShowBlock(ctx *state.Context, id string) (obj *model.ObjectShow, err error) {
+	err2 := s.Do(id, func(b smartblock.SmartBlock) error {
+		obj, err = b.Show(ctx)
+		return err
 	})
+	if err2 != nil {
+		return nil, err2
+	}
+	return
 }
 
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
@@ -449,7 +454,8 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	if _, err = s.cache.Get(context.Background(), bs.Id()); err != nil {
 		return
 	}
-	if err = bs.Show(ctx); err != nil {
+	// TODO: how it works?
+	if _, err = bs.Show(ctx); err != nil {
 		return
 	}
 	return bs.Id(), nil

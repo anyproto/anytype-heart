@@ -66,18 +66,20 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 
 func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
 	ctx := mw.newContext(cctx)
+	var obj *model.ObjectShow
 	response := func(code pb.RpcObjectOpenResponseErrorCode, err error) *pb.RpcObjectOpenResponse {
 		m := &pb.RpcObjectOpenResponse{Error: &pb.RpcObjectOpenResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Object = obj
 		}
 		return m
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.OpenBlock(ctx, req.ObjectId)
+		obj, err = bs.OpenBlock(ctx, req.ObjectId)
+		return err
 	})
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {
@@ -93,18 +95,20 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 
 func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
 	ctx := mw.newContext(cctx, state.WithTraceId(req.TraceId))
+	var obj *model.ObjectShow
 	response := func(code pb.RpcObjectShowResponseErrorCode, err error) *pb.RpcObjectShowResponse {
 		m := &pb.RpcObjectShowResponse{Error: &pb.RpcObjectShowResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Object = obj
 		}
 		return m
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.ShowBlock(ctx, req.ObjectId)
+		obj, err = bs.ShowBlock(ctx, req.ObjectId)
+		return err
 	})
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {

@@ -86,7 +86,7 @@ type SmartBlock interface {
 	Id() string
 	Type() model.SmartBlockType
 	Meta() *core.SmartBlockMeta
-	Show(*state.Context) (err error)
+	Show(*state.Context) (obj *model.ObjectShow, err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
@@ -367,14 +367,14 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
 }
 
-func (sb *smartBlock) Show(ctx *state.Context) error {
+func (sb *smartBlock) Show(ctx *state.Context) (*model.ObjectShow, error) {
 	if ctx == nil {
-		return nil
+		return nil, nil
 	}
 
 	details, objectTypes, err := sb.fetchMeta()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// omit relations
 	// todo: switch to other pb type
@@ -396,27 +396,22 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 
 	// todo: sb.Relations() makes extra query to read objectType which we already have here
 	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
-	ctx.AddMessages(sb.Id(), []*pb.EventMessage{
-		{
-			Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-				RootId:       sb.RootId(),
-				Type:         sb.Type(),
-				Blocks:       sb.Blocks(),
-				Details:      details,
-				Relations:    sb.Relations(),
-				ObjectTypes:  objectTypes,
-				Restrictions: sb.restrictions.Proto(),
-				History: &pb.EventObjectShowHistorySize{
-					Undo: undo,
-					Redo: redo,
-				},
-			}},
+	return &model.ObjectShow{
+		RootId:       sb.RootId(),
+		Type:         sb.Type(),
+		Blocks:       sb.Blocks(),
+		Details:      details,
+		Relations:    sb.Relations(),
+		ObjectTypes:  objectTypes,
+		Restrictions: sb.restrictions.Proto(),
+		History: &model.ObjectShowHistorySize{
+			Undo: undo,
+			Redo: redo,
 		},
-	})
-	return nil
+	}, nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*model.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*model.ObjectShowDetailsSet, objectTypes []*model.ObjectType, err error) {
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -441,17 +436,17 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		}
 	}
 
-	details = make([]*pb.EventObjectDetailsSet, 0, len(records)+1)
+	details = make([]*model.ObjectShowDetailsSet, 0, len(records)+1)
 
 	// add self details
-	details = append(details, &pb.EventObjectDetailsSet{
+	details = append(details, &model.ObjectShowDetailsSet{
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
 	addObjectTypesByDetails(sb.CombinedDetails())
 
 	for _, rec := range records {
-		details = append(details, &pb.EventObjectDetailsSet{
+		details = append(details, &model.ObjectShowDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})

@@ -703,3 +703,36 @@ message InternalFlag {
         editorSelectTemplate = 2;
     }
 }
+
+
+/*
+    * Works with a smart blocks: Page, Dashboard
+    * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+*/
+message ObjectShow {
+    string rootId = 1; // Root block id
+    repeated Block blocks = 2; // dependent simple blocks (descendants)
+    repeated DetailsSet details = 3; // details for the current and dependent objects
+    SmartBlockType type = 4;
+
+    message DetailsSet {
+        string id = 1; // context objectId
+        google.protobuf.Struct details = 2; // can not be a partial state. Should replace client details state
+        repeated string subIds = 3;
+    }
+
+    message RelationWithValuePerObject {
+        string objectId = 1;
+        repeated RelationWithValue relations = 2;
+    }
+
+    repeated ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
+    repeated Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
+    Restrictions restrictions = 8; // object restrictions
+    HistorySize history = 9;
+
+    message HistorySize {
+        int32 undo = 1;
+        int32 redo = 2;
+    }
+}

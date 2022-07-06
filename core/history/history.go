@@ -32,7 +32,7 @@ func New() History {
 }
 
 type History interface {
-	Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersion, err error)
+	Show(pageId, versionId string) (bs *model.ObjectShow, ver *pb.RpcHistoryVersion, err error)
 	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(pageId, versionId string) (err error)
 	app.Component
@@ -59,14 +59,14 @@ func (h *history) Name() (name string) {
 	return CName
 }
 
-func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersion, err error) {
+func (h *history) Show(pageId, versionId string) (bs *model.ObjectShow, ver *pb.RpcHistoryVersion, err error) {
 	s, ver, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
 	}
 
 	metaD, _ := h.objectStore.QueryById(s.DepSmartIds())
-	details := make([]*pb.EventObjectDetailsSet, 0, len(metaD))
+	details := make([]*model.ObjectShowDetailsSet, 0, len(metaD))
 	var uniqueObjTypes []string
 	sbType, err := smartblock.SmartBlockTypeFromID(pageId)
 	if err != nil {
@@ -75,7 +75,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
 	uniqueObjTypes = s.ObjectTypes()
 	for _, m := range metaD {
-		details = append(details, &pb.EventObjectDetailsSet{
+		details = append(details, &model.ObjectShowDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
 		})
@@ -88,7 +88,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 	}
 
 	objectTypes, _ := objectstore.GetObjectTypes(h.objectStore, uniqueObjTypes)
-	return &pb.EventObjectShow{
+	return &model.ObjectShow{
 		RootId:      pageId,
 		Type:        model.SmartBlockType(sbType),
 		Blocks:      s.Blocks(),

@@ -1076,9 +1076,6 @@
     - [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove)
     - [Event.Object.Relations.Set](#anytype-Event-Object-Relations-Set)
     - [Event.Object.Remove](#anytype-Event-Object-Remove)
-    - [Event.Object.Show](#anytype-Event-Object-Show)
-    - [Event.Object.Show.HistorySize](#anytype-Event-Object-Show-HistorySize)
-    - [Event.Object.Show.RelationWithValuePerObject](#anytype-Event-Object-Show-RelationWithValuePerObject)
     - [Event.Object.Subscription](#anytype-Event-Object-Subscription)
     - [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add)
     - [Event.Object.Subscription.Counters](#anytype-Event-Object-Subscription-Counters)
@@ -1156,6 +1153,10 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [ObjectShow](#anytype-model-ObjectShow)
+    - [ObjectShow.DetailsSet](#anytype-model-ObjectShow-DetailsSet)
+    - [ObjectShow.HistorySize](#anytype-model-ObjectShow-HistorySize)
+    - [ObjectShow.RelationWithValuePerObject](#anytype-model-ObjectShow-RelationWithValuePerObject)
     - [ObjectType](#anytype-model-ObjectType)
     - [Range](#anytype-model-Range)
     - [Relation](#anytype-model-Relation)
@@ -8172,7 +8173,7 @@ returns blockShow event for given version
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.History.ShowVersion.Response.Error](#anytype-Rpc-History-ShowVersion-Response-Error) |  |  |
-| objectShow | [Event.Object.Show](#anytype-Event-Object-Show) |  |  |
+| objectShow | [model.ObjectShow](#anytype-model-ObjectShow) |  |  |
 | version | [Rpc.History.Version](#anytype-Rpc-History-Version) |  |  |
 | traceId | [string](#string) |  |  |
 
@@ -9478,7 +9479,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Open.Response.Error](#anytype-Rpc-Object-Open-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| object | [model.ObjectShow](#anytype-model-ObjectShow) |  |  |
 
 
 
@@ -10266,7 +10267,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Show.Response.Error](#anytype-Rpc-Object-Show-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| object | [model.ObjectShow](#anytype-model-ObjectShow) |  |  |
 
 
 
@@ -16690,7 +16691,6 @@ Precondition: user A opened a block
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype-Event-Object-Remove) |  |  |
-| objectShow | [Event.Object.Show](#anytype-Event-Object-Show) |  |  |
 | subscriptionAdd | [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add) |  |  |
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove) |  |  |
 | subscriptionPosition | [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position) |  |  |
@@ -16935,61 +16935,6 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated | notifies that objects were removed |
-
-
-
-
-
-
-<a name="anytype-Event-Object-Show"></a>
-
-### Event.Object.Show
-Works with a smart blocks: Page, Dashboard
-Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| rootId | [string](#string) |  | Root block id |
-| blocks | [model.Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
-| details | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) | repeated | details for the current and dependent objects |
-| type | [model.SmartBlockType](#anytype-model-SmartBlockType) |  |  |
-| objectTypes | [model.ObjectType](#anytype-model-ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| relations | [model.Relation](#anytype-model-Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
-| restrictions | [model.Restrictions](#anytype-model-Restrictions) |  | object restrictions |
-| history | [Event.Object.Show.HistorySize](#anytype-Event-Object-Show-HistorySize) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Object-Show-HistorySize"></a>
-
-### Event.Object.Show.HistorySize
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| undo | [int32](#int32) |  |  |
-| redo | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Object-Show-RelationWithValuePerObject"></a>
-
-### Event.Object.Show.RelationWithValuePerObject
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectId | [string](#string) |  |  |
-| relations | [model.RelationWithValue](#anytype-model-RelationWithValue) | repeated |  |
 
 
 
@@ -18216,6 +18161,78 @@ Used to decode block meta only, without the content itself
 | imageUrl | [string](#string) |  |  |
 | faviconUrl | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectShow"></a>
+
+### ObjectShow
+Works with a smart blocks: Page, Dashboard
+Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rootId | [string](#string) |  | Root block id |
+| blocks | [Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
+| details | [ObjectShow.DetailsSet](#anytype-model-ObjectShow-DetailsSet) | repeated | details for the current and dependent objects |
+| type | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
+| objectTypes | [ObjectType](#anytype-model-ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
+| relations | [Relation](#anytype-model-Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
+| history | [ObjectShow.HistorySize](#anytype-model-ObjectShow-HistorySize) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectShow-DetailsSet"></a>
+
+### ObjectShow.DetailsSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | can not be a partial state. Should replace client details state |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectShow-HistorySize"></a>
+
+### ObjectShow.HistorySize
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| undo | [int32](#int32) |  |  |
+| redo | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectShow-RelationWithValuePerObject"></a>
+
+### ObjectShow.RelationWithValuePerObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| relations | [RelationWithValue](#anytype-model-RelationWithValue) | repeated |  |
 
 
 

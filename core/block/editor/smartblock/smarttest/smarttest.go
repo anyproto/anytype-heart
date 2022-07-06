@@ -270,7 +270,7 @@ func (st *SmartTest) Type() model.SmartBlockType {
 	return model.SmartBlockType_Page
 }
 
-func (st *SmartTest) Show(*state.Context) (err error) {
+func (st *SmartTest) Show(*state.Context) (obj *model.ObjectShow, err error) {
 	return
 }
 

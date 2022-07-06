@@ -6,10 +6,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
-	response := func(show *pb.EventObjectShow, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
+	response := func(show *model.ObjectShow, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
 		res = &pb.RpcHistoryShowVersionResponse{
 			Error: &pb.RpcHistoryShowVersionResponseError{
 				Code: pb.RpcHistoryShowVersionResponseError_NULL,
@@ -27,7 +28,7 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 		return res
 	}
 	var (
-		show *pb.EventObjectShow
+		show *model.ObjectShow
 		ver  *pb.RpcHistoryVersion
 		err  error
 	)
