@@ -3,9 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/globalsign/mgo/bson"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -302,96 +299,9 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 	}
 
 	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	rel, err := store.GetRelation(req.RelationKey)
+	groups, err := store.RelationSearchDistinct(req.RelationKey, req.Filters)
 	if err != nil {
 		return errResponse(err)
-	}
-
-	var groups []*pb.RpcObjectRelationSearchDistinctResponseGroup
-
-	switch rel.Format {
-	case model.RelationFormat_status:
-		options, err := store.GetAggregatedOptions(req.RelationKey, "")
-		if err != nil {
-			return errResponse(err)
-		}
-		uniqMap := make(map[string]bool)
-		for _, rel := range options {
-			if !uniqMap[rel.Text] {
-				uniqMap[rel.Text] = true
-				groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
-					Id: rel.Id,
-					Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfStatus{
-						Status: &pb.RpcObjectRelationSearchDistinctResponseStatus{
-							Id: rel.Id,
-						}},
-				})
-			}
-		}
-		sort.Slice(groups[:], func(i, j int) bool {
-			obI := bson.ObjectIdHex(groups[i].Id)
-			obJ := bson.ObjectIdHex(groups[j].Id)
-			return obI.Time().Unix() < obJ.Time().Unix()
-		})
-	case model.RelationFormat_tag:
-		filters := []*model.BlockContentDataviewFilter{
-			{RelationKey: "isDeleted", Condition: model.BlockContentDataviewFilter_Equal},
-			{RelationKey: "isArchived", Condition: model.BlockContentDataviewFilter_Equal},
-			{RelationKey: "type", Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{
-				"_otfile",
-				"_otimage",
-				"_otvideo",
-				"_otaudio",
-			})},
-		}
-		filters = append(filters, req.Filters...)
-		records, _, err := store.Query(nil, database.Query{
-			Filters: filters,
-		})
-
-		if err != nil {
-			return errResponse(err)
-		}
-
-		uniqMap := make(map[string]bool)
-		for _, v := range records {
-			if v.Details.Fields["tag"] != nil {
-				tags := make([]string, 0)
-				for _, value := range v.Details.Fields["tag"].GetListValue().GetValues() {
-					tags = append(tags, value.GetStringValue())
-				}
-				sort.Strings(tags)
-				hash := text.SliceHash(tags)
-				if !uniqMap[hash] {
-					uniqMap[hash] = true
-					groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
-						Id: hash,
-						Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfTag{
-							Tag: &pb.RpcObjectRelationSearchDistinctResponseTag{
-								Ids: tags,
-							}},
-					})
-				}
-			}
-		}
-	case model.RelationFormat_checkbox:
-		groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
-			Id: "true",
-			Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfCheckbox{
-				Checkbox: &pb.RpcObjectRelationSearchDistinctResponseCheckbox{
-					Checked: true,
-				}},
-		}, &pb.RpcObjectRelationSearchDistinctResponseGroup{
-			Id: "false",
-			Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfCheckbox{
-				Checkbox: &pb.RpcObjectRelationSearchDistinctResponseCheckbox{
-					Checked: false,
-				}},
-		})
-	case model.RelationFormat_date:
-		// TODO
-	default:
-		return errResponse(errors.New("unsupported relation format"))
 	}
 
 	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{

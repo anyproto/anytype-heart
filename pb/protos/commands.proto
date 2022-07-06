@@ -1029,32 +1029,7 @@ message Rpc {
             message Response {
                 Error error = 1;
 
-                repeated Group groups = 2;
-
-                message Group {
-                    string id = 1;
-                    oneof Value {
-                        Status status = 2;
-                        Tag tag = 3;
-                        Checkbox checkbox = 4;
-                        Date date = 5;
-                    }
-                }
-
-                message Status {
-                    string id = 1;
-                }
-
-                message Tag {
-                    repeated string ids = 1;
-                }
-
-                message Checkbox {
-                    bool checked = 1;
-                }
-
-                message Date {
-                }
+                repeated anytype.model.Block.Content.Dataview.Group groups = 2;
 
                 message Error {
                     Code code = 1;

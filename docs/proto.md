@@ -579,12 +579,7 @@
     - [Rpc.Object.RelationSearchDistinct](#anytype-Rpc-Object-RelationSearchDistinct)
     - [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request)
     - [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response)
-    - [Rpc.Object.RelationSearchDistinct.Response.Checkbox](#anytype-Rpc-Object-RelationSearchDistinct-Response-Checkbox)
-    - [Rpc.Object.RelationSearchDistinct.Response.Date](#anytype-Rpc-Object-RelationSearchDistinct-Response-Date)
     - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error)
-    - [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group)
-    - [Rpc.Object.RelationSearchDistinct.Response.Status](#anytype-Rpc-Object-RelationSearchDistinct-Response-Status)
-    - [Rpc.Object.RelationSearchDistinct.Response.Tag](#anytype-Rpc-Object-RelationSearchDistinct-Response-Tag)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -1143,11 +1138,16 @@
     - [Block.Content](#anytype-model-Block-Content)
     - [Block.Content.Bookmark](#anytype-model-Block-Content-Bookmark)
     - [Block.Content.Dataview](#anytype-model-Block-Content-Dataview)
+    - [Block.Content.Dataview.Checkbox](#anytype-model-Block-Content-Dataview-Checkbox)
+    - [Block.Content.Dataview.Date](#anytype-model-Block-Content-Dataview-Date)
     - [Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter)
+    - [Block.Content.Dataview.Group](#anytype-model-Block-Content-Dataview-Group)
     - [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder)
     - [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder)
     - [Block.Content.Dataview.Relation](#anytype-model-Block-Content-Dataview-Relation)
     - [Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort)
+    - [Block.Content.Dataview.Status](#anytype-model-Block-Content-Dataview-Status)
+    - [Block.Content.Dataview.Tag](#anytype-model-Block-Content-Dataview-Tag)
     - [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View)
     - [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup)
     - [Block.Content.Div](#anytype-model-Block-Content-Div)
@@ -9806,32 +9806,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error) |  |  |
-| groups | [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Checkbox"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response.Checkbox
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| checked | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Date"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response.Date
-
+| groups | [model.Block.Content.Dataview.Group](#anytype-model-Block-Content-Dataview-Group) | repeated |  |
 
 
 
@@ -9848,55 +9823,6 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Group"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response.Group
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| status | [Rpc.Object.RelationSearchDistinct.Response.Status](#anytype-Rpc-Object-RelationSearchDistinct-Response-Status) |  |  |
-| tag | [Rpc.Object.RelationSearchDistinct.Response.Tag](#anytype-Rpc-Object-RelationSearchDistinct-Response-Tag) |  |  |
-| checkbox | [Rpc.Object.RelationSearchDistinct.Response.Checkbox](#anytype-Rpc-Object-RelationSearchDistinct-Response-Checkbox) |  |  |
-| date | [Rpc.Object.RelationSearchDistinct.Response.Date](#anytype-Rpc-Object-RelationSearchDistinct-Response-Date) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Status"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response.Status
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Tag"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response.Tag
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| ids | [string](#string) | repeated |  |
 
 
 
@@ -18007,6 +17933,31 @@ Bookmark is to keep a web-link and to preview a content.
 
 
 
+<a name="anytype-model-Block-Content-Dataview-Checkbox"></a>
+
+### Block.Content.Dataview.Checkbox
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| checked | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Date"></a>
+
+### Block.Content.Dataview.Date
+
+
+
+
+
+
+
 <a name="anytype-model-Block-Content-Dataview-Filter"></a>
 
 ### Block.Content.Dataview.Filter
@@ -18021,6 +17972,25 @@ Bookmark is to keep a web-link and to preview a content.
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Group"></a>
+
+### Block.Content.Dataview.Group
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [Block.Content.Dataview.Status](#anytype-model-Block-Content-Dataview-Status) |  |  |
+| tag | [Block.Content.Dataview.Tag](#anytype-model-Block-Content-Dataview-Tag) |  |  |
+| checkbox | [Block.Content.Dataview.Checkbox](#anytype-model-Block-Content-Dataview-Checkbox) |  |  |
+| date | [Block.Content.Dataview.Date](#anytype-model-Block-Content-Dataview-Date) |  |  |
 
 
 
@@ -18090,6 +18060,36 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | RelationKey | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Status"></a>
+
+### Block.Content.Dataview.Status
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Tag"></a>
+
+### Block.Content.Dataview.Tag
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
 
 
 
