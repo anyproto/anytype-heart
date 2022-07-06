@@ -600,7 +600,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                model.ObjectShow object = 2;
+                model.ObjectView objectView = 2;
 
                 message Error {
                     Code code = 1;
@@ -651,7 +651,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                model.ObjectShow object = 2;
+                model.ObjectView objectView = 2;
 
                 message Error {
                     Code code = 1;
@@ -1890,7 +1890,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                model.ObjectShow objectShow = 2;
+                model.ObjectView objectView = 2;
                 History.Version version = 3;
                 string traceId = 4;
 

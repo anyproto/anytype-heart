@@ -709,7 +709,7 @@ message InternalFlag {
     * Works with a smart blocks: Page, Dashboard
     * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
 */
-message ObjectShow {
+message ObjectView {
     string rootId = 1; // Root block id
     repeated Block blocks = 2; // dependent simple blocks (descendants)
     repeated DetailsSet details = 3; // details for the current and dependent objects

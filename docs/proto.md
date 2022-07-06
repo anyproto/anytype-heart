@@ -1153,11 +1153,11 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
-    - [ObjectShow](#anytype-model-ObjectShow)
-    - [ObjectShow.DetailsSet](#anytype-model-ObjectShow-DetailsSet)
-    - [ObjectShow.HistorySize](#anytype-model-ObjectShow-HistorySize)
-    - [ObjectShow.RelationWithValuePerObject](#anytype-model-ObjectShow-RelationWithValuePerObject)
     - [ObjectType](#anytype-model-ObjectType)
+    - [ObjectView](#anytype-model-ObjectView)
+    - [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet)
+    - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
+    - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
     - [Range](#anytype-model-Range)
     - [Relation](#anytype-model-Relation)
     - [Relation.Option](#anytype-model-Relation-Option)
@@ -8173,7 +8173,7 @@ returns blockShow event for given version
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.History.ShowVersion.Response.Error](#anytype-Rpc-History-ShowVersion-Response-Error) |  |  |
-| objectShow | [model.ObjectShow](#anytype-model-ObjectShow) |  |  |
+| objectView | [model.ObjectView](#anytype-model-ObjectView) |  |  |
 | version | [Rpc.History.Version](#anytype-Rpc-History-Version) |  |  |
 | traceId | [string](#string) |  |  |
 
@@ -9479,7 +9479,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Open.Response.Error](#anytype-Rpc-Object-Open-Response-Error) |  |  |
-| object | [model.ObjectShow](#anytype-model-ObjectShow) |  |  |
+| objectView | [model.ObjectView](#anytype-model-ObjectView) |  |  |
 
 
 
@@ -10267,7 +10267,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Show.Response.Error](#anytype-Rpc-Object-Show-Response-Error) |  |  |
-| object | [model.ObjectShow](#anytype-model-ObjectShow) |  |  |
+| objectView | [model.ObjectView](#anytype-model-ObjectView) |  |  |
 
 
 
@@ -18167,78 +18167,6 @@ Used to decode block meta only, without the content itself
 
 
 
-<a name="anytype-model-ObjectShow"></a>
-
-### ObjectShow
-Works with a smart blocks: Page, Dashboard
-Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| rootId | [string](#string) |  | Root block id |
-| blocks | [Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
-| details | [ObjectShow.DetailsSet](#anytype-model-ObjectShow-DetailsSet) | repeated | details for the current and dependent objects |
-| type | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
-| objectTypes | [ObjectType](#anytype-model-ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| relations | [Relation](#anytype-model-Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
-| restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
-| history | [ObjectShow.HistorySize](#anytype-model-ObjectShow-HistorySize) |  |  |
-
-
-
-
-
-
-<a name="anytype-model-ObjectShow-DetailsSet"></a>
-
-### ObjectShow.DetailsSet
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | context objectId |
-| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | can not be a partial state. Should replace client details state |
-| subIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-model-ObjectShow-HistorySize"></a>
-
-### ObjectShow.HistorySize
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| undo | [int32](#int32) |  |  |
-| redo | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype-model-ObjectShow-RelationWithValuePerObject"></a>
-
-### ObjectShow.RelationWithValuePerObject
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectId | [string](#string) |  |  |
-| relations | [RelationWithValue](#anytype-model-RelationWithValue) | repeated |  |
-
-
-
-
-
-
 <a name="anytype-model-ObjectType"></a>
 
 ### ObjectType
@@ -18257,6 +18185,78 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | readonly | [bool](#bool) |  |  |
 | types | [SmartBlockType](#anytype-model-SmartBlockType) | repeated |  |
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
+
+
+
+
+
+
+<a name="anytype-model-ObjectView"></a>
+
+### ObjectView
+Works with a smart blocks: Page, Dashboard
+Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rootId | [string](#string) |  | Root block id |
+| blocks | [Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
+| details | [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet) | repeated | details for the current and dependent objects |
+| type | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
+| objectTypes | [ObjectType](#anytype-model-ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
+| relations | [Relation](#anytype-model-Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
+| history | [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectView-DetailsSet"></a>
+
+### ObjectView.DetailsSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | can not be a partial state. Should replace client details state |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectView-HistorySize"></a>
+
+### ObjectView.HistorySize
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| undo | [int32](#int32) |  |  |
+| redo | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectView-RelationWithValuePerObject"></a>
+
+### ObjectView.RelationWithValuePerObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| relations | [RelationWithValue](#anytype-model-RelationWithValue) | repeated |  |
 
 
 

@@ -66,13 +66,13 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 
 func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
 	ctx := mw.newContext(cctx)
-	var obj *model.ObjectShow
+	var obj *model.ObjectView
 	response := func(code pb.RpcObjectOpenResponseErrorCode, err error) *pb.RpcObjectOpenResponse {
 		m := &pb.RpcObjectOpenResponse{Error: &pb.RpcObjectOpenResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Object = obj
+			m.ObjectView = obj
 		}
 		return m
 	}
@@ -95,13 +95,13 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 
 func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
 	ctx := mw.newContext(cctx, state.WithTraceId(req.TraceId))
-	var obj *model.ObjectShow
+	var obj *model.ObjectView
 	response := func(code pb.RpcObjectShowResponseErrorCode, err error) *pb.RpcObjectShowResponse {
 		m := &pb.RpcObjectShowResponse{Error: &pb.RpcObjectShowResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Object = obj
+			m.ObjectView = obj
 		}
 		return m
 	}

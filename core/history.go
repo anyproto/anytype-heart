@@ -10,7 +10,7 @@ import (
 )
 
 func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
-	response := func(show *model.ObjectShow, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
+	response := func(obj *model.ObjectView, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
 		res = &pb.RpcHistoryShowVersionResponse{
 			Error: &pb.RpcHistoryShowVersionResponseError{
 				Code: pb.RpcHistoryShowVersionResponseError_NULL,
@@ -21,26 +21,26 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 			res.Error.Description = err.Error()
 			return
 		} else {
-			res.ObjectShow = show
+			res.ObjectView = obj
 			res.Version = ver
 			res.TraceId = req.TraceId
 		}
 		return res
 	}
 	var (
-		show *model.ObjectShow
-		ver  *pb.RpcHistoryVersion
-		err  error
+		obj *model.ObjectView
+		ver *pb.RpcHistoryVersion
+		err error
 	)
 	if err = mw.doBlockService(func(bs block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
-		show, ver, err = hs.Show(req.PageId, req.VersionId)
+		obj, ver, err = hs.Show(req.PageId, req.VersionId)
 		return
 	}); err != nil {
 		return response(nil, nil, err)
 	}
 
-	return response(show, ver, nil)
+	return response(obj, ver, nil)
 }
 
 func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {

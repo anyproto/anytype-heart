@@ -86,7 +86,7 @@ type SmartBlock interface {
 	Id() string
 	Type() model.SmartBlockType
 	Meta() *core.SmartBlockMeta
-	Show(*state.Context) (obj *model.ObjectShow, err error)
+	Show(*state.Context) (obj *model.ObjectView, err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
@@ -367,7 +367,7 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
 }
 
-func (sb *smartBlock) Show(ctx *state.Context) (*model.ObjectShow, error) {
+func (sb *smartBlock) Show(ctx *state.Context) (*model.ObjectView, error) {
 	if ctx == nil {
 		return nil, nil
 	}
@@ -396,7 +396,7 @@ func (sb *smartBlock) Show(ctx *state.Context) (*model.ObjectShow, error) {
 
 	// todo: sb.Relations() makes extra query to read objectType which we already have here
 	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
-	return &model.ObjectShow{
+	return &model.ObjectView{
 		RootId:       sb.RootId(),
 		Type:         sb.Type(),
 		Blocks:       sb.Blocks(),
@@ -404,14 +404,14 @@ func (sb *smartBlock) Show(ctx *state.Context) (*model.ObjectShow, error) {
 		Relations:    sb.Relations(),
 		ObjectTypes:  objectTypes,
 		Restrictions: sb.restrictions.Proto(),
-		History: &model.ObjectShowHistorySize{
+		History: &model.ObjectViewHistorySize{
 			Undo: undo,
 			Redo: redo,
 		},
 	}, nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*model.ObjectShowDetailsSet, objectTypes []*model.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, objectTypes []*model.ObjectType, err error) {
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -436,17 +436,17 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectShowDetailsSet, object
 		}
 	}
 
-	details = make([]*model.ObjectShowDetailsSet, 0, len(records)+1)
+	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
 
 	// add self details
-	details = append(details, &model.ObjectShowDetailsSet{
+	details = append(details, &model.ObjectViewDetailsSet{
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
 	addObjectTypesByDetails(sb.CombinedDetails())
 
 	for _, rec := range records {
-		details = append(details, &model.ObjectShowDetailsSet{
+		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})

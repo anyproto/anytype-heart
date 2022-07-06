@@ -91,8 +91,8 @@ type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
 	DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error
 
-	OpenBlock(ctx *state.Context, id string) (*model.ObjectShow, error)
-	ShowBlock(ctx *state.Context, id string) (*model.ObjectShow, error)
+	OpenBlock(ctx *state.Context, id string) (*model.ObjectView, error)
+	ShowBlock(ctx *state.Context, id string) (*model.ObjectView, error)
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcObjectSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
@@ -368,7 +368,7 @@ func (s *service) Anytype() core.Service {
 	return s.anytype
 }
 
-func (s *service) OpenBlock(ctx *state.Context, id string) (obj *model.ObjectShow, err error) {
+func (s *service) OpenBlock(ctx *state.Context, id string) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
 	ob, err := s.getSmartblock(context.TODO(), id)
 	if err != nil {
@@ -423,7 +423,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (obj *model.ObjectSho
 	return obj, nil
 }
 
-func (s *service) ShowBlock(ctx *state.Context, id string) (obj *model.ObjectShow, err error) {
+func (s *service) ShowBlock(ctx *state.Context, id string) (obj *model.ObjectView, err error) {
 	err2 := s.Do(id, func(b smartblock.SmartBlock) error {
 		obj, err = b.Show(ctx)
 		return err
