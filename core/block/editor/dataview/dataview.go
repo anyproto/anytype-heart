@@ -35,7 +35,19 @@ const defaultLimit = 50
 
 var log = logging.Logger("anytype-mw-editor")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
-var DefaultDataviewRelations = append(bundle.RequiredInternalRelations, bundle.RelationKeyDone)
+var DefaultDataviewRelations = make([]bundle.RelationKey, 0, len(bundle.RequiredInternalRelations))
+
+func init() {
+	// fill DefaultDataviewRelations
+	// deprecated: we should remove this after we merge relations as objects
+	for _, rel := range bundle.RequiredInternalRelations {
+		if bundle.MustGetRelation(rel).Hidden {
+			continue
+		}
+		DefaultDataviewRelations = append(DefaultDataviewRelations, rel)
+	}
+	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyDone)
+}
 
 type Dataview interface {
 	SetSource(ctx *state.Context, blockId string, source []string) (err error)

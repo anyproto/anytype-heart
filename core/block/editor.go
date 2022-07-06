@@ -825,7 +825,7 @@ func (s *service) DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObject
 				}
 				return nil
 			})
-			if err != nil && err != smartblock.ErrRelationOptionNotFound {
+			if err != nil && err.Error() != smartblock.ErrRelationOptionNotFound.Error() && err.Error() != source.ErrObjectNotFound.Error() {
 				return err
 			}
 		}

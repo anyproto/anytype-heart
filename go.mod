@@ -75,7 +75,7 @@ require (
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.15
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/otiai10/copy v1.7.0 // indirect
+	github.com/otiai10/copy v1.7.0
 	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/prometheus/client_golang v1.10.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
