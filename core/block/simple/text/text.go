@@ -508,6 +508,24 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, n
 				Type:  m.Type,
 				Param: m.Param,
 			})
+		} else if (m.Range.From >= r.From) && (m.Range.To >= r.To) {
+			botMarks = append(botMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: r.From + newTextLen,
+					To:   m.Range.To - (r.To - r.From) + newTextLen,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+		} else if (m.Range.From < r.From) && (m.Range.To > r.From) && (m.Range.To <= r.To) {
+			topMarks = append(topMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From,
+					To:   r.From,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
 		} else
 		//  (*******<b>**)rem lorem</b>  :--->   __PASTE__ <b>em lorem</b>
 		if m.Range.From < r.To {

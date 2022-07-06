@@ -99,7 +99,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, nil)
+	f, err := database.NewFilters(q, nil, time.Now().Location())
 	if err != nil {
 		return
 	}

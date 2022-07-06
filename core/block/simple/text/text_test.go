@@ -129,6 +129,76 @@ func TestText_Split(t *testing.T) {
 	})
 }
 
+func TestText_RangeSplit(t *testing.T) {
+	testBlock := func() *Text {
+		return NewText(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text: "1234567890",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Type: model.BlockContentTextMark_Bold,
+							Range: &model.Range{
+								From: 2,
+								To:   8,
+							},
+						},
+					},
+				},
+			}},
+		}).(*Text)
+	}
+	t.Run("should split block", func(t *testing.T) {
+		b := testBlock()
+		newBlock, err := b.RangeSplit(1, 5, false)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, "67890", nb.content.Text)
+		assert.Equal(t, "1", b.content.Text)
+		require.Len(t, b.content.Marks.Marks, 0)
+		require.Len(t, nb.content.Marks.Marks, 1)
+		assert.Equal(t, model.Range{0, 3}, *nb.content.Marks.Marks[0].Range)
+	})
+	t.Run("split by range with marked and unmarked letters at the start of marked zone", func(t *testing.T) {
+		b := testBlock()
+		newBlock, err := b.RangeSplit(1, 3, false)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, "4567890", nb.content.Text)
+		assert.Equal(t, "1", b.content.Text)
+		require.Len(t, b.content.Marks.Marks, 0)
+		require.Len(t, nb.content.Marks.Marks, 1)
+		assert.Equal(t, model.Range{0, 5}, *nb.content.Marks.Marks[0].Range)
+	})
+	t.Run("split by range with marked letters at the start of marked zone", func(t *testing.T) {
+		b := testBlock()
+		newBlock, err := b.RangeSplit(2, 3, false)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, "4567890", nb.content.Text)
+		assert.Equal(t, "12", b.content.Text)
+		require.Len(t, b.content.Marks.Marks, 0)
+		require.Len(t, nb.content.Marks.Marks, 1)
+		assert.Equal(t, model.Range{0, 5}, *nb.content.Marks.Marks[0].Range)
+	})
+	t.Run("split by range with marked and unmarked letters at the end of marked zone", func(t *testing.T) {
+		b := testBlock()
+		newBlock, err := b.RangeSplit(7, 8, false)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, "90", nb.content.Text)
+		assert.Equal(t, "1234567", b.content.Text)
+		require.Len(t, b.content.Marks.Marks, 1)
+		assert.Equal(t, model.Range{2, 7}, *b.content.Marks.Marks[0].Range)
+	})
+	t.Run("out of range", func(t *testing.T) {
+		b := testBlock()
+		_, err := b.RangeSplit(0, 11, false)
+		require.Equal(t, ErrOutOfRange, err)
+	})
+}
+
 func TestText_normalizeMarks(t *testing.T) {
 	b := NewText(&model.Block{
 		Restrictions: &model.BlockRestrictions{},
@@ -242,7 +312,7 @@ func TestText_Merge(t *testing.T) {
 		b2 := NewText(&model.Block{
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{
-					Text: "One",
+					Text:  "One",
 					Style: model.BlockContentText_Header1,
 				},
 			},

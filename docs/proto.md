@@ -35,6 +35,10 @@
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
     - [Rpc.Account.Config](#anytype-Rpc-Account-Config)
+    - [Rpc.Account.ConfigUpdate](#anytype-Rpc-Account-ConfigUpdate)
+    - [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request)
+    - [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response)
+    - [Rpc.Account.ConfigUpdate.Response.Error](#anytype-Rpc-Account-ConfigUpdate-Response-Error)
     - [Rpc.Account.Create](#anytype-Rpc-Account-Create)
     - [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request)
     - [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response)
@@ -763,6 +767,8 @@
     - [Rpc.Workspace.SetIsHighlighted.Response](#anytype-Rpc-Workspace-SetIsHighlighted-Response)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error)
   
+    - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
+    - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -1235,6 +1241,7 @@
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
+| AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -1824,6 +1831,62 @@ Response – message from a middleware.
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate"></a>
+
+### Rpc.Account.ConfigUpdate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Request"></a>
+
+### Rpc.Account.ConfigUpdate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| timeZone | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Response"></a>
+
+### Rpc.Account.ConfigUpdate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ConfigUpdate.Response.Error](#anytype-Rpc-Account-ConfigUpdate-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Response-Error"></a>
+
+### Rpc.Account.ConfigUpdate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -12411,6 +12474,60 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-Account-ConfigUpdate-Response-Error-Code"></a>
+
+### Rpc.Account.ConfigUpdate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| FAILED_TO_WRITE_CONFIG | 102 |  |
+| FAILED_TO_GET_CONFIG | 103 |  |
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Timezones"></a>
+
+### Rpc.Account.ConfigUpdate.Timezones
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| GMT | 0 |  |
+| ECT | 1 |  |
+| EET | 2 |  |
+| EAT | 3 |  |
+| MET | 4 |  |
+| NET | 5 |  |
+| PLT | 6 |  |
+| IST | 7 |  |
+| BST | 8 |  |
+| VST | 9 |  |
+| CTT | 10 |  |
+| JST | 11 |  |
+| ACT | 12 |  |
+| AET | 13 |  |
+| SST | 14 |  |
+| NST | 15 |  |
+| MIT | 16 |  |
+| HST | 17 |  |
+| AST | 18 |  |
+| PST | 19 |  |
+| MST | 20 |  |
+| CST | 21 |  |
+| IET | 22 |  |
+| PRT | 23 |  |
+| CNT | 24 |  |
+| BET | 25 |  |
+| BRT | 26 |  |
+| CAT | 27 |  |
+
+
+
 <a name="anytype-Rpc-Account-Create-Response-Error-Code"></a>
 
 ### Rpc.Account.Create.Response.Error.Code
@@ -17541,6 +17658,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
+| timeZone | [string](#string) |  | time zone from config |
 
 
 

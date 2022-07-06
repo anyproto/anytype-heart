@@ -2,6 +2,7 @@ package bundle
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -40,6 +41,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyIsFavorite,
 	RelationKeyWorkspaceId,
 	RelationKeyLinks,
+	RelationKeyInternalFlags,
 }
 
 var FormatFilePossibleTargetObjectTypes = []string{
@@ -255,6 +257,14 @@ func MergeRelationsKeys(rels1 []RelationKey, rels2 []RelationKey) []RelationKey 
 		}
 		rels = append(rels, rel)
 	}
+
+	return rels
+}
+
+func SortRelationKeys(rels []RelationKey) []RelationKey {
+	sort.Slice(rels, func(i, j int) bool {
+		return rels[i] < rels[j]
+	})
 
 	return rels
 }

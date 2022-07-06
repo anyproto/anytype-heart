@@ -85,7 +85,7 @@ type Query struct {
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	qq.Limit = q.Limit
 	qq.Offset = q.Offset
-	f, err := NewFilters(q, sch)
+	f, err := NewFilters(q, sch, nil)
 	if err != nil {
 		return
 	}
@@ -131,10 +131,10 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
-func NewFilters(q Query, sch schema.Schema) (f *Filters, err error) {
+func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err error) {
 	q.Filters = injectDefaultFilters(q.Filters)
 
-	q.Filters = filter.TransformQuickOption(q.Filters)
+	q.Filters = filter.TransformQuickOption(q.Filters, loc)
 
 	f = new(Filters)
 	mainFilter := filter.AndFilters{}
