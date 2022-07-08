@@ -143,6 +143,7 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"expiresAt": time.Now().Add(10 * time.Minute).Unix(),
+		"seed":      RandStringRunes(8),
 	})
 
 	// Sign and get the complete encoded token as a string using the secret

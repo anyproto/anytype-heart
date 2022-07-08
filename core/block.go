@@ -792,6 +792,7 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...state.ContextOpti
 	if v[0] == "" {
 		return state.NewContext()
 	}
+
 	return state.NewContext(state.WithSessionId(v[0], grpcSender))
 }
 

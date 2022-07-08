@@ -34,8 +34,10 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	select {
 	case <-stopChan:
+		log.Errorf("stream %s interrupted", req.Token)
 		return
 	case <-srv.Done:
+		log.Errorf("stream %s closed", req.Token)
 		return
 	}
 }
