@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -311,6 +312,9 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req *pb.RpcBlockPasteRequest, 
 	for _, b := range req.AnySlot {
 		if b.Id == "" {
 			b.Id = bson.NewObjectId().Hex()
+		}
+		if b.Id == template.TitleBlockId {
+			delete(b.Fields.Fields, text.DetailsKeyFieldName)
 		}
 	}
 	srcState := cb.blocksToState(req.AnySlot)
