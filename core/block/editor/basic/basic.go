@@ -45,7 +45,7 @@ var ErrNotSupported = fmt.Errorf("operation not supported for this type of smart
 
 func (bs *basic) PasteBlocks(blocks []simple.Block) (err error) {
 	s := bs.NewState()
-	if err := PasteBlocks(s, blocks); err != nil {
+	if err := PasteBlocks(s, blocks, "", model.Block_Inner); err != nil {
 		return fmt.Errorf("paste blocks: %w", err)
 	}
 	return bs.Apply(s)

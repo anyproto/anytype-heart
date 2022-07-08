@@ -1042,7 +1042,7 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 			blocks := basic.CutBlocks(cs, req.BlockIds)
 
 			ts := tb.NewState()
-			err := basic.PasteBlocks(ts, blocks)
+			err := basic.PasteBlocks(ts, blocks, req.DropTargetId, req.Position)
 			if err != nil {
 				return fmt.Errorf("paste blocks: %w", err)
 			}
