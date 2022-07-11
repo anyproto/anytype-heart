@@ -826,6 +826,7 @@ message Rpc {
                 Error error = 1;
                 string objectId = 2;
                 ResponseEvent event = 3;
+                model.ObjectView objectView = 4;
 
                 message Error {
                     Code code = 1;

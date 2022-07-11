@@ -93,7 +93,7 @@ type Service interface {
 
 	OpenBlock(ctx *state.Context, id string) (*model.ObjectView, error)
 	ShowBlock(ctx *state.Context, id string) (*model.ObjectView, error)
-	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
+	OpenBreadcrumbsBlock(ctx *state.Context) (obj *model.ObjectView, blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcObjectSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CloseBlocks()
@@ -434,7 +434,7 @@ func (s *service) ShowBlock(ctx *state.Context, id string) (obj *model.ObjectVie
 	return
 }
 
-func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
+func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (obj *model.ObjectView, blockId string, err error) {
 	bs := editor.NewBreadcrumbs()
 	if err = bs.Init(&smartblock.InitContext{
 		Restriction: s.restriction,
@@ -454,11 +454,12 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	if _, err = s.cache.Get(context.Background(), bs.Id()); err != nil {
 		return
 	}
-	// TODO: how it works?
-	if _, err = bs.Show(ctx); err != nil {
+
+	obj, err = bs.Show(ctx)
+	if err != nil {
 		return
 	}
-	return bs.Id(), nil
+	return obj, bs.Id(), nil
 }
 
 func (s *service) CloseBlock(id string) error {

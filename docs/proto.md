@@ -9539,6 +9539,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | error | [Rpc.Object.OpenBreadcrumbs.Response.Error](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| objectView | [model.ObjectView](#anytype-model-ObjectView) |  |  |
 
 
 

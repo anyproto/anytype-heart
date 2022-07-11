@@ -124,25 +124,27 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 
 func (mw *Middleware) ObjectOpenBreadcrumbs(cctx context.Context, req *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse {
 	ctx := mw.newContext(cctx, state.WithTraceId(req.TraceId))
-	response := func(code pb.RpcObjectOpenBreadcrumbsResponseErrorCode, id string, err error) *pb.RpcObjectOpenBreadcrumbsResponse {
+	response := func(code pb.RpcObjectOpenBreadcrumbsResponseErrorCode, obj *model.ObjectView, id string, err error) *pb.RpcObjectOpenBreadcrumbsResponse {
 		m := &pb.RpcObjectOpenBreadcrumbsResponse{Error: &pb.RpcObjectOpenBreadcrumbsResponseError{Code: code}, ObjectId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
+			m.ObjectView = obj
 			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
 	var id string
+	var obj *model.ObjectView
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, err = bs.OpenBreadcrumbsBlock(ctx)
+		obj, id, err = bs.OpenBreadcrumbsBlock(ctx)
 		return
 	})
 	if err != nil {
-		return response(pb.RpcObjectOpenBreadcrumbsResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcObjectOpenBreadcrumbsResponseError_UNKNOWN_ERROR, nil, "", err)
 	}
 
-	return response(pb.RpcObjectOpenBreadcrumbsResponseError_NULL, id, nil)
+	return response(pb.RpcObjectOpenBreadcrumbsResponseError_NULL, obj, id, nil)
 }
 
 func (mw *Middleware) ObjectSetBreadcrumbs(cctx context.Context, req *pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse {
