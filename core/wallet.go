@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -176,6 +177,8 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	if !ok {
 		log.Errorf("missing metadata")
 	}
+
+	fmt.Println("METHOD ", path.Base(info.FullMethod))
 
 	v := md.Get("token")
 	if len(v) > 0 {

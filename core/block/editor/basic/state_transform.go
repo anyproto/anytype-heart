@@ -57,7 +57,6 @@ func CutBlocks(s *state.State, blockIds []string) (blocks []simple.Block) {
 	return blocks
 }
 
-// TODO FIX
 func PasteBlocks(s *state.State, blocks []simple.Block, targetId string, pos model.BlockPosition) error {
 	childIdsRewrite := make(map[string]string)
 	for _, b := range blocks {
