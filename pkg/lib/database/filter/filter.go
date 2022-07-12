@@ -397,7 +397,7 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 	if list == nil {
 		return false
 	}
-	if len(list.GetValues()) != len(exIn.Value.Values) {
+	if len(list.GetValues()) != len(exIn.Value.GetValues()) {
 		return false
 	}
 	exist := func(v *types.Value) bool {
@@ -408,7 +408,7 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 		}
 		return false
 	}
-	for _, ev := range exIn.Value.Values {
+	for _, ev := range exIn.Value.GetValues() {
 		if !exist(ev) {
 			return false
 		}
