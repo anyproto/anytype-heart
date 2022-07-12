@@ -173,45 +173,47 @@ func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWallet
 }
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		log.Errorf("missing metadata")
+	fmt.Println(path.Base(info.FullMethod))
+	switch path.Base(info.FullMethod) {
+	case "WalletCreate", "AccountCreate", "WalletRecover", "AccountSelect", "WalletCreateSession", "MetricsSetParameters":
+		resp, err = handler(ctx, req)
+		return
 	}
 
-	fmt.Println("METHOD ", path.Base(info.FullMethod))
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("missing metadata")
+	}
 
 	v := md.Get("token")
-	if len(v) > 0 {
-		tok := v[0]
+	if len(v) == 0 {
+		return nil, fmt.Errorf("missing token")
+	}
 
-		token, err := jwt.Parse(tok, func(token *jwt.Token) (interface{}, error) {
-			// Don't forget to validate the alg is what you expect:
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-			}
+	tok := v[0]
+	token, err := jwt.Parse(tok, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
 
-			acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
-			if err != nil {
-				return nil, err
-			}
-			priv, err := acc.MarshalBinary()
-			if err != nil {
-				return nil, err
-			}
-			// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
-			return priv, nil
-		})
+		acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
 		if err != nil {
-			log.Errorf("parse token: %s", err)
+			return nil, err
 		}
+		priv, err := acc.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
+		return priv, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("parse token %s: %w", tok, err)
+	}
 
-		if token != nil && !token.Valid {
-			log.Errorf("invalid token")
-		}
-
-		if token != nil {
-			fmt.Println(token.Claims)
-		}
+	if token != nil && !token.Valid {
+		return nil, fmt.Errorf("token is invalid")
 	}
 
 	resp, err = handler(ctx, req)
