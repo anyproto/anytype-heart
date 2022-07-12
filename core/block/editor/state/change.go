@@ -100,7 +100,7 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
-			log.Infof("error while applying changes: %v; ignore", err)
+			log.Warnf("error while applying changes: %v; ignore", err)
 		}
 	}
 	return
