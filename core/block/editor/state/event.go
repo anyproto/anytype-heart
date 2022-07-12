@@ -150,6 +150,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				if err != nil && err != dataview.ErrViewNotFound {
 					return err
 				}
+				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -176,6 +177,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				if err != nil && err != dataview.ErrRelationNotFound {
 					return err
 				}
+				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
