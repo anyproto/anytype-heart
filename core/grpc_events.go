@@ -17,7 +17,8 @@ func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_Listen
 }
 
 func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {
-	// TODO: check token here
+	// TODO: use session service here!
+
 	if req.Token == "" {
 		log.Error("ListenSessionEvents: empty token")
 		return

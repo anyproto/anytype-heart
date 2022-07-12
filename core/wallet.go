@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/auth"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/golang-jwt/jwt/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -142,18 +141,14 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"expiresAt": time.Now().Add(10 * time.Minute).Unix(),
-		"seed":      RandStringRunes(8),
-	})
-
-	// Sign and get the complete encoded token as a string using the secret
-	tokenString, err := token.SignedString(priv)
+	tok, err := auth.GenerateToken(priv)
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(tokenString, pb.RpcWalletCreateSessionResponseError_NULL, nil)
+	// TODO: create Session service and register a new session
+
+	return response(tok, pb.RpcWalletCreateSessionResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse {
@@ -184,36 +179,25 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	if !ok {
 		return nil, fmt.Errorf("missing metadata")
 	}
-
 	v := md.Get("token")
 	if len(v) == 0 {
 		return nil, fmt.Errorf("missing token")
 	}
-
 	tok := v[0]
-	token, err := jwt.Parse(tok, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
 
-		acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
-		if err != nil {
-			return nil, err
-		}
-		priv, err := acc.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
-		return priv, nil
-	})
+	// TODO: cache for private key
+	acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
 	if err != nil {
-		return nil, fmt.Errorf("parse token %s: %w", tok, err)
+		return nil, err
+	}
+	priv, err := acc.MarshalBinary()
+	if err != nil {
+		return nil, err
 	}
 
-	if token != nil && !token.Valid {
-		return nil, fmt.Errorf("token is invalid")
+	err = auth.ValidateToken(priv, tok)
+	if err != nil {
+		return
 	}
 
 	resp, err = handler(ctx, req)
