@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "408fcf3722b71c8f1a57ffa1ab50bb76e586b726fdc862fe2c7250ca7bf85c6d"
+const TypeChecksum = "b42b8443d08ed9b094fcb2d5a39f4814b44633e6c58ef3b051448a79704b8ea2"
 
 type TypeKey string
 
@@ -21,46 +21,45 @@ const (
 	TypePrefix = "_ot"
 )
 const (
-	TypeKeyDailyReflection    TypeKey = "dailyReflection"
-	TypeKeyRecipe             TypeKey = "recipe"
-	TypeKeyNote               TypeKey = "note"
-	TypeKeyResume             TypeKey = "resume"
-	TypeKeyContact            TypeKey = "contact"
-	TypeKeyBookmark           TypeKey = "bookmark"
-	TypeKeyWeeklyPlan         TypeKey = "weeklyPlan"
-	TypeKeyDate               TypeKey = "date"
-	TypeKeyInvoice            TypeKey = "invoice"
-	TypeKeyIdea               TypeKey = "idea"
-	TypeKeyTask               TypeKey = "task"
-	TypeKeyRelation           TypeKey = "relation"
-	TypeKeyBook               TypeKey = "book"
-	TypeKeyVideo              TypeKey = "video"
-	TypeKeyCompany            TypeKey = "company"
-	TypeKeyDashboard          TypeKey = "dashboard"
-	TypeKeyDailyPlan          TypeKey = "dailyPlan"
-	TypeKeyMeetingNote        TypeKey = "meetingNote"
-	TypeKeyMovie              TypeKey = "movie"
-	TypeKeyArticle            TypeKey = "article"
-	TypeKeyObjectType         TypeKey = "objectType"
-	TypeKeyRelationOptionList TypeKey = "relationOptionList"
-	TypeKeyRelationOption     TypeKey = "relationOption"
-	TypeKeySpace              TypeKey = "space"
-	TypeKeyTemplate           TypeKey = "template"
-	TypeKeyHabitTrack         TypeKey = "habitTrack"
-	TypeKeySet                TypeKey = "set"
-	TypeKeyClassNote          TypeKey = "classNote"
-	TypeKeyDiaryEntry         TypeKey = "diaryEntry"
-	TypeKeyPage               TypeKey = "page"
-	TypeKeyImage              TypeKey = "image"
-	TypeKeyBug                TypeKey = "bug"
-	TypeKeyProfile            TypeKey = "profile"
-	TypeKeyAudio              TypeKey = "audio"
-	TypeKeyActionPlan         TypeKey = "actionPlan"
-	TypeKeyGoal               TypeKey = "goal"
-	TypeKeyFeature            TypeKey = "feature"
-	TypeKeyDocument           TypeKey = "document"
-	TypeKeyFile               TypeKey = "file"
-	TypeKeyProject            TypeKey = "project"
+	TypeKeyDailyReflection TypeKey = "dailyReflection"
+	TypeKeyRecipe          TypeKey = "recipe"
+	TypeKeyNote            TypeKey = "note"
+	TypeKeyResume          TypeKey = "resume"
+	TypeKeyContact         TypeKey = "contact"
+	TypeKeyBookmark        TypeKey = "bookmark"
+	TypeKeyWeeklyPlan      TypeKey = "weeklyPlan"
+	TypeKeyDate            TypeKey = "date"
+	TypeKeyInvoice         TypeKey = "invoice"
+	TypeKeyIdea            TypeKey = "idea"
+	TypeKeyTask            TypeKey = "task"
+	TypeKeyRelation        TypeKey = "relation"
+	TypeKeyBook            TypeKey = "book"
+	TypeKeyVideo           TypeKey = "video"
+	TypeKeyCompany         TypeKey = "company"
+	TypeKeyDashboard       TypeKey = "dashboard"
+	TypeKeyDailyPlan       TypeKey = "dailyPlan"
+	TypeKeyMeetingNote     TypeKey = "meetingNote"
+	TypeKeyMovie           TypeKey = "movie"
+	TypeKeyArticle         TypeKey = "article"
+	TypeKeyObjectType      TypeKey = "objectType"
+	TypeKeyRelationOption  TypeKey = "relationOption"
+	TypeKeySpace           TypeKey = "space"
+	TypeKeyTemplate        TypeKey = "template"
+	TypeKeyHabitTrack      TypeKey = "habitTrack"
+	TypeKeySet             TypeKey = "set"
+	TypeKeyClassNote       TypeKey = "classNote"
+	TypeKeyDiaryEntry      TypeKey = "diaryEntry"
+	TypeKeyPage            TypeKey = "page"
+	TypeKeyImage           TypeKey = "image"
+	TypeKeyBug             TypeKey = "bug"
+	TypeKeyProfile         TypeKey = "profile"
+	TypeKeyAudio           TypeKey = "audio"
+	TypeKeyActionPlan      TypeKey = "actionPlan"
+	TypeKeyGoal            TypeKey = "goal"
+	TypeKeyFeature         TypeKey = "feature"
+	TypeKeyDocument        TypeKey = "document"
+	TypeKeyFile            TypeKey = "file"
+	TypeKeyProject         TypeKey = "project"
 )
 
 var (
@@ -417,20 +416,8 @@ var (
 			Name:        "Relation option",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId], relations[RelationKeyInternalFlags]},
-			Types:       []model.SmartBlockType{model.SmartBlockType_RelationOptionList},
+			Types:       []model.SmartBlockType{model.SmartBlockType_RelationOption},
 			Url:         TypePrefix + "relationOption",
-		},
-		TypeKeyRelationOptionList: {
-
-			Description: "Object that contains options for relation",
-			Hidden:      true,
-			IconEmoji:   "🥚",
-			Layout:      model.ObjectType_relationOptionsList,
-			Name:        "Relation options list",
-			Readonly:    true,
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId], relations[RelationKeyInternalFlags]},
-			Types:       []model.SmartBlockType{model.SmartBlockType_RelationOptionList},
-			Url:         TypePrefix + "relationOptionList",
 		},
 		TypeKeyResume: {
 

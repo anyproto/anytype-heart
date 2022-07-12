@@ -143,7 +143,7 @@ func (s *service) fetchKey(key string) (relation *Relation, err error) {
 	return nil, ErrNotFound
 }
 
-func (s *service) fetchOptionsKey(key string) (relation *Relation, err error) {
+func (s *service) fetchOptionsByKey(key string) (relation *Relation, err error) {
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -154,7 +154,7 @@ func (s *service) fetchOptionsKey(key string) (relation *Relation, err error) {
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelation.String()),
+				Value:       pbtypes.String(bundle.TypeKeyRelationOption.String()),
 			},
 		},
 	}
@@ -172,8 +172,8 @@ func (s *service) fetchOptionsKey(key string) (relation *Relation, err error) {
 }
 
 func (s *service) CreateOption(relationKey string, opt *model.RelationOption) (id string, err error) {
-	//TODO implement me
-	panic("implement me")
+
+	return
 }
 
 func (s *service) Create(rel *model.Relation) (rl *model.RelationLink, err error) {

@@ -3,6 +3,7 @@ package editor
 import (
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -28,11 +29,12 @@ import (
 )
 
 const (
-	collectionKeySignature = "signature"
-	collectionKeyAccount   = "account"
-	collectionKeyAddrs     = "addrs"
-	collectionKeyId        = "id"
-	collectionKeyKey       = "key"
+	collectionKeySignature       = "signature"
+	collectionKeyAccount         = "account"
+	collectionKeyAddrs           = "addrs"
+	collectionKeyId              = "id"
+	collectionKeyKey             = "key"
+	collectionKeyRelationOptions = "relationOptions"
 )
 
 var (
@@ -43,6 +45,7 @@ func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
 		Set:             NewSet(),
 		DetailsModifier: dmservice,
+		options:         map[string]*Option{},
 	}
 }
 
@@ -53,6 +56,11 @@ type Workspaces struct {
 	threadQueue     threads.ThreadQueue
 
 	changedRelationIds, changedRelationIdsOptions []string
+
+	options map[string]*Option
+
+	sourceService source.Service
+	app           *app.App
 }
 
 type WorkspaceParameters struct {
@@ -199,6 +207,9 @@ func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
+	p.app = ctx.App
+	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
+
 	if ctx.Source.Type() != model.SmartBlockType_Workspace && ctx.Source.Type() != model.SmartBlockType_AccountOld {
 		return fmt.Errorf("source type should be a workspace or an old account")
 	}
@@ -292,6 +303,16 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
+
+	data := ctx.State.GetCollection(collectionKeyRelationOptions)
+	if data != nil && data.Fields != nil {
+		for subId := range data.Fields {
+			if err = p.initOption(subId); err != nil {
+				return
+			}
+		}
+	}
+
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithEmpty,

@@ -16671,8 +16671,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Date | 516 |  |
 | WorkspaceOld | 517 | deprecated thread-based workspace |
 | Workspace | 518 |  |
-| RelationOptionList | 519 |  |
-| RelationOption | 520 |  |
+| RelationOption | 519 |  |
 
 
  
