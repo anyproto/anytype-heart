@@ -188,6 +188,9 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 
 	cfg := config.ConfigRequired{}
 	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg);
+	if cfg.IPFSStorageAddr == "" {
+		cfg.IPFSStorageAddr = wallet.RepoPath()
+	}
 
 
 	pBlocks := at.PredefinedBlocks()
