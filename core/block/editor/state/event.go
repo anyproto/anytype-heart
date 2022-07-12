@@ -156,7 +156,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok && o.BlockDataviewRelationSet.Relation != nil {
 				if er := f.UpdateRelation(o.BlockDataviewRelationSet.RelationKey, *o.BlockDataviewRelationSet.Relation); er == dataview.ErrRelationNotFound {
-					f.AddRelation(*o.BlockDataviewRelationSet.Relation)
+					return f.AddRelation(*o.BlockDataviewRelationSet.Relation)
 				} else {
 					return er
 				}
