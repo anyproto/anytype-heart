@@ -10,6 +10,7 @@ import (
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -35,6 +36,7 @@ func NewPage(
 		Bookmark:   bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
 		Import:     _import.NewImport(sb, importServices),
 		Dataview:   dataview.NewDataview(sb),
+		Editor:     table.NewEditor(sb),
 	}
 }
 
@@ -48,6 +50,7 @@ type Page struct {
 	bookmark.Bookmark
 	_import.Import
 	dataview.Dataview
+	table.Editor
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {

@@ -19,6 +19,10 @@ func (s *State) Normalize(withLayouts bool) (err error) {
 	return s.normalize(withLayouts)
 }
 
+type Normalizable interface {
+	Normalize(s *State) error
+}
+
 func (s *State) normalize(withLayouts bool) (err error) {
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		return true
@@ -29,6 +33,15 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
 	}
+
+	for _, b := range s.blocks {
+		if n, ok := b.(Normalizable); ok {
+			if err := n.Normalize(s); err != nil {
+				return fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
+			}
+		}
+	}
+
 	// remove empty layouts
 	for _, b := range s.blocks {
 		if layout := b.Model().GetLayout(); layout != nil {

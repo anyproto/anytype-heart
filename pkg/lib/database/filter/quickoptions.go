@@ -7,15 +7,14 @@ import (
 	"time"
 )
 
-func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
 	if reqFilters == nil {
 		return nil
 	}
 
 	for _, f := range reqFilters {
 		if f.QuickOption > model.BlockContentDataviewFilter_ExactDate {
-
-			d1, d2 := getRange(f)
+			d1, d2 := getRange(f, loc)
 			switch f.Condition {
 			case model.BlockContentDataviewFilter_Equal:
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
@@ -51,44 +50,45 @@ func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter) []*mod
 	return reqFilters
 }
 
-func getRange(f *model.BlockContentDataviewFilter) (int64, int64) {
+func getRange(f *model.BlockContentDataviewFilter, loc *time.Location) (int64, int64) {
 	var d1, d2 time.Time
+	calendar := timeutil.NewCalendar(time.Now(), loc)
 	switch f.QuickOption {
 	case model.BlockContentDataviewFilter_Yesterday:
-		d1 = timeutil.DayNumStart(-1)
-		d2 = timeutil.DayNumEnd(-1)
+		d1 = calendar.DayNumStart(-1)
+		d2 = calendar.DayNumEnd(-1)
 	case model.BlockContentDataviewFilter_Today:
-		d1 = timeutil.DayNumStart(0)
-		d2 = timeutil.DayNumEnd(0)
+		d1 = calendar.DayNumStart(0)
+		d2 = calendar.DayNumEnd(0)
 	case model.BlockContentDataviewFilter_Tomorrow:
-		d1 = timeutil.DayNumStart(1)
-		d2 = timeutil.DayNumEnd(1)
+		d1 = calendar.DayNumStart(1)
+		d2 = calendar.DayNumEnd(1)
 	case model.BlockContentDataviewFilter_LastWeek:
-		d1 = timeutil.WeekNumStart(-1)
-		d2 = timeutil.WeekNumEnd(-1)
+		d1 = calendar.WeekNumStart(-1)
+		d2 = calendar.WeekNumEnd(-1)
 	case model.BlockContentDataviewFilter_CurrentWeek:
-		d1 = timeutil.WeekNumStart(0)
-		d2 = timeutil.WeekNumEnd(0)
+		d1 = calendar.WeekNumStart(0)
+		d2 = calendar.WeekNumEnd(0)
 	case model.BlockContentDataviewFilter_NextWeek:
-		d1 = timeutil.WeekNumStart(1)
-		d2 = timeutil.WeekNumEnd(1)
+		d1 = calendar.WeekNumStart(1)
+		d2 = calendar.WeekNumEnd(1)
 	case model.BlockContentDataviewFilter_LastMonth:
-		d1 = timeutil.MonthNumStart(-1)
-		d2 = timeutil.MonthNumEnd(-1)
+		d1 = calendar.MonthNumStart(-1)
+		d2 = calendar.MonthNumEnd(-1)
 	case model.BlockContentDataviewFilter_CurrentMonth:
-		d1 = timeutil.MonthNumStart(0)
-		d2 = timeutil.MonthNumEnd(0)
+		d1 = calendar.MonthNumStart(0)
+		d2 = calendar.MonthNumEnd(0)
 	case model.BlockContentDataviewFilter_NextMonth:
-		d1 = timeutil.MonthNumStart(1)
-		d2 = timeutil.MonthNumEnd(1)
+		d1 = calendar.MonthNumStart(1)
+		d2 = calendar.MonthNumEnd(1)
 	case model.BlockContentDataviewFilter_NumberOfDaysAgo:
 		daysCnt := f.Value.GetNumberValue()
-		d1 = timeutil.DayNumStart(-int(daysCnt))
-		d2 = timeutil.DayNumEnd(-1)
+		d1 = calendar.DayNumStart(-int(daysCnt))
+		d2 = calendar.DayNumEnd(-1)
 	case model.BlockContentDataviewFilter_NumberOfDaysNow:
 		daysCnt := f.Value.GetNumberValue()
-		d1 = timeutil.DayNumStart(0)
-		d2 = timeutil.DayNumEnd(int(daysCnt))
+		d1 = calendar.DayNumStart(0)
+		d2 = calendar.DayNumEnd(int(daysCnt))
 	//case model.BlockContentDataviewFilter_ExactDate:
 	//	timestamp := f.GetValue().GetNumberValue()
 	//	t := time.Unix(int64(timestamp), 0)

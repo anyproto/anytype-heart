@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/gogo/protobuf/types"
@@ -175,6 +176,16 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 			}
 
 			a.Model().GetLink().TargetBlockId = newTarget
+			st.Set(simple.New(a.Model()))
+		case bookmark.Block:
+			newTarget := b.idsMap[a.Model().GetBookmark().TargetObjectId]
+			if newTarget == "" {
+				// maybe we should panic here?
+				log.Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
+				return true
+			}
+
+			a.Model().GetBookmark().TargetObjectId = newTarget
 			st.Set(simple.New(a.Model()))
 		case text.Block:
 			for i, mark := range a.Model().GetText().GetMarks().GetMarks() {

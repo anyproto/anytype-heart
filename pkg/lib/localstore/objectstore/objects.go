@@ -133,6 +133,10 @@ var (
 				}
 
 				for _, opt := range v.SelectDict {
+					if opt.Scope != model.RelationOption_local {
+						continue
+					}
+
 					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Key, opt.Id}))
 				}
 				return indexes

@@ -130,7 +130,7 @@ func (s *service) fetchKey(key string) (relation *Relation, err error) {
 			},
 		},
 	}
-	f, err := database.NewFilters(q, nil)
+	f, err := database.NewFilters(q, nil, nil)
 	if err != nil {
 		return
 	}
@@ -158,7 +158,7 @@ func (s *service) fetchOptionsByKey(key string) (relation *Relation, err error) 
 			},
 		},
 	}
-	f, err := database.NewFilters(q, nil)
+	f, err := database.NewFilters(q, nil, nil)
 	if err != nil {
 		return
 	}
