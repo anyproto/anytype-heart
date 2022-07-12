@@ -774,11 +774,7 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 
 		uniqMap := make(map[string]bool)
 		for _, v := range records {
-			if pbtypes.Get(v.Details, bundle.RelationKeyTag.String()) != nil {
-				tags := make([]string, 0)
-				for _, value := range v.Details.Fields[bundle.RelationKeyTag.String()].GetListValue().GetValues() {
-					tags = append(tags, value.GetStringValue())
-				}
+			if tags := pbtypes.GetStringList(v.Details, bundle.RelationKeyTag.String()); len(tags) > 0 {
 				sort.Strings(tags)
 				hash := textutil.SliceHash(tags)
 				if !uniqMap[hash] {
