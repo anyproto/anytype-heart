@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"context"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
@@ -254,7 +255,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fx.Service)
 	a.Register(fx.sender)
 	fx.store.EXPECT().SubscribeForAll(gomock.Any())
-	require.NoError(t, a.Start())
+	require.NoError(t, a.Start(context.Background()))
 	return fx
 }
 

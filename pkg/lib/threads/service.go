@@ -177,7 +177,7 @@ func (s *service) ObserveAccountStateUpdate(state *pb.AccountState) {
 	s.threadQueue.UpdateSimultaneousRequestsLimit(int(state.Config.SimultaneousRequests))
 }
 
-func (s *service) Run() (err error) {
+func (s *service) Run(context.Context) (err error) {
 	s.logstoreDS, err = s.ds.LogstoreDS()
 	if err != nil {
 		return err

@@ -99,7 +99,7 @@ func New() ConfigFetcher {
 	return &configFetcher{}
 }
 
-func (c *configFetcher) Run() error {
+func (c *configFetcher) Run(context.Context) error {
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	go c.run()
 	return nil

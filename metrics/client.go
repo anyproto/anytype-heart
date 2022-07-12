@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"github.com/cheggaaa/mb"
 	"sync"
 	"time"
@@ -263,6 +264,8 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 		AppVersion:      c.appVersion,
 		Time:            time.Now().Unix() * 1000,
 	}
+	fmt.Printf("EVENT %s: %+v\n", ampEvent.EventType, ampEvent.EventProperties)
+
 	b := c.batcher
 	c.lock.RUnlock()
 	if b == nil {

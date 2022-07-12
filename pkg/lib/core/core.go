@@ -187,12 +187,12 @@ func (a *Anytype) Device() string {
 	return pk.Address()
 }
 
-func (a *Anytype) Run() (err error) {
+func (a *Anytype) Run(ctx context.Context) (err error) {
 	if err = a.Start(); err != nil {
 		return
 	}
 
-	return a.EnsurePredefinedBlocks(context.TODO(), a.config.NewAccount)
+	return a.EnsurePredefinedBlocks(ctx, a.config.NewAccount)
 }
 
 func (a *Anytype) IsStarted() bool {

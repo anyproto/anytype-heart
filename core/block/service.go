@@ -311,12 +311,12 @@ func (s *service) Init(a *app.App) (err error) {
 	return
 }
 
-func (s *service) Run() (err error) {
-	s.initPredefinedBlocks()
+func (s *service) Run(ctx context.Context) (err error) {
+	s.initPredefinedBlocks(ctx)
 	return
 }
 
-func (s *service) initPredefinedBlocks() {
+func (s *service) initPredefinedBlocks(ctx context.Context) {
 	ids := []string{
 		s.anytype.PredefinedBlocks().Account,
 		s.anytype.PredefinedBlocks().AccountOld,
@@ -334,7 +334,7 @@ func (s *service) initPredefinedBlocks() {
 			// skip object that has been already indexed before
 			continue
 		}
-		ctx := &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)}
+		ctx := &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 		// this is needed so that old account will create its state successfully on first launch
 		if id == s.anytype.PredefinedBlocks().AccountOld {
 			ctx = nil
@@ -371,9 +371,9 @@ func (s *service) Anytype() core.Service {
 
 func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	startTime := time.Now()
-	ob, err := s.getSmartblock(context.TODO(), id)
+	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
 	if err != nil {
-		return
+		return err
 	}
 	afterSmartBlockTime := time.Now()
 	defer s.cache.Release(id)
@@ -425,7 +425,8 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 }
 
 func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
-	return s.Do(id, func(b smartblock.SmartBlock) error {
+	cctx := context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_show")
+	return s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
 		return b.Show(ctx)
 	})
 }
@@ -1169,7 +1170,7 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 }
 
 func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err error) {
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+	err = s.DoWithContext(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "migrate_many"), s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
@@ -1185,7 +1186,7 @@ func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 }
 
 func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_basic"), id)
 	if err != nil {
 		return err
 	}
@@ -1218,7 +1219,7 @@ func (s *service) DoTable(id string, ctx *state.Context, apply func(st *state.St
 }
 
 func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
 		return err
 	}
@@ -1232,7 +1233,7 @@ func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) 
 }
 
 func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
 	if err != nil {
 		return err
 	}
@@ -1246,7 +1247,7 @@ func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 }
 
 func (s *service) DoText(id string, apply func(b stext.Text) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
 	if err != nil {
 		return err
 	}
@@ -1260,7 +1261,7 @@ func (s *service) DoText(id string, apply func(b stext.Text) error) error {
 }
 
 func (s *service) DoFile(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
 	if err != nil {
 		return err
 	}
@@ -1274,7 +1275,7 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 }
 
 func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
 	if err != nil {
 		return err
 	}
@@ -1288,7 +1289,7 @@ func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 }
 
 func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
 	if err != nil {
 		return err
 	}
@@ -1300,7 +1301,7 @@ func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
 	if err != nil {
 		return err
 	}
@@ -1314,7 +1315,7 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 }
 
 func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
 	if err != nil {
 		return err
 	}
@@ -1329,7 +1330,7 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 }
 
 func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
 	if err != nil {
 		return err
 	}
@@ -1343,7 +1344,7 @@ func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 }
 
 func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
@@ -1561,7 +1562,7 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	sb, err := s.newSmartBlock(id, nil)
+	sb, err := s.newSmartBlock(id, &smartblock.InitContext{Ctx: ctx})
 	if err != nil {
 		return
 	}

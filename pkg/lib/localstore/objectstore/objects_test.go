@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
@@ -43,7 +44,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	id, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	err = app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start()
+	err = app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err = ds.CreateObject(id.String(), &types.Struct{
@@ -88,7 +89,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	defer app.Close()
 
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	require.NoError(t, ds.AddToIndexQueue("one"))
@@ -145,7 +146,7 @@ func TestDsObjectStore_Query(t *testing.T) {
 	defer app.Close()
 
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	fts := app.MustComponent(ftsearch.CName).(ftsearch.FTSearch)
 
@@ -262,7 +263,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	app := testapp.New()
 	defer app.Close()
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	newDet := func(name, objtype string) *types.Struct {
@@ -360,7 +361,7 @@ func Test_removeByPrefix(t *testing.T) {
 	app := testapp.New()
 	defer app.Close()
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	ds2 := ds.(*dsObjectStore)
@@ -401,7 +402,7 @@ func Test_SearchRelationDistinct(t *testing.T) {
 	app := testapp.New()
 	defer app.Close()
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	id1 := getId()
@@ -427,11 +428,11 @@ func Test_SearchRelationDistinct(t *testing.T) {
 	}}, nil, "s1"))
 
 	require.NoError(t, ds.CreateObject(id2, &types.Struct{Fields: map[string]*types.Value{
-			"name": pbtypes.String("two"),
-			"type": pbtypes.StringList([]string{"_ota2"}),
-			"tag": pbtypes.StringList([]string{"tag1"}),
-		},
-		}, &model.Relations{Relations: []*model.Relation{
+		"name": pbtypes.String("two"),
+		"type": pbtypes.StringList([]string{"_ota2"}),
+		"tag":  pbtypes.StringList([]string{"tag1"}),
+	},
+	}, &model.Relations{Relations: []*model.Relation{
 		{
 			Key:          "rel1",
 			Format:       model.RelationFormat_status,
@@ -467,8 +468,8 @@ func Test_SearchRelationDistinct(t *testing.T) {
 	require.NoError(t, ds.CreateObject(id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
 		"type": pbtypes.StringList([]string{"_ota2"}),
-		"tag": pbtypes.StringList([]string{"tag1", "tag2", "tag3"}),
-	}}, nil, nil,"s3"))
+		"tag":  pbtypes.StringList([]string{"tag1", "tag2", "tag3"}),
+	}}, nil, nil, "s3"))
 
 	statusOpts, err := ds.RelationSearchDistinct("rel1", nil)
 	require.NoError(t, err)

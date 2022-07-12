@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -103,7 +104,7 @@ func (ls *dsFileStore) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (ls *dsFileStore) Run() (err error) {
+func (ls *dsFileStore) Run(context.Context) (err error) {
 	ls.ds, err = ls.dsIface.LocalstoreDS()
 	return
 }

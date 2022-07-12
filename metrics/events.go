@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+const CtxKeyRequest = "request"
+
 type RecordAcceptEventAggregated struct {
 	IsNAT      bool
 	RecordType string
@@ -188,16 +190,26 @@ func (c BlockSplit) ToEvent() *Event {
 }
 
 type TreeBuild struct {
-	TimeMs   int64
-	ObjectId string
+	TimeMs         int64
+	ObjectId       string
+	Logs           int
+	Request        string
+	RecordsLoaded  int
+	RecordsMissing int
+	RecordsFailed  int
 }
 
 func (c TreeBuild) ToEvent() *Event {
 	return &Event{
 		EventType: "tree_build",
 		EventData: map[string]interface{}{
-			"object_id": c.ObjectId,
-			"time_ms":   c.TimeMs,
+			"object_id":       c.ObjectId,
+			"logs":            c.Logs,
+			"request":         c.Request,
+			"records_loaded":  c.RecordsLoaded,
+			"records_missing": c.RecordsMissing,
+			"records_failed":  c.RecordsFailed,
+			"time_ms":         c.TimeMs,
 		},
 	}
 }
@@ -233,7 +245,7 @@ func (c StateApply) ToEvent() *Event {
 }
 
 type AppStart struct {
-	Type      string
+	Request   string
 	TotalMs   int64
 	PerCompMs map[string]int64
 }
@@ -242,7 +254,7 @@ func (c AppStart) ToEvent() *Event {
 	return &Event{
 		EventType: "app_start",
 		EventData: map[string]interface{}{
-			"type":     c.Type,
+			"request":  c.Request,
 			"time_ms":  c.TotalMs,
 			"per_comp": c.PerCompMs,
 		},

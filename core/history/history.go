@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -196,11 +197,11 @@ func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree 
 		return
 	}
 	if versionId != "" {
-		if tree, err = change.BuildTreeBefore(sb, versionId, includeLastId); err != nil {
+		if tree, err = change.BuildTreeBefore(context.TODO(), sb, versionId, includeLastId); err != nil {
 			return
 		}
 	} else {
-		if tree, _, err = change.BuildTree(sb); err != nil {
+		if tree, _, err = change.BuildTree(context.TODO(), sb); err != nil {
 			return
 		}
 	}

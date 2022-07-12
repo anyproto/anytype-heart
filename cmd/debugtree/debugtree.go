@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -41,7 +42,7 @@ func main() {
 
 	fmt.Println("build tree...")
 	st := time.Now()
-	t, _, err := change.BuildTree(dt)
+	t, _, err := change.BuildTree(context.TODO(), dt)
 	if err != nil {
 		log.Fatal("build tree error:", err)
 	}
@@ -62,7 +63,7 @@ func main() {
 			return true
 		})
 		if id != "" {
-			if t, err = change.BuildTreeBefore(dt, id, true); err != nil {
+			if t, err = change.BuildTreeBefore(context.TODO(), dt, id, true); err != nil {
 				log.Fatal("build tree before error:", err)
 			}
 		}

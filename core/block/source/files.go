@@ -73,7 +73,7 @@ func getDetailsForFileOrImage(ctx context.Context, a core.Service, id string) (p
 	return d, false, nil
 }
 
-func (v *files) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *files) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
@@ -90,7 +90,7 @@ func (v *files) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err
 	return s, nil
 }
 
-func (v *files) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
+func (v *files) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
 	s := &state.State{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)

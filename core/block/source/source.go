@@ -42,8 +42,8 @@ type Source interface {
 	LogHeads() map[string]string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
-	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
-	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
+	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
+	ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
 	FindFirstChange(ctx context.Context) (c *change.Change, err error)
 	Close() (err error)
@@ -161,16 +161,16 @@ func (s *source) Virtual() bool {
 	return false
 }
 
-func (s *source) ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error) {
+func (s *source) ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc state.Doc, err error) {
 	s.metaOnly = true
-	return s.readDoc(receiver, false)
+	return s.readDoc(ctx, receiver, false)
 }
 
-func (s *source) ReadDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
-	return s.readDoc(receiver, allowEmpty)
+func (s *source) ReadDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+	return s.readDoc(ctx, receiver, allowEmpty)
 }
 
-func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	var ch chan core.SmartblockRecordEnvelope
 	batch := mb.New(0)
 	if receiver != nil {
@@ -196,21 +196,53 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 	startTime := time.Now()
 	log.With("thread", s.id).
 		Debug("start building tree")
+	loadCh := make(chan struct{})
+
+	ctxP := core.ThreadLoadProgress{}
+	ctx = ctxP.DeriveContext(ctx)
+
+	go func() {
+	forloop:
+		for {
+			select {
+			case <-loadCh:
+				break forloop
+			case <-time.After(time.Second * 5):
+				v := ctxP.Value()
+				log.With("object_id", s.id).With("records_loaded", v.RecordsLoaded).With("records_missing", v.RecordsMissingLocally).With("spent", time.Since(startTime).Seconds()).Errorf("openBlock in progress")
+			}
+		}
+	}()
 	if s.metaOnly {
-		s.tree, s.logHeads, err = change.BuildMetaTree(s.sb)
+		s.tree, s.logHeads, err = change.BuildMetaTree(ctx, s.sb)
 	} else {
-		s.tree, s.logHeads, err = change.BuildTree(s.sb)
+		s.tree, s.logHeads, err = change.BuildTree(ctx, s.sb)
 	}
+	close(loadCh)
 	treeBuildTime := time.Now().Sub(startTime).Milliseconds()
 	log.With("object id", s.id).
 		With("build time ms", treeBuildTime).
 		Debug("stop building tree")
+
 	// if the build time is large enough we should record it
 	if treeBuildTime > 100 {
-		metrics.SharedClient.RecordEvent(metrics.TreeBuild{
+		event := metrics.TreeBuild{
 			TimeMs:   treeBuildTime,
 			ObjectId: s.id,
-		})
+			Logs:     len(s.logHeads),
+		}
+		ctxProgress, _ := ctx.Value(core.ThreadLoadProgressContextKey).(*core.ThreadLoadProgress)
+		if v := ctx.Value(metrics.CtxKeyRequest); v != nil {
+			event.Request = v.(string)
+		}
+
+		if ctxProgress != nil {
+			event.RecordsLoaded = ctxProgress.RecordsLoaded
+			event.RecordsMissing = ctxProgress.RecordsMissingLocally
+			event.RecordsFailed = ctxProgress.RecordsFailedToLoad
+		}
+
+		metrics.SharedClient.RecordEvent(event)
 	}
 
 	if allowEmpty && err == change.ErrEmpty {
@@ -443,12 +475,12 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 		// existing or not complete
 		return nil
 	case change.Append:
-		s.lastSnapshotId = s.tree.LastSnapshotId()
+		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
 			return change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
 		})
 	case change.Rebuild:
-		s.lastSnapshotId = s.tree.LastSnapshotId()
+		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
 		doc, err := s.buildState()
 
 		if err != nil {

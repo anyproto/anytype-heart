@@ -2,6 +2,7 @@ package change
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"io/ioutil"
 	"testing"
@@ -33,7 +34,7 @@ func BenchmarkOpenDoc(b *testing.B) {
 	})
 
 	st := time.Now()
-	tree, _, e := BuildTree(sb)
+	tree, _, e := BuildTree(context.Background(), sb)
 	require.NoError(b, e)
 	b.Log("build tree:", time.Since(st))
 	b.Log(tree.Len())
@@ -48,7 +49,7 @@ func BenchmarkOpenDoc(b *testing.B) {
 
 	b.Run("build tree", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _, err := BuildTree(sb)
+			_, _, err := BuildTree(context.Background(), sb)
 			require.NoError(b, err)
 		}
 	})
