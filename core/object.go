@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -275,6 +276,37 @@ func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequ
 	}
 
 	return resp
+}
+
+func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse {
+	errResponse := func(err error) *pb.RpcObjectRelationSearchDistinctResponse {
+		r := &pb.RpcObjectRelationSearchDistinctResponse{
+			Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+				Code: pb.RpcObjectRelationSearchDistinctResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(errors.New("app must be started"))
+	}
+
+	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	groups, err := store.RelationSearchDistinct(req.RelationKey, req.Filters)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
+	}, Groups: groups}
 }
 
 func (mw *Middleware) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {

@@ -67,6 +67,8 @@ type Dataview interface {
 	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
 	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
+	UpdateViewGroupOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
+	UpdateViewObjectOrder(ctx *state.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -883,6 +885,30 @@ func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error
 			return true
 		}
 	})
+	return d.Apply(st)
+}
+
+func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
+	st := d.NewStateCtx(ctx)
+	dvBlock, err := getDataviewBlock(st, blockId)
+	if err != nil {
+		return err
+	}
+
+	dvBlock.SetViewGroupOrder(order)
+
+	return d.Apply(st)
+}
+
+func (d *dataviewCollectionImpl) UpdateViewObjectOrder(ctx *state.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error {
+	st := d.NewStateCtx(ctx)
+	dvBlock, err := getDataviewBlock(st, blockId)
+	if err != nil {
+		return err
+	}
+
+	dvBlock.SetViewObjectOrder(orders)
+
 	return d.Apply(st)
 }
 

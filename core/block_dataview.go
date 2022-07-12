@@ -32,6 +32,46 @@ func (mw *Middleware) BlockDataviewRelationListAvailable(req *pb.RpcBlockDatavie
 	return response(pb.RpcBlockDataviewRelationListAvailableResponseError_NULL, relations, nil)
 }
 
+func (mw *Middleware) BlockDataviewGroupOrderUpdate(req *pb.RpcBlockDataviewGroupOrderUpdateRequest) *pb.RpcBlockDataviewGroupOrderUpdateResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockDataviewGroupOrderUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewGroupOrderUpdateResponse {
+		m := &pb.RpcBlockDataviewGroupOrderUpdateResponse{Error: &pb.RpcBlockDataviewGroupOrderUpdateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.UpdateDataviewGroupOrder(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockDataviewGroupOrderUpdateResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockDataviewGroupOrderUpdateResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockDataviewObjectOrderUpdate(req *pb.RpcBlockDataviewObjectOrderUpdateRequest) *pb.RpcBlockDataviewObjectOrderUpdateResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockDataviewObjectOrderUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewObjectOrderUpdateResponse {
+		m := &pb.RpcBlockDataviewObjectOrderUpdateResponse{Error: &pb.RpcBlockDataviewObjectOrderUpdateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.UpdateDataviewObjectOrder(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockDataviewObjectOrderUpdateResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockDataviewObjectOrderUpdateResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockDataviewViewUpdate(req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewViewUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewViewUpdateResponse {
