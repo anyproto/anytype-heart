@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 )
 
@@ -304,12 +305,14 @@ func (s *State) changeBlockRemove(remove *pb.ChangeBlockRemove) error {
 }
 
 func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
+	merr := multierror.Error{}
 	for _, ev := range update.Events {
 		if err := s.applyEvent(ev); err != nil {
-			return err
+			merr.Errors = append(merr.Errors, err)
+			log.Warn("changeBlockUpdate %s err applying %T: %s\n", s.RootId(), ev.Value, err.Error())
 		}
 	}
-	return nil
+	return merr.ErrorOrNil()
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
