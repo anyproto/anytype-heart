@@ -100,7 +100,7 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
-			log.Warnf("error while applying changes: %v; ignore", err)
+			log.With("thread", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
 		}
 	}
 	return
@@ -308,8 +308,7 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 	merr := multierror.Error{}
 	for _, ev := range update.Events {
 		if err := s.applyEvent(ev); err != nil {
-			merr.Errors = append(merr.Errors, err)
-			log.Warn("changeBlockUpdate %s err applying %T: %s\n", s.RootId(), ev.Value, err.Error())
+			merr.Errors = append(merr.Errors, fmt.Errorf("failed to apply event %T: %s", ev.Value, err.Error()))
 		}
 	}
 	return merr.ErrorOrNil()
