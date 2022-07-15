@@ -361,6 +361,7 @@ message Block {
             message Sort {
                 string RelationKey = 1;
                 Type type = 2;
+                google.protobuf.ListValue customOrder = 3;
 
                 enum Type {
                     Asc = 0;

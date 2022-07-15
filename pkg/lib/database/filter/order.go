@@ -63,3 +63,31 @@ func (ko KeyOrder) String() (s string) {
 	}
 	return
 }
+
+type CustomOrder struct {
+	Key string
+	NeedOrder []*types.Value
+}
+
+func (co CustomOrder) Compare(a, b Getter) int {
+	av := a.Get(co.Key)
+	bv := b.Get(co.Key)
+	for _, v := range co.NeedOrder {
+		if v.Equal(av) {
+			return -1
+		}
+		if v.Equal(bv) {
+			return 1
+		}
+	}
+
+	return 0
+}
+
+func (co CustomOrder) String() (s string) {
+	var ss []string
+	for _, v := range co.NeedOrder {
+		ss = append(ss, v.String())
+	}
+	return strings.Join(ss, ", ")
+}
