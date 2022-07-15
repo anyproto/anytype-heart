@@ -459,6 +459,23 @@ func (s *service) ClearTextStyle(ctx *state.Context, contextId string, blockIds 
 			t.Model().VerticalAlign = model.Block_VerticalAlignTop
 			t.SetTextColor("")
 			t.SetStyle(model.BlockContentText_Paragraph)
+
+			marks := t.Model().GetText().Marks.Marks[:0]
+			for _, m := range t.Model().GetText().Marks.Marks {
+				switch m.Type {
+				case model.BlockContentTextMark_Strikethrough,
+					model.BlockContentTextMark_Keyboard,
+					model.BlockContentTextMark_Italic,
+					model.BlockContentTextMark_Bold,
+					model.BlockContentTextMark_Underline,
+					model.BlockContentTextMark_TextColor,
+					model.BlockContentTextMark_BackgroundColor:
+				default:
+					marks = append(marks, m)
+				}
+			}
+			t.Model().GetText().Marks.Marks = marks
+
 			return nil
 		})
 	})
