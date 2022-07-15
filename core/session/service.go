@@ -3,8 +3,10 @@ package session
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -13,15 +15,24 @@ const CName = "session"
 type Service interface {
 	app.Component
 
+	SetEventSender(sender event.Sender)
+	GetEventSender() event.Sender
 	StartSession(token string) error
 	CloseSession(token string) error
 }
 
 type service struct {
+	eventSender event.Sender
+
+	lock     *sync.RWMutex
+	sessions map[string]struct{}
 }
 
 func New() Service {
-	return &service{}
+	return &service{
+		lock:     &sync.RWMutex{},
+		sessions: map[string]struct{}{},
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -32,14 +43,40 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
+func (s *service) SetEventSender(sender event.Sender) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.eventSender = sender
+}
+
+func (s *service) GetEventSender() event.Sender {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	return s.eventSender
+}
+
 func (s *service) StartSession(token string) error {
-	//TODO implement me
-	panic("implement me")
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if _, ok := s.sessions[token]; ok {
+		return fmt.Errorf("session is already started")
+	}
+	s.sessions[token] = struct{}{}
+	return nil
 }
 
 func (s *service) CloseSession(token string) error {
-	//TODO implement me
-	panic("implement me")
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if _, ok := s.sessions[token]; !ok {
+		return fmt.Errorf("session is not started")
+	}
+	delete(s.sessions, token)
+	return nil
 }
 
 func GenerateToken(privKey []byte) (string, error) {
