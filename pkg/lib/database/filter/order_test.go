@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"github.com/gogo/protobuf/types"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -77,5 +78,63 @@ func TestSetOrder_Compare(t *testing.T) {
 		a := testGetter{"a": pbtypes.String("b"), "b": pbtypes.String("b")}
 		b := testGetter{"a": pbtypes.String("b"), "b": pbtypes.String("a")}
 		assert.Equal(t, -1, so.Compare(a, b))
+	})
+}
+
+func TestCustomOrder_Compare(t *testing.T) {
+	needOrder := []*types.Value{
+		pbtypes.String("b"),
+		pbtypes.String("c"),
+		pbtypes.String("d"),
+		pbtypes.String("a"),
+	}
+	co := NewCustomOrder("ID", needOrder, KeyOrder{Key: "ID", Type: model.BlockContentDataviewSort_Asc})
+
+	t.Run("gt", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("c")}
+		b := testGetter{"ID": pbtypes.String("a")}
+		assert.Equal(t, -1, co.Compare(a, b))
+	})
+
+	t.Run("eq", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("a")}
+		b := testGetter{"ID": pbtypes.String("a")}
+		assert.Equal(t, 0, co.Compare(a, b))
+	})
+
+	t.Run("lt", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("a")}
+		b := testGetter{"ID": pbtypes.String("b")}
+		assert.Equal(t, 1, co.Compare(a, b))
+	})
+
+	t.Run("first found second not", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("a")}
+		b := testGetter{"ID": pbtypes.String("x")}
+		assert.Equal(t, -1, co.Compare(a, b))
+	})
+
+	t.Run("first not found second yes", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("x")}
+		b := testGetter{"ID": pbtypes.String("a")}
+		assert.Equal(t, 1, co.Compare(a, b))
+	})
+
+	t.Run("both not found gt", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("y")}
+		b := testGetter{"ID": pbtypes.String("z")}
+		assert.Equal(t, -1, co.Compare(a, b))
+	})
+
+	t.Run("both not found eq", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("z")}
+		b := testGetter{"ID": pbtypes.String("z")}
+		assert.Equal(t, 0, co.Compare(a, b))
+	})
+
+	t.Run("both not found lt", func(t *testing.T) {
+		a := testGetter{"ID": pbtypes.String("z")}
+		b := testGetter{"ID": pbtypes.String("y")}
+		assert.Equal(t, 1, co.Compare(a, b))
 	})
 }
