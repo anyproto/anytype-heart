@@ -408,11 +408,14 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 	homeId := at.PredefinedBlocks().Home
 	if _, exists := nodeExists[homeId]; !exists {
+		// we don't index home object, but we DO index outgoing links from it
+		links, _ := at.ObjectStore().GetOutboundLinksById(homeId)
 		records = append(records, database.Record{&types.Struct{
 			Fields: map[string]*types.Value{
 				"id":        pbtypes.String(homeId),
 				"name":      pbtypes.String("Home"),
 				"iconEmoji": pbtypes.String("🏠"),
+				"links":     pbtypes.StringList(links),
 			},
 		}})
 	}
