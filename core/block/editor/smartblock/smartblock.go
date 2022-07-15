@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -78,7 +79,7 @@ func New() SmartBlock {
 
 type SmartObjectOpenListner interface {
 	// should not do any Do operations inside
-	SmartObjectOpened(*state.Context)
+	SmartObjectOpened(*session.Context)
 }
 
 type SmartBlock interface {
@@ -86,27 +87,27 @@ type SmartBlock interface {
 	Id() string
 	Type() model.SmartBlockType
 	Meta() *core.SmartBlockMeta
-	Show(*state.Context) (obj *model.ObjectView, err error)
+	Show(*session.Context) (obj *model.ObjectView, err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() core.Service
-	SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
+	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*model.Relation
 	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
 	HasRelation(relationKey string) bool
-	AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
+	AddExtraRelations(ctx *session.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
 
-	UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error)
-	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
-	AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
-	UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error
-	DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
+	UpdateExtraRelations(ctx *session.Context, relations []*model.Relation, createIfMissing bool) (err error)
+	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
+	AddExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
+	UpdateExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) error
+	DeleteExtraRelationOption(ctx *session.Context, relationKey string, optionId string, showEvent bool) error
 	TemplateCreateFromObjectState() (*state.State, error)
-	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
-	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
-	SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) error
-	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
+	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
+	SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) error
+	SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) error
+	SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) error
 	SetIsDeleted()
 	IsDeleted() bool
 
@@ -367,7 +368,7 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
 }
 
-func (sb *smartBlock) Show(ctx *state.Context) (*model.ObjectView, error) {
+func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 	if ctx == nil {
 		return nil, nil
 	}
@@ -776,7 +777,7 @@ func (sb *smartBlock) NewState() *state.State {
 	return sb.Doc.NewState().SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
 }
 
-func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
+func (sb *smartBlock) NewStateCtx(ctx *session.Context) *state.State {
 	sb.execHooks(HookOnNewState)
 	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
 }
@@ -789,7 +790,7 @@ func (sb *smartBlock) Anytype() core.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
 	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
 	if detCopy == nil || detCopy.Fields == nil {
@@ -918,7 +919,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetD
 	return nil
 }
 
-func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
+func (sb *smartBlock) AddExtraRelations(ctx *session.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	s := sb.NewStateCtx(ctx)
 
 	if relationsWithKeys, err = sb.addExtraRelations(s, relations); err != nil {
@@ -1040,7 +1041,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 	return
 }
 
-func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
+func (sb *smartBlock) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
 
 	if len(objectTypes) > 0 {
@@ -1115,7 +1116,7 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	return
 }
 
-func (sb *smartBlock) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) (err error) {
+func (sb *smartBlock) SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.setAlign(s, align, ids...); err != nil {
 		return
@@ -1136,7 +1137,7 @@ func (sb *smartBlock) setAlign(s *state.State, align model.BlockAlign, ids ...st
 	return
 }
 
-func (sb *smartBlock) SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
+func (sb *smartBlock) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	for _, id := range ids {
 		if b := s.Get(id); b != nil {
@@ -1146,7 +1147,7 @@ func (sb *smartBlock) SetVerticalAlign(ctx *state.Context, align model.BlockVert
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
+func (sb *smartBlock) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error) {
 	if err = sb.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
 		return
 	}
@@ -1211,7 +1212,7 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 }
 
 // UpdateExtraRelations sets the extra relations, it skips the
-func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
+func (sb *smartBlock) UpdateExtraRelations(ctx *session.Context, relations []*model.Relation, createIfMissing bool) (err error) {
 	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
 	relationsToSet := pbtypes.CopyRelations(relations)
 
@@ -1262,7 +1263,7 @@ mainLoop:
 	return
 }
 
-func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error) {
+func (sb *smartBlock) RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error) {
 	copy := pbtypes.CopyRelations(sb.ExtraRelations())
 	filtered := []*model.Relation{}
 	st := sb.NewStateCtx(ctx)
@@ -1314,7 +1315,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 }
 
 // AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
+func (sb *smartBlock) AddExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
 	s := sb.NewStateCtx(ctx)
 	rel := pbtypes.GetRelation(sb.Relations(), relationKey)
 	if rel == nil {
@@ -1354,7 +1355,7 @@ func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey str
 	return newOption, sb.Apply(s, NoEvent)
 }
 
-func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error {
+func (sb *smartBlock) UpdateExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) error {
 	s := sb.NewStateCtx(ctx)
 	for _, rel := range sb.ExtraRelations() {
 		if rel.Key != relationKey {
@@ -1382,7 +1383,7 @@ func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey 
 	return ErrRelationNotFound
 }
 
-func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
+func (sb *smartBlock) DeleteExtraRelationOption(ctx *session.Context, relationKey string, optionId string, showEvent bool) error {
 	s := sb.NewStateCtx(ctx)
 	for _, rel := range sb.ExtraRelations() {
 		if rel.Key != relationKey {
@@ -1460,7 +1461,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if e != nil {
 		// can't make diff - reopen doc
-		sb.Show(state.NewContext(state.WithSendEvent(sb.sendEvent)))
+		sb.Show(session.NewContext(session.WithSendEvent(sb.sendEvent)))
 	} else {
 		if len(msgs) > 0 && sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{

@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/globalsign/mgo/bson"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/miolini/datacounter"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -96,7 +96,7 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 }
 
 func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
-	ctx := mw.newContext(cctx, state.WithTraceId(req.TraceId))
+	ctx := mw.newContext(cctx, session.WithTraceId(req.TraceId))
 	var obj *model.ObjectView
 	response := func(code pb.RpcObjectShowResponseErrorCode, err error) *pb.RpcObjectShowResponse {
 		m := &pb.RpcObjectShowResponse{Error: &pb.RpcObjectShowResponseError{Code: code}}
@@ -125,7 +125,7 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 }
 
 func (mw *Middleware) ObjectOpenBreadcrumbs(cctx context.Context, req *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse {
-	ctx := mw.newContext(cctx, state.WithTraceId(req.TraceId))
+	ctx := mw.newContext(cctx, session.WithTraceId(req.TraceId))
 	response := func(code pb.RpcObjectOpenBreadcrumbsResponseErrorCode, obj *model.ObjectView, id string, err error) *pb.RpcObjectOpenBreadcrumbsResponse {
 		m := &pb.RpcObjectOpenBreadcrumbsResponse{Error: &pb.RpcObjectOpenBreadcrumbsResponseError{Code: code}, ObjectId: id}
 		if err != nil {
@@ -777,27 +777,27 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 	return response(pb.RpcBlockTextListSetMarkResponseError_NULL, nil)
 }
 
-func (mw *Middleware) newContext(cctx context.Context, opts ...state.ContextOption) *state.Context {
+func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) *session.Context {
 	grpcSender, ok := mw.EventSender.(*event.GrpcSender)
 	if !ok {
-		return state.NewContext()
+		return session.NewContext()
 	}
 
 	md, ok := metadata.FromIncomingContext(cctx)
 	if !ok {
-		return state.NewContext()
+		return session.NewContext()
 	}
 
 	v := md.Get("token")
 	if len(v) != 1 {
-		return state.NewContext()
+		return session.NewContext()
 	}
 
 	tok := v[0]
 
 	// TODO deny access
 	if tok == "" {
-		return state.NewContext()
+		return session.NewContext()
 	}
 
 	token, err := jwt.Parse(tok, func(token *jwt.Token) (interface{}, error) {
@@ -825,7 +825,7 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...state.ContextOpti
 		log.Errorf("invalid token")
 	}
 
-	return state.NewContext(state.WithSessionId(v[0], grpcSender))
+	return session.NewContext(session.WithSessionId(v[0], grpcSender))
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {

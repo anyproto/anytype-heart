@@ -1,4 +1,4 @@
-package auth
+package session
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-const CName = "auth"
+const CName = "session"
 
 type Service interface {
 	app.Component

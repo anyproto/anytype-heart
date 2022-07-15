@@ -7,8 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/anytypeio/go-anytype-middleware/core/auth"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -141,7 +141,7 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}
 
-	tok, err := auth.GenerateToken(priv)
+	tok, err := session.GenerateToken(priv)
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}
@@ -195,7 +195,7 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 		return nil, err
 	}
 
-	err = auth.ValidateToken(priv, tok)
+	err = session.ValidateToken(priv, tok)
 	if err != nil {
 		return
 	}

@@ -4,8 +4,8 @@ import (
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/core/account"
-	"github.com/anytypeio/go-anytype-middleware/core/auth"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -127,6 +127,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
-		Register(auth.New())
+		Register(session.New())
 	return
 }

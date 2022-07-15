@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -61,15 +62,15 @@ func (st *SmartTest) GetFirstTextBlock() (*model.BlockContentOfText, error) {
 	return nil, nil
 }
 
-func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
+func (st *SmartTest) SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) error {
+func (st *SmartTest) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error {
+func (st *SmartTest) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) error {
 	return nil
 }
 
@@ -111,7 +112,7 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
+func (st *SmartTest) AddExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
 	rel := pbtypes.GetRelation(st.Relations(), relationKey)
 	if rel == nil {
 		return nil, fmt.Errorf("relation not found")
@@ -133,11 +134,11 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 	return false
 }
 
-func (st *SmartTest) RefreshLocalDetails(ctx *state.Context) error {
+func (st *SmartTest) RefreshLocalDetails(ctx *session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error {
+func (st *SmartTest) UpdateExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) error {
 	for _, rel := range st.ExtraRelations() {
 		if rel.Key != relationKey {
 			continue
@@ -161,7 +162,7 @@ func (st *SmartTest) UpdateExtraRelationOption(ctx *state.Context, relationKey s
 	return fmt.Errorf("relation not found")
 }
 
-func (st *SmartTest) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
+func (st *SmartTest) DeleteExtraRelationOption(ctx *session.Context, relationKey string, optionId string, showEvent bool) error {
 	for _, rel := range st.ExtraRelations() {
 		if rel.Key != relationKey {
 			continue
@@ -185,7 +186,7 @@ func (st *SmartTest) DeleteExtraRelationOption(ctx *state.Context, relationKey s
 	return fmt.Errorf("relation not found")
 }
 
-func (st *SmartTest) AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
+func (st *SmartTest) AddExtraRelations(ctx *session.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -202,7 +203,7 @@ func (st *SmartTest) AddExtraRelations(ctx *state.Context, relations []*model.Re
 	return st.meta.Relations, nil
 }
 
-func (st *SmartTest) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
+func (st *SmartTest) UpdateExtraRelations(ctx *session.Context, relations []*model.Relation, createIfMissing bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -227,11 +228,11 @@ func (st *SmartTest) UpdateExtraRelations(ctx *state.Context, relations []*model
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error) {
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
+func (st *SmartTest) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
 	return nil
 }
 
@@ -243,7 +244,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Relations: st.ExtraRelations(),
@@ -270,7 +271,7 @@ func (st *SmartTest) Type() model.SmartBlockType {
 	return model.SmartBlockType_Page
 }
 
-func (st *SmartTest) Show(*state.Context) (obj *model.ObjectView, err error) {
+func (st *SmartTest) Show(*session.Context) (obj *model.ObjectView, err error) {
 	return
 }
 

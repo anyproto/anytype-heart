@@ -1,4 +1,4 @@
-package state
+package session
 
 import "github.com/anytypeio/go-anytype-middleware/pb"
 
