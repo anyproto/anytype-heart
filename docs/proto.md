@@ -18942,6 +18942,7 @@ scope from which this relation have been aggregated |
 | ---- | ------ | ----------- |
 | Asc | 0 |  |
 | Desc | 1 |  |
+| Custom | 2 |  |
 
 
 

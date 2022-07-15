@@ -366,6 +366,7 @@ message Block {
                 enum Type {
                     Asc = 0;
                     Desc = 1;
+                    Custom = 2;
                 }
             }
 
