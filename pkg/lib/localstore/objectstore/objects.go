@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -629,7 +630,7 @@ func (m *dsObjectStore) eraseLinks() (err error) {
 	return nil
 }
 
-func (m *dsObjectStore) Run() (err error) {
+func (m *dsObjectStore) Run(context.Context) (err error) {
 	m.ds, err = m.dsIface.LocalstoreDS()
 	return
 }

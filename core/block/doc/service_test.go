@@ -47,7 +47,7 @@ func TestService_WakeupLoop(t *testing.T) {
 	rb := recordsbatcher.New()
 	a := new(app.App)
 	a.Register(rb).Register(dh).Register(New())
-	require.NoError(t, a.Start())
+	require.NoError(t, a.Start(context.Background()))
 	defer a.Close()
 
 	recId := func(id string) core.ThreadRecordInfo {

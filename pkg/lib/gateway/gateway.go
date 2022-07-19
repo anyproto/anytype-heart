@@ -85,7 +85,7 @@ func (g *gateway) Name() string {
 	return CName
 }
 
-func (g *gateway) Run() error {
+func (g *gateway) Run(context.Context) error {
 	if g.isServerStarted {
 		return fmt.Errorf("gateway already started")
 	}

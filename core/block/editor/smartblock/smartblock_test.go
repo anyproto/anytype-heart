@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"context"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -120,7 +121,7 @@ func (fx *fixture) init(blocks []*model.Block) {
 		bm[b.Id] = simple.New(b)
 	}
 	doc := state.NewDoc(id, bm)
-	fx.source.EXPECT().ReadDoc(gomock.Any(), false).Return(doc, nil)
+	fx.source.EXPECT().ReadDoc(context.Background(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},

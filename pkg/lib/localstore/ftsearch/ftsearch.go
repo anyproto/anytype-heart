@@ -1,6 +1,7 @@
 package ftsearch
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -63,7 +64,7 @@ func (f *ftSearch) Name() (name string) {
 	return CName
 }
 
-func (f *ftSearch) Run() (err error) {
+func (f *ftSearch) Run(context.Context) (err error) {
 	f.index, err = bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
 		if f.index, err = bleve.New(f.ftsPath, f.makeMapping()); err != nil {

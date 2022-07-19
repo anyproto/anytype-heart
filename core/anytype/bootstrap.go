@@ -1,6 +1,7 @@
 package anytype
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"os"
@@ -42,7 +43,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
 
-func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
+func StartAccountRecoverApp(ctx context.Context, eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
 	a = new(app.App)
 	device, err := walletUtil.NewRandomKeypair(walletUtil.KeypairTypeDevice)
 	if err != nil {
@@ -59,7 +60,7 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 		Register(profilefinder.New()).
 		Register(eventSender)
 
-	if err = a.Start(); err != nil {
+	if err = a.Start(ctx); err != nil {
 		return
 	}
 
@@ -77,12 +78,12 @@ func BootstrapWallet(rootPath, accountId string) wallet.Wallet {
 	return wallet.NewWithAccountRepo(rootPath, accountId)
 }
 
-func StartNewApp(components ...app.Component) (a *app.App, err error) {
+func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
-	if err = a.Start(); err != nil {
+	if err = a.Start(ctx); err != nil {
 		metrics.SharedClient.Close()
 		a = nil
 		return

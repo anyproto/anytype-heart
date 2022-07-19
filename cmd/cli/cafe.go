@@ -50,7 +50,7 @@ var findProfiles = &cobra.Command{
 		// create temp walletUtil in order to do requests to cafe
 		appMnemonic, err = coreService.WalletGenerateMnemonic(12)
 		appAccount, err = coreService.WalletAccountAt(appMnemonic, 0, "")
-		app, err := anytype.StartAccountRecoverApp(nil, appAccount)
+		app, err := anytype.StartAccountRecoverApp(context.Background(), nil, appAccount)
 		if err != nil {
 			console.Fatal("failed to start anytype: %s", err.Error())
 			return

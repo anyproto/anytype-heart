@@ -75,7 +75,7 @@ func (b *builtinObjects) Name() (name string) {
 	return CName
 }
 
-func (b *builtinObjects) Run() (err error) {
+func (b *builtinObjects) Run(context.Context) (err error) {
 	if !b.newAccount {
 		// import only for new accounts
 		return

@@ -124,7 +124,7 @@ func (ln *liteNet) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (ln *liteNet) Run() error {
+func (ln *liteNet) Run(context.Context) error {
 	peerDS, err := ln.ds.PeerstoreDS()
 	if err != nil {
 		return fmt.Errorf("peerDS: %s", err.Error())

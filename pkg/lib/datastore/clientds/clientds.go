@@ -176,7 +176,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (r *clientds) Run() error {
+func (r *clientds) Run(context.Context) error {
 	var err error
 
 	litestoreOldPath := r.getRepoPath(liteOldDSDir)

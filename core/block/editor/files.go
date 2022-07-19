@@ -46,7 +46,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	doc, err := ctx.Source.ReadDoc(nil, true)
+	doc, err := ctx.Source.ReadDoc(ctx.Ctx, nil, true)
 	if err != nil {
 		return err
 	}

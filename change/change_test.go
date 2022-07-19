@@ -2,6 +2,7 @@ package change
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"fmt"
 	"io/ioutil"
@@ -69,7 +70,7 @@ func Test_Issue605Tree(t *testing.T) {
 		Head: "bafyreidatuo2ooxzyao56ic2fm5ybyidheywbt4hgdubr3ow3lyvw7t37e",
 	})
 
-	tree, _, e := BuildTree(sb)
+	tree, _, e := BuildTree(context.Background(), sb)
 	require.NoError(t, e)
 	var cnt int
 	tree.Iterate(tree.RootId(), func(c *Change) (isContinue bool) {
@@ -114,7 +115,7 @@ func Test_Home_ecz5pu(t *testing.T) {
 		Head: "bafyreifmdv6gsspodvsm7wf6orrsi5ibznib7guooqravwvtajttpp7mka",
 	})
 
-	tree, _, e := BuildTree(sb)
+	tree, _, e := BuildTree(context.Background(), sb)
 	require.NoError(t, e)
 	var cnt int
 	tree.Iterate(tree.RootId(), func(c *Change) (isContinue bool) {

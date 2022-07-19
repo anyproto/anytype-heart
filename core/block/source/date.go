@@ -83,7 +83,7 @@ func (v *date) parseId() error {
 	return nil
 }
 
-func (v *date) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	if err = v.parseId(); err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (v *date) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err 
 	return s, nil
 }
 
-func (v *date) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
+func (v *date) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
 	if err = v.parseId(); err != nil {
 		return
 	}

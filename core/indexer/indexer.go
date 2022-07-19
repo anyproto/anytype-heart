@@ -154,7 +154,7 @@ func (i *indexer) saveLatestCounters() error {
 	return i.store.SaveChecksums(&checksums)
 }
 
-func (i *indexer) Run() (err error) {
+func (i *indexer) Run(context.Context) (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
@@ -244,7 +244,7 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		reindex = math.MaxUint64
 	}
-	return i.Reindex(context.TODO(), reindex)
+	return i.Reindex(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "reindex_forced"), reindex)
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
@@ -285,19 +285,23 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 		}
 	}
 
+	var ctx context.Context
 	if len(idsToReindex) > 0 {
 		for _, id := range idsToReindex {
 			// TODO: we should reindex it I guess at start
 			//if i.anytype.PredefinedBlocks().IsAccount(id) {
 			//	continue
 			//}
-			ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
+
+			// we do this instead of context.WithTimeout in order to continue loading in case of timeout in background
+			ctx = context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
+			ctx = context.WithValue(ctx, metrics.CtxKeyRequest, "reindexOutdatedThreads")
 			d, err := i.doc.GetDocInfo(ctx, id)
 			if err != nil {
-				log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
 				continue
 			}
-			err = i.index(context.TODO(), d)
+
+			err = i.index(ctx, d)
 			if err == nil {
 				success++
 			} else {
@@ -766,11 +770,13 @@ func (i *indexer) ftIndex() {
 func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
 	ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
+	ctx = context.WithValue(ctx, metrics.CtxKeyRequest, "index_fulltext")
 
 	info, err := i.doc.GetDocInfo(ctx, id)
 	if err != nil {
 		return
 	}
+
 	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
