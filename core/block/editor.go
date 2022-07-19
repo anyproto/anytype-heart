@@ -467,7 +467,7 @@ func (s *service) ClearTextStyle(ctx *state.Context, contextId string, blockIds 
 					model.BlockContentTextMark_Keyboard,
 					model.BlockContentTextMark_Italic,
 					model.BlockContentTextMark_Bold,
-					model.BlockContentTextMark_Underline,
+					model.BlockContentTextMark_Underscored,
 					model.BlockContentTextMark_TextColor,
 					model.BlockContentTextMark_BackgroundColor:
 				default:
