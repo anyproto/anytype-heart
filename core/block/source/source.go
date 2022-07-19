@@ -201,15 +201,67 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 	ctxP := core.ThreadLoadProgress{}
 	ctx = ctxP.DeriveContext(ctx)
 
+	var request string
+	if v := ctx.Value(metrics.CtxKeyRequest); v != nil {
+		request = v.(string)
+	}
+	sendEvent := func(v core.ThreadLoadProgress, inProgress bool) {
+		logs, _ := s.sb.GetLogs()
+		spent := time.Since(startTime).Seconds()
+		var msg string
+		if inProgress {
+			msg = "tree building in progress"
+		} else {
+			msg = "tree building finished"
+		}
+
+		l := log.With("thread", s.id).
+			With("sb_type", s.smartblockType).
+			With("request", request).
+			With("logs", logs).
+			With("records_loaded", v.RecordsLoaded).
+			With("records_missing", v.RecordsMissingLocally).
+			With("spent", spent)
+
+		if spent > 30 {
+			l.Errorf(msg)
+		} else if spent > 3 {
+			l.Warn(msg)
+		} else {
+			l.Debug(msg)
+		}
+
+		event := metrics.TreeBuild{
+			SbType:         uint64(s.smartblockType),
+			TimeMs:         time.Since(startTime).Milliseconds(),
+			ObjectId:       s.id,
+			Request:        request,
+			InProgress:     inProgress,
+			Logs:           len(logs),
+			RecordsFailed:  v.RecordsFailedToLoad,
+			RecordsLoaded:  v.RecordsLoaded,
+			RecordsMissing: v.RecordsMissingLocally,
+		}
+
+		metrics.SharedClient.RecordEvent(event)
+	}
+
 	go func() {
+		tDuration := time.Second * 10
+		var v core.ThreadLoadProgress
 	forloop:
 		for {
 			select {
 			case <-loadCh:
 				break forloop
-			case <-time.After(time.Second * 5):
-				v := ctxP.Value()
-				log.With("object_id", s.id).With("records_loaded", v.RecordsLoaded).With("records_missing", v.RecordsMissingLocally).With("spent", time.Since(startTime).Seconds()).Errorf("openBlock in progress")
+			case <-time.After(tDuration):
+				v2 := ctxP.Value()
+				if v2.RecordsLoaded == v.RecordsLoaded && v2.RecordsMissingLocally == v.RecordsMissingLocally && v2.RecordsFailedToLoad == v.RecordsFailedToLoad {
+					// no progress, double the ticker
+					tDuration = tDuration * 2
+				}
+				v = v2
+				sendEvent(v, true)
 			}
 		}
 	}()
@@ -220,29 +272,10 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 	}
 	close(loadCh)
 	treeBuildTime := time.Now().Sub(startTime).Milliseconds()
-	log.With("object id", s.id).
-		With("build time ms", treeBuildTime).
-		Debug("stop building tree")
 
 	// if the build time is large enough we should record it
 	if treeBuildTime > 100 {
-		event := metrics.TreeBuild{
-			TimeMs:   treeBuildTime,
-			ObjectId: s.id,
-			Logs:     len(s.logHeads),
-		}
-		ctxProgress, _ := ctx.Value(core.ThreadLoadProgressContextKey).(*core.ThreadLoadProgress)
-		if v := ctx.Value(metrics.CtxKeyRequest); v != nil {
-			event.Request = v.(string)
-		}
-
-		if ctxProgress != nil {
-			event.RecordsLoaded = ctxProgress.RecordsLoaded
-			event.RecordsMissing = ctxProgress.RecordsMissingLocally
-			event.RecordsFailed = ctxProgress.RecordsFailedToLoad
-		}
-
-		metrics.SharedClient.RecordEvent(event)
+		sendEvent(ctxP.Value(), false)
 	}
 
 	if allowEmpty && err == change.ErrEmpty {

@@ -210,6 +210,8 @@ func (c TreeBuild) ToEvent() *Event {
 			"records_missing": c.RecordsMissing,
 			"records_failed":  c.RecordsFailed,
 			"time_ms":         c.TimeMs,
+			"sb_type":         c.SbType,
+			"in_progress":     c.InProgress,
 		},
 	}
 }
