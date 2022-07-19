@@ -148,7 +148,7 @@ func (p *limiterPool) runTask(task *Item) {
 		err = fmt.Errorf("operation failed with attempt: %d, %w", attempt, err)
 	}
 
-	op.OnFinish(nil, err)
+	op.OnFinish(err)
 	if err == nil {
 		p.mx.Lock()
 		defer p.mx.Unlock()

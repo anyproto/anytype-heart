@@ -354,7 +354,7 @@ func (a addReplicatorOperation) Run() error {
 	return nil
 }
 
-func (a addReplicatorOperation) OnFinish(info map[string]interface{}, err error) {
+func (a addReplicatorOperation) OnFinish(err error) {
 	if err != nil {
 		log.With("thread", a.id.String()).
 			With("replicatorAddr", a.replicatorAddr.String()).
@@ -407,10 +407,11 @@ func (o threadAddOperation) Run() (err error) {
 		return
 	}
 
-	return o.threadsService.processNewExternalThread(id, o.info, false)
+	err = o.threadsService.processNewExternalThread(id, o.info, false)
+	return err
 }
 
-func (o threadAddOperation) OnFinish(info map[string]interface{}, err error) {
+func (o threadAddOperation) OnFinish(err error) {
 	// at the time of this function call the operation is still pending
 	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.downloadPool.PendingOperations()-1)
 	if err == nil {
@@ -457,7 +458,7 @@ func (o threadDeleteOperation) Run() (err error) {
 	return
 }
 
-func (o threadDeleteOperation) OnFinish(info map[string]interface{}, err error) {
+func (o threadDeleteOperation) OnFinish(err error) {
 	if err != nil {
 		if strings.Contains(err.Error(), "block not found") {
 			return
