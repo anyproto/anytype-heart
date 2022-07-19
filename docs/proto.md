@@ -19106,7 +19106,7 @@ scope from which this relation have been aggregated |
 | Keyboard | 1 |  |
 | Italic | 2 |  |
 | Bold | 3 |  |
-| Underline | 4 |  |
+| Underscored | 4 |  |
 | Link | 5 |  |
 | TextColor | 6 |  |
 | BackgroundColor | 7 |  |
