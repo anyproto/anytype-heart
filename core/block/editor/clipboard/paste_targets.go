@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var pasteTargetCreator []func(b simple.Block) PasteTarget
@@ -52,17 +53,27 @@ func (c *cellTarget) PasteInside(targetState, clipboardState *state.State) error
 	var nonTextBlocks []simple.Block
 	var textBlocks []text.Block
 
+	textBlockIds := map[string]struct{}{}
+
 	clipboardState.Iterate(func(b simple.Block) (isContinue bool) {
 		if b.Model().Id != clipboardState.RootId() {
 			tb, ok := b.(text.Block)
 			if ok {
 				textBlocks = append(textBlocks, tb)
+				textBlockIds[b.Model().Id] = struct{}{}
 			} else {
 				nonTextBlocks = append(nonTextBlocks, b)
 			}
 		}
 		return true
 	})
+
+	for _, b := range nonTextBlocks {
+		b.Model().ChildrenIds = slice.Filter(b.Model().ChildrenIds, func(id string) bool {
+			_, ok := textBlockIds[id]
+			return !ok
+		})
+	}
 
 	sep := ""
 	for _, tb := range textBlocks {
