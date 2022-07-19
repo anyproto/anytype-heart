@@ -459,6 +459,23 @@ func (s *service) ClearTextStyle(ctx *state.Context, contextId string, blockIds 
 			t.Model().VerticalAlign = model.Block_VerticalAlignTop
 			t.SetTextColor("")
 			t.SetStyle(model.BlockContentText_Paragraph)
+
+			marks := t.Model().GetText().Marks.Marks[:0]
+			for _, m := range t.Model().GetText().Marks.Marks {
+				switch m.Type {
+				case model.BlockContentTextMark_Strikethrough,
+					model.BlockContentTextMark_Keyboard,
+					model.BlockContentTextMark_Italic,
+					model.BlockContentTextMark_Bold,
+					model.BlockContentTextMark_Underline,
+					model.BlockContentTextMark_TextColor,
+					model.BlockContentTextMark_BackgroundColor:
+				default:
+					marks = append(marks, m)
+				}
+			}
+			t.Model().GetText().Marks.Marks = marks
+
 			return nil
 		})
 	})
@@ -1049,19 +1066,19 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 		})
 	}
 	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
-		return s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
+		return s.DoClipboard(req.TargetContextId, func(tb clipboard.Clipboard) error {
 			cs := cb.NewState()
-			blocks := basic.CutBlocks(cs, req.BlockIds)
-
-			ts := tb.NewState()
-			err := basic.PasteBlocks(ts, blocks)
-			if err != nil {
-				return fmt.Errorf("paste blocks: %w", err)
+			bs := basic.CutBlocks(cs, req.BlockIds)
+			blocks := make([]*model.Block, 0, len(bs))
+			for _, b := range bs {
+				blocks = append(blocks, b.Model())
 			}
-
-			err = tb.Apply(ts)
+			_, _, _, _, err := tb.Paste(ctx, &pb.RpcBlockPasteRequest{
+				FocusedBlockId: req.DropTargetId,
+				AnySlot:        blocks,
+			}, "")
 			if err != nil {
-				return fmt.Errorf("apply target block state: %w", err)
+				return fmt.Errorf("paste: %w", err)
 			}
 			return cb.Apply(cs)
 		})
