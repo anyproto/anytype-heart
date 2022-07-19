@@ -95,11 +95,12 @@ func (c *cellTarget) PasteInside(targetState, clipboardState *state.State) error
 	if err != nil {
 		return fmt.Errorf("init table: %w", err)
 	}
+
 	ids := make([]string, 0, len(nonTextBlocks))
 	for _, b := range nonTextBlocks {
 		targetState.Add(b)
 		ids = append(ids, b.Model().Id)
 	}
-
-	return targetState.InsertTo(tblock.Block().Model().Id, model.Block_Bottom, ids...)
+	roots := clipboardState.SelectRoots(ids)
+	return targetState.InsertTo(tblock.Block().Model().Id, model.Block_Bottom, roots...)
 }
