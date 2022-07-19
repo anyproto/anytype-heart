@@ -361,8 +361,12 @@ func (s *service) initPredefinedBlocks(ctx context.Context) {
 			ObjectId: id,
 		})
 	}
-	metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlocks{
-		TimeMs: time.Now().Sub(startTime).Milliseconds()})
+	spent := time.Now().Sub(startTime).Milliseconds()
+	if spent > 100 {
+		metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlocks{
+			TimeMs: spent,
+		})
+	}
 }
 
 func (s *service) Anytype() core.Service {

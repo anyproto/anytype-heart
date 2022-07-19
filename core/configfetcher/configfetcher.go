@@ -158,7 +158,7 @@ func (c *configFetcher) run() {
 			if timeInterval > accountStateFetchInterval {
 				timeInterval = accountStateFetchInterval
 			}
-			log.Errorf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
+			log.Warnf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
 		}
 	}
 }
