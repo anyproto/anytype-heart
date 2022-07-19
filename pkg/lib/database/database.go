@@ -209,8 +209,8 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 				EmptyLast: emptyLast,
 			}
 
-			if s.Type == model.BlockContentDataviewSort_Custom  && s.CustomOrder.Size() > 0 {
-				ord = append(ord, filter.NewCustomOrder(s.RelationKey, s.CustomOrder.GetValues(), keyOrd))
+			if s.Type == model.BlockContentDataviewSort_Custom  && len(s.CustomOrder) > 0 {
+				ord = append(ord, filter.NewCustomOrder(s.RelationKey, s.CustomOrder, keyOrd))
 				continue
 			}
 
