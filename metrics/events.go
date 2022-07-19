@@ -393,6 +393,46 @@ func (c AccountRecoverEvent) ToEvent() *Event {
 	}
 }
 
+type CafeP2PConnectStateChanged struct {
+	AfterMs         int64
+	PrevState       int
+	NewState        int
+	NetCheckSuccess bool
+	NetCheckError   string
+	GrpcConnected   bool
+}
+
+func (c CafeP2PConnectStateChanged) ToEvent() *Event {
+	return &Event{
+		EventType: "cafe_p2p_connect_state_changed",
+		EventData: map[string]interface{}{
+			"after_ms":          c.AfterMs,
+			"state":             c.NewState,
+			"prev_state":        c.PrevState,
+			"net_check_success": c.NetCheckSuccess,
+			"net_check_error":   c.NetCheckError,
+			"grpc_connected":    c.GrpcConnected,
+		},
+	}
+}
+
+type CafeGrpcConnectStateChanged struct {
+	AfterMs         int64
+	Connected       bool
+	ConnectedBefore bool
+}
+
+func (c CafeGrpcConnectStateChanged) ToEvent() *Event {
+	return &Event{
+		EventType: "cafe_grpc_connect_state_changed",
+		EventData: map[string]interface{}{
+			"after_ms":         c.AfterMs,
+			"connected":        c.Connected,
+			"connected_before": c.ConnectedBefore,
+		},
+	}
+}
+
 type ThreadDownloaded struct {
 	Success              bool
 	Downloaded           int
