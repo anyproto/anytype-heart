@@ -17,7 +17,8 @@ import (
 
 var _ Block = (*Dataview)(nil)
 var (
-	ErrRelationNotFound = fmt.Errorf("relation not found")
+	ErrRelationNotFound = errors.New("relation not found")
+	ErrViewNotFound     = errors.New("view not found")
 	ErrOptionNotExists  = errors.New("option not exists")
 )
 
@@ -105,7 +106,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataViewGroupOrderUpdate{
 						&pb.EventBlockDataviewGroupOrderUpdate{
-							Id:     dv.Id,
+							Id:         dv.Id,
 							GroupOrder: order2,
 						}}}})
 		}
@@ -253,7 +254,7 @@ func (s *Dataview) DeleteView(viewID string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("view not found")
+		return ErrViewNotFound
 	}
 
 	return nil
@@ -281,7 +282,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	}
 
 	if !found {
-		return fmt.Errorf("view not found")
+		return ErrViewNotFound
 	}
 
 	return nil
@@ -453,7 +454,7 @@ func (d *Dataview) DeleteRelation(relationKey string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("relation not found")
+		return ErrRelationNotFound
 	}
 
 	return nil
@@ -500,7 +501,7 @@ func (d *Dataview) AddRelationOption(relationKey string, option model.RelationOp
 	}
 
 	if relFound == nil {
-		return fmt.Errorf("relation not found")
+		return ErrRelationNotFound
 	}
 
 	// add this option with format scope to other dataview relations
@@ -575,7 +576,7 @@ func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error 
 		return nil
 	}
 
-	return fmt.Errorf("relation not found")
+	return ErrRelationNotFound
 }
 
 func (d *Dataview) SetViewOrder(viewIds []string) {
@@ -595,7 +596,7 @@ func (d *Dataview) SetViewOrder(viewIds []string) {
 }
 
 func (d *Dataview) SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder) {
-	isExist := false;
+	isExist := false
 	for _, groupOrder := range d.Model().GetDataview().GroupOrders {
 		if groupOrder.ViewId == order.ViewId {
 			isExist = true

@@ -1,6 +1,8 @@
 package clipboard
 
 import (
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -8,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
-	"strings"
 )
 
 type pasteCtrl struct {
@@ -181,6 +182,11 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 	p.s.Add(secondBlock)
 	targetId := selText.Model().Id
+
+	if target := resolvePasteTarget(p.s.Get(targetId)); target != nil {
+		return target.PasteInside(p.s, p.ps)
+	}
+
 	isPasteToHeader := targetId == template.TitleBlockId || targetId == template.DescriptionBlockId
 	pos := model.Block_Bottom
 	if isPasteToHeader {
