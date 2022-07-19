@@ -190,6 +190,7 @@ func (c BlockSplit) ToEvent() *Event {
 }
 
 type TreeBuild struct {
+	SbType         uint64
 	TimeMs         int64
 	ObjectId       string
 	Logs           int
@@ -197,6 +198,7 @@ type TreeBuild struct {
 	RecordsLoaded  int
 	RecordsMissing int
 	RecordsFailed  int
+	InProgress     bool
 }
 
 func (c TreeBuild) ToEvent() *Event {
@@ -387,6 +389,28 @@ func (c AccountRecoverEvent) ToEvent() *Event {
 			"spent_ms":              c.SpentMs,
 			"total_threads":         c.TotalThreads,
 			"simultaneous_requests": c.SimultaneousRequests,
+		},
+	}
+}
+
+type ThreadDownloaded struct {
+	Success              bool
+	Downloaded           int
+	DownloadedSinceStart int
+	Total                int
+	TimeMs               int64
+}
+
+func (c ThreadDownloaded) ToEvent() *Event {
+	return &Event{
+		EventType: "thread_downloaded",
+		EventData: map[string]interface{}{
+			"success":                c.Success,
+			"time_ms":                c.TimeMs,
+			"downloaded":             c.Downloaded,
+			"downloaded_since_start": c.DownloadedSinceStart,
+
+			"total": c.Total,
 		},
 	}
 }

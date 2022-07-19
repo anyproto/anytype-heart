@@ -30,6 +30,7 @@ type Config struct {
 	Metrics      bool
 
 	CafeP2PAddr             string
+	CafePID                 string
 	CafePermanentConnection bool // explicitly watch the connection to this peer and reconnect in case the connection has failed
 }
 

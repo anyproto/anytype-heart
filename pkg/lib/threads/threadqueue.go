@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/logstore"
@@ -57,6 +58,9 @@ type threadQueue struct {
 	wakeupChan       chan struct{}
 	downloadPool     *limiterPool
 	replicatorPool   *limiterPool
+
+	startedAt                         time.Time
+	startedWithTotalDownloadedThreads int
 }
 
 func (p *threadQueue) AddReplicator(id thread.ID) {
@@ -120,6 +124,8 @@ func (p *threadQueue) Init() error {
 	}
 	p.workspaceThreads = workspaceThreads
 	p.threadWorkspaces = threadWorkspaces
+	p.startedWithTotalDownloadedThreads = len(p.threadWorkspaces)
+	p.startedAt = time.Now()
 	return nil
 }
 
@@ -297,6 +303,19 @@ func (p *threadQueue) logOperation(op Operation, success bool, workspaceId strin
 			len(p.threadWorkspaces),
 			totalThreadsOverall)
 	}
+
+	event := metrics.ThreadDownloaded{
+		Success:              success,
+		Downloaded:           len(p.threadWorkspaces),
+		DownloadedSinceStart: len(p.threadWorkspaces) - p.startedWithTotalDownloadedThreads,
+		Total:                totalThreadsOverall,
+		TimeMs:               time.Since(p.startedAt).Milliseconds(),
+	}
+
+	if len(p.threadWorkspaces) == totalThreadsOverall {
+		p.startedAt = time.Now()
+	}
+	metrics.SharedClient.RecordEvent(event)
 }
 
 type addReplicatorOperation struct {
@@ -335,7 +354,7 @@ func (a addReplicatorOperation) Run() error {
 	return nil
 }
 
-func (a addReplicatorOperation) OnFinish(err error) {
+func (a addReplicatorOperation) OnFinish(info map[string]interface{}, err error) {
 	if err != nil {
 		log.With("thread", a.id.String()).
 			With("replicatorAddr", a.replicatorAddr.String()).
@@ -391,7 +410,7 @@ func (o threadAddOperation) Run() (err error) {
 	return o.threadsService.processNewExternalThread(id, o.info, false)
 }
 
-func (o threadAddOperation) OnFinish(err error) {
+func (o threadAddOperation) OnFinish(info map[string]interface{}, err error) {
 	// at the time of this function call the operation is still pending
 	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.downloadPool.PendingOperations()-1)
 	if err == nil {
@@ -438,7 +457,7 @@ func (o threadDeleteOperation) Run() (err error) {
 	return
 }
 
-func (o threadDeleteOperation) OnFinish(err error) {
+func (o threadDeleteOperation) OnFinish(info map[string]interface{}, err error) {
 	if err != nil {
 		if strings.Contains(err.Error(), "block not found") {
 			return

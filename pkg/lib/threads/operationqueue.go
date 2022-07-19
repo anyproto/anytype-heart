@@ -15,7 +15,7 @@ type Operation interface {
 	Id() string
 	IsRetriable() bool
 	Run() error
-	OnFinish(err error)
+	OnFinish(info map[string]interface{}, err error)
 }
 
 func newOperationPriorityQueue() *operationPriorityQueue {
