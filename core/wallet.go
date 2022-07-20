@@ -43,9 +43,26 @@ func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreate
 		return response("", pb.RpcWalletCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	mw.mnemonic = mnemonic
+	if err = mw.setMnemonic(mnemonic); err != nil {
+		return response("", pb.RpcWalletCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("set mnemonic: %w", err))
+	}
 
 	return response(mnemonic, pb.RpcWalletCreateResponseError_NULL, nil)
+}
+
+func (mw *Middleware) setMnemonic(mnemonic string) error {
+	mw.mnemonic = mnemonic
+	acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
+	if err != nil {
+		return fmt.Errorf("derive private key: %w", err)
+	}
+	priv, err := acc.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("marshal private key: %w", err)
+	}
+
+	mw.privateKey = priv
+	return nil
 }
 
 func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
@@ -78,7 +95,9 @@ func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecov
 		return response(pb.RpcWalletRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
-	mw.mnemonic = req.Mnemonic
+	if err = mw.setMnemonic(req.Mnemonic); err != nil {
+		return response(pb.RpcWalletRecoverResponseError_UNKNOWN_ERROR, err)
+	}
 	mw.rootPath = req.RootPath
 	mw.foundAccounts = nil
 
@@ -131,16 +150,12 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	}
 
 	// test if mnemonic is correct
-	acc, err := core.WalletAccountAt(req.Mnemonic, 0, "")
+	_, err := core.WalletAccountAt(req.Mnemonic, 0, "")
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_BAD_INPUT, err)
 	}
-	priv, err := acc.MarshalBinary()
-	if err != nil {
-		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
-	}
 
-	tok, err := mw.sessions.StartSession(priv)
+	tok, err := mw.sessions.StartSession(mw.privateKey)
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}
@@ -186,17 +201,7 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	}
 	tok := v[0]
 
-	// TODO: cache for private key
-	acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
-	if err != nil {
-		return nil, err
-	}
-	priv, err := acc.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-
-	err = mw.sessions.ValidateToken(priv, tok)
+	err = mw.sessions.ValidateToken(mw.privateKey, tok)
 	if err != nil {
 		return
 	}

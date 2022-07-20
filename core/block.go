@@ -2,14 +2,12 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/globalsign/mgo/bson"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/miolini/datacounter"
 	"google.golang.org/grpc/metadata"
 
@@ -794,38 +792,11 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOp
 	}
 
 	tok := v[0]
-
-	// TODO deny access
 	if tok == "" {
 		return session.NewContext()
 	}
 
-	token, err := jwt.Parse(tok, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
-		if err != nil {
-			return nil, err
-		}
-		priv, err := acc.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
-		return priv, nil
-	})
-	if err != nil {
-		log.Errorf("parse token: %s", err)
-	}
-
-	if token != nil && !token.Valid {
-		log.Errorf("invalid token")
-	}
-
-	return session.NewContext(session.WithSessionId(v[0], grpcSender))
+	return session.NewContext(session.WithSessionId(tok, grpcSender))
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {

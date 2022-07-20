@@ -26,9 +26,11 @@ var (
 )
 
 type Middleware struct {
-	rootPath            string
-	pin                 string
-	mnemonic            string
+	rootPath string
+	pin      string
+	mnemonic string
+	// memoized private key derived from mnemonic
+	privateKey          []byte
 	accountSearchCancel context.CancelFunc
 
 	foundAccounts []*model.Account // found local&remote account for the current mnemonic
