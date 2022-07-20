@@ -8,7 +8,6 @@ import (
 	"path"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -141,12 +140,10 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}
 
-	tok, err := session.GenerateToken(priv)
+	tok, err := mw.sessions.StartSession(priv)
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}
-
-	// TODO: create Session service and register a new session
 
 	return response(tok, pb.RpcWalletCreateSessionResponseError_NULL, nil)
 }
@@ -164,6 +161,10 @@ func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWallet
 	if sender, ok := mw.EventSender.(*event.GrpcSender); ok {
 		sender.CloseSession(req.Token)
 	}
+	if err := mw.sessions.CloseSession(req.Token); err != nil {
+		response(pb.RpcWalletCloseSessionResponseError_UNKNOWN_ERROR, fmt.Errorf("session service: %w", err))
+	}
+
 	return response(pb.RpcWalletCloseSessionResponseError_NULL, nil)
 }
 
@@ -195,7 +196,7 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 		return nil, err
 	}
 
-	err = session.ValidateToken(priv, tok)
+	err = mw.sessions.ValidateToken(priv, tok)
 	if err != nil {
 		return
 	}

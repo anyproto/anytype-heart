@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/account"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -34,13 +35,17 @@ type Middleware struct {
 
 	EventSender event.Sender
 
-	app *app.App
+	sessions session.Service
+	app      *app.App
 
 	m sync.RWMutex
 }
 
 func New() *Middleware {
-	mw := &Middleware{accountSearchCancel: func() {}}
+	mw := &Middleware{
+		accountSearchCancel: func() {},
+		sessions:            session.New(),
+	}
 	return mw
 }
 
