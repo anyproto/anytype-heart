@@ -5,12 +5,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -184,9 +185,9 @@ func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWallet
 }
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	fmt.Println(path.Base(info.FullMethod))
-	switch path.Base(info.FullMethod) {
-	case "WalletCreate", "AccountCreate", "WalletRecover", "AccountSelect", "WalletCreateSession", "MetricsSetParameters":
+	_, d := descriptor.ForMessage(req.(descriptor.Message))
+	noAuth := proto.GetBoolExtension(d.GetOptions(), pb.E_NoAuth, false)
+	if noAuth {
 		resp, err = handler(ctx, req)
 		return
 	}

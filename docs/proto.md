@@ -951,6 +951,8 @@
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype-Rpc-Workspace-Select-Response-Error-Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code)
   
+    - [File-level Extensions](#pb_protos_commands-proto-extensions)
+  
 - [pb/protos/events.proto](#pb_protos_events-proto)
     - [Event](#anytype-Event)
     - [Event.Account](#anytype-Event-Account)
@@ -14945,6 +14947,14 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
  
+
+
+<a name="pb_protos_commands-proto-extensions"></a>
+
+### File-level Extensions
+| Extension | Type | Base | Number | Description |
+| --------- | ---- | ---- | ------ | ----------- |
+| no_auth | bool | .google.protobuf.MessageOptions | 7777 |  |
 
  
 
