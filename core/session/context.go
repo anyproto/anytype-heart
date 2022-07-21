@@ -18,7 +18,7 @@ func WithSendEvent(se func(e *pb.Event)) ContextOption {
 	}
 }
 
-func WithSession(token string, sender SessionSender) ContextOption {
+func WithSession(token string, sender Sender) ContextOption {
 	return func(ctx *Context) {
 		ctx.sessionToken = token
 		ctx.sessionSender = sender
@@ -44,8 +44,12 @@ func NewChildContext(parent *Context) *Context {
 	}
 }
 
-type SessionSender interface {
+type Sender interface {
 	SendSession(token string, e *pb.Event)
+}
+
+type Closer interface {
+	CloseSession(token string)
 }
 
 type Context struct {
@@ -53,7 +57,7 @@ type Context struct {
 	traceId       string
 	messages      []*pb.EventMessage
 	sendEvent     func(e *pb.Event)
-	sessionSender SessionSender
+	sessionSender Sender
 	sessionToken  string
 }
 

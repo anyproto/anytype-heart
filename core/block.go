@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/globalsign/mgo/bson"
 	"github.com/miolini/datacounter"
@@ -776,7 +775,7 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 }
 
 func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) *session.Context {
-	grpcSender, ok := mw.EventSender.(*event.GrpcSender)
+	sessionSender, ok := mw.EventSender.(session.Sender)
 	if !ok {
 		return session.NewContext()
 	}
@@ -796,7 +795,7 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOp
 		return session.NewContext()
 	}
 
-	return session.NewContext(session.WithSession(tok, grpcSender))
+	return session.NewContext(session.WithSession(tok, sessionSender))
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {

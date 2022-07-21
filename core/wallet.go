@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -174,7 +174,7 @@ func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWallet
 		return m
 	}
 
-	if sender, ok := mw.EventSender.(*event.GrpcSender); ok {
+	if sender, ok := mw.EventSender.(session.Closer); ok {
 		sender.CloseSession(req.Token)
 	}
 	if err := mw.sessions.CloseSession(req.Token); err != nil {
