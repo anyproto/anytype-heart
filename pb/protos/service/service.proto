@@ -230,6 +230,5 @@ service ClientCommands {
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 
     // used only for lib-server via grpc
-    rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);
 }

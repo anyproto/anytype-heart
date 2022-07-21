@@ -18,9 +18,9 @@ func WithSendEvent(se func(e *pb.Event)) ContextOption {
 	}
 }
 
-func WithSessionId(sessionId string, sender SessionSender) ContextOption {
+func WithSession(token string, sender SessionSender) ContextOption {
 	return func(ctx *Context) {
-		ctx.sessionId = sessionId
+		ctx.sessionToken = token
 		ctx.sessionSender = sender
 	}
 }
@@ -40,12 +40,12 @@ func NewChildContext(parent *Context) *Context {
 		traceId:       parent.traceId,
 		sendEvent:     parent.sendEvent,
 		sessionSender: parent.sessionSender,
-		sessionId:     parent.sessionId,
+		sessionToken:  parent.sessionToken,
 	}
 }
 
 type SessionSender interface {
-	SendSession(sessionId string, e *pb.Event)
+	SendSession(token string, e *pb.Event)
 }
 
 type Context struct {
@@ -54,7 +54,7 @@ type Context struct {
 	messages      []*pb.EventMessage
 	sendEvent     func(e *pb.Event)
 	sessionSender SessionSender
-	sessionId     string
+	sessionToken  string
 }
 
 func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
@@ -87,7 +87,7 @@ func (ctx *Context) GetMessages() []*pb.EventMessage {
 
 func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {
 	if ctx.sessionSender != nil {
-		ctx.sessionSender.SendSession(ctx.sessionId, &pb.Event{
+		ctx.sessionSender.SendSession(ctx.sessionToken, &pb.Event{
 			Messages:  msgs,
 			ContextId: ctx.smartBlockId,
 			Initiator: nil,

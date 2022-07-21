@@ -4,7 +4,6 @@
 package event
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -50,21 +49,21 @@ func (es *GrpcSender) Send(event *pb.Event) {
 	es.broadcast(nil, event)
 }
 
-func (es *GrpcSender) SendSession(sessionId string, event *pb.Event) {
-	es.broadcast(&sessionId, event)
+// SendSession broadcasts the event from current session. Do not broadcast to the current session
+func (es *GrpcSender) SendSession(token string, event *pb.Event) {
+	es.broadcast(&token, event)
 }
 
-func (es *GrpcSender) broadcast(ignoreSessionId *string, event *pb.Event) {
+// broadcast to all servers except server registered by ignoreSession token
+func (es *GrpcSender) broadcast(ignoreSession *string, event *pb.Event) {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
 	for id, s := range es.Servers {
-		if ignoreSessionId != nil && *ignoreSessionId == id {
+		if ignoreSession != nil && *ignoreSession == id {
 			continue
 		}
-		id := id
-		s := s
-		go func() {
+		go func(s SessionServer, id string) {
 			err := s.Server.Send(event)
 			if err != nil {
 				if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
@@ -72,7 +71,7 @@ func (es *GrpcSender) broadcast(ignoreSessionId *string, event *pb.Event) {
 				}
 				log.Errorf("failed to send event: %s", err.Error())
 			}
-		}()
+		}(s, id)
 	}
 }
 
@@ -82,7 +81,7 @@ type SessionServer struct {
 }
 
 func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenEventsServer) SessionServer {
-	fmt.Printf("listening %s\n", token)
+	log.Warnf("listening %s\n", token)
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
 

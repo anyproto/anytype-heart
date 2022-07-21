@@ -796,7 +796,7 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOp
 		return session.NewContext()
 	}
 
-	return session.NewContext(session.WithSessionId(tok, grpcSender))
+	return session.NewContext(session.WithSession(tok, grpcSender))
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {

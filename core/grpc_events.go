@@ -13,9 +13,6 @@ import (
 	lib "github.com/anytypeio/go-anytype-middleware/pb/service"
 )
 
-func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_ListenEventsServer) {
-}
-
 func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {
 	if err := mw.sessions.ValidateToken(mw.privateKey, req.Token); err != nil {
 		log.Error("ListenSessionEvents: %s", err)
