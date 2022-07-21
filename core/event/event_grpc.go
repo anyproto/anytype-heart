@@ -80,7 +80,7 @@ type SessionServer struct {
 	Server service.ClientCommands_ListenSessionEventsServer
 }
 
-func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenEventsServer) SessionServer {
+func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
 	log.Warnf("listening %s\n", token)
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
