@@ -27,7 +27,7 @@ jobs:
           go install github.com/mitchellh/gox
       - name: Install brew and node deps
         run: |
-          brew install mingw-w64 jq swift-protobuf protobuf FiloSottile/musl-cross/musl-cross
+          brew install mingw-w64 jq swift-protobuf protobuf@3 FiloSottile/musl-cross/musl-cross
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
