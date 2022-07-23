@@ -27,12 +27,9 @@ jobs:
           go install github.com/mitchellh/gox
       - name: Install brew and node deps
         run: |
-          echo $PATH
-          brew config
           brew tap-new $USER/local-protobuf
           brew extract --version=3.19.4 protobuf $USER/local-protobuf
           brew install protobuf@3.19.4
-          ls -lha /usr/local/opt/proto*
           cp -RP /usr/local/opt/protobuf@3.19.4 /usr/local/opt/protobuf
           brew install --ignore-dependencies swift-protobuf
           brew install mingw-w64 jq FiloSottile/musl-cross/musl-cross
