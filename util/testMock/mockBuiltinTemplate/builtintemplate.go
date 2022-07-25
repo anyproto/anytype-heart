@@ -2,6 +2,7 @@
 package mockBuiltinTemplate
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/golang/mock/gomock"
@@ -11,7 +12,7 @@ func RegisterMockBuiltinTemplate(ctrl *gomock.Controller, ta *testapp.TestApp) *
 	ms := NewMockBuiltinTemplate(ctrl)
 	ms.EXPECT().Name().AnyTimes().Return(builtintemplate.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
-	ms.EXPECT().Run().AnyTimes()
+	ms.EXPECT().Run(context.Background()).AnyTimes()
 	ms.EXPECT().Close().AnyTimes()
 	ta.Register(ms)
 	return ms

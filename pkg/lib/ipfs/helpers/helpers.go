@@ -3,6 +3,9 @@ package helpers
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -10,14 +13,13 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"io"
 	"io/ioutil"
+	"net"
 	gopath "path"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
-	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 	ipfspath "github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
 	uio "github.com/ipfs/go-unixfs/io"
@@ -30,6 +32,11 @@ import (
 )
 
 var log = logging.Logger("anytype-ipfs")
+
+const (
+	netTcpHealthCheckAddress = "healthcheck.anytype.io:80"
+	netTcpHealthCheckTimeout = time.Second * 3
+)
 
 // DataAtPath return bytes under an ipfs path
 func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
@@ -404,28 +411,62 @@ func ResolveLinkByNames(nd ipld.Node, names []string) (*ipld.Link, error) {
 	return nil, nil
 }
 
-func PermanentConnection(ctx context.Context, addr ma.Multiaddr, host host.Host, retryInterval time.Duration) error {
+func PermanentConnection(ctx context.Context, addr ma.Multiaddr, host host.Host, retryInterval time.Duration, grpcConnected func() bool) error {
 	addrInfo, err := peer.AddrInfoFromP2pAddr(addr)
 	if err != nil {
 		return fmt.Errorf("PermanentConnection invalid addr: %s", err.Error())
 	}
 
+	var (
+		state       network.Connectedness
+		stateChange time.Time
+	)
 	go func() {
+		d := net.Dialer{Timeout: netTcpHealthCheckTimeout}
 		for {
-			state := host.Network().Connectedness(addrInfo.ID)
+			state2 := host.Network().Connectedness(addrInfo.ID)
 			// do not handle CanConnect purposefully
-			if state == network.NotConnected || state == network.CannotConnect {
+			if state2 == network.NotConnected || state2 == network.CannotConnect {
 				if swrm, ok := host.Network().(*swarm.Swarm); ok {
 					// clear backoff in order to connect more aggressively
 					swrm.Backoff().Clear(addrInfo.ID)
 				}
 
 				err = host.Connect(ctx, *addrInfo)
+				state2 = host.Network().Connectedness(addrInfo.ID)
 				if err != nil {
 					log.Warnf("PermanentConnection failed: %s", err.Error())
 				} else {
 					log.Debugf("PermanentConnection %s reconnected succesfully", addrInfo.ID.String())
 				}
+			}
+
+			if state2 != state || stateChange.IsZero() {
+				if stateChange.IsZero() {
+					// first iteration
+					stateChange = time.Now()
+				}
+
+				event := metrics.CafeP2PConnectStateChanged{
+					AfterMs:       time.Since(stateChange).Milliseconds(),
+					PrevState:     int(state),
+					NewState:      int(state2),
+					GrpcConnected: grpcConnected(),
+				}
+				if state2 != network.Connected {
+					c, err := d.Dial("tcp", netTcpHealthCheckAddress)
+					if err == nil {
+						_ = c.Close()
+					} else {
+						event.NetCheckError = err.Error()
+					}
+
+					event.NetCheckSuccess = err == nil
+				}
+
+				stateChange = time.Now()
+				state = state2
+				metrics.SharedClient.RecordEvent(event)
 			}
 
 			select {

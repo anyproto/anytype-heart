@@ -99,7 +99,7 @@ func New() ConfigFetcher {
 	return &configFetcher{}
 }
 
-func (c *configFetcher) Run() error {
+func (c *configFetcher) Run(context.Context) error {
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	go c.run()
 	return nil
@@ -158,7 +158,7 @@ func (c *configFetcher) run() {
 			if timeInterval > accountStateFetchInterval {
 				timeInterval = accountStateFetchInterval
 			}
-			log.Errorf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
+			log.Warnf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
 		}
 	}
 }

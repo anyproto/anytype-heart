@@ -135,6 +135,7 @@ type InitContext struct {
 	Restriction    restriction.Service
 	Doc            doc.Service
 	ObjectStore    objectstore.ObjectStore
+	Ctx            context.Context
 }
 
 type linkSource interface {
@@ -213,7 +214,11 @@ func (sb *smartBlock) Type() model.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	if sb.Doc, err = ctx.Source.ReadDoc(sb, ctx.State != nil); err != nil {
+	cctx := ctx.Ctx
+	if cctx == nil {
+		cctx = context.Background()
+	}
+	if sb.Doc, err = ctx.Source.ReadDoc(cctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
 
