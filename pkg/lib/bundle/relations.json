@@ -97,6 +97,26 @@
     "source": "details"
   },
   {
+    "description": "Relation option text",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "relationOptionText",
+    "maxCount": 1,
+    "name": "Relation option text",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Relation option color",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "relationOptionColor",
+    "maxCount": 1,
+    "name": "Relation option color",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "instructions",

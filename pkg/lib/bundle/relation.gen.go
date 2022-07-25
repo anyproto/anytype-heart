@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "5e0b65f3a6bf42dc4f22772ef78e2d9f7c8e611314347f8c3c69958349dd4322"
+const RelationChecksum = "cc4e29f67e365472ee1797a4098c049deb166d91ed24631c4bd4be1e8f1bdcc7"
 
 type RelationKey string
 
@@ -25,6 +25,8 @@ const (
 	RelationKeyToBeDeletedDate           RelationKey = "toBeDeletedDate"
 	RelationKeyRelationFormatObjectTypes RelationKey = "relationFormatObjectTypes"
 	RelationKeyRelationKey               RelationKey = "relationKey"
+	RelationKeyRelationOptionText        RelationKey = "relationOptionText"
+	RelationKeyRelationOptionColor       RelationKey = "relationOptionColor"
 	RelationKeyInstructions              RelationKey = "instructions"
 	RelationKeyDone                      RelationKey = "done"
 	RelationKeyMediaArtistURL            RelationKey = "mediaArtistURL"
@@ -1675,6 +1677,32 @@ var (
 			MaxCount:         1,
 			Name:             "Max values",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRelationOptionColor: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Relation option color",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Key:              "relationOptionColor",
+			MaxCount:         1,
+			Name:             "Relation option color",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRelationOptionText: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Relation option text",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Key:              "relationOptionText",
+			MaxCount:         1,
+			Name:             "Relation option text",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

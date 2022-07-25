@@ -303,6 +303,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
+	p.AddHook(p.updateOptions, smartblock.HookAfterApply)
 
 	data := ctx.State.GetCollection(collectionKeyRelationOptions)
 	if data != nil && data.Fields != nil {

@@ -185,6 +185,8 @@ type Service interface {
 	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error)
 	DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
 
+	CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error)
+
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
@@ -1043,6 +1045,19 @@ func (s *service) createObject(ctx *state.Context, contextBlock smartblock.Smart
 	if err != nil {
 		err = fmt.Errorf("link create error: %v", err)
 	}
+	return
+}
+
+func (s *service) CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error) {
+	workspaceIds, _ := s.anytype.GetAllWorkspaces()
+	err = s.Do(workspaceIds[0], func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		id, err = workspace.CreateRelationOption(relationKey, opt)
+		return err
+	})
 	return
 }
 

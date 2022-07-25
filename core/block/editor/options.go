@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"strings"
@@ -38,8 +37,9 @@ func (w *Workspaces) CreateRelationOption(relationKey string, opt *types.Struct)
 
 	subId := bson.NewObjectId().Hex()
 	id = w.Id() + "/" + subId
-	st := w.NewState()
+	opt.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
+	st := w.NewState()
 	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(opt))
 	if err = w.initOption(subId); err != nil {
 		return
@@ -83,10 +83,6 @@ func (w *Workspaces) Locked() bool {
 func (w *Workspaces) optionSubState(subId string) (*state.State, error) {
 	id := w.Id() + "/" + subId
 	s := w.NewState()
-	ids := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationOptionsDict.String())
-	if slice.FindPos(ids, id) == -1 {
-		return nil, ErrOptionNotFound
-	}
 	optData := pbtypes.GetStruct(s.NewState().GetCollection(collectionKeyRelationOptions), subId)
 	if optData == nil || optData.Fields == nil {
 		return nil, fmt.Errorf("no data for option: %v", id)
@@ -100,7 +96,7 @@ func (w *Workspaces) optionSubState(subId string) (*state.State, error) {
 	return subState, nil
 }
 
-func (w *Workspaces) optionsUpdate(info smartblock.ApplyInfo) (err error) {
+func (w *Workspaces) updateOptions(info smartblock.ApplyInfo) (err error) {
 	for _, ch := range info.Changes {
 		if keySet := ch.GetStoreKeySet(); keySet != nil {
 			if len(keySet.Path) >= 2 && keySet.Path[0] == collectionKeyRelationOptions {
