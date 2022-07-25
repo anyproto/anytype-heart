@@ -1,9 +1,13 @@
 package objectstore
 
 import (
+	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -133,6 +137,10 @@ var (
 				}
 
 				for _, opt := range v.SelectDict {
+					if opt.Scope != model.RelationOption_local {
+						continue
+					}
+
 					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Key, opt.Id}))
 				}
 				return indexes
@@ -246,6 +254,8 @@ type ObjectStore interface {
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error)
+
+	RelationSearchDistinct(relationKey string, reqFilters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewGroup, error)
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
@@ -620,7 +630,7 @@ func (m *dsObjectStore) eraseLinks() (err error) {
 	return nil
 }
 
-func (m *dsObjectStore) Run() (err error) {
+func (m *dsObjectStore) Run(context.Context) (err error) {
 	m.ds, err = m.dsIface.LocalstoreDS()
 	return
 }
@@ -712,6 +722,95 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, objectType stri
 	}
 
 	return
+}
+
+func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewGroup, error) {
+	rel, err := m.GetRelation(relationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var groups []*model.BlockContentDataviewGroup
+
+	switch rel.Format {
+	case model.RelationFormat_status:
+		options, err := m.GetAggregatedOptions(relationKey, "")
+		if err != nil {
+			return nil, err
+		}
+		uniqMap := make(map[string]bool)
+		for _, rel := range options {
+			if !uniqMap[rel.Text] {
+				uniqMap[rel.Text] = true
+				groups = append(groups, &model.BlockContentDataviewGroup{
+					Id: rel.Id,
+					Value: &model.BlockContentDataviewGroupValueOfStatus{
+						Status: &model.BlockContentDataviewStatus{
+							Id: rel.Id,
+						}},
+				})
+			}
+		}
+		sort.Slice(groups[:], func(i, j int) bool {
+			return groups[i].Id < groups[j].Id
+		})
+	case model.RelationFormat_tag:
+		filters := []*model.BlockContentDataviewFilter{
+			{RelationKey: string(bundle.RelationKeyIsDeleted), Condition: model.BlockContentDataviewFilter_Equal},
+			{RelationKey: string(bundle.RelationKeyIsArchived), Condition: model.BlockContentDataviewFilter_Equal},
+			{RelationKey: string(bundle.RelationKeyType), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{
+				bundle.TypeKeyFile.URL(),
+				bundle.TypeKeyImage.URL(),
+				bundle.TypeKeyVideo.URL(),
+				bundle.TypeKeyAudio.URL(),
+			})},
+		}
+		filters = append(filters, reqFilters...)
+		records, _, err := m.Query(nil, database.Query{
+			Filters: filters,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		uniqMap := make(map[string]bool)
+		for _, v := range records {
+			if tags := pbtypes.GetStringList(v.Details, bundle.RelationKeyTag.String()); len(tags) > 0 {
+				sort.Strings(tags)
+				hash := textutil.SliceHash(tags)
+				if !uniqMap[hash] {
+					uniqMap[hash] = true
+					groups = append(groups, &model.BlockContentDataviewGroup{
+						Id: hash,
+						Value: &model.BlockContentDataviewGroupValueOfTag{
+							Tag: &model.BlockContentDataviewTag{
+								Ids: tags,
+							}},
+					})
+				}
+			}
+		}
+	case model.RelationFormat_checkbox:
+		groups = append(groups, &model.BlockContentDataviewGroup{
+			Id: "true",
+			Value: &model.BlockContentDataviewGroupValueOfCheckbox{
+				Checkbox: &model.BlockContentDataviewCheckbox{
+					Checked: true,
+				}},
+		}, &model.BlockContentDataviewGroup{
+			Id: "false",
+			Value: &model.BlockContentDataviewGroupValueOfCheckbox{
+				Checkbox: &model.BlockContentDataviewCheckbox{
+					Checked: false,
+				}},
+		})
+	case model.RelationFormat_date:
+		// TODO
+	default:
+		return nil, errors.New("unsupported relation format")
+	}
+
+	return groups, nil
 }
 
 func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {

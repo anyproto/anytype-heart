@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 )
 
@@ -99,7 +100,7 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
-			log.Infof("error while applying changes: %v; ignore", err)
+			log.With("thread", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
 		}
 	}
 	return
@@ -304,12 +305,13 @@ func (s *State) changeBlockRemove(remove *pb.ChangeBlockRemove) error {
 }
 
 func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
+	merr := multierror.Error{}
 	for _, ev := range update.Events {
 		if err := s.applyEvent(ev); err != nil {
-			return err
+			merr.Errors = append(merr.Errors, fmt.Errorf("failed to apply event %T: %s", ev.Value, err.Error()))
 		}
 	}
-	return nil
+	return merr.ErrorOrNil()
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
@@ -405,6 +407,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockDataviewRelationSet:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataViewGroupOrderUpdate:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)

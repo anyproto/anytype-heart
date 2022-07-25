@@ -165,7 +165,7 @@ var WithMaxCountMigration = func(s *state.State) {
 	for k, v := range d.Fields {
 		rel := pbtypes.GetRelation(rels, k)
 		if rel == nil {
-			log.Errorf("obj %s relation %s is missing but detail is set", s.RootId(), k)
+			log.Warnf("obj %s relation %s is missing but detail is set", s.RootId(), k)
 		} else if rel.MaxCount == 1 {
 			if b := v.GetListValue(); b != nil {
 				if len(b.Values) > 0 {

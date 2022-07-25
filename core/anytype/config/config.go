@@ -32,6 +32,7 @@ type FileConfig interface {
 type ConfigRequired struct {
 	HostAddr        string `json:",omitempty"`
 	IPFSStorageAddr string `json:",omitempty"`
+	TimeZone        string `json:",omitempty"`
 }
 
 type Config struct {
@@ -116,6 +117,7 @@ func New(options ...func(*Config)) *Config {
 		opt(&cfg)
 	}
 	cfg.Threads.CafeP2PAddr = cfg.CafeP2PFullAddr()
+	cfg.Threads.CafePID = cfg.CafePeerId
 
 	return &cfg
 }
@@ -156,7 +158,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	c.RepoPath = repoPath
 
 	if !c.DisableFileConfig {
-		err := files.GetFileConfig(filepath.Join(c.RepoPath, ConfigFileName), &c.ConfigRequired)
+		err := files.GetFileConfig(c.GetConfigPath(), &c.ConfigRequired)
 		if err != nil {
 			return fmt.Errorf("failed to get config from file: %s", err.Error())
 		}
@@ -170,7 +172,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 
 			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
 
-			err = files.WriteJsonConfig(filepath.Join(c.RepoPath, ConfigFileName), c.ConfigRequired)
+			err = files.WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 			if err != nil {
 				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
 			}
@@ -225,7 +227,7 @@ func (c *Config) DSConfig() clientds.Config {
 
 func (c *Config) FSConfig() (clientds.FSConfig, error) {
 	res := ConfigRequired{}
-	err := files.GetFileConfig(filepath.Join(c.RepoPath, ConfigFileName), &res)
+	err := files.GetFileConfig(c.GetConfigPath(), &res)
 	if err != nil {
 		return clientds.FSConfig{}, err
 	}
@@ -235,6 +237,10 @@ func (c *Config) FSConfig() (clientds.FSConfig, error) {
 
 func (c *Config) ThreadsConfig() threads.Config {
 	return c.Threads
+}
+
+func (c *Config) GetConfigPath() string {
+	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
 func getRandomPort() (int, error) {

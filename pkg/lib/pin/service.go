@@ -73,7 +73,7 @@ func (f *filePinService) Init(a *app.App) error {
 	return nil
 }
 
-func (f *filePinService) Run() error {
+func (f *filePinService) Run(context.Context) error {
 	if f.cafe != nil {
 		go f.syncCafe()
 	} else {

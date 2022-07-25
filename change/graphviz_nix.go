@@ -9,6 +9,7 @@ package change
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -154,7 +155,7 @@ func (t *Tree) Graphviz() (data string, err error) {
 
 // This will create SVG image of the SmartBlock (i.e a DAG)
 func CreateSvg(block core.SmartBlock, svgFilename string) (err error) {
-	t, _, err := BuildTree(block)
+	t, _, err := BuildTree(context.TODO(), block)
 	if err != nil {
 		logger.Fatal("build tree error:", err)
 		return err

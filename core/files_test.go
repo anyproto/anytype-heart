@@ -25,7 +25,7 @@ type Metrics struct {
 }
 
 func TestFile(t *testing.T) {
-	rootPath, mw, close := start(t, nil)
+	_, rootPath, mw, close := start(t, nil)
 	defer close()
 	getMetrics := func(path string) (m Metrics, err error) {
 		err = filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {

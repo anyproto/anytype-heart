@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -158,7 +159,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 	}
 
 	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && firstTextBlock != nil && lastTextBlock == nil {
-		req.SelectedTextRange.To = int32(utf8.RuneCountInString(firstTextBlock.GetText().Text))
+		req.SelectedTextRange.To = int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
 	}
 
 	// scenario: rangeCut
@@ -312,6 +313,9 @@ func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest
 	for _, b := range req.AnySlot {
 		if b.Id == "" {
 			b.Id = bson.NewObjectId().Hex()
+		}
+		if b.Id == template.TitleBlockId {
+			delete(b.Fields.Fields, text.DetailsKeyFieldName)
 		}
 	}
 	srcState := cb.blocksToState(req.AnySlot)

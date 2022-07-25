@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"os"
 	"runtime"
 	"strings"
@@ -34,7 +36,7 @@ type ComponentRunnable interface {
 	Component
 	// Run will be called after init stage
 	// Non-nil error also will be aborted app start
-	Run() (err error)
+	Run(ctx context.Context) (err error)
 	// Close will be called when app shutting down
 	// Also will be called when service return error on Init or Run stage
 	// Non-nil error will be printed to log
@@ -138,7 +140,7 @@ func (app *App) ComponentNames() (names []string) {
 
 // Start starts the application
 // All registered services will be initialized and started
-func (app *App) Start() (err error) {
+func (app *App) Start(ctx context.Context) (err error) {
 	app.mu.RLock()
 	defer app.mu.RUnlock()
 	app.startStat.SpentMsPerComp = make(map[string]int64)
@@ -165,7 +167,7 @@ func (app *App) Start() (err error) {
 	for i, s := range app.components {
 		if serviceRun, ok := s.(ComponentRunnable); ok {
 			start := time.Now()
-			if err = serviceRun.Run(); err != nil {
+			if err = serviceRun.Run(ctx); err != nil {
 				closeServices(i)
 				return fmt.Errorf("can't run service '%s': %v", serviceRun.Name(), err)
 			}
@@ -174,6 +176,21 @@ func (app *App) Start() (err error) {
 			app.startStat.SpentMsPerComp[s.Name()] = spent
 		}
 	}
+
+	stat := app.startStat
+	if stat.SpentMsTotal > 300 {
+		log.Errorf("AccountCreate app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
+	}
+
+	var request string
+	if v, ok := ctx.Value(metrics.CtxKeyRequest).(string); ok {
+		request = v
+	}
+
+	metrics.SharedClient.RecordEvent(metrics.AppStart{
+		Request:   request,
+		TotalMs:   stat.SpentMsTotal,
+		PerCompMs: stat.SpentMsPerComp})
 	log.Debugf("All components started")
 	return
 }

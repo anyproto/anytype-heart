@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"strings"
 	"unicode"
@@ -102,7 +103,7 @@ func ThreadIdsToStings(ids []thread.ID) []string {
 
 func TruncateText(text string, length int) string {
 	var ellipsis = " …"
-	if utf8.RuneCountInString(text) <= length {
+	if textutil.UTF16RuneCountString(text) <= length {
 		return text
 	}
 

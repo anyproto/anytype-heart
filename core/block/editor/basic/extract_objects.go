@@ -49,11 +49,16 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 				// This id will be replaced by id of the new object
 				Id:          "_root",
 				ChildrenIds: []string{newRoot},
-				Content: &model.BlockContentOfSmartblock{
-					Smartblock: &model.BlockContentSmartblock{},
-				},
 			}))
 		}
+
+		// Root block have to have Smartblock content
+		rootId := objState.RootId()
+		rootBlock := objState.Get(rootId).Model()
+		rootBlock.Content = &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		}
+		objState.Set(simple.New(rootBlock))
 
 		fields := map[string]*types.Value{
 			bundle.RelationKeyName.String(): pbtypes.String(root.Model().GetText().Text),

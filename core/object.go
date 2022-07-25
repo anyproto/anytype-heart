@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -277,7 +278,38 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	return resp
 }
 
-func (mw *Middleware) ObjectSubscribeIds(cctx context.Context, req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
+func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse {
+	errResponse := func(err error) *pb.RpcObjectRelationSearchDistinctResponse {
+		r := &pb.RpcObjectRelationSearchDistinctResponse{
+			Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+				Code: pb.RpcObjectRelationSearchDistinctResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(errors.New("app must be started"))
+	}
+
+	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	groups, err := store.RelationSearchDistinct(req.RelationKey, req.Filters)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
+	}, Groups: groups}
+}
+
+func (mw *Middleware) ObjectSubscribeIds(_ context.Context, req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
 	errResponse := func(err error) *pb.RpcObjectSubscribeIdsResponse {
 		r := &pb.RpcObjectSubscribeIdsResponse{
 			Error: &pb.RpcObjectSubscribeIdsResponseError{
@@ -376,11 +408,14 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 
 	homeId := at.PredefinedBlocks().Home
 	if _, exists := nodeExists[homeId]; !exists {
+		// we don't index home object, but we DO index outgoing links from it
+		links, _ := at.ObjectStore().GetOutboundLinksById(homeId)
 		records = append(records, database.Record{&types.Struct{
 			Fields: map[string]*types.Value{
 				"id":        pbtypes.String(homeId),
 				"name":      pbtypes.String("Home"),
 				"iconEmoji": pbtypes.String("🏠"),
+				"links":     pbtypes.StringList(links),
 			},
 		}})
 	}

@@ -28,21 +28,21 @@ const (
 	virtualChangeBaseSeparator = "+"
 )
 
-func BuildTreeBefore(s core.SmartBlock, beforeLogId string, includeBeforeId bool) (t *Tree, err error) {
+func BuildTreeBefore(ctx context.Context, s core.SmartBlock, beforeLogId string, includeBeforeId bool) (t *Tree, err error) {
 	sb := &stateBuilder{beforeId: beforeLogId, includeBeforeId: includeBeforeId}
-	err = sb.Build(s)
+	err = sb.Build(ctx, s)
 	return sb.tree, err
 }
 
-func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]*Change, err error) {
+func BuildTree(ctx context.Context, s core.SmartBlock) (t *Tree, logHeads map[string]*Change, err error) {
 	sb := new(stateBuilder)
-	err = sb.Build(s)
+	err = sb.Build(ctx, s)
 	return sb.tree, sb.logHeads, err
 }
 
-func BuildMetaTree(s core.SmartBlock) (t *Tree, logHeads map[string]*Change, err error) {
+func BuildMetaTree(ctx context.Context, s core.SmartBlock) (t *Tree, logHeads map[string]*Change, err error) {
 	sb := &stateBuilder{onlyMeta: true}
-	err = sb.Build(s)
+	err = sb.Build(ctx, s)
 	return sb.tree, sb.logHeads, err
 }
 
@@ -60,15 +60,15 @@ type stateBuilder struct {
 	duplicateEvents int
 }
 
-func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
+func (sb *stateBuilder) Build(ctx context.Context, s core.SmartBlock) (err error) {
 	sb.smartblockId = s.ID()
 	st := time.Now()
 	sb.smartblock = s
-	logs, err := sb.getLogs()
+	logs, err := sb.getLogs(ctx)
 	if err != nil {
 		return err
 	}
-	heads, err := sb.getActualHeads(logs)
+	heads, err := sb.getActualHeads(ctx, logs)
 	if err != nil {
 		return fmt.Errorf("getActualHeads error: %v", err)
 	}
@@ -77,11 +77,11 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 		sb.duplicateEvents = 0
 	}
 
-	breakpoint, err := sb.findBreakpoint(heads)
+	breakpoint, err := sb.findBreakpoint(ctx, heads)
 	if err != nil {
 		return fmt.Errorf("findBreakpoint error: %v", err)
 	}
-	if err = sb.buildTree(heads, breakpoint); err != nil {
+	if err = sb.buildTree(ctx, heads, breakpoint); err != nil {
 		return fmt.Errorf("buildTree error: %v", err)
 	}
 	log.Infof("tree build: len: %d; scanned: %d; dur: %v (lib %v)", sb.tree.Len(), len(sb.cache), time.Since(st), sb.qt)
@@ -89,10 +89,10 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	return
 }
 
-func (sb *stateBuilder) getLogs() (logs []core.SmartblockLog, err error) {
+func (sb *stateBuilder) getLogs(ctx context.Context) (logs []core.SmartblockLog, err error) {
 	sb.cache = make(map[string]*Change)
 	if sb.beforeId != "" {
-		before, e := sb.loadChange(sb.beforeId)
+		before, e := sb.loadChange(ctx, sb.beforeId)
 		if e != nil {
 			return nil, e
 		}
@@ -120,7 +120,7 @@ func (sb *stateBuilder) getLogs() (logs []core.SmartblockLog, err error) {
 		if len(l.Head) == 0 {
 			continue
 		}
-		if ch, err := sb.loadChange(l.Head); err != nil {
+		if ch, err := sb.loadChange(ctx, l.Head); err != nil {
 			log.Errorf("loading head %s of the log %s failed: %v", l.Head, l.ID, err)
 		} else {
 			sb.logHeads[l.ID] = ch
@@ -130,8 +130,8 @@ func (sb *stateBuilder) getLogs() (logs []core.SmartblockLog, err error) {
 	return nonEmptyLogs, nil
 }
 
-func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error) {
-	ch, err := sb.loadChange(breakpoint)
+func (sb *stateBuilder) buildTree(ctx context.Context, heads []string, breakpoint string) (err error) {
+	ch, err := sb.loadChange(ctx, breakpoint)
 	if err != nil {
 		return
 	}
@@ -144,7 +144,7 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 	var changes = make([]*Change, 0, len(heads)*2)
 	var uniqMap = map[string]struct{}{breakpoint: {}}
 	for _, id := range heads {
-		changes, err = sb.loadChangesFor(id, uniqMap, changes)
+		changes, err = sb.loadChangesFor(ctx, id, uniqMap, changes)
 		if err != nil {
 			return
 		}
@@ -166,16 +166,16 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 	return
 }
 
-func (sb *stateBuilder) loadChangesFor(id string, uniqMap map[string]struct{}, buf []*Change) ([]*Change, error) {
+func (sb *stateBuilder) loadChangesFor(ctx context.Context, id string, uniqMap map[string]struct{}, buf []*Change) ([]*Change, error) {
 	if _, exists := uniqMap[id]; exists {
 		return buf, nil
 	}
-	ch, err := sb.loadChange(id)
+	ch, err := sb.loadChange(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	for _, prev := range ch.GetPreviousIds() {
-		if buf, err = sb.loadChangesFor(prev, uniqMap, buf); err != nil {
+		if buf, err = sb.loadChangesFor(ctx, prev, uniqMap, buf); err != nil {
 			return nil, err
 		}
 	}
@@ -183,13 +183,13 @@ func (sb *stateBuilder) loadChangesFor(id string, uniqMap map[string]struct{}, b
 	return append(buf, ch), nil
 }
 
-func (sb *stateBuilder) findBreakpoint(heads []string) (breakpoint string, err error) {
+func (sb *stateBuilder) findBreakpoint(ctx context.Context, heads []string) (breakpoint string, err error) {
 	var (
 		ch          *Change
 		snapshotIds []string
 	)
 	for _, head := range heads {
-		if ch, err = sb.loadChange(head); err != nil {
+		if ch, err = sb.loadChange(ctx, head); err != nil {
 			return
 		}
 		shId := ch.GetLastSnapshotId()
@@ -197,10 +197,10 @@ func (sb *stateBuilder) findBreakpoint(heads []string) (breakpoint string, err e
 			snapshotIds = append(snapshotIds, shId)
 		}
 	}
-	return sb.findCommonSnapshot(snapshotIds)
+	return sb.findCommonSnapshot(ctx, snapshotIds)
 }
 
-func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId string, err error) {
+func (sb *stateBuilder) findCommonSnapshot(ctx context.Context, snapshotIds []string) (snapshotId string, err error) {
 	// sb.smartblock can be nil in this func
 	if len(snapshotIds) == 1 {
 		return snapshotIds[0], nil
@@ -212,14 +212,14 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 		if s1 == s2 {
 			return s1, nil
 		}
-		ch1, err := sb.loadChange(s1)
+		ch1, err := sb.loadChange(ctx, s1)
 		if err != nil {
 			return "", err
 		}
 		if ch1.LastSnapshotId == s2 {
 			return s2, nil
 		}
-		ch2, err := sb.loadChange(s2)
+		ch2, err := sb.loadChange(ctx, s2)
 		if err != nil {
 			return "", err
 		}
@@ -237,7 +237,7 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 		for {
 			lid1 := t1[len(t1)-1]
 			if lid1 != "" {
-				l1, e := sb.loadChange(lid1)
+				l1, e := sb.loadChange(ctx, lid1)
 				if e != nil {
 					return "", e
 				}
@@ -250,7 +250,7 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			}
 			lid2 := t2[len(t2)-1]
 			if lid2 != "" {
-				l2, e := sb.loadChange(t2[len(t2)-1])
+				l2, e := sb.loadChange(ctx, t2[len(t2)-1])
 				if e != nil {
 					return "", e
 				}
@@ -332,7 +332,7 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 	return snapshotIds[0], nil
 }
 
-func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []string, err error) {
+func (sb *stateBuilder) getActualHeads(ctx context.Context, logs []core.SmartblockLog) (heads []string, err error) {
 	sort.Slice(logs, func(i, j int) bool {
 		return logs[i].ID < logs[j].ID
 	})
@@ -342,7 +342,7 @@ func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 		if slice.FindPos(knownHeads, l.Head) != -1 { // do not scan known heads
 			continue
 		}
-		sh, err := sb.getNearSnapshot(l.Head)
+		sh, err := sb.getNearSnapshot(ctx, l.Head)
 		if err != nil {
 			log.Warnf("can't get near snapshot: %v; ignore", err)
 			continue
@@ -367,15 +367,15 @@ func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 	return
 }
 
-func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
-	ch, err := sb.loadChange(id)
+func (sb *stateBuilder) getNearSnapshot(ctx context.Context, id string) (sh *Change, err error) {
+	ch, err := sb.loadChange(ctx, id)
 	if err != nil {
 		return
 	}
 	if ch.Snapshot != nil {
 		return ch, nil
 	}
-	sch, err := sb.loadChange(ch.LastSnapshotId)
+	sch, err := sb.loadChange(ctx, ch.LastSnapshotId)
 	if err != nil {
 		return
 	}
@@ -389,7 +389,7 @@ func (sb *stateBuilder) makeVirtualSnapshotId(s1, s2 string) string {
 	return virtualChangeBasePrefix + base64.RawStdEncoding.EncodeToString([]byte(s1+virtualChangeBaseSeparator+s2))
 }
 
-func (sb *stateBuilder) makeChangeFromVirtualId(id string) (*Change, error) {
+func (sb *stateBuilder) makeChangeFromVirtualId(ctx context.Context, id string) (*Change, error) {
 	dataB, err := base64.RawStdEncoding.DecodeString(id[len(virtualChangeBasePrefix):])
 	if err != nil {
 		return nil, fmt.Errorf("invalid virtual id format: %s", err.Error())
@@ -400,11 +400,11 @@ func (sb *stateBuilder) makeChangeFromVirtualId(id string) (*Change, error) {
 		return nil, fmt.Errorf("invalid virtual id format: %v", id)
 	}
 
-	ch1, err := sb.loadChange(ids[0])
+	ch1, err := sb.loadChange(context.Background(), ids[0])
 	if err != nil {
 		return nil, err
 	}
-	ch2, err := sb.loadChange(ids[1])
+	ch2, err := sb.loadChange(ctx, ids[1])
 	if err != nil {
 		return nil, err
 	}
@@ -418,12 +418,12 @@ func (sb *stateBuilder) makeChangeFromVirtualId(id string) (*Change, error) {
 
 }
 
-func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
+func (sb *stateBuilder) loadChange(ctx context.Context, id string) (ch *Change, err error) {
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
 	}
 	if strings.HasPrefix(id, virtualChangeBasePrefix) {
-		ch, err = sb.makeChangeFromVirtualId(id)
+		ch, err = sb.makeChangeFromVirtualId(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -434,8 +434,7 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return nil, fmt.Errorf("no smarblock in builder")
 	}
 	st := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
+
 	sr, err := sb.smartblock.GetRecord(ctx, id)
 	s := time.Since(st)
 	if err != nil {

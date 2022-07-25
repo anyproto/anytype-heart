@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -57,7 +58,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Run() (err error) {
+func (s *service) Run(context.Context) (err error) {
 	return
 }
 

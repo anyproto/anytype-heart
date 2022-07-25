@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
@@ -173,7 +174,7 @@ func TestExtractObjects(t *testing.T) {
 			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:  "test",
 				BlockIds:   tc.blockIds,
-				ObjectType: "page",
+				ObjectType: bundle.TypeKeyNote.URL(),
 			}
 			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb).ExtractBlocksToObjects(ctx, ts, req)

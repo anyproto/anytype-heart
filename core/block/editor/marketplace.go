@@ -45,7 +45,7 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 					Id:    viewIdMarketplace,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Marketplace",
-					Sorts: []*model.BlockContentDataviewSort{},
+					Sorts: []*model.BlockContentDataviewSort{{RelationKey: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc}},
 					Relations: []*model.BlockContentDataviewRelation{
 						{Key: bundle.RelationKeyId.String(), IsVisible: false},
 						{Key: bundle.RelationKeyName.String(), IsVisible: true},
@@ -62,7 +62,7 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 					Id:    viewIdLibrary,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Library",
-					Sorts: []*model.BlockContentDataviewSort{},
+					Sorts: []*model.BlockContentDataviewSort{{RelationKey: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc}},
 					Relations: []*model.BlockContentDataviewRelation{
 						{Key: bundle.RelationKeyId.String(), IsVisible: false},
 						{Key: bundle.RelationKeyName.String(), IsVisible: true},
@@ -115,7 +115,7 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 					Id:    viewIdMarketplace,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Marketplace",
-					Sorts: []*model.BlockContentDataviewSort{},
+					Sorts: []*model.BlockContentDataviewSort{{RelationKey: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc}},
 					Relations: []*model.BlockContentDataviewRelation{
 						{Key: bundle.RelationKeyId.String(), IsVisible: false},
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
@@ -131,7 +131,7 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 					Id:    viewIdLibrary,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Library",
-					Sorts: []*model.BlockContentDataviewSort{},
+					Sorts: []*model.BlockContentDataviewSort{{RelationKey: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc}},
 					Relations: []*model.BlockContentDataviewRelation{
 						{Key: bundle.RelationKeyId.String(), IsVisible: false},
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
@@ -183,7 +183,7 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 					Id:    viewIdMarketplace,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Marketplace",
-					Sorts: []*model.BlockContentDataviewSort{},
+					Sorts: []*model.BlockContentDataviewSort{{RelationKey: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc}},
 					Relations: []*model.BlockContentDataviewRelation{
 						{Key: bundle.RelationKeyId.String(), IsVisible: false},
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
@@ -199,7 +199,7 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 					Id:    viewIdLibrary,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Library",
-					Sorts: []*model.BlockContentDataviewSort{},
+					Sorts: []*model.BlockContentDataviewSort{{RelationKey: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc}},
 					Relations: []*model.BlockContentDataviewRelation{
 						{Key: bundle.RelationKeyId.String(), IsVisible: false},
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},

@@ -35,6 +35,10 @@
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
     - [Rpc.Account.Config](#anytype-Rpc-Account-Config)
+    - [Rpc.Account.ConfigUpdate](#anytype-Rpc-Account-ConfigUpdate)
+    - [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request)
+    - [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response)
+    - [Rpc.Account.ConfigUpdate.Response.Error](#anytype-Rpc-Account-ConfigUpdate-Response-Error)
     - [Rpc.Account.Create](#anytype-Rpc-Account-Create)
     - [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request)
     - [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response)
@@ -179,6 +183,16 @@
     - [Rpc.BlockDataview.CreateBookmark.Request](#anytype-Rpc-BlockDataview-CreateBookmark-Request)
     - [Rpc.BlockDataview.CreateBookmark.Response](#anytype-Rpc-BlockDataview-CreateBookmark-Response)
     - [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error)
+    - [Rpc.BlockDataview.GroupOrder](#anytype-Rpc-BlockDataview-GroupOrder)
+    - [Rpc.BlockDataview.GroupOrder.Update](#anytype-Rpc-BlockDataview-GroupOrder-Update)
+    - [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error)
+    - [Rpc.BlockDataview.ObjectOrder](#anytype-Rpc-BlockDataview-ObjectOrder)
+    - [Rpc.BlockDataview.ObjectOrder.Update](#anytype-Rpc-BlockDataview-ObjectOrder-Update)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error)
     - [Rpc.BlockDataview.Relation](#anytype-Rpc-BlockDataview-Relation)
     - [Rpc.BlockDataview.Relation.Add](#anytype-Rpc-BlockDataview-Relation-Add)
     - [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request)
@@ -566,6 +580,10 @@
     - [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request)
     - [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response)
     - [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error)
+    - [Rpc.Object.RelationSearchDistinct](#anytype-Rpc-Object-RelationSearchDistinct)
+    - [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request)
+    - [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response)
+    - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -772,6 +790,8 @@
     - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
+    - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -807,6 +827,8 @@
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
     - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code)
@@ -902,6 +924,7 @@
     - [Rpc.Object.Open.Response.Error.Code](#anytype-Rpc-Object-Open-Response-Error-Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code)
+    - [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error-Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
@@ -964,6 +987,7 @@
     - [Event.Block](#anytype-Event-Block)
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
+    - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
     - [Event.Block.Dataview.RecordsDelete](#anytype-Event-Block-Dataview-RecordsDelete)
     - [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert)
     - [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet)
@@ -1130,10 +1154,18 @@
     - [Block.Content](#anytype-model-Block-Content)
     - [Block.Content.Bookmark](#anytype-model-Block-Content-Bookmark)
     - [Block.Content.Dataview](#anytype-model-Block-Content-Dataview)
+    - [Block.Content.Dataview.Checkbox](#anytype-model-Block-Content-Dataview-Checkbox)
+    - [Block.Content.Dataview.Date](#anytype-model-Block-Content-Dataview-Date)
     - [Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter)
+    - [Block.Content.Dataview.Group](#anytype-model-Block-Content-Dataview-Group)
+    - [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder)
+    - [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder)
     - [Block.Content.Dataview.Relation](#anytype-model-Block-Content-Dataview-Relation)
     - [Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort)
+    - [Block.Content.Dataview.Status](#anytype-model-Block-Content-Dataview-Status)
+    - [Block.Content.Dataview.Tag](#anytype-model-Block-Content-Dataview-Tag)
     - [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View)
+    - [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup)
     - [Block.Content.Div](#anytype-model-Block-Content-Div)
     - [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations)
     - [Block.Content.File](#anytype-model-Block-Content-File)
@@ -1251,6 +1283,7 @@
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
+| AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -1260,6 +1293,7 @@
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
+| ObjectRelationSearchDistinct | [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request) | [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request) | [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response) |  |
@@ -1361,6 +1395,8 @@
 | BlockDataviewRelationUpdate | [Rpc.BlockDataview.Relation.Update.Request](#anytype-Rpc-BlockDataview-Relation-Update-Request) | [Rpc.BlockDataview.Relation.Update.Response](#anytype-Rpc-BlockDataview-Relation-Update-Response) |  |
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response) |  |
 | BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response) |  |
+| BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
+| BlockDataviewObjectOrderUpdate | [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request) | [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response) |  |
 | BlockDataviewRecordCreate | [Rpc.BlockDataviewRecord.Create.Request](#anytype-Rpc-BlockDataviewRecord-Create-Request) | [Rpc.BlockDataviewRecord.Create.Response](#anytype-Rpc-BlockDataviewRecord-Create-Response) |  |
 | BlockDataviewRecordUpdate | [Rpc.BlockDataviewRecord.Update.Request](#anytype-Rpc-BlockDataviewRecord-Update-Request) | [Rpc.BlockDataviewRecord.Update.Response](#anytype-Rpc-BlockDataviewRecord-Update-Response) |  |
 | BlockDataviewRecordDelete | [Rpc.BlockDataviewRecord.Delete.Request](#anytype-Rpc-BlockDataviewRecord-Delete-Request) | [Rpc.BlockDataviewRecord.Delete.Response](#anytype-Rpc-BlockDataviewRecord-Delete-Response) |  |
@@ -1840,6 +1876,62 @@ Response – message from a middleware.
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate"></a>
+
+### Rpc.Account.ConfigUpdate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Request"></a>
+
+### Rpc.Account.ConfigUpdate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| timeZone | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Response"></a>
+
+### Rpc.Account.ConfigUpdate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ConfigUpdate.Response.Error](#anytype-Rpc-Account-ConfigUpdate-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Response-Error"></a>
+
+### Rpc.Account.ConfigUpdate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -3949,6 +4041,144 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder"></a>
+
+### Rpc.BlockDataview.GroupOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Request"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Response"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectOrder"></a>
+
+### Rpc.BlockDataview.ObjectOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectOrder-Update"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectOrder-Update-Request"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| objectOrders | [model.Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectOrder-Update-Response"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.ObjectOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9621,6 +9851,64 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-RelationSearchDistinct"></a>
+
+### Rpc.Object.RelationSearchDistinct
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Request"></a>
+
+### Rpc.Object.RelationSearchDistinct.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error) |  |  |
+| groups | [model.Block.Content.Dataview.Group](#anytype-model-Block-Content-Dataview-Group) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Error"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Search"></a>
 
 ### Rpc.Object.Search
@@ -12556,6 +12844,60 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-Account-ConfigUpdate-Response-Error-Code"></a>
+
+### Rpc.Account.ConfigUpdate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| FAILED_TO_WRITE_CONFIG | 102 |  |
+| FAILED_TO_GET_CONFIG | 103 |  |
+
+
+
+<a name="anytype-Rpc-Account-ConfigUpdate-Timezones"></a>
+
+### Rpc.Account.ConfigUpdate.Timezones
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| GMT | 0 |  |
+| ECT | 1 |  |
+| EET | 2 |  |
+| EAT | 3 |  |
+| MET | 4 |  |
+| NET | 5 |  |
+| PLT | 6 |  |
+| IST | 7 |  |
+| BST | 8 |  |
+| VST | 9 |  |
+| CTT | 10 |  |
+| JST | 11 |  |
+| ACT | 12 |  |
+| AET | 13 |  |
+| SST | 14 |  |
+| NST | 15 |  |
+| MIT | 16 |  |
+| HST | 17 |  |
+| AST | 18 |  |
+| PST | 19 |  |
+| MST | 20 |  |
+| CST | 21 |  |
+| IET | 22 |  |
+| PRT | 23 |  |
+| CNT | 24 |  |
+| BET | 25 |  |
+| BRT | 26 |  |
+| CAT | 27 |  |
+
+
+
 <a name="anytype-Rpc-Account-Create-Response-Error-Code"></a>
 
 ### Rpc.Account.Create.Response.Error.Code
@@ -13051,6 +13393,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -14305,6 +14673,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Error-Code"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-Search-Response-Error-Code"></a>
 
 ### Rpc.Object.Search.Response.Error.Code
@@ -15108,6 +15489,22 @@ B. Partial block load
 
 ### Event.Block.Dataview
 
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-GroupOrderUpdate"></a>
+
+### Event.Block.Dataview.GroupOrderUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) |  |  |
 
 
 
@@ -16733,6 +17130,7 @@ Precondition: user A opened a block
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
+| blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype-Event-User-Block-Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype-Event-User-Block-SelectRange) |  |  |
@@ -17664,6 +18062,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
+| timeZone | [string](#string) |  | time zone from config |
 
 
 
@@ -17767,6 +18166,33 @@ Bookmark is to keep a web-link and to preview a content.
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
 | relations | [Relation](#anytype-model-Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |
+| groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
+| objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Checkbox"></a>
+
+### Block.Content.Dataview.Checkbox
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| checked | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Date"></a>
+
+### Block.Content.Dataview.Date
+
 
 
 
@@ -17787,6 +18213,58 @@ Bookmark is to keep a web-link and to preview a content.
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Group"></a>
+
+### Block.Content.Dataview.Group
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [Block.Content.Dataview.Status](#anytype-model-Block-Content-Dataview-Status) |  |  |
+| tag | [Block.Content.Dataview.Tag](#anytype-model-Block-Content-Dataview-Tag) |  |  |
+| checkbox | [Block.Content.Dataview.Checkbox](#anytype-model-Block-Content-Dataview-Checkbox) |  |  |
+| date | [Block.Content.Dataview.Date](#anytype-model-Block-Content-Dataview-Date) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-GroupOrder"></a>
+
+### Block.Content.Dataview.GroupOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| viewId | [string](#string) |  |  |
+| viewGroups | [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-ObjectOrder"></a>
+
+### Block.Content.Dataview.ObjectOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| viewId | [string](#string) |  |  |
+| groupId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
 
 
 
@@ -17829,6 +18307,36 @@ Bookmark is to keep a web-link and to preview a content.
 
 
 
+<a name="anytype-model-Block-Content-Dataview-Status"></a>
+
+### Block.Content.Dataview.Status
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Tag"></a>
+
+### Block.Content.Dataview.Tag
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-model-Block-Content-Dataview-View"></a>
 
 ### Block.Content.Dataview.View
@@ -17847,6 +18355,24 @@ Bookmark is to keep a web-link and to preview a content.
 | hideIcon | [bool](#bool) |  | Hide icon near name |
 | cardSize | [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
+| groupRelationKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-ViewGroup"></a>
+
+### Block.Content.Dataview.ViewGroup
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| groupId | [string](#string) |  |  |
+| index | [int32](#int32) |  |  |
+| hidden | [bool](#bool) |  |  |
 
 
 
@@ -18535,6 +19061,8 @@ scope from which this relation have been aggregated |
 | NotEmpty | 12 |  |
 | AllIn | 13 |  |
 | NotAllIn | 14 |  |
+| ExactIn | 15 |  |
+| NotExactIn | 16 |  |
 
 
 

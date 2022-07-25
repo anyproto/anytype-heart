@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -93,6 +94,6 @@ func NewTest(se func(e *pb.Event)) Service {
 	a.Register(&testapp.EventSender{
 		F: se,
 	}).Register(s)
-	a.Start()
+	a.Start(context.Background())
 	return s
 }

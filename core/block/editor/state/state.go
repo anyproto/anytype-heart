@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/ipfs/go-cid"
@@ -19,7 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/anytypeio/go-anytype-middleware/util/text"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
@@ -1152,13 +1151,13 @@ func (s *State) Snippet() (snippet string) {
 				snippet += "\n"
 			}
 			snippet += nextText
-			if utf8.RuneCountInString(snippet) >= snippetMinSize {
+			if textutil.UTF16RuneCountString(snippet) >= snippetMinSize {
 				return false
 			}
 		}
 		return true
 	})
-	return text.Truncate(snippet, snippetMaxSize)
+	return textutil.Truncate(snippet, snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() (fileKeys []string) {

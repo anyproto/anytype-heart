@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -80,7 +81,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Run() (err error) {
+func (s *service) Run(context.Context) (err error) {
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
 		s.recBatch.Add(rec)
 	})
@@ -99,7 +100,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, nil)
+	f, err := database.NewFilters(q, nil, time.Now().Location())
 	if err != nil {
 		return
 	}

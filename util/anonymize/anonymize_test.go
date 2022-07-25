@@ -1,14 +1,13 @@
 package anonymize
 
 import (
-	"testing"
-	"unicode/utf8"
-
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestChange(t *testing.T) {
@@ -69,7 +68,7 @@ func TestChange(t *testing.T) {
 func TestText(t *testing.T) {
 	in := "Some string with ютф. Symbols? http://123.com"
 	out := Text(in)
-	assert.Equal(t, utf8.RuneCountInString(in), utf8.RuneCountInString(out))
+	assert.Equal(t, text.UTF16RuneCountString(in), text.UTF16RuneCountString(out))
 }
 
 func TestStruct(t *testing.T) {

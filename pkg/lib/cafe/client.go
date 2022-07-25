@@ -3,6 +3,9 @@ package cafe
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"sync"
 	"time"
@@ -18,6 +21,7 @@ import (
 )
 
 var _ pb.APIClient = (*Online)(nil)
+var log = logging.Logger("anytype-cafe-client")
 
 const (
 	CName                = "cafeclient"
@@ -27,6 +31,7 @@ const (
 type Client interface {
 	app.Component
 	pb.APIClient
+	GetConnState() (connected, conenctedBefore bool, lastChange time.Time)
 }
 
 type Token struct {
@@ -41,15 +46,26 @@ type Online struct {
 
 	limiter chan struct{}
 
-	device  walletUtil.Keypair
-	account walletUtil.Keypair
+	device      walletUtil.Keypair
+	account     walletUtil.Keypair
+	apiInsecure bool
+	grpcAddress string
 
 	conn *grpc.ClientConn
+
+	connLastStateChange time.Time
+	connectedOnce       bool
+	connected           bool
+
+	connMutex sync.Mutex
 }
 
 func (c *Online) Init(a *app.App) (err error) {
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	cfg := a.MustComponent(config.CName).(*config.Config)
+
+	c.grpcAddress = cfg.CafeNodeGrpcAddr()
+	c.apiInsecure = cfg.CafeAPIInsecure
 
 	c.device, err = wl.GetDevicePrivkey()
 	if err != nil {
@@ -59,23 +75,6 @@ func (c *Online) Init(a *app.App) (err error) {
 	if err != nil {
 		return err
 	}
-
-	// todo: get version from component
-	var version string
-	opts := []grpc.DialOption{grpc.WithUserAgent(version), grpc.WithPerRPCCredentials(thread.Credentials{})}
-
-	if cfg.CafeAPIInsecure {
-		opts = append(opts, grpc.WithInsecure())
-	} else {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
-	}
-	conn, err := grpc.Dial(cfg.CafeNodeGrpcAddr(), opts...)
-	if err != nil {
-		return err
-	}
-
-	c.client = pb.NewAPIClient(conn)
-	c.conn = conn
 
 	return nil
 }
@@ -102,6 +101,79 @@ func (c *Online) getSignature(payload string) (*pb.WithSignature, error) {
 		AccountSignature: asB58,
 		DeviceSignature:  base58.Encode(ds),
 	}, nil
+}
+
+func (c *Online) GetConnState() (connected bool, wasConnectedBefore bool, lastChange time.Time) {
+	c.connMutex.Lock()
+	defer c.connMutex.Unlock()
+
+	return c.connected, c.connectedOnce, c.connLastStateChange
+}
+
+func (c *Online) Run(ctx context.Context) error {
+	// todo: get version from component
+	var version string
+	opts := []grpc.DialOption{grpc.WithUserAgent(version), grpc.WithPerRPCCredentials(thread.Credentials{})}
+
+	if c.apiInsecure {
+		opts = append(opts, grpc.WithInsecure())
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
+	}
+
+	conn, err := grpc.Dial(c.grpcAddress, opts...)
+	if err != nil {
+		return err
+	}
+
+	c.client = pb.NewAPIClient(conn)
+	c.conn = conn
+
+	return nil
+}
+
+func (c *Online) healthCheckMetric() {
+	go func() {
+		state := connectivity.Idle
+		for {
+			if !c.conn.WaitForStateChange(context.Background(), state) {
+				return
+			}
+			state2 := c.conn.GetState()
+			if state2 != connectivity.Ready && state2 != connectivity.TransientFailure {
+				state = state2
+				continue
+			}
+			var after time.Duration
+			c.connMutex.Lock()
+			if !c.connLastStateChange.IsZero() {
+				after = time.Since(c.connLastStateChange)
+			}
+			c.connLastStateChange = time.Now()
+			c.connected = state2 == connectivity.Ready
+			if c.connected {
+				c.connectedOnce = true
+			}
+			c.connMutex.Unlock()
+			if state2 == connectivity.Ready {
+				log.With("after", after).Debug("cafe grpc got connected")
+			} else if state2 == connectivity.TransientFailure {
+				if c.connectedOnce {
+					log.With("after", after).Warn("cafe grpc got disconnected")
+				} else {
+					log.With("after", after).Warn("cafe grpc not able to connect for the first time")
+				}
+			}
+
+			event := metrics.CafeGrpcConnectStateChanged{
+				AfterMs:         after.Milliseconds(),
+				Connected:       state2 == connectivity.Ready,
+				ConnectedBefore: c.connectedOnce,
+			}
+			metrics.SharedClient.RecordEvent(event)
+			state = state2
+		}
+	}()
 }
 
 func (c *Online) withToken(ctx context.Context) (context.Context, error) {

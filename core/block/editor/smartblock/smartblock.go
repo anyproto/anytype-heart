@@ -136,6 +136,7 @@ type InitContext struct {
 	Restriction    restriction.Service
 	Doc            doc.Service
 	ObjectStore    objectstore.ObjectStore
+	Ctx            context.Context
 }
 
 type linkSource interface {
@@ -214,7 +215,11 @@ func (sb *smartBlock) Type() model.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	if sb.Doc, err = ctx.Source.ReadDoc(sb, ctx.State != nil); err != nil {
+	cctx := ctx.Ctx
+	if cctx == nil {
+		cctx = context.Background()
+	}
+	if sb.Doc, err = ctx.Source.ReadDoc(cctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
 
@@ -1010,6 +1015,11 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
 			} else {
 				s.SetAggregatedRelationsOptions(rel.Key, opts)
+				for _, copyRel := range copy {
+					if copyRel.Key == rel.Key {
+						copyRel.SelectDict = opts
+					}
+				}
 			}
 		}
 
@@ -1025,7 +1035,9 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			c := pbtypes.CopyRelation(rel)
 
 			if existingRelation != nil && (existingRelation.ReadOnlyRelation || rel.Name == "") {
+				dict := c.SelectDict
 				c = existingRelation
+				c.SelectDict = dict
 			} else if existingRelation != nil && !pbtypes.RelationCompatible(existingRelation, rel) {
 				return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
 			}

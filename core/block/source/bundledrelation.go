@@ -62,7 +62,7 @@ func (v *bundledRelation) getDetails(id string) (rels []*model.Relation, p *type
 	return rels, d, nil
 }
 
-func (v *bundledRelation) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledRelation) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	rels, d, err := v.getDetails(v.id)
@@ -76,7 +76,7 @@ func (v *bundledRelation) ReadDoc(receiver ChangeReceiver, empty bool) (doc stat
 	return s, nil
 }
 
-func (v *bundledRelation) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
+func (v *bundledRelation) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
 	s := &state.State{}
 
 	rels, d, err := v.getDetails(v.id)
