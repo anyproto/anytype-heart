@@ -143,6 +143,7 @@ type proxyRoundTripper struct {
 }
 
 func (p *proxyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
 	resp, err := p.RoundTripper.RoundTrip(req)
 	if err == nil {
 		p.lastResponse = resp
