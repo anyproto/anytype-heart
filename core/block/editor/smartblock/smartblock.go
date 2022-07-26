@@ -221,6 +221,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.source = ctx.Source
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
 	sb.doc = ctx.App.MustComponent(doc.CName).(doc.Service)
 	sb.objectStore = ctx.App.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}

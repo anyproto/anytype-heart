@@ -43,7 +43,7 @@ type Service interface {
 }
 
 type ObjectManager interface {
-	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 }
 
