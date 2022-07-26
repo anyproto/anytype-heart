@@ -9,12 +9,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
 	"net/url"
+	"strings"
 	"sync"
 )
 
@@ -69,8 +73,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	ids := make([]string, 0, len(links))
 	for _, l := range links {
 		ids = append(ids, l.Id)
@@ -85,13 +87,26 @@ func (s *service) FetchIds(ids ...string) (relations Relations, err error) {
 }
 
 func (s *service) fetchIds(ids ...string) (relations []*Relation, err error) {
+	ids = slice.Filter(ids, func(id string) bool {
+		if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+			return true
+		}
+		r, _ := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
+		if r != nil {
+			r.Id = id
+			relations = append(relations, &Relation{r})
+			return false
+		}
+		return true
+	})
+
 	records, err := s.objectStore.QueryById(ids)
 	if err != nil {
 		return
 	}
-	relations = make(Relations, 0, len(records))
+
 	for _, rec := range records {
-		if pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.String() {
+		if pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
 			continue
 		}
 		relations = append(relations, RelationFromStruct(rec.Details))
@@ -117,6 +132,9 @@ func (s *service) FetchKey(key string) (relation *Relation, err error) {
 }
 
 func (s *service) fetchKey(key string) (relation *Relation, err error) {
+	if b, _ := bundle.GetRelation(bundle.RelationKey(key)); b != nil {
+		return &Relation{b}, nil
+	}
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -180,6 +198,9 @@ func (s *service) CreateOption(relationKey string, opt *model.RelationOption) (i
 func (s *service) Create(rel *model.Relation) (rl *model.RelationLink, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if rel.Key == "" {
+		rel.Key = generateRelationKey()
+	}
 	return s.create(rel, true)
 }
 
@@ -373,4 +394,8 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 func (s *service) validateOptions(rel *Relation, v []string) error {
 	//TODO:
 	return nil
+}
+
+func generateRelationKey() string {
+	return bson.NewObjectId().Hex()
 }

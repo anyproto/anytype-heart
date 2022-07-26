@@ -334,7 +334,7 @@ func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectT
 }
 
 func (mw *Middleware) RelationCreate(req *pb.RpcRelationCreateRequest) *pb.RpcRelationCreateResponse {
-	response := func(id string, err error) *pb.RpcRelationCreateResponse {
+	response := func(id, key string, err error) *pb.RpcRelationCreateResponse {
 		if err != nil {
 			return &pb.RpcRelationCreateResponse{
 				Error: &pb.RpcRelationCreateResponseError{
@@ -347,19 +347,23 @@ func (mw *Middleware) RelationCreate(req *pb.RpcRelationCreateRequest) *pb.RpcRe
 			Error: &pb.RpcRelationCreateResponseError{
 				Code: pb.RpcRelationCreateResponseError_NULL,
 			},
-			Id: id,
+			Id:  id,
+			Key: key,
 		}
 	}
-	var id string
+	var rl *model.RelationLink
 	err := mw.doRelationService(func(rs relation.Service) error {
-		rl, err := rs.Create(req.Relation)
+		var err error
+		rl, err = rs.Create(req.Relation)
 		if err != nil {
 			return err
 		}
-		id = rl.Id
 		return nil
 	})
-	return response(id, err)
+	if err != nil {
+		return response("", "", err)
+	}
+	return response(rl.Id, rl.Key, err)
 }
 
 func (mw *Middleware) RelationCreateOption(request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {

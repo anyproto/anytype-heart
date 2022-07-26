@@ -10820,6 +10820,7 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.Create.Response.Error](#anytype.Rpc.Relation.Create.Response.Error) |  |  |
 | id | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 

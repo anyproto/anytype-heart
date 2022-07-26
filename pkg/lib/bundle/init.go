@@ -101,7 +101,9 @@ func MustGetType(tk TypeKey) *model.ObjectType {
 // PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
 func MustGetRelation(rk RelationKey) *model.Relation {
 	if v, exists := relations[rk]; exists {
-		return pbtypes.CopyRelation(v)
+		d := pbtypes.CopyRelation(v)
+		d.Id = "_br" + d.Key
+		return d
 	}
 
 	// we can safely panic in case RelationKey is a generated constant
