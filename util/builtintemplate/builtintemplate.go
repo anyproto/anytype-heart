@@ -139,6 +139,8 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectType() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), tt)
 	}
+	// todo: update templates and return the validation
+	return nil
 	var relKeys []string
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if rb, ok := b.(relation.Block); ok {
