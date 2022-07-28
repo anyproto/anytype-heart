@@ -7,6 +7,29 @@ jobs:
   build-mac-win-android-ios:
     runs-on: macos-11
     steps:
+      - name: fix android ndk bundle
+        run: |
+          ls -lha $ANDROID_HOME
+          ls -lha $ANDROID_NDK_HOME
+          majorVersion=23
+          ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
+          ls ${ANDROID_SDK_ROOT}
+          ls ${ANDROID_SDK_ROOT}/cmdline-tools
+          ls ${ANDROID_SDK_ROOT}/cmdline-tools/latest
+          ls ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin
+          SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+          ndkVersion=$(${SDKMANAGER} --list | grep "ndk;${majorVersion}.*" | awk '{gsub("ndk;", ""); print $1}' | sort -V | tail -n1)
+          echo $ndkVersion
+          ln -sf $ANDROID_SDK_ROOT/ndk/$ndkVersion $ANDROID_NDK_ROOT
+          echo $ANDROID_HOME
+          echo $ANDROID_NDK_HOME
+          ls -lha $ANDROID_HOME
+          ls -lha $ANDROID_HOME/ndk-bundle
+          ls -lha $ANDROID_NDK_HOME
+          ls -lha /Users/runner/Library/Android/sdk/ndk-bundle/toolchains/
+          ls -lha /Users/runner/Library/Android/sdk/ndk-bundle/toolchains/llvm/
+          ls -lha /Users/runner/Library/Android/sdk/ndk-bundle/toolchains/llvm/prebuilt/
+          ls -lha /Users/runner/Library/Android/sdk/ndk-bundle/toolchains/llvm/prebuilt/darwin-x86_64/bin
       - name: Install Go
         uses: actions/setup-go@v1
         with:
