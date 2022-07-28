@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"sort"
@@ -159,6 +160,9 @@ func (mw *Middleware) DebugExportLocalstore(req *pb.RpcDebugExportLocalstoreRequ
 		err  error
 	)
 	err = mw.doBlockService(func(s block.Service) error {
+		if mw.app == nil {
+			return errors.New("app can`t be nil")
+		}
 		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
 		path, err = dbg.DumpLocalstore(req.DocIds, req.Path)
 		return err

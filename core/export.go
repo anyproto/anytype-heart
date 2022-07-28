@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -29,6 +30,9 @@ func (mw *Middleware) ObjectListExport(req *pb.RpcObjectListExportRequest) *pb.R
 		err     error
 	)
 	err = mw.doBlockService(func(_ block.Service) error {
+		if mw.app == nil {
+			return errors.New("app can`t be nil")
+		}
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		path, succeed, err = es.Export(*req)
 		return err

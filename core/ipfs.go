@@ -22,14 +22,14 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 	}
 
 	if mw.app == nil {
-		response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
+		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	pin := mw.app.MustComponent(pin.CName).(pin.FilePinService)
 
 	if !at.IsStarted() {
-		response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
+		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
 	files, err := at.FileStore().ListTargets()
@@ -86,7 +86,7 @@ func (mw *Middleware) FileOffload(req *pb.RpcFileOffloadRequest) *pb.RpcFileOffl
 	}
 
 	if mw.app == nil {
-		response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
+		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
@@ -94,7 +94,7 @@ func (mw *Middleware) FileOffload(req *pb.RpcFileOffloadRequest) *pb.RpcFileOffl
 	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
 
 	if !at.IsStarted() {
-		response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
+		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
 	pinStatus := pin.PinStatus(req.Id)
