@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
-	if reqFilters == nil {
+func TransformQuickOption(filters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
+	if filters == nil {
 		return nil
 	}
 
-	for _, f := range reqFilters {
+	for _, f := range filters {
 		if f.QuickOption > model.BlockContentDataviewFilter_ExactDate {
 			d1, d2 := getRange(f, loc)
 			switch f.Condition {
@@ -20,7 +20,7 @@ func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter, loc *t
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pb.ToValue(d1)
 
-				reqFilters = append(reqFilters, &model.BlockContentDataviewFilter{
+				filters = append(filters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pb.ToValue(d2),
@@ -37,17 +37,16 @@ func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter, loc *t
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pb.ToValue(d1)
 
-				reqFilters = append(reqFilters, &model.BlockContentDataviewFilter{
+				filters = append(filters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pb.ToValue(d2),
 				})
 			}
-			f.QuickOption = 0
 		}
 	}
 
-	return reqFilters
+	return filters
 }
 
 func getRange(f *model.BlockContentDataviewFilter, loc *time.Location) (int64, int64) {
