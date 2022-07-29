@@ -7,6 +7,14 @@ jobs:
   build-mac-win-android-ios:
     runs-on: macos-11
     steps:
+      - name: fix android ndk bundle
+        run: |
+          majorVersion=23
+          ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
+          SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+          ndkVersion=$(${SDKMANAGER} --list | grep "ndk;${majorVersion}.*" | awk '{gsub("ndk;", ""); print $1}' | sort -V | tail -n1)
+          echo $ndkVersion
+          ln -sf $ANDROID_SDK_ROOT/ndk/$ndkVersion $ANDROID_NDK_ROOT
       - name: Install Go
         uses: actions/setup-go@v1
         with:
