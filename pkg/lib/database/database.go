@@ -143,8 +143,6 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 	filters = injectDefaultFilters(filters)
 
 	filters = filter.TransformQuickOption(filters, loc)
-
-	fmt.Printf("------------------ Transform filters: %+v \n", filters)
 	
 	f = new(Filters)
 	mainFilter := filter.AndFilters{}
@@ -167,6 +165,7 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 			mainFilter = append(mainFilter, schFilters)
 		}
 	}
+	fmt.Printf("------------------ Transform NewFilters filters: %+v \n", filters)
 	qFilter, err := filter.MakeAndFilter(filters)
 	if err != nil {
 		return
