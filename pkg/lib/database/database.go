@@ -132,6 +132,9 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 }
 
 func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err error) {
+
+	fmt.Printf("------------------ Req filters: %+v \n", q.Filters)
+
 	filters := make([]*model.BlockContentDataviewFilter, len(q.Filters))
 	for i, f := range q.Filters {
 		filters[i] = pbtypes.CopyFilter(f)
@@ -140,6 +143,8 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 	filters = injectDefaultFilters(filters)
 
 	filters = filter.TransformQuickOption(filters, loc)
+
+	fmt.Printf("------------------ Transform filters: %+v \n", filters)
 	
 	f = new(Filters)
 	mainFilter := filter.AndFilters{}
