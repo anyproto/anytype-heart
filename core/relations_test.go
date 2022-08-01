@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
@@ -61,11 +62,13 @@ func TestRelations_New_Account(t *testing.T) {
 	respOpenNewPage := mw.ObjectOpen(&pb.RpcObjectOpenRequest{ObjectId: setId})
 	require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 
+	relName := "test_str"
+	relDesc := "test_str_desc"
 	respRelationCreate := mw.RelationCreate(&pb.RpcRelationCreateRequest{
 		Relation: &model.Relation{
 			Format:      model.RelationFormat_longtext,
-			Name:        "test_str",
-			Description: "test_str_desc",
+			Name:        relName,
+			Description: relDesc,
 		},
 	})
 	require.Equal(t, 0, int(respRelationCreate.Error.Code), respRelationCreate.Error.Description)
@@ -101,13 +104,23 @@ func TestRelations_New_Account(t *testing.T) {
 	require.Equal(t, 0, int(respObjectShow.Error.Code), respObjectShow.Error.Description)
 
 	var found bool
-	for _, rel := range respObjectShow.Event.Messages[0].GetObjectShow().Relations {
+	for _, rel := range respObjectShow.Event.Messages[0].GetObjectShow().RelationLinks {
 		if rel.Id == respRelationCreate.Id && rel.Key == respRelationCreate.Key {
 			found = true
 			break
 		}
 	}
 	require.True(t, found)
+
+	var details *types.Struct
+	for _, detEvent := range respObjectShow.Event.Messages[0].GetObjectShow().Details {
+		if detEvent.Id == respRelationCreate.Id {
+			details = detEvent.Details
+			break
+		}
+	}
+	require.NotNil(t, details, "we should receive details for the relation object")
+	require.Equal(t, relName, pbtypes.GetString(details, bundle.RelationKeyName.String()), "we should receive the correct name for the relation object")
 
 	var dataviewBlock *model.Block
 	for _, block := range respObjectShow.Event.Messages[0].GetObjectShow().Blocks {
@@ -126,4 +139,38 @@ func TestRelations_New_Account(t *testing.T) {
 		}
 	}
 	require.True(t, found)
+
+	respRelationCreateOption := mw.RelationCreateOption(&pb.RpcRelationCreateOptionRequest{
+		RelationKey: respRelationCreate.Key,
+		Option: &model.RelationOption{
+			Text:  "test_option_text",
+			Color: "red",
+		},
+	})
+	require.Equal(t, 0, int(respRelationCreateOption.Error.Code), respRelationCreateOption.Error.Description)
+	require.NotEmpty(t, respRelationCreateOption.Id)
+
+	respObjectSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Operator:         0,
+				RelationKey:      bundle.RelationKeyType.String(),
+				RelationProperty: "",
+				Condition:        model.BlockContentDataviewFilter_Equal,
+				Value:            pbtypes.String(bundle.TypeKeyRelationOption.String()),
+				QuickOption:      0,
+			},
+			{
+				Operator:         0,
+				RelationKey:      bundle.RelationKeyRelationKey.String(),
+				RelationProperty: "",
+				Condition:        model.BlockContentDataviewFilter_Equal,
+				Value:            pbtypes.String(respRelationCreate.Key),
+				QuickOption:      0,
+			},
+		},
+	})
+	require.Equal(t, 0, int(respObjectSearch.Error.Code), respObjectSearch.Error.Description)
+	require.Len(t, respObjectSearch.Records, 1)
+	require.Equal(t, respRelationCreateOption.Id, respObjectSearch.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
 }
