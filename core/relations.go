@@ -367,8 +367,30 @@ func (mw *Middleware) RelationCreate(req *pb.RpcRelationCreateRequest) *pb.RpcRe
 }
 
 func (mw *Middleware) RelationCreateOption(request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {
-	//TODO implement me
-	panic("implement me")
+	response := func(id string, err error) *pb.RpcRelationCreateOptionResponse {
+		if err != nil {
+			return &pb.RpcRelationCreateOptionResponse{
+				Error: &pb.RpcRelationCreateOptionResponseError{
+					Code:        pb.RpcRelationCreateOptionResponseError_UNKNOWN_ERROR,
+					Description: err.Error(),
+				},
+			}
+		}
+		return &pb.RpcRelationCreateOptionResponse{
+			Error: &pb.RpcRelationCreateOptionResponseError{
+				Code: pb.RpcRelationCreateOptionResponseError_NULL,
+			},
+			Id: id,
+		}
+	}
+
+	var id string
+	err := mw.doBlockService(func(rs block.Service) error {
+		var err error
+		id, err = rs.CreateRelationOption(request.RelationKey, (&relation.Option{request.Option}).ToStruct())
+		return err
+	})
+	return response(id, err)
 }
 
 func (mw *Middleware) RelationListRemoveOption(request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {

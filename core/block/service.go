@@ -1049,8 +1049,8 @@ func (s *service) createObject(ctx *state.Context, contextBlock smartblock.Smart
 }
 
 func (s *service) CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error) {
-	workspaceIds, _ := s.anytype.GetAllWorkspaces()
-	err = s.Do(workspaceIds[0], func(b smartblock.SmartBlock) error {
+	// todo: rewrite to the current workspace id
+	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
