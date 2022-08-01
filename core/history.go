@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -30,9 +29,6 @@ func (mw *Middleware) HistoryShowVersion(req *pb.RpcHistoryShowVersionRequest) *
 		ver  *pb.RpcHistoryVersion
 		err  error
 	)
-	if mw.app == nil {
-		return response(nil, nil, errors.New("node did not start"))
-	}
 	if err = mw.doBlockService(func(bs block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
 		show, ver, err = hs.Show(req.PageId, req.VersionId)

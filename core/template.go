@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -113,9 +112,6 @@ func (mw *Middleware) TemplateExportAll(req *pb.RpcTemplateExportAllRequest) *pb
 		err  error
 	)
 	err = mw.doBlockService(func(_ block.Service) error {
-		if mw.app == nil {
-			return errors.New("app can`t be nil")
-		}
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		res, _, err := ds.QueryObjectInfo(database.Query{
@@ -169,9 +165,6 @@ func (mw *Middleware) WorkspaceExport(req *pb.RpcWorkspaceExportRequest) *pb.Rpc
 		err  error
 	)
 	err = mw.doBlockService(func(_ block.Service) error {
-		if mw.app == nil {
-			return errors.New("app can`t be nil")
-		}
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		res, _, err := ds.QueryObjectInfo(database.Query{
