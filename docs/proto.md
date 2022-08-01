@@ -16164,7 +16164,8 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | details | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) | repeated | details for the current and dependent objects |
 | type | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
 | objectTypes | [model.ObjectType](#anytype.model.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| relations | [model.Relation](#anytype.model.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| relations | [model.Relation](#anytype.model.Relation) | repeated | DEPRECATED, use relationLinks instead |
+| relationLinks | [model.RelationLink](#anytype.model.RelationLink) | repeated |  |
 | restrictions | [model.Restrictions](#anytype.model.Restrictions) |  | object restrictions |
 | history | [Event.Object.Show.HistorySize](#anytype.Event.Object.Show.HistorySize) |  |  |
 

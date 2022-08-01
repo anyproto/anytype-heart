@@ -318,13 +318,14 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 		{
 			Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-				RootId:       sb.RootId(),
-				Type:         sb.Type(),
-				Blocks:       sb.Blocks(),
-				Details:      details,
-				Relations:    sb.Relations(nil).Models(),
-				ObjectTypes:  objectTypes,
-				Restrictions: sb.restrictions.Proto(),
+				RootId:        sb.RootId(),
+				Type:          sb.Type(),
+				Blocks:        sb.Blocks(),
+				Details:       details,
+				RelationLinks: sb.RelationLinks(nil),
+				Relations:     sb.Relations(nil).Models(), // deprecated, to be removed
+				ObjectTypes:   objectTypes,
+				Restrictions:  sb.restrictions.Proto(),
 				History: &pb.EventObjectShowHistorySize{
 					Undo: undo,
 					Redo: redo,
@@ -1266,6 +1267,14 @@ func (sb *smartBlock) baseRelations() []*model.Relation {
 		rel.Scope = model.Relation_object
 	}
 	return rels
+}
+
+func (sb *smartBlock) RelationLinks(s *state.State) []*model.RelationLink {
+	if s == nil {
+		s = sb.NewState()
+	}
+
+	return s.PickRelationLinks()
 }
 
 func (sb *smartBlock) Relations(s *state.State) relation2.Relations {
