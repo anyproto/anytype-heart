@@ -15,7 +15,9 @@ var (
 )
 
 func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, error) {
-	fmt.Printf("--------------------- MakeAndFilter: %+v \n", protoFilters)
+
+	protoFilters = TransformQuickOption(protoFilters, nil)
+
 	var and AndFilters
 	for _, pf := range protoFilters {
 		if pf.Condition != model.BlockContentDataviewFilter_None {

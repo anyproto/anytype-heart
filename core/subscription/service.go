@@ -158,9 +158,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	if sub.depSub != nil {
 		depRecords = sub.depSub.getActiveRecords()
 	}
-
-	fmt.Printf(" ------------------ Out Filters: %+v", req.Filters)
-
+	
 	resp = &pb.RpcObjectSearchSubscribeResponse{
 		Records:      subRecords,
 		Dependencies: depRecords,

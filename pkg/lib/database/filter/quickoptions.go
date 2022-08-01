@@ -3,13 +3,19 @@ package filter
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	timeutil "github.com/anytypeio/go-anytype-middleware/util/time"
 	"time"
 )
 
-func TransformQuickOption(filters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
-	if filters == nil {
+func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
+	if protoFilters == nil {
 		return nil
+	}
+
+	filters := make([]*model.BlockContentDataviewFilter, len(protoFilters))
+	for i, f := range protoFilters {
+		filters[i] = pbtypes.CopyFilter(f)
 	}
 
 	for _, f := range filters {

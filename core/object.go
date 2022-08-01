@@ -167,7 +167,6 @@ func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearch
 
 	var rec database.Record
 	rec = makeSuggestedDateRecord(dt)
-	fmt.Printf("------------------ Transform filters enrichWithDateSuggestion: %+v \n", req.Filters)
 	f, _ := filter.MakeAndFilter(req.Filters)
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
