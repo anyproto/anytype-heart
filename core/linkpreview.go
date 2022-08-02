@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"net/url"
 	"strings"
 	"time"
 
@@ -13,12 +14,23 @@ import (
 func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	url, err := uri.ProcessURI(req.Url)
+
+	urlStr, err := uri.ProcessURI(req.Url)
 	if err != nil {
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
+			},
+		}
+	}
+
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return &pb.RpcLinkPreviewResponse{
+			Error: &pb.RpcLinkPreviewResponseError{
+				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
+				Description: "failed to parse url",
 			},
 		}
 	}
@@ -34,10 +46,12 @@ func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPrev
 		}
 	}
 	lp := mw.app.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	data, err := lp.Fetch(ctx, url)
+	data, err := lp.Fetch(ctx, u.String())
 	if err != nil {
 		// trim the actual url from the error
-		errTrimmed := strings.Replace(err.Error(), url, "<url>", -1)
+		errTrimmed := strings.Replace(err.Error(), u.String(), "<url>", -1)
+		errTrimmed = strings.Replace(errTrimmed, u.Hostname(), "<host>", -1) // in case of dns errors
+
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
