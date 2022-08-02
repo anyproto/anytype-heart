@@ -705,7 +705,7 @@ func (t tableSorter) Len() int {
 }
 
 func (t tableSorter) Less(i, j int) bool {
-	return t.values[i] < t.values[j]
+	return strings.ToLower(t.values[i]) < strings.ToLower(t.values[j])
 }
 
 func (t tableSorter) Swap(i, j int) {
