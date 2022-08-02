@@ -827,8 +827,8 @@ github.com/libp2p/go-libp2p v0.8.1/go.mod h1:QRNH9pwdbEBpx5DTJYg+qxcVaDMAz3Ee/qD
 github.com/libp2p/go-libp2p v0.13.0/go.mod h1:pM0beYdACRfHO1WcJlp65WXyG2A6NqYM+t2DTVAJxMo=
 github.com/libp2p/go-libp2p v0.14.3/go.mod h1:d12V4PdKbpL0T1/gsUNN8DfgMuRPDX8bS2QxCZlwRH0=
 github.com/libp2p/go-libp2p v0.14.4/go.mod h1:EIRU0Of4J5S8rkockZM7eJp2S0UrCyi55m2kJVru3rM=
-github.com/libp2p/go-libp2p v0.20.0 h1:FpwrR9l3ZVsL9ArwgENHYn1I32OogiCAFS6abxdUVH4=
-github.com/libp2p/go-libp2p v0.20.0/go.mod h1:g0C5Fu+aXXbCXkusCzLycuBowEih3ElmDqtbo61Em7k=
+github.com/libp2p/go-libp2p v0.20.3 h1:tjjDNfp7FqdI/7v1rXtB/BtELaPlAThL2uzlj18kcrw=
+github.com/libp2p/go-libp2p v0.20.3/go.mod h1:I+vndVanE/p/SjFbnA+BEmmfAUEpWxrdXZeyQ1Dus5c=
 github.com/libp2p/go-libp2p-asn-util v0.0.0-20200825225859-85005c6cf052/go.mod h1:nRMRTab+kZuk0LnKZpxhOVH/ndsdr2Nr//Zltc/vwgo=
 github.com/libp2p/go-libp2p-asn-util v0.2.0 h1:rg3+Os8jbnO5DxkC7K/Utdi+DkY3q/d1/1q+8WeNAsw=
 github.com/libp2p/go-libp2p-asn-util v0.2.0/go.mod h1:WoaWxbHKBymSN41hWSq/lGKJEca7TNm58+gGJi2WsLI=
@@ -1108,8 +1108,8 @@ github.com/libp2p/go-yamux v1.4.1/go.mod h1:fr7aVgmdNGJK+N1g+b6DW6VxzbRCjCOejR/h
 github.com/libp2p/go-yamux/v2 v2.0.0/go.mod h1:NVWira5+sVUIU6tu1JWvaRn1dRnG+cawOJiflsAM+7U=
 github.com/libp2p/go-yamux/v2 v2.2.0 h1:RwtpYZ2/wVviZ5+3pjC8qdQ4TKnrak0/E01N1UWoAFU=
 github.com/libp2p/go-yamux/v2 v2.2.0/go.mod h1:3So6P6TV6r75R9jiBpiIKgU/66lOarCZjqROGxzPpPQ=
-github.com/libp2p/go-yamux/v3 v3.1.1 h1:X0qSVodCZciOu/f4KTp9V+O0LAqcqP2tdaUGB0+0lng=
-github.com/libp2p/go-yamux/v3 v3.1.1/go.mod h1:jeLEQgLXqE2YqX1ilAClIfCMDY+0uXQUKmmb/qp0gT4=
+github.com/libp2p/go-yamux/v3 v3.1.2 h1:lNEy28MBk1HavUAlzKgShp+F6mn/ea1nDYWftZhFW9Q=
+github.com/libp2p/go-yamux/v3 v3.1.2/go.mod h1:jeLEQgLXqE2YqX1ilAClIfCMDY+0uXQUKmmb/qp0gT4=
 github.com/libp2p/zeroconf/v2 v2.1.1 h1:XAuSczA96MYkVwH+LqqqCUZb2yH3krobMJ1YE+0hG2s=
 github.com/libp2p/zeroconf/v2 v2.1.1/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/lightstep/lightstep-tracer-common/golang/gogo v0.0.0-20190605223551-bc2310a04743/go.mod h1:qklhhLq1aX+mtWk9cPHPzaBjWImj5ULL6C7HFJtXQMM=
@@ -1273,8 +1273,8 @@ github.com/multiformats/go-multistream v0.1.1/go.mod h1:KmHZ40hzVxiaiwlj3MEbYgK9
 github.com/multiformats/go-multistream v0.2.0/go.mod h1:5GZPQZbkWOLOn3J2y4Y99vVW7vOfsAflxARk3x14o6k=
 github.com/multiformats/go-multistream v0.2.1/go.mod h1:5GZPQZbkWOLOn3J2y4Y99vVW7vOfsAflxARk3x14o6k=
 github.com/multiformats/go-multistream v0.2.2/go.mod h1:UIcnm7Zuo8HKG+HkWgfQsGL+/MIEhyTqbODbIUwSXKs=
-github.com/multiformats/go-multistream v0.3.1 h1:GQM84yyQ5EZB9l0p5+5eDwFoQgwHI2tLmYGpaWlLF/U=
-github.com/multiformats/go-multistream v0.3.1/go.mod h1:ODRoqamLUsETKS9BNcII4gcRsJBU5VAwRIv7O39cEXg=
+github.com/multiformats/go-multistream v0.3.3 h1:d5PZpjwRgVlbwfdTDjife7XszfZd8KYWfROYFlGcR8o=
+github.com/multiformats/go-multistream v0.3.3/go.mod h1:ODRoqamLUsETKS9BNcII4gcRsJBU5VAwRIv7O39cEXg=
 github.com/multiformats/go-varint v0.0.1/go.mod h1:3Ls8CIEsrijN6+B7PbrXRPxHRPuXSrVKRY101jdMZYE=
 github.com/multiformats/go-varint v0.0.2/go.mod h1:3Ls8CIEsrijN6+B7PbrXRPxHRPuXSrVKRY101jdMZYE=
 github.com/multiformats/go-varint v0.0.5/go.mod h1:3Ls8CIEsrijN6+B7PbrXRPxHRPuXSrVKRY101jdMZYE=
