@@ -10,6 +10,8 @@ import (
 	"strconv"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -30,8 +32,11 @@ const (
 				.header3 { padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600; }
 				.quote { padding: 7px 0px 7px 0px; font-size: 18px; line-height: 26px; font-style: italic; }
 				.paragraph { font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word; }
+				.callout-image { width: 20px; height: 20px; font-size: 16px; line-height: 20px; margin-right: 6px; display: inline-block; }
+				.callout-image img { width: 100%; object-fit: cover; }
 				a { cursor: pointer; }
 				kbd { display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px; }
+				ul { margin: 0px; }
 			</style>
 		</head>
 		<body>`
@@ -71,7 +76,7 @@ func (h *HTML) Convert() (result string) {
 	}
 	h.buf = bytes.NewBuffer(nil)
 	h.buf.WriteString(wrapCopyStart)
-	h.renderChilds(h.s.Pick(h.s.RootId()).Model())
+	h.renderChildren(h.s.Pick(h.s.RootId()).Model())
 	h.buf.WriteString(wrapCopyEnd)
 	result = h.buf.String()
 	h.buf.Reset()
@@ -81,7 +86,7 @@ func (h *HTML) Convert() (result string) {
 func (h *HTML) Export() (result string) {
 	h.buf = bytes.NewBuffer(nil)
 	h.buf.WriteString(wrapExportStart)
-	h.renderChilds(h.s.Pick(h.s.RootId()).Model())
+	h.renderChildren(h.s.Pick(h.s.RootId()).Model())
 	h.buf.WriteString(wrapExportEnd)
 	return h.buf.String()
 }
@@ -107,13 +112,16 @@ func (h *HTML) render(rs *renderState, b *model.Block) {
 	case *model.BlockContentOfLink:
 		rs.Close()
 		h.renderLink(b)
+	case *model.BlockContentOfTable:
+		rs.Close()
+		h.renderTable(b)
 	default:
 		rs.Close()
 		h.renderLayout(b)
 	}
 }
 
-func (h *HTML) renderChilds(parent *model.Block) {
+func (h *HTML) renderChildren(parent *model.Block) {
 	var rs = &renderState{h: h}
 	for _, chId := range parent.ChildrenIds {
 		b := h.s.Pick(chId)
@@ -136,6 +144,7 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 	styleCheckbox := "font-size:15px;"
 	styleToggle := "font-size:15px;"
 	styleKbd := "display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px;"
+	styleCallout := "background: #f3f2ec; border-radius: 6px; padding: 16px; margin: 6px 0px;"
 
 	text := b.GetText()
 
@@ -173,13 +182,13 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 			}
 		case model.BlockContentTextMark_TextColor:
 			if start {
-				fmt.Fprintf(h.buf, `<span style="color:%s">`, colorMapping(m.Param, true))
+				fmt.Fprintf(h.buf, `<span style="color:%s">`, textColor(m.Param))
 			} else {
 				h.buf.WriteString("</span>")
 			}
 		case model.BlockContentTextMark_BackgroundColor:
 			if start {
-				fmt.Fprintf(h.buf, `<span style="backgound-color:%s">`, colorMapping(m.Param, true))
+				fmt.Fprintf(h.buf, `<span style="backgound-color:%s">`, backgroundColor(m.Param))
 			} else {
 				h.buf.WriteString("</span>")
 			}
@@ -215,73 +224,85 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		rs.Close()
 		h.buf.WriteString(`<h1 style="` + styleHeader1 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h1>`)
 	case model.BlockContentText_Header2:
 		rs.Close()
 		h.buf.WriteString(`<h2 style="` + styleHeader2 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h2>`)
 	case model.BlockContentText_Header3:
 		rs.Close()
 		h.buf.WriteString(`<h3 style="` + styleHeader3 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h3>`)
 	case model.BlockContentText_Header4:
 		rs.Close()
 		h.buf.WriteString(`<h4 style="` + styleHeader4 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h4>`)
 	case model.BlockContentText_Quote:
 		rs.Close()
 		h.buf.WriteString(`<quote style="` + styleQuote + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</quote>`)
 	case model.BlockContentText_Code:
 		rs.Close()
 		h.buf.WriteString(`<code style="` + styleCode + `"><pre>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</pre></code>`)
 	case model.BlockContentText_Title:
 		rs.Close()
 		h.buf.WriteString(`<h1 style="` + styleTitle + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h1>`)
 	case model.BlockContentText_Checkbox:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	case model.BlockContentText_Marked:
 		rs.OpenUL()
 		h.buf.WriteString(`<li>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
 	case model.BlockContentText_Numbered:
 		rs.OpenOL()
 		h.buf.WriteString(`<li>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
 	case model.BlockContentText_Toggle:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleToggle + `" class="toggle">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
+		h.buf.WriteString(`</div>`)
+	case model.BlockContentText_Callout:
+		rs.Close()
+
+		img := ""
+		if text.IconEmoji != "" {
+			img = fmt.Sprintf(`<span class="callout-image">%s</span>`, text.IconEmoji)
+		}
+
+		fmt.Fprintf(h.buf, `<div style="%s">%s`, styleCallout, img)
+		renderText()
+		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	default:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	}
 }
@@ -302,33 +323,33 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
 		baseImg := h.getImageBase64(file.Hash)
 		fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Video:
 		h.buf.WriteString(`<div class="video"><div class="name">`)
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Audio:
 		h.buf.WriteString(`<div class="audio"><div class="name">`)
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_PDF:
 		h.buf.WriteString(`<div class="pdf"><div class="name">`)
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	}
 }
@@ -340,7 +361,7 @@ func (h *HTML) renderBookmark(b *model.Block) {
 	} else {
 		h.buf.WriteString("<div>")
 	}
-	h.renderChilds(b)
+	h.renderChildren(b)
 	h.buf.WriteString("</div>")
 }
 
@@ -351,7 +372,7 @@ func (h *HTML) renderDiv(b *model.Block) {
 	case model.BlockContentDiv_Line:
 		h.buf.WriteString(`<hr class="line">`)
 	}
-	h.renderChilds(b)
+	h.renderChildren(b)
 }
 
 func (h *HTML) renderLayout(b *model.Block) {
@@ -372,17 +393,17 @@ func (h *HTML) renderLayout(b *model.Block) {
 			}
 		}
 		h.buf.WriteString(`<div class="column" ` + style + `>`)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentLayout_Row:
 		h.buf.WriteString(`<div class="row" style="display: flex">`)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentLayout_Div:
-		h.renderChilds(b)
+		h.renderChildren(b)
 	default:
 		h.buf.WriteString(`<div>`)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	}
 }
@@ -396,8 +417,81 @@ func (h *HTML) renderLink(b *model.Block) {
 		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
 	</div>`)
 	if len(b.ChildrenIds) > 0 {
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
+	}
+}
+
+func (h *HTML) renderTable(b *model.Block) {
+	tb, err := table.NewTable(h.s, b.Id)
+	if err != nil {
+		return
+	}
+
+	h.buf.WriteString(`<table style="border-collapse: collapse; border: 1px solid #dfddd0;">`)
+	defer h.buf.WriteString("</table>")
+
+	cols := tb.Columns()
+	colWidth := map[string]float64{}
+	for _, colId := range cols.ChildrenIds {
+		col := h.s.Pick(colId)
+		if col == nil {
+			continue
+		}
+		colWidth[colId] = pbtypes.GetFloat64(col.Model().GetFields(), "width")
+	}
+	for _, rowId := range tb.Rows().ChildrenIds {
+		h.renderRow(rowId, cols, colWidth)
+	}
+}
+
+func (h *HTML) renderRow(rowId string, cols *model.Block, colWidth map[string]float64) {
+	row := h.s.Pick(rowId)
+	if row == nil {
+		return
+	}
+	h.buf.WriteString("<tr>")
+	defer h.buf.WriteString("</tr>")
+
+	colToCell := map[string]string{}
+	for _, cellId := range row.Model().ChildrenIds {
+		_, colId, err := table.ParseCellId(cellId)
+		if err != nil {
+			continue
+		}
+		colToCell[colId] = cellId
+	}
+
+	for _, colId := range cols.ChildrenIds {
+		h.renderCell(colWidth, colId, colToCell)
+	}
+}
+
+func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell map[string]string) {
+	var extraAttr, extraStyle string
+	if w := colWidth[colId]; w > 0 {
+		extraAttr += fmt.Sprintf(` width="%d"`, int(w))
+	}
+
+	var cell simple.Block
+	cellId, ok := colToCell[colId]
+	if ok {
+		cell = h.s.Pick(cellId)
+		if cell != nil {
+			if bg := cell.Model().BackgroundColor; bg != "" {
+				extraStyle += fmt.Sprintf(`; background-color: %s`, backgroundColor(bg))
+			}
+		}
+	}
+
+	fmt.Fprintf(h.buf, `<td style="border: 1px solid #dfddd0; padding: 9px; font-size: 14px; line-height: 22px%s"%s>`, extraStyle, extraAttr)
+	defer h.buf.WriteString("</td>")
+
+	if cell != nil {
+		rs := &renderState{h: h}
+		h.render(rs, cell.Model())
+	} else {
+		h.buf.WriteString("&nbsp;")
 	}
 }
 
@@ -457,60 +551,58 @@ func (rs *renderState) Close() {
 	}
 }
 
-func colorMapping(color string, isText bool) (out string) {
-	if isText {
-		switch color {
-		case "grey":
-			out = "#aca996"
-		case "yellow":
-			out = "#ecd91b"
-		case "orange":
-			out = "#ffb522"
-		case "red":
-			out = "#f55522"
-		case "pink":
-			out = "#e51ca0"
-		case "purple":
-			out = "#ab50cc"
-		case "blue":
-			out = "#3e58"
-		case "ice":
-			out = "#2aa7ee"
-		case "teal":
-			out = "#0fc8ba"
-		case "lime":
-			out = "#5dd400"
-		case "black":
-			out = "#2c2b27"
-		default:
-			out = color
-		}
-	} else {
-		switch color {
-		case "grey":
-			out = "#f3f2ec"
-		case "yellow":
-			out = "#fef9cc"
-		case "orange":
-			out = "#fef3c5"
-		case "red":
-			out = "#ffebe5"
-		case "pink":
-			out = "#fee3f5"
-		case "purple":
-			out = "#f4e3fa"
-		case "blue":
-			out = "#f4e3fa"
-		case "ice":
-			out = "#d6effd"
-		case "teal":
-			out = "#d6f5f3"
-		case "lime":
-			out = "#e3f7d0"
-		default:
-			out = color
-		}
+func textColor(color string) string {
+	switch color {
+	case "grey":
+		return "#aca996"
+	case "yellow":
+		return "#ecd91b"
+	case "orange":
+		return "#ffb522"
+	case "red":
+		return "#f55522"
+	case "pink":
+		return "#e51ca0"
+	case "purple":
+		return "#ab50cc"
+	case "blue":
+		return "#3e58"
+	case "ice":
+		return "#2aa7ee"
+	case "teal":
+		return "#0fc8ba"
+	case "lime":
+		return "#5dd400"
+	case "black":
+		return "#2c2b27"
+	default:
+		return color
 	}
+}
 
-	return out
+func backgroundColor(color string) string {
+	switch color {
+	case "grey":
+		return "#f3f2ec"
+	case "yellow":
+		return "#fef9cc"
+	case "orange":
+		return "#fef3c5"
+	case "red":
+		return "#ffebe5"
+	case "pink":
+		return "#fee3f5"
+	case "purple":
+		return "#f4e3fa"
+	case "blue":
+		return "#f4e3fa"
+	case "ice":
+		return "#d6effd"
+	case "teal":
+		return "#d6f5f3"
+	case "lime":
+		return "#e3f7d0"
+	default:
+		return color
+	}
 }

@@ -3,6 +3,7 @@ package builtintemplate
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/md5"
 	_ "embed"
 	"encoding/binary"
@@ -64,7 +65,7 @@ func (b *builtinTemplate) Name() (name string) {
 	return CName
 }
 
-func (b *builtinTemplate) Run() (err error) {
+func (b *builtinTemplate) Run(context.Context) (err error) {
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
 		return

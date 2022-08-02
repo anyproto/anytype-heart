@@ -27,6 +27,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -104,6 +105,7 @@ type SmartBlock interface {
 	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
+	SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	SetIsDeleted()
 	IsDeleted() bool
@@ -133,6 +135,7 @@ type InitContext struct {
 	Restriction    restriction.Service
 	Doc            doc.Service
 	ObjectStore    objectstore.ObjectStore
+	Ctx            context.Context
 }
 
 type linkSource interface {
@@ -211,7 +214,11 @@ func (sb *smartBlock) Type() model.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	if sb.Doc, err = ctx.Source.ReadDoc(sb, ctx.State != nil); err != nil {
+	cctx := ctx.Ctx
+	if cctx == nil {
+		cctx = context.Background()
+	}
+	if sb.Doc, err = ctx.Source.ReadDoc(cctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
 
@@ -231,7 +238,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State = sb.NewState()
 		sb.storeFileKeys(sb.Doc)
 	} else {
-		if !sb.Doc.(*state.State).IsEmpty() {
+		if !sb.Doc.(*state.State).IsEmpty(true) {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
@@ -366,43 +373,51 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
-	if ctx != nil {
-		details, objectTypes, err := sb.fetchMeta()
-		if err != nil {
-			return err
-		}
-		// omit relations
-		// todo: switch to other pb type
-		for _, ot := range objectTypes {
-			ot.Relations = nil
-		}
+	if ctx == nil {
+		return nil
+	}
 
-		for _, det := range details {
-			for k, v := range det.Details.GetFields() {
-				// todo: remove null cleanup(should be done when receiving from client)
-				if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-					log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
-					delete(det.Details.Fields, k)
-				}
+	details, objectTypes, err := sb.fetchMeta()
+	if err != nil {
+		return err
+	}
+	// omit relations
+	// todo: switch to other pb type
+	for _, ot := range objectTypes {
+		ot.Relations = nil
+	}
+
+	for _, det := range details {
+		for k, v := range det.Details.GetFields() {
+			// todo: remove null cleanup(should be done when receiving from client)
+			if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+				log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
+				delete(det.Details.Fields, k)
 			}
 		}
-
-		// todo: sb.Relations() makes extra query to read objectType which we already have here
-		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-					RootId:       sb.RootId(),
-					Type:         sb.Type(),
-					Blocks:       sb.Blocks(),
-					Details:      details,
-					Relations:    sb.Relations(),
-					ObjectTypes:  objectTypes,
-					Restrictions: sb.restrictions.Proto(),
-				}},
-			},
-		})
 	}
+
+	undo, redo := sb.History().Counters()
+
+	// todo: sb.Relations() makes extra query to read objectType which we already have here
+	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
+	ctx.AddMessages(sb.Id(), []*pb.EventMessage{
+		{
+			Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
+				RootId:       sb.RootId(),
+				Type:         sb.Type(),
+				Blocks:       sb.Blocks(),
+				Details:      details,
+				Relations:    sb.Relations(),
+				ObjectTypes:  objectTypes,
+				Restrictions: sb.restrictions.Proto(),
+				History: &pb.EventObjectShowHistorySize{
+					Undo: undo,
+					Redo: redo,
+				},
+			}},
+		},
+	})
 	return nil
 }
 
@@ -806,6 +821,15 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetD
 					continue
 				}
 			}
+			if detail.Key == bundle.RelationKeyLayout.String() {
+				// special case when client sets the layout detail directly instead of using setLayout command
+				err = sb.SetLayout(ctx, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
+				if err != nil {
+					log.Errorf("failed to set object's layout via detail: %s", err.Error())
+				}
+				continue
+			}
+
 			rel := pbtypes.GetRelation(aggregatedRelations, detail.Key)
 			if rel == nil {
 				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
@@ -995,6 +1019,11 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
 			} else {
 				s.SetAggregatedRelationsOptions(rel.Key, opts)
+				for _, copyRel := range copy {
+					if copyRel.Key == rel.Key {
+						copyRel.SelectDict = opts
+					}
+				}
 			}
 		}
 
@@ -1010,7 +1039,9 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			c := pbtypes.CopyRelation(rel)
 
 			if existingRelation != nil && (existingRelation.ReadOnlyRelation || rel.Name == "") {
+				dict := c.SelectDict
 				c = existingRelation
+				c.SelectDict = dict
 			} else if existingRelation != nil && !pbtypes.RelationCompatible(existingRelation, rel) {
 				return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
 			}
@@ -1029,10 +1060,59 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
 
+	if len(objectTypes) > 0 {
+		ot, err := objectstore.GetObjectType(sb.objectStore, objectTypes[0])
+		if err != nil {
+			return err
+		}
+
+		if ot.Layout == model.ObjectType_note {
+			if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; ok && name.GetStringValue() != "" {
+				newBlock := simple.New(&model.Block{
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: name.GetStringValue()},
+					},
+				})
+				s.Add(newBlock)
+
+				if err := s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, newBlock.Model().Id); err != nil {
+					return err
+				}
+
+				s.RemoveDetail(bundle.RelationKeyName.String())
+			}
+		}
+	}
+
+	if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+		if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+				if err := s.Iterate(func(b simple.Block) (isContinue bool) {
+					if b.Model().Content == textBlock {
+						s.Unlink(b.Model().Id)
+						return false
+					}
+					return true
+				}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
 	}
-	s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+
+	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorSelectType)
+	flags.AddToState(s)
+
 	// send event here to send updated details to client
 	if err = sb.Apply(s, NoRestrictions); err != nil {
 		return
@@ -1073,7 +1153,21 @@ func (sb *smartBlock) setAlign(s *state.State, align model.BlockAlign, ids ...st
 	return
 }
 
+func (sb *smartBlock) SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
+	s := sb.NewStateCtx(ctx)
+	for _, id := range ids {
+		if b := s.Get(id); b != nil {
+			b.Model().VerticalAlign = align
+		}
+	}
+	return sb.Apply(s)
+}
+
 func (sb *smartBlock) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
+	if err = sb.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
+		return
+	}
+
 	s := sb.NewStateCtx(ctx)
 	if err = sb.setLayout(s, layout); err != nil {
 		return
@@ -1694,11 +1788,20 @@ func (sb *smartBlock) reportChange(s *state.State) {
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
-	if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String()) {
-		if !s.IsEmpty() {
-			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+	flags := internalflag.NewFromState(s)
+
+	// Run empty check only if any of these flags are present
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) {
+		if !s.IsEmpty(true) {
+			flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		}
+		if !s.IsEmpty(false) {
+			flags.Remove(model.InternalFlag_editorSelectType)
+		}
+
+		flags.AddToState(s)
 	}
+
 	sb.setRestrictionsDetail(s)
 	return
 }

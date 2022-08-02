@@ -199,7 +199,7 @@ func (r *debugTree) Stats() (s DebugTreeStats) {
 }
 
 func (r *debugTree) BuildState() (*state.State, error) {
-	t, _, err := change.BuildTree(r)
+	t, _, err := change.BuildTree(context.TODO(), r)
 	if err != nil {
 		return nil, err
 	}

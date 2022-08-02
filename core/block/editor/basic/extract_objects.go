@@ -24,10 +24,11 @@ type ObjectCreator interface {
 func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
 	st := bs.NewStateCtx(ctx)
 
-	roots := listRoots(st, req.BlockIds)
-	for _, root := range roots {
-		descendants := st.Descendants(root.Model().Id)
-		newRoot, newBlocks := reassignSubtreeIds(root.Model().Id, append(descendants, root))
+	rootIds := st.SelectRoots(req.BlockIds)
+	for _, id := range rootIds {
+		root := st.Pick(id)
+		descendants := st.Descendants(id)
+		newRoot, newBlocks := reassignSubtreeIds(id, append(descendants, root))
 
 		// Remove children
 		for _, b := range descendants {
@@ -39,14 +40,27 @@ func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req
 		for _, b := range newBlocks {
 			objState.Add(b)
 		}
-		objState.Add(base.NewBase(&model.Block{
-			// This id will be replaced by id of the new object
-			Id:          "_root",
-			ChildrenIds: []string{newRoot},
-		}))
+
+		// For note objects we have to create special block structure to
+		// avoid messing up with note content
+		if req.ObjectType == bundle.TypeKeyNote.URL() {
+			objState.Add(base.NewBase(&model.Block{
+				// This id will be replaced by id of the new object
+				Id:          "_root",
+				ChildrenIds: []string{newRoot},
+			}))
+		}
+
+		// Root block have to have Smartblock content
+		rootId := objState.RootId()
+		rootBlock := objState.Get(rootId).Model()
+		rootBlock.Content = &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		}
+		objState.Set(simple.New(rootBlock))
 
 		fields := map[string]*types.Value{
-			"name": pbtypes.String(root.Model().GetText().Text),
+			bundle.RelationKeyName.String(): pbtypes.String(root.Model().GetText().Text),
 		}
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
@@ -81,44 +95,6 @@ func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req
 	}
 
 	return linkIds, bs.Apply(st)
-}
-
-// listRoots returns unique root blocks that are listed in blockIds
-func listRoots(st *state.State, blockIds []string) []simple.Block {
-	visited := map[string]struct{}{}
-
-	// Mark children as visited
-	queue := blockIds
-	for len(queue) > 0 {
-		id := queue[0]
-		queue = queue[1:]
-
-		b := st.Pick(id)
-		if b == nil {
-			continue
-		}
-
-		childrenIds := b.Model().ChildrenIds
-		for _, chId := range childrenIds {
-			visited[chId] = struct{}{}
-			queue = append(queue, childrenIds...)
-		}
-	}
-
-	// Unvisited blocks are roots
-	var roots []simple.Block
-	for _, id := range blockIds {
-		if _, ok := visited[id]; ok {
-			continue
-		}
-		b := st.Pick(id)
-		if b == nil {
-			continue
-		}
-
-		roots = append(roots, b)
-	}
-	return roots
 }
 
 // reassignSubtreeIds makes a copy of a subtree of blocks and assign a new id for each block

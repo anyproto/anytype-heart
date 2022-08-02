@@ -263,6 +263,7 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 		AppVersion:      c.appVersion,
 		Time:            time.Now().Unix() * 1000,
 	}
+
 	b := c.batcher
 	c.lock.RUnlock()
 	if b == nil {

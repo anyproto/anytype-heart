@@ -8,10 +8,12 @@
 1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../js-anytype`
 
 #### Build for iOS
+Instructions to setup environment for ios [here](https://github.com/anytypeio/ios-anytype/blob/develop/docs/Setup_For_Middleware.md)
 1. `make build-ios` to build the framework into `dist/ios` folder
 2. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
 
 #### Build for Android
+Instructions to setup environment for android [here](https://github.com/anytypeio/android-anytype/blob/develop/docs/Setup_For_Middleware.md)
 1. `make build-android` to build the library into `dist/android` folder
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
 

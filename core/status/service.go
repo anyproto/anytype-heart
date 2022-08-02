@@ -1,6 +1,7 @@
 package status
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"sync"
@@ -117,7 +118,7 @@ func (s *service) Init(a *app.App) (err error) {
 	return
 }
 
-func (s *service) Run() error {
+func (s *service) Run(context.Context) error {
 	s.mu.Lock()
 	defer func() {
 		s.isRunning = true

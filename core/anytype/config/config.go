@@ -1,10 +1,9 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"net"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,8 +24,15 @@ const (
 	CName = "config"
 )
 
+type FileConfig interface {
+	GetFileConfig() (ConfigRequired, error)
+	WriteFileConfig(cfg ConfigRequired) (ConfigRequired, error)
+}
+
 type ConfigRequired struct {
-	HostAddr string
+	HostAddr        string `json:",omitempty"`
+	IPFSStorageAddr string `json:",omitempty"`
+	TimeZone        string `json:",omitempty"`
 }
 
 type Config struct {
@@ -34,6 +40,8 @@ type Config struct {
 	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	Offline                  bool
 	DisableThreadsSyncEvents bool
+
+	RepoPath string
 
 	PrivateNetworkSecret string
 
@@ -50,11 +58,12 @@ type Config struct {
 
 	Threads           threads.Config
 	DS                clientds.Config
+	FS                clientds.FSConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 }
 
 const (
-	configFileName = "config.json"
+	ConfigFileName = "config.json"
 )
 
 var DefaultConfig = Config{
@@ -108,6 +117,7 @@ func New(options ...func(*Config)) *Config {
 		opt(&cfg)
 	}
 	cfg.Threads.CafeP2PAddr = cfg.CafeP2PFullAddr()
+	cfg.Threads.CafePID = cfg.CafePeerId
 
 	return &cfg
 }
@@ -145,23 +155,12 @@ func (c *Config) Init(a *app.App) (err error) {
 }
 
 func (c *Config) initFromFileAndEnv(repoPath string) error {
-	var configFileNotExists bool
+	c.RepoPath = repoPath
 
 	if !c.DisableFileConfig {
-		cfgFilePath := filepath.Join(repoPath, configFileName)
-		cfgFile, err := os.OpenFile(cfgFilePath, os.O_RDONLY, 0655)
+		err := files.GetFileConfig(c.GetConfigPath(), &c.ConfigRequired)
 		if err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
-			configFileNotExists = true
-		}
-		if err == nil {
-			defer cfgFile.Close()
-			err = json.NewDecoder(cfgFile).Decode(&c)
-			if err != nil {
-				return fmt.Errorf("invalid format: %w", err)
-			}
+			return fmt.Errorf("failed to get config from file: %s", err.Error())
 		}
 
 		saveRandomHostAddr := func() error {
@@ -173,26 +172,14 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 
 			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
 
-			// we need to save selected port in order in order to increase chances of incoming connections
-			if cfgFile != nil {
-				// close the readonly-mode file first
-				_ = cfgFile.Close()
-			}
-
-			cfgFile, err = os.OpenFile(cfgFilePath, os.O_RDWR|os.O_CREATE, 0640)
-			if err != nil {
-				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
-			}
-
-			defer cfgFile.Close()
-
-			err = json.NewEncoder(cfgFile).Encode(c.ConfigRequired)
+			err = files.WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 			if err != nil {
 				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
 			}
 			return nil
 		}
-		if c.HostAddr == "" && configFileNotExists {
+
+		if c.HostAddr == "" {
 			err = saveRandomHostAddr()
 			if err != nil {
 				return err
@@ -238,8 +225,22 @@ func (c *Config) DSConfig() clientds.Config {
 	return c.DS
 }
 
+func (c *Config) FSConfig() (clientds.FSConfig, error) {
+	res := ConfigRequired{}
+	err := files.GetFileConfig(c.GetConfigPath(), &res)
+	if err != nil {
+		return clientds.FSConfig{}, err
+	}
+
+	return clientds.FSConfig{IPFSStorageAddr: res.IPFSStorageAddr}, nil
+}
+
 func (c *Config) ThreadsConfig() threads.Config {
 	return c.Threads
+}
+
+func (c *Config) GetConfigPath() string {
+	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
 func getRandomPort() (int, error) {

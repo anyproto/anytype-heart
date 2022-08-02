@@ -4,16 +4,15 @@ package blocksUtil
 import (
 	"bufio"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
+	"github.com/google/uuid"
 	"io"
 	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"unicode/utf8"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
-	"github.com/google/uuid"
 )
 
 var (
@@ -98,11 +97,11 @@ func (rw *rWriter) GetBaseFilepath() string {
 func (rw *rWriter) SetMarkStart() {
 	if len(rw.openedTextBlocks) > 0 {
 		last := rw.openedTextBlocks[len(rw.openedTextBlocks)-1]
-		last.marksStartQueue = append(last.marksStartQueue, utf8.RuneCountInString(last.textBuffer))
+		last.marksStartQueue = append(last.marksStartQueue, text.UTF16RuneCountString(last.textBuffer))
 		return
 	}
 
-	rw.marksStartQueue = append(rw.marksStartQueue, utf8.RuneCountInString(rw.textBuffer))
+	rw.marksStartQueue = append(rw.marksStartQueue, text.UTF16RuneCountString(rw.textBuffer))
 }
 
 func (rw *rWriter) AddTextByte(b []byte) {

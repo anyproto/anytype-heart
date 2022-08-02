@@ -64,7 +64,7 @@ func (v *anytypeProfile) getDetails() (p *types.Struct) {
 	}}
 }
 
-func (v *anytypeProfile) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	d := v.getDetails()
@@ -74,7 +74,7 @@ func (v *anytypeProfile) ReadDoc(receiver ChangeReceiver, empty bool) (doc state
 	return s, nil
 }
 
-func (v *anytypeProfile) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
+func (v *anytypeProfile) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
 	s := &state.State{}
 	d := v.getDetails()
 

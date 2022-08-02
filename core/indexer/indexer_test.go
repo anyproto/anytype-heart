@@ -1,6 +1,7 @@
 package indexer_test
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -52,7 +53,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.docService = mockDoc.NewMockService(fx.ctrl)
 	fx.docService.EXPECT().Name().AnyTimes().Return(doc.CName)
 	fx.docService.EXPECT().Init(gomock.Any())
-	fx.docService.EXPECT().Run()
+	fx.docService.EXPECT().Run(context.Background())
 	fx.anytype.EXPECT().PredefinedBlocks().Times(2)
 	fx.docService.EXPECT().Close().AnyTimes()
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
@@ -106,7 +107,7 @@ func newFixture(t *testing.T) *fixture {
 		With(source.New())
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
-	require.NoError(t, ta.Start())
+	require.NoError(t, ta.Start(context.Background()))
 	return fx
 }
 

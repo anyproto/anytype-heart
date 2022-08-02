@@ -1,6 +1,7 @@
 package editor
 
 import (
+	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -8,19 +9,19 @@ import (
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewPage(
 	fileSource file.BlockService,
-	bCtrl bookmark.DoBookmark,
+	pageManager bookmark.BlockService,
 	importServices _import.Services,
-	lp linkpreview.LinkPreview,
+	bookmarkSvc bookmark.BookmarkService,
 ) *Page {
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
@@ -31,8 +32,9 @@ func NewPage(
 		Text:       stext.NewText(sb),
 		File:       f,
 		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
+		Bookmark:   bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
 		Import:     _import.NewImport(sb, importServices),
+		Editor:     table.NewEditor(sb),
 	}
 }
 
@@ -45,6 +47,7 @@ type Page struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	_import.Import
+	table.Editor
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
@@ -65,6 +68,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 	tmpls := []template.StateTransformer{
 		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
+		bookmarksvc.WithFixedBookmarks(p.Bookmark),
 	}
 
 	// replace title to text block for note

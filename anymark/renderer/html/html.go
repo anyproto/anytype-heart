@@ -2,17 +2,16 @@ package html
 
 import (
 	"bytes"
-	"net/url"
-	"path/filepath"
-	"strings"
-	"unicode/utf8"
-
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/util"
+	"net/url"
+	"path/filepath"
+	"strings"
 )
 
 var log = logging.Logger("anytype-anymark")
@@ -394,8 +393,8 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 	label := n.Label(source)
 	w.SetMarkStart()
 
-	start := int32(utf8.RuneCountInString(w.GetText()))
-	labelLength := int32(utf8.RuneCount(label))
+	start := int32(text.UTF16RuneCountString(w.GetText()))
+	labelLength := int32(text.UTF16RuneCount(label))
 
 	linkPath, err := url.PathUnescape(string(destination))
 	if err != nil {
@@ -439,7 +438,7 @@ func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Nod
 		}
 		return ast.WalkSkipChildren, nil
 	} else {
-		to := int32(utf8.RuneCountInString(w.GetText()))
+		to := int32(text.UTF16RuneCountString(w.GetText()))
 
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
@@ -462,7 +461,7 @@ func (r *Renderer) renderEmphasis(w blocksUtil.RWriter, source []byte, node ast.
 	if entering {
 		w.SetMarkStart()
 	} else {
-		to := int32(utf8.RuneCountInString(w.GetText()))
+		to := int32(text.UTF16RuneCountString(w.GetText()))
 
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
@@ -491,7 +490,7 @@ func (r *Renderer) renderLink(w blocksUtil.RWriter, source []byte, node ast.Node
 			linkPath = filepath.Join(w.GetBaseFilepath(), linkPath)
 		}
 
-		to := int32(utf8.RuneCountInString(w.GetText()))
+		to := int32(text.UTF16RuneCountString(w.GetText()))
 
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},

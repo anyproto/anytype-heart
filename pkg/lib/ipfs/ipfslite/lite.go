@@ -196,7 +196,7 @@ func setupLibP2PNode(ctx context.Context, cfg *Config, blockDS, peerDS ds.Batchi
 	return h, ddht, err
 }
 
-func (ln *liteNet) Run() error {
+func (ln *liteNet) Run(_ context.Context) error {
 	var ctx context.Context
 	ctx, ln.peerStoreCtxCancel = context.WithCancel(context.Background())
 

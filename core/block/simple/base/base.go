@@ -82,6 +82,13 @@ func (s *Base) Diff(block simple.Block) (msgs []simple.EventMessage, err error) 
 		}}}
 		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
+	if s.VerticalAlign != m.VerticalAlign {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetVerticalAlign{BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
+			Id:            s.Id,
+			VerticalAlign: m.VerticalAlign,
+		}}}
+		msgs = append(msgs, simple.EventMessage{Msg: m})
+	}
 
 	return
 }

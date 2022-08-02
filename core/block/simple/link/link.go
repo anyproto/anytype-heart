@@ -2,15 +2,14 @@ package link
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"unicode/utf8"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -131,6 +130,23 @@ func (l *Link) ApplyEvent(e *pb.EventBlockSetLink) error {
 	if e.TargetBlockId != nil {
 		l.content.TargetBlockId = e.TargetBlockId.GetValue()
 	}
+
+	if e.IconSize != nil {
+		l.content.IconSize = e.IconSize.GetValue()
+	}
+
+	if e.CardStyle != nil {
+		l.content.CardStyle = e.CardStyle.GetValue()
+	}
+
+	if e.Description != nil {
+		l.content.Description = e.Description.GetValue()
+	}
+
+	if e.Relations != nil {
+		l.content.Relations = e.Relations.GetValue()
+	}
+
 	return nil
 }
 
@@ -145,7 +161,7 @@ func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
 		tb.Marks = &model.BlockContentTextMarks{
 			Marks: []*model.BlockContentTextMark{
 				{
-					Range: &model.Range{0, int32(utf8.RuneCountInString(name))},
+					Range: &model.Range{0, int32(text.UTF16RuneCountString(name))},
 					Type:  model.BlockContentTextMark_Mention,
 					Param: l.content.TargetBlockId,
 				},

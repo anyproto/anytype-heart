@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/gogo/protobuf/types"
@@ -34,6 +35,13 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+	case *pb.EventMessageValueOfBlockSetVerticalAlign:
+		if err = apply(o.BlockSetVerticalAlign.Id, func(b simple.Block) error {
+			b.Model().VerticalAlign = o.BlockSetVerticalAlign.VerticalAlign
+			return nil
+		}); err != nil {
+			return
+		}
 	case *pb.EventMessageValueOfBlockSetBackgroundColor:
 		if err = apply(o.BlockSetBackgroundColor.Id, func(b simple.Block) error {
 			b.Model().BackgroundColor = o.BlockSetBackgroundColor.BackgroundColor
@@ -50,6 +58,17 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+
+	case *pb.EventMessageValueOfBlockSetTableRow:
+		if err = apply(o.BlockSetTableRow.Id, func(b simple.Block) error {
+			if tr, ok := b.(table.RowBlock); ok {
+				return tr.ApplyEvent(o.BlockSetTableRow)
+			}
+			return fmt.Errorf("not a table row block")
+		}); err != nil {
+			return
+		}
+
 	case *pb.EventMessageValueOfBlockSetDiv:
 		if err = apply(o.BlockSetDiv.Id, func(b simple.Block) error {
 			if d, ok := b.(base.DivBlock); ok {
@@ -127,7 +146,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewViewDelete:
 		if err = apply(o.BlockDataviewViewDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				return f.DeleteView(o.BlockDataviewViewDelete.ViewId)
+				err := f.DeleteView(o.BlockDataviewViewDelete.ViewId)
+				if err != nil && err != dataview.ErrViewNotFound {
+					return err
+				}
+				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -137,7 +160,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok && o.BlockDataviewRelationSet.Relation != nil {
 				if er := f.UpdateRelation(o.BlockDataviewRelationSet.RelationKey, *o.BlockDataviewRelationSet.Relation); er == dataview.ErrRelationNotFound {
-					f.AddRelation(*o.BlockDataviewRelationSet.Relation)
+					return f.AddRelation(*o.BlockDataviewRelationSet.Relation)
 				} else {
 					return er
 				}
@@ -150,7 +173,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewRelationDelete:
 		if err = apply(o.BlockDataviewRelationDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				return f.DeleteRelation(o.BlockDataviewRelationDelete.RelationKey)
+				err := f.DeleteRelation(o.BlockDataviewRelationDelete.RelationKey)
+				if err != nil && err != dataview.ErrRelationNotFound {
+					return err
+				}
+				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -172,6 +199,16 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				return f.ApplyEvent(o.BlockSetLatex)
 			}
 			return fmt.Errorf("not a latex block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDataViewGroupOrderUpdate:
+		if err = apply(o.BlockDataViewGroupOrderUpdate.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				f.SetViewGroupOrder(o.BlockDataViewGroupOrderUpdate.GroupOrder)
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
 		}); err != nil {
 			return
 		}

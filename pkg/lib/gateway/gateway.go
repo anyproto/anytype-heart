@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"net"
@@ -35,11 +36,13 @@ type Gateway interface {
 }
 
 type gateway struct {
-	Node    core.Service
-	server  *http.Server
-	handler *http.ServeMux
-	addr    string
-	mu      sync.Mutex
+	Node            core.Service
+	server          *http.Server
+	listener        net.Listener
+	handler         *http.ServeMux
+	addr            string
+	mu              sync.Mutex
+	isServerStarted bool
 }
 
 func getRandomPort() (int, error) {
@@ -82,8 +85,8 @@ func (g *gateway) Name() string {
 	return CName
 }
 
-func (g *gateway) Run() error {
-	if g.server != nil {
+func (g *gateway) Run(context.Context) error {
+	if g.isServerStarted {
 		return fmt.Errorf("gateway already started")
 	}
 
@@ -135,25 +138,34 @@ func (g *gateway) startServer() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if g.server != nil {
+	if g.isServerStarted {
 		log.Errorf("server already started")
 		return
 	}
+
+	ln, err := net.Listen("tcp", g.addr)
+	if err != nil {
+		log.Errorf("listen addr err: %s", err)
+		return
+	}
+
+	g.listener = ln
 
 	g.server = &http.Server{
 		Addr:    g.addr,
 		Handler: g.handler,
 	}
 
-	go func() {
-		err := g.server.ListenAndServe()
-		g.server = nil
+	go func(srv *http.Server, l net.Listener) {
+		err := srv.Serve(l)
 		if err != nil && err != http.ErrServerClosed {
 			log.Errorf("gateway error: %s", err)
 			return
 		}
 		log.Info("gateway was shutdown")
-	}()
+	}(g.server, ln)
+
+	g.isServerStarted = true
 
 	log.Infof("gateway listening at %s", g.server.Addr)
 }
@@ -162,15 +174,19 @@ func (g *gateway) stopServer() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if g.server == nil {
-		return nil
+	if g.isServerStarted {
+		g.isServerStarted = false
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+		if err := g.server.Shutdown(ctx); err != nil {
+			return err
+		}
+		if err := g.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			return err
+		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	err := g.server.Shutdown(ctx)
-	g.server = nil
-	return err
+	return nil
 }
 
 func enableCors(w http.ResponseWriter) {

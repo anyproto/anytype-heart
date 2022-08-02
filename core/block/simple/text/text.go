@@ -2,8 +2,8 @@ package text
 
 import (
 	"fmt"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"sort"
-	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
@@ -58,11 +58,13 @@ type Block interface {
 	RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error)
 	RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error)
 	RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error)
-	Merge(b simple.Block) error
+	Merge(b simple.Block, opts ...MergeOption) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetText) error
+
+	IsEmpty() bool
 }
 
 type Text struct {
@@ -177,7 +179,7 @@ func (t *Text) FillFileHashes(hashes []string) []string {
 
 func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
 	mRange := &model.Range{
-		To: int32(utf8.RuneCountInString(t.content.Text)),
+		To: int32(textutil.UTF16RuneCountString(t.content.Text)),
 	}
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
@@ -213,7 +215,7 @@ func (t *Text) RemoveMarkType(markType model.BlockContentTextMarkType) {
 
 func (t *Text) HasMarkForAllText(mark *model.BlockContentTextMark) bool {
 	mRange := &model.Range{
-		To: int32(utf8.RuneCountInString(t.content.Text)),
+		To: int32(textutil.UTF16RuneCountString(t.content.Text)),
 	}
 	for _, m := range t.content.Marks.Marks {
 		if m.Type == mark.Type && m.Param == mark.Param {
@@ -250,11 +252,11 @@ func (t *Text) GetText() (text string) {
 }
 
 func (t *Text) Split(pos int32) (simple.Block, error) {
-	if pos < 0 || int(pos) > utf8.RuneCountInString(t.content.Text) {
+	if pos < 0 || int(pos) > textutil.UTF16RuneCountString(t.content.Text) {
 		return nil, ErrOutOfRange
 	}
-	runes := []rune(t.content.Text)
-	t.content.Text = string(runes[pos:])
+	runes := textutil.StrToUTF16(t.content.Text)
+	t.content.Text = textutil.UTF16ToStr(runes[pos:])
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
 	}
@@ -284,7 +286,7 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	t.content.Marks = newMarks
 	newBlock := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:    string(runes[:pos]),
+			Text:    textutil.UTF16ToStr(runes[:pos]),
 			Style:   t.content.Style,
 			Marks:   oldMarks,
 			Checked: t.content.Checked,
@@ -301,12 +303,12 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 	copiedText := copiedBlock.GetText()
 
 	copyFrom := int32(0)
-	copyTo := int32(utf8.RuneCountInString(copiedText.Text))
+	copyTo := int32(textutil.UTF16RuneCountString(copiedText.Text))
 
-	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
+	if rangeFrom < 0 || int(rangeFrom) > textutil.UTF16RuneCountString(t.content.Text) {
 		return caretPosition, fmt.Errorf("out of range: range.from is not correct: %d", rangeFrom)
 	}
-	if rangeTo < 0 || int(rangeTo) > utf8.RuneCountInString(t.content.Text) {
+	if rangeTo < 0 || int(rangeTo) > textutil.UTF16RuneCountString(t.content.Text) {
 		return caretPosition, fmt.Errorf("out of range: range.to is not correct: %d", rangeTo)
 	}
 	if rangeFrom > rangeTo {
@@ -332,33 +334,35 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 	}
 
 	// 3. combine
-	runesFirst := []rune(t.content.Text)[:rangeFrom]
-	runesMiddle := []rune(copiedText.Text)[copyFrom:copyTo]
-	runesLast := []rune(t.content.Text)[rangeTo:]
+	contentText := textutil.StrToUTF16(t.content.Text)
+	runesFirst := contentText[:rangeFrom]
+	runesMiddle := textutil.StrToUTF16(copiedText.Text)[copyFrom:copyTo]
+	runesLast := contentText[rangeTo:]
 
-	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, string(runesMiddle))
+	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, textutil.UTF16ToStr(runesMiddle))
 	t.content.Marks.Marks = t.normalizeMarksPure(combinedMarks)
 
-	t.content.Text = string(runesFirst) + string(runesMiddle) + string(runesLast)
+	t.content.Text = textutil.UTF16ToStr(runesFirst) + textutil.UTF16ToStr(runesMiddle) + textutil.UTF16ToStr(runesLast)
 
 	caretPosition = rangeFrom + (copyTo - copyFrom)
 	return caretPosition, nil
 }
 
 func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error) {
-	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
+	if from < 0 || int(from) > textutil.UTF16RuneCountString(t.content.Text) {
 		return nil, nil, ErrOutOfRange
 	}
-	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
+	if to < 0 || int(to) > textutil.UTF16RuneCountString(t.content.Text) {
 		return nil, nil, ErrOutOfRange
 	}
 	if from > to {
 		return nil, nil, ErrOutOfRange
 	}
 
-	runesFirst := []rune(t.content.Text)[:from]
-	runesMiddle := []rune(t.content.Text)[from:to]
-	runesLast := []rune(t.content.Text)[to:]
+	contentText := textutil.StrToUTF16(t.content.Text)
+	runesFirst := contentText[:from]
+	runesMiddle := contentText[from:to]
+	runesLast := contentText[to:]
 
 	// make a copy of the block
 	cutBlock = t.Copy().Model()
@@ -370,26 +374,26 @@ func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlo
 	_, cutBlock.GetText().Marks.Marks = t.splitMarks(cutBlock.GetText().Marks.Marks, &model.Range{From: from, To: from}, 0)
 
 	initialBlock = t.Copy().Model()
-	initialBlock.GetText().Text = string(runesFirst) + string(runesLast)
+	initialBlock.GetText().Text = textutil.UTF16ToStr(runesFirst) + textutil.UTF16ToStr(runesLast)
 	initialBlock.GetText().Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
 
-	cutBlock.GetText().Text = string(runesMiddle)
+	cutBlock.GetText().Text = textutil.UTF16ToStr(runesMiddle)
 
 	return cutBlock, initialBlock, nil
 }
 
 func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error) {
-	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
+	if from < 0 || int(from) > textutil.UTF16RuneCountString(t.content.Text) {
 		return nil, ErrOutOfRange
 	}
-	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
+	if to < 0 || int(to) > textutil.UTF16RuneCountString(t.content.Text) {
 		return nil, ErrOutOfRange
 	}
 	if from > to {
 		return nil, ErrOutOfRange
 	}
 
-	runes := []rune(t.content.Text)
+	runes := textutil.StrToUTF16(t.content.Text)
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
 	}
@@ -409,7 +413,7 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 	if top {
 		newBlock = simple.New(&model.Block{
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-				Text:  string(runes[:from]),
+				Text:  textutil.UTF16ToStr(runes[:from]),
 				Style: t.content.Style,
 				Marks: oldMarks,
 				Color: t.content.Color,
@@ -418,13 +422,13 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 			Align:           t.Align,
 		})
 
-		t.content.Text = string(runes[to:])
+		t.content.Text = textutil.UTF16ToStr(runes[to:])
 		t.content.Marks = newMarks
 		t.content.Checked = false
 	} else {
 		newBlock = simple.New(&model.Block{
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-				Text:    string(runes[to:]),
+				Text:    textutil.UTF16ToStr(runes[to:]),
 				Style:   t.content.Style,
 				Marks:   newMarks,
 				Checked: false,
@@ -433,7 +437,7 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 			BackgroundColor: t.BackgroundColor,
 			Align:           t.Align,
 		})
-		t.content.Text = string(runes[:from])
+		t.content.Text = textutil.UTF16ToStr(runes[:from])
 		t.content.Marks = oldMarks
 	}
 	return newBlock, nil
@@ -504,6 +508,24 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, n
 				Type:  m.Type,
 				Param: m.Param,
 			})
+		} else if (m.Range.From >= r.From) && (m.Range.To >= r.To) {
+			botMarks = append(botMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: r.From + newTextLen,
+					To:   m.Range.To - (r.To - r.From) + newTextLen,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+		} else if (m.Range.From < r.From) && (m.Range.To > r.From) && (m.Range.To <= r.To) {
+			topMarks = append(topMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From,
+					To:   r.From,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
 		} else
 		//  (*******<b>**)rem lorem</b>  :--->   __PASTE__ <b>em lorem</b>
 		if m.Range.From < r.To {
@@ -521,7 +543,7 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, n
 }
 
 func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark) {
-	addLen := int32(utf8.RuneCountInString(newText))
+	addLen := int32(textutil.UTF16RuneCountString(newText))
 
 	leftMarks, rightMarks := t.splitMarks(t.content.Marks.Marks, textRange, addLen)
 
@@ -543,17 +565,34 @@ func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContent
 	return combinedMarks
 }
 
-func (t *Text) Merge(b simple.Block) error {
+type mergeOpts struct {
+	dontSetStyle bool
+}
+
+type MergeOption func(opts *mergeOpts)
+
+func DontSetStyle() MergeOption {
+	return func(opts *mergeOpts) {
+		opts.dontSetStyle = true
+	}
+}
+
+func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
+	o := mergeOpts{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+
 	text, ok := b.(*Text)
 
-	if t.content != nil && t.content.Text == "" {
+	if !o.dontSetStyle && t.content != nil && t.content.Text == "" {
 		t.SetStyle(text.content.Style)
 	}
 
 	if !ok {
 		return fmt.Errorf("unexpected block type for merge: %T", b)
 	}
-	curLen := int32(utf8.RuneCountInString(t.content.Text))
+	curLen := int32(textutil.UTF16RuneCountString(t.content.Text))
 	t.content.Text += text.content.Text
 	for _, m := range text.content.Marks.Marks {
 		t.content.Marks.Marks = append(t.content.Marks.Marks, &model.BlockContentTextMark{
@@ -643,4 +682,20 @@ func (t *Text) ApplyEvent(e *pb.EventBlockSetText) error {
 		t.content.IconEmoji = e.IconEmoji.GetValue()
 	}
 	return nil
+}
+
+func (t *Text) IsEmpty() bool {
+	if t.content.Text == "" &&
+		!t.content.Checked &&
+		t.content.Color == "" &&
+		t.content.Style == 0 &&
+		t.content.IconEmoji == "" &&
+		t.content.IconImage == "" &&
+		len(t.content.GetMarks().GetMarks()) == 0 &&
+		t.Model().BackgroundColor == "" &&
+		t.Model().Align == 0 &&
+		t.Model().VerticalAlign == 0 {
+		return true
+	}
+	return false
 }

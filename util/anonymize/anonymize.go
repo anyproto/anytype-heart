@@ -2,9 +2,9 @@ package anonymize
 
 import (
 	"bytes"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"math/rand"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -213,7 +213,7 @@ func Text(s string) (res string) {
 	if len(s) == 0 {
 		return ""
 	}
-	buf := bytes.NewBuffer(make([]byte, 0, utf8.RuneCountInString(s)))
+	buf := bytes.NewBuffer(make([]byte, 0, text.UTF16RuneCountString(s)))
 
 	for _, r := range []rune(s) {
 		switch {

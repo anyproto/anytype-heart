@@ -17,7 +17,8 @@ import (
 
 var _ Block = (*Dataview)(nil)
 var (
-	ErrRelationNotFound = fmt.Errorf("relation not found")
+	ErrRelationNotFound = errors.New("relation not found")
+	ErrViewNotFound     = errors.New("view not found")
 	ErrOptionNotExists  = errors.New("option not exists")
 )
 
@@ -42,6 +43,8 @@ type Block interface {
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
+	SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder)
+	SetViewObjectOrder(order []*model.BlockContentDataviewObjectOrder)
 
 	AddRelation(relation model.Relation) error
 	GetRelation(relationKey string) (*model.Relation, error)
@@ -85,6 +88,28 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	}
 	if msgs, err = d.Base.Diff(dv); err != nil {
 		return
+	}
+
+	for _, order2 := range dv.content.GroupOrders {
+		var found bool
+		var changed bool
+		for _, order1 := range d.content.GroupOrders {
+			if order1.ViewId == order2.ViewId {
+				found = true
+				changed = !proto.Equal(order1, order2)
+				break
+			}
+		}
+
+		if !found || changed {
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataViewGroupOrderUpdate{
+						&pb.EventBlockDataviewGroupOrderUpdate{
+							Id:         dv.Id,
+							GroupOrder: order2,
+						}}}})
+		}
 	}
 
 	// @TODO: rewrite for optimised compare
@@ -229,7 +254,7 @@ func (s *Dataview) DeleteView(viewID string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("view not found")
+		return ErrViewNotFound
 	}
 
 	return nil
@@ -247,6 +272,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 			v.Name = view.Name
 			v.Type = view.Type
 			v.CoverRelationKey = view.CoverRelationKey
+			v.GroupRelationKey = view.GroupRelationKey
 			v.HideIcon = view.HideIcon
 			v.CoverFit = view.CoverFit
 			v.CardSize = view.CardSize
@@ -256,7 +282,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	}
 
 	if !found {
-		return fmt.Errorf("view not found")
+		return ErrViewNotFound
 	}
 
 	return nil
@@ -428,7 +454,7 @@ func (d *Dataview) DeleteRelation(relationKey string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("relation not found")
+		return ErrRelationNotFound
 	}
 
 	return nil
@@ -475,7 +501,7 @@ func (d *Dataview) AddRelationOption(relationKey string, option model.RelationOp
 	}
 
 	if relFound == nil {
-		return fmt.Errorf("relation not found")
+		return ErrRelationNotFound
 	}
 
 	// add this option with format scope to other dataview relations
@@ -550,7 +576,7 @@ func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error 
 		return nil
 	}
 
-	return fmt.Errorf("relation not found")
+	return ErrRelationNotFound
 }
 
 func (d *Dataview) SetViewOrder(viewIds []string) {
@@ -567,6 +593,36 @@ func (d *Dataview) SetViewOrder(viewIds []string) {
 		}
 	}
 	d.content.Views = newViews
+}
+
+func (d *Dataview) SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder) {
+	isExist := false
+	for _, groupOrder := range d.Model().GetDataview().GroupOrders {
+		if groupOrder.ViewId == order.ViewId {
+			isExist = true
+			groupOrder.ViewGroups = order.ViewGroups
+			break
+		}
+	}
+	if !isExist {
+		d.Model().GetDataview().GroupOrders = append(d.Model().GetDataview().GroupOrders, order)
+	}
+}
+
+func (d *Dataview) SetViewObjectOrder(orders []*model.BlockContentDataviewObjectOrder) {
+	for _, reqOrder := range orders {
+		isExist := false
+		for _, existOrder := range d.Model().GetDataview().ObjectOrders {
+			if reqOrder.ViewId == existOrder.ViewId && reqOrder.GroupId == existOrder.GroupId {
+				isExist = true
+				existOrder.ObjectIds = reqOrder.ObjectIds
+				break
+			}
+		}
+		if !isExist {
+			d.Model().GetDataview().ObjectOrders = append(d.Model().GetDataview().ObjectOrders, reqOrder)
+		}
+	}
 }
 
 func mergeSelectOptions(opts1, opts2 []*model.RelationOption) []*model.RelationOption {

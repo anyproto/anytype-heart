@@ -5,11 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/gogo/status"
+	cp "github.com/otiai10/copy"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -182,6 +186,12 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		gwAddr = "http://" + gwAddr
 	}
 
+	cfg := config.ConfigRequired{}
+	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
+	if cfg.IPFSStorageAddr == "" {
+		cfg.IPFSStorageAddr = wallet.RepoPath()
+	}
+
 	pBlocks := at.PredefinedBlocks()
 	return &model.AccountInfo{
 		HomeObjectId:                pBlocks.Home,
@@ -192,6 +202,8 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
+		LocalStoragePath:            cfg.IPFSStorageAddr,
+		TimeZone:                    cfg.TimeZone,
 	}
 }
 
@@ -253,6 +265,21 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
+	if req.StorePath != "" && req.StorePath != mw.rootPath {
+		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
+
+		storePath := filepath.Join(req.StorePath, account.Address())
+
+		err := os.MkdirAll(storePath, 0700)
+		if err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+		}
+
+		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
+		}
+	}
+
 	newAcc := &model.Account{Id: account.Address()}
 
 	comps := []app.Component{
@@ -261,22 +288,11 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		mw.EventSender,
 	}
 
-	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
+	if mw.app, err = anytype.StartNewApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create"), comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	stat := mw.app.StartStat()
-	if stat.SpentMsTotal > 300 {
-		log.Errorf("AccountCreate app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
-	}
-
-	metrics.SharedClient.RecordEvent(metrics.AppStart{
-		Type:      "create",
-		TotalMs:   stat.SpentMsTotal,
-		PerCompMs: stat.SpentMsPerComp})
-
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
-
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
@@ -368,7 +384,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	if mw.app, err = anytype.StartAccountRecoverApp(mw.EventSender, zeroAccount); err != nil {
+	if mw.app, err = anytype.StartAccountRecoverApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_recover"), mw.EventSender, zeroAccount); err != nil {
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
@@ -522,10 +538,12 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		mw.rootPath = req.RootPath
 	}
 
+	var repoWasMissing bool
 	if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
 		if mw.mnemonic == "" {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
 		}
+		repoWasMissing = true
 
 		var account wallet.Keypair
 		for i := 0; i < 100; i++ {
@@ -567,7 +585,12 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	}
 	var err error
 
-	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
+	request := "account_select"
+	if repoWasMissing {
+		// if we have created the repo, we need to highlight that we are recovering the account
+		request = request + "_recover"
+	}
+	if mw.app, err = anytype.StartNewApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, request), comps...); err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}
@@ -579,19 +602,8 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
-	stat := mw.app.StartStat()
-	if stat.SpentMsTotal > 300 {
-		log.Errorf("AccountSelect app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
-	}
-
 	acc := &model.Account{Id: req.Id}
 	acc.Info = mw.getInfo()
-
-	metrics.SharedClient.RecordEvent(metrics.AppStart{
-		Type:      "select",
-		TotalMs:   stat.SpentMsTotal,
-		PerCompMs: stat.SpentMsPerComp})
-
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
@@ -627,6 +639,94 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	}
 
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+	mw.accountSearchCancel()
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
+	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
+		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	removeDirs := func(src string, dirs []string) error {
+		for _, dir := range dirs {
+			if err := os.RemoveAll(filepath.Join(src, dir)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	dirs := clientds.GetDirsForMoving()
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
+
+	configPath := conf.GetConfigPath()
+	srcPath := conf.RepoPath
+	fileConf := config.ConfigRequired{}
+	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
+	}
+	if fileConf.IPFSStorageAddr != "" {
+		srcPath = fileConf.IPFSStorageAddr
+	}
+
+	parts := strings.Split(srcPath, string(os.PathSeparator))
+	accountDir := parts[len(parts)-1]
+	if accountDir == "" {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR, errors.New("fail to identify account dir"))
+	}
+
+	destination := filepath.Join(req.NewPath, accountDir)
+	if srcPath == destination {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, errors.New("source path should not be equal destination path"))
+	}
+
+	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
+		if err := removeDirs(destination, dirs); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	err := os.MkdirAll(destination, 0700)
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+	}
+
+	err = mw.stop()
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
+	}
+
+	for _, dir := range dirs {
+		if _, err := os.Stat(filepath.Join(srcPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
+			if err := cp.Copy(filepath.Join(srcPath, dir), filepath.Join(destination, dir), cp.Options{PreserveOwner: true}); err != nil {
+				return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			}
+		}
+	}
+
+	err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: destination})
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
+	}
+
+	if err := removeDirs(srcPath, dirs); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+	}
+
+	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
+		if err := os.RemoveAll(srcPath); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
@@ -678,6 +778,30 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 	}
 
 	return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountConfigUpdate(req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
+	response := func(code pb.RpcAccountConfigUpdateResponseErrorCode, err error) *pb.RpcAccountConfigUpdateResponse {
+		m := &pb.RpcAccountConfigUpdateResponse{Error: &pb.RpcAccountConfigUpdateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	if mw.app == nil {
+		return response(pb.RpcAccountConfigUpdateResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
+	}
+
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
+	cfg := config.ConfigRequired{}
+	cfg.TimeZone = req.TimeZone
+	err := files.WriteJsonConfig(conf.GetConfigPath(), cfg)
+	if err != nil {
+		return response(pb.RpcAccountConfigUpdateResponseError_FAILED_TO_WRITE_CONFIG, err)
+	}
+
+	return response(pb.RpcAccountConfigUpdateResponseError_NULL, err)
 }
 
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {

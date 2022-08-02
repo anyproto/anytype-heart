@@ -9,12 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -27,9 +29,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -47,6 +50,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 const (
@@ -143,8 +147,11 @@ type Service interface {
 	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetTextIcon(ctx *state.Context, contextId, image, emoji string, blockIds ...string) error
+	ClearTextStyle(ctx *state.Context, contextId string, blockIds ...string) error
+	ClearTextContent(ctx *state.Context, contextId string, blockIds ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	SetVerticalAlign(ctx *state.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error)
 	SetLayout(ctx *state.Context, id string, layout model.ObjectTypeLayout) error
 	SetLinkAppearance(ctx *state.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error)
 
@@ -185,6 +192,8 @@ type Service interface {
 	AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *model.RelationOption, err error)
 	UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) error
 	DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error
+	UpdateDataviewGroupOrder(ctx *state.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
+	UpdateDataviewObjectOrder(ctx *state.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
 	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (*types.Struct, error)
 	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRequest) error
@@ -193,6 +202,24 @@ type Service interface {
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
+	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error)
+	ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error)
+	ObjectToBookmark(id string, url string) (newId string, err error)
+
+	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error)
+	TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error)
+	TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error)
+	TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error)
+	TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error)
+	TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error)
+	TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error)
+	TableRowSetHeader(ctx *state.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error)
+	TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error)
+	TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
+	TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
+	TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error)
+	TableColumnListFill(ctx *state.Context, req pb.RpcBlockTableColumnListFillRequest) (err error)
+	TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
@@ -261,6 +288,7 @@ type service struct {
 	cache       ocache.OCache
 	objectStore objectstore.ObjectStore
 	restriction restriction.Service
+	bookmark    bookmarksvc.Service
 }
 
 func (s *service) Name() string {
@@ -277,24 +305,24 @@ func (s *service) Init(a *app.App) (err error) {
 	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
+	s.bookmark = a.MustComponent(bookmarksvc.CName).(bookmarksvc.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
 }
 
-func (s *service) Run() (err error) {
-	s.initPredefinedBlocks()
+func (s *service) Run(ctx context.Context) (err error) {
+	s.initPredefinedBlocks(ctx)
 	return
 }
 
-func (s *service) initPredefinedBlocks() {
+func (s *service) initPredefinedBlocks(ctx context.Context) {
 	ids := []string{
 		s.anytype.PredefinedBlocks().Account,
 		s.anytype.PredefinedBlocks().AccountOld,
 		s.anytype.PredefinedBlocks().Profile,
 		s.anytype.PredefinedBlocks().Archive,
 		s.anytype.PredefinedBlocks().Home,
-		s.anytype.PredefinedBlocks().SetPages,
 		s.anytype.PredefinedBlocks().MarketplaceType,
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
@@ -306,7 +334,7 @@ func (s *service) initPredefinedBlocks() {
 			// skip object that has been already indexed before
 			continue
 		}
-		ctx := &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)}
+		ctx := &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 		// this is needed so that old account will create its state successfully on first launch
 		if id == s.anytype.PredefinedBlocks().AccountOld {
 			ctx = nil
@@ -333,8 +361,12 @@ func (s *service) initPredefinedBlocks() {
 			ObjectId: id,
 		})
 	}
-	metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlocks{
-		TimeMs: time.Now().Sub(startTime).Milliseconds()})
+	spent := time.Now().Sub(startTime).Milliseconds()
+	if spent > 100 {
+		metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlocks{
+			TimeMs: spent,
+		})
+	}
 }
 
 func (s *service) Anytype() core.Service {
@@ -343,9 +375,9 @@ func (s *service) Anytype() core.Service {
 
 func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	startTime := time.Now()
-	ob, err := s.getSmartblock(context.TODO(), id)
+	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
 	if err != nil {
-		return
+		return err
 	}
 	afterSmartBlockTime := time.Now()
 	defer s.cache.Release(id)
@@ -357,6 +389,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	}
 	afterDataviewTime := time.Now()
 	st := ob.NewState()
+
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
@@ -396,7 +429,8 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 }
 
 func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
-	return s.Do(id, func(b smartblock.SmartBlock) error {
+	cctx := context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_show")
+	return s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
 		return b.Show(ctx)
 	})
 }
@@ -435,7 +469,7 @@ func (s *service) CloseBlock(id string) error {
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose()
 		s := b.NewState()
-		isDraft = pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String())
+		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
 		workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
 
 		return nil
@@ -565,19 +599,21 @@ func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 }
 
 // SetPagesIsArchived is deprecated
-func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (err error) {
+func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		anySucceed := false
+		var merr multierror.Error
+		var anySucceed bool
 		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
 		if err != nil {
 			return err
 		}
 		for _, id := range ids {
+			var err error
 			if restrErr := s.checkArchivedRestriction(req.IsArchived, id); restrErr != nil {
 				err = restrErr
 			} else {
@@ -588,34 +624,39 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 				}
 			}
 			if err != nil {
-				log.Errorf("failed to archive %s: %s", id, err.Error())
-			} else {
-				anySucceed = true
+				log.Warnf("failed to archive %s: %s", id, err.Error())
+				merr.Errors = append(merr.Errors, err)
+				continue
 			}
+			anySucceed = true
 		}
 
-		if !anySucceed {
-			return err
+		if err := merr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to archive: %s", err)
 		}
-
-		return nil
+		if anySucceed {
+			return nil
+		}
+		return merr.ErrorOrNil()
 	})
 }
 
 // SetPagesIsFavorite is deprecated
-func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) (err error) {
+func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error {
 	return s.Do(s.anytype.PredefinedBlocks().Home, func(b smartblock.SmartBlock) error {
 		fav, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected home block type: %T", b)
 		}
 
-		anySucceed := false
 		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
 		if err != nil {
 			return err
 		}
+		var merr multierror.Error
+		var anySucceed bool
 		for _, id := range ids {
+			var err error
 			if req.IsFavorite {
 				err = fav.AddObject(id)
 			} else {
@@ -623,16 +664,18 @@ func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) (
 			}
 			if err != nil {
 				log.Errorf("failed to favorite object %s: %s", id, err.Error())
-			} else {
-				anySucceed = true
+				merr.Errors = append(merr.Errors, err)
+				continue
 			}
+			anySucceed = true
 		}
-
-		if !anySucceed {
-			return err
+		if err := merr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to set objects as favorite: %s", err)
 		}
-
-		return nil
+		if anySucceed {
+			return nil
+		}
+		return merr.ErrorOrNil()
 	})
 }
 
@@ -662,7 +705,10 @@ func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 }
 
 func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
-	if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); isArchived && err != nil {
+	if !isArchived {
+		return nil
+	}
+	if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); err != nil {
 		return err
 	}
 	return nil
@@ -675,44 +721,47 @@ func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err 
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		anySucceed := false
+		var merr multierror.Error
+		var anySucceed bool
 		for _, blockId := range req.ObjectIds {
 			if exists, _ := archive.HasObject(blockId); exists {
-				if err = s.DeleteObject(blockId); err == nil {
-					archive.RemoveObject(blockId)
-					anySucceed = true
+				if err = s.DeleteObject(blockId); err != nil {
+					merr.Errors = append(merr.Errors, err)
+					continue
 				}
+				archive.RemoveObject(blockId)
+				anySucceed = true
 			}
 		}
-
-		if !anySucceed {
-			return err
+		if err := merr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to delete archived objects: %s", err)
 		}
-
-		return nil
+		if anySucceed {
+			return nil
+		}
+		return merr.ErrorOrNil()
 	})
 }
 
 func (s *service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
-	var (
-		newId      string
-		anySucceed bool
-	)
+	var newId string
 	var merr multierror.Error
+	var anySucceed bool
 	for _, id := range ids {
-		if newId, err = s.ObjectDuplicate(id); err == nil {
-			newIds = append(newIds, newId)
-			anySucceed = true
-		} else {
+		if newId, err = s.ObjectDuplicate(id); err != nil {
 			merr.Errors = append(merr.Errors, err)
+			continue
 		}
+		newIds = append(newIds, newId)
+		anySucceed = true
 	}
-	if !anySucceed {
-		err = merr.ErrorOrNil()
-	} else {
-		err = nil
+	if err := merr.ErrorOrNil(); err != nil {
+		log.Warnf("failed to duplicate objects: %s", err)
 	}
-	return
+	if anySucceed {
+		return newIds, nil
+	}
+	return nil, merr.ErrorOrNil()
 }
 
 func (s *service) DeleteArchivedObject(id string) (err error) {
@@ -860,22 +909,19 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		}
 	}
 
-	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
-	if err != nil {
-		return "", nil, fmt.Errorf("object type not found")
-	}
-
 	var workspaceId string
 	if details != nil && details.Fields != nil {
-		var isDraft = pbtypes.GetBool(details, bundle.RelationKeyIsDraft.String())
-		delete(details.Fields, bundle.RelationKeyIsDraft.String())
-
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
+			var rel *model.Relation
 			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
-				rel := pbtypes.GetRelation(objType.Relations, k)
+				// in case we don't have a relation both in the state and relations slice, we need to find it other places and add it
+				rel, _ = bundle.GetRelation(bundle.RelationKey(k))
 				if rel == nil {
-					return "", nil, fmt.Errorf("relation for detail %s not found", k)
+					rel, _ = s.objectStore.GetRelation(k)
+					if err != nil {
+						return "", nil, fmt.Errorf("relation for detail %s not found", k)
+					}
 				}
 				relCopy := pbtypes.CopyRelation(rel)
 				relCopy.Scope = model.Relation_object
@@ -883,9 +929,6 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 			}
 		}
 
-		if isDraft {
-			createState.SetDetailAndBundledRelation(bundle.RelationKeyIsDraft, pbtypes.Bool(true))
-		}
 		detailsWorkspaceId := details.Fields[bundle.RelationKeyWorkspaceId.String()]
 		if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
 			workspaceId = detailsWorkspaceId.GetStringValue()
@@ -941,16 +984,33 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
 func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
-	creator := func(ctx context.Context) (string, error) {
-		objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
-		if err != nil {
-			return objectId, fmt.Errorf("create smartblock error: %v", err)
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
+	var creator func(ctx context.Context) (string, error)
+
+	if pbtypes.GetString(req.Details, bundle.RelationKeyType.String()) == bundle.TypeKeySet.URL() {
+		creator = func(ctx context.Context) (string, error) {
+			objectId, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
+				Details: req.Details,
+			})
+			if err != nil {
+				return objectId, fmt.Errorf("create smartblock error: %v", err)
+			}
+			return objectId, nil
 		}
-		return objectId, nil
+	} else {
+		creator = func(ctx context.Context) (string, error) {
+			objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+			if err != nil {
+				return objectId, fmt.Errorf("create smartblock error: %v", err)
+			}
+			return objectId, nil
+		}
 	}
 
 	if req.ContextId != "" {
 		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+
 			linkId, objectId, err = s.createObject(ctx, sb, groupId, req, true, creator)
 			return err
 		})
@@ -1058,7 +1118,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.linkPreview)
+		sb = editor.NewPage(s, s, s, s.bookmark)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
@@ -1066,7 +1126,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet(s)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s, s, s.bookmark, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType(s)
@@ -1082,9 +1142,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate(s)
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.bookmark)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.bookmark)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
@@ -1129,7 +1189,7 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 }
 
 func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err error) {
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+	err = s.DoWithContext(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "migrate_many"), s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
@@ -1145,7 +1205,7 @@ func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 }
 
 func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_basic"), id)
 	if err != nil {
 		return err
 	}
@@ -1158,8 +1218,27 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 	return fmt.Errorf("basic operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {
+func (s *service) DoTable(id string, ctx *state.Context, apply func(st *state.State, b table.Editor) error) error {
 	sb, release, err := s.pickBlock(context.TODO(), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(table.Editor); ok {
+		sb.Lock()
+		defer sb.Unlock()
+
+		st := sb.NewStateCtx(ctx)
+		if err := apply(st, bb); err != nil {
+			return fmt.Errorf("apply function: %w", err)
+		}
+		return sb.Apply(st)
+	}
+	return fmt.Errorf("table operation not available for this block type: %T", sb)
+}
+
+func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
 		return err
 	}
@@ -1173,7 +1252,7 @@ func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) 
 }
 
 func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
 	if err != nil {
 		return err
 	}
@@ -1187,7 +1266,7 @@ func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 }
 
 func (s *service) DoText(id string, apply func(b stext.Text) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
 	if err != nil {
 		return err
 	}
@@ -1201,7 +1280,7 @@ func (s *service) DoText(id string, apply func(b stext.Text) error) error {
 }
 
 func (s *service) DoFile(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
 	if err != nil {
 		return err
 	}
@@ -1215,7 +1294,7 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 }
 
 func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
 	if err != nil {
 		return err
 	}
@@ -1229,7 +1308,7 @@ func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 }
 
 func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
 	if err != nil {
 		return err
 	}
@@ -1241,7 +1320,7 @@ func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
 	if err != nil {
 		return err
 	}
@@ -1255,7 +1334,7 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 }
 
 func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
 	if err != nil {
 		return err
 	}
@@ -1270,7 +1349,7 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 }
 
 func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
 	if err != nil {
 		return err
 	}
@@ -1284,7 +1363,7 @@ func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 }
 
 func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
@@ -1364,6 +1443,9 @@ func (s *service) TemplateClone(id string) (templateId string, err error) {
 func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
+			return err
+		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
 		return nil
@@ -1374,9 +1456,6 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	sbt, err := coresb.SmartBlockTypeFromID(id)
 	if err != nil {
 		return
-	}
-	if sbt != coresb.SmartBlockTypePage && sbt != coresb.SmartBlockTypeSet {
-		return "", fmt.Errorf("invalid smartblockTYpe for duplicate")
 	}
 
 	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
@@ -1395,10 +1474,26 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		}
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
+
+		if layout, ok := orig.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := orig.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				orig.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+			}
+		}
+
 		ts.BlocksInit(orig)
 		objType := ts.ObjectType()
 		// stateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectType(objType)
+
+		flags := internalflag.NewFromState(ts)
+		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.Remove(model.InternalFlag_editorSelectTemplate)
+		flags.AddToState(ts)
 
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
@@ -1410,8 +1505,83 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 	})
 }
 
+func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
+	contentCh := make(chan *model.BlockContentBookmark, 1)
+	go func() {
+		defer close(contentCh)
+
+		content := &model.BlockContentBookmark{
+			Url: url,
+		}
+		updaters, err := s.bookmark.ContentUpdaters(url)
+		if err != nil {
+			log.Error("fetch bookmark content %s: %s", url, err)
+		}
+		for upd := range updaters {
+			upd(content)
+		}
+		contentCh <- content
+	}()
+
+	return func() *model.BlockContentBookmark {
+		return <-contentCh
+	}
+}
+
+// ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
+func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error) {
+	url, err := uri.ProcessURI(req.Url)
+	if err != nil {
+		return "", fmt.Errorf("process uri: %w", err)
+	}
+	res := s.fetchBookmarkContent(url)
+	return s.bookmark.CreateBookmarkObject(url, res)
+}
+
+func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
+	url, err := uri.ProcessURI(req.Url)
+	if err != nil {
+		return fmt.Errorf("process uri: %w", err)
+	}
+	res := s.fetchBookmarkContent(url)
+	go func() {
+		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
+			log.Errorf("update bookmark object %s: %s", req.ContextId, err)
+		}
+	}()
+	return nil
+}
+
+func (s *service) ObjectToBookmark(id string, url string) (objectId string, err error) {
+	objectId, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
+		Url: url,
+	})
+	if err != nil {
+		return
+	}
+
+	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	res, err := oStore.GetWithLinksInfoByID(id)
+	if err != nil {
+		return
+	}
+	for _, il := range res.Links.Inbound {
+		if err = s.replaceLink(il.Id, id, objectId); err != nil {
+			return
+		}
+	}
+	err = s.DeleteObject(id)
+	if err != nil {
+		// intentionally do not return error here
+		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())
+		err = nil
+	}
+
+	return
+}
+
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	sb, err := s.newSmartBlock(id, nil)
+	sb, err := s.newSmartBlock(id, &smartblock.InitContext{Ctx: ctx})
 	if err != nil {
 		return
 	}

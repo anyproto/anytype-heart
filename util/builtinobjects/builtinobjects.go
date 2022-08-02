@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/gogo/protobuf/types"
@@ -74,7 +75,7 @@ func (b *builtinObjects) Name() (name string) {
 	return CName
 }
 
-func (b *builtinObjects) Run() (err error) {
+func (b *builtinObjects) Run(context.Context) (err error) {
 	if !b.newAccount {
 		// import only for new accounts
 		return
@@ -170,11 +171,21 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 			newTarget := b.idsMap[a.Model().GetLink().TargetBlockId]
 			if newTarget == "" {
 				// maybe we should panic here?
-				log.Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
+				log.With("object", st.RootId()).Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
 				return true
 			}
 
 			a.Model().GetLink().TargetBlockId = newTarget
+			st.Set(simple.New(a.Model()))
+		case bookmark.Block:
+			newTarget := b.idsMap[a.Model().GetBookmark().TargetObjectId]
+			if newTarget == "" {
+				// maybe we should panic here?
+				log.With("object", oldId).Errorf("cant find target id for bookmark: %s", a.Model().GetBookmark().TargetObjectId)
+				return true
+			}
+
+			a.Model().GetBookmark().TargetObjectId = newTarget
 			st.Set(simple.New(a.Model()))
 		case text.Block:
 			for i, mark := range a.Model().GetText().GetMarks().GetMarks() {
@@ -183,7 +194,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 				}
 				newTarget := b.idsMap[mark.Param]
 				if newTarget == "" {
-					log.Errorf("cant find target id for mentrion: %s", mark.Param)
+					log.With("object", oldId).Errorf("cant find target id for mention: %s", mark.Param)
 					continue
 				}
 
@@ -197,7 +208,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	for k, v := range st.Details().GetFields() {
 		rel, err := bundle.GetRelation(bundle.RelationKey(k))
 		if err != nil {
-			log.Errorf("failed to find relation %s: %s", k, err.Error())
+			log.With("object", oldId).Errorf("failed to find relation %s: %s", k, err.Error())
 			continue
 		}
 		if rel.Format != model.RelationFormat_object {
@@ -206,9 +217,12 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 
 		vals := pbtypes.GetStringListValue(v)
 		for i, val := range vals {
+			if bundle.HasRelation(val) {
+				continue
+			}
 			newTarget, _ := b.idsMap[val]
 			if newTarget == "" {
-				log.Errorf("cant find target id for relation %s: %s", k, val)
+				log.With("object", oldId).Errorf("cant find target id for relation %s: %s", k, val)
 				continue
 			}
 			vals[i] = newTarget

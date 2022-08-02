@@ -139,7 +139,13 @@ func (s *service) processNewExternalThread(tid thread.ID, ti ThreadInfo, pullAsy
 			defer cancel()
 
 			if err = s.t.Host().Connect(ctx, *peerAddrInfo); err != nil {
-				logWithAddr.With("threadAddr", tid.String()).Errorf("processNewExternalThread: failed to connect addr: %s", err.Error())
+				msg := fmt.Sprintf("processNewExternalThread: failed to connect: %s", err.Error())
+				l := logWithAddr.With("thread", tid.String()).With("peer", peerAddrInfo.ID.String())
+				if peerAddrInfo.ID.String() == s.CafePID {
+					l.Errorf(msg)
+				} else {
+					l.Debugf("processNewExternalThread: failed to connect peer: %s", err.Error())
+				}
 				continue
 			}
 

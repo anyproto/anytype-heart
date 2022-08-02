@@ -165,7 +165,7 @@ var WithMaxCountMigration = func(s *state.State) {
 	for k, v := range d.Fields {
 		rel := pbtypes.GetRelation(rels, k)
 		if rel == nil {
-			log.Errorf("obj %s relation %s is missing but detail is set", s.RootId(), k)
+			log.Warnf("obj %s relation %s is missing but detail is set", s.RootId(), k)
 		} else if rel.MaxCount == 1 {
 			if b := v.GetListValue(); b != nil {
 				if len(b.Values) > 0 {
@@ -332,12 +332,24 @@ var WithTitle = StateTransformer(func(s *state.State) {
 // WithDefaultFeaturedRelations **MUST** be called before WithDescription
 var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
 	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
-		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String()}
 		layout, _ := s.Layout()
 		if layout == model.ObjectType_basic || layout == model.ObjectType_note {
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+			fr = []string{bundle.RelationKeyType.String()}
 		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	}
+})
+
+var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
+	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+
+	if slice.FindPos(fr, bundle.RelationKeyCreator.String()) != -1 {
+		frc := make([]string, len(fr))
+		copy(frc, fr)
+
+		frc = slice.Remove(frc, bundle.RelationKeyCreator.String())
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
 	}
 })
 
@@ -691,17 +703,19 @@ var WithLinkFieldsMigration = func(s *state.State) {
 			return true
 		} else {
 			if b.Model().GetFields().GetFields() != nil && !pbtypes.GetBool(b.Model().GetFields(), linkMigratedKey) {
-				link := s.Get(b.Model().Id).(*link.Link).GetLink()
+
+				b = s.Get(b.Model().Id)
+				link := b.(*link.Link).GetLink()
 
 				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
 					link.CardStyle = model.BlockContentLinkCardStyle(cardStyle.GetNumberValue())
 				}
 
 				if iconSize, ok := b.Model().GetFields().Fields["iconSize"]; ok {
-					if int(iconSize.GetNumberValue()) < 2 {
-						link.IconSize = model.BlockContentLink_Small
-					} else {
-						link.IconSize = model.BlockContentLink_Medium
+					if int(iconSize.GetNumberValue()) == 1 {
+						link.IconSize = model.BlockContentLink_SizeSmall
+					} else if int(iconSize.GetNumberValue()) == 2 {
+						link.IconSize = model.BlockContentLink_SizeMedium
 					}
 				}
 
@@ -709,7 +723,7 @@ var WithLinkFieldsMigration = func(s *state.State) {
 					link.Description = model.BlockContentLinkDescription(description.GetNumberValue())
 				}
 
-				featuredRelations := map[string]string{"withCover": "cover", "withIcon": "icon", "withName": "name", "withType": "type"}
+				featuredRelations := map[string]string{"withCover": "cover", "withName": "name", "withType": "type"}
 				for key, relName := range featuredRelations {
 					if rel, ok := b.Model().GetFields().Fields[key]; ok {
 						if rel.GetBoolValue() {
@@ -726,4 +740,51 @@ var WithLinkFieldsMigration = func(s *state.State) {
 	})
 
 	return
+}
+
+var bookmarkRelationKeys = []string{
+	bundle.RelationKeyUrl.String(),
+	bundle.RelationKeyPicture.String(),
+	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeyTag.String(),
+	bundle.RelationKeyNotes.String(),
+	bundle.RelationKeyQuote.String(),
+}
+
+func makeRelationBlock(k string) *model.Block {
+	return &model.Block{
+		Id: k,
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: k,
+			},
+		},
+	}
+}
+
+var WithBookmarkBlocks = func(s *state.State) {
+	for _, k := range bookmarkRelationKeys {
+		if !s.HasRelation(k) {
+			s.AddRelation(bundle.MustGetRelation(bundle.RelationKey(k)))
+		}
+
+		if b := s.Pick(k); b != nil {
+			if ok := s.Unlink(b.Model().Id); !ok {
+				log.Errorf("can't unlink block %s", b.Model().Id)
+				return
+			}
+			continue
+		}
+
+		ok := s.Add(simple.New(makeRelationBlock(k)))
+		if !ok {
+			log.Errorf("can't add block %s", k)
+			return
+		}
+	}
+
+	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
+		log.Errorf("insert relation blocks: %w", err)
+		return
+	}
 }

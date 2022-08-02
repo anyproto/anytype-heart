@@ -2,6 +2,7 @@ package linkpreview
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"io"
 	"net/http"
 	"net/url"
@@ -62,7 +63,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 		}
 		return model.LinkPreview{}, err
 	}
-	res := l.convertOGToInfo(og)
+	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
 		res.Description = l.findContent(rt.lastBody)
 	}
@@ -75,10 +76,10 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	return res, nil
 }
 
-func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i model.LinkPreview) {
+func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) (i model.LinkPreview) {
 	og.ToAbs()
 	i = model.LinkPreview{
-		Url:         og.URL,
+		Url:         fetchUrl,
 		Title:       og.Title,
 		Description: og.Description,
 		Type:        model.LinkPreview_Page,
@@ -108,7 +109,7 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 	content = doc.Content()
 	content = strings.TrimSpace(l.bmPolicy.Sanitize(content))
 	content = strings.Join(strings.Fields(content), " ") // removes repetitive whitespaces
-	if utf8.RuneCountInString(content) > maxDescriptionSize {
+	if text.UTF16RuneCountString(content) > maxDescriptionSize {
 		content = string([]rune(content)[:maxDescriptionSize]) + "..."
 	}
 	return
@@ -142,6 +143,7 @@ type proxyRoundTripper struct {
 }
 
 func (p *proxyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
 	resp, err := p.RoundTripper.RoundTrip(req)
 	if err == nil {
 		p.lastResponse = resp

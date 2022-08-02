@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -157,7 +158,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 	}
 
 	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && firstTextBlock != nil && lastTextBlock == nil {
-		req.SelectedTextRange.To = int32(utf8.RuneCountInString(firstTextBlock.GetText().Text))
+		req.SelectedTextRange.To = int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
 	}
 
 	// scenario: rangeCut
@@ -203,16 +204,18 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 	htmlSlot = html.NewHTMLConverter(cb.Anytype(), cb.blocksToState(req.Blocks)).Convert()
 	anySlot = req.Blocks
 
+	var someUnlinked bool
 	for _, b := range req.Blocks {
 		if b.GetLayout() != nil {
 			continue
 		}
-		ok := s.Unlink(b.Id)
-		if !ok {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block")
+		if s.Unlink(b.Id) {
+			someUnlinked = true
 		}
 	}
-
+	if !someUnlinked {
+		return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block")
+	}
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
 }
 
@@ -294,29 +297,81 @@ func (cb *clipboard) pasteText(ctx *state.Context, req *pb.RpcBlockPasteRequest,
 		}
 	}
 	return cb.pasteAny(ctx, req, groupId)
-
 }
 
-func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
-	var oldToNew = make(map[string]string)
-	for _, b := range anySlot {
-		if b.Id == "" {
-			b.Id = bson.NewObjectId().Hex()
-		}
-		oldToNew[b.Id] = bson.NewObjectId().Hex()
-	}
-	for _, b := range anySlot {
-		b.Id = oldToNew[b.Id]
-		for i := range b.ChildrenIds {
-			b.ChildrenIds[i] = oldToNew[b.ChildrenIds[i]]
-		}
-	}
-	return anySlot
+// some types of blocks need a special duplication mechanism
+type duplicatable interface {
+	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
 func (cb *clipboard) pasteAny(ctx *state.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
-	ctrl := &pasteCtrl{s: s, ps: cb.blocksToState(cb.replaceIds(req.AnySlot))}
+
+	destState := state.NewDoc("", nil).(*state.State)
+
+	for _, b := range req.AnySlot {
+		if b.Id == "" {
+			b.Id = bson.NewObjectId().Hex()
+		}
+		if b.Id == template.TitleBlockId {
+			delete(b.Fields.Fields, text.DetailsKeyFieldName)
+		}
+	}
+	srcState := cb.blocksToState(req.AnySlot)
+	visited := map[string]struct{}{}
+
+	src := srcState.Blocks()
+	srcBlocks := make([]simple.Block, 0, len(src))
+	for _, b := range src {
+		srcBlocks = append(srcBlocks, simple.New(b))
+	}
+
+	oldToNew := map[string]string{}
+	// Handle blocks that have custom duplication code. For example, simple tables
+	// have to have special ID for cells
+	for _, b := range srcBlocks {
+		if d, ok := b.(duplicatable); ok {
+			id, visitedIds, blocks, err2 := d.Duplicate(srcState)
+			if err2 != nil {
+				err = fmt.Errorf("custom duplicate: %w", err2)
+				return
+			}
+
+			oldToNew[b.Model().Id] = id
+			for _, b := range blocks {
+				destState.Add(b)
+			}
+			for _, id := range visitedIds {
+				visited[id] = struct{}{}
+			}
+		}
+	}
+
+	// Collect and generate necessary IDs. Ignore ids of blocks that have been duplicated by custom code
+	for _, b := range srcBlocks {
+		if _, ok := visited[b.Model().Id]; ok {
+			continue
+		}
+		oldToNew[b.Model().Id] = bson.NewObjectId().Hex()
+	}
+
+	// Remap IDs
+	for _, b := range srcBlocks {
+		if _, ok := visited[b.Model().Id]; ok {
+			continue
+		}
+		b.Model().Id = oldToNew[b.Model().Id]
+		for i, id := range b.Model().ChildrenIds {
+			b.Model().ChildrenIds[i] = oldToNew[id]
+		}
+		destState.Add(b)
+	}
+
+	destState.BlocksInit(destState)
+	state.CleanupLayouts(destState)
+	destState.Normalize(false)
+
+	ctrl := &pasteCtrl{s: s, ps: destState}
 	if err = ctrl.Exec(req); err != nil {
 		return
 	}

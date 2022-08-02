@@ -1,29 +1,28 @@
 package core
 
 import (
+	"errors"
 	"fmt"
-	"github.com/anytypeio/go-naturaldate/v2"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-
-	"github.com/anytypeio/go-anytype-middleware/core/subscription"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/araddon/dateparse"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-naturaldate/v2"
+	"github.com/araddon/dateparse"
+	"github.com/gogo/protobuf/types"
 )
 
 // To be renamed to ObjectSetDetails
@@ -124,9 +123,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	records, err = enrichWithDateSuggestion(records, req)
-	if err != nil {
-		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
+	// Add dates only to the first page of search results
+	if req.Offset == 0 {
+		records, err = enrichWithDateSuggestion(records, req)
+		if err != nil {
+			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
+		}
 	}
 
 	var records2 = make([]*types.Struct, 0, len(records))
@@ -178,6 +180,9 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 			var exprType naturaldate.ExprType
 			t, exprType, err := naturaldate.Parse(raw, now)
 			if err != nil {
+				return time.Time{}
+			}
+			if exprType == naturaldate.ExprTypeInvalid {
 				return time.Time{}
 			}
 
@@ -271,6 +276,37 @@ func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequ
 	}
 
 	return resp
+}
+
+func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse {
+	errResponse := func(err error) *pb.RpcObjectRelationSearchDistinctResponse {
+		r := &pb.RpcObjectRelationSearchDistinctResponse{
+			Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+				Code: pb.RpcObjectRelationSearchDistinctResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(errors.New("app must be started"))
+	}
+
+	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	groups, err := store.RelationSearchDistinct(req.RelationKey, req.Filters)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
+	}, Groups: groups}
 }
 
 func (mw *Middleware) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
@@ -372,11 +408,14 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 	homeId := at.PredefinedBlocks().Home
 	if _, exists := nodeExists[homeId]; !exists {
+		// we don't index home object, but we DO index outgoing links from it
+		links, _ := at.ObjectStore().GetOutboundLinksById(homeId)
 		records = append(records, database.Record{&types.Struct{
 			Fields: map[string]*types.Value{
 				"id":        pbtypes.String(homeId),
 				"name":      pbtypes.String("Home"),
 				"iconEmoji": pbtypes.String("🏠"),
+				"links":     pbtypes.StringList(links),
 			},
 		}})
 	}
@@ -738,4 +777,67 @@ func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectTo
 		return nil
 	})
 	return response(setId, err)
+}
+
+func (mw *Middleware) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
+	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectCreateBookmarkResponse {
+		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, PageId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs block.Service) error {
+		var err error
+		id, err = bs.ObjectCreateBookmark(*req)
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) ObjectBookmarkFetch(req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
+	response := func(code pb.RpcObjectBookmarkFetchResponseErrorCode, err error) *pb.RpcObjectBookmarkFetchResponse {
+		m := &pb.RpcObjectBookmarkFetchResponse{Error: &pb.RpcObjectBookmarkFetchResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	err := mw.doBlockService(func(bs block.Service) error {
+		return bs.ObjectBookmarkFetch(*req)
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectBookmarkFetchResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectBookmarkFetchResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectToBookmark(req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
+	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
+		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs block.Service) error {
+		var err error
+		id, err = bs.ObjectToBookmark(req.ContextId, req.Url)
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectToBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
 }

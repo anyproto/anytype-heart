@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -14,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
 )
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
@@ -64,41 +64,13 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 
 	templates := []template.StateTransformer{
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyCreator.String()})),
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()})),
 		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithBlockEditRestricted(p.Id()),
+		template.WithCreatorRemovedFromFeaturedRelations,
 	}
-	if p.Id() == p.Anytype().PredefinedBlocks().SetPages && p.Pick(template.DataviewBlockId) == nil {
-		rels := pbtypes.MergeRelations(bundle.MustGetType(bundle.TypeKeyNote).Relations, bundle.MustGetRelations(dataview.DefaultDataviewRelations))
-		dataview := model.BlockContentOfDataview{
-			Dataview: &model.BlockContentDataview{
-				Source:    []string{bundle.TypeKeyNote.URL()},
-				Relations: rels,
-				Views: []*model.BlockContentDataviewView{
-					{
-						Id:   bson.NewObjectId().Hex(),
-						Type: model.BlockContentDataviewView_Table,
-						Name: "All notes",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-								Type:        model.BlockContentDataviewSort_Desc,
-							},
-						},
-						Relations: getDefaultViewRelations(rels),
-						Filters:   nil,
-					},
-				},
-			},
-		}
-
-		templates = append(templates,
-			template.WithDataview(dataview, false),
-			template.WithDetailName("Notes"),
-			template.WithDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{bundle.TypeKeyNote.URL()})),
-			template.WithDetailIconEmoji("📝"))
-	} else if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
+	if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
 		setOf := dvBlock.Model().GetDataview().Source
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(setOf)))
 		// add missing done relation

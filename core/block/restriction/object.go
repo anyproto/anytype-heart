@@ -1,6 +1,8 @@
 package restriction
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -13,6 +15,7 @@ var (
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
+		model.Restrictions_Duplicate,
 	}
 	objRestrictEdit = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -33,6 +36,7 @@ var (
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
+			model.Restrictions_Duplicate,
 		},
 		model.SmartBlockType_Workspace:           objRestrictAll,
 		model.SmartBlockType_File:                objRestrictAll,
@@ -56,7 +60,7 @@ func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (e
 	for _, r := range cr {
 		for _, er := range or {
 			if er == r {
-				return ErrRestricted
+				return fmt.Errorf("%w: %s", ErrRestricted, r.String())
 			}
 		}
 	}

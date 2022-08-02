@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
@@ -172,7 +173,7 @@ func TestExtractObjects(t *testing.T) {
 			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:  "test",
 				BlockIds:   tc.blockIds,
-				ObjectType: "page",
+				ObjectType: bundle.TypeKeyNote.URL(),
 			}
 			ctx := state.NewContext(nil)
 			linkIds, err := NewBasic(sb).ExtractBlocksToObjects(ctx, ts, req)

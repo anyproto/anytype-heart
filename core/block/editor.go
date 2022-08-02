@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
@@ -161,6 +164,18 @@ func (s *service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvai
 func (s *service) UpdateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewUpdateRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.UpdateView(ctx, req.BlockId, req.ViewId, *req.View, true)
+	})
+}
+
+func (s *service) UpdateDataviewGroupOrder(ctx *state.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateViewGroupOrder(ctx, req.BlockId, req.GroupOrder)
+	})
+}
+
+func (s *service) UpdateDataviewObjectOrder(ctx *state.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateViewObjectOrder(ctx, req.BlockId, req.ObjectOrders)
 	})
 }
 
@@ -436,6 +451,44 @@ func (s *service) SetTextColor(ctx *state.Context, contextId string, color strin
 	})
 }
 
+func (s *service) ClearTextStyle(ctx *state.Context, contextId string, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
+			t.Model().BackgroundColor = ""
+			t.Model().Align = model.Block_AlignLeft
+			t.Model().VerticalAlign = model.Block_VerticalAlignTop
+			t.SetTextColor("")
+			t.SetStyle(model.BlockContentText_Paragraph)
+
+			marks := t.Model().GetText().Marks.Marks[:0]
+			for _, m := range t.Model().GetText().Marks.Marks {
+				switch m.Type {
+				case model.BlockContentTextMark_Strikethrough,
+					model.BlockContentTextMark_Keyboard,
+					model.BlockContentTextMark_Italic,
+					model.BlockContentTextMark_Bold,
+					model.BlockContentTextMark_Underscored,
+					model.BlockContentTextMark_TextColor,
+					model.BlockContentTextMark_BackgroundColor:
+				default:
+					marks = append(marks, m)
+				}
+			}
+			t.Model().GetText().Marks.Marks = marks
+
+			return nil
+		})
+	})
+}
+
+func (s *service) ClearTextContent(ctx *state.Context, contextId string, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
+			return t.SetText("", nil)
+		})
+	})
+}
+
 func (s *service) SetTextMark(ctx *state.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.SetMark(ctx, mark, blockIds...)
@@ -476,6 +529,12 @@ func (s *service) SetLinkAppearance(ctx *state.Context, req pb.RpcBlockLinkListS
 func (s *service) SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error) {
 	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
 		return sb.SetAlign(ctx, align, blockIds...)
+	})
+}
+
+func (s *service) SetVerticalAlign(ctx *state.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error) {
+	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+		return sb.SetVerticalAlign(ctx, align, blockIds...)
 	})
 }
 
@@ -783,7 +842,7 @@ func (s *service) DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObject
 				}
 				return nil
 			})
-			if err != nil && err != smartblock.ErrRelationOptionNotFound {
+			if err != nil && err.Error() != smartblock.ErrRelationOptionNotFound.Error() && err.Error() != source.ErrObjectNotFound.Error() {
 				return err
 			}
 		}
@@ -836,6 +895,8 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 }
 
 func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err error) {
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
 	if len(req.Source) != 0 {
@@ -888,6 +949,18 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 	var details *types.Struct
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
+
+		s := b.NewState()
+		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
+			}
+		}
+
 		return nil
 	}); err != nil {
 		return
@@ -993,21 +1066,121 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 		})
 	}
 	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
-		return s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
+		return s.DoClipboard(req.TargetContextId, func(tb clipboard.Clipboard) error {
 			cs := cb.NewState()
-			blocks := basic.CutBlocks(cs, req.BlockIds)
-
-			ts := tb.NewState()
-			err := basic.PasteBlocks(ts, blocks)
-			if err != nil {
-				return fmt.Errorf("paste blocks: %w", err)
+			bs := basic.CutBlocks(cs, req.BlockIds)
+			blocks := make([]*model.Block, 0, len(bs))
+			for _, b := range bs {
+				blocks = append(blocks, b.Model())
 			}
-
-			err = tb.Apply(ts)
+			_, _, _, _, err := tb.Paste(ctx, &pb.RpcBlockPasteRequest{
+				FocusedBlockId: req.DropTargetId,
+				AnySlot:        blocks,
+			}, "")
 			if err != nil {
-				return fmt.Errorf("apply target block state: %w", err)
+				return fmt.Errorf("paste: %w", err)
 			}
 			return cb.Apply(cs)
 		})
 	})
+}
+
+func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		id, err = t.TableCreate(st, req)
+		return err
+	})
+	return
+}
+
+func (s *service) TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowCreate(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnCreate(st, req)
+	})
+	return
+}
+
+func (s *service) TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowDelete(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnDelete(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnMove(st, req)
+	})
+	return
+}
+
+func (s *service) TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowDuplicate(st, req)
+	})
+	return
+}
+
+func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		id, err = t.ColumnDuplicate(st, req)
+		return err
+	})
+	return id, err
+}
+
+func (s *service) TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.Expand(st, req)
+	})
+	return err
+}
+
+func (s *service) TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowListFill(st, req)
+	})
+	return err
+}
+
+func (s *service) TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowListClean(st, req)
+	})
+	return err
+}
+
+func (s *service) TableRowSetHeader(ctx *state.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowSetHeader(st, req)
+	})
+	return err
+}
+
+func (s *service) TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.Sort(st, req)
+	})
+	return err
+}
+
+func (s *service) TableColumnListFill(ctx *state.Context, req pb.RpcBlockTableColumnListFillRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnListFill(st, req)
+	})
+	return err
 }
