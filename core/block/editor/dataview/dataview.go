@@ -561,6 +561,9 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
+
+	fmt.Printf(" ---------------- UpdateView filters req: %+v", view.Filters)
+
 	s := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -1198,6 +1201,9 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", sch.String(), activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries
+
+	fmt.Printf(" ---------------- fetchAndGetEventsMessages filters: %+v", activeView.Filters)
+
 	qFilter, err := filter.MakeAndFilter(activeView.Filters)
 	if err != nil {
 		return nil, err
