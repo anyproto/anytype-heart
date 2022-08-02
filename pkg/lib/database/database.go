@@ -134,8 +134,6 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err error) {
 	q.Filters = injectDefaultFilters(q.Filters)
 
-	q.Filters = filter.TransformQuickOption(q.Filters, loc)
-
 	f = new(Filters)
 	mainFilter := filter.AndFilters{}
 	if sch != nil {
@@ -148,7 +146,7 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 		}
 
 		for _, qf := range q.Filters {
-			if slice.FindPos(f.dateKeys, qf.RelationKey) != -1 {
+			if slice.FindPos(f.dateKeys, qf.RelationKey) != -1 && qf.QuickOption == 0 {
 				qf.Value = dateOnly(qf.Value)
 			}
 		}
@@ -157,6 +155,7 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 			mainFilter = append(mainFilter, schFilters)
 		}
 	}
+
 	qFilter, err := filter.MakeAndFilter(q.Filters)
 	if err != nil {
 		return
