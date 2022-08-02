@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -946,6 +947,10 @@ func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err
 }
 
 func (s *service) ObjectToSet(id string, source []string) (newId string, err error) {
+	if s.app == nil {
+		err = errors.New("app can't be nil")
+		return
+	}
 	var details *types.Struct
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
