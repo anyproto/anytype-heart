@@ -599,19 +599,21 @@ func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 }
 
 // SetPagesIsArchived is deprecated
-func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (err error) {
+func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		anySucceed := false
+		var merr multierror.Error
+		var anySucceed bool
 		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
 		if err != nil {
 			return err
 		}
 		for _, id := range ids {
+			var err error
 			if restrErr := s.checkArchivedRestriction(req.IsArchived, id); restrErr != nil {
 				err = restrErr
 			} else {
@@ -622,34 +624,39 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 				}
 			}
 			if err != nil {
-				log.Errorf("failed to archive %s: %s", id, err.Error())
-			} else {
-				anySucceed = true
+				log.Warnf("failed to archive %s: %s", id, err.Error())
+				merr.Errors = append(merr.Errors, err)
+				continue
 			}
+			anySucceed = true
 		}
 
-		if !anySucceed {
-			return err
+		if err := merr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to archive: %s", err)
 		}
-
-		return nil
+		if anySucceed {
+			return nil
+		}
+		return merr.ErrorOrNil()
 	})
 }
 
 // SetPagesIsFavorite is deprecated
-func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) (err error) {
+func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error {
 	return s.Do(s.anytype.PredefinedBlocks().Home, func(b smartblock.SmartBlock) error {
 		fav, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected home block type: %T", b)
 		}
 
-		anySucceed := false
 		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
 		if err != nil {
 			return err
 		}
+		var merr multierror.Error
+		var anySucceed bool
 		for _, id := range ids {
+			var err error
 			if req.IsFavorite {
 				err = fav.AddObject(id)
 			} else {
@@ -657,16 +664,18 @@ func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) (
 			}
 			if err != nil {
 				log.Errorf("failed to favorite object %s: %s", id, err.Error())
-			} else {
-				anySucceed = true
+				merr.Errors = append(merr.Errors, err)
+				continue
 			}
+			anySucceed = true
 		}
-
-		if !anySucceed {
-			return err
+		if err := merr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to set objects as favorite: %s", err)
 		}
-
-		return nil
+		if anySucceed {
+			return nil
+		}
+		return merr.ErrorOrNil()
 	})
 }
 
@@ -696,7 +705,10 @@ func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 }
 
 func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
-	if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); isArchived && err != nil {
+	if !isArchived {
+		return nil
+	}
+	if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); err != nil {
 		return err
 	}
 	return nil
@@ -709,44 +721,47 @@ func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err 
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		anySucceed := false
+		var merr multierror.Error
+		var anySucceed bool
 		for _, blockId := range req.ObjectIds {
 			if exists, _ := archive.HasObject(blockId); exists {
-				if err = s.DeleteObject(blockId); err == nil {
-					archive.RemoveObject(blockId)
-					anySucceed = true
+				if err = s.DeleteObject(blockId); err != nil {
+					merr.Errors = append(merr.Errors, err)
+					continue
 				}
+				archive.RemoveObject(blockId)
+				anySucceed = true
 			}
 		}
-
-		if !anySucceed {
-			return err
+		if err := merr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to delete archived objects: %s", err)
 		}
-
-		return nil
+		if anySucceed {
+			return nil
+		}
+		return merr.ErrorOrNil()
 	})
 }
 
 func (s *service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
-	var (
-		newId      string
-		anySucceed bool
-	)
+	var newId string
 	var merr multierror.Error
+	var anySucceed bool
 	for _, id := range ids {
-		if newId, err = s.ObjectDuplicate(id); err == nil {
-			newIds = append(newIds, newId)
-			anySucceed = true
-		} else {
+		if newId, err = s.ObjectDuplicate(id); err != nil {
 			merr.Errors = append(merr.Errors, err)
+			continue
 		}
+		newIds = append(newIds, newId)
+		anySucceed = true
 	}
-	if !anySucceed {
-		err = merr.ErrorOrNil()
-	} else {
-		err = nil
+	if err := merr.ErrorOrNil(); err != nil {
+		log.Warnf("failed to duplicate objects: %s", err)
 	}
-	return
+	if anySucceed {
+		return newIds, nil
+	}
+	return nil, merr.ErrorOrNil()
 }
 
 func (s *service) DeleteArchivedObject(id string) (err error) {
