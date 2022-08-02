@@ -146,7 +146,7 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 		}
 
 		for _, qf := range q.Filters {
-			if slice.FindPos(f.dateKeys, qf.RelationKey) != -1 {
+			if slice.FindPos(f.dateKeys, qf.RelationKey) != -1 && qf.QuickOption == 0 {
 				qf.Value = dateOnly(qf.Value)
 			}
 		}
@@ -155,8 +155,6 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 			mainFilter = append(mainFilter, schFilters)
 		}
 	}
-
-	fmt.Printf(" ---------------- New filters: %+v", q.Filters)
 
 	qFilter, err := filter.MakeAndFilter(q.Filters)
 	if err != nil {
