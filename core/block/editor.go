@@ -905,7 +905,18 @@ func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err
 			return
 		}
 	}
-	workspaceId := s.anytype.PredefinedBlocks().Account
+	var workspaceId string
+	if req.GetDetails().GetFields() != nil {
+		detailsWorkspaceId := req.GetDetails().Fields[bundle.RelationKeyWorkspaceId.String()]
+		if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
+			workspaceId = detailsWorkspaceId.GetStringValue()
+		}
+	}
+
+	// if we don't have anything in details then check the object store
+	if workspaceId == "" {
+		workspaceId = s.anytype.PredefinedBlocks().Account
+	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
 	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
