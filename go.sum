@@ -90,8 +90,8 @@ github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW5
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51/go.mod h1:SoKy+W8Mf6v7XBV30xFWkIFMs7UnXwsNGrGV12yVkEs=
-github.com/anytypeio/go-threads v1.1.0-rc1.0.20220527140800-28e209386afa h1:ACEJvz1eCXFG0r7EB7VdnmJKGhfSN8QiOwPz+YQR/Bo=
-github.com/anytypeio/go-threads v1.1.0-rc1.0.20220527140800-28e209386afa/go.mod h1:xiz1Vx7v1TcQy5GW1C+KFLI+kh+Cc/wZSYdnpMpKjlQ=
+github.com/anytypeio/go-threads v1.1.0-rc1.0.20220802111516-169e90961a4e h1:iKKzB6xapkbIxEltLObVabbPuuGiGKu2R6Dxm5fvuYU=
+github.com/anytypeio/go-threads v1.1.0-rc1.0.20220802111516-169e90961a4e/go.mod h1:xiz1Vx7v1TcQy5GW1C+KFLI+kh+Cc/wZSYdnpMpKjlQ=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1 h1:g/LEIEQ0ACBOKX9MhORhlmluUKvuxvrIDbGMI0cqF5A=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
 github.com/anytypeio/ipfs-lite v1.3.1-0.20220527132758-e66e066c9d05 h1:FHf/AhgI4tJtLzeMfvYp/WmqzAvve20Nbdi15W0A4D0=
