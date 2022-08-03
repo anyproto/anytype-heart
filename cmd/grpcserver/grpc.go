@@ -222,7 +222,7 @@ func main() {
 	fmt.Println("gRPC server started at: " + addr)
 
 	go func() {
-		if err := proxy.ServeTLS(webLis, "./cert/localhost.pem", "./cert/localhost.key"); err != nil && err != http.ErrServerClosed {
+		if err := proxy.Serve(webLis); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("proxy error: %v", err)
 		}
 	}()
