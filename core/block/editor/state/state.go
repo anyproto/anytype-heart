@@ -44,6 +44,7 @@ type Doc interface {
 	LocalDetails() *types.Struct
 
 	OldExtraRelations() []*model.Relation
+	GetRelationLinks() pbtypes.RelationLinks
 
 	ObjectTypes() []string
 	ObjectType() string

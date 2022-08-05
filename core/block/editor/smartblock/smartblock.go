@@ -322,7 +322,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 				Type:          sb.Type(),
 				Blocks:        sb.Blocks(),
 				Details:       details,
-				RelationLinks: sb.RelationLinks(nil),
+				RelationLinks: sb.GetRelationLinks(),
 				Relations:     sb.Relations(nil).Models(), // deprecated, to be removed
 				ObjectTypes:   objectTypes,
 				Restrictions:  sb.restrictions.Proto(),
@@ -1269,19 +1269,14 @@ func (sb *smartBlock) baseRelations() []*model.Relation {
 	return rels
 }
 
-func (sb *smartBlock) RelationLinks(s *state.State) []*model.RelationLink {
-	if s == nil {
-		s = sb.NewState()
-	}
-
-	return s.PickRelationLinks()
-}
-
 func (sb *smartBlock) Relations(s *state.State) relation2.Relations {
+	var links []*model.RelationLink
 	if s == nil {
-		s = sb.NewState()
+		links = sb.Doc.GetRelationLinks()
+	} else {
+		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.RelationService().FetchLinks(s.PickRelationLinks())
+	rels, _ := sb.RelationService().FetchLinks(links)
 	return rels
 }
 

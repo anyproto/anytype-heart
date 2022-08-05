@@ -48,7 +48,7 @@ type Service interface {
 
 	Create(rel *model.Relation) (rl *model.RelationLink, err error)
 	//CreateOption(relationKey string, opt *model.RelationOption) (id string, err error)
-
+	MigrateRelations(rels []*model.Relation) (relLinks []*model.RelationLink, err error)
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
 }
