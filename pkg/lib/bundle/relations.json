@@ -300,6 +300,16 @@
     "source": "details"
   },
   {
+    "description": "Indicates whether the relation value is readonly",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "relationReadonly",
+    "maxCount": 1,
+    "name": "Relation is readonly",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Image icon",
     "format": "file",
     "hidden": true,
