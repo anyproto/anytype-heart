@@ -133,6 +133,7 @@ func (s *service) FetchKey(key string) (relation *Relation, err error) {
 
 func (s *service) fetchKey(key string) (relation *Relation, err error) {
 	if b, _ := bundle.GetRelation(bundle.RelationKey(key)); b != nil {
+		b.Id = addr.BundledRelationURLPrefix + key
 		return &Relation{b}, nil
 	}
 	q := database.Query{

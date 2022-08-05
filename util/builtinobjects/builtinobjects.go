@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 	"io"
@@ -58,6 +59,8 @@ type builtinObjects struct {
 	l          sync.Mutex
 	source     source.Service
 	service    block.Service
+	relService relation2.Service
+
 	newAccount bool
 	idsMap     map[string]string
 }
@@ -66,7 +69,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.service = a.MustComponent(block.CName).(block.Service)
 	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
-
+	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
 	b.cancel = func() {}
 	return
 }
@@ -156,6 +159,11 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	f["analyticsOriginalId"] = pbtypes.String(oldId)
 
 	st.Set(simple.New(m))
+	rels, err := b.relService.MigrateRelations(st.OldExtraRelations())
+	if err != nil {
+		return err
+	}
+	st.AddRelationLinks(rels...)
 
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
