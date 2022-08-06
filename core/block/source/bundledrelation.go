@@ -79,6 +79,10 @@ func (v *bundledRelation) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) 
 }
 
 func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {
+	if params.State.ChangeId() == "" {
+		// allow the first changes created by Init
+		return "virtual", nil
+	}
 	return "", ErrReadOnly
 }
 
