@@ -64,7 +64,6 @@ func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemov
 		return s[i-1]
 	}
 	diffData := diff.Diff(len(ld.beforeIds), len(ld.afterIds), ld)
-
 	for _, ch := range diffData {
 		for i := 0; i < ch.Ins; i++ {
 			idx := ch.B + i
@@ -78,11 +77,9 @@ func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemov
 			})
 			if isAdd {
 				ids = append(ids, ld.afterIds[idx])
-				// collect ids to pass to depbydep core/subscription/dep.go:54
 				wasAddOrRemove = true
 			}
 		}
-
 		for i := 0; i < ch.Del; i++ {
 			idx := ch.A + i
 			if !hasAfter(ld.beforeIds[idx]) {
@@ -94,5 +91,5 @@ func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemov
 			}
 		}
 	}
-	return // return ids as well
+	return
 }
