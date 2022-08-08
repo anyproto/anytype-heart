@@ -102,7 +102,7 @@ func MustGetType(tk TypeKey) *model.ObjectType {
 func MustGetRelation(rk RelationKey) *model.Relation {
 	if v, exists := relations[rk]; exists {
 		d := pbtypes.CopyRelation(v)
-		d.Id = "_br" + d.Key
+		d.Id = addr.BundledRelationURLPrefix + d.Key
 		return d
 	}
 
@@ -120,7 +120,9 @@ func MustGetRelations(rks []RelationKey) []*model.Relation {
 
 func GetRelation(rk RelationKey) (*model.Relation, error) {
 	if v, exists := relations[rk]; exists {
-		return pbtypes.CopyRelation(v), nil
+		v := pbtypes.CopyRelation(v)
+		v.Id = addr.BundledRelationURLPrefix + v.Key
+		return v, nil
 	}
 
 	return nil, ErrNotFound

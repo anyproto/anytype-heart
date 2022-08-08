@@ -638,27 +638,28 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 	}
 
 	var (
-		relations     []*model.Relation
+		relations     []*model.RelationLink
 		viewRelations []*model.BlockContentDataviewRelation
 	)
 
 	for _, rel := range schema.RequiredRelations() {
-		// other relations should be added with
-		if pbtypes.HasRelation(relations, rel.Key) {
-			continue
-		}
-
-		relations = append(relations, rel)
+		relations = append(relations, &model.RelationLink{
+			Id:  rel.Id,
+			Key: rel.Key,
+		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
 	}
 
 	for _, rel := range schema.ListRelations() {
 		// other relations should be added with
-		if pbtypes.HasRelation(relations, rel.Key) {
+		if pbtypes.HasRelationLink(relations, rel.Key) {
 			continue
 		}
 
-		relations = append(relations, rel)
+		relations = append(relations, &model.RelationLink{
+			Id:  rel.Id,
+			Key: rel.Key,
+		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}
 
@@ -668,21 +669,24 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 	}
 
 	for _, relKey := range DefaultDataviewRelations {
-		if pbtypes.HasRelation(relations, relKey.String()) {
+		if pbtypes.HasRelationLink(relations, relKey.String()) {
 			continue
 		}
 		rel := bundle.MustGetRelation(relKey)
 		if rel.Hidden {
 			continue
 		}
-		relations = append(relations, rel)
+		relations = append(relations, &model.RelationLink{
+			Id:  rel.Id,
+			Key: rel.Key,
+		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}
 
 	res = model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Relations: relations,
-			Source:    source,
+			RelationLinks: relations,
+			Source:        source,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   bson.NewObjectId().Hex(),

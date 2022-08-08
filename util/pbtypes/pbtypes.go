@@ -227,6 +227,16 @@ func HasRelation(rels []*model.Relation, key string) bool {
 	return false
 }
 
+func HasRelationLink(rels []*model.RelationLink, key string) bool {
+	for _, rel := range rels {
+		if rel.Key == key {
+			return true
+		}
+	}
+
+	return false
+}
+
 func MergeRelations(rels1 []*model.Relation, rels2 []*model.Relation) []*model.Relation {
 	if rels1 == nil {
 		return rels2
