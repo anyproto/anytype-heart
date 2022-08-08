@@ -293,6 +293,7 @@ func (s *service) onChange(entries []*entry) time.Duration {
 			depCount++
 		}
 	}
+
 	handleTime := time.Since(st)
 	event := s.ctxBuf.apply()
 	dur := time.Since(st)

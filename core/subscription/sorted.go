@@ -159,7 +159,8 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		s.compCountBefore = s.compCountAfter
 	}
 
-	wasAddOrRemove := s.diff.diff(ctx, s.id, s.keys)
+	wasAddOrRemove, ids := s.diff.diff(ctx, s.id, s.keys)
+	s.ds.depEntriesByEntries(ctx, ids)
 
 	hasChanges := false
 	for _, e := range ctx.entries {
