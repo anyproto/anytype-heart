@@ -833,24 +833,24 @@ func keypairsToAddresses(keypairs []wallet.Keypair) []string {
 	return addresses
 }
 
-func convertToRpcAccountConfig(cfg *cafePb.AccountStateConfig) *pb.RpcAccountConfig {
+func convertToRpcAccountConfig(cfg *cafePb.Config) *pb.RpcAccountConfig {
 	return &pb.RpcAccountConfig{
-		EnableDataview:             cfg.EnableDataview,
-		EnableDebug:                cfg.EnableDebug,
-		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-		Extra:                      cfg.Extra,
-		EnableSpaces:               cfg.EnableSpaces,
+		EnableDataview:          cfg.EnableDataview,
+		EnableDebug:             cfg.EnableDebug,
+		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
+		Extra:                   cfg.Extra,
+		EnableSpaces:            cfg.EnableSpaces,
 	}
 }
 
 func enrichWithCafeAccount(acc *model.Account, cafeAcc *cafePb.AccountState) {
 	cfg := cafeAcc.Config
 	acc.Config = &model.AccountConfig{
-		EnableDataview:             cfg.EnableDataview,
-		EnableDebug:                cfg.EnableDebug,
-		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-		Extra:                      cfg.Extra,
-		EnableSpaces:               cfg.EnableSpaces,
+		EnableDataview:          cfg.EnableDataview,
+		EnableDebug:             cfg.EnableDebug,
+		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
+		Extra:                   cfg.Extra,
+		EnableSpaces:            cfg.EnableSpaces,
 	}
 
 	st := cafeAcc.Status

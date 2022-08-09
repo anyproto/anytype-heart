@@ -1857,7 +1857,7 @@ Response – message from a middleware.
 | ----- | ---- | ----- | ----------- |
 | enableDataview | [bool](#bool) |  |  |
 | enableDebug | [bool](#bool) |  |  |
-| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| enablePrereleaseChannel | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
@@ -17913,7 +17913,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | ----- | ---- | ----- | ----------- |
 | enableDataview | [bool](#bool) |  |  |
 | enableDebug | [bool](#bool) |  |  |
-| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| enablePrereleaseChannel | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
@@ -17930,7 +17930,6 @@ Avatar of a user&#39;s account. It could be an image or color
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| personalWorkspaceId | [string](#string) |  | personal workspace id |
 | homeObjectId | [string](#string) |  | home dashboard block id |
 | archiveObjectId | [string](#string) |  | archive block id |
 | profileObjectId | [string](#string) |  | profile block id |
