@@ -32,16 +32,13 @@ func (w *Workspaces) CreateRelationOption(relationKey string, opt *types.Struct)
 	}
 	opt.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(relationKey)
 
-	w.Lock()
-	defer w.Unlock()
-
 	subId := bson.NewObjectId().Hex()
 	id = w.Id() + "/" + subId
 	opt.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	st := w.NewState()
 	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(opt))
-	if err = w.initOption(subId); err != nil {
+	if err = w.initOption(st, subId); err != nil {
 		return
 	}
 	if err = w.Apply(st, smartblock.NoHooks); err != nil {
@@ -50,14 +47,14 @@ func (w *Workspaces) CreateRelationOption(relationKey string, opt *types.Struct)
 	return
 }
 
-func (w *Workspaces) initOption(subId string) (err error) {
+func (w *Workspaces) initOption(st *state.State, subId string) (err error) {
 	opt := NewOption()
-	st, err := w.optionSubState(subId)
+	subState, err := w.optionSubState(st, subId)
 	if err != nil {
 		return
 	}
 	if err = opt.Init(&smartblock.InitContext{
-		Source: w.sourceService.NewStaticSource(w.Id()+"/"+subId, model.SmartBlockType_RelationOption, st, w.onOptionChange),
+		Source: w.sourceService.NewStaticSource(w.Id()+"/"+subId, model.SmartBlockType_RelationOption, subState, w.onOptionChange),
 		App:    w.app,
 	}); err != nil {
 		return
@@ -80,10 +77,9 @@ func (w *Workspaces) Locked() bool {
 	return false
 }
 
-func (w *Workspaces) optionSubState(subId string) (*state.State, error) {
+func (w *Workspaces) optionSubState(st *state.State, subId string) (*state.State, error) {
 	id := w.Id() + "/" + subId
-	s := w.NewState()
-	optData := pbtypes.GetStruct(s.NewState().GetCollection(collectionKeyRelationOptions), subId)
+	optData := pbtypes.GetStruct(st.GetCollection(collectionKeyRelationOptions), subId)
 	if optData == nil || optData.Fields == nil {
 		return nil, fmt.Errorf("no data for option: %v", id)
 	}
