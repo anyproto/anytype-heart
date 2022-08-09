@@ -3,9 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"sort"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
@@ -27,7 +28,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse {
+func (mw *Middleware) DebugThread(cctx context.Context, req *pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse {
 	response := func(thread *pb.RpcDebugthreadInfo, code pb.RpcDebugThreadResponseErrorCode, err error) *pb.RpcDebugThreadResponse {
 		m := &pb.RpcDebugThreadResponse{Info: thread, Error: &pb.RpcDebugThreadResponseError{Code: code}}
 		if err != nil {
@@ -58,7 +59,7 @@ func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThr
 	return response(&tinfo, 0, nil)
 }
 
-func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
+func (mw *Middleware) DebugSync(cctx context.Context, req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
 	mw.m.RLock()
 	if mw.app == nil {
 		return &pb.RpcDebugSyncResponse{}
@@ -113,7 +114,7 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	return response(threads, threadsWithoutRepl, threadWithNoHeadDownloaded, totalRecords, totalSize, 0, nil)
 }
 
-func (mw *Middleware) DebugTree(req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
+func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
 	response := func(err error, filename string) *pb.RpcDebugTreeResponse {
 		rpcErr := &pb.RpcDebugTreeResponseError{
 			Code: pb.RpcDebugTreeResponseError_NULL,
@@ -138,7 +139,7 @@ func (mw *Middleware) DebugTree(req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeRes
 	return response(err, filename)
 }
 
-func (mw *Middleware) DebugExportLocalstore(req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
+func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
 	response := func(path string, err error) (res *pb.RpcDebugExportLocalstoreResponse) {
 		res = &pb.RpcDebugExportLocalstoreResponse{
 			Error: &pb.RpcDebugExportLocalstoreResponseError{

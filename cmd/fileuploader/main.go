@@ -4,14 +4,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"io/ioutil"
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -33,8 +35,10 @@ func main() {
 			// nothing to do
 		})
 
-		_ = mw.WalletCreate(&pb.RpcWalletCreateRequest{RootPath: rootPath})
-		_ = mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "profile", AlphaInviteCode: invite})
+		ctx := context.Background()
+
+		_ = mw.WalletCreate(ctx, &pb.RpcWalletCreateRequest{RootPath: rootPath})
+		_ = mw.AccountCreate(ctx, &pb.RpcAccountCreateRequest{Name: "profile", AlphaInviteCode: invite})
 
 		var cids []string
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
@@ -46,7 +50,7 @@ func main() {
 				return nil
 			}
 
-			resp := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: path, DisableEncryption: true})
+			resp := mw.FileUpload(ctx, &pb.RpcFileUploadRequest{LocalPath: path, DisableEncryption: true})
 			if int(resp.Error.Code) != 0 {
 				return fmt.Errorf(resp.Error.Description)
 			}

@@ -1,18 +1,24 @@
 package core
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
 
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 const wordCount int = 12
 
-func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
+func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
 	response := func(mnemonic string, code pb.RpcWalletCreateResponseErrorCode, err error) *pb.RpcWalletCreateResponse {
 		m := &pb.RpcWalletCreateResponse{Mnemonic: mnemonic, Error: &pb.RpcWalletCreateResponseError{Code: code}}
 		if err != nil {
@@ -38,12 +44,29 @@ func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWallet
 		return response("", pb.RpcWalletCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	mw.mnemonic = mnemonic
+	if err = mw.setMnemonic(mnemonic); err != nil {
+		return response("", pb.RpcWalletCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("set mnemonic: %w", err))
+	}
 
 	return response(mnemonic, pb.RpcWalletCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
+func (mw *Middleware) setMnemonic(mnemonic string) error {
+	mw.mnemonic = mnemonic
+	acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
+	if err != nil {
+		return fmt.Errorf("derive private key: %w", err)
+	}
+	priv, err := acc.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("marshal private key: %w", err)
+	}
+
+	mw.privateKey = priv
+	return nil
+}
+
+func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
 	response := func(code pb.RpcWalletRecoverResponseErrorCode, err error) *pb.RpcWalletRecoverResponse {
 		m := &pb.RpcWalletRecoverResponse{Error: &pb.RpcWalletRecoverResponseError{Code: code}}
 		if err != nil {
@@ -73,14 +96,16 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 		return response(pb.RpcWalletRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
-	mw.mnemonic = req.Mnemonic
+	if err = mw.setMnemonic(req.Mnemonic); err != nil {
+		return response(pb.RpcWalletRecoverResponseError_UNKNOWN_ERROR, err)
+	}
 	mw.rootPath = req.RootPath
 	mw.foundAccounts = nil
 
 	return response(pb.RpcWalletRecoverResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WalletConvert(req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
+func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
 	response := func(mnemonic, entropy string, code pb.RpcWalletConvertResponseErrorCode, err error) *pb.RpcWalletConvertResponse {
 		m := &pb.RpcWalletConvertResponse{Mnemonic: mnemonic, Entropy: entropy, Error: &pb.RpcWalletConvertResponseError{Code: code}}
 		if err != nil {
@@ -113,4 +138,75 @@ func (mw *Middleware) WalletConvert(req *pb.RpcWalletConvertRequest) *pb.RpcWall
 	}
 
 	return response("", "", pb.RpcWalletConvertResponseError_BAD_INPUT, fmt.Errorf("you should specify neither entropy or mnemonic to convert"))
+}
+
+func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
+	response := func(token string, code pb.RpcWalletCreateSessionResponseErrorCode, err error) *pb.RpcWalletCreateSessionResponse {
+		m := &pb.RpcWalletCreateSessionResponse{Token: token, Error: &pb.RpcWalletCreateSessionResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	// test if mnemonic is correct
+	_, err := core.WalletAccountAt(req.Mnemonic, 0, "")
+	if err != nil {
+		return response("", pb.RpcWalletCreateSessionResponseError_BAD_INPUT, err)
+	}
+
+	tok, err := mw.sessions.StartSession(mw.privateKey)
+	if err != nil {
+		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(tok, pb.RpcWalletCreateSessionResponseError_NULL, nil)
+}
+
+func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse {
+	response := func(code pb.RpcWalletCloseSessionResponseErrorCode, err error) *pb.RpcWalletCloseSessionResponse {
+		m := &pb.RpcWalletCloseSessionResponse{Error: &pb.RpcWalletCloseSessionResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	if sender, ok := mw.EventSender.(session.Closer); ok {
+		sender.CloseSession(req.Token)
+	}
+	if err := mw.sessions.CloseSession(req.Token); err != nil {
+		response(pb.RpcWalletCloseSessionResponseError_UNKNOWN_ERROR, fmt.Errorf("session service: %w", err))
+	}
+
+	return response(pb.RpcWalletCloseSessionResponseError_NULL, nil)
+}
+
+func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	_, d := descriptor.ForMessage(req.(descriptor.Message))
+	noAuth := proto.GetBoolExtension(d.GetOptions(), pb.E_NoAuth, false)
+	if noAuth {
+		resp, err = handler(ctx, req)
+		return
+	}
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("missing metadata")
+	}
+	v := md.Get("token")
+	if len(v) == 0 {
+		return nil, fmt.Errorf("missing token")
+	}
+	tok := v[0]
+
+	err = mw.sessions.ValidateToken(mw.privateKey, tok)
+	if err != nil {
+		return
+	}
+
+	resp, err = handler(ctx, req)
+	return
 }
