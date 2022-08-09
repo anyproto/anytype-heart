@@ -4,36 +4,42 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/resolver"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	ipld "github.com/ipfs/go-ipld-format"
-	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	"github.com/textileio/go-threads/util"
 	"io"
 	"time"
 
 	ipfslite "github.com/hsanjuan/ipfs-lite"
+	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-ipns"
+	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/pnet"
+	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dualdht "github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
-	libp2ptls "github.com/libp2p/go-libp2p-tls"
-	"github.com/libp2p/go-tcp-transport"
+	record "github.com/libp2p/go-libp2p-record"
+	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	ma "github.com/multiformats/go-multiaddr"
 	madns "github.com/multiformats/go-multiaddr-dns"
+	"github.com/textileio/go-threads/util"
 
 	app "github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/resolver"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
 )
 
 const CName = "ipfs"
@@ -45,7 +51,7 @@ type liteNet struct {
 	*ipfslite.Peer
 	ds   datastore.Datastore
 	host host.Host
-	dht  *dual.DHT
+	dht  *dualdht.DHT
 
 	peerStoreCtxCancel context.CancelFunc
 
@@ -124,7 +130,76 @@ func (ln *liteNet) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (ln *liteNet) Run(context.Context) error {
+func newDHT(ctx context.Context, h host.Host, ds ds.Batching) (*dualdht.DHT, error) {
+	dhtOpts := []dualdht.Option{
+		dualdht.DHTOption(dht.NamespacedValidator("pk", record.PublicKeyValidator{})),
+		dualdht.DHTOption(dht.NamespacedValidator("ipns", ipns.Validator{KeyBook: h.Peerstore()})),
+		dualdht.DHTOption(dht.Concurrency(10)),
+		dualdht.DHTOption(dht.Mode(dht.ModeAuto)),
+	}
+	if ds != nil {
+		dhtOpts = append(dhtOpts, dualdht.DHTOption(dht.Datastore(ds)))
+	}
+
+	return dualdht.New(ctx, h, dhtOpts...)
+}
+
+func setupLibP2PNode(ctx context.Context, cfg *Config, blockDS, peerDS ds.Batching) (host.Host, *dualdht.DHT, error) {
+	var ddht *dualdht.DHT
+	var err error
+
+	pstore, err := pstoreds.NewPeerstore(ctx, peerDS, pstoreds.DefaultOpts())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r := bytes.NewReader([]byte(cfg.PrivateNetSecret))
+	privateNetworkKey, err := pnet.DecodeV1PSK(r)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	transports := libp2p.ChainOptions(
+		libp2p.NoTransports,
+		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(time.Second*10)),
+		libp2p.Transport(websocket.New),
+	)
+
+	cnmgr, err := connmgr.NewConnManager(cfg.SwarmLowWater, cfg.SwarmHighWater, connmgr.WithGracePeriod(time.Minute))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	finalOpts := []libp2p.Option{
+		libp2p.Identity(cfg.PrivKey),
+		libp2p.ListenAddrs(cfg.HostAddr),
+		libp2p.PrivateNetwork(privateNetworkKey),
+		transports,
+		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
+			ddht, err = newDHT(ctx, h, blockDS)
+			return ddht, err
+		}),
+		libp2p.ConnectionManager(cnmgr),
+		libp2p.Peerstore(pstore),
+		libp2p.Security(libp2ptls.ID, libp2ptls.New),
+		libp2p.EnableAutoRelay(),            // if our network state changes we will try to connect to one of the relay specified below
+		libp2p.StaticRelays(cfg.RelayNodes), // in case we are under NAT we will announce our addresses through these nodes
+	}
+
+	h, err := libp2p.New(
+		finalOpts...,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return h, ddht, err
+}
+
+func (ln *liteNet) Run(_ context.Context) error {
+	var ctx context.Context
+	ctx, ln.peerStoreCtxCancel = context.WithCancel(context.Background())
+
 	peerDS, err := ln.ds.PeerstoreDS()
 	if err != nil {
 		return fmt.Errorf("peerDS: %s", err.Error())
@@ -137,35 +212,7 @@ func (ln *liteNet) Run(context.Context) error {
 	peerDS = nocloserds.NewBatch(peerDS)
 	blockDS = nocloserds.NewBatch(blockDS)
 
-	var (
-		ctx context.Context
-	)
-
-	ctx, ln.peerStoreCtxCancel = context.WithCancel(context.Background())
-	pstore, err := pstoreds.NewPeerstore(ctx, peerDS, pstoreds.DefaultOpts())
-	if err != nil {
-		return err
-	}
-
-	r := bytes.NewReader([]byte(ln.cfg.PrivateNetSecret))
-	privateNetworkKey, err := pnet.DecodeV1PSK(r)
-	if err != nil {
-		return err
-	}
-
-	ln.host, ln.dht, err = ipfslite.SetupLibp2p(
-		ctx,
-		ln.cfg.PrivKey,
-		privateNetworkKey,
-		[]ma.Multiaddr{ln.cfg.HostAddr},
-		blockDS,
-		libp2p.ConnectionManager(connmgr.NewConnManager(ln.cfg.SwarmLowWater, ln.cfg.SwarmHighWater, time.Minute)),
-		libp2p.Peerstore(pstore),
-		libp2p.Security(libp2ptls.ID, libp2ptls.New),
-		libp2p.Transport(tcp.NewTCPTransport),  // connection timeout overridden in core.go init
-		libp2p.EnableAutoRelay(),               // if our network state changes we will try to connect to one of the relay specified below
-		libp2p.StaticRelays(ln.cfg.RelayNodes), // in case we are under NAT we will announce our addresses through these nodes
-	)
+	ln.host, ln.dht, err = setupLibP2PNode(ctx, ln.cfg, blockDS, peerDS)
 	if err != nil {
 		return err
 	}
@@ -255,7 +302,7 @@ func (i *liteNet) BlockStore() blockstore.Blockstore {
 }
 
 func (i *liteNet) HasBlock(c cid.Cid) (bool, error) {
-	return i.Peer.HasBlock(c)
+	return i.Peer.HasBlock(context.Background(), c)
 }
 
 func (i *liteNet) Remove(ctx context.Context, c cid.Cid) error {

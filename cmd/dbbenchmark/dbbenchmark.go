@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -53,7 +54,8 @@ func initObjecStore(o *options) (os objectstore.ObjectStore, closer func(), err 
 		return
 	}
 
-	return objectstore.NewWithLocalstore(ds), closer, nil
+	ds2 := noctxds.New(ds)
+	return objectstore.NewWithLocalstore(ds2), closer, nil
 }
 
 func initBadgerV3(o *options) (*dsbadgerv3.Datastore, error) {
