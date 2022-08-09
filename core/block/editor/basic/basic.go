@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -21,31 +22,31 @@ import (
 )
 
 type Basic interface {
-	Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
-	Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
-	Unlink(ctx *state.Context, id ...string) (err error)
-	Move(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
-	Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error)
-	SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
-	Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
-	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
+	Create(ctx *session.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
+	Duplicate(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
+	Unlink(ctx *session.Context, id ...string) (err error)
+	Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
+	Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error)
+	SetFields(ctx *session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
+	Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
+	SetDivStyle(ctx *session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 
 	PasteBlocks(blocks []simple.Block) (err error)
-	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
-	SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextRequest) error
-	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
-	FeaturedRelationAdd(ctx *state.Context, relations ...string) error
-	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
+	SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error
+	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
+	AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error
+	FeaturedRelationAdd(ctx *session.Context, relations ...string) error
+	FeaturedRelationRemove(ctx *session.Context, relations ...string) error
 	ReplaceLink(oldId, newId string) error
 
-	ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
 func (bs *basic) PasteBlocks(blocks []simple.Block) (err error) {
 	s := bs.NewState()
-	if err := PasteBlocks(s, blocks); err != nil {
+	if err := PasteBlocks(s, blocks, "", model.Block_Inner); err != nil {
 		return fmt.Errorf("paste blocks: %w", err)
 	}
 	return bs.Apply(s)
@@ -59,7 +60,7 @@ type basic struct {
 	smartblock.SmartBlock
 }
 
-func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
+func (bs *basic) Create(ctx *session.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
 	if err = bs.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 		return
 	}
@@ -80,7 +81,7 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 	return id, nil
 }
 
-func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+func (bs *basic) Duplicate(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
 	if bs.Type() == model.SmartBlockType_Set {
 		return nil, ErrNotSupported
 	}
@@ -139,7 +140,7 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 	return copy.Model().Id, nil
 }
 
-func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
+func (bs *basic) Unlink(ctx *session.Context, ids ...string) (err error) {
 	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
@@ -158,7 +159,7 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 	return bs.Apply(s)
 }
 
-func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (err error) {
+func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (err error) {
 	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
@@ -211,7 +212,7 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjec
 	return bs.Apply(s)
 }
 
-func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error) {
+func (bs *basic) Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error) {
 	if bs.Type() == model.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
@@ -238,7 +239,7 @@ func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (new
 	return
 }
 
-func (bs *basic) SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
+func (bs *basic) SetFields(ctx *session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
 	s := bs.NewStateCtx(ctx)
 	for _, fr := range fields {
 		if b := s.Get(fr.BlockId); b != nil {
@@ -248,7 +249,7 @@ func (bs *basic) SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFiel
 	return bs.Apply(s)
 }
 
-func (bs *basic) Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
+func (bs *basic) Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
 	for _, id := range blockIds {
 		if b := s.Get(id); b != nil {
@@ -262,7 +263,7 @@ func (bs *basic) Update(ctx *state.Context, apply func(b simple.Block) error, bl
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error) {
+func (bs *basic) SetDivStyle(ctx *session.Context, style model.BlockContentDivStyle, ids ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
 	for _, id := range ids {
 		b := s.Get(id)
@@ -278,7 +279,7 @@ func (bs *basic) SetDivStyle(ctx *state.Context, style model.BlockContentDivStyl
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) (err error) {
+func (bs *basic) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {
@@ -295,7 +296,7 @@ func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKe
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextRequest) (err error) {
+func (bs *basic) SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {
@@ -310,7 +311,7 @@ func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextReq
 	return bs.Apply(s, smartblock.NoEvent)
 }
 
-func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) (err error) {
+func (bs *basic) AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelationAddRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {
@@ -331,7 +332,7 @@ func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAd
 	return bs.Apply(s)
 }
 
-func (bs *basic) FeaturedRelationAdd(ctx *state.Context, relations ...string) (err error) {
+func (bs *basic) FeaturedRelationAdd(ctx *session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 	frc := make([]string, len(fr))
@@ -348,7 +349,7 @@ func (bs *basic) FeaturedRelationAdd(ctx *state.Context, relations ...string) (e
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
-func (bs *basic) FeaturedRelationRemove(ctx *state.Context, relations ...string) (err error) {
+func (bs *basic) FeaturedRelationRemove(ctx *session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 	frc := make([]string, len(fr))

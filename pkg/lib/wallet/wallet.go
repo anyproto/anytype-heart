@@ -106,6 +106,7 @@ func WalletFromEntropy(entropy []byte) (*Wallet, error) {
 	return &Wallet{RecoveryPhrase: mnemonic}, nil
 }
 
+// AccountAt
 // To understand how this works, refer to the living document:
 // https://paper.dropbox.com/doc/Hierarchical-Deterministic-Wallets--Ae0TOjGObNq_zlyYFh7Ea0jNAQ-t7betWDTvXtK6qqD8HXKf
 func (w *Wallet) AccountAt(index int, passphrase string) (Keypair, error) {

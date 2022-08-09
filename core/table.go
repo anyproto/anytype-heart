@@ -1,13 +1,14 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) BlockTableCreate(req *pb.RpcBlockTableCreateRequest) *pb.RpcBlockTableCreateResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableCreate(cctx context.Context, req *pb.RpcBlockTableCreateRequest) *pb.RpcBlockTableCreateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableCreateResponseErrorCode, id string, err error) *pb.RpcBlockTableCreateResponse {
 		m := &pb.RpcBlockTableCreateResponse{Error: &pb.RpcBlockTableCreateResponseError{Code: code}, BlockId: id}
 		if err != nil {
@@ -28,8 +29,8 @@ func (mw *Middleware) BlockTableCreate(req *pb.RpcBlockTableCreateRequest) *pb.R
 	return response(pb.RpcBlockTableCreateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableRowCreate(req *pb.RpcBlockTableRowCreateRequest) *pb.RpcBlockTableRowCreateResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableRowCreate(cctx context.Context, req *pb.RpcBlockTableRowCreateRequest) *pb.RpcBlockTableRowCreateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableRowCreateResponseErrorCode, id string, err error) *pb.RpcBlockTableRowCreateResponse {
 		m := &pb.RpcBlockTableRowCreateResponse{Error: &pb.RpcBlockTableRowCreateResponseError{Code: code}}
 		if err != nil {
@@ -50,8 +51,8 @@ func (mw *Middleware) BlockTableRowCreate(req *pb.RpcBlockTableRowCreateRequest)
 	return response(pb.RpcBlockTableRowCreateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableColumnCreate(req *pb.RpcBlockTableColumnCreateRequest) *pb.RpcBlockTableColumnCreateResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableColumnCreate(cctx context.Context, req *pb.RpcBlockTableColumnCreateRequest) *pb.RpcBlockTableColumnCreateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableColumnCreateResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnCreateResponse {
 		m := &pb.RpcBlockTableColumnCreateResponse{Error: &pb.RpcBlockTableColumnCreateResponseError{Code: code}}
 		if err != nil {
@@ -72,8 +73,8 @@ func (mw *Middleware) BlockTableColumnCreate(req *pb.RpcBlockTableColumnCreateRe
 	return response(pb.RpcBlockTableColumnCreateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableRowDelete(req *pb.RpcBlockTableRowDeleteRequest) *pb.RpcBlockTableRowDeleteResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableRowDelete(cctx context.Context, req *pb.RpcBlockTableRowDeleteRequest) *pb.RpcBlockTableRowDeleteResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableRowDeleteResponseErrorCode, id string, err error) *pb.RpcBlockTableRowDeleteResponse {
 		m := &pb.RpcBlockTableRowDeleteResponse{Error: &pb.RpcBlockTableRowDeleteResponseError{Code: code}}
 		if err != nil {
@@ -94,8 +95,8 @@ func (mw *Middleware) BlockTableRowDelete(req *pb.RpcBlockTableRowDeleteRequest)
 	return response(pb.RpcBlockTableRowDeleteResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableColumnDelete(req *pb.RpcBlockTableColumnDeleteRequest) *pb.RpcBlockTableColumnDeleteResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableColumnDelete(cctx context.Context, req *pb.RpcBlockTableColumnDeleteRequest) *pb.RpcBlockTableColumnDeleteResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableColumnDeleteResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnDeleteResponse {
 		m := &pb.RpcBlockTableColumnDeleteResponse{Error: &pb.RpcBlockTableColumnDeleteResponseError{Code: code}}
 		if err != nil {
@@ -116,8 +117,8 @@ func (mw *Middleware) BlockTableColumnDelete(req *pb.RpcBlockTableColumnDeleteRe
 	return response(pb.RpcBlockTableColumnDeleteResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableColumnMove(req *pb.RpcBlockTableColumnMoveRequest) *pb.RpcBlockTableColumnMoveResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableColumnMove(cctx context.Context, req *pb.RpcBlockTableColumnMoveRequest) *pb.RpcBlockTableColumnMoveResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableColumnMoveResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnMoveResponse {
 		m := &pb.RpcBlockTableColumnMoveResponse{Error: &pb.RpcBlockTableColumnMoveResponseError{Code: code}}
 		if err != nil {
@@ -138,8 +139,8 @@ func (mw *Middleware) BlockTableColumnMove(req *pb.RpcBlockTableColumnMoveReques
 	return response(pb.RpcBlockTableColumnMoveResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableRowDuplicate(req *pb.RpcBlockTableRowDuplicateRequest) *pb.RpcBlockTableRowDuplicateResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableRowDuplicate(cctx context.Context, req *pb.RpcBlockTableRowDuplicateRequest) *pb.RpcBlockTableRowDuplicateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableRowDuplicateResponseErrorCode, id string, err error) *pb.RpcBlockTableRowDuplicateResponse {
 		m := &pb.RpcBlockTableRowDuplicateResponse{Error: &pb.RpcBlockTableRowDuplicateResponseError{Code: code}}
 		if err != nil {
@@ -160,8 +161,8 @@ func (mw *Middleware) BlockTableRowDuplicate(req *pb.RpcBlockTableRowDuplicateRe
 	return response(pb.RpcBlockTableRowDuplicateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableColumnDuplicate(req *pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableColumnDuplicate(cctx context.Context, req *pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableColumnDuplicateResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnDuplicateResponse {
 		m := &pb.RpcBlockTableColumnDuplicateResponse{BlockId: id, Error: &pb.RpcBlockTableColumnDuplicateResponseError{Code: code}}
 		if err != nil {
@@ -182,8 +183,8 @@ func (mw *Middleware) BlockTableColumnDuplicate(req *pb.RpcBlockTableColumnDupli
 	return response(pb.RpcBlockTableColumnDuplicateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableExpand(req *pb.RpcBlockTableExpandRequest) *pb.RpcBlockTableExpandResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableExpand(cctx context.Context, req *pb.RpcBlockTableExpandRequest) *pb.RpcBlockTableExpandResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableExpandResponseErrorCode, id string, err error) *pb.RpcBlockTableExpandResponse {
 		m := &pb.RpcBlockTableExpandResponse{Error: &pb.RpcBlockTableExpandResponseError{Code: code}}
 		if err != nil {
@@ -204,8 +205,8 @@ func (mw *Middleware) BlockTableExpand(req *pb.RpcBlockTableExpandRequest) *pb.R
 	return response(pb.RpcBlockTableExpandResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableRowListFill(req *pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableRowListFill(cctx context.Context, req *pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableRowListFillResponseErrorCode, id string, err error) *pb.RpcBlockTableRowListFillResponse {
 		m := &pb.RpcBlockTableRowListFillResponse{Error: &pb.RpcBlockTableRowListFillResponseError{Code: code}}
 		if err != nil {
@@ -226,8 +227,8 @@ func (mw *Middleware) BlockTableRowListFill(req *pb.RpcBlockTableRowListFillRequ
 	return response(pb.RpcBlockTableRowListFillResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableRowListClean(req *pb.RpcBlockTableRowListCleanRequest) *pb.RpcBlockTableRowListCleanResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableRowListClean(cctx context.Context, req *pb.RpcBlockTableRowListCleanRequest) *pb.RpcBlockTableRowListCleanResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableRowListCleanResponseErrorCode, id string, err error) *pb.RpcBlockTableRowListCleanResponse {
 		m := &pb.RpcBlockTableRowListCleanResponse{Error: &pb.RpcBlockTableRowListCleanResponseError{Code: code}}
 		if err != nil {
@@ -248,8 +249,8 @@ func (mw *Middleware) BlockTableRowListClean(req *pb.RpcBlockTableRowListCleanRe
 	return response(pb.RpcBlockTableRowListCleanResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableSort(req *pb.RpcBlockTableSortRequest) *pb.RpcBlockTableSortResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableSort(cctx context.Context, req *pb.RpcBlockTableSortRequest) *pb.RpcBlockTableSortResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableSortResponseErrorCode, id string, err error) *pb.RpcBlockTableSortResponse {
 		m := &pb.RpcBlockTableSortResponse{Error: &pb.RpcBlockTableSortResponseError{Code: code}}
 		if err != nil {
@@ -270,8 +271,8 @@ func (mw *Middleware) BlockTableSort(req *pb.RpcBlockTableSortRequest) *pb.RpcBl
 	return response(pb.RpcBlockTableSortResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableColumnListFill(req *pb.RpcBlockTableColumnListFillRequest) *pb.RpcBlockTableColumnListFillResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableColumnListFill(cctx context.Context, req *pb.RpcBlockTableColumnListFillRequest) *pb.RpcBlockTableColumnListFillResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableColumnListFillResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnListFillResponse {
 		m := &pb.RpcBlockTableColumnListFillResponse{Error: &pb.RpcBlockTableColumnListFillResponseError{Code: code}}
 		if err != nil {
@@ -292,8 +293,8 @@ func (mw *Middleware) BlockTableColumnListFill(req *pb.RpcBlockTableColumnListFi
 	return response(pb.RpcBlockTableColumnListFillResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableRowSetHeader(req *pb.RpcBlockTableRowSetHeaderRequest) *pb.RpcBlockTableRowSetHeaderResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) BlockTableRowSetHeader(cctx context.Context, req *pb.RpcBlockTableRowSetHeaderRequest) *pb.RpcBlockTableRowSetHeaderResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockTableRowSetHeaderResponseErrorCode, id string, err error) *pb.RpcBlockTableRowSetHeaderResponse {
 		m := &pb.RpcBlockTableRowSetHeaderResponse{Error: &pb.RpcBlockTableRowSetHeaderResponseError{Code: code}}
 		if err != nil {

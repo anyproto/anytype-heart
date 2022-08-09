@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	ds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"sync"
@@ -12,15 +13,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/gogo/protobuf/proto"
-	ds "github.com/ipfs/go-datastore"
+	dsCtx "github.com/ipfs/go-datastore"
 )
 
 var (
 	// FileInfo is stored in db key pattern:
 	// /files/info/<hash>
 	filesPrefix   = "files"
-	filesInfoBase = ds.NewKey("/" + filesPrefix + "/info")
-	filesKeysBase = ds.NewKey("/" + filesPrefix + "/keys")
+	filesInfoBase = dsCtx.NewKey("/" + filesPrefix + "/info")
+	filesKeysBase = dsCtx.NewKey("/" + filesPrefix + "/keys")
 
 	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
@@ -105,7 +106,11 @@ func (ls *dsFileStore) Init(a *app.App) (err error) {
 }
 
 func (ls *dsFileStore) Run(context.Context) (err error) {
-	ls.ds, err = ls.dsIface.LocalstoreDS()
+	ds1, err := ls.dsIface.LocalstoreDS()
+	if err != nil {
+		return err
+	}
+	ls.ds = ds.New(ds1)
 	return
 }
 
@@ -284,7 +289,7 @@ func (m *dsFileStore) GetFileKeys(hash string) (map[string]string, error) {
 
 	b, err := txn.Get(fileKeysKey)
 	if err != nil {
-		if err == ds.ErrNotFound {
+		if err == dsCtx.ErrNotFound {
 			return nil, localstore.ErrNotFound
 		}
 		return nil, err
@@ -368,7 +373,7 @@ func (m *dsFileStore) GetByHash(hash string) (*storage.FileInfo, error) {
 	fileInfoKey := filesInfoBase.ChildString(hash)
 	b, err := m.ds.Get(fileInfoKey)
 	if err != nil {
-		if err == ds.ErrNotFound {
+		if err == dsCtx.ErrNotFound {
 			return nil, localstore.ErrNotFound
 		}
 		return nil, err

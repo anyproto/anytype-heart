@@ -2,9 +2,10 @@ package database
 
 import (
 	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -17,19 +18,19 @@ import (
 type Ctrl interface {
 	Anytype() core.Service
 
-	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) error
+	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) error
 	GetRelations(objectId string) (relations []*model.Relation, err error)
 
 	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
-	UpdateExtraRelations(ctx *state.Context, id string, relations []*model.Relation, createIfMissing bool) (err error)
-	AddExtraRelations(ctx *state.Context, id string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
-	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)
-	ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*model.Relation) ([]*model.Relation, error)) (err error)
-	UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionUpdateRequest) (err error)
-	AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (option *model.RelationOption, err error)
+	UpdateExtraRelations(ctx *session.Context, id string, relations []*model.Relation, createIfMissing bool) (err error)
+	AddExtraRelations(ctx *session.Context, id string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
+	RemoveExtraRelations(ctx *session.Context, id string, relationKeys []string) (err error)
+	ModifyExtraRelations(ctx *session.Context, objectId string, modifier func(current []*model.Relation) ([]*model.Relation, error)) (err error)
+	UpdateExtraRelationOption(ctx *session.Context, req pb.RpcObjectRelationOptionUpdateRequest) (err error)
+	AddExtraRelationOption(ctx *session.Context, req pb.RpcObjectRelationOptionAddRequest) (option *model.RelationOption, err error)
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
 
-	SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error)
+	SetObjectTypes(ctx *session.Context, objectId string, objectTypes []string) (err error)
 }
 
 type Router interface {

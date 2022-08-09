@@ -2,14 +2,14 @@ package basic
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type IHistory interface {
-	Undo(*state.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
-	Redo(*state.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
+	Undo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
+	Redo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
 }
 
 func NewHistory(sb smartblock.SmartBlock) IHistory {
@@ -20,7 +20,7 @@ type history struct {
 	smartblock.SmartBlock
 }
 
-func (h *history) Undo(ctx *state.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Previous()
 	if err != nil {
@@ -54,7 +54,7 @@ func (h *history) Undo(ctx *state.Context) (counters pb.RpcObjectUndoRedoCounter
 	return
 }
 
-func (h *history) Redo(ctx *state.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Next()
 	if err != nil {

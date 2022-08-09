@@ -1,10 +1,12 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) AppGetVersion(req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
+func (mw *Middleware) AppGetVersion(cctx context.Context, req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
 	response := func(version, details string, code pb.RpcAppGetVersionResponseErrorCode, err error) *pb.RpcAppGetVersionResponse {
 		m := &pb.RpcAppGetVersionResponse{Version: version, Details: details, Error: &pb.RpcAppGetVersionResponseError{Code: code}}
 		if err != nil {

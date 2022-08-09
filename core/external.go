@@ -3,15 +3,16 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
-	"os"
-	"strings"
 )
 
-func (mw *Middleware) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
+func (mw *Middleware) UnsplashSearch(cctx context.Context, req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
 	response := func(resp []*pb.RpcUnsplashSearchResponsePicture, err error) *pb.RpcUnsplashSearchResponse {
 		m := &pb.RpcUnsplashSearchResponse{
 			Error:    &pb.RpcUnsplashSearchResponseError{Code: pb.RpcUnsplashSearchResponseError_NULL},
@@ -44,7 +45,7 @@ func (mw *Middleware) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUn
 	return response(pictures, err)
 }
 
-func (mw *Middleware) UnsplashDownload(req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
+func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
 	response := func(hash string, err error) *pb.RpcUnsplashDownloadResponse {
 		m := &pb.RpcUnsplashDownloadResponse{
 			Error: &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_NULL},

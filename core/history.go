@@ -1,13 +1,16 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func (mw *Middleware) HistoryShowVersion(req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
-	response := func(show *pb.EventObjectShow, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
+func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
+	response := func(obj *model.ObjectView, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
 		res = &pb.RpcHistoryShowVersionResponse{
 			Error: &pb.RpcHistoryShowVersionResponseError{
 				Code: pb.RpcHistoryShowVersionResponseError_NULL,
@@ -18,29 +21,29 @@ func (mw *Middleware) HistoryShowVersion(req *pb.RpcHistoryShowVersionRequest) *
 			res.Error.Description = err.Error()
 			return
 		} else {
-			res.ObjectShow = show
+			res.ObjectView = obj
 			res.Version = ver
 			res.TraceId = req.TraceId
 		}
 		return res
 	}
 	var (
-		show *pb.EventObjectShow
-		ver  *pb.RpcHistoryVersion
-		err  error
+		obj *model.ObjectView
+		ver *pb.RpcHistoryVersion
+		err error
 	)
 	if err = mw.doBlockService(func(bs block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
-		show, ver, err = hs.Show(req.PageId, req.VersionId)
+		obj, ver, err = hs.Show(req.PageId, req.VersionId)
 		return
 	}); err != nil {
 		return response(nil, nil, err)
 	}
 
-	return response(show, ver, nil)
+	return response(obj, ver, nil)
 }
 
-func (mw *Middleware) HistoryGetVersions(req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
+func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
 	response := func(vers []*pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryGetVersionsResponse) {
 		res = &pb.RpcHistoryGetVersionsResponse{
 			Error: &pb.RpcHistoryGetVersionsResponseError{
@@ -70,7 +73,7 @@ func (mw *Middleware) HistoryGetVersions(req *pb.RpcHistoryGetVersionsRequest) *
 	return response(vers, nil)
 }
 
-func (mw *Middleware) HistorySetVersion(req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
+func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
 	response := func(err error) (res *pb.RpcHistorySetVersionResponse) {
 		res = &pb.RpcHistorySetVersionResponse{
 			Error: &pb.RpcHistorySetVersionResponseError{
