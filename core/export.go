@@ -1,12 +1,14 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) ObjectListExport(req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
+func (mw *Middleware) ObjectListExport(cctx context.Context, req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
 	response := func(path string, succeed int, err error) (res *pb.RpcObjectListExportResponse) {
 		res = &pb.RpcObjectListExportResponse{
 			Error: &pb.RpcObjectListExportResponseError{

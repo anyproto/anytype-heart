@@ -2,9 +2,11 @@ package anytype
 
 import (
 	"context"
+	"os"
+
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
-	"os"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -125,6 +127,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(doc.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
-		Register(bookmark.New())
+		Register(bookmark.New()).
+		Register(session.New())
 	return
 }

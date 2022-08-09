@@ -168,6 +168,19 @@ func CopyRelationsToMap(in []*model.Relation) (out map[string]*model.Relation) {
 	return
 }
 
+func CopyFilter(in *model.BlockContentDataviewFilter) (out *model.BlockContentDataviewFilter) {
+	buf := bytesPool.Get().([]byte)
+	size := in.Size()
+	if cap(buf) < size {
+		buf = make([]byte, 0, size*2)
+	}
+	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	out = &model.BlockContentDataviewFilter{}
+	_ = out.Unmarshal(buf[:size])
+	bytesPool.Put(buf)
+	return
+}
+
 func RelationsFilterKeys(in []*model.Relation, keys []string) (out []*model.Relation) {
 	for i, inRel := range in {
 		if slice.FindPos(keys, inRel.Key) >= 0 {

@@ -535,12 +535,20 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 	for _, fk := range fileKeys {
 		uniqKeys[fk.Hash] = struct{}{}
 	}
-	s.tree.Iterate(s.tree.RootId(), func(c *change.Change) (isContinue bool) {
-		for _, fk := range c.FileKeys {
+	processFileKeys := func(keys []*pb.ChangeFileKeys) {
+		for _, fk := range keys {
 			if _, ok := uniqKeys[fk.Hash]; !ok {
 				uniqKeys[fk.Hash] = struct{}{}
 				fileKeys = append(fileKeys, fk)
 			}
+		}
+	}
+	s.tree.Iterate(s.tree.RootId(), func(c *change.Change) (isContinue bool) {
+		if c.Snapshot != nil && len(c.Snapshot.FileKeys) > 0 {
+			processFileKeys(c.Snapshot.FileKeys)
+		}
+		if len(c.Change.FileKeys) > 0 {
+			processFileKeys(c.Change.FileKeys)
 		}
 		return true
 	})

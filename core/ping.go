@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -12,7 +13,7 @@ func nsToMs(n int64) int64 {
 	return (n - int64(n/1000000)*1000000)
 }
 
-func (mw *Middleware) DebugPing(req *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse {
+func (mw *Middleware) DebugPing(cctx context.Context, req *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse {
 	n := time.Now()
 	fmt.Printf("%d.%d go got ping req\n", n.Unix(), nsToMs(n.UnixNano()))
 

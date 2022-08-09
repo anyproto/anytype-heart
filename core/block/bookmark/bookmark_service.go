@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -44,7 +44,7 @@ type Service interface {
 
 type ObjectManager interface {
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
-	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 }
 
 type service struct {

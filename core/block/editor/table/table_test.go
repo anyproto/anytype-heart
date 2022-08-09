@@ -728,9 +728,9 @@ func TestSort(t *testing.T) {
 					{"row2-col1", "row2-col2"},
 					{"row3-col1", "row3-col2"},
 				}, withBlockContents(map[string]*model.Block{
-					"row1-col2": mkTextBlock("234"),
-					"row2-col2": mkTextBlock("323"),
-					"row3-col2": mkTextBlock("123"),
+					"row1-col2": mkTextBlock("Abd"),
+					"row2-col2": mkTextBlock("bsd"),
+					"row3-col2": mkTextBlock("abc"),
 				})),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
@@ -742,9 +742,9 @@ func TestSort(t *testing.T) {
 					{"row2-col1", "row2-col2"},
 					{"row3-col1", "row3-col2"},
 				}, withBlockContents(map[string]*model.Block{
-					"row1-col2": mkTextBlock("234"),
-					"row2-col2": mkTextBlock("323"),
-					"row3-col2": mkTextBlock("123"),
+					"row3-col2": mkTextBlock("abc"),
+					"row1-col2": mkTextBlock("Abd"),
+					"row2-col2": mkTextBlock("bsd"),
 				})),
 		},
 		{
