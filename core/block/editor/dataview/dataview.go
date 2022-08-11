@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
@@ -50,29 +51,29 @@ func init() {
 }
 
 type Dataview interface {
-	SetSource(ctx *state.Context, blockId string, source []string) (err error)
+	SetSource(ctx *session.Context, blockId string, source []string) (err error)
 
 	GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 
-	UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
-	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
-	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
-	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
-	SetViewPosition(ctx *state.Context, blockId string, viewId string, position uint32) error
-	AddRelation(ctx *state.Context, blockId string, relation model.Relation, showEvent bool) (*model.Relation, error)
-	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
-	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error
-	AddRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
-	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
-	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
-	FillAggregatedOptions(ctx *state.Context) error
-	UpdateViewGroupOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
-	UpdateViewObjectOrder(ctx *state.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
+	UpdateView(ctx *session.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
+	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
+	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
+	CreateView(ctx *session.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
+	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
+	AddRelation(ctx *session.Context, blockId string, relation model.Relation, showEvent bool) (*model.Relation, error)
+	DeleteRelation(ctx *session.Context, blockId string, relationKey string, showEvent bool) error
+	UpdateRelation(ctx *session.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error
+	AddRelationOption(ctx *session.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
+	UpdateRelationOption(ctx *session.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
+	DeleteRelationOption(ctx *session.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
+	FillAggregatedOptions(ctx *session.Context) error
+	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
+	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 
-	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
-	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
-	DeleteRecord(ctx *state.Context, blockId string, recID string) error
+	CreateRecord(ctx *session.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
+	UpdateRecord(ctx *session.Context, blockId string, recID string, rec model.ObjectDetails) error
+	DeleteRecord(ctx *session.Context, blockId string, recID string) error
 
 	WithSystemObjects(yes bool)
 	SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error
@@ -105,7 +106,7 @@ type dataviewCollectionImpl struct {
 	withSystemObjects bool
 }
 
-func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, source []string) (err error) {
+func (d *dataviewCollectionImpl) SetSource(ctx *session.Context, blockId string, source []string) (err error) {
 	s := d.NewStateCtx(ctx)
 	if blockId == "" {
 		blockId = template.DataviewBlockId
@@ -182,7 +183,7 @@ func (d *dataviewCollectionImpl) WithSystemObjects(yes bool) {
 	d.withSystemObjects = yes
 }
 
-func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string, relation model.Relation, showEvent bool) (*model.Relation, error) {
+func (d *dataviewCollectionImpl) AddRelation(ctx *session.Context, blockId string, relation model.Relation, showEvent bool) (*model.Relation, error) {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -222,7 +223,7 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	return &relation, nil
 }
 
-func (d *dataviewCollectionImpl) DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error {
+func (d *dataviewCollectionImpl) DeleteRelation(ctx *session.Context, blockId string, relationKey string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -239,7 +240,7 @@ func (d *dataviewCollectionImpl) DeleteRelation(ctx *state.Context, blockId stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error {
+func (d *dataviewCollectionImpl) UpdateRelation(ctx *session.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -291,7 +292,7 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 }
 
 // AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
+func (d *dataviewCollectionImpl) AddRelationOption(ctx *session.Context, blockId, recordId string, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -351,7 +352,7 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 	return &option, err
 }
 
-func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option model.RelationOption, showEvent bool) error {
+func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *session.Context, blockId, recordId string, relationKey string, option model.RelationOption, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -391,7 +392,7 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 	return db.Update(recordId, []*model.Relation{rel}, database.Record{})
 }
 
-func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
+func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *session.Context, allowMultiupdate bool, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -525,7 +526,7 @@ func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataview
 	return dv
 }
 
-func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error {
+func (d *dataviewCollectionImpl) DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -560,7 +561,7 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
+func (d *dataviewCollectionImpl) UpdateView(ctx *session.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -599,7 +600,7 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, activeViewId string, limit int, offset int) error {
+func (d *dataviewCollectionImpl) SetActiveView(ctx *session.Context, id string, activeViewId string, limit int, offset int) error {
 	var dvBlock dataview.Block
 	var ok bool
 	if dvBlock, ok = d.Pick(id).(dataview.Block); !ok {
@@ -630,7 +631,7 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 	return nil
 }
 
-func (d *dataviewCollectionImpl) SetViewPosition(ctx *state.Context, blockId string, viewId string, position uint32) (err error) {
+func (d *dataviewCollectionImpl) SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) (err error) {
 	s := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -671,7 +672,7 @@ func (d *dataviewCollectionImpl) SetViewPosition(ctx *state.Context, blockId str
 	return d.Apply(s)
 }
 
-func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
+func (d *dataviewCollectionImpl) CreateView(ctx *session.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, id)
@@ -730,7 +731,7 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	return &view, d.Apply(s)
 }
 
-func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *state.Context) {
+func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *session.Context) {
 	for _, dv := range d.dataviews {
 		block := d.Pick(dv.blockId)
 		if dvBlock, ok := block.(dataview.Block); !ok {
@@ -749,7 +750,7 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 	}
 }
 
-func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error) {
+func (d *dataviewCollectionImpl) CreateRecord(ctx *session.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error) {
 	dvBlock, db, err := d.getDatabase(blockId)
 	if err != nil {
 		return nil, err
@@ -777,7 +778,7 @@ func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string
 	return &model.ObjectDetails{Details: created.Details}, nil
 }
 
-func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.ObjectDetails) error {
+func (d *dataviewCollectionImpl) UpdateRecord(_ *session.Context, blockId string, recID string, rec model.ObjectDetails) error {
 	dvBlock, db, err := d.getDatabase(blockId)
 	if err != nil {
 		return err
@@ -864,7 +865,7 @@ func (d *dataviewCollectionImpl) getDatabase(blockId string) (dataview.Block, da
 	}
 }
 
-func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {
+func (d *dataviewCollectionImpl) DeleteRecord(_ *session.Context, blockId string, recID string) error {
 	_, db, err := d.getDatabase(blockId)
 	if err != nil {
 		return err
@@ -873,7 +874,7 @@ func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, 
 	return db.Delete(recID)
 }
 
-func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error {
+func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *session.Context) error {
 	st := d.NewStateCtx(ctx)
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {
@@ -888,7 +889,7 @@ func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error
 	return d.Apply(st)
 }
 
-func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
+func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, blockId)
 	if err != nil {
@@ -900,7 +901,7 @@ func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *state.Context, blockI
 	return d.Apply(st)
 }
 
-func (d *dataviewCollectionImpl) UpdateViewObjectOrder(ctx *state.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error {
+func (d *dataviewCollectionImpl) UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, blockId)
 	if err != nil {
@@ -930,7 +931,7 @@ func (d *dataviewCollectionImpl) fillAggregatedOptions(b dataview.Block) {
 	}
 }
 
-func (d *dataviewCollectionImpl) SmartObjectOpened(ctx *state.Context) {
+func (d *dataviewCollectionImpl) SmartObjectOpened(ctx *session.Context) {
 	st := d.NewStateCtx(ctx)
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {

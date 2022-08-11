@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/db/keytransform"
@@ -20,5 +21,5 @@ type Datastore interface {
 
 type DSTxnBatching interface {
 	ds.TxnDatastore
-	Batch() (ds.Batch, error)
+	Batch(ctx context.Context) (ds.Batch, error)
 }

@@ -1,6 +1,7 @@
 package nocloserds
 
 import (
+	"context"
 	"github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/db/keytransform"
 )
@@ -21,7 +22,7 @@ type NoCloserDatastoreExtended struct {
 
 type DatastoreTxnBatching interface {
 	datastore.TxnDatastore
-	Batch() (datastore.Batch, error)
+	Batch(_ context.Context) (datastore.Batch, error)
 }
 
 func NewBatch(ds datastore.Batching) datastore.Batching {

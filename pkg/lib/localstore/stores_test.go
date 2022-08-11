@@ -2,6 +2,7 @@ package localstore
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,9 +14,10 @@ import (
 )
 
 func Test_AddIndex(t *testing.T) {
-	ds, err := badger.NewDatastore(filepath.Join(os.TempDir(), "anytypetestds"), &badger.DefaultOptions)
+	ds2, err := badger.NewDatastore(filepath.Join(os.TempDir(), "anytypetestds"), &badger.DefaultOptions)
 	require.NoError(t, err)
 
+	ds := noctxds.New(ds2)
 	type Item struct {
 		PrimKey string
 		Field1  string
@@ -126,8 +128,9 @@ func Test_RunLargeOperationWithRetries(t *testing.T) {
 	tempDir, err := ioutil.TempDir(os.TempDir(), "anytypetestds*")
 	require.NoError(t, err)
 
-	ds, err := badger.NewDatastore(tempDir, &badger.DefaultOptions)
+	ds2, err := badger.NewDatastore(tempDir, &badger.DefaultOptions)
 	require.NoError(t, err)
+	ds := noctxds.New(ds2)
 
 	index := Index{
 		Prefix: "test1",

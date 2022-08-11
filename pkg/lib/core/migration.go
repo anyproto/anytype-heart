@@ -236,7 +236,7 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 	dsDBSchemas := dsDBPrefix.ChildString("schema")
 
 	key := dsDBSchemas.ChildString(threads.ThreadInfoCollectionName)
-	exists, err := db.Has(key)
+	exists, err := db.Has(context.Background(), key)
 	if !exists {
 		log.Info("migration alterThreadsDbSchema skipped because schema not exists in the collections db")
 		return nil
@@ -246,7 +246,7 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 	if err != nil {
 		return err
 	}
-	if err := db.Put(key, schemaBytes); err != nil {
+	if err := db.Put(context.Background(), key, schemaBytes); err != nil {
 		return err
 	}
 

@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -15,6 +14,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -104,6 +104,13 @@ func main() {
 	if metrics.Enabled {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
+	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		resp, err = mw.Authorize(ctx, req, info, handler)
+		if err != nil {
+			log.Errorf("authorize: %s", err)
+		}
+		return
+	})
 
 	grpcDebug, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_LOG"))
 	if grpcDebug > 0 {
@@ -227,7 +234,7 @@ func main() {
 	case <-stopChan:
 		server.Stop()
 		proxy.Close()
-		mw.AppShutdown(&pb.RpcAppShutdownRequest{})
+		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
 		return
 	}
 }

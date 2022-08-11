@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/libp2p/go-tcp-transport"
 	threadsUtil "github.com/textileio/go-threads/util"
 	"sync"
 	"time"
@@ -108,8 +107,7 @@ func New() Service {
 	threadsNet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
-	threadsNet.DialTimeout = 20 * time.Second          // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
-	tcp.DefaultConnectTimeout = threadsNet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
+	threadsNet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
 	threadsNet.PushTimeout = 30 * time.Second
 	threadsNet.PullTimeout = 2 * time.Minute
 

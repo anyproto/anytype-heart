@@ -1,10 +1,12 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) LogSend(req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
+func (mw *Middleware) LogSend(cctx context.Context, req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
 	response := func(code pb.RpcLogSendResponseErrorCode, err error) *pb.RpcLogSendResponse {
 		m := &pb.RpcLogSendResponse{Error: &pb.RpcLogSendResponseError{Code: code}}
 		if err != nil {
