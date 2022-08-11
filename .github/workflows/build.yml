@@ -18,7 +18,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.17.6
+          go-version: 1.17.11
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -35,12 +35,10 @@ jobs:
           go install github.com/mitchellh/gox
       - name: Install brew and node deps
         run: |
-          brew tap-new $USER/local-protobuf
-          brew extract --version=3.19.4 protobuf $USER/local-protobuf
-          brew install protobuf@3.19.4
-          cp -RP /usr/local/opt/protobuf@3.19.4 /usr/local/opt/protobuf
-          brew install --ignore-dependencies swift-protobuf
-          brew install mingw-w64 jq FiloSottile/musl-cross/musl-cross
+          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64 jq FiloSottile/musl-cross/musl-cross
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
@@ -56,12 +54,11 @@ jobs:
       - name: install protoc
         run: |
           make setup-protoc
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
+        id: cache-modules
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Go mod download
         run: |
           go mod download
@@ -70,7 +67,7 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -buildmode=c-archive -tags nogrpcserver -cgo=true -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/clientlibrary/clib
+          gox -ldflags="$FLAGS" -cgo -osarch="darwin/amd64 darwin/arm64" --tags="nographviz" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           ls -lha .
@@ -82,31 +79,6 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-      - name: Compile addon mac amd64
-        # we have a strange floating bug that sometimes results in addon has zero-bytes written at the start. Lets check for the result explicitly
-        run: |
-          cp ./darwin-amd64.a ./dist/lib.a
-          cp ./darwin-amd64.h ./dist/lib.h
-
-          GOOS=darwin GOARCH=amd64 npm_config_arch=amd64 npm_target_arch=amd64 make build-js-addon
-          ADDON_FILE_SIGNATURE=`head -c 4 clientlibrary/jsaddon/build/Release/addon.node | xxd -ps -g 4`
-          echo "addon signature: $ADDON_FILE_SIGNATURE\n"
-          [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
-          mv clientlibrary/jsaddon/build addon
-          ADDON_FILE_SIGNATURE=`head -c 4 addon/Release/addon.node | xxd -ps -g 4`
-          echo "addon signature2: $ADDON_FILE_SIGNATURE\n"
-          [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
-          sudo /usr/sbin/purge
-          gtar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
-          mv js_${VERSION}_darwin-amd64.tar.gz .release/
-          cd .release
-          gtar -xzf js_${VERSION}_darwin-amd64.tar.gz
-          ADDON_FILE_SIGNATURE=`head -c 4 addon/Release/addon.node | xxd -ps -g 4`
-          echo "addon signature3: $ADDON_FILE_SIGNATURE\n"
-          [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
-          rm -rf addon
-          cd ..
-          rm ./darwin-amd64*
       - name: Upload protobuf artifact for linux build
         uses: actions/upload-artifact@v2
         with:
@@ -115,25 +87,6 @@ jobs:
             protobuf
           if-no-files-found: error
           retention-days: 1
-      - name: Compile addon mac arm64
-        run: |
-          VERSION=${GITHUB_REF##*/}
-          cp ./darwin-arm64.a ./dist/lib.a
-          cp ./darwin-arm64.h ./dist/lib.h
-
-          GOOS=darwin GOARCH=arm64 npm_config_arch=arm64 npm_target_arch=arm64 make build-js-addon
-          mv clientlibrary/jsaddon/build addon
-          sudo /usr/sbin/purge
-          gtar -czvf js_${VERSION}_darwin-arm64.tar.gz protobuf addon
-          mv js_${VERSION}_darwin-arm64.tar.gz .release/
-          cd .release
-          gtar -xzf js_${VERSION}_darwin-arm64.tar.gz
-          ADDON_FILE_SIGNATURE=`head -c 4 addon/Release/addon.node | xxd -ps -g 4`
-          echo "addon signature3: $ADDON_FILE_SIGNATURE\n"
-          [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
-          rm -rf addon
-          cd ..
-          rm ./darwin-arm64*
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
@@ -143,6 +96,16 @@ jobs:
           cp ./${i}* ./grpc-server.exe
           zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf
           mv js_${VERSION}_${OSARCH}.zip .release/
+          done
+      - name: Pack server mac
+        run: |
+          declare -a arr=("darwin-amd64" "darwin-arm64")
+          for i in "${arr[@]}"
+          do
+          OSARCH=${i%.*}
+          cp ./${i}* ./grpc-server
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf
+          mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Make swift protos
         run: |
@@ -156,7 +119,7 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile ios lib
         run: |
-          gomobile bind -tags "nogrpcserver gomobile" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+          gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf
           mv ios_framework_${VERSION}.tar.gz .release/
@@ -171,7 +134,7 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile android lib
         run: |
-          gomobile bind -tags "nogrpcserver gomobile" -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+          gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
           mv android_lib_${VERSION}.tar.gz .release/
@@ -197,7 +160,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.17.6
+          go-version: 1.17.11
       - name: Checkout
         uses: actions/checkout@v2
       - name: Set env vars
@@ -233,9 +196,8 @@ jobs:
           VERSION=${GITHUB_REF##*/}
           ls -lha .
           ls -lha dist
-          GOOS=linux GOARCH=amd64 npm_config_arch=amd64 npm_target_arch=amd64 make build-js-addon
-          mv clientlibrary/jsaddon/build addon
-          tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon
+          GOOS=linux GOARCH=amd64 npm_config_arch=amd64 npm_target_arch=amd64 make build-server
+          tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf dist/server
           mv js_${VERSION}_linux-amd64.tar.gz .release/
       - name: Release
         uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
