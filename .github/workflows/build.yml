@@ -55,10 +55,12 @@ jobs:
         run: |
           make setup-protoc
       - uses: actions/cache@v3
-        id: cache-modules
         with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Go mod download
         run: |
           go mod download
@@ -67,7 +69,7 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -ldflags="$FLAGS" -cgo -osarch="darwin/amd64 darwin/arm64" --tags="nographviz" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          gox -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64 linux/amd64" --tags="nographviz nowatchdog nosigar" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           ls -lha .
@@ -97,9 +99,9 @@ jobs:
           zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
-      - name: Pack server mac
+      - name: Pack server unix
         run: |
-          declare -a arr=("darwin-amd64" "darwin-arm64")
+          declare -a arr=("darwin-amd64" "darwin-arm64" "linux-amd64")
           for i in "${arr[@]}"
           do
           OSARCH=${i%.*}
