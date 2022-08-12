@@ -1873,7 +1873,7 @@ Response – message from a middleware.
 | ----- | ---- | ----- | ----------- |
 | enableDataview | [bool](#bool) |  |  |
 | enableDebug | [bool](#bool) |  |  |
-| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| enablePrereleaseChannel | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
@@ -18036,7 +18036,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | ----- | ---- | ----- | ----------- |
 | enableDataview | [bool](#bool) |  |  |
 | enableDebug | [bool](#bool) |  |  |
-| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| enablePrereleaseChannel | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 

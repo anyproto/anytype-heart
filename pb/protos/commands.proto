@@ -238,7 +238,7 @@ message Rpc {
         message Config {
             bool enableDataview = 1;
             bool enableDebug = 2;
-            bool enableReleaseChannelSwitch = 3;
+            bool enablePrereleaseChannel = 3;
             bool enableSpaces = 4;
 
             google.protobuf.Struct extra = 100;
