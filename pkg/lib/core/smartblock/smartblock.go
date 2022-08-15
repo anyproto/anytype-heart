@@ -59,6 +59,9 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 		}
 		return SmartBlockType(sbt), nil
 	}
+	if strings.Index(id, ":") > -1 {
+		return SmartBlockTypePage, nil
+	}
 	if strings.HasPrefix(id, addr.DatePrefix) {
 		return SmartBlockTypeDate, nil
 	}

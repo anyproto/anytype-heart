@@ -157,7 +157,7 @@ func TestRelations_New_Account(t *testing.T) {
 				RelationKey:      bundle.RelationKeyType.String(),
 				RelationProperty: "",
 				Condition:        model.BlockContentDataviewFilter_Equal,
-				Value:            pbtypes.String(bundle.TypeKeyRelationOption.String()),
+				Value:            pbtypes.String("_otrelationOption"),
 				QuickOption:      0,
 			},
 			{
