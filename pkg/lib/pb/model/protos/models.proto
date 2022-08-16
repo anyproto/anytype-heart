@@ -314,11 +314,12 @@ message Block {
                 repeated Sort sorts = 4;
                 repeated Filter filters = 5;
                 repeated Relation relations = 6; // relations fields/columns options, also used to provide the order
-				        string coverRelationKey = 7; // Relation used for cover in gallery
+				string coverRelationKey = 7; // Relation used for cover in gallery
                 bool hideIcon = 8; // Hide icon near name
                 Size cardSize = 9; // Gallery card size
                 bool coverFit = 10; // Image fits container
-                string groupRelationKey = 11;
+                string groupRelationKey = 11; // Group view by this relationKey
+				bool groupBackgroundColors = 12; // Enable backgrounds in groups
 
                 enum Type {
                     Table = 0;
@@ -428,6 +429,7 @@ message Block {
                 string groupId = 1;
                 int32 index = 2;
                 bool hidden = 3;
+				string backgroundColor = 4;
             }
 
             message ObjectOrder {
