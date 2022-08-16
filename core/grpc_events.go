@@ -15,7 +15,7 @@ import (
 
 func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {
 	if err := mw.sessions.ValidateToken(mw.privateKey, req.Token); err != nil {
-		log.Error("ListenSessionEvents: %s", err)
+		log.Errorf("ListenSessionEvents: %s", err)
 		return
 	}
 

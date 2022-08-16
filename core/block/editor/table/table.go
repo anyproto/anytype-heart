@@ -823,7 +823,7 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		return nil, fmt.Errorf("root table block is not found")
 	}
 
-	if len(tb.block.Model().ChildrenIds) != 2 {
+	if len(tb.block.Model().ChildrenIds) < 2 {
 		return nil, fmt.Errorf("inconsistent state: table block")
 	}
 
@@ -834,7 +834,31 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		return nil, fmt.Errorf("rows block is not found")
 	}
 
+	destructureDivs(s, tb.Rows().Id)
+
 	return &tb, nil
+}
+
+// we don't want any dividers in table
+func destructureDivs(s *state.State, rowsId string) {
+	rows := s.Pick(rowsId)
+
+	var foundDiv bool
+	var ids []string
+	for _, rowId := range rows.Model().ChildrenIds {
+		b := s.Pick(rowId)
+		if b.Model().GetLayout().GetStyle() == model.BlockContentLayout_Div {
+			foundDiv = true
+			ids = append(ids, b.Model().ChildrenIds...)
+			continue
+		}
+		ids = append(ids, rowId)
+	}
+
+	if foundDiv {
+		rows = s.Get(rowsId)
+		rows.Model().ChildrenIds = ids
+	}
 }
 
 func (tb Table) Block() simple.Block {

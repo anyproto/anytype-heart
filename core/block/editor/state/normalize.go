@@ -156,6 +156,10 @@ func (s *State) normalizeTreeBranch(id string) {
 	if parentB == nil {
 		return
 	}
+	// corner case for tables
+	if parentB.Model().GetLayout().GetStyle() == model.BlockContentLayout_TableRows {
+		return
+	}
 	parent := parentB.Model()
 	if len(parent.ChildrenIds) > maxChildrenThreshold {
 		if nextId := s.wrapChildrenToDiv(id); nextId != "" {
