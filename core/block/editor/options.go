@@ -41,6 +41,9 @@ func (w *Workspaces) CreateRelationOption(relationKey string, opt *types.Struct)
 	if err = w.initOption(st, subId); err != nil {
 		return
 	}
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
 	return
 }
 
