@@ -776,6 +776,15 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 		}
 
 		uniqMap := make(map[string]bool)
+
+		groups = append(groups, &model.BlockContentDataviewGroup{
+			Id: "empty_tags",
+			Value: &model.BlockContentDataviewGroupValueOfTag{
+				Tag: &model.BlockContentDataviewTag{
+					Ids: nil,
+				}},
+		})
+
 		for _, v := range records {
 			if tags := pbtypes.GetStringList(v.Details, bundle.RelationKeyTag.String()); len(tags) > 0 {
 				sort.Strings(tags)
