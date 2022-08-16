@@ -781,7 +781,7 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 			Id: "empty_tags",
 			Value: &model.BlockContentDataviewGroupValueOfTag{
 				Tag: &model.BlockContentDataviewTag{
-					Ids: nil,
+					Ids: make([]string, 0),
 				}},
 		})
 

@@ -477,9 +477,9 @@ func Test_SearchRelationDistinct(t *testing.T) {
 
 	tagsOptsAll, err := ds.RelationSearchDistinct("rel4", nil)
 	require.NoError(t, err)
-	require.Len(t, tagsOptsAll, 2)
+	require.Len(t, tagsOptsAll, 3)
 
 	tagsOptsFilter, err := ds.RelationSearchDistinct("rel4", []*model.BlockContentDataviewFilter{{RelationKey: "name", Condition: 1, Value: pbtypes.String("three")}})
 	require.NoError(t, err)
-	require.Len(t, tagsOptsFilter, 1)
+	require.Len(t, tagsOptsFilter, 2)
 }
