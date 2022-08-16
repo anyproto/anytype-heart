@@ -2,11 +2,11 @@ package objectstore
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
-	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -784,7 +784,7 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 		for _, v := range records {
 			if tags := pbtypes.GetStringList(v.Details, bundle.RelationKeyTag.String()); len(tags) > 0 {
 				sort.Strings(tags)
-				hash := textutil.SliceHash(tags)
+				hash := strings.Join(tags, "")
 				if !uniqMap[hash] {
 					uniqMap[hash] = true
 					groups = append(groups, &model.BlockContentDataviewGroup{
@@ -798,6 +798,14 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 			}
 		}
 
+		sort.Slice(groups[:], func(i, j int) bool {
+			return len(groups[i].Id) > len(groups[j].Id)
+		})
+
+		for i := range groups {
+			groups[i].Id = fmt.Sprintf("%x", md5.Sum([]byte(groups[i].Id)))
+		}
+
 		groups = append(groups, &model.BlockContentDataviewGroup{
 			Id: "empty",
 			Value: &model.BlockContentDataviewGroupValueOfTag{
@@ -805,7 +813,6 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 					Ids: make([]string, 0),
 				}},
 		})
-
 	case model.RelationFormat_checkbox:
 		groups = append(groups, &model.BlockContentDataviewGroup{
 			Id: "true",
