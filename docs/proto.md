@@ -18356,7 +18356,8 @@ Bookmark is to keep a web-link and to preview a content.
 | hideIcon | [bool](#bool) |  | Hide icon near name |
 | cardSize | [Block.Content.Dataview.View.Size](#anytype.model.Block.Content.Dataview.View.Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
-| groupRelationKey | [string](#string) |  |  |
+| groupRelationKey | [string](#string) |  | Group view by this relationKey |
+| groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 
 
 
@@ -18374,6 +18375,7 @@ Bookmark is to keep a web-link and to preview a content.
 | groupId | [string](#string) |  |  |
 | index | [int32](#int32) |  |  |
 | hidden | [bool](#bool) |  |  |
+| backgroundColor | [string](#string) |  |  |
 
 
 
