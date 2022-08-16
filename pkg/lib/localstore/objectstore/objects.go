@@ -741,6 +741,10 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 			return nil, err
 		}
 		uniqMap := make(map[string]bool)
+		groups = append(groups, &model.BlockContentDataviewGroup{
+			Id: "empty",
+			Value: &model.BlockContentDataviewGroupValueOfStatus{Status: &model.BlockContentDataviewStatus{}},
+		})
 		for _, rel := range options {
 			if !uniqMap[rel.Text] {
 				uniqMap[rel.Text] = true
@@ -777,14 +781,6 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 
 		uniqMap := make(map[string]bool)
 
-		groups = append(groups, &model.BlockContentDataviewGroup{
-			Id: "empty_tags",
-			Value: &model.BlockContentDataviewGroupValueOfTag{
-				Tag: &model.BlockContentDataviewTag{
-					Ids: make([]string, 0),
-				}},
-		})
-
 		for _, v := range records {
 			if tags := pbtypes.GetStringList(v.Details, bundle.RelationKeyTag.String()); len(tags) > 0 {
 				sort.Strings(tags)
@@ -801,6 +797,15 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 				}
 			}
 		}
+
+		groups = append(groups, &model.BlockContentDataviewGroup{
+			Id: "empty",
+			Value: &model.BlockContentDataviewGroupValueOfTag{
+				Tag: &model.BlockContentDataviewTag{
+					Ids: make([]string, 0),
+				}},
+		})
+
 	case model.RelationFormat_checkbox:
 		groups = append(groups, &model.BlockContentDataviewGroup{
 			Id: "true",

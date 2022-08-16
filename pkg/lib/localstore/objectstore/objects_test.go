@@ -473,7 +473,7 @@ func Test_SearchRelationDistinct(t *testing.T) {
 
 	statusOpts, err := ds.RelationSearchDistinct("rel1", nil)
 	require.NoError(t, err)
-	require.Len(t, statusOpts, 5)
+	require.Len(t, statusOpts, 6)
 
 	tagsOptsAll, err := ds.RelationSearchDistinct("rel4", nil)
 	require.NoError(t, err)
