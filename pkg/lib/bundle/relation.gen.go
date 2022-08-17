@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "627e65aaabbaf3066f3f49f3f6ae6e3c5b89868925ba4b337e9b4d7a18ceac39"
+const RelationChecksum = "191af74fda1a28eaabc128f11888eed9817b62b2b6d5acc632fab11abab4c19a"
 
 type RelationKey string
 
@@ -180,6 +180,7 @@ const (
 	RelationKeyFeaturedRelations         RelationKey = "featuredRelations"
 	RelationKeyPhone                     RelationKey = "phone"
 	RelationKeyImdbRating                RelationKey = "imdbRating"
+	RelationKeySource                    RelationKey = "source"
 )
 
 var (
@@ -1865,6 +1866,19 @@ var (
 			MaxCount:         1,
 			Name:             "Solution",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySource: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_url,
+			Hidden:           true,
+			Key:              "source",
+			MaxCount:         1,
+			Name:             "Source",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

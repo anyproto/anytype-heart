@@ -743,12 +743,8 @@ var WithLinkFieldsMigration = func(s *state.State) {
 }
 
 var bookmarkRelationKeys = []string{
-	bundle.RelationKeyUrl.String(),
-	bundle.RelationKeyPicture.String(),
-	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeySource.String(),
 	bundle.RelationKeyTag.String(),
-	bundle.RelationKeyNotes.String(),
-	bundle.RelationKeyQuote.String(),
 }
 
 func makeRelationBlock(k string) *model.Block {
@@ -763,6 +759,20 @@ func makeRelationBlock(k string) *model.Block {
 }
 
 var WithBookmarkBlocks = func(s *state.State) {
+	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	hasCreatedAt := false
+	for _, v := range fr {
+		if v == bundle.RelationKeyCreatedDate.String() {
+			hasCreatedAt = true
+			break
+		}
+	}
+
+	if !hasCreatedAt {
+		fr = append(fr, bundle.RelationKeyCreatedDate.String())
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	}
+
 	for _, k := range bookmarkRelationKeys {
 		if !s.HasRelation(k) {
 			s.AddRelation(bundle.MustGetRelation(bundle.RelationKey(k)))
@@ -786,5 +796,11 @@ var WithBookmarkBlocks = func(s *state.State) {
 	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
 		log.Errorf("insert relation blocks: %w", err)
 		return
+	}
+}
+
+var WithBookmarkSource = func(s *state.State) {
+	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySource, s.Details().Fields[bundle.RelationKeyUrl.String()])
 	}
 }

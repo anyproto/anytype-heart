@@ -102,8 +102,8 @@ func (s *service) CreateBookmarkObject(url string, getContent ContentFuture) (ob
 	} else {
 		details := &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyBookmark.URL()),
-				bundle.RelationKeyUrl.String():  pbtypes.String(url),
+				bundle.RelationKeyType.String():   pbtypes.String(bundle.TypeKeyBookmark.URL()),
+				bundle.RelationKeySource.String(): pbtypes.String(url),
 			},
 		}
 		objectId, _, err = s.objectManager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)

@@ -31,6 +31,7 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		)
 	case model.ObjectType_bookmark:
 		templates = append(templates,
+			WithBookmarkSource,
 			WithTitle,
 			WithDescription,
 			WithBookmarkBlocks,
