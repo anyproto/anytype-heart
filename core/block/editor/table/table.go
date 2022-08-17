@@ -823,7 +823,7 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		return nil, fmt.Errorf("root table block is not found")
 	}
 
-	if len(tb.block.Model().ChildrenIds) != 2 {
+	if len(tb.block.Model().ChildrenIds) < 2 {
 		return nil, fmt.Errorf("inconsistent state: table block")
 	}
 
@@ -834,7 +834,35 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		return nil, fmt.Errorf("rows block is not found")
 	}
 
+	// we don't want divs in tables
+	destructureDivs(s, tb.Rows().Id)
+	destructureDivs(s, tb.Columns().Id)
+	for _, rowId := range tb.Rows().ChildrenIds {
+		destructureDivs(s, rowId)
+	}
+
 	return &tb, nil
+}
+
+// destructureDivs removes child dividers from block
+func destructureDivs(s *state.State, blockId string) {
+	parent := s.Pick(blockId)
+
+	var foundDiv bool
+	var ids []string
+	for _, id := range parent.Model().ChildrenIds {
+		b := s.Pick(id)
+		if b.Model().GetLayout().GetStyle() == model.BlockContentLayout_Div {
+			foundDiv = true
+			ids = append(ids, b.Model().ChildrenIds...)
+			continue
+		}
+	}
+
+	if foundDiv {
+		parent = s.Get(blockId)
+		parent.Model().ChildrenIds = ids
+	}
 }
 
 func (tb Table) Block() simple.Block {
