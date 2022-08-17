@@ -857,7 +857,6 @@ func destructureDivs(s *state.State, blockId string) {
 			ids = append(ids, b.Model().ChildrenIds...)
 			continue
 		}
-		ids = append(ids, id)
 	}
 
 	if foundDiv {
