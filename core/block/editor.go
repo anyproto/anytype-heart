@@ -74,10 +74,37 @@ func (s *service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest
 }
 
 func (s *service) DuplicateBlocks(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		newIds, err = b.Duplicate(ctx, req)
-		return err
+	if req.ContextId == req.TargetContextId || req.TargetContextId == "" {
+		err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+			newIds, err = b.Duplicate(ctx, req)
+			return err
+		})
+		return
+	}
+
+	err = s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
+		return s.DoClipboard(req.TargetContextId, func(tb clipboard.Clipboard) error {
+			cs := cb.NewState()
+			blocks := make([]*model.Block, 0, len(req.BlockIds))
+			for _, id := range req.BlockIds {
+				b := cs.Pick(id)
+				if b == nil {
+					continue
+				}
+				blocks = append(blocks, b.Model())
+			}
+			newIds, _, _, _, err = tb.Paste(ctx, &pb.RpcBlockPasteRequest{
+				ContextId: req.TargetContextId,
+				AnySlot:   blocks,
+			}, "")
+			if err != nil {
+				err = fmt.Errorf("paste: %w", err)
+				return err
+			}
+			return cb.Apply(cs)
+		})
 	})
+
 	return
 }
 
