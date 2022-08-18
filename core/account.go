@@ -7,13 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/account"
-	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
-	"github.com/gogo/status"
-	cp "github.com/otiai10/copy"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -24,6 +17,14 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/account"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
+	"github.com/gogo/status"
+	cp "github.com/otiai10/copy"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -187,11 +188,10 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 	}
 
 	cfg := config.ConfigRequired{}
-	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg);
+	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
 	if cfg.IPFSStorageAddr == "" {
 		cfg.IPFSStorageAddr = wallet.RepoPath()
 	}
-
 
 	pBlocks := at.PredefinedBlocks()
 	return &model.AccountInfo{
@@ -203,12 +203,12 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
-		LocalStoragePath: 			 cfg.IPFSStorageAddr,
-		TimeZone: 			 		 cfg.TimeZone,
+		LocalStoragePath:            cfg.IPFSStorageAddr,
+		TimeZone:                    cfg.TimeZone,
 	}
 }
 
-func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
 
@@ -289,22 +289,11 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		mw.EventSender,
 	}
 
-	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
+	if mw.app, err = anytype.StartNewApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create"), comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	stat := mw.app.StartStat()
-	if stat.SpentMsTotal > 300 {
-		log.Errorf("AccountCreate app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
-	}
-
-	metrics.SharedClient.RecordEvent(metrics.AppStart{
-		Type:      "create",
-		TotalMs:   stat.SpentMsTotal,
-		PerCompMs: stat.SpentMsPerComp})
-
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
-
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
@@ -336,7 +325,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
+func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
@@ -396,7 +385,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	if mw.app, err = anytype.StartAccountRecoverApp(mw.EventSender, zeroAccount); err != nil {
+	if mw.app, err = anytype.StartAccountRecoverApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_recover"), mw.EventSender, zeroAccount); err != nil {
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
@@ -505,7 +494,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		var clientConfig *pb.RpcAccountConfig
 		if account != nil {
@@ -550,10 +539,12 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		mw.rootPath = req.RootPath
 	}
 
+	var repoWasMissing bool
 	if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
 		if mw.mnemonic == "" {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
 		}
+		repoWasMissing = true
 
 		var account wallet.Keypair
 		for i := 0; i < 100; i++ {
@@ -595,7 +586,12 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	}
 	var err error
 
-	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
+	request := "account_select"
+	if repoWasMissing {
+		// if we have created the repo, we need to highlight that we are recovering the account
+		request = request + "_recover"
+	}
+	if mw.app, err = anytype.StartNewApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, request), comps...); err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}
@@ -607,23 +603,12 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
-	stat := mw.app.StartStat()
-	if stat.SpentMsTotal > 300 {
-		log.Errorf("AccountSelect app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
-	}
-
 	acc := &model.Account{Id: req.Id}
 	acc.Info = mw.getInfo()
-
-	metrics.SharedClient.RecordEvent(metrics.AppStart{
-		Type:      "select",
-		TotalMs:   stat.SpentMsTotal,
-		PerCompMs: stat.SpentMsPerComp})
-
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
@@ -657,7 +642,7 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
@@ -745,7 +730,7 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
 	response := func(status *model.AccountStatus, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
 		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
 		if err != nil {
@@ -796,7 +781,7 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 	return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountConfigUpdate(req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
+func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
 	response := func(code pb.RpcAccountConfigUpdateResponseErrorCode, err error) *pb.RpcAccountConfigUpdateResponse {
 		m := &pb.RpcAccountConfigUpdateResponse{Error: &pb.RpcAccountConfigUpdateResponseError{Code: code}}
 		if err != nil {
@@ -849,24 +834,24 @@ func keypairsToAddresses(keypairs []wallet.Keypair) []string {
 	return addresses
 }
 
-func convertToRpcAccountConfig(cfg *cafePb.AccountStateConfig) *pb.RpcAccountConfig {
+func convertToRpcAccountConfig(cfg *cafePb.Config) *pb.RpcAccountConfig {
 	return &pb.RpcAccountConfig{
-		EnableDataview:             cfg.EnableDataview,
-		EnableDebug:                cfg.EnableDebug,
-		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-		Extra:                      cfg.Extra,
-		EnableSpaces:               cfg.EnableSpaces,
+		EnableDataview:          cfg.EnableDataview,
+		EnableDebug:             cfg.EnableDebug,
+		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
+		Extra:                   cfg.Extra,
+		EnableSpaces:            cfg.EnableSpaces,
 	}
 }
 
 func enrichWithCafeAccount(acc *model.Account, cafeAcc *cafePb.AccountState) {
 	cfg := cafeAcc.Config
 	acc.Config = &model.AccountConfig{
-		EnableDataview:             cfg.EnableDataview,
-		EnableDebug:                cfg.EnableDebug,
-		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-		Extra:                      cfg.Extra,
-		EnableSpaces:               cfg.EnableSpaces,
+		EnableDataview:          cfg.EnableDataview,
+		EnableDebug:             cfg.EnableDebug,
+		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
+		Extra:                   cfg.Extra,
+		EnableSpaces:            cfg.EnableSpaces,
 	}
 
 	st := cafeAcc.Status

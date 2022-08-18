@@ -63,3 +63,55 @@ func (ko KeyOrder) String() (s string) {
 	}
 	return
 }
+
+func NewCustomOrder(key string, needOrder []*types.Value, keyOrd KeyOrder) CustomOrder {
+	m := make(map[string]int, 0)
+	for id, v := range needOrder {
+		m[v.String()] = id
+	}
+
+	return CustomOrder{
+		Key: key,
+		NeedOrderMap: m,
+		KeyOrd: keyOrd,
+	}
+}
+
+type CustomOrder struct {
+	Key string
+	NeedOrderMap map[string]int
+	KeyOrd KeyOrder
+}
+
+func (co CustomOrder) Compare(a, b Getter) int {
+	aID, okA := co.NeedOrderMap[a.Get(co.Key).String()]
+	bID, okB := co.NeedOrderMap[b.Get(co.Key).String()]
+
+	if okA && okB {
+		if aID == bID {
+			return 0
+		}
+
+		if aID < bID {
+			return -1
+		}
+		return 1
+	}
+
+	if okA {
+		return -1
+	}
+	if okB {
+		return 1
+	}
+
+	return co.KeyOrd.Compare(a, b)
+}
+
+func (co CustomOrder) String() (s string) {
+	ss := make([]string, len(co.NeedOrderMap))
+	for key, id := range co.NeedOrderMap {
+		ss[id] = key
+	}
+	return strings.Join(ss, ", ")
+}

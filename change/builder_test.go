@@ -1,6 +1,7 @@
 package change
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"testing"
@@ -47,7 +48,7 @@ var (
 
 func TestStateBuilder_Build(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		_, _, err := BuildTree(NewTestSmartBlock())
+		_, _, err := BuildTree(context.Background(), NewTestSmartBlock())
 		assert.Equal(t, ErrEmpty, err)
 	})
 	t.Run("linear - one snapshot", func(t *testing.T) {
@@ -57,7 +58,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newSnapshot("s0", "", nil),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.tree)
 		assert.Equal(t, "s0", b.tree.RootId())
@@ -72,7 +73,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newChange("c0", "s0", "s0"),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.tree)
 		assert.Equal(t, "s0", b.tree.RootId())
@@ -92,7 +93,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newChange("c2", "s0", "c1"),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.tree)
 		assert.Equal(t, "s0", b.tree.RootId())
@@ -114,7 +115,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newChange("c3", "s1", "s1"),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.tree)
 		assert.Equal(t, "s1", b.tree.RootId())
@@ -143,7 +144,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newChange("c3.3", "s1.1", "s1.1"),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.tree)
 		assert.Equal(t, "s0", b.tree.RootId())
@@ -177,7 +178,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newChange("c4", "s2", "s2"),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.tree)
 		assert.Equal(t, "s2", b.tree.RootId())
@@ -201,7 +202,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			},
 		}
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.tree)
 		assert.Equal(t, "s0", b.tree.RootId())
@@ -213,12 +214,12 @@ func TestStateBuilder_Build(t *testing.T) {
 func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 	t.Run("error for empty", func(t *testing.T) {
 		b := new(stateBuilder)
-		_, err := b.findCommonSnapshot(nil)
+		_, err := b.findCommonSnapshot(context.Background(), nil)
 		require.Error(t, err)
 	})
 	t.Run("one snapshot", func(t *testing.T) {
 		b := new(stateBuilder)
-		id, err := b.findCommonSnapshot([]string{"one"})
+		id, err := b.findCommonSnapshot(context.Background(), []string{"one"})
 		require.NoError(t, err)
 		assert.Equal(t, "one", id)
 	})
@@ -253,7 +254,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 			newSnapshot("s1.5", "s2.4", nil, "s2.4"),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		assert.Equal(t, "s0", b.tree.RootId())
 	})
@@ -268,7 +269,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 			newSnapshot("s1.1", "", nil),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		id := "_virtual:" + base64.RawStdEncoding.EncodeToString([]byte("s0.1+s1.1"))
 		assert.Equal(t, id, b.tree.RootId())
@@ -289,7 +290,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 			newSnapshot("s2.1", "", nil),
 		)
 		b := new(stateBuilder)
-		err := b.Build(sb)
+		err := b.Build(context.Background(), sb)
 		require.NoError(t, err)
 		id2 := "_virtual:" + base64.RawStdEncoding.EncodeToString([]byte("s1.1+s2.1"))
 		id := "_virtual:" + base64.RawStdEncoding.EncodeToString([]byte(id2+"+s0.1"))
@@ -312,7 +313,7 @@ func TestBuildDetailsTree(t *testing.T) {
 		newDetailsChange("c5", "s0", "c4", "c4", false),
 		newDetailsChange("c6", "s0", "c5", "c4", false),
 	)
-	tr, _, err := BuildMetaTree(sb)
+	tr, _, err := BuildMetaTree(context.Background(), sb)
 	require.NoError(t, err)
 	assert.Equal(t, 3, tr.Len())
 	assert.Equal(t, "s0->c2->c4-|", tr.String())
@@ -328,12 +329,12 @@ func TestBuildTreeBefore(t *testing.T) {
 			newSnapshot("s1", "s0", nil, "c0"),
 			newChange("c1", "s1", "s1"),
 		)
-		tr, err := BuildTreeBefore(sb, "c1", true)
+		tr, err := BuildTreeBefore(context.Background(), sb, "c1", true)
 		require.NoError(t, err)
 		require.NotNil(t, tr)
 		assert.Equal(t, "s1", tr.RootId())
 		assert.Equal(t, 2, tr.Len())
-		tr, err = BuildTreeBefore(sb, "c0", true)
+		tr, err = BuildTreeBefore(context.Background(), sb, "c0", true)
 		require.NoError(t, err)
 		require.NotNil(t, tr)
 		assert.Equal(t, "s0", tr.RootId())

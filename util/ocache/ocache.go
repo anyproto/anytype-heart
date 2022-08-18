@@ -82,6 +82,7 @@ type entry struct {
 	load      chan struct{}
 	loadErr   error
 	value     Object
+	cancel    func()
 }
 
 func (e *entry) locked() bool {
@@ -149,6 +150,7 @@ func (c *oCache) Get(ctx context.Context, id string) (value Object, err error) {
 			id:   id,
 			load: make(chan struct{}),
 		}
+		ctx, e.cancel = context.WithCancel(ctx)
 		c.data[id] = e
 	}
 	e.lastUsage = c.timeNow()
@@ -345,6 +347,9 @@ func (c *oCache) Close() (err error) {
 	}
 	c.mu.Unlock()
 	for _, e := range toClose {
+		if e.cancel != nil {
+			e.cancel()
+		}
 		<-e.load
 		if e.value != nil {
 			if clErr := e.value.Close(); clErr != nil {

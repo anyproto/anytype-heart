@@ -138,7 +138,7 @@ func (fx *fixture) init(blocks []*model.Block) {
 		bm[b.Id] = simple.New(b)
 	}
 	doc := state.NewDoc(id, bm)
-	fx.source.EXPECT().ReadDoc(gomock.Any(), false).Return(doc, nil)
+	fx.source.EXPECT().ReadDoc(context.Background(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 	fx.source.EXPECT().LogHeads().Return(nil).AnyTimes()
 	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{

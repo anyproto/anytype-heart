@@ -35,7 +35,7 @@ func (a *Anytype) GetAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 
 	var visitedMap = make(map[string]struct{})
 	getCidsLinksRecursively = func(c cid.Cid) (err error) {
-		if exists, err := a.ipfs.BlockStore().Has(c); err != nil {
+		if exists, err := a.ipfs.BlockStore().Has(context.Background(), c); err != nil {
 			return err
 		} else if !exists {
 			// double-check the blockstore, if we don't have the block - we have not yet downloaded it

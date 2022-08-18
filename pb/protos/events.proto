@@ -28,8 +28,6 @@ message Event {
             Object.Relations.Remove objectRelationsRemove = 53;
 
             Object.Remove objectRemove = 54;
-            Object.Show objectShow = 30;
-            Object.Restriction objectRestrictions = 70;
 
             Object.Subscription.Add subscriptionAdd = 60;
             Object.Subscription.Remove subscriptionRemove = 61;
@@ -57,6 +55,7 @@ message Event {
             Block.Set.VerticalAlign blockSetVerticalAlign = 36;
             Block.Set.TableRow blockSetTableRow = 37;
 
+            Block.Dataview.GroupOrderUpdate blockDataViewGroupOrderUpdate = 38;
             Block.Dataview.SourceSet blockDataviewSourceSet = 35;
             Block.Dataview.ViewSet blockDataviewViewSet = 19;
             Block.Dataview.ViewDelete blockDataviewViewDelete = 20;
@@ -189,33 +188,6 @@ message Event {
             }
         }
 
-        /*
-            * Works with a smart blocks: Page, Dashboard
-            * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
-        */
-        message Show {
-            string rootId = 1; // Root block id
-            repeated anytype.model.Block blocks = 2; // dependent simple blocks (descendants)
-            repeated Object.Details.Set details = 3; // details for the current and dependent objects
-            model.SmartBlockType type = 4;
-
-            message RelationWithValuePerObject {
-                string objectId = 1;
-                repeated anytype.model.RelationWithValue relations = 2;
-            }
-
-            repeated anytype.model.ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
-            repeated anytype.model.Relation relations = 7; // DEPRECATED, use relationLinks instead
-            repeated anytype.model.RelationLink relationLinks = 10;
-
-            anytype.model.Restrictions restrictions = 8; // object restrictions
-            HistorySize history = 9;
-
-            message HistorySize {
-                int32 undo = 1;
-                int32 redo = 2;
-            }
-        }
 
         message Remove {
             // notifies that objects were removed
@@ -732,6 +704,11 @@ message Event {
             message RelationSet {
                 string id = 1; // dataview block's id
                 repeated anytype.model.RelationLink relationLinks = 2; // relation id to update
+            }
+
+            message GroupOrderUpdate {
+                string id = 1; // dataview block's id
+                anytype.model.Block.Content.Dataview.GroupOrder groupOrder = 2;
             }
         }
     }

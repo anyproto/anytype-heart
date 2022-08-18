@@ -176,7 +176,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (r *clientds) Run() error {
+func (r *clientds) Run(context.Context) error {
 	var err error
 
 	litestoreOldPath := r.getRepoPath(liteOldDSDir)
@@ -227,7 +227,7 @@ func (r *clientds) Run() error {
 
 func (r *clientds) migrateIfNeeded() error {
 	for _, m := range r.migrations {
-		_, err := r.localstoreDS.Get(m.migrationKey)
+		_, err := r.localstoreDS.Get(context.Background(), m.migrationKey)
 		if err == nil {
 			continue
 		}
@@ -241,7 +241,7 @@ func (r *clientds) migrateIfNeeded() error {
 				m.migrationKey.String(),
 				err)
 		}
-		err = r.localstoreDS.Put(m.migrationKey, nil)
+		err = r.localstoreDS.Put(context.Background(), m.migrationKey, nil)
 		if err != nil {
 			return fmt.Errorf("failed to put %s migration key into db: %w", m.migrationKey.String(), err)
 		}
@@ -256,17 +256,17 @@ func (r *clientds) migrateWithKey(from *dsbadgerv1.Datastore, to *dsbadgerv3.Dat
 	s := from.DB.NewStream()
 	s.ChooseKey = chooseKey
 	s.Send = func(list *dgraphbadgerv1pb.KVList) error {
-		batch, err := to.Batch()
+		batch, err := r.localstoreDS.Batch(context.Background())
 		if err != nil {
 			return err
 		}
 		for _, kv := range list.Kv {
-			err := batch.Put(ds.NewKey(string(kv.Key)), kv.Value)
+			err := batch.Put(context.Background(), ds.NewKey(string(kv.Key)), kv.Value)
 			if err != nil {
 				return err
 			}
 		}
-		return batch.Commit()
+		return batch.Commit(context.Background())
 	}
 	return s.Orchestrate(context.Background())
 }
@@ -370,7 +370,7 @@ func runBlockstoreGC(dsPath string, dsInstance ds.Datastore, valueLogSize int64)
 	if valLogs[len(valLogs)-1].Size > valueLogSize {
 		// in case we have the last value log exceeding the max value log size
 		v := make([]byte, valueLogExtenderSize)
-		_ = dsInstance.Put(ds.NewKey(valueLogExtenderKey), v)
+		dsInstance.Put(context.Background(), ds.NewKey(valueLogExtenderKey), v)
 	}
 
 	var total int
@@ -397,7 +397,7 @@ func runBlockstoreGC(dsPath string, dsInstance ds.Datastore, valueLogSize int64)
 
 	totalSizeAfter, vlogsAfter, err := getValueLogsInfo()
 
-	results, err := dsInstance.Query(query.Query{Limit: 0, KeysOnly: true, ReturnsSizes: true})
+	results, err := dsInstance.Query(context.Background(), query.Query{Limit: 0, KeysOnly: true, ReturnsSizes: true})
 	var (
 		keysTotal     int64
 		keysTotalSize int64

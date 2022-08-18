@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -14,7 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 )
 
-func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
+func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
 	response := func(code pb.RpcNavigationListObjectsResponseErrorCode, Objects []*model.ObjectInfo, err error) *pb.RpcNavigationListObjectsResponse {
 		m := &pb.RpcNavigationListObjectsResponse{Error: &pb.RpcNavigationListObjectsResponseError{Code: code}, Objects: Objects}
 		if err != nil {
@@ -58,7 +57,7 @@ func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequ
 	return response(pb.RpcNavigationListObjectsResponseError_NULL, records, nil)
 }
 
-func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
+func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
 	response := func(code pb.RpcNavigationGetObjectInfoWithLinksResponseErrorCode, object *model.ObjectInfoWithLinks, err error) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
 		m := &pb.RpcNavigationGetObjectInfoWithLinksResponse{Error: &pb.RpcNavigationGetObjectInfoWithLinksResponseError{Code: code}, Object: object}
 		if err != nil {
@@ -101,8 +100,8 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetO
 	return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_NULL, page, nil)
 }
 
-func (mw *Middleware) ObjectCreate(req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, err error) *pb.RpcObjectCreateResponse {
 		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, PageId: id}
 		if err != nil {

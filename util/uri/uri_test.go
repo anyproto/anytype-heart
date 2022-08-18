@@ -69,4 +69,25 @@ func TestURI_ProcessURI(t *testing.T) {
 		assert.Equal(t, uri, processedUri)
 		assert.NoError(t, err)
 	})
+
+	t.Run("should gives error on win filepath", func(t *testing.T) {
+		uri := "D://folder//file.txt"
+		processedUri, err := ProcessURI(uri)
+		assert.Equal(t, "", processedUri)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("should gives error on unix abs filepath", func(t *testing.T) {
+		uri := "/folder/file.txt"
+		processedUri, err := ProcessURI(uri)
+		assert.Equal(t, "", processedUri)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("should gives error on unix rel filepath", func(t *testing.T) {
+		uri := "../folder/file.txt"
+		processedUri, err := ProcessURI(uri)
+		assert.Equal(t, "", processedUri)
+		assert.NotNil(t, err)
+	})
 }

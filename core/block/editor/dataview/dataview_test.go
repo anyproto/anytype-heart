@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -88,7 +89,7 @@ func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 	}
 	assertViewPositions := func(viewId string, pos uint32, exp []string) {
 		dv, sb := newTestDv()
-		ctx := state.NewContext(nil)
+		ctx := session.NewContext()
 		err := dv.SetViewPosition(ctx, "dv", viewId, pos)
 		require.NoError(t, err)
 		views := sb.Doc.Pick("dv").Model().GetDataview().Views

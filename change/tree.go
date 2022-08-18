@@ -2,6 +2,7 @@ package change
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"fmt"
 	"sort"
@@ -279,7 +280,7 @@ func (t *Tree) Get(id string) *Change {
 	return t.attached[id]
 }
 
-func (t *Tree) LastSnapshotId() string {
+func (t *Tree) LastSnapshotId(ctx context.Context) string {
 	var sIds []string
 	for _, hid := range t.headIds {
 		hd := t.attached[hid]
@@ -299,7 +300,7 @@ func (t *Tree) LastSnapshotId() string {
 	b := &stateBuilder{
 		cache: t.attached,
 	}
-	sId, err := b.findCommonSnapshot(sIds)
+	sId, err := b.findCommonSnapshot(ctx, sIds)
 	if err != nil {
 		log.Errorf("can't find common snapshot: %v", err)
 	}

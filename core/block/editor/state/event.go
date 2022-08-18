@@ -146,7 +146,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewViewDelete:
 		if err = apply(o.BlockDataviewViewDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				return f.DeleteView(o.BlockDataviewViewDelete.ViewId)
+				err := f.DeleteView(o.BlockDataviewViewDelete.ViewId)
+				if err != nil && err != dataview.ErrViewNotFound {
+					return err
+				}
+				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -203,6 +207,16 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				return f.ApplyEvent(o.BlockSetLatex)
 			}
 			return fmt.Errorf("not a latex block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDataViewGroupOrderUpdate:
+		if err = apply(o.BlockDataViewGroupOrderUpdate.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				f.SetViewGroupOrder(o.BlockDataViewGroupOrderUpdate.GroupOrder)
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
 		}); err != nil {
 			return
 		}

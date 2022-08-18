@@ -4,6 +4,7 @@
 package testMock
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -19,7 +20,7 @@ func RegisterMockAnytype(ctrl *gomock.Controller, ta *testapp.TestApp) *MockServ
 	ms := NewMockService(ctrl)
 	ms.EXPECT().Name().AnyTimes().Return(core.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
-	ms.EXPECT().Run().AnyTimes()
+	ms.EXPECT().Run(context.Background()).AnyTimes()
 	ms.EXPECT().Close().AnyTimes()
 	ms.EXPECT().Account().AnyTimes().Return("account")
 	ms.EXPECT().ProfileID().AnyTimes().Return("profileId")
@@ -31,7 +32,7 @@ func RegisterMockObjectStore(ctrl *gomock.Controller, ta App) *MockObjectStore {
 	ms := NewMockObjectStore(ctrl)
 	ms.EXPECT().Name().AnyTimes().Return(objectstore.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
-	ms.EXPECT().Run().AnyTimes()
+	ms.EXPECT().Run(context.Background()).AnyTimes()
 	ms.EXPECT().Close().AnyTimes()
 	ta.Register(ms)
 	return ms

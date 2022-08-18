@@ -8,7 +8,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -260,7 +259,7 @@ func TestState_Normalize(t *testing.T) {
 	t.Run("split with numeric #349", func(t *testing.T) {
 		data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
 		require.NoError(t, err)
-		var ev = &pb.EventObjectShow{}
+		ev := &model.ObjectView{}
 		require.NoError(t, ev.Unmarshal(data))
 
 		r := NewDoc(ev.RootId, nil).(*State)
@@ -358,7 +357,7 @@ func TestCleanupLayouts(t *testing.T) {
 func BenchmarkNormalize(b *testing.B) {
 	data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
 	require.NoError(b, err)
-	var ev = &pb.EventObjectShow{}
+	ev := &model.ObjectView{}
 	require.NoError(b, ev.Unmarshal(data))
 
 	r := NewDoc(ev.RootId, nil).(*State)

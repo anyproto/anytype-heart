@@ -45,11 +45,11 @@ func (v *virtual) Virtual() bool {
 	return true
 }
 
-func (v *virtual) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *virtual) ReadDoc(ctx context.Context, eceiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }
 
-func (v *virtual) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
+func (v *virtual) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }
 

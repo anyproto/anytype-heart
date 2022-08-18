@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -84,29 +85,29 @@ func New() SmartBlock {
 
 type SmartObjectOpenListner interface {
 	// should not do any Do operations inside
-	SmartObjectOpened(*state.Context)
+	SmartObjectOpened(*session.Context)
 }
 
 type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
 	Type() model.SmartBlockType
-	Show(*state.Context) (err error)
+	Show(*session.Context) (obj *model.ObjectView, err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() core.Service
 	RelationService() relation2.Service
-	SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
+	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 	Relations(s *state.State) relation2.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddExtraRelations(ctx *state.Context, relationIds ...string) (err error)
-	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
+	AddExtraRelations(ctx *session.Context, relationIds ...string) (err error)
+	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
-	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
-	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
-	SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) error
-	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
+	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
+	SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) error
+	SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) error
+	SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) error
 	SetIsDeleted()
 	IsDeleted() bool
 	IsLocked() bool
@@ -134,6 +135,11 @@ type InitContext struct {
 	ObjectTypeUrls []string
 	RelationIds    []string
 	State          *state.State
+	Relations      []*model.Relation
+	Restriction    restriction.Service
+	Doc            doc.Service
+	ObjectStore    objectstore.ObjectStore
+	Ctx            context.Context
 	App            *app.App
 }
 
@@ -214,7 +220,11 @@ func (sb *smartBlock) Type() model.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	if sb.Doc, err = ctx.Source.ReadDoc(sb, ctx.State != nil); err != nil {
+	cctx := ctx.Ctx
+	if cctx == nil {
+		cctx = context.Background()
+	}
+	if sb.Doc, err = ctx.Source.ReadDoc(cctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
 
@@ -286,14 +296,14 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
 }
 
-func (sb *smartBlock) Show(ctx *state.Context) error {
+func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 	if ctx == nil {
-		return nil
+		return nil, nil
 	}
 
 	details, objectTypes, err := sb.fetchMeta()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// omit relations
 	// todo: switch to other pb type
@@ -315,28 +325,22 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 
 	// todo: sb.Relations() makes extra query to read objectType which we already have here
 	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
-	ctx.AddMessages(sb.Id(), []*pb.EventMessage{
-		{
-			Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-				RootId:        sb.RootId(),
-				Type:          sb.Type(),
-				Blocks:        sb.Blocks(),
-				Details:       details,
-				RelationLinks: sb.GetRelationLinks(),
-				Relations:     sb.Relations(nil).Models(), // deprecated, to be removed
-				ObjectTypes:   objectTypes,
-				Restrictions:  sb.restrictions.Proto(),
-				History: &pb.EventObjectShowHistorySize{
-					Undo: undo,
-					Redo: redo,
-				},
-			}},
+	return &model.ObjectView{
+		RootId:        sb.RootId(),
+		Type:          sb.Type(),
+		Blocks:        sb.Blocks(),
+		Details:       details,
+		RelationLinks: sb.GetRelationLinks(),
+		ObjectTypes:   objectTypes,
+		Restrictions:  sb.restrictions.Proto(),
+		History: &model.ObjectViewHistorySize{
+			Undo: undo,
+			Redo: redo,
 		},
-	})
-	return nil
+	}, nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*model.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, objectTypes []*model.ObjectType, err error) {
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -361,17 +365,17 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		}
 	}
 
-	details = make([]*pb.EventObjectDetailsSet, 0, len(records)+1)
+	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
 
 	// add self details
-	details = append(details, &pb.EventObjectDetailsSet{
+	details = append(details, &model.ObjectViewDetailsSet{
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
 	addObjectTypesByDetails(sb.CombinedDetails())
 
 	for _, rec := range records {
-		details = append(details, &pb.EventObjectDetailsSet{
+		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})
@@ -649,16 +653,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
-		if sb.restrictionsChanged {
-			sb.restrictionsChanged = false
-			events = append(events, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectRestrictions{
-					ObjectRestrictions: &pb.EventObjectRestriction{
-						Restrictions: sb.Restrictions().Proto(),
-					},
-				},
-			})
-		}
 		if ctx := s.Context(); ctx != nil {
 			ctx.SetMessages(sb.Id(), events)
 		} else if sb.sendEvent != nil {
@@ -731,7 +725,7 @@ func (sb *smartBlock) NewState() *state.State {
 	return s
 }
 
-func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
+func (sb *smartBlock) NewStateCtx(ctx *session.Context) *state.State {
 	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
@@ -749,7 +743,7 @@ func (sb *smartBlock) RelationService() relation2.Service {
 	return sb.relationService
 }
 
-func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
 	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
 	if detCopy == nil || detCopy.Fields == nil {
@@ -832,7 +826,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetD
 	return nil
 }
 
-func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relationIds ...string) (err error) {
+func (sb *smartBlock) AddExtraRelations(ctx *session.Context, relationIds ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.addRelations(s, relationIds...); err != nil {
 		return
@@ -907,7 +901,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	return nil
 }
 
-func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
+func (sb *smartBlock) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
 
 	if len(objectTypes) > 0 {
@@ -970,7 +964,7 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	return
 }
 
-func (sb *smartBlock) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) (err error) {
+func (sb *smartBlock) SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.setAlign(s, align, ids...); err != nil {
 		return
@@ -991,7 +985,7 @@ func (sb *smartBlock) setAlign(s *state.State, align model.BlockAlign, ids ...st
 	return
 }
 
-func (sb *smartBlock) SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
+func (sb *smartBlock) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	for _, id := range ids {
 		if b := s.Get(id); b != nil {
@@ -1001,7 +995,7 @@ func (sb *smartBlock) SetVerticalAlign(ctx *state.Context, align model.BlockVert
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
+func (sb *smartBlock) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error) {
 	if err = sb.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
 		return
 	}
@@ -1065,7 +1059,7 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 	return
 }
 
-func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationIds []string) (err error) {
+func (sb *smartBlock) RemoveExtraRelations(ctx *session.Context, relationIds []string) (err error) {
 	st := sb.NewStateCtx(ctx)
 	st.RemoveRelation(relationIds...)
 
@@ -1113,11 +1107,16 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
 	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
-	if len(msgs) > 0 && sb.sendEvent != nil {
-		sb.sendEvent(&pb.Event{
-			Messages:  msgsToEvents(msgs),
-			ContextId: sb.Id(),
-		})
+	if err != nil {
+		// can't make diff - reopen doc
+		sb.Show(session.NewContext(session.WithSendEvent(sb.sendEvent)))
+	} else {
+		if len(msgs) > 0 && sb.sendEvent != nil {
+			sb.sendEvent(&pb.Event{
+				Messages:  msgsToEvents(msgs),
+				ContextId: sb.Id(),
+			})
+		}
 	}
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()

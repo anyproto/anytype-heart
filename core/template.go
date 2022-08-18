@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -14,7 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func (mw *Middleware) TemplateCreateFromObject(req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
+func (mw *Middleware) TemplateCreateFromObject(cctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
 	response := func(templateId string, err error) *pb.RpcTemplateCreateFromObjectResponse {
 		m := &pb.RpcTemplateCreateFromObjectResponse{
 			Error: &pb.RpcTemplateCreateFromObjectResponseError{Code: pb.RpcTemplateCreateFromObjectResponseError_NULL},
@@ -34,7 +35,7 @@ func (mw *Middleware) TemplateCreateFromObject(req *pb.RpcTemplateCreateFromObje
 	return response(templateId, err)
 }
 
-func (mw *Middleware) TemplateClone(req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
+func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
 	response := func(templateId string, err error) *pb.RpcTemplateCloneResponse {
 		m := &pb.RpcTemplateCloneResponse{
 			Error: &pb.RpcTemplateCloneResponseError{Code: pb.RpcTemplateCloneResponseError_NULL},
@@ -54,7 +55,7 @@ func (mw *Middleware) TemplateClone(req *pb.RpcTemplateCloneRequest) *pb.RpcTemp
 	return response(templateId, err)
 }
 
-func (mw *Middleware) ObjectApplyTemplate(req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
+func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
 	response := func(err error) *pb.RpcObjectApplyTemplateResponse {
 		m := &pb.RpcObjectApplyTemplateResponse{
 			Error: &pb.RpcObjectApplyTemplateResponseError{Code: pb.RpcObjectApplyTemplateResponseError_NULL},
@@ -71,7 +72,7 @@ func (mw *Middleware) ObjectApplyTemplate(req *pb.RpcObjectApplyTemplateRequest)
 	return response(err)
 }
 
-func (mw *Middleware) TemplateCreateFromObjectType(req *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse {
+func (mw *Middleware) TemplateCreateFromObjectType(cctx context.Context, req *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse {
 	response := func(templateId string, err error) *pb.RpcTemplateCreateFromObjectTypeResponse {
 		m := &pb.RpcTemplateCreateFromObjectTypeResponse{
 			Error: &pb.RpcTemplateCreateFromObjectTypeResponseError{Code: pb.RpcTemplateCreateFromObjectTypeResponseError_NULL},
@@ -91,7 +92,7 @@ func (mw *Middleware) TemplateCreateFromObjectType(req *pb.RpcTemplateCreateFrom
 	return response(templateId, err)
 }
 
-func (mw *Middleware) TemplateExportAll(req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
+func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
 	response := func(path string, err error) (res *pb.RpcTemplateExportAllResponse) {
 		res = &pb.RpcTemplateExportAllResponse{
 			Error: &pb.RpcTemplateExportAllResponseError{
@@ -144,7 +145,7 @@ func (mw *Middleware) TemplateExportAll(req *pb.RpcTemplateExportAllRequest) *pb
 	return response(path, err)
 }
 
-func (mw *Middleware) WorkspaceExport(req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
+func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
 	response := func(path string, err error) (res *pb.RpcWorkspaceExportResponse) {
 		res = &pb.RpcWorkspaceExportResponse{
 			Error: &pb.RpcWorkspaceExportResponseError{

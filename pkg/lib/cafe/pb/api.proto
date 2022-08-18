@@ -75,18 +75,19 @@ message GetFilePinsResponse {
 
 message GetConfigRequest {} // Deprecated
 
+message Config {
+    bool  enableDataview = 1;
+    bool  enableDebug = 2;
+    bool  enableReleaseChannelSwitch = 3;
+    bool  enablePrereleaseChannel = 6;
+    int32 simultaneousRequests = 4;
+    bool  enableSpaces = 5;
+
+    google.protobuf.Struct extra = 100;
+}
+
 message GetConfigResponse {
     Config config = 1;
-
-    message Config {
-        bool  enableDataview = 1;
-        bool  enableDebug = 2;
-        bool  enableReleaseChannelSwitch = 3;
-        int32 simultaneousRequests = 4;
-        bool  enableSpaces = 5;
-
-        google.protobuf.Struct extra = 100;
-    }
 }
 
 message AccountDeleteRequest {
@@ -123,16 +124,6 @@ message AccountState {
         PendingDeletion = 1;
         StartedDeletion = 2;
         Deleted = 3;
-    }
-
-    message Config {
-        bool  enableDataview = 1;
-        bool  enableDebug = 2;
-        bool  enableReleaseChannelSwitch = 3;
-        int32 simultaneousRequests = 4;
-        bool  enableSpaces = 5;
-
-        google.protobuf.Struct extra = 100;
     }
 }
 

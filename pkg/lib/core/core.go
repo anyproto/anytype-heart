@@ -24,7 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/textileio/go-threads/core/net"
 	"io"
 	"os"
@@ -96,7 +96,7 @@ type CreatorInfoAdder interface {
 type Anytype struct {
 	files            *files.Service
 	cafe             cafe.Client
-	mdns             discovery.Service
+	mdns             mdns.Service
 	objectStore      objectstore.ObjectStore
 	fileStore        filestore.FileStore
 	fetcher          configfetcher.ConfigFetcher
@@ -187,12 +187,12 @@ func (a *Anytype) Device() string {
 	return pk.Address()
 }
 
-func (a *Anytype) Run() (err error) {
+func (a *Anytype) Run(ctx context.Context) (err error) {
 	if err = a.Start(); err != nil {
 		return
 	}
 
-	return a.EnsurePredefinedBlocks(context.TODO(), a.config.NewAccount)
+	return a.EnsurePredefinedBlocks(ctx, a.config.NewAccount)
 }
 
 func (a *Anytype) IsStarted() bool {

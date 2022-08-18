@@ -1,11 +1,13 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) WorkspaceCreate(req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
+func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
 	response := func(workspaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
 		m := &pb.RpcWorkspaceCreateResponse{WorkspaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
 		if err != nil {
@@ -27,7 +29,7 @@ func (mw *Middleware) WorkspaceCreate(req *pb.RpcWorkspaceCreateRequest) *pb.Rpc
 	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceSetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {
+func (mw *Middleware) WorkspaceSetIsHighlighted(cctx context.Context, req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {
 	response := func(code pb.RpcWorkspaceSetIsHighlightedResponseErrorCode, err error) *pb.RpcWorkspaceSetIsHighlightedResponse {
 		m := &pb.RpcWorkspaceSetIsHighlightedResponse{Error: &pb.RpcWorkspaceSetIsHighlightedResponseError{Code: code}}
 		if err != nil {
@@ -48,7 +50,7 @@ func (mw *Middleware) WorkspaceSetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlig
 	return response(pb.RpcWorkspaceSetIsHighlightedResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceSelect(req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {
+func (mw *Middleware) WorkspaceSelect(cctx context.Context, req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {
 	response := func(code pb.RpcWorkspaceSelectResponseErrorCode, err error) *pb.RpcWorkspaceSelectResponse {
 		m := &pb.RpcWorkspaceSelectResponse{Error: &pb.RpcWorkspaceSelectResponseError{Code: code}}
 		if err != nil {
@@ -68,7 +70,7 @@ func (mw *Middleware) WorkspaceSelect(req *pb.RpcWorkspaceSelectRequest) *pb.Rpc
 	return response(pb.RpcWorkspaceSelectResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceGetAll(req *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse {
+func (mw *Middleware) WorkspaceGetAll(cctx context.Context, req *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse {
 	response := func(workspaceIds []string, code pb.RpcWorkspaceGetAllResponseErrorCode, err error) *pb.RpcWorkspaceGetAllResponse {
 		m := &pb.RpcWorkspaceGetAllResponse{WorkspaceIds: workspaceIds, Error: &pb.RpcWorkspaceGetAllResponseError{Code: code}}
 		if err != nil {
@@ -90,7 +92,7 @@ func (mw *Middleware) WorkspaceGetAll(req *pb.RpcWorkspaceGetAllRequest) *pb.Rpc
 	return response(workspaceIds, pb.RpcWorkspaceGetAllResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceGetCurrent(req *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse {
+func (mw *Middleware) WorkspaceGetCurrent(cctx context.Context, req *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse {
 	response := func(workspaceId string, code pb.RpcWorkspaceGetCurrentResponseErrorCode, err error) *pb.RpcWorkspaceGetCurrentResponse {
 		m := &pb.RpcWorkspaceGetCurrentResponse{WorkspaceId: workspaceId, Error: &pb.RpcWorkspaceGetCurrentResponseError{Code: code}}
 		if err != nil {

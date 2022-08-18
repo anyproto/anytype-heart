@@ -255,10 +255,7 @@ func (t *editor) ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveReques
 		return fmt.Errorf("insert column: %w", err)
 	}
 
-	colIdx := map[string]int{}
-	for i, c := range tb.Columns().ChildrenIds {
-		colIdx[c] = i
-	}
+	colIdx := tb.MakeColumnIndex()
 
 	for _, id := range tb.Rows().ChildrenIds {
 		row, err := getRow(s, id)
@@ -418,10 +415,7 @@ func (t *editor) ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFi
 		}
 	}
 
-	colIdx := map[string]int{}
-	for i, id := range tb.Columns().ChildrenIds {
-		colIdx[id] = i
-	}
+	colIdx := tb.MakeColumnIndex()
 	for _, rowId := range rows {
 		row, err := getRow(s, rowId)
 		if err != nil {
@@ -486,6 +480,53 @@ func (t *editor) ColumnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRe
 	if err = s.InsertTo(req.TargetId, req.Position, colId); err != nil {
 		return fmt.Errorf("insert column header: %w", err)
 	}
+
+	return t.cloneColumnStyles(s, req.TargetId, colId)
+}
+
+func (t *editor) cloneColumnStyles(s *state.State, srcColId, targetColId string) error {
+	tb, err := NewTable(s, srcColId)
+	if err != nil {
+		return fmt.Errorf("init table block: %w", err)
+	}
+	colIdx := tb.MakeColumnIndex()
+
+	for _, rowId := range tb.Rows().ChildrenIds {
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row: %w", err)
+		}
+
+		var protoBlock simple.Block
+		for _, cellId := range row.Model().ChildrenIds {
+			_, colId, err := ParseCellId(cellId)
+			if err != nil {
+				return fmt.Errorf("parse cell id: %w", err)
+			}
+
+			if colId == srcColId {
+				protoBlock = s.Pick(cellId)
+			}
+		}
+
+		if protoBlock != nil && protoBlock.Model().BackgroundColor != "" {
+			targetCellId := makeCellId(rowId, targetColId)
+
+			if !s.Exists(targetCellId) {
+				_, err := addCell(s, rowId, targetColId)
+				if err != nil {
+					return fmt.Errorf("add cell: %w", err)
+				}
+			}
+			cell := s.Get(targetCellId)
+			cell.Model().BackgroundColor = protoBlock.Model().BackgroundColor
+
+			row = s.Get(row.Model().Id)
+			row.Model().ChildrenIds = append(row.Model().ChildrenIds, targetCellId)
+			normalizeRow(colIdx, row)
+		}
+	}
+
 	return nil
 }
 
@@ -665,7 +706,7 @@ func (t tableSorter) Len() int {
 }
 
 func (t tableSorter) Less(i, j int) bool {
-	return t.values[i] < t.values[j]
+	return strings.ToLower(t.values[i]) < strings.ToLower(t.values[j])
 }
 
 func (t tableSorter) Swap(i, j int) {
@@ -746,16 +787,16 @@ func ParseCellId(id string) (rowId string, colId string, err error) {
 }
 
 func addCell(s *state.State, rowId, colId string) (string, error) {
-	tb := simple.New(&model.Block{
+	c := simple.New(&model.Block{
 		Id: makeCellId(rowId, colId),
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{},
 		},
 	})
-	if !s.Add(tb) {
+	if !s.Add(c) {
 		return "", fmt.Errorf("add text block")
 	}
-	return tb.Model().Id, nil
+	return c.Model().Id, nil
 }
 
 // Table aggregates valid table structure in state
@@ -783,7 +824,7 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		return nil, fmt.Errorf("root table block is not found")
 	}
 
-	if len(tb.block.Model().ChildrenIds) != 2 {
+	if len(tb.block.Model().ChildrenIds) < 2 {
 		return nil, fmt.Errorf("inconsistent state: table block")
 	}
 
@@ -794,7 +835,35 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		return nil, fmt.Errorf("rows block is not found")
 	}
 
+	// we don't want divs in tables
+	destructureDivs(s, tb.Rows().Id)
+	destructureDivs(s, tb.Columns().Id)
+	for _, rowId := range tb.Rows().ChildrenIds {
+		destructureDivs(s, rowId)
+	}
+
 	return &tb, nil
+}
+
+// destructureDivs removes child dividers from block
+func destructureDivs(s *state.State, blockId string) {
+	parent := s.Pick(blockId)
+
+	var foundDiv bool
+	var ids []string
+	for _, id := range parent.Model().ChildrenIds {
+		b := s.Pick(id)
+		if b.Model().GetLayout().GetStyle() == model.BlockContentLayout_Div {
+			foundDiv = true
+			ids = append(ids, b.Model().ChildrenIds...)
+			continue
+		}
+	}
+
+	if foundDiv {
+		parent = s.Get(blockId)
+		parent.Model().ChildrenIds = ids
+	}
 }
 
 func (tb Table) Block() simple.Block {
@@ -809,6 +878,14 @@ func (tb Table) Columns() *model.Block {
 		return nil
 	}
 	return b.Model()
+}
+
+func (tb Table) MakeColumnIndex() map[string]int {
+	colIdx := map[string]int{}
+	for i, c := range tb.Columns().ChildrenIds {
+		colIdx[c] = i
+	}
+	return colIdx
 }
 
 func (tb Table) Rows() *model.Block {

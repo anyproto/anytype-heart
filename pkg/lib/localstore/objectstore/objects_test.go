@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
@@ -43,7 +44,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	id, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	err = app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start()
+	err = app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err = ds.CreateObject(id.String(), &types.Struct{
@@ -88,7 +89,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	defer app.Close()
 
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	require.NoError(t, ds.AddToIndexQueue("one"))
@@ -145,7 +146,7 @@ func TestDsObjectStore_Query(t *testing.T) {
 	defer app.Close()
 
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	fts := app.MustComponent(ftsearch.CName).(ftsearch.FTSearch)
 
@@ -241,11 +242,11 @@ func getId() string {
 }
 func TestDsObjectStore_PrefixQuery(t *testing.T) {
 	bds := sync.MutexWrap(ds.NewMapDatastore())
-	err := bds.Put(ds.NewKey("/p1/abc/def/1"), []byte{})
+	err := bds.Put(context.Background(), ds.NewKey("/p1/abc/def/1"), []byte{})
 
 	require.NoError(t, err)
 
-	res, err := bds.Query(query.Query{Prefix: "/p1/abc", KeysOnly: true})
+	res, err := bds.Query(context.Background(), query.Query{Prefix: "/p1/abc", KeysOnly: true})
 	require.NoError(t, err)
 
 	entries, err := res.Rest()
@@ -263,7 +264,7 @@ func Test_removeByPrefix(t *testing.T) {
 	app := testapp.New()
 	defer app.Close()
 	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	ds2 := ds.(*dsObjectStore)
@@ -294,4 +295,49 @@ func Test_removeByPrefix(t *testing.T) {
 	got, err = removeByPrefix(ds2.ds, pagesOutboundLinksBase.String())
 	require.NoError(t, err)
 	require.Equal(t, 10*8000, got)
+}
+
+func Test_SearchRelationDistinct(t *testing.T) {
+	tmpDir, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(tmpDir)
+
+	logging.ApplyLevelsFromEnv()
+	app := testapp.New()
+	defer app.Close()
+	ds := New()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
+	require.NoError(t, err)
+
+	id1 := getId()
+	id2 := getId()
+	id3 := getId()
+	require.NoError(t, ds.CreateObject(id1, &types.Struct{
+		Fields: map[string]*types.Value{
+			"name": pbtypes.String("one"),
+			"type": pbtypes.StringList([]string{"_ota1"}),
+		},
+	}, nil, "s1"))
+
+	require.NoError(t, ds.CreateObject(id2, &types.Struct{Fields: map[string]*types.Value{
+		"name": pbtypes.String("two"),
+		"type": pbtypes.StringList([]string{"_ota2"}),
+		"tag":  pbtypes.StringList([]string{"tag1"}),
+	}}, nil, "s2"))
+	require.NoError(t, ds.CreateObject(id3, &types.Struct{Fields: map[string]*types.Value{
+		"name": pbtypes.String("three"),
+		"type": pbtypes.StringList([]string{"_ota2"}),
+		"tag":  pbtypes.StringList([]string{"tag1", "tag2", "tag3"}),
+	}}, nil, "s3"))
+
+	statusOpts, err := ds.RelationSearchDistinct("rel1", nil)
+	require.NoError(t, err)
+	require.Len(t, statusOpts, 6)
+
+	tagsOptsAll, err := ds.RelationSearchDistinct("rel4", nil)
+	require.NoError(t, err)
+	require.Len(t, tagsOptsAll, 3)
+
+	tagsOptsFilter, err := ds.RelationSearchDistinct("rel4", []*model.BlockContentDataviewFilter{{RelationKey: "name", Condition: 1, Value: pbtypes.String("three")}})
+	require.NoError(t, err)
+	require.Len(t, tagsOptsFilter, 2)
 }

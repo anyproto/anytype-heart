@@ -70,7 +70,7 @@ func (v *threadDB) Virtual() bool {
 	return true
 }
 
-func (v *threadDB) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *threadDB) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		Debug("reading document for workspace")
@@ -87,7 +87,7 @@ func (v *threadDB) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, 
 	return s, nil
 }
 
-func (v *threadDB) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
+func (v *threadDB) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
 	return v.createState()
 }
 

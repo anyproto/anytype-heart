@@ -66,7 +66,7 @@ func (l *listener) Init(a *app.App) (err error) {
 	return
 }
 
-func (l *listener) Run() (err error) {
+func (l *listener) Run(context.Context) (err error) {
 	go l.wakeupLoop()
 	return
 }

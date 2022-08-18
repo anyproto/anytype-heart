@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -16,12 +17,12 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateObjectFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error)
+	CreateObjectFromState(ctx *session.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
-func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
 	st := bs.NewStateCtx(ctx)
 
 	rootIds := st.SelectRoots(req.BlockIds)
@@ -48,11 +49,16 @@ func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req
 				// This id will be replaced by id of the new object
 				Id:          "_root",
 				ChildrenIds: []string{newRoot},
-				Content: &model.BlockContentOfSmartblock{
-					Smartblock: &model.BlockContentSmartblock{},
-				},
 			}))
 		}
+
+		// Root block have to have Smartblock content
+		rootId := objState.RootId()
+		rootBlock := objState.Get(rootId).Model()
+		rootBlock.Content = &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		}
+		objState.Set(simple.New(rootBlock))
 
 		fields := map[string]*types.Value{
 			bundle.RelationKeyName.String(): pbtypes.String(root.Model().GetText().Text),

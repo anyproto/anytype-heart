@@ -69,7 +69,7 @@ func TestBasic_Create(t *testing.T) {
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		_, err := b.Create(nil, "", pb.RpcBlockCreateRequest{})
-		assert.Equal(t, restriction.ErrRestricted, err)
+		assert.ErrorIs(t, err, restriction.ErrRestricted)
 	})
 }
 

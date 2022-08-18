@@ -3,16 +3,22 @@ package filter
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	timeutil "github.com/anytypeio/go-anytype-middleware/util/time"
 	"time"
 )
 
-func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
-	if reqFilters == nil {
+func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
+	if protoFilters == nil {
 		return nil
 	}
 
-	for _, f := range reqFilters {
+	filters := make([]*model.BlockContentDataviewFilter, len(protoFilters))
+	for i, f := range protoFilters {
+		filters[i] = pbtypes.CopyFilter(f)
+	}
+
+	for _, f := range filters {
 		if f.QuickOption > model.BlockContentDataviewFilter_ExactDate {
 			d1, d2 := getRange(f, loc)
 			switch f.Condition {
@@ -20,7 +26,7 @@ func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter, loc *t
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pb.ToValue(d1)
 
-				reqFilters = append(reqFilters, &model.BlockContentDataviewFilter{
+				filters = append(filters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pb.ToValue(d2),
@@ -37,17 +43,16 @@ func TransformQuickOption(reqFilters []*model.BlockContentDataviewFilter, loc *t
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pb.ToValue(d1)
 
-				reqFilters = append(reqFilters, &model.BlockContentDataviewFilter{
+				filters = append(filters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pb.ToValue(d2),
 				})
 			}
-			f.QuickOption = 0
 		}
 	}
 
-	return reqFilters
+	return filters
 }
 
 func getRange(f *model.BlockContentDataviewFilter, loc *time.Location) (int64, int64) {

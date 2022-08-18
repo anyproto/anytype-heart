@@ -15,7 +15,6 @@ import (
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-tcp-transport"
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	threadsNet "github.com/textileio/go-threads/net"
 	threadsQueue "github.com/textileio/go-threads/net/queue"
@@ -54,6 +53,10 @@ var (
 
 const maxReceiveMessageSize int = 100 * 1024 * 1024
 
+type connState interface {
+	GetConnState() (connected, connectedBefore bool, lastChange time.Time)
+}
+
 type service struct {
 	Config
 	GRPCServerOptions []grpc.ServerOption
@@ -90,6 +93,7 @@ type service struct {
 	threadCreateQueue         ThreadCreateQueue
 	threadQueue               ThreadQueue
 
+	cafeClient     connState
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
 }
@@ -103,8 +107,7 @@ func New() Service {
 	threadsNet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
-	threadsNet.DialTimeout = 20 * time.Second          // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
-	tcp.DefaultConnectTimeout = threadsNet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
+	threadsNet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
 	threadsNet.PushTimeout = 30 * time.Second
 	threadsNet.PullTimeout = 2 * time.Minute
 
@@ -135,6 +138,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.workspaceThreadGetter = a.MustComponent("objectstore").(CurrentWorkspaceThreadGetter)
 	s.threadCreateQueue = a.MustComponent("objectstore").(ThreadCreateQueue)
 	s.process = a.MustComponent(process.CName).(process.Service)
+	s.cafeClient = a.MustComponent("cafeclient").(connState)
+
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
 	s.blockServiceObjectDeleter = a.MustComponent("blockService").(ObjectDeleter)
@@ -177,7 +182,7 @@ func (s *service) ObserveAccountStateUpdate(state *pb.AccountState) {
 	s.threadQueue.UpdateSimultaneousRequestsLimit(int(state.Config.SimultaneousRequests))
 }
 
-func (s *service) Run() (err error) {
+func (s *service) Run(context.Context) (err error) {
 	s.logstoreDS, err = s.ds.LogstoreDS()
 	if err != nil {
 		return err
@@ -236,7 +241,10 @@ func (s *service) Run() (err error) {
 
 		if s.CafePermanentConnection {
 			// todo: do we need to wait bootstrap?
-			err = helpers.PermanentConnection(s.ctx, addr, s.ipfsNode.GetHost(), permanentConnectionRetryDelay)
+			err = helpers.PermanentConnection(s.ctx, addr, s.ipfsNode.GetHost(), permanentConnectionRetryDelay, func() bool {
+				connected, _, _ := s.cafeClient.GetConnState()
+				return connected
+			})
 			if err != nil {
 				return err
 			}

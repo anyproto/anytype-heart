@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -23,13 +23,13 @@ import (
 var setTextApplyInterval = time.Second * 3
 
 type Text interface {
-	UpdateTextBlocks(ctx *state.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
-	Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
-	Merge(ctx *state.Context, firstId, secondId string) (err error)
-	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
-	SetIcon(ctx *state.Context, image, emoji string, blockIds ...string) error
-	SetText(req pb.RpcBlockTextSetTextRequest) (err error)
-	TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) error
+	UpdateTextBlocks(ctx *session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
+	Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
+	Merge(ctx *session.Context, firstId, secondId string) (err error)
+	SetMark(ctx *session.Context, mark *model.BlockContentTextMark, blockIds ...string) error
+	SetIcon(ctx *session.Context, image, emoji string, blockIds ...string) error
+	SetText(ctx *session.Context, req pb.RpcBlockTextSetTextRequest) (err error)
+	TurnInto(ctx *session.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
 func NewText(sb smartblock.SmartBlock) Text {
@@ -48,7 +48,7 @@ type textImpl struct {
 	setTextFlushed   chan struct{}
 }
 
-func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent bool, apply func(t text.Block) error) error {
+func (t *textImpl) UpdateTextBlocks(ctx *session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error {
 	s := t.NewStateCtx(ctx)
 	for _, id := range ids {
 		tb, err := getText(s, id)
@@ -65,7 +65,7 @@ func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent 
 	return t.Apply(s, smartblock.NoEvent)
 }
 
-func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
+func (t *textImpl) Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
 	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, req.BlockId)
@@ -154,7 +154,7 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 	return
 }
 
-func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err error) {
+func (t *textImpl) Merge(ctx *session.Context, firstId, secondId string) (err error) {
 	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 
@@ -195,7 +195,7 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	return
 }
 
-func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) (err error) {
+func (t *textImpl) SetMark(ctx *session.Context, mark *model.BlockContentTextMark, blockIds ...string) (err error) {
 	s := t.NewStateCtx(ctx)
 	var reverse = true
 	for _, id := range blockIds {
@@ -223,7 +223,7 @@ func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark,
 }
 
 // SetIcon sets an icon for the text block with style BlockContentText_Callout(13)
-func (t *textImpl) SetIcon(ctx *state.Context, image string, emoji string, blockIds ...string) (err error) {
+func (t *textImpl) SetIcon(ctx *session.Context, image string, emoji string, blockIds ...string) (err error) {
 	s := t.NewStateCtx(ctx)
 	for _, id := range blockIds {
 		tb, err := getText(s, id)
@@ -238,7 +238,7 @@ func (t *textImpl) SetIcon(ctx *state.Context, image string, emoji string, block
 	return t.Apply(s)
 }
 
-func (t *textImpl) newSetTextState(blockId string, ctx *state.Context) *state.State {
+func (t *textImpl) newSetTextState(blockId string, ctx *session.Context) *state.State {
 	if t.lastSetTextState != nil && t.lastSetTextId == blockId {
 		return t.lastSetTextState
 	}
@@ -259,7 +259,7 @@ func (t *textImpl) newSetTextState(blockId string, ctx *state.Context) *state.St
 
 func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
-		ctx := state.NewContext(nil)
+		ctx := session.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
 		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
@@ -269,6 +269,8 @@ func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 		for _, msg := range msgs {
 			if msg.GetBlockSetText() == nil {
 				filteredMsgs = append(filteredMsgs, msg)
+			} else {
+				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
 			}
 		}
 		if len(filteredMsgs) > 0 {
@@ -289,13 +291,13 @@ func (t *textImpl) cancelSetTextState() {
 	}
 }
 
-func (t *textImpl) SetText(req pb.RpcBlockTextSetTextRequest) (err error) {
+func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTextRequest) (err error) {
 	defer func() {
 		if err != nil {
 			t.cancelSetTextState()
 		}
 	}()
-	ctx := state.NewContext(nil)
+	ctx := session.NewChildContext(parentCtx)
 	s := t.newSetTextState(req.BlockId, ctx)
 	wasEmpty := s.IsEmpty(true)
 
@@ -319,6 +321,8 @@ func (t *textImpl) SetText(req pb.RpcBlockTextSetTextRequest) (err error) {
 		for _, msg := range msgs {
 			if msg.GetBlockSetText() == nil {
 				filtered = append(filtered, msg)
+			} else {
+				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
 			}
 		}
 		t.SendEvent(filtered)
@@ -336,7 +340,7 @@ func (t *textImpl) SetText(req pb.RpcBlockTextSetTextRequest) (err error) {
 	return
 }
 
-func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) (err error) {
+func (t *textImpl) TurnInto(ctx *session.Context, style model.BlockContentTextStyle, ids ...string) (err error) {
 	s := t.NewStateCtx(ctx)
 
 	turnInto := func(b text.Block) {

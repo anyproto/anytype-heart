@@ -2,6 +2,7 @@ package change
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"fmt"
 	"io/ioutil"
@@ -262,7 +263,7 @@ func BenchmarkTree_Iterate(b *testing.B) {
 		Head: "bafyreifmdv6gsspodvsm7wf6orrsi5ibznib7guooqravwvtajttpp7mka",
 	})
 
-	tree, _, e := BuildTree(sb)
+	tree, _, e := BuildTree(context.Background(), sb)
 	require.NoError(b, e)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -282,13 +283,13 @@ func TestTree_LastSnapshotId(t *testing.T) {
 			newDetailsChange("one", "root", "root", "root", true),
 			newDetailsChange("two", "root", "one", "one", false),
 		))
-		assert.Equal(t, "root", tr.LastSnapshotId())
+		assert.Equal(t, "root", tr.LastSnapshotId(context.Background()))
 		assert.Equal(t, Append, tr.Add(newSnapshot("three", "root", nil, "two")))
-		assert.Equal(t, "three", tr.LastSnapshotId())
+		assert.Equal(t, "three", tr.LastSnapshotId(context.Background()))
 	})
 	t.Run("empty", func(t *testing.T) {
 		tr := new(Tree)
-		assert.Equal(t, "", tr.LastSnapshotId())
+		assert.Equal(t, "", tr.LastSnapshotId(context.Background()))
 	})
 	t.Run("builder", func(t *testing.T) {
 		tr := new(Tree)
@@ -299,7 +300,7 @@ func TestTree_LastSnapshotId(t *testing.T) {
 			newSnapshot("newSh", "root", nil, "one"),
 		)
 		assert.Equal(t, []string{"newSh", "two"}, tr.Heads())
-		assert.Equal(t, "root", tr.LastSnapshotId())
+		assert.Equal(t, "root", tr.LastSnapshotId(context.Background()))
 	})
 	t.Run("builder with split", func(t *testing.T) {
 		tr := new(Tree)
@@ -311,6 +312,6 @@ func TestTree_LastSnapshotId(t *testing.T) {
 			newDetailsChange("two", "root2", "root2", "root2", false),
 			newSnapshot("newSh", "root", nil, "one"),
 		)
-		assert.Equal(t, "b", tr.LastSnapshotId())
+		assert.Equal(t, "b", tr.LastSnapshotId(context.Background()))
 	})
 }

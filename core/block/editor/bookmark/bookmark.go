@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
@@ -20,8 +21,8 @@ func NewBookmark(sb smartblock.SmartBlock, blockService BlockService, bookmarkSv
 }
 
 type Bookmark interface {
-	Fetch(ctx *state.Context, id string, url string, isSync bool) (err error)
-	CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
+	Fetch(ctx *session.Context, id string, url string, isSync bool) (err error)
+	CreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
 	MigrateBlock(bm bookmark.Block) (err error)
 }
@@ -41,7 +42,7 @@ type BlockService interface {
 	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
-func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
+func (b *sbookmark) Fetch(ctx *session.Context, id string, url string, isSync bool) (err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	if err = b.fetch(s, id, url, isSync); err != nil {
 		return
@@ -83,7 +84,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	return err
 }
 
-func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
+func (b *sbookmark) CreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfBookmark{

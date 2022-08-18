@@ -44,7 +44,7 @@ func (b *block) Copy() simple.Block {
 func (b *block) Normalize(s *state.State) error {
 	tb, err := NewTable(s, b.Id)
 	if err != nil {
-		log.Errorf("normalize table %s: broken table state", b.Model().Id)
+		log.Errorf("normalize table %s: broken table state: %s", b.Model().Id, err)
 		return nil
 	}
 
