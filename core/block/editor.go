@@ -75,34 +75,36 @@ func (s *service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest
 
 func (s *service) DuplicateBlocks(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
 	if req.ContextId == req.TargetContextId || req.TargetContextId == "" {
-		err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-			newIds, err = b.Duplicate(ctx, req)
-			return err
+		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+			if sb.Type() == model.SmartBlockType_Set {
+				return basic.ErrNotSupported
+			}
+
+			st := sb.NewStateCtx(ctx)
+			newIds, err = basic.Duplicate(req, st, st)
+			if err != nil {
+				return fmt.Errorf("duplicate: %w", err)
+			}
+			return sb.Apply(st)
 		})
 		return
 	}
 
-	err = s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
-		return s.DoClipboard(req.TargetContextId, func(tb clipboard.Clipboard) error {
-			cs := cb.NewState()
-			blocks := make([]*model.Block, 0, len(req.BlockIds))
-			for _, id := range req.BlockIds {
-				b := cs.Pick(id)
-				if b == nil {
-					continue
-				}
-				blocks = append(blocks, b.Model())
+	err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+		srcState := sb.NewStateCtx(ctx)
+		err = s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
+			if tb.Type() == model.SmartBlockType_Set {
+				return basic.ErrNotSupported
 			}
-			newIds, _, _, _, err = tb.Paste(ctx, &pb.RpcBlockPasteRequest{
-				ContextId: req.TargetContextId,
-				AnySlot:   blocks,
-			}, "")
+
+			targetState := tb.NewState()
+			newIds, err = basic.Duplicate(req, srcState, targetState)
 			if err != nil {
-				err = fmt.Errorf("paste: %w", err)
-				return err
+				return fmt.Errorf("duplicate: %w", err)
 			}
-			return cb.Apply(cs)
+			return tb.Apply(targetState)
 		})
+		return sb.Apply(srcState)
 	})
 
 	return
