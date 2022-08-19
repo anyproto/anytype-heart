@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "191af74fda1a28eaabc128f11888eed9817b62b2b6d5acc632fab11abab4c19a"
+const RelationChecksum = "151a19d6599f38fc1eecb98a4d491e644303b64efb8562f00cacfd1d825cfc43"
 
 type RelationKey string
 
@@ -1878,7 +1878,7 @@ var (
 			Key:              "source",
 			MaxCount:         1,
 			Name:             "Source",
-			ReadOnly:         true,
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

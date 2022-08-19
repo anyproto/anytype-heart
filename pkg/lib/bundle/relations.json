@@ -1606,7 +1606,7 @@
     "key": "source",
     "maxCount": 1,
     "name": "Source",
-    "readonly": true,
+    "readonly": false,
     "source": "details"
   }
 ]
