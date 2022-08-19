@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -73,15 +74,15 @@ func (st *SmartTest) GetFirstTextBlock() (*model.BlockContentOfText, error) {
 	return nil, nil
 }
 
-func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
+func (st *SmartTest) SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) error {
+func (st *SmartTest) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error {
+func (st *SmartTest) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) error {
 	return nil
 }
 
@@ -103,11 +104,11 @@ func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hoo
 	return
 }
 
-func (st *SmartTest) HasRelation(relationKey string) bool {
+func (st *SmartTest) HasRelation(s *state.State, relationKey string) bool {
 	return st.NewState().HasRelation(relationKey)
 }
 
-func (st *SmartTest) Relations(s *state.State) []*model.Relation {
+func (st *SmartTest) Relations(s *state.State) relation.Relations {
 	return nil
 }
 
@@ -119,7 +120,7 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddExtraRelations(ctx *state.Context, relationIds ...string) (err error) {
+func (st *SmartTest) AddExtraRelations(ctx *session.Context, relationIds ...string) (err error) {
 	return nil
 }
 
@@ -127,15 +128,15 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 	return false
 }
 
-func (st *SmartTest) RefreshLocalDetails(ctx *state.Context) error {
+func (st *SmartTest) RefreshLocalDetails(ctx *session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error) {
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
+func (st *SmartTest) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
 	return nil
 }
 
@@ -147,7 +148,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -173,7 +174,7 @@ func (st *SmartTest) Type() model.SmartBlockType {
 	return model.SmartBlockType_Page
 }
 
-func (st *SmartTest) Show(*state.Context) (err error) {
+func (st *SmartTest) Show(*session.Context) (obj *model.ObjectView, err error) {
 	return
 }
 
@@ -236,7 +237,7 @@ func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 	return nil
 }
 
-func (st *SmartTest) FileRelationKeys() []string {
+func (st *SmartTest) FileRelationKeys(s *state.State) []string {
 	return nil
 }
 

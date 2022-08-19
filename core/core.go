@@ -3,15 +3,16 @@ package core
 import (
 	"context"
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/core/account"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"os"
 	"runtime/debug"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -25,26 +26,32 @@ var (
 )
 
 type Middleware struct {
-	rootPath            string
-	pin                 string
-	mnemonic            string
+	rootPath string
+	pin      string
+	mnemonic string
+	// memoized private key derived from mnemonic
+	privateKey          []byte
 	accountSearchCancel context.CancelFunc
 
 	foundAccounts []*model.Account // found local&remote account for the current mnemonic
 
 	EventSender event.Sender
 
-	app *app.App
+	sessions session.Service
+	app      *app.App
 
 	m sync.RWMutex
 }
 
 func New() *Middleware {
-	mw := &Middleware{accountSearchCancel: func() {}}
+	mw := &Middleware{
+		accountSearchCancel: func() {},
+		sessions:            session.New(),
+	}
 	return mw
 }
 
-func (mw *Middleware) AppShutdown(request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
+func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
 	mw.m.Lock()
 	defer mw.m.Unlock()
 	mw.stop()
@@ -55,7 +62,7 @@ func (mw *Middleware) AppShutdown(request *pb.RpcAppShutdownRequest) *pb.RpcAppS
 	}
 }
 
-func (mw *Middleware) AppSetDeviceState(req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
+func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
 	mw.app.SetDeviceState(int(req.DeviceState))
 
 	return &pb.RpcAppSetDeviceStateResponse{

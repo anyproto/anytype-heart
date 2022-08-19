@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+const CtxKeyRequest = "request"
+
 type RecordAcceptEventAggregated struct {
 	IsNAT      bool
 	RecordType string
@@ -188,16 +190,30 @@ func (c BlockSplit) ToEvent() *Event {
 }
 
 type TreeBuild struct {
-	TimeMs   int64
-	ObjectId string
+	SbType         uint64
+	TimeMs         int64
+	ObjectId       string
+	Logs           int
+	Request        string
+	RecordsLoaded  int
+	RecordsMissing int
+	RecordsFailed  int
+	InProgress     bool
 }
 
 func (c TreeBuild) ToEvent() *Event {
 	return &Event{
 		EventType: "tree_build",
 		EventData: map[string]interface{}{
-			"object_id": c.ObjectId,
-			"time_ms":   c.TimeMs,
+			"object_id":       c.ObjectId,
+			"logs":            c.Logs,
+			"request":         c.Request,
+			"records_loaded":  c.RecordsLoaded,
+			"records_missing": c.RecordsMissing,
+			"records_failed":  c.RecordsFailed,
+			"time_ms":         c.TimeMs,
+			"sb_type":         c.SbType,
+			"in_progress":     c.InProgress,
 		},
 	}
 }
@@ -233,7 +249,7 @@ func (c StateApply) ToEvent() *Event {
 }
 
 type AppStart struct {
-	Type      string
+	Request   string
 	TotalMs   int64
 	PerCompMs map[string]int64
 }
@@ -242,7 +258,7 @@ func (c AppStart) ToEvent() *Event {
 	return &Event{
 		EventType: "app_start",
 		EventData: map[string]interface{}{
-			"type":     c.Type,
+			"request":  c.Request,
 			"time_ms":  c.TotalMs,
 			"per_comp": c.PerCompMs,
 		},
@@ -373,6 +389,68 @@ func (c AccountRecoverEvent) ToEvent() *Event {
 			"spent_ms":              c.SpentMs,
 			"total_threads":         c.TotalThreads,
 			"simultaneous_requests": c.SimultaneousRequests,
+		},
+	}
+}
+
+type CafeP2PConnectStateChanged struct {
+	AfterMs         int64
+	PrevState       int
+	NewState        int
+	NetCheckSuccess bool
+	NetCheckError   string
+	GrpcConnected   bool
+}
+
+func (c CafeP2PConnectStateChanged) ToEvent() *Event {
+	return &Event{
+		EventType: "cafe_p2p_connect_state_changed",
+		EventData: map[string]interface{}{
+			"after_ms":          c.AfterMs,
+			"state":             c.NewState,
+			"prev_state":        c.PrevState,
+			"net_check_success": c.NetCheckSuccess,
+			"net_check_error":   c.NetCheckError,
+			"grpc_connected":    c.GrpcConnected,
+		},
+	}
+}
+
+type CafeGrpcConnectStateChanged struct {
+	AfterMs         int64
+	Connected       bool
+	ConnectedBefore bool
+}
+
+func (c CafeGrpcConnectStateChanged) ToEvent() *Event {
+	return &Event{
+		EventType: "cafe_grpc_connect_state_changed",
+		EventData: map[string]interface{}{
+			"after_ms":         c.AfterMs,
+			"connected":        c.Connected,
+			"connected_before": c.ConnectedBefore,
+		},
+	}
+}
+
+type ThreadDownloaded struct {
+	Success              bool
+	Downloaded           int
+	DownloadedSinceStart int
+	Total                int
+	TimeMs               int64
+}
+
+func (c ThreadDownloaded) ToEvent() *Event {
+	return &Event{
+		EventType: "thread_downloaded",
+		EventData: map[string]interface{}{
+			"success":                c.Success,
+			"time_ms":                c.TimeMs,
+			"downloaded":             c.Downloaded,
+			"downloaded_since_start": c.DownloadedSinceStart,
+
+			"total": c.Total,
 		},
 	}
 }

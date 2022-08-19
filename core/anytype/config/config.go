@@ -32,7 +32,7 @@ type FileConfig interface {
 type ConfigRequired struct {
 	HostAddr        string `json:",omitempty"`
 	IPFSStorageAddr string `json:",omitempty"`
-	TimeZone         string `json:",omitempty"`
+	TimeZone        string `json:",omitempty"`
 }
 
 type Config struct {
@@ -117,6 +117,7 @@ func New(options ...func(*Config)) *Config {
 		opt(&cfg)
 	}
 	cfg.Threads.CafeP2PAddr = cfg.CafeP2PFullAddr()
+	cfg.Threads.CafePID = cfg.CafePeerId
 
 	return &cfg
 }

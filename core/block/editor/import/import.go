@@ -15,8 +15,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -40,7 +40,7 @@ var (
 )
 
 type Import interface {
-	ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error)
+	ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error)
 }
 
 func NewImport(sb smartblock.SmartBlock, ctrl Services) Import {
@@ -64,14 +64,14 @@ type fileInfo struct {
 
 type Services interface {
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
-	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
-	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error
-	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
+	UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploadRequest) error
+	BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	ProcessAdd(p process.Process) (err error)
 }
 
-func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error) {
+func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	imp.ctrl.ProcessAdd(progress)

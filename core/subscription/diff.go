@@ -40,7 +40,7 @@ func (ld *listDiff) reset() {
 	ld.afterIdsM = make(map[string]struct{})
 }
 
-func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemove bool) {
+func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemove bool, ids []string) {
 	for _, id := range ld.afterIds {
 		ld.afterIdsM[id] = struct{}{}
 	}
@@ -76,6 +76,7 @@ func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemov
 				isAdd:   isAdd,
 			})
 			if isAdd {
+				ids = append(ids, ld.afterIds[idx])
 				wasAddOrRemove = true
 			}
 		}

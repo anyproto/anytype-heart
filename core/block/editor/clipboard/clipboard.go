@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -16,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -32,8 +34,8 @@ var (
 )
 
 type Clipboard interface {
-	Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Paste(ctx *state.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
+	Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 	Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
@@ -47,7 +49,7 @@ type clipboard struct {
 	file file.File
 }
 
-func (cb *clipboard) Paste(ctx *state.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	caretPosition = -1
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
@@ -136,7 +138,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 	return textSlot, htmlSlot, anySlot, nil
 }
 
-func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewStateCtx(ctx)
 
 	textSlot = ""
@@ -157,7 +159,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 	}
 
 	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && firstTextBlock != nil && lastTextBlock == nil {
-		req.SelectedTextRange.To = int32(utf8.RuneCountInString(firstTextBlock.GetText().Text))
+		req.SelectedTextRange.To = int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
 	}
 
 	// scenario: rangeCut
@@ -257,7 +259,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 	return filePath, nil
 }
 
-func (cb *clipboard) pasteHtml(ctx *state.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	mdToBlocksConverter := anymark.New()
 	err, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
 
@@ -269,7 +271,7 @@ func (cb *clipboard) pasteHtml(ctx *state.Context, req *pb.RpcBlockPasteRequest,
 	return cb.pasteAny(ctx, req, groupId)
 }
 
-func (cb *clipboard) pasteText(ctx *state.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	if len(req.TextSlot) == 0 {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
@@ -303,7 +305,7 @@ type duplicatable interface {
 	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
-func (cb *clipboard) pasteAny(ctx *state.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
 
 	destState := state.NewDoc("", nil).(*state.State)
@@ -311,6 +313,9 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req *pb.RpcBlockPasteRequest, 
 	for _, b := range req.AnySlot {
 		if b.Id == "" {
 			b.Id = bson.NewObjectId().Hex()
+		}
+		if b.Id == template.TitleBlockId {
+			delete(b.Fields.Fields, text.DetailsKeyFieldName)
 		}
 	}
 	srcState := cb.blocksToState(req.AnySlot)
@@ -409,7 +414,7 @@ func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
 	return result
 }
 
-func (cb *clipboard) pasteFiles(ctx *state.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	s := cb.NewStateCtx(ctx)
 	for _, fs := range req.FileSlot {
 		b := simple.New(&model.Block{

@@ -1,6 +1,7 @@
 package ftsearch
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/golang/mock/gomock"
@@ -23,7 +24,7 @@ func newFixture(path string, t *testing.T) *fixture {
 		With(wallet.NewWithRepoPathAndKeys(path, nil, nil)).
 		With(ft)
 
-	require.NoError(t, ta.Start())
+	require.NoError(t, ta.Start(context.Background()))
 	return &fixture{
 		ft: ft,
 		ta: ta,

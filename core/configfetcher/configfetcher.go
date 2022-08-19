@@ -29,10 +29,11 @@ type WorkspaceGetter interface {
 }
 
 var defaultAccountState = &pb.AccountState{
-	Config: &pb.AccountStateConfig{
+	Config: &pb.Config{
 		EnableDataview:             false,
 		EnableDebug:                false,
 		EnableReleaseChannelSwitch: false,
+		EnablePrereleaseChannel:    false,
 		SimultaneousRequests:       20,
 		EnableSpaces:               false,
 		Extra:                      nil,
@@ -99,7 +100,7 @@ func New() ConfigFetcher {
 	return &configFetcher{}
 }
 
-func (c *configFetcher) Run() error {
+func (c *configFetcher) Run(context.Context) error {
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	go c.run()
 	return nil
@@ -158,7 +159,7 @@ func (c *configFetcher) run() {
 			if timeInterval > accountStateFetchInterval {
 				timeInterval = accountStateFetchInterval
 			}
-			log.Errorf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
+			log.Warnf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
 		}
 	}
 }
@@ -271,13 +272,13 @@ func (c *configFetcher) NotifyClientApp() {
 	}
 }
 
-func convertToAccountConfigModel(cfg *pb.AccountStateConfig) *model.AccountConfig {
+func convertToAccountConfigModel(cfg *pb.Config) *model.AccountConfig {
 	return &model.AccountConfig{
-		EnableDataview:             cfg.EnableDataview,
-		EnableDebug:                cfg.EnableDebug,
-		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-		EnableSpaces:               cfg.EnableSpaces,
-		Extra:                      cfg.Extra,
+		EnableDataview:          cfg.EnableDataview,
+		EnableDebug:             cfg.EnableDebug,
+		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
+		EnableSpaces:            cfg.EnableSpaces,
+		Extra:                   cfg.Extra,
 	}
 }
 

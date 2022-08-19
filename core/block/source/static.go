@@ -50,11 +50,11 @@ func (s *static) ReadOnly() bool {
 	return true
 }
 
-func (s *static) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	return s.doc, nil
 }
 
-func (s *static) ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error) {
+func (s *static) ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc state.Doc, err error) {
 	return s.doc, nil
 }
 

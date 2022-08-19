@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -61,7 +62,7 @@ func newFixture(t *testing.T) *fixture {
 	a.EXPECT().ProfileID().AnyTimes()
 	a.EXPECT().LocalProfile().AnyTimes()
 	testMock.RegisterMockObjectStore(ctrl, ta)
-	require.NoError(t, ta.Start())
+	require.NoError(t, ta.Start(context.Background()))
 	return &fixture{
 		History: h,
 		ta:      ta,

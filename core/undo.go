@@ -1,14 +1,15 @@
 package core
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) ObjectUndo(req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) ObjectUndo(cctx context.Context, req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
+	ctx := mw.newContext(cctx)
 	var (
 		counters pb.RpcObjectUndoRedoCounter
 		err      error
@@ -36,8 +37,8 @@ func (mw *Middleware) ObjectUndo(req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndo
 	return response(pb.RpcObjectUndoResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectRedo(req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) ObjectRedo(cctx context.Context, req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
+	ctx := mw.newContext(cctx)
 	var (
 		counters pb.RpcObjectUndoRedoCounter
 		err      error

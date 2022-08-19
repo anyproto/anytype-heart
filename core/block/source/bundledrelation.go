@@ -60,7 +60,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	return bundle.GetDetailsForRelation(true, rel), nil
 }
 
-func (v *bundledRelation) ReadDoc(_ ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	d, err := v.getDetails(v.id)
@@ -74,8 +74,8 @@ func (v *bundledRelation) ReadDoc(_ ChangeReceiver, empty bool) (doc state.Doc, 
 	return s, nil
 }
 
-func (v *bundledRelation) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
-	return v.ReadDoc(nil, false)
+func (v *bundledRelation) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	return v.ReadDoc(ctx, nil, false)
 }
 
 func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {

@@ -1,6 +1,9 @@
 package anytype
 
 import (
+	"context"
+	"os"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -18,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -39,10 +43,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
-	"os"
 )
 
-func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
+func StartAccountRecoverApp(ctx context.Context, eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
 	a = new(app.App)
 	device, err := walletUtil.NewRandomKeypair(walletUtil.KeypairTypeDevice)
 	if err != nil {
@@ -59,7 +62,7 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 		Register(profilefinder.New()).
 		Register(eventSender)
 
-	if err = a.Start(); err != nil {
+	if err = a.Start(ctx); err != nil {
 		return
 	}
 
@@ -77,12 +80,12 @@ func BootstrapWallet(rootPath, accountId string) wallet.Wallet {
 	return wallet.NewWithAccountRepo(rootPath, accountId)
 }
 
-func StartNewApp(components ...app.Component) (a *app.App, err error) {
+func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
-	if err = a.Start(); err != nil {
+	if err = a.Start(ctx); err != nil {
 		metrics.SharedClient.Close()
 		a = nil
 		return
@@ -125,6 +128,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(doc.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
-		Register(bookmark.New())
+		Register(bookmark.New()).
+		Register(session.New())
 	return
 }

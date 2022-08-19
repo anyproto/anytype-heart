@@ -185,6 +185,16 @@
     - [Rpc.BlockDataview.CreateBookmark.Request](#anytype.Rpc.BlockDataview.CreateBookmark.Request)
     - [Rpc.BlockDataview.CreateBookmark.Response](#anytype.Rpc.BlockDataview.CreateBookmark.Response)
     - [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype.Rpc.BlockDataview.CreateBookmark.Response.Error)
+    - [Rpc.BlockDataview.GroupOrder](#anytype.Rpc.BlockDataview.GroupOrder)
+    - [Rpc.BlockDataview.GroupOrder.Update](#anytype.Rpc.BlockDataview.GroupOrder.Update)
+    - [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype.Rpc.BlockDataview.GroupOrder.Update.Request)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype.Rpc.BlockDataview.GroupOrder.Update.Response)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype.Rpc.BlockDataview.GroupOrder.Update.Response.Error)
+    - [Rpc.BlockDataview.ObjectOrder](#anytype.Rpc.BlockDataview.ObjectOrder)
+    - [Rpc.BlockDataview.ObjectOrder.Update](#anytype.Rpc.BlockDataview.ObjectOrder.Update)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Request)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Response)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Response.Error)
     - [Rpc.BlockDataview.Relation](#anytype.Rpc.BlockDataview.Relation)
     - [Rpc.BlockDataview.Relation.Add](#anytype.Rpc.BlockDataview.Relation.Add)
     - [Rpc.BlockDataview.Relation.Add.Request](#anytype.Rpc.BlockDataview.Relation.Add.Request)
@@ -542,6 +552,10 @@
     - [Rpc.Object.Redo.Request](#anytype.Rpc.Object.Redo.Request)
     - [Rpc.Object.Redo.Response](#anytype.Rpc.Object.Redo.Response)
     - [Rpc.Object.Redo.Response.Error](#anytype.Rpc.Object.Redo.Response.Error)
+    - [Rpc.Object.RelationSearchDistinct](#anytype.Rpc.Object.RelationSearchDistinct)
+    - [Rpc.Object.RelationSearchDistinct.Request](#anytype.Rpc.Object.RelationSearchDistinct.Request)
+    - [Rpc.Object.RelationSearchDistinct.Response](#anytype.Rpc.Object.RelationSearchDistinct.Response)
+    - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error)
     - [Rpc.Object.Search](#anytype.Rpc.Object.Search)
     - [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request)
     - [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response)
@@ -697,6 +711,10 @@
     - [Rpc.Unsplash.Search.Response.Error](#anytype.Rpc.Unsplash.Search.Response.Error)
     - [Rpc.Unsplash.Search.Response.Picture](#anytype.Rpc.Unsplash.Search.Response.Picture)
     - [Rpc.Wallet](#anytype.Rpc.Wallet)
+    - [Rpc.Wallet.CloseSession](#anytype.Rpc.Wallet.CloseSession)
+    - [Rpc.Wallet.CloseSession.Request](#anytype.Rpc.Wallet.CloseSession.Request)
+    - [Rpc.Wallet.CloseSession.Response](#anytype.Rpc.Wallet.CloseSession.Response)
+    - [Rpc.Wallet.CloseSession.Response.Error](#anytype.Rpc.Wallet.CloseSession.Response.Error)
     - [Rpc.Wallet.Convert](#anytype.Rpc.Wallet.Convert)
     - [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request)
     - [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response)
@@ -705,6 +723,10 @@
     - [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request)
     - [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response)
     - [Rpc.Wallet.Create.Response.Error](#anytype.Rpc.Wallet.Create.Response.Error)
+    - [Rpc.Wallet.CreateSession](#anytype.Rpc.Wallet.CreateSession)
+    - [Rpc.Wallet.CreateSession.Request](#anytype.Rpc.Wallet.CreateSession.Request)
+    - [Rpc.Wallet.CreateSession.Response](#anytype.Rpc.Wallet.CreateSession.Response)
+    - [Rpc.Wallet.CreateSession.Response.Error](#anytype.Rpc.Wallet.CreateSession.Response.Error)
     - [Rpc.Wallet.Recover](#anytype.Rpc.Wallet.Recover)
     - [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request)
     - [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response)
@@ -734,6 +756,7 @@
     - [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request)
     - [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error)
+    - [StreamRequest](#anytype.StreamRequest)
   
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype.Rpc.Account.ConfigUpdate.Response.Error.Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype.Rpc.Account.ConfigUpdate.Timezones)
@@ -772,6 +795,8 @@
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype.Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype.Rpc.BlockBookmark.Fetch.Response.Error.Code)
     - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype.Rpc.BlockDataview.CreateBookmark.Response.Error.Code)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype.Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code)
+    - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype.Rpc.BlockDataview.Relation.Add.Response.Error.Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype.Rpc.BlockDataview.Relation.Delete.Response.Error.Code)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype.Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code)
@@ -860,6 +885,7 @@
     - [Rpc.Object.Open.Response.Error.Code](#anytype.Rpc.Object.Open.Response.Error.Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype.Rpc.Object.OpenBreadcrumbs.Response.Error.Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype.Rpc.Object.Redo.Response.Error.Code)
+    - [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error.Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchSubscribe.Response.Error.Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchUnsubscribe.Response.Error.Code)
@@ -896,8 +922,10 @@
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype.Rpc.Template.ExportAll.Response.Error.Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype.Rpc.Unsplash.Download.Response.Error.Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype.Rpc.Unsplash.Search.Response.Error.Code)
+    - [Rpc.Wallet.CloseSession.Response.Error.Code](#anytype.Rpc.Wallet.CloseSession.Response.Error.Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
+    - [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype.Rpc.Wallet.CreateSession.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
     - [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code)
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype.Rpc.Workspace.Export.Response.Error.Code)
@@ -905,6 +933,8 @@
     - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype.Rpc.Workspace.GetCurrent.Response.Error.Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
+  
+    - [File-level Extensions](#pb/protos/commands.proto-extensions)
   
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
@@ -917,6 +947,7 @@
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Dataview](#anytype.Event.Block.Dataview)
+    - [Event.Block.Dataview.GroupOrderUpdate](#anytype.Event.Block.Dataview.GroupOrderUpdate)
     - [Event.Block.Dataview.OldRelationDelete](#anytype.Event.Block.Dataview.OldRelationDelete)
     - [Event.Block.Dataview.OldRelationSet](#anytype.Event.Block.Dataview.OldRelationSet)
     - [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete)
@@ -1026,9 +1057,6 @@
     - [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove)
     - [Event.Object.Remove](#anytype.Event.Object.Remove)
     - [Event.Object.Restriction](#anytype.Event.Object.Restriction)
-    - [Event.Object.Show](#anytype.Event.Object.Show)
-    - [Event.Object.Show.HistorySize](#anytype.Event.Object.Show.HistorySize)
-    - [Event.Object.Show.RelationWithValuePerObject](#anytype.Event.Object.Show.RelationWithValuePerObject)
     - [Event.Object.Subscription](#anytype.Event.Object.Subscription)
     - [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add)
     - [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters)
@@ -1081,10 +1109,18 @@
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
+    - [Block.Content.Dataview.Checkbox](#anytype.model.Block.Content.Dataview.Checkbox)
+    - [Block.Content.Dataview.Date](#anytype.model.Block.Content.Dataview.Date)
     - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
+    - [Block.Content.Dataview.Group](#anytype.model.Block.Content.Dataview.Group)
+    - [Block.Content.Dataview.GroupOrder](#anytype.model.Block.Content.Dataview.GroupOrder)
+    - [Block.Content.Dataview.ObjectOrder](#anytype.model.Block.Content.Dataview.ObjectOrder)
     - [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation)
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
+    - [Block.Content.Dataview.Status](#anytype.model.Block.Content.Dataview.Status)
+    - [Block.Content.Dataview.Tag](#anytype.model.Block.Content.Dataview.Tag)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
+    - [Block.Content.Dataview.ViewGroup](#anytype.model.Block.Content.Dataview.ViewGroup)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations)
     - [Block.Content.File](#anytype.model.Block.Content.File)
@@ -1107,6 +1143,10 @@
     - [Layout](#anytype.model.Layout)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [ObjectType](#anytype.model.ObjectType)
+    - [ObjectView](#anytype.model.ObjectView)
+    - [ObjectView.DetailsSet](#anytype.model.ObjectView.DetailsSet)
+    - [ObjectView.HistorySize](#anytype.model.ObjectView.HistorySize)
+    - [ObjectView.RelationWithValuePerObject](#anytype.model.ObjectView.RelationWithValuePerObject)
     - [Range](#anytype.model.Range)
     - [Relation](#anytype.model.Relation)
     - [Relation.Option](#anytype.model.Relation.Option)
@@ -1185,6 +1225,8 @@
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) | Wallet *** |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request) | [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response) |  |
+| WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype.Rpc.Wallet.CreateSession.Request) | [Rpc.Wallet.CreateSession.Response](#anytype.Rpc.Wallet.CreateSession.Response) |  |
+| WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype.Rpc.Wallet.CloseSession.Request) | [Rpc.Wallet.CloseSession.Response](#anytype.Rpc.Wallet.CloseSession.Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request) | [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response) | Workspace *** |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request) | [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response) |  |
 | WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype.Rpc.Workspace.GetCurrent.Request) | [Rpc.Workspace.GetCurrent.Response](#anytype.Rpc.Workspace.GetCurrent.Response) |  |
@@ -1206,6 +1248,7 @@
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request) | [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype.Rpc.Object.SearchSubscribe.Request) | [Rpc.Object.SearchSubscribe.Response](#anytype.Rpc.Object.SearchSubscribe.Response) |  |
+| ObjectRelationSearchDistinct | [Rpc.Object.RelationSearchDistinct.Request](#anytype.Rpc.Object.RelationSearchDistinct.Request) | [Rpc.Object.RelationSearchDistinct.Response](#anytype.Rpc.Object.RelationSearchDistinct.Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype.Rpc.Object.SubscribeIds.Request) | [Rpc.Object.SubscribeIds.Response](#anytype.Rpc.Object.SubscribeIds.Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype.Rpc.Object.SearchUnsubscribe.Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype.Rpc.Object.SearchUnsubscribe.Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype.Rpc.Object.SetDetails.Request) | [Rpc.Object.SetDetails.Response](#anytype.Rpc.Object.SetDetails.Response) |  |
@@ -1302,6 +1345,8 @@
 | BlockDataviewRelationAdd | [Rpc.BlockDataview.Relation.Add.Request](#anytype.Rpc.BlockDataview.Relation.Add.Request) | [Rpc.BlockDataview.Relation.Add.Response](#anytype.Rpc.BlockDataview.Relation.Add.Response) |  |
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype.Rpc.BlockDataview.Relation.Delete.Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype.Rpc.BlockDataview.Relation.Delete.Response) |  |
 | BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype.Rpc.BlockDataview.Relation.ListAvailable.Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype.Rpc.BlockDataview.Relation.ListAvailable.Response) |  |
+| BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype.Rpc.BlockDataview.GroupOrder.Update.Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype.Rpc.BlockDataview.GroupOrder.Update.Response) |  |
+| BlockDataviewObjectOrderUpdate | [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Request) | [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype.Rpc.BlockLink.CreateWithObject.Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype.Rpc.BlockLink.CreateWithObject.Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype.Rpc.BlockLink.ListSetAppearance.Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype.Rpc.BlockLink.ListSetAppearance.Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype.Rpc.BlockBookmark.Fetch.Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype.Rpc.BlockBookmark.Fetch.Response) |  |
@@ -1318,7 +1363,7 @@
 | DebugExportLocalstore | [Rpc.Debug.ExportLocalstore.Request](#anytype.Rpc.Debug.ExportLocalstore.Request) | [Rpc.Debug.ExportLocalstore.Response](#anytype.Rpc.Debug.ExportLocalstore.Response) |  |
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype.Rpc.Debug.Ping.Request) | [Rpc.Debug.Ping.Response](#anytype.Rpc.Debug.Ping.Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype.Rpc.Metrics.SetParameters.Request) | [Rpc.Metrics.SetParameters.Response](#anytype.Rpc.Metrics.SetParameters.Response) |  |
-| ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
+| ListenSessionEvents | [StreamRequest](#anytype.StreamRequest) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
 
  
 
@@ -1790,7 +1835,7 @@ Response – message from a middleware.
 | ----- | ---- | ----- | ----------- |
 | enableDataview | [bool](#bool) |  |  |
 | enableDebug | [bool](#bool) |  |  |
-| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| enablePrereleaseChannel | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
@@ -3958,6 +4003,144 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype.Rpc.BlockDataview.CreateBookmark.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.GroupOrder"></a>
+
+### Rpc.BlockDataview.GroupOrder
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.GroupOrder.Update"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.GroupOrder.Update.Request"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype.model.Block.Content.Dataview.GroupOrder) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.GroupOrder.Update.Response"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype.Rpc.BlockDataview.GroupOrder.Update.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.GroupOrder.Update.Response.Error"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype.Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.ObjectOrder"></a>
+
+### Rpc.BlockDataview.ObjectOrder
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.ObjectOrder.Update"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.ObjectOrder.Update.Request"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| objectOrders | [model.Block.Content.Dataview.ObjectOrder](#anytype.model.Block.Content.Dataview.ObjectOrder) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.ObjectOrder.Update.Response"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.ObjectOrder.Update.Response.Error](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockDataview.ObjectOrder.Update.Response.Error"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype.Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7739,7 +7922,7 @@ returns blockShow event for given version
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.History.ShowVersion.Response.Error](#anytype.Rpc.History.ShowVersion.Response.Error) |  |  |
-| objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
+| objectView | [model.ObjectView](#anytype.model.ObjectView) |  |  |
 | version | [Rpc.History.Version](#anytype.Rpc.History.Version) |  |  |
 | traceId | [string](#string) |  |  |
 
@@ -9045,7 +9228,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Open.Response.Error](#anytype.Rpc.Object.Open.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| objectView | [model.ObjectView](#anytype.model.ObjectView) |  |  |
 
 
 
@@ -9105,6 +9288,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | error | [Rpc.Object.OpenBreadcrumbs.Response.Error](#anytype.Rpc.Object.OpenBreadcrumbs.Response.Error) |  |  |
 | objectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| objectView | [model.ObjectView](#anytype.model.ObjectView) |  |  |
 
 
 
@@ -9178,6 +9362,64 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Redo.Response.Error.Code](#anytype.Rpc.Object.Redo.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.RelationSearchDistinct"></a>
+
+### Rpc.Object.RelationSearchDistinct
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.RelationSearchDistinct.Request"></a>
+
+### Rpc.Object.RelationSearchDistinct.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.RelationSearchDistinct.Response"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error) |  |  |
+| groups | [model.Block.Content.Dataview.Group](#anytype.model.Block.Content.Dataview.Group) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.RelationSearchDistinct.Response.Error"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9833,7 +10075,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Show.Response.Error](#anytype.Rpc.Object.Show.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| objectView | [model.ObjectView](#anytype.model.ObjectView) |  |  |
 
 
 
@@ -11406,6 +11648,62 @@ Available undo/redo operations
 
 
 
+<a name="anytype.Rpc.Wallet.CloseSession"></a>
+
+### Rpc.Wallet.CloseSession
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.CloseSession.Request"></a>
+
+### Rpc.Wallet.CloseSession.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.CloseSession.Response"></a>
+
+### Rpc.Wallet.CloseSession.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Wallet.CloseSession.Response.Error](#anytype.Rpc.Wallet.CloseSession.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.CloseSession.Response.Error"></a>
+
+### Rpc.Wallet.CloseSession.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Wallet.CloseSession.Response.Error.Code](#anytype.Rpc.Wallet.CloseSession.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Wallet.Convert"></a>
 
 ### Rpc.Wallet.Convert
@@ -11515,6 +11813,63 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.CreateSession"></a>
+
+### Rpc.Wallet.CreateSession
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.CreateSession.Request"></a>
+
+### Rpc.Wallet.CreateSession.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mnemonic | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.CreateSession.Response"></a>
+
+### Rpc.Wallet.CreateSession.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Wallet.CreateSession.Response.Error](#anytype.Rpc.Wallet.CreateSession.Response.Error) |  |  |
+| token | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.CreateSession.Response.Error"></a>
+
+### Rpc.Wallet.CreateSession.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype.Rpc.Wallet.CreateSession.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11916,6 +12271,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.StreamRequest"></a>
+
+### StreamRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  |  |
 
 
 
@@ -12473,6 +12843,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code"></a>
+
+### Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -13636,6 +14032,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Object.RelationSearchDistinct.Response.Error.Code"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Object.Search.Response.Error.Code"></a>
 
 ### Rpc.Object.Search.Response.Error.Code
@@ -14116,6 +14525,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Wallet.CloseSession.Response.Error.Code"></a>
+
+### Rpc.Wallet.CloseSession.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Wallet.Convert.Response.Error.Code"></a>
 
 ### Rpc.Wallet.Convert.Response.Error.Code
@@ -14140,6 +14562,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 | Root path is wrong |
 | FAILED_TO_CREATE_LOCAL_REPO | 101 | ... |
+
+
+
+<a name="anytype.Rpc.Wallet.CreateSession.Response.Error.Code"></a>
+
+### Rpc.Wallet.CreateSession.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -14235,6 +14670,14 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
  
+
+
+<a name="pb/protos/commands.proto-extensions"></a>
+
+### File-level Extensions
+| Extension | Type | Base | Number | Description |
+| --------- | ---- | ---- | ------ | ----------- |
+| no_auth | bool | .google.protobuf.MessageOptions | 7777 |  |
 
  
 
@@ -14389,6 +14832,22 @@ B. Partial block load
 
 ### Event.Block.Dataview
 
+
+
+
+
+
+
+<a name="anytype.Event.Block.Dataview.GroupOrderUpdate"></a>
+
+### Event.Block.Dataview.GroupOrderUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype.model.Block.Content.Dataview.GroupOrder) |  |  |
 
 
 
@@ -15943,8 +16402,6 @@ Precondition: user A opened a block
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype.Event.Object.Remove) |  |  |
-| objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
-| objectRestrictions | [Event.Object.Restriction](#anytype.Event.Object.Restriction) |  |  |
 | subscriptionAdd | [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add) |  |  |
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype.Event.Object.Subscription.Remove) |  |  |
 | subscriptionPosition | [Event.Object.Subscription.Position](#anytype.Event.Object.Subscription.Position) |  |  |
@@ -15967,6 +16424,7 @@ Precondition: user A opened a block
 | blockSetLatex | [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype.Event.Block.Set.VerticalAlign) |  |  |
 | blockSetTableRow | [Event.Block.Set.TableRow](#anytype.Event.Block.Set.TableRow) |  |  |
+| blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype.Event.Block.Dataview.GroupOrderUpdate) |  |  |
 | blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
@@ -16144,62 +16602,6 @@ Unset existing detail keys
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | restrictions | [model.Restrictions](#anytype.model.Restrictions) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Object.Show"></a>
-
-### Event.Object.Show
-Works with a smart blocks: Page, Dashboard
-Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| rootId | [string](#string) |  | Root block id |
-| blocks | [model.Block](#anytype.model.Block) | repeated | dependent simple blocks (descendants) |
-| details | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) | repeated | details for the current and dependent objects |
-| type | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
-| objectTypes | [model.ObjectType](#anytype.model.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| relations | [model.Relation](#anytype.model.Relation) | repeated | DEPRECATED, use relationLinks instead |
-| relationLinks | [model.RelationLink](#anytype.model.RelationLink) | repeated |  |
-| restrictions | [model.Restrictions](#anytype.model.Restrictions) |  | object restrictions |
-| history | [Event.Object.Show.HistorySize](#anytype.Event.Object.Show.HistorySize) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Object.Show.HistorySize"></a>
-
-### Event.Object.Show.HistorySize
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| undo | [int32](#int32) |  |  |
-| redo | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Object.Show.RelationWithValuePerObject"></a>
-
-### Event.Object.Show.RelationWithValuePerObject
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectId | [string](#string) |  |  |
-| relations | [model.RelationWithValue](#anytype.model.RelationWithValue) | repeated |  |
 
 
 
@@ -16893,7 +17295,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | ----- | ---- | ----- | ----------- |
 | enableDataview | [bool](#bool) |  |  |
 | enableDebug | [bool](#bool) |  |  |
-| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| enablePrereleaseChannel | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
@@ -17023,7 +17425,34 @@ Bookmark is to keep a web-link and to preview a content.
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
 | relations | [Relation](#anytype.model.Relation) | repeated | deprecated |
 | activeView | [string](#string) |  | saved within a session |
+| groupOrders | [Block.Content.Dataview.GroupOrder](#anytype.model.Block.Content.Dataview.GroupOrder) | repeated |  |
+| objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype.model.Block.Content.Dataview.ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype.model.RelationLink) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Checkbox"></a>
+
+### Block.Content.Dataview.Checkbox
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| checked | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Date"></a>
+
+### Block.Content.Dataview.Date
+
 
 
 
@@ -17044,6 +17473,58 @@ Bookmark is to keep a web-link and to preview a content.
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
 | value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype.model.Block.Content.Dataview.Filter.QuickOption) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Group"></a>
+
+### Block.Content.Dataview.Group
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [Block.Content.Dataview.Status](#anytype.model.Block.Content.Dataview.Status) |  |  |
+| tag | [Block.Content.Dataview.Tag](#anytype.model.Block.Content.Dataview.Tag) |  |  |
+| checkbox | [Block.Content.Dataview.Checkbox](#anytype.model.Block.Content.Dataview.Checkbox) |  |  |
+| date | [Block.Content.Dataview.Date](#anytype.model.Block.Content.Dataview.Date) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.GroupOrder"></a>
+
+### Block.Content.Dataview.GroupOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| viewId | [string](#string) |  |  |
+| viewGroups | [Block.Content.Dataview.ViewGroup](#anytype.model.Block.Content.Dataview.ViewGroup) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.ObjectOrder"></a>
+
+### Block.Content.Dataview.ObjectOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| viewId | [string](#string) |  |  |
+| groupId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
 
 
 
@@ -17080,6 +17561,37 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | RelationKey | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type) |  |  |
+| customOrder | [google.protobuf.Value](#google.protobuf.Value) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Status"></a>
+
+### Block.Content.Dataview.Status
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Tag"></a>
+
+### Block.Content.Dataview.Tag
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
 
 
 
@@ -17104,6 +17616,26 @@ Bookmark is to keep a web-link and to preview a content.
 | hideIcon | [bool](#bool) |  | Hide icon near name |
 | cardSize | [Block.Content.Dataview.View.Size](#anytype.model.Block.Content.Dataview.View.Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
+| groupRelationKey | [string](#string) |  | Group view by this relationKey |
+| groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.ViewGroup"></a>
+
+### Block.Content.Dataview.ViewGroup
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| groupId | [string](#string) |  |  |
+| index | [int32](#int32) |  |  |
+| hidden | [bool](#bool) |  |  |
+| backgroundColor | [string](#string) |  |  |
 
 
 
@@ -17458,6 +17990,79 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype.model.ObjectView"></a>
+
+### ObjectView
+Works with a smart blocks: Page, Dashboard
+Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rootId | [string](#string) |  | Root block id |
+| blocks | [Block](#anytype.model.Block) | repeated | dependent simple blocks (descendants) |
+| details | [ObjectView.DetailsSet](#anytype.model.ObjectView.DetailsSet) | repeated | details for the current and dependent objects |
+| type | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |
+| objectTypes | [ObjectType](#anytype.model.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
+| relations | [Relation](#anytype.model.Relation) | repeated | DEPRECATED, use relationLinks instead |
+| relationLinks | [RelationLink](#anytype.model.RelationLink) | repeated |  |
+| restrictions | [Restrictions](#anytype.model.Restrictions) |  | object restrictions |
+| history | [ObjectView.HistorySize](#anytype.model.ObjectView.HistorySize) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.ObjectView.DetailsSet"></a>
+
+### ObjectView.DetailsSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | can not be a partial state. Should replace client details state |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.ObjectView.HistorySize"></a>
+
+### ObjectView.HistorySize
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| undo | [int32](#int32) |  |  |
+| redo | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.ObjectView.RelationWithValuePerObject"></a>
+
+### ObjectView.RelationWithValuePerObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| relations | [RelationWithValue](#anytype.model.RelationWithValue) | repeated |  |
+
+
+
+
+
+
 <a name="anytype.model.Range"></a>
 
 ### Range
@@ -17738,6 +18343,8 @@ scope from which this relation have been aggregated |
 | NotEmpty | 12 |  |
 | AllIn | 13 |  |
 | NotAllIn | 14 |  |
+| ExactIn | 15 |  |
+| NotExactIn | 16 |  |
 
 
 
@@ -17811,6 +18418,7 @@ scope from which this relation have been aggregated |
 | ---- | ------ | ----------- |
 | Asc | 0 |  |
 | Desc | 1 |  |
+| Custom | 2 |  |
 
 
 

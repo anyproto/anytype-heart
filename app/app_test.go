@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -48,7 +49,7 @@ func TestAppStart(t *testing.T) {
 		for _, s := range services {
 			app.Register(s)
 		}
-		assert.Nil(t, app.Start())
+		assert.Nil(t, app.Start(context.Background()))
 		assert.Nil(t, app.Close())
 
 		var actual []testIds
@@ -78,7 +79,7 @@ func TestAppStart(t *testing.T) {
 			app.Register(s)
 		}
 
-		err := app.Start()
+		err := app.Start(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), expectedErr.Error())
 
@@ -144,7 +145,7 @@ type testRunnable struct {
 	testComponent
 }
 
-func (t *testRunnable) Run() error {
+func (t *testRunnable) Run(context.Context) error {
 	t.ids.runId = t.seq.New()
 	return t.err
 }

@@ -1,6 +1,7 @@
 package builtintemplate
 
 import (
+	"context"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
@@ -20,6 +21,6 @@ func Test_registerBuiltin(t *testing.T) {
 	s.EXPECT().RegisterStaticSource(gomock.Any(), gomock.Any()).AnyTimes()
 
 	a := testapp.New().With(s).With(New())
-	require.NoError(t, a.Start())
+	require.NoError(t, a.Start(context.Background()))
 	defer a.Close()
 }

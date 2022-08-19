@@ -6,7 +6,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +23,7 @@ func (t testExtractObjects) Add(object *smarttest.SmartTest) {
 	t.objects[object.Id()] = object
 }
 
-func (t testExtractObjects) CreateObjectFromState(ctx *state.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
+func (t testExtractObjects) CreateObjectFromState(ctx *session.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
 	id := bson.NewObjectId().Hex()
 	object := smarttest.New(id)
 	t.objects[id] = object
@@ -172,9 +174,9 @@ func TestExtractObjects(t *testing.T) {
 			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:  "test",
 				BlockIds:   tc.blockIds,
-				ObjectType: "page",
+				ObjectType: bundle.TypeKeyNote.URL(),
 			}
-			ctx := state.NewContext(nil)
+			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 

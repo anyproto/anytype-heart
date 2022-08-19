@@ -15,6 +15,9 @@ var (
 )
 
 func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, error) {
+
+	protoFilters = TransformQuickOption(protoFilters, nil)
+
 	var and AndFilters
 	for _, pf := range protoFilters {
 		if pf.Condition != model.BlockContentDataviewFilter_None {
@@ -115,6 +118,24 @@ func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
 			return nil, ErrValueMustBeList
 		}
 		return Not{AllIn{
+			Key:   proto.RelationKey,
+			Value: list,
+		}}, nil
+	case model.BlockContentDataviewFilter_ExactIn:
+		list := proto.Value.GetListValue()
+		if list == nil {
+			return nil, ErrValueMustBeList
+		}
+		return ExactIn{
+			Key:   proto.RelationKey,
+			Value: list,
+		}, nil
+	case model.BlockContentDataviewFilter_NotExactIn:
+		list := proto.Value.GetListValue()
+		if list == nil {
+			return nil, ErrValueMustBeList
+		}
+		return Not{ExactIn{
 			Key:   proto.RelationKey,
 			Value: list,
 		}}, nil
@@ -363,4 +384,41 @@ func (l AllIn) FilterObject(g Getter) bool {
 
 func (l AllIn) String() string {
 	return fmt.Sprintf("%s ALLIN(%v)", l.Key, l.Value)
+}
+
+type ExactIn struct {
+	Key   string
+	Value *types.ListValue
+}
+
+func (exIn ExactIn) FilterObject(g Getter) bool {
+	val := g.Get(exIn.Key)
+	if val == nil {
+		return false
+	}
+	list := val.GetListValue()
+	if list == nil {
+		return false
+	}
+	if len(list.GetValues()) != len(exIn.Value.GetValues()) {
+		return false
+	}
+	exist := func(v *types.Value) bool {
+		for _, lv := range list.Values {
+			if v.Equal(lv) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, ev := range exIn.Value.GetValues() {
+		if !exist(ev) {
+			return false
+		}
+	}
+	return true
+}
+
+func (exIn ExactIn) String() string {
+	return fmt.Sprintf("%s EXACTINN(%v)", exIn.Key, exIn.Value)
 }

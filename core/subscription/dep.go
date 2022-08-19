@@ -62,11 +62,15 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 		// priority: ctx.entries, cache, objectStore
 		if e = ctx.getEntry(id); e == nil {
 			if e = ds.s.cache.Get(id); e != nil {
+				newSubIds := make([]string, len(e.subIds))
+				newSubIsActive := make([]bool, len(e.subIsActive))
+				copy(newSubIds, e.subIds)
+				copy(newSubIsActive, e.subIsActive)
 				e = &entry{
 					id:          id,
 					data:        e.data,
-					subIds:      e.subIds,
-					subIsActive: e.subIsActive,
+					subIds:      newSubIds,
+					subIsActive: newSubIsActive,
 				}
 			} else {
 				missIds = append(missIds, id)

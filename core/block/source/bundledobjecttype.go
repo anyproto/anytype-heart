@@ -77,7 +77,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *
 	return extraRels, det, nil
 }
 
-func (v *bundledObjectType) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	rels, d, err := getDetailsForBundledObjectType(v.id)
@@ -92,8 +92,8 @@ func (v *bundledObjectType) ReadDoc(receiver ChangeReceiver, empty bool) (doc st
 	return s, nil
 }
 
-func (v *bundledObjectType) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
-	return v.ReadDoc(nil, false)
+func (v *bundledObjectType) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	return v.ReadDoc(ctx, nil, false)
 }
 
 func (v *bundledObjectType) PushChange(params PushChangeParams) (id string, err error) {

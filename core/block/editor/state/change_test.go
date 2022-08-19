@@ -157,15 +157,15 @@ func TestState_SetParent(t *testing.T) {
 	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}}))
 	orig.Add(simple.New(&model.Block{Id: "header"}))
 	orig.SetObjectType("orig")
-	orig.AddRelation(&model.Relation{Key: "one"})
+	orig.AddRelationLinks(&model.RelationLink{Id: "k1", Key: "one"})
 	st := orig.Copy()
 
 	newState := NewDoc("root", nil).(*State)
 	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
 	newState.SetObjectTypes([]string{"newOT1", "newOT2"})
-	newState.AddRelation(&model.Relation{Key: "newOne"})
-	newState.AddRelation(&model.Relation{Key: "newTwo"})
+	orig.AddRelationLinks(&model.RelationLink{Id: "k2", Key: "newOne"})
+	orig.AddRelationLinks(&model.RelationLink{Id: "k3", Key: "newTwo"})
 
 	ns := newState.Copy()
 

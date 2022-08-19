@@ -2,15 +2,14 @@ package link
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"unicode/utf8"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -162,7 +161,7 @@ func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
 		tb.Marks = &model.BlockContentTextMarks{
 			Marks: []*model.BlockContentTextMark{
 				{
-					Range: &model.Range{0, int32(utf8.RuneCountInString(name))},
+					Range: &model.Range{0, int32(text.UTF16RuneCountString(name))},
 					Type:  model.BlockContentTextMark_Mention,
 					Param: l.content.TargetBlockId,
 				},

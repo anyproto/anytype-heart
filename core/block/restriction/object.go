@@ -1,6 +1,8 @@
 package restriction
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -58,7 +60,7 @@ func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (e
 	for _, r := range cr {
 		for _, er := range or {
 			if er == r {
-				return ErrRestricted
+				return fmt.Errorf("%w: %s", ErrRestricted, r.String())
 			}
 		}
 	}

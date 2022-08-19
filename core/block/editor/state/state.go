@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/session"
+	"github.com/ipfs/go-cid"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -12,12 +18,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/anytypeio/go-anytype-middleware/util/text"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
-	"strings"
-	"time"
-	"unicode/utf8"
 )
 
 var log = logging.Logger("anytype-mw-state")
@@ -36,7 +38,7 @@ var DetailsFileFields = [...]string{bundle.RelationKeyCoverId.String(), bundle.R
 type Doc interface {
 	RootId() string
 	NewState() *State
-	NewStateCtx(ctx *Context) *State
+	NewStateCtx(ctx *session.Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
 	Details() *types.Struct
@@ -70,7 +72,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx           *Context
+	ctx           *session.Context
 	parent        *State
 	blocks        map[string]simple.Block
 	rootId        string
@@ -120,11 +122,11 @@ func (s *State) NewState() *State {
 	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType}
 }
 
-func (s *State) NewStateCtx(ctx *Context) *State {
+func (s *State) NewStateCtx(ctx *session.Context) *State {
 	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType}
 }
 
-func (s *State) Context() *Context {
+func (s *State) Context() *session.Context {
 	return s.ctx
 }
 
@@ -931,13 +933,13 @@ func (s *State) Snippet() (snippet string) {
 				snippet += "\n"
 			}
 			snippet += nextText
-			if utf8.RuneCountInString(snippet) >= snippetMinSize {
+			if textutil.UTF16RuneCountString(snippet) >= snippetMinSize {
 				return false
 			}
 		}
 		return true
 	})
-	return text.Truncate(snippet, snippetMaxSize)
+	return textutil.Truncate(snippet, snippetMaxSize)
 }
 
 func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
@@ -1389,7 +1391,7 @@ func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 	return 0, false
 }
 
-func (s *State) SetContext(context *Context) {
+func (s *State) SetContext(context *session.Context) {
 	s.ctx = context
 }
 

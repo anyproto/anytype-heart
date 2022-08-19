@@ -3,27 +3,24 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
-func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
+func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
 	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*model.Relation, err error) *pb.RpcObjectTypeRelationListResponse {
 		m := &pb.RpcObjectTypeRelationListResponse{Relations: relations, Error: &pb.RpcObjectTypeRelationListResponseError{Code: code}}
 		if err != nil {
@@ -48,7 +45,7 @@ func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRe
 	return response(pb.RpcObjectTypeRelationListResponseError_NULL, objType.Relations, nil)
 }
 
-func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
+func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
 	response := func(code pb.RpcObjectTypeRelationAddResponseErrorCode, err error) *pb.RpcObjectTypeRelationAddResponse {
 		m := &pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: code}}
 		if err != nil {
@@ -113,7 +110,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 	return response(pb.RpcObjectTypeRelationAddResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
+func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
 	response := func(code pb.RpcObjectTypeRelationRemoveResponseErrorCode, err error) *pb.RpcObjectTypeRelationRemoveResponse {
 		m := &pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: code}}
 		if err != nil {
@@ -177,7 +174,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 	return response(pb.RpcObjectTypeRelationRemoveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
+func (mw *Middleware) ObjectTypeCreate(cctx context.Context, req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
 	response := func(code pb.RpcObjectTypeCreateResponseErrorCode, otype *model.ObjectType, err error) *pb.RpcObjectTypeCreateResponse {
 		m := &pb.RpcObjectTypeCreateResponse{ObjectType: otype, Error: &pb.RpcObjectTypeCreateResponseError{Code: code}}
 		if err != nil {
@@ -255,7 +252,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }
 
-func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
+func (mw *Middleware) ObjectTypeList(cctx context.Context, _ *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
 	response := func(code pb.RpcObjectTypeListResponseErrorCode, otypes []*model.ObjectType, err error) *pb.RpcObjectTypeListResponse {
 		m := &pb.RpcObjectTypeListResponse{ObjectTypes: otypes, Error: &pb.RpcObjectTypeListResponseError{Code: code}}
 		if err != nil {
@@ -297,8 +294,8 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 	return response(pb.RpcObjectTypeListResponseError_NULL, otypes, nil)
 }
 
-func (mw *Middleware) ObjectCreateSet(req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
-	ctx := state.NewContext(nil)
+func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, err error) *pb.RpcObjectCreateSetResponse {
 		m := &pb.RpcObjectCreateSetResponse{Error: &pb.RpcObjectCreateSetResponseError{Code: code}, Id: id}
 		if err != nil {
@@ -333,7 +330,7 @@ func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectT
 	return objectstore.GetObjectType(at.ObjectStore(), url)
 }
 
-func (mw *Middleware) RelationCreate(req *pb.RpcRelationCreateRequest) *pb.RpcRelationCreateResponse {
+func (mw *Middleware) RelationCreate(cctx context.Context, req *pb.RpcRelationCreateRequest) *pb.RpcRelationCreateResponse {
 	response := func(id, key string, err error) *pb.RpcRelationCreateResponse {
 		if err != nil {
 			return &pb.RpcRelationCreateResponse{
@@ -366,7 +363,7 @@ func (mw *Middleware) RelationCreate(req *pb.RpcRelationCreateRequest) *pb.RpcRe
 	return response(rl.Id, rl.Key, err)
 }
 
-func (mw *Middleware) RelationCreateOption(request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {
+func (mw *Middleware) RelationCreateOption(cctx context.Context, request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {
 	response := func(id string, err error) *pb.RpcRelationCreateOptionResponse {
 		if err != nil {
 			return &pb.RpcRelationCreateOptionResponse{
@@ -393,12 +390,12 @@ func (mw *Middleware) RelationCreateOption(request *pb.RpcRelationCreateOptionRe
 	return response(id, err)
 }
 
-func (mw *Middleware) RelationListRemoveOption(request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
+func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (mw *Middleware) RelationOptions(request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
+func (mw *Middleware) RelationOptions(cctx context.Context, request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
 	//TODO implement me
 	panic("implement me")
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
@@ -40,7 +41,7 @@ var dumpTree = &cobra.Command{
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
 
-		app, err := anytype.StartNewApp(comps...)
+		app, err := anytype.StartNewApp(context.Background(), comps...)
 		if err != nil {
 			console.Fatal("failed to start anytype: %s", err.Error())
 		}
@@ -70,7 +71,7 @@ var dumpLocalstore = &cobra.Command{
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
 
-		app, err := anytype.StartNewApp(comps...)
+		app, err := anytype.StartNewApp(context.Background(), comps...)
 		if err != nil {
 			console.Fatal("failed to start anytype: %s", err.Error())
 		}

@@ -1,6 +1,9 @@
 package subscription
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/golang/mock/gomock"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
@@ -48,11 +51,25 @@ func TestSubscription_Add(t *testing.T) {
 
 func TestSubscription_Remove(t *testing.T) {
 	newSub := func() *sortedSub {
+		ctrl := gomock.NewController(t)
+		store := testMock.NewMockObjectStore(ctrl)
+		store.EXPECT().QueryById([]string{"id7"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("id7"),
+				"name": pbtypes.String("id7"),
+			}}},
+		}, nil).AnyTimes()
+		s := service{
+			cache:       newCache(),
+			objectStore: store,
+		}
+
 		return &sortedSub{
 			order:   testOrder,
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
+			ds:      newDependencyService(&s),
 			filter: filter.Not{filter.Eq{
 				Key:   "order",
 				Cond:  model.BlockContentDataviewFilter_Equal,
