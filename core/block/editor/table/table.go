@@ -852,6 +852,9 @@ func destructureDivs(s *state.State, blockId string) {
 	var ids []string
 	for _, id := range parent.Model().ChildrenIds {
 		b := s.Pick(id)
+		if b == nil {
+			continue
+		}
 		if b.Model().GetLayout().GetStyle() == model.BlockContentLayout_Div {
 			foundDiv = true
 			ids = append(ids, b.Model().ChildrenIds...)
