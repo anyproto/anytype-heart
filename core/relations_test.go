@@ -142,7 +142,6 @@ func TestRelations_New_Account(t *testing.T) {
 
 	require.True(t, found)
 
-	return
 	respRelationCreateOption := mw.RelationCreateOption(context.Background(), &pb.RpcRelationCreateOptionRequest{
 		RelationKey: respRelationCreate.Key,
 		Option: &model.RelationOption{
@@ -150,8 +149,12 @@ func TestRelations_New_Account(t *testing.T) {
 			Color: "red",
 		},
 	})
+
 	require.Equal(t, 0, int(respRelationCreateOption.Error.Code), respRelationCreateOption.Error.Description)
 	require.NotEmpty(t, respRelationCreateOption.Id)
+
+	respOptionShow := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{ObjectId: respRelationCreateOption.Id})
+	require.Equal(t, 0, int(respOptionShow.Error.Code), respOptionShow.Error.Description)
 
 	respObjectSearch := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		Filters: []*model.BlockContentDataviewFilter{

@@ -37,6 +37,8 @@ const (
 	collectionKeyRelationOptions = "relationOptions"
 )
 
+const SubIdSeparator = ":"
+
 var (
 	ErrRelationNotFound = errors.New("relation not found")
 )

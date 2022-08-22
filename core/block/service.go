@@ -1581,20 +1581,25 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	if idx := strings.LastIndex(id, "/"); idx != -1 {
+	if idx := strings.LastIndex(id, editor.SubIdSeparator); idx != -1 {
 		parentId := id[:idx]
 		subId := id[idx+1:]
 		if value, err = s.cache.Get(ctx, parentId); err != nil {
 			return
 		}
-		if sbO, ok := value.(SmartblockOpener); ok {
-			var sb smartblock.SmartBlock
-			if sb, err = sbO.Open(subId); err != nil {
-				return
+
+		if ob, ok := value.(*openedBlock); ok {
+			if sbO, ok := ob.SmartBlock.(SmartblockOpener); ok {
+				var sb smartblock.SmartBlock
+				if sb, err = sbO.Open(subId); err != nil {
+					return
+				}
+				return newOpenedBlock(sb), nil
+			} else {
+				return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, parentId)
 			}
-			return newOpenedBlock(sb), nil
 		} else {
-			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement opener", id, parentId)
+			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, parentId)
 		}
 	}
 	sb, err := s.newSmartBlock(id, nil)
