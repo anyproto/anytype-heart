@@ -1717,12 +1717,13 @@ message Rpc {
         }
         message Create {
             message Request {
-                anytype.model.ObjectType objectType = 1;
+                google.protobuf.Struct details = 1;
+                repeated anytype.model.InternalFlag internalFlags = 2;
             }
 
             message Response {
                 Error error = 1;
-                anytype.model.ObjectType objectType = 2;
+                google.protobuf.Struct newDetails = 2;
 
                 message Error {
                     Code code = 1;

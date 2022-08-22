@@ -129,6 +129,14 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 			InternalFlags: req.InternalFlags,
 			Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
 		})
+	case bundle.TypeKeyObjectType:
+		id, _, err = mw.objectTypeCreate(&pb.RpcObjectTypeCreateRequest{
+			Details:       req.Details,
+			InternalFlags: req.InternalFlags,
+		})
+
+		// TODO: Relation?
+
 	default:
 		err = mw.doBlockService(func(bs block.Service) (err error) {
 			req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)

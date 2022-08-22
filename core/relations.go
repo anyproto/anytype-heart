@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -176,66 +177,56 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 }
 
 func (mw *Middleware) ObjectTypeCreate(cctx context.Context, req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
-	response := func(code pb.RpcObjectTypeCreateResponseErrorCode, otype *model.ObjectType, err error) *pb.RpcObjectTypeCreateResponse {
-		m := &pb.RpcObjectTypeCreateResponse{ObjectType: otype, Error: &pb.RpcObjectTypeCreateResponseError{Code: code}}
+	response := func(code pb.RpcObjectTypeCreateResponseErrorCode, details *types.Struct, err error) *pb.RpcObjectTypeCreateResponse {
+		m := &pb.RpcObjectTypeCreateResponse{NewDetails: details, Error: &pb.RpcObjectTypeCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
+
+	_, newDetails, err := mw.objectTypeCreate(req)
+	if err != nil {
+		return response(pb.RpcObjectTypeCreateResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
+	return response(pb.RpcObjectTypeCreateResponseError_NULL, newDetails, nil)
+}
+
+func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectTypeCreateRequest) (id string, newDetails *types.Struct, err error) {
+	if req.Details == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
 	var sbId string
 	var recommendedRelationKeys []string
-	var relations = make([]*model.Relation, 0, len(req.ObjectType.Relations)+len(bundle.RequiredInternalRelations))
 
-	layout, _ := bundle.GetLayout(req.ObjectType.Layout)
-	if layout == nil {
-		return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("invalid layout"))
+	rawLayout := pbtypes.GetFloat64(req.Details, bundle.RelationKeyRecommendedLayout.String())
+	layout, err := bundle.GetLayout(model.ObjectTypeLayout(rawLayout))
+	if err != nil {
+		return "", nil, fmt.Errorf("invalid layout: %w", err)
 	}
 
 	for _, rel := range bundle.RequiredInternalRelations {
-		relations = append(relations, bundle.MustGetRelation(rel))
 		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
 	}
 
 	for _, rel := range layout.RequiredRelations {
-		if pbtypes.HasRelation(relations, rel.Key) {
+		k := addr.BundledRelationURLPrefix + rel.Key
+		if slice.FindPos(recommendedRelationKeys, k) != -1 {
 			continue
 		}
-		relations = append(relations, pbtypes.CopyRelation(rel))
-		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.Key)
+		recommendedRelationKeys = append(recommendedRelationKeys, k)
 	}
 
-	for i, rel := range req.ObjectType.Relations {
-		if v := pbtypes.GetRelation(relations, rel.Key); v != nil {
-			if !pbtypes.RelationEqual(v, rel) {
-				return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("required relation %s not equals the bundled one", rel.Key))
-			}
-		} else {
-			if rel.Key == "" {
-				rel.Key = bson.NewObjectId().Hex()
-			}
-			rel.Creator = mw.GetAnytype().ProfileID()
-			if bundle.HasRelation(rel.Key) {
-				recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.Key)
-			} else {
-				recommendedRelationKeys = append(recommendedRelationKeys, addr.CustomRelationURLPrefix+rel.Key)
-			}
-			relations = append(relations, req.ObjectType.Relations[i])
-		}
-	}
+	details := req.Details
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationKeys)
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		sbId, _, err = bs.CreateSmartBlock(context.TODO(), smartblock.SmartBlockTypeObjectType, &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():                 pbtypes.String(req.ObjectType.Name),
-				bundle.RelationKeyIconEmoji.String():            pbtypes.String(req.ObjectType.IconEmoji),
-				bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
-				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
-				bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
-				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(recommendedRelationKeys),
-				bundle.RelationKeyIsArchived.String():           pbtypes.Bool(req.ObjectType.IsArchived),
-			},
-		}, nil) // TODO: add relationIds
+	err = mw.doBlockService(func(bs block.Service) (err error) {
+		sbId, _, err = bs.CreateSmartBlock(context.TODO(), smartblock.SmartBlockTypeObjectType, details, nil) // TODO: add relationIds
 		if err != nil {
 			return err
 		}
@@ -243,14 +234,12 @@ func (mw *Middleware) ObjectTypeCreate(cctx context.Context, req *pb.RpcObjectTy
 		return nil
 	})
 	if err != nil {
-		return response(pb.RpcObjectTypeCreateResponseError_UNKNOWN_ERROR, nil, err)
+		return
 	}
 
-	otype := req.ObjectType
-	otype.Relations = relations
-	otype.Url = sbId
-	otype.Types = []model.SmartBlockType{model.SmartBlockType_Page}
-	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(sbId)
+
+	return sbId, details, nil
 }
 
 func (mw *Middleware) ObjectTypeList(cctx context.Context, _ *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
