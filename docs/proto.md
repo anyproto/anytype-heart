@@ -18140,7 +18140,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| url | [string](#string) |  | Deprecated. Get this data from the target object. |
+| url | [string](#string) |  |  |
 | title | [string](#string) |  | Deprecated. Get this data from the target object. |
 | description | [string](#string) |  | Deprecated. Get this data from the target object. |
 | imageHash | [string](#string) |  | Deprecated. Get this data from the target object. |
