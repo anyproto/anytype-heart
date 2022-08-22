@@ -1602,7 +1602,7 @@
   },
   {
     "format": "url",
-    "hidden": true,
+    "hidden": false,
     "key": "source",
     "maxCount": 1,
     "name": "Source",
