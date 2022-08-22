@@ -923,6 +923,7 @@ func (s *State) RemoveRelation(relKey bundle.RelationKey) *State {
 		if rel.Key == relKey.String() {
 			pos = k
 			exists = true
+			break
 		}
 	}
 	if !exists {
