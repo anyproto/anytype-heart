@@ -912,14 +912,15 @@ func (s *State) AddRelation(relation *model.Relation) *State {
 	return s
 }
 
-// RemoveRelation removes relation from the state by ID
-func (s *State) RemoveRelation(relKey bundle.RelationKey) *State {
-	if len(s.extraRelations) == 0 {
-		s.extraRelations = pbtypes.CopyRelations(s.ExtraRelations())
+// RemoveExtraRelation removes relation from the state by ID
+func (s *State) RemoveExtraRelation(relKey bundle.RelationKey) *State {
+	var extraRelations []*model.Relation
+	if len(extraRelations) == 0 {
+		extraRelations = pbtypes.CopyRelations(s.ExtraRelations())
 	}
 	pos := 0
 	exists := false
-	for k, rel := range s.extraRelations {
+	for k, rel := range extraRelations {
 		if rel.Key == relKey.String() {
 			pos = k
 			exists = true
@@ -930,7 +931,7 @@ func (s *State) RemoveRelation(relKey bundle.RelationKey) *State {
 		return s
 	}
 
-	s.extraRelations = append(s.extraRelations[:pos], s.extraRelations[pos+1:]...)
+	s.extraRelations = append(extraRelations[:pos], extraRelations[pos+1:]...)
 	return s
 }
 

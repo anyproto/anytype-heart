@@ -773,9 +773,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, oldRel := range deprecatedRelationKeys {
 		s.Unlink(oldRel)
-		if s.HasRelation(oldRel) {
-			s.RemoveRelation(bundle.RelationKey(oldRel))
-		}
+		s.RemoveExtraRelation(bundle.RelationKey(oldRel))
 	}
 
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
