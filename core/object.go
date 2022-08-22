@@ -691,17 +691,21 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 
+	id, err := mw.objectCreateBookmark(req)
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, error) {
 	var id string
 	err := mw.doBlockService(func(bs block.Service) error {
 		var err error
 		id, err = bs.ObjectCreateBookmark(*req)
 		return err
 	})
-
-	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
-	}
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
+	return id, err
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {

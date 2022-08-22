@@ -6,11 +6,13 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -113,11 +115,27 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	}
 
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
-		id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
-		return
-	})
+	var err error
+
+	switch bundle.TypeKey(pbtypes.GetString(req.Details, bundle.RelationKeyType.String())) {
+	case bundle.TypeKeyBookmark:
+		id, err = mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
+			// TODO: change to KeySource
+			Url: pbtypes.GetString(req.Details, bundle.RelationKeyUrl.String()),
+		})
+	case bundle.TypeKeySet:
+		id, err = mw.objectCreateSet(&pb.RpcObjectCreateSetRequest{
+			Details:       req.Details,
+			InternalFlags: req.InternalFlags,
+			Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
+		})
+	default:
+		err = mw.doBlockService(func(bs block.Service) (err error) {
+			req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+			id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+			return
+		})
+	}
 
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", err)

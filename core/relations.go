@@ -3,9 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -306,6 +307,18 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		return m
 	}
 
+	id, err := mw.objectCreateSet(req)
+	if err != nil {
+		if err == block.ErrUnknownObjectType {
+			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", err)
+		}
+		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", err)
+	}
+
+	return response(pb.RpcObjectCreateSetResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) objectCreateSet(req *pb.RpcObjectCreateSetRequest) (string, error) {
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		if req.GetDetails().GetFields() == nil {
@@ -315,15 +328,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		id, err = bs.CreateSet(*req)
 		return err
 	})
-
-	if err != nil {
-		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", err)
-		}
-		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", err)
-	}
-
-	return response(pb.RpcObjectCreateSetResponseError_NULL, id, nil)
+	return id, err
 }
 
 func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectType, error) {
