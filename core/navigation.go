@@ -117,6 +117,8 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	var id string
 	var err error
 
+	// TODO add object type to details
+
 	switch bundle.TypeKey(pbtypes.GetString(req.Details, bundle.RelationKeyType.String())) {
 	case bundle.TypeKeyBookmark:
 		id, err = mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
@@ -134,8 +136,11 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 			Details:       req.Details,
 			InternalFlags: req.InternalFlags,
 		})
-
-		// TODO: Relation?
+	case bundle.TypeKeyRelation:
+		rl, err2 := mw.relationCreate(&pb.RpcRelationCreateRequest{Relation: &model.Relation{}})
+		id = rl.Id
+		err = err2
+		// TODO: add relation option case
 
 	default:
 		err = mw.doBlockService(func(bs block.Service) (err error) {

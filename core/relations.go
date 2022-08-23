@@ -342,6 +342,14 @@ func (mw *Middleware) RelationCreate(cctx context.Context, req *pb.RpcRelationCr
 			Key: key,
 		}
 	}
+	rl, err := mw.relationCreate(req)
+	if err != nil {
+		return response("", "", err)
+	}
+	return response(rl.Id, rl.Key, err)
+}
+
+func (mw *Middleware) relationCreate(req *pb.RpcRelationCreateRequest) (*model.RelationLink, error) {
 	var rl *model.RelationLink
 	err := mw.doRelationService(func(rs relation.Service) error {
 		var err error
@@ -351,10 +359,7 @@ func (mw *Middleware) RelationCreate(cctx context.Context, req *pb.RpcRelationCr
 		}
 		return nil
 	})
-	if err != nil {
-		return response("", "", err)
-	}
-	return response(rl.Id, rl.Key, err)
+	return rl, err
 }
 
 func (mw *Middleware) RelationCreateOption(cctx context.Context, request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {
