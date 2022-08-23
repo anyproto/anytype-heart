@@ -747,6 +747,14 @@ var bookmarkRelationKeys = []string{
 	bundle.RelationKeyTag.String(),
 }
 
+var oldBookmarkRelationKeys = []string{
+	bundle.RelationKeyUrl.String(),
+	bundle.RelationKeyPicture.String(),
+	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeyNotes.String(),
+	bundle.RelationKeyQuote.String(),
+}
+
 func makeRelationBlock(k string) *model.Block {
 	return &model.Block{
 		Id: k,
@@ -761,6 +769,11 @@ func makeRelationBlock(k string) *model.Block {
 var WithBookmarkBlocks = func(s *state.State) {
 	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySource, s.Details().Fields[bundle.RelationKeyUrl.String()])
+	}
+
+	for _, oldRel := range oldBookmarkRelationKeys {
+		s.Unlink(oldRel)
+		s.RemoveExtraRelation(bundle.RelationKey(oldRel))
 	}
 
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())

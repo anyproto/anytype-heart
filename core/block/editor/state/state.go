@@ -912,6 +912,18 @@ func (s *State) AddRelation(relation *model.Relation) *State {
 	return s
 }
 
+// RemoveExtraRelation removes relation from the state by ID
+func (s *State) RemoveExtraRelation(relKey bundle.RelationKey) *State {
+	for k, rel := range s.ExtraRelations() {
+		if rel.Key == relKey.String() {
+			extraRelations := pbtypes.CopyRelations(s.ExtraRelations())
+			s.extraRelations = append(extraRelations[:k], extraRelations[k+1:]...)
+			return s
+		}
+	}
+	return s
+}
+
 func (s *State) SetExtraRelations(relations []*model.Relation) *State {
 	relationsCopy := pbtypes.CopyRelations(relations)
 	for _, rel := range relationsCopy {
