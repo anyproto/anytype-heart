@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 	"math"
 	"path/filepath"
@@ -18,7 +19,12 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-const imageObjectHiddenWidth = 256
+const (
+	imageObjectHiddenWidth = 256
+	maxFaviconPixelSize    = 64
+)
+
+var ErrFileNotIndexable = fmt.Errorf("file is too small to add to index")
 
 type Image interface {
 	Exif() (*mill.ImageExifSchema, error)
@@ -149,15 +155,10 @@ func (i *image) Details() (*types.Struct, error) {
 		return details, nil
 	}
 
-	if largest.Meta() != nil {
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
-		details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
-		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
-		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
-		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
-
-	}
 	if v := pbtypes.Get(largest.Info().GetMeta(), "width"); v != nil {
+		if v.GetNumberValue() <= maxFaviconPixelSize {
+			return nil, ErrFileNotIndexable
+		}
 		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
 		if v.GetNumberValue() < imageObjectHiddenWidth {
 			details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
@@ -165,7 +166,19 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	if v := pbtypes.Get(largest.Info().GetMeta(), "height"); v != nil {
+		if v.GetNumberValue() <= maxFaviconPixelSize {
+			return nil, ErrFileNotIndexable
+		}
 		details.Fields[bundle.RelationKeyHeightInPixels.String()] = v
+	}
+
+	if largest.Meta() != nil {
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
+		details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
+		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
+		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
+		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
+
 	}
 
 	exif, err := i.Exif()
