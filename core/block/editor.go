@@ -74,10 +74,39 @@ func (s *service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest
 }
 
 func (s *service) DuplicateBlocks(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		newIds, err = b.Duplicate(ctx, req)
-		return err
+	if req.ContextId == req.TargetContextId || req.TargetContextId == "" {
+		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+			if sb.Type() == model.SmartBlockType_Set {
+				return basic.ErrNotSupported
+			}
+
+			st := sb.NewStateCtx(ctx)
+			newIds, err = basic.Duplicate(req, st, st)
+			if err != nil {
+				return fmt.Errorf("duplicate: %w", err)
+			}
+			return sb.Apply(st)
+		})
+		return
+	}
+
+	err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+		srcState := sb.NewStateCtx(ctx)
+		err = s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
+			if tb.Type() == model.SmartBlockType_Set {
+				return basic.ErrNotSupported
+			}
+
+			targetState := tb.NewState()
+			newIds, err = basic.Duplicate(req, srcState, targetState)
+			if err != nil {
+				return fmt.Errorf("duplicate: %w", err)
+			}
+			return tb.Apply(targetState)
+		})
+		return sb.Apply(srcState)
 	})
+
 	return
 }
 

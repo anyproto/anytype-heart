@@ -2943,6 +2943,7 @@ Makes blocks copy by given ids and paste it to shown place
 | targetId | [string](#string) |  | id of the closest block |
 | blockIds | [string](#string) | repeated | id of block for duplicate |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+| targetContextId | [string](#string) |  |  |
 
 
 
