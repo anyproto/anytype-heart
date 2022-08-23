@@ -757,7 +757,7 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 			return groups[i].Id < groups[j].Id
 		})
 		groups = append([]*model.BlockContentDataviewGroup{{
-			Id: "empty",
+			Id:    "empty",
 			Value: &model.BlockContentDataviewGroupValueOfStatus{Status: &model.BlockContentDataviewStatus{}},
 		}}, groups...)
 	case model.RelationFormat_tag:
@@ -1181,7 +1181,7 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 		}
 		v, err := txn.Get(pagesDetailsBase.ChildString(id))
 		if err != nil {
-			log.Errorf("QueryByIds failed to find id: %s", id)
+			log.Infof("QueryByIds failed to find id: %s", id)
 			continue
 		}
 
