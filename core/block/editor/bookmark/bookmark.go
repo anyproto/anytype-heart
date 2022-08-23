@@ -146,6 +146,15 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 	content := bm.GetContent()
 
+	// Fix broken empty bookmarks
+	if content.Url == "" && content.State == model.BlockContentBookmark_Done {
+		bm.UpdateContent(func(content *model.BlockContentBookmark) {
+			content.State = model.BlockContentBookmark_Empty
+			content.TargetObjectId = ""
+		})
+		return nil
+	}
+
 	if content.TargetObjectId != "" {
 		if content.State != model.BlockContentBookmark_Done {
 			bm.UpdateContent(func(content *model.BlockContentBookmark) {
