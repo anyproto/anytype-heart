@@ -914,9 +914,9 @@ func (s *State) AddRelation(relation *model.Relation) *State {
 
 // RemoveExtraRelation removes relation from the state by ID
 func (s *State) RemoveExtraRelation(relKey bundle.RelationKey) *State {
-	extraRelations := pbtypes.CopyRelations(s.ExtraRelations())
-	for k, rel := range extraRelations {
+	for k, rel := range s.ExtraRelations() {
 		if rel.Key == relKey.String() {
+			extraRelations := pbtypes.CopyRelations(s.ExtraRelations())
 			s.extraRelations = append(extraRelations[:k], extraRelations[k+1:]...)
 			return s
 		}
