@@ -15,7 +15,7 @@ import (
 
 func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {
 	if err := mw.sessions.ValidateToken(mw.privateKey, req.Token); err != nil {
-		log.Error("ListenSessionEvents: %s", err)
+		log.Errorf("ListenSessionEvents: %s", err)
 		return
 	}
 
@@ -32,9 +32,9 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 	select {
 	case <-stopChan:
 		log.Errorf("stream %s interrupted", req.Token)
-		return
 	case <-srv.Done:
 		log.Errorf("stream %s closed", req.Token)
-		return
+	case <-srv.Server.Context().Done():
+		log.Errorf("stream %s context canceled", req.Token)
 	}
 }

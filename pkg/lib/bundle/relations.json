@@ -1599,5 +1599,14 @@
     "name": "IMDb rating",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "format": "url",
+    "hidden": true,
+    "key": "source",
+    "maxCount": 1,
+    "name": "Source",
+    "readonly": false,
+    "source": "details"
   }
 ]

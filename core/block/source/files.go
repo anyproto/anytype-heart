@@ -81,6 +81,9 @@ func (v *files) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 
 	d, _, err := getDetailsForFileOrImage(ctx, v.a, v.id)
 	if err != nil {
+		if err == core.ErrFileNotIndexable {
+			return s, nil
+		}
 		return nil, err
 	}
 
@@ -98,6 +101,9 @@ func (v *files) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, 
 
 	d, _, err := getDetailsForFileOrImage(ctx, v.a, v.id)
 	if err != nil {
+		if err == core.ErrFileNotIndexable {
+			return s, nil
+		}
 		return nil, err
 	}
 
