@@ -2026,7 +2026,6 @@ func (m *BlockContentDiv) GetStyle() BlockContentDivStyle {
 //
 // Bookmark is to keep a web-link and to preview a content.
 type BlockContentBookmark struct {
-	// Deprecated. Get this data from the target object.
 	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
 	// Deprecated. Get this data from the target object.
 	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
