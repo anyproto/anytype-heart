@@ -747,7 +747,7 @@ var bookmarkRelationKeys = []string{
 	bundle.RelationKeyTag.String(),
 }
 
-var deprecatedRelationKeys = []string{
+var oldBookmarkRelationKeys = []string{
 	bundle.RelationKeyUrl.String(),
 	bundle.RelationKeyPicture.String(),
 	bundle.RelationKeyCreatedDate.String(),
@@ -771,7 +771,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySource, s.Details().Fields[bundle.RelationKeyUrl.String()])
 	}
 
-	for _, oldRel := range deprecatedRelationKeys {
+	for _, oldRel := range oldBookmarkRelationKeys {
 		s.Unlink(oldRel)
 		s.RemoveExtraRelation(bundle.RelationKey(oldRel))
 	}
