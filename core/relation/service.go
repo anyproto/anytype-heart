@@ -47,7 +47,7 @@ type Service interface {
 	FetchKey(key string) (relation *Relation, err error)
 	FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error)
 
-	Create(rel *model.Relation, details *types.Struct) (rl *model.RelationLink, err error)
+	Create(details *types.Struct) (rl *model.RelationLink, err error)
 	//CreateOption(relationKey string, opt *model.RelationOption) (id string, err error)
 	MigrateRelations(rels []*model.Relation) (relLinks []*model.RelationLink, err error)
 	ValidateFormat(key string, v *types.Value) error
@@ -192,11 +192,11 @@ func (s *service) fetchOptionsByKey(key string) (relation *Relation, err error) 
 	return nil, ErrNotFound
 }
 
-func (s *service) Create(rel *model.Relation, details *types.Struct) (rl *model.RelationLink, err error) {
+func (s *service) Create(details *types.Struct) (rl *model.RelationLink, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if rel.Key == "" {
-		rel.Key = generateRelationKey()
+	rel := &model.Relation{
+		Key: generateRelationKey(),
 	}
 	return s.create(rel, details, true)
 }
