@@ -846,13 +846,9 @@ func (s *State) InjectDerivedDetails() {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
 
 		// TODO: refactor
-		sbTypes, err := listSmartblockTypes(ot)
+		sbTypes, err := ListSmartblockTypes(ot)
 		if err == nil {
-			conv := make([]int, 0, len(sbTypes))
-			for _, t := range sbTypes {
-				conv = append(conv, int(t))
-			}
-			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(conv...))
+			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
 		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(s.Snippet()))
@@ -860,7 +856,7 @@ func (s *State) InjectDerivedDetails() {
 }
 
 // TODO: refactor
-func listSmartblockTypes(objectTypeUrl string) ([]model.SmartBlockType, error) {
+func ListSmartblockTypes(objectTypeUrl string) ([]int, error) {
 	if strings.HasPrefix(objectTypeUrl, addr.BundledObjectTypeURLPrefix) {
 		var err error
 		objectType, err := bundle.GetTypeByUrl(objectTypeUrl)
@@ -870,12 +866,17 @@ func listSmartblockTypes(objectTypeUrl string) ([]model.SmartBlockType, error) {
 			}
 			return nil, err
 		}
-		return objectType.Types, nil
+		res := make([]int, 0, len(objectType.Types))
+		for _, t := range objectType.Types {
+			res = append(res, int(t))
+		}
+		return res, nil
 	} else if !strings.HasPrefix(objectTypeUrl, "b") {
 		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 
-	return []model.SmartBlockType{model.SmartBlockType_Page}, nil
+	// Default smartblock type for all custom object types
+	return []int{int(model.SmartBlockType_Page)}, nil
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {

@@ -11047,6 +11047,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | relation | [model.Relation](#anytype-model-Relation) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 

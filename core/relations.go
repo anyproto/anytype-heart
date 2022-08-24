@@ -353,7 +353,7 @@ func (mw *Middleware) relationCreate(req *pb.RpcRelationCreateRequest) (*model.R
 	var rl *model.RelationLink
 	err := mw.doRelationService(func(rs relation.Service) error {
 		var err error
-		rl, err = rs.Create(req.Relation)
+		rl, err = rs.Create(req.Relation, req.Details)
 		if err != nil {
 			return err
 		}

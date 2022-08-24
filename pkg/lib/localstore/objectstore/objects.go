@@ -6,12 +6,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -1020,6 +1022,14 @@ func (m *dsObjectStore) QueryRaw(dsq query.Query) (records []database.Record, er
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		} else {
 			pb.StructDeleteEmptyFields(details.Details)
+		}
+
+		// TODO: refactor
+		if ot := pbtypes.GetString(details.Details, bundle.RelationKeyType.String()); ot != "" {
+			sbTypes, err := state.ListSmartblockTypes(ot)
+			if err == nil {
+				details.Details.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbTypes...)
+			}
 		}
 
 		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)

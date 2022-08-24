@@ -1821,6 +1821,7 @@ message Rpc {
         message Create {
             message Request {
                 anytype.model.Relation relation = 2;
+                google.protobuf.Struct details = 3;
             }
 
             message Response {
