@@ -843,10 +843,11 @@ func (s *State) InjectDerivedDetails() {
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 
-	// TODO: refactor
 	sbTypes, err := ListSmartblockTypes(s.RootId())
 	if err == nil {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
+	} else {
+		log.Errorf("ListSmartblockTypes: %s", err)
 	}
 
 	if ot := s.ObjectType(); ot != "" {
@@ -856,7 +857,6 @@ func (s *State) InjectDerivedDetails() {
 
 }
 
-// TODO: refactor
 func ListSmartblockTypes(objectId string) ([]int, error) {
 	if strings.HasPrefix(objectId, addr.BundledObjectTypeURLPrefix) {
 		var err error
