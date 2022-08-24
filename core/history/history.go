@@ -3,8 +3,9 @@ package history
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/change"
@@ -91,15 +92,13 @@ func (h *history) Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.
 		}
 	}
 
-	objectTypes, _ := objectstore.GetObjectTypes(h.objectStore, uniqueObjTypes)
 	rels, _ := h.relationService.FetchLinks(s.PickRelationLinks())
 	return &model.ObjectView{
-		RootId:      pageId,
-		Type:        model.SmartBlockType(sbType),
-		Blocks:      s.Blocks(),
-		Details:     details,
-		ObjectTypes: objectTypes,
-		Relations:   rels.Models(),
+		RootId:    pageId,
+		Type:      model.SmartBlockType(sbType),
+		Blocks:    s.Blocks(),
+		Details:   details,
+		Relations: rels.Models(),
 	}, ver, nil
 }
 

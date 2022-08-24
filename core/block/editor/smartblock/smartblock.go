@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -30,10 +35,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 type ApplyFlag int
@@ -331,7 +332,6 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 		Blocks:        sb.Blocks(),
 		Details:       details,
 		RelationLinks: sb.GetRelationLinks(),
-		ObjectTypes:   objectTypes,
 		Restrictions:  sb.restrictions.Proto(),
 		History: &model.ObjectViewHistorySize{
 			Undo: undo,

@@ -94,8 +94,6 @@ service ClientCommands {
     // ObjectType commands
     // ***
     rpc ObjectTypeCreate (anytype.Rpc.ObjectType.Create.Request) returns (anytype.Rpc.ObjectType.Create.Response);
-    // ObjectTypeList lists all object types both bundled and created by user
-    rpc ObjectTypeList (anytype.Rpc.ObjectType.List.Request) returns (anytype.Rpc.ObjectType.List.Response);
     rpc ObjectTypeRelationList (anytype.Rpc.ObjectType.Relation.List.Request) returns (anytype.Rpc.ObjectType.Relation.List.Response);
     rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
     rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);

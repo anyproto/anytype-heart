@@ -10,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -240,48 +239,6 @@ func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectTypeCreateRequest) (id s
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(sbId)
 
 	return sbId, details, nil
-}
-
-func (mw *Middleware) ObjectTypeList(cctx context.Context, _ *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
-	response := func(code pb.RpcObjectTypeListResponseErrorCode, otypes []*model.ObjectType, err error) *pb.RpcObjectTypeListResponse {
-		m := &pb.RpcObjectTypeListResponse{ObjectTypes: otypes, Error: &pb.RpcObjectTypeListResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
-	at := mw.GetAnytype()
-	if at == nil {
-		return response(pb.RpcObjectTypeListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
-	}
-
-	var (
-		ids    []string
-		otypes []*model.ObjectType
-	)
-	for _, t := range []smartblock.SmartBlockType{smartblock.SmartBlockTypeObjectType, smartblock.SmartBlockTypeBundledObjectType} {
-		st, err := mw.GetApp().MustComponent(source.CName).(source.Service).SourceTypeBySbType(t)
-		if err != nil {
-			return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
-		}
-		idsT, err := st.ListIds()
-		if err != nil {
-			return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
-		}
-		ids = append(ids, idsT...)
-	}
-
-	for _, id := range ids {
-		otype, err := mw.getObjectType(at, id)
-		if err != nil {
-			log.Errorf("failed to get objectType %s info: %s", id, err.Error())
-			continue
-		}
-		otypes = append(otypes, otype)
-	}
-
-	return response(pb.RpcObjectTypeListResponseError_NULL, otypes, nil)
 }
 
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {

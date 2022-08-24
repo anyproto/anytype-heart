@@ -106,7 +106,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, err error) *pb.RpcObjectCreateResponse {
-		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, PageId: id}
+		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, ObjectId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {

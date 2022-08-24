@@ -644,10 +644,6 @@
     - [Rpc.ObjectType.Create.Request](#anytype-Rpc-ObjectType-Create-Request)
     - [Rpc.ObjectType.Create.Response](#anytype-Rpc-ObjectType-Create-Response)
     - [Rpc.ObjectType.Create.Response.Error](#anytype-Rpc-ObjectType-Create-Response-Error)
-    - [Rpc.ObjectType.List](#anytype-Rpc-ObjectType-List)
-    - [Rpc.ObjectType.List.Request](#anytype-Rpc-ObjectType-List-Request)
-    - [Rpc.ObjectType.List.Response](#anytype-Rpc-ObjectType-List-Response)
-    - [Rpc.ObjectType.List.Response.Error](#anytype-Rpc-ObjectType-List-Response-Error)
     - [Rpc.ObjectType.Relation](#anytype-Rpc-ObjectType-Relation)
     - [Rpc.ObjectType.Relation.Add](#anytype-Rpc-ObjectType-Relation-Add)
     - [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request)
@@ -907,7 +903,6 @@
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype-Rpc-ObjectType-Create-Response-Error-Code)
-    - [Rpc.ObjectType.List.Response.Error.Code](#anytype-Rpc-ObjectType-List-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-List-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
@@ -1283,7 +1278,6 @@
 | ObjectRelationRemoveFeatured | [Rpc.ObjectRelation.RemoveFeatured.Request](#anytype-Rpc-ObjectRelation-RemoveFeatured-Request) | [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response) |  |
 | ObjectRelationListAvailable | [Rpc.ObjectRelation.ListAvailable.Request](#anytype-Rpc-ObjectRelation-ListAvailable-Request) | [Rpc.ObjectRelation.ListAvailable.Response](#anytype-Rpc-ObjectRelation-ListAvailable-Response) |  |
 | ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype-Rpc-ObjectType-Create-Request) | [Rpc.ObjectType.Create.Response](#anytype-Rpc-ObjectType-Create-Response) | ObjectType commands *** |
-| ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype-Rpc-ObjectType-List-Request) | [Rpc.ObjectType.List.Response](#anytype-Rpc-ObjectType-List-Response) | ObjectTypeList lists all object types both bundled and created by user |
 | ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype-Rpc-ObjectType-Relation-List-Request) | [Rpc.ObjectType.Relation.List.Response](#anytype-Rpc-ObjectType-Relation-List-Response) |  |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
@@ -8559,7 +8553,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Create.Response.Error](#anytype-Rpc-Object-Create-Response-Error) |  |  |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -10710,58 +10704,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectType.Create.Response.Error.Code](#anytype-Rpc-ObjectType-Create-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List"></a>
-
-### Rpc.ObjectType.List
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Request"></a>
-
-### Rpc.ObjectType.List.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Response"></a>
-
-### Rpc.ObjectType.List.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.List.Response.Error](#anytype-Rpc-ObjectType-List-Response-Error) |  |  |
-| objectTypes | [model.ObjectType](#anytype-model-ObjectType) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Response-Error"></a>
-
-### Rpc.ObjectType.List.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.List.Response.Error.Code](#anytype-Rpc-ObjectType-List-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14322,19 +14264,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Response-Error-Code"></a>
-
-### Rpc.ObjectType.List.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 
@@ -18005,7 +17934,6 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
 | details | [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet) | repeated | details for the current and dependent objects |
 | type | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
-| objectTypes | [ObjectType](#anytype-model-ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
 | relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED, use relationLinks instead |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
