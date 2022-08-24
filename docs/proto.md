@@ -8670,6 +8670,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateObjectType.Response.Error](#anytype-Rpc-Object-CreateObjectType-Response-Error) |  |  |
 | newDetails | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 

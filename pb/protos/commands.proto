@@ -872,6 +872,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 google.protobuf.Struct newDetails = 2;
+                string objectId = 3;
 
                 message Error {
                     Code code = 1;

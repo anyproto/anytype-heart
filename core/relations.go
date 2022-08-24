@@ -176,20 +176,20 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 }
 
 func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
-	response := func(code pb.RpcObjectCreateObjectTypeResponseErrorCode, details *types.Struct, err error) *pb.RpcObjectCreateObjectTypeResponse {
-		m := &pb.RpcObjectCreateObjectTypeResponse{NewDetails: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}
+	response := func(code pb.RpcObjectCreateObjectTypeResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateObjectTypeResponse {
+		m := &pb.RpcObjectCreateObjectTypeResponse{ObjectId: id, NewDetails: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
 
-	_, newDetails, err := mw.objectTypeCreate(req)
+	id, newDetails, err := mw.objectTypeCreate(req)
 	if err != nil {
-		return response(pb.RpcObjectCreateObjectTypeResponseError_UNKNOWN_ERROR, nil, err)
+		return response(pb.RpcObjectCreateObjectTypeResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 
-	return response(pb.RpcObjectCreateObjectTypeResponseError_NULL, newDetails, nil)
+	return response(pb.RpcObjectCreateObjectTypeResponseError_NULL, id, newDetails, nil)
 }
 
 func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectCreateObjectTypeRequest) (id string, newDetails *types.Struct, err error) {
