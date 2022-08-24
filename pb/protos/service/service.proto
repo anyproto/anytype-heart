@@ -43,6 +43,7 @@ service ClientCommands {
     // ObjectCreate just creates the new page, without adding the link to it from some other page
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
+
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
     rpc ObjectGraph (anytype.Rpc.Object.Graph.Request) returns (anytype.Rpc.Object.Graph.Response);
@@ -78,8 +79,8 @@ service ClientCommands {
 
     // Relations
     // ***
-    rpc RelationCreate(anytype.Rpc.Relation.Create.Request) returns (anytype.Rpc.Relation.Create.Response);
-    rpc RelationCreateOption(anytype.Rpc.Relation.CreateOption.Request) returns (anytype.Rpc.Relation.CreateOption.Response);
+    rpc ObjectCreateRelation(anytype.Rpc.Object.CreateRelation.Request) returns (anytype.Rpc.Object.CreateRelation.Response);
+    rpc ObjectCreateRelationOption(anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption(anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
     rpc RelationOptions(anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
 
@@ -93,7 +94,7 @@ service ClientCommands {
 
     // ObjectType commands
     // ***
-    rpc ObjectTypeCreate (anytype.Rpc.ObjectType.Create.Request) returns (anytype.Rpc.ObjectType.Create.Response);
+    rpc ObjectCreateObjectType (anytype.Rpc.Object.CreateObjectType.Request) returns (anytype.Rpc.Object.CreateObjectType.Response);
     rpc ObjectTypeRelationList (anytype.Rpc.ObjectType.Relation.List.Request) returns (anytype.Rpc.ObjectType.Relation.List.Response);
     rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
     rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);

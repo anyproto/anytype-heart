@@ -175,9 +175,9 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 	return response(pb.RpcObjectTypeRelationRemoveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectTypeCreate(cctx context.Context, req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
-	response := func(code pb.RpcObjectTypeCreateResponseErrorCode, details *types.Struct, err error) *pb.RpcObjectTypeCreateResponse {
-		m := &pb.RpcObjectTypeCreateResponse{NewDetails: details, Error: &pb.RpcObjectTypeCreateResponseError{Code: code}}
+func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
+	response := func(code pb.RpcObjectCreateObjectTypeResponseErrorCode, details *types.Struct, err error) *pb.RpcObjectCreateObjectTypeResponse {
+		m := &pb.RpcObjectCreateObjectTypeResponse{NewDetails: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -186,13 +186,13 @@ func (mw *Middleware) ObjectTypeCreate(cctx context.Context, req *pb.RpcObjectTy
 
 	_, newDetails, err := mw.objectTypeCreate(req)
 	if err != nil {
-		return response(pb.RpcObjectTypeCreateResponseError_UNKNOWN_ERROR, nil, err)
+		return response(pb.RpcObjectCreateObjectTypeResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	return response(pb.RpcObjectTypeCreateResponseError_NULL, newDetails, nil)
+	return response(pb.RpcObjectCreateObjectTypeResponseError_NULL, newDetails, nil)
 }
 
-func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectTypeCreateRequest) (id string, newDetails *types.Struct, err error) {
+func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectCreateObjectTypeRequest) (id string, newDetails *types.Struct, err error) {
 	if req.Details == nil {
 		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
@@ -281,19 +281,19 @@ func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectT
 	return objectstore.GetObjectType(at.ObjectStore(), url)
 }
 
-func (mw *Middleware) RelationCreate(cctx context.Context, req *pb.RpcRelationCreateRequest) *pb.RpcRelationCreateResponse {
-	response := func(id, key string, err error) *pb.RpcRelationCreateResponse {
+func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
+	response := func(id, key string, err error) *pb.RpcObjectCreateRelationResponse {
 		if err != nil {
-			return &pb.RpcRelationCreateResponse{
-				Error: &pb.RpcRelationCreateResponseError{
-					Code:        pb.RpcRelationCreateResponseError_UNKNOWN_ERROR,
+			return &pb.RpcObjectCreateRelationResponse{
+				Error: &pb.RpcObjectCreateRelationResponseError{
+					Code:        pb.RpcObjectCreateRelationResponseError_UNKNOWN_ERROR,
 					Description: err.Error(),
 				},
 			}
 		}
-		return &pb.RpcRelationCreateResponse{
-			Error: &pb.RpcRelationCreateResponseError{
-				Code: pb.RpcRelationCreateResponseError_NULL,
+		return &pb.RpcObjectCreateRelationResponse{
+			Error: &pb.RpcObjectCreateRelationResponseError{
+				Code: pb.RpcObjectCreateRelationResponseError_NULL,
 			},
 			ObjectId: id,
 			Key:      key,
@@ -306,7 +306,7 @@ func (mw *Middleware) RelationCreate(cctx context.Context, req *pb.RpcRelationCr
 	return response(rl.Id, rl.Key, err)
 }
 
-func (mw *Middleware) relationCreate(req *pb.RpcRelationCreateRequest) (*model.RelationLink, error) {
+func (mw *Middleware) relationCreate(req *pb.RpcObjectCreateRelationRequest) (*model.RelationLink, error) {
 	var rl *model.RelationLink
 	err := mw.doRelationService(func(rs relation.Service) error {
 		var err error
@@ -319,19 +319,19 @@ func (mw *Middleware) relationCreate(req *pb.RpcRelationCreateRequest) (*model.R
 	return rl, err
 }
 
-func (mw *Middleware) RelationCreateOption(cctx context.Context, request *pb.RpcRelationCreateOptionRequest) *pb.RpcRelationCreateOptionResponse {
-	response := func(id string, err error) *pb.RpcRelationCreateOptionResponse {
+func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, request *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
+	response := func(id string, err error) *pb.RpcObjectCreateRelationOptionResponse {
 		if err != nil {
-			return &pb.RpcRelationCreateOptionResponse{
-				Error: &pb.RpcRelationCreateOptionResponseError{
-					Code:        pb.RpcRelationCreateOptionResponseError_UNKNOWN_ERROR,
+			return &pb.RpcObjectCreateRelationOptionResponse{
+				Error: &pb.RpcObjectCreateRelationOptionResponseError{
+					Code:        pb.RpcObjectCreateRelationOptionResponseError_UNKNOWN_ERROR,
 					Description: err.Error(),
 				},
 			}
 		}
-		return &pb.RpcRelationCreateOptionResponse{
-			Error: &pb.RpcRelationCreateOptionResponseError{
-				Code: pb.RpcRelationCreateOptionResponseError_NULL,
+		return &pb.RpcObjectCreateRelationOptionResponse{
+			Error: &pb.RpcObjectCreateRelationOptionResponseError{
+				Code: pb.RpcObjectCreateRelationOptionResponseError_NULL,
 			},
 			ObjectId: id,
 		}
