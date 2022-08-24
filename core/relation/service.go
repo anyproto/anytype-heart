@@ -211,11 +211,11 @@ func (s *service) create(rel *model.Relation, reqDetails *types.Struct, checkFor
 	st.SetObjectType(bundle.TypeKeyRelation.URL())
 	r := &Relation{Relation: rel}
 	details := r.ToStruct()
+	details = pbtypes.StructMerge(details, reqDetails, false)
 	for k, v := range details.Fields {
 		st.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
 
-	details = pbtypes.StructMerge(details, reqDetails, false)
 	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeIndexedRelation, details, nil, st)
 	if err != nil {
 		return
