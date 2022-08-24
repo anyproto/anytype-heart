@@ -118,6 +118,8 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	var id string
 	var err error
 
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
 	ot := strings.TrimPrefix(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()), bundle.TypePrefix)
 	switch bundle.TypeKey(ot) {
 	case bundle.TypeKeyBookmark:
@@ -147,7 +149,6 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 
 	default:
 		err = mw.doBlockService(func(bs block.Service) (err error) {
-			req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
 			id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 			return
 		})

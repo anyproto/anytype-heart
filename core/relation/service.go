@@ -216,7 +216,7 @@ func (s *service) create(rel *model.Relation, reqDetails *types.Struct, checkFor
 	}
 
 	details = pbtypes.StructMerge(details, reqDetails, false)
-	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeIndexedRelation, nil, nil, st)
+	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeIndexedRelation, details, nil, st)
 	if err != nil {
 		return
 	}
