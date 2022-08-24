@@ -1034,7 +1034,7 @@ func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) 
 		if err == nil {
 			details.Details.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbTypes...)
 		} else {
-			log.Errorf("unmarshalDetails: ListSmartblockTypes: %s", err)
+			log.Debugf("unmarshalDetails: ListSmartblockTypes %s: %s", id, err)
 		}
 	}
 

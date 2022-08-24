@@ -7782,7 +7782,7 @@ returns list of versions (changes)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | lastVersionId | [string](#string) |  | when indicated, results will include versions before given id |
 | limit | [int32](#int32) |  | desired count of versions |
 
@@ -7841,7 +7841,7 @@ returns list of versions (changes)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | versionId | [string](#string) |  |  |
 
 
@@ -7898,7 +7898,7 @@ returns blockShow event for given version
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | versionId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
 
@@ -8611,7 +8611,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error) |  |  |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 
@@ -8671,7 +8671,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateSet.Response.Error](#anytype-Rpc-Object-CreateSet-Response-Error) |  |  |
-| id | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -11005,7 +11005,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.Create.Response.Error](#anytype-Rpc-Relation-Create-Response-Error) |  |  |
-| id | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | key | [string](#string) |  |  |
 
 
@@ -11064,7 +11064,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.CreateOption.Response.Error](#anytype-Rpc-Relation-CreateOption-Response-Error) |  |  |
-| id | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 

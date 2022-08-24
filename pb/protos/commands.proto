@@ -773,7 +773,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string pageId = 2;
+                string objectId = 2;
 
                 message Error {
                     Code code = 1;
@@ -846,7 +846,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string id = 3;
+                string objectId = 3;
                 ResponseEvent event = 4;
 
                 message Error {
@@ -1805,7 +1805,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string id = 2;
+                string objectId = 2;
                 string key = 3;
 
                 message Error {
@@ -1829,7 +1829,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string id = 2;
+                string objectId = 2;
 
                 message Error {
                     Code code = 1;
@@ -1901,7 +1901,7 @@ message Rpc {
         // returns list of versions (changes)
         message GetVersions {
             message Request {
-                string pageId = 1;
+                string objectId = 1;
                 // when indicated, results will include versions before given id
                 string lastVersionId = 2;
                 // desired count of versions
@@ -1929,7 +1929,7 @@ message Rpc {
         // returns blockShow event for given version
         message ShowVersion {
             message Request {
-                string pageId = 1;
+                string objectId = 1;
                 string versionId = 2;
                 string traceId = 3;
             }
@@ -1956,7 +1956,7 @@ message Rpc {
 
         message SetVersion {
             message Request {
-                string pageId = 1;
+                string objectId = 1;
                 string versionId = 2;
             }
 

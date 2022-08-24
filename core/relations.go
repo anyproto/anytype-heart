@@ -244,7 +244,7 @@ func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectTypeCreateRequest) (id s
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, err error) *pb.RpcObjectCreateSetResponse {
-		m := &pb.RpcObjectCreateSetResponse{Error: &pb.RpcObjectCreateSetResponseError{Code: code}, Id: id}
+		m := &pb.RpcObjectCreateSetResponse{Error: &pb.RpcObjectCreateSetResponseError{Code: code}, ObjectId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -295,8 +295,8 @@ func (mw *Middleware) RelationCreate(cctx context.Context, req *pb.RpcRelationCr
 			Error: &pb.RpcRelationCreateResponseError{
 				Code: pb.RpcRelationCreateResponseError_NULL,
 			},
-			Id:  id,
-			Key: key,
+			ObjectId: id,
+			Key:      key,
 		}
 	}
 	rl, err := mw.relationCreate(req)
@@ -333,7 +333,7 @@ func (mw *Middleware) RelationCreateOption(cctx context.Context, request *pb.Rpc
 			Error: &pb.RpcRelationCreateOptionResponseError{
 				Code: pb.RpcRelationCreateOptionResponseError_NULL,
 			},
-			Id: id,
+			ObjectId: id,
 		}
 	}
 

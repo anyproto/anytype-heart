@@ -847,7 +847,7 @@ func (s *State) InjectDerivedDetails() {
 	if err == nil {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
 	} else {
-		log.Errorf("ListSmartblockTypes: %s", err)
+		log.Debugf("ListSmartblockTypes: %s", err)
 	}
 
 	if ot := s.ObjectType(); ot != "" {
