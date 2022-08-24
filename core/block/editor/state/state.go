@@ -842,24 +842,25 @@ func (s *State) InjectDerivedDetails() {
 		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
+
+	// TODO: refactor
+	sbTypes, err := ListSmartblockTypes(s.RootId())
+	if err == nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
+	}
+
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
-
-		// TODO: refactor
-		sbTypes, err := ListSmartblockTypes(ot)
-		if err == nil {
-			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
-		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(s.Snippet()))
 
 }
 
 // TODO: refactor
-func ListSmartblockTypes(objectTypeUrl string) ([]int, error) {
-	if strings.HasPrefix(objectTypeUrl, addr.BundledObjectTypeURLPrefix) {
+func ListSmartblockTypes(objectId string) ([]int, error) {
+	if strings.HasPrefix(objectId, addr.BundledObjectTypeURLPrefix) {
 		var err error
-		objectType, err := bundle.GetTypeByUrl(objectTypeUrl)
+		objectType, err := bundle.GetTypeByUrl(objectId)
 		if err != nil {
 			if err == bundle.ErrNotFound {
 				return nil, fmt.Errorf("unknown object type")
@@ -871,7 +872,7 @@ func ListSmartblockTypes(objectTypeUrl string) ([]int, error) {
 			res = append(res, int(t))
 		}
 		return res, nil
-	} else if !strings.HasPrefix(objectTypeUrl, "b") {
+	} else if !strings.HasPrefix(objectId, "b") {
 		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 

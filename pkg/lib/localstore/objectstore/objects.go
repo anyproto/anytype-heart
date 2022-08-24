@@ -1025,11 +1025,10 @@ func (m *dsObjectStore) QueryRaw(dsq query.Query) (records []database.Record, er
 		}
 
 		// TODO: refactor
-		if ot := pbtypes.GetString(details.Details, bundle.RelationKeyType.String()); ot != "" {
-			sbTypes, err := state.ListSmartblockTypes(ot)
-			if err == nil {
-				details.Details.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbTypes...)
-			}
+		// TODO: generalize with Query method
+		sbTypes, err := state.ListSmartblockTypes(id)
+		if err == nil {
+			details.Details.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbTypes...)
 		}
 
 		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)

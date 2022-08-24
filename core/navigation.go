@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -117,9 +118,8 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	var id string
 	var err error
 
-	// TODO add object type to details
-
-	switch bundle.TypeKey(pbtypes.GetString(req.Details, bundle.RelationKeyType.String())) {
+	ot := strings.TrimPrefix(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()), bundle.TypePrefix)
+	switch bundle.TypeKey(ot) {
 	case bundle.TypeKeyBookmark:
 		id, err = mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			// TODO: change to KeySource
@@ -137,7 +137,10 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 			InternalFlags: req.InternalFlags,
 		})
 	case bundle.TypeKeyRelation:
-		rl, err2 := mw.relationCreate(&pb.RpcRelationCreateRequest{Relation: &model.Relation{}})
+		rl, err2 := mw.relationCreate(&pb.RpcRelationCreateRequest{
+			Relation: &model.Relation{},
+			Details:  req.Details,
+		})
 		id = rl.Id
 		err = err2
 		// TODO: add relation option case
