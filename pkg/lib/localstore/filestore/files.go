@@ -216,6 +216,9 @@ func (m *dsFileStore) AddFileKeys(fileKeys ...FileKeys) error {
 	defer txn.Discard()
 
 	for _, fk := range fileKeys {
+		if len(fk.Keys) == 0 {
+			continue
+		}
 		err = m.addSingleFileKeys(txn, fk.Hash, fk.Keys)
 		if err != nil {
 			if err == localstore.ErrDuplicateKey {
