@@ -147,7 +147,9 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 	content := bm.GetContent()
 
 	// Fix broken empty bookmarks
-	if content.Url == "" && content.State == model.BlockContentBookmark_Done {
+	// we had a bug that migrated empty bookmarks blocks into bookmark objects. Now we need to reset them
+	// todo: remove this after we stop to populate bookmark block fields
+	if content.Url == "" && content.State == model.BlockContentBookmark_Done && content.Title == "" && content.FaviconHash == "" {
 		bm.UpdateContent(func(content *model.BlockContentBookmark) {
 			content.State = model.BlockContentBookmark_Empty
 			content.TargetObjectId = ""
