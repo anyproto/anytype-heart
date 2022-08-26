@@ -174,6 +174,10 @@ func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObj
 		}
 	}
 
+	if req.DropTargetId == "" {
+		req.DropTargetId = s.RootId()
+		req.Position = model.Block_Inner
+	}
 	target := s.Get(req.DropTargetId)
 	if target == nil {
 		return fmt.Errorf("target block not found")
