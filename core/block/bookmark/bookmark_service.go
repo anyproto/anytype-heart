@@ -83,7 +83,7 @@ func (s *service) CreateBookmarkObject(url string, getContent ContentFuture) (ob
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUrl.String(),
+				RelationKey: bundle.RelationKeySource.String(),
 				Value:       pbtypes.String(url),
 			},
 		},
@@ -124,7 +124,7 @@ func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.V
 	return map[string]*types.Value{
 		bundle.RelationKeyName.String():        pbtypes.String(content.Title),
 		bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
-		bundle.RelationKeyUrl.String():         pbtypes.String(content.Url),
+		bundle.RelationKeySource.String():      pbtypes.String(content.Url),
 		bundle.RelationKeyPicture.String():     pbtypes.String(content.ImageHash),
 		bundle.RelationKeyIconImage.String():   pbtypes.String(content.FaviconHash),
 	}
