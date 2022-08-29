@@ -525,6 +525,76 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 		}
 	}
 }
+var WithDataviewRelationMigrationRelation = func(id string, source string, from bundle.RelationKey, to bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		rel := bundle.MustGetRelation(to)
+		b := s.Get(id)
+		if b == nil {
+			return
+		}
+		var blockNeedToUpdate bool
+		if dvBlock, ok := b.(simpleDataview.Block); !ok {
+			log.Errorf("WithDataviewRequiredRelation got not dataview block")
+			return
+		} else {
+			dv := dvBlock.Model().GetDataview()
+			if dv == nil {
+				return
+			}
+			if len(dv.Source) != 1 || dv.Source[0] != source {
+				return
+			}
+			var alreadyExists bool
+			for _, r := range dv.Relations {
+				if r.Key == to.String() {
+					alreadyExists = true
+				}
+			}
+
+			if !alreadyExists {
+				for i, r := range dv.Relations {
+					if r.Key == from.String() {
+						blockNeedToUpdate = true
+						dv.Relations[i] = rel
+						break
+					}
+				}
+			}
+
+			for _, view := range dv.Views {
+				if view.Relations == nil {
+					continue
+				}
+
+				var alreadyExists bool
+				for _, r := range view.Relations {
+					if r.Key == to.String() {
+						alreadyExists = true
+					}
+				}
+				if !alreadyExists {
+					for i, er := range view.Relations {
+						if er.Key == from.String() {
+							blockNeedToUpdate = true
+							view.Relations[i] = &model.BlockContentDataviewRelation{
+								Key:             rel.Key,
+								IsVisible:       true,
+								Width:           er.Width,
+								DateIncludeTime: er.DateIncludeTime,
+								TimeFormat:      er.TimeFormat,
+								DateFormat:      er.DateFormat,
+							}
+							break
+						}
+					}
+				}
+			}
+			if blockNeedToUpdate {
+				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
+			}
+		}
+	}
+}
 
 var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
