@@ -35,16 +35,13 @@ func (w *Workspaces) CreateRelationOption(opt *types.Struct) (id string, err err
 		return "", fmt.Errorf("field relationKey is empty or absent")
 	}
 
-	w.Lock()
-	defer w.Unlock()
-
 	subId := bson.NewObjectId().Hex()
 	id = w.Id() + "/" + subId
 	opt.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	st := w.NewState()
 	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(opt))
-	if err = w.initOption(subId); err != nil {
+	if err = w.initOption(st, subId); err != nil {
 		return
 	}
 	if err = w.Apply(st, smartblock.NoHooks); err != nil {
@@ -53,9 +50,9 @@ func (w *Workspaces) CreateRelationOption(opt *types.Struct) (id string, err err
 	return
 }
 
-func (w *Workspaces) initOption(subId string) (err error) {
+func (w *Workspaces) initOption(s *state.State, subId string) (err error) {
 	opt := NewOption()
-	st, err := w.optionSubState(subId)
+	st, err := w.optionSubState(s, subId)
 	if err != nil {
 		return
 	}
@@ -83,9 +80,9 @@ func (w *Workspaces) Locked() bool {
 	return false
 }
 
-func (w *Workspaces) optionSubState(subId string) (*state.State, error) {
+func (w *Workspaces) optionSubState(s *state.State, subId string) (*state.State, error) {
 	id := w.Id() + "/" + subId
-	s := w.NewState()
+	//s := w.NewState()
 	optData := pbtypes.GetStruct(s.NewState().GetCollection(collectionKeyRelationOptions), subId)
 	if optData == nil || optData.Fields == nil {
 		return nil, fmt.Errorf("no data for option: %v", id)
