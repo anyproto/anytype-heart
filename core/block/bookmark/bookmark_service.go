@@ -107,6 +107,9 @@ func (s *service) CreateBookmarkObject(url string, getContent ContentFuture) (ob
 			},
 		}
 		objectId, _, err = s.objectManager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+		if err != nil {
+			return "", fmt.Errorf("create bookmark object: %w", err)
+		}
 	}
 
 	go func() {

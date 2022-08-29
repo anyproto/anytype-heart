@@ -94,6 +94,7 @@ type FileStore interface {
 	DeleteFileKeys(hash string) error
 	ListFileKeys() ([]string, error)
 	List() ([]*storage.FileInfo, error)
+	RemoveEmpty() error
 }
 
 func New() FileStore {
@@ -229,6 +230,45 @@ func (m *dsFileStore) AddFileKeys(fileKeys ...FileKeys) error {
 	}
 
 	return txn.Commit()
+}
+
+func (m *dsFileStore) RemoveEmpty() error {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	res, err := localstore.GetKeys(txn, filesKeysBase.String(), 0)
+	if err != nil {
+		return err
+	}
+
+	hashes, err := localstore.GetLeavesFromResults(res)
+	if err != nil {
+		return err
+	}
+
+	var removed int
+	for _, hash := range hashes {
+		v, err := m.GetFileKeys(hash)
+		if err != nil {
+			if err != nil {
+				log.Errorf("RemoveEmpty failed to get keys: %s", err)
+			}
+			continue
+		}
+		if len(v) == 0 {
+			removed++
+			err = m.DeleteFileKeys(hash)
+			if err != nil {
+				log.Errorf("RemoveEmpty failed to delete empty file keys: %s", err)
+			}
+		}
+	}
+	if removed > 0 {
+		log.Errorf("RemoveEmpty removed %d empty file keys", removed)
+	}
+	return nil
 }
 
 func (m *dsFileStore) ListFileKeys() ([]string, error) {

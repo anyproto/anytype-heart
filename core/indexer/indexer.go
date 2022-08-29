@@ -39,11 +39,12 @@ const (
 	CName = "indexer"
 
 	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 6  // reindex thread-based objects
+	ForceThreadsObjectsReindexCounter int32 = 7  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 12 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
+	ForceFilestoreKeysReindexCounter  int32 = 1
 )
 
 var log = logging.Logger("anytype-doc-indexer")
@@ -83,6 +84,7 @@ const (
 	reindexFulltext
 	reindexBundledTemplates
 	reindexBundledObjects
+	reindexFileKeys
 )
 
 type indexer struct {
@@ -132,9 +134,10 @@ func (i *indexer) saveLatestChecksums() error {
 		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 
-		IdxRebuildCounter: ForceIdxRebuildCounter,
-		FulltextRebuild:   ForceFulltextIndexCounter,
-		BundledObjects:    ForceBundledObjectsReindexCounter,
+		IdxRebuildCounter:                ForceIdxRebuildCounter,
+		FulltextRebuild:                  ForceFulltextIndexCounter,
+		BundledObjects:                   ForceBundledObjectsReindexCounter,
+		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 	}
 	return i.store.SaveChecksums(&checksums)
 }
@@ -142,14 +145,15 @@ func (i *indexer) saveLatestChecksums() error {
 func (i *indexer) saveLatestCounters() error {
 	// todo: add layout indexing when needed
 	checksums := model.ObjectStoreChecksums{
-		BundledObjectTypes:         bundle.TypeChecksum,
-		BundledRelations:           bundle.RelationChecksum,
-		BundledTemplates:           i.btHash.Hash(),
-		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
-		FilesForceReindexCounter:   ForceFilesReindexCounter,
-		IdxRebuildCounter:          ForceIdxRebuildCounter,
-		FulltextRebuild:            ForceFulltextIndexCounter,
-		BundledObjects:             ForceBundledObjectsReindexCounter,
+		BundledObjectTypes:               bundle.TypeChecksum,
+		BundledRelations:                 bundle.RelationChecksum,
+		BundledTemplates:                 i.btHash.Hash(),
+		ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
+		FilesForceReindexCounter:         ForceFilesReindexCounter,
+		IdxRebuildCounter:                ForceIdxRebuildCounter,
+		FulltextRebuild:                  ForceFulltextIndexCounter,
+		BundledObjects:                   ForceBundledObjectsReindexCounter,
+		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 	}
 	return i.store.SaveChecksums(&checksums)
 }
@@ -200,10 +204,11 @@ func (i *indexer) reindexIfNeeded() error {
 	if i.newAccount {
 		checksums = &model.ObjectStoreChecksums{
 			// do no add bundled relations checksums, because we want to index them for new accounts
-			ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
-			FilesForceReindexCounter:   ForceFilesReindexCounter,
-			IdxRebuildCounter:          ForceIdxRebuildCounter,
-			FulltextRebuild:            ForceFulltextIndexCounter,
+			ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
+			FilesForceReindexCounter:         ForceFilesReindexCounter,
+			IdxRebuildCounter:                ForceIdxRebuildCounter,
+			FulltextRebuild:                  ForceFulltextIndexCounter,
+			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 		}
 	} else {
 		checksums, err = i.store.GetChecksums()
@@ -228,6 +233,9 @@ func (i *indexer) reindexIfNeeded() error {
 	}
 	if checksums.ObjectsForceReindexCounter != ForceThreadsObjectsReindexCounter {
 		reindex = reindex | reindexThreadObjects
+	}
+	if checksums.FilestoreKeysForceReindexCounter != ForceFilestoreKeysReindexCounter {
+		reindex = reindex | reindexFileKeys
 	}
 	if checksums.FilesForceReindexCounter != ForceFilesReindexCounter {
 		reindex = reindex | reindexFileObjects
@@ -330,7 +338,16 @@ func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, er
 
 func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error) {
 	if reindex != 0 {
-		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0)
+		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v, reindexFileKeys=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0, reindex&reindexFileKeys != 0)
+	}
+
+	if reindex&reindexFileKeys != 0 {
+		err = i.anytype.FileStore().RemoveEmpty()
+		if err != nil {
+			log.Errorf("reindex failed to RemoveEmpty filekeys: %v", err.Error())
+		} else {
+			log.Infof("RemoveEmpty filekeys succeed")
+		}
 	}
 
 	var indexesWereRemoved bool
