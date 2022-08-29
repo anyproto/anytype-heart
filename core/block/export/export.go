@@ -84,7 +84,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 			return
 		}
 	} else {
-		if wr, err = newDirWriter(req.Path); err != nil {
+		if wr, err = newDirWriter(req.Path, req.IncludeFiles); err != nil {
 			return
 		}
 	}
