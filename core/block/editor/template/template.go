@@ -588,6 +588,14 @@ var WithDataviewRelationMigrationRelation = func(id string, source string, from 
 						}
 					}
 				}
+
+				for i, f := range view.Filters {
+					if f.RelationKey == from.String() {
+						blockNeedToUpdate = true
+						view.Filters[i].RelationKey = rel.Key
+						break
+					}
+				}
 			}
 			if blockNeedToUpdate {
 				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
