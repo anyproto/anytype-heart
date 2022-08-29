@@ -50,14 +50,14 @@ func (w *Workspaces) CreateRelationOption(opt *types.Struct) (id string, err err
 	return
 }
 
-func (w *Workspaces) initOption(s *state.State, subId string) (err error) {
+func (w *Workspaces) initOption(st *state.State, subId string) (err error) {
 	opt := NewOption()
-	st, err := w.optionSubState(s, subId)
+	subState, err := w.optionSubState(st, subId)
 	if err != nil {
 		return
 	}
 	if err = opt.Init(&smartblock.InitContext{
-		Source: w.sourceService.NewStaticSource(w.Id()+"/"+subId, model.SmartBlockType_RelationOption, st, w.onOptionChange),
+		Source: w.sourceService.NewStaticSource(w.Id()+"/"+subId, model.SmartBlockType_RelationOption, subState, w.onOptionChange),
 		App:    w.app,
 	}); err != nil {
 		return
@@ -82,7 +82,6 @@ func (w *Workspaces) Locked() bool {
 
 func (w *Workspaces) optionSubState(s *state.State, subId string) (*state.State, error) {
 	id := w.Id() + "/" + subId
-	//s := w.NewState()
 	optData := pbtypes.GetStruct(s.NewState().GetCollection(collectionKeyRelationOptions), subId)
 	if optData == nil || optData.Fields == nil {
 		return nil, fmt.Errorf("no data for option: %v", id)
