@@ -159,6 +159,7 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 				content.TargetObjectId = ""
 			})
 		}
+		return nil
 	}
 
 	if content.TargetObjectId != "" {
@@ -167,6 +168,10 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 				content.State = model.BlockContentBookmark_Done
 			})
 		}
+		return nil
+	}
+
+	if content.Url == "" {
 		return nil
 	}
 
