@@ -817,12 +817,16 @@ var bookmarkRelationKeys = []string{
 	bundle.RelationKeyTag.String(),
 }
 
-var oldBookmarkRelationKeys = []string{
+var oldBookmarkRelationBlocks = []string{
 	bundle.RelationKeyUrl.String(),
 	bundle.RelationKeyPicture.String(),
 	bundle.RelationKeyCreatedDate.String(),
 	bundle.RelationKeyNotes.String(),
 	bundle.RelationKeyQuote.String(),
+}
+
+var oldBookmarkRelations = []string{
+	bundle.RelationKeyUrl.String(),
 }
 
 func makeRelationBlock(k string) *model.Block {
@@ -841,8 +845,11 @@ var WithBookmarkBlocks = func(s *state.State) {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySource, s.Details().Fields[bundle.RelationKeyUrl.String()])
 	}
 
-	for _, oldRel := range oldBookmarkRelationKeys {
+	for _, oldRel := range oldBookmarkRelationBlocks {
 		s.Unlink(oldRel)
+	}
+
+	for _, oldRel := range oldBookmarkRelations {
 		s.RemoveExtraRelation(bundle.RelationKey(oldRel))
 	}
 
