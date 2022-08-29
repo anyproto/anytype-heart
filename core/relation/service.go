@@ -38,7 +38,6 @@ func New() Service {
 
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error)
 }
 
 type Service interface {

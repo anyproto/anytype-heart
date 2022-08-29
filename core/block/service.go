@@ -5,10 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
@@ -188,7 +189,7 @@ type Service interface {
 	UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
-	CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error)
+	CreateRelationOption(opt *types.Struct) (id string, err error)
 
 	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
@@ -1079,14 +1080,14 @@ func (s *service) createObject(ctx *session.Context, contextBlock smartblock.Sma
 	return
 }
 
-func (s *service) CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error) {
+func (s *service) CreateRelationOption(opt *types.Struct) (id string, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		id, err = workspace.CreateRelationOption(relationKey, opt)
+		id, err = workspace.CreateRelationOption(opt)
 		return err
 	})
 	return

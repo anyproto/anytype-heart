@@ -8769,8 +8769,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relationKey | [string](#string) |  |  |
-| option | [model.Relation.Option](#anytype-model-Relation-Option) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 

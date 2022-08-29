@@ -144,7 +144,10 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		})
 		id = rl.Id
 		err = err2
-		// TODO: add relation option case
+	case bundle.TypeKeyRelationOption:
+		id, err = mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
+			Details: req.Details,
+		})
 
 	default:
 		err = mw.doBlockService(func(bs block.Service) (err error) {

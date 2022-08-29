@@ -814,8 +814,7 @@ message Rpc {
 
         message CreateRelationOption {
             message Request {
-                string relationKey = 1;
-                anytype.model.Relation.Option option = 3;
+                google.protobuf.Struct details = 1;
             }
 
             message Response {

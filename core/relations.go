@@ -319,7 +319,7 @@ func (mw *Middleware) relationCreate(req *pb.RpcObjectCreateRelationRequest) (*m
 	return rl, err
 }
 
-func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, request *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
+func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
 	response := func(id string, err error) *pb.RpcObjectCreateRelationOptionResponse {
 		if err != nil {
 			return &pb.RpcObjectCreateRelationOptionResponse{
@@ -337,13 +337,18 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, request *
 		}
 	}
 
+	id, err := mw.objectCreateRelationOption(req)
+	return response(id, err)
+}
+
+func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, error) {
 	var id string
 	err := mw.doBlockService(func(rs block.Service) error {
 		var err error
-		id, err = rs.CreateRelationOption(request.RelationKey, (&relation.Option{request.Option}).ToStruct())
+		id, err = rs.CreateRelationOption(req.Details)
 		return err
 	})
-	return response(id, err)
+	return id, err
 }
 
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
