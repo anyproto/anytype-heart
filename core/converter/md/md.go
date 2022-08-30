@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/gogo/protobuf/types"
 
@@ -47,8 +49,8 @@ func (h *MD) Convert() (result []byte) {
 		return
 	}
 	buf := bytes.NewBuffer(nil)
-	var in = new(renderState)
-	h.renderChilds(buf, h.s.Pick(h.s.RootId()).Model(), in)
+	in := new(renderState)
+	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	result = buf.Bytes()
 	buf.Reset()
 	return
@@ -56,8 +58,8 @@ func (h *MD) Convert() (result []byte) {
 
 func (h *MD) Export() (result string) {
 	buf := bytes.NewBuffer(nil)
-	var in = new(renderState)
-	h.renderChilds(buf, h.s.Pick(h.s.RootId()).Model(), in)
+	in := new(renderState)
+	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	return buf.String()
 }
 
@@ -84,39 +86,41 @@ type writer interface {
 	io.StringWriter
 }
 
-func (h *MD) render(buf writer, b *model.Block, in *renderState) {
+func (h *MD) render(buf writer, in *renderState, b *model.Block) {
 	switch b.Content.(type) {
 	case *model.BlockContentOfSmartblock:
 	case *model.BlockContentOfText:
-		h.renderText(buf, b, in)
+		h.renderText(buf, in, b)
 	case *model.BlockContentOfFile:
-		h.renderFile(buf, b, in)
+		h.renderFile(buf, in, b)
 	case *model.BlockContentOfBookmark:
-		h.renderBookmark(buf, b, in)
+		h.renderBookmark(buf, in, b)
 	case *model.BlockContentOfDiv:
-		h.renderDiv(buf, b, in)
+		h.renderDiv(buf, in, b)
 	case *model.BlockContentOfLayout:
-		h.renderLayout(buf, b, in)
+		h.renderLayout(buf, in, b)
 	case *model.BlockContentOfLink:
-		h.renderLink(buf, b, in)
+		h.renderLink(buf, in, b)
 	case *model.BlockContentOfLatex:
-		h.renderLatex(buf, b, in)
+		h.renderLatex(buf, in, b)
+	case *model.BlockContentOfTable:
+		h.renderTable(buf, in, b)
 	default:
-		h.renderLayout(buf, b, in)
+		h.renderLayout(buf, in, b)
 	}
 }
 
-func (h *MD) renderChilds(buf writer, parent *model.Block, in *renderState) {
+func (h *MD) renderChildren(buf writer, in *renderState, parent *model.Block) {
 	for _, chId := range parent.ChildrenIds {
 		b := h.s.Pick(chId)
 		if b == nil {
 			continue
 		}
-		h.render(buf, b.Model(), in)
+		h.render(buf, in, b.Model())
 	}
 }
 
-func (h *MD) renderText(buf writer, b *model.Block, in *renderState) {
+func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 	text := b.GetText()
 	renderText := func() {
 		mw := h.marksWriter(text)
@@ -144,29 +148,29 @@ func (h *MD) renderText(buf writer, b *model.Block, in *renderState) {
 	case model.BlockContentText_Header1, model.BlockContentText_Title:
 		buf.WriteString(` # `)
 		renderText()
-		h.renderChilds(buf, b, in.AddSpace())
+		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header2:
 		buf.WriteString(` ## `)
 		renderText()
-		h.renderChilds(buf, b, in.AddSpace())
+		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header3:
 		buf.WriteString(` ### `)
 		renderText()
-		h.renderChilds(buf, b, in.AddSpace())
+		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header4:
 		buf.WriteString(` #### `)
 		renderText()
-		h.renderChilds(buf, b, in.AddSpace())
+		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
 		buf.WriteString("> ")
 		buf.WriteString(strings.ReplaceAll(text.Text, "\n", "   \n> "))
 		buf.WriteString("   \n\n")
-		h.renderChilds(buf, b, in)
+		h.renderChildren(buf, in, b)
 	case model.BlockContentText_Code:
 		buf.WriteString("```\n")
 		buf.WriteString(strings.ReplaceAll(text.Text, "```", "\\`\\`\\`"))
 		buf.WriteString("\n```\n")
-		h.renderChilds(buf, b, in)
+		h.renderChildren(buf, in, b)
 	case model.BlockContentText_Checkbox:
 		if text.Checked {
 			buf.WriteString("- [x] ")
@@ -174,25 +178,25 @@ func (h *MD) renderText(buf writer, b *model.Block, in *renderState) {
 			buf.WriteString("- [ ] ")
 		}
 		renderText()
-		h.renderChilds(buf, b, in.AddNBSpace())
+		h.renderChildren(buf, in.AddNBSpace(), b)
 	case model.BlockContentText_Marked:
 		buf.WriteString(`- `)
 		renderText()
-		h.renderChilds(buf, b, in.AddSpace())
+		h.renderChildren(buf, in.AddSpace(), b)
 		in.listOpened = true
 	case model.BlockContentText_Numbered:
 		in.listNumber++
 		buf.WriteString(fmt.Sprintf(`%d. `, in.listNumber))
 		renderText()
-		h.renderChilds(buf, b, in.AddSpace())
+		h.renderChildren(buf, in.AddSpace(), b)
 		in.listOpened = true
 	default:
 		renderText()
-		h.renderChilds(buf, b, in.AddNBSpace())
+		h.renderChildren(buf, in.AddNBSpace(), b)
 	}
 }
 
-func (h *MD) renderFile(buf writer, b *model.Block, in *renderState) {
+func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
 	file := b.GetFile()
 	if file == nil || file.State != model.BlockContentFile_Done {
 		return
@@ -208,7 +212,7 @@ func (h *MD) renderFile(buf writer, b *model.Block, in *renderState) {
 	}
 }
 
-func (h *MD) renderBookmark(buf writer, b *model.Block, in *renderState) {
+func (h *MD) renderBookmark(buf writer, in *renderState, b *model.Block) {
 	bm := b.GetBookmark()
 	if bm != nil && bm.Url != "" {
 		buf.WriteString(in.indent)
@@ -219,15 +223,15 @@ func (h *MD) renderBookmark(buf writer, b *model.Block, in *renderState) {
 	}
 }
 
-func (h *MD) renderDiv(buf writer, b *model.Block, in *renderState) {
+func (h *MD) renderDiv(buf writer, in *renderState, b *model.Block) {
 	switch b.GetDiv().Style {
 	case model.BlockContentDiv_Dots, model.BlockContentDiv_Line:
 		buf.WriteString(" --- \n")
 	}
-	h.renderChilds(buf, b, in)
+	h.renderChildren(buf, in, b)
 }
 
-func (h *MD) renderLayout(buf writer, b *model.Block, in *renderState) {
+func (h *MD) renderLayout(buf writer, in *renderState, b *model.Block) {
 	style := model.BlockContentLayoutStyle(-1)
 	layout := b.GetLayout()
 	if layout != nil {
@@ -236,11 +240,11 @@ func (h *MD) renderLayout(buf writer, b *model.Block, in *renderState) {
 
 	switch style {
 	default:
-		h.renderChilds(buf, b, in)
+		h.renderChildren(buf, in, b)
 	}
 }
 
-func (h *MD) renderLink(buf writer, b *model.Block, in *renderState) {
+func (h *MD) renderLink(buf writer, in *renderState, b *model.Block) {
 	l := b.GetLink()
 	if l != nil && l.TargetBlockId != "" {
 		title, filename, ok := h.getLinkInfo(l.TargetBlockId)
@@ -251,11 +255,71 @@ func (h *MD) renderLink(buf writer, b *model.Block, in *renderState) {
 	}
 }
 
-func (h *MD) renderLatex(buf writer, b *model.Block, in *renderState) {
+func (h *MD) renderLatex(buf writer, in *renderState, b *model.Block) {
 	l := b.GetLatex()
 	if l != nil {
 		buf.WriteString(in.indent)
 		fmt.Fprintf(buf, "\n$$\n%s\n$$\n", l.Text)
+	}
+}
+
+func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
+	if t := b.GetTable(); t == nil {
+		return
+	}
+
+	err := func() error {
+		tb, err := table.NewTable(h.s, b.Id)
+		if err != nil {
+			return err
+		}
+
+		var maxSize int
+
+		rowsCount := len(tb.Rows().ChildrenIds)
+		colsCount := len(tb.Columns().ChildrenIds)
+		cells := make([][]*bytes.Buffer, rowsCount)
+		for rowIdx := range tb.Rows().ChildrenIds {
+			cells[rowIdx] = make([]*bytes.Buffer, colsCount)
+		}
+
+		err = tb.FullIterate(func(b simple.Block, pos table.CellPosition) bool {
+			if b == nil {
+				return true
+			}
+			cellBuf := &bytes.Buffer{}
+			h.render(cellBuf, in, b.Model())
+			if l := cellBuf.Len(); l > maxSize {
+				maxSize = l
+			}
+			cells[pos.RowNumber][pos.ColNumber] = cellBuf
+			return true
+		})
+		if err != nil {
+			return err
+		}
+
+		tmpl := fmt.Sprintf("%%%ds", maxSize)
+		for _, row := range cells {
+			var sep string
+			for _, cell := range row {
+				fmt.Fprint(buf, sep)
+				sep = "|"
+				var content string
+				if cell != nil {
+					content = cell.String()
+				}
+
+				fmt.Fprintf(buf, tmpl, content)
+			}
+			fmt.Fprintln(buf)
+		}
+
+		return nil
+	}()
+
+	if err != nil {
+		fmt.Fprintf(buf, "error while rendering table: %s", err)
 	}
 }
 

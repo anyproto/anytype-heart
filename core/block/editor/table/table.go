@@ -882,6 +882,7 @@ func (tb Table) Columns() *model.Block {
 	return b.Model()
 }
 
+// TODO: MEMOIZE
 func (tb Table) MakeColumnIndex() map[string]int {
 	colIdx := map[string]int{}
 	for i, c := range tb.Columns().ChildrenIds {
@@ -898,4 +899,43 @@ func (tb Table) Rows() *model.Block {
 		return nil
 	}
 	return b.Model()
+}
+
+func (tb Table) PickRow(rowId string) (simple.Block, error) {
+	return pickRow(tb.s, rowId)
+}
+
+type CellPosition struct {
+	RowId, ColId, CellId string
+	RowNumber, ColNumber int
+}
+
+func (tb Table) FullIterate(f func(b simple.Block, pos CellPosition) bool) error {
+	colIndex := tb.MakeColumnIndex()
+
+	for rowNumber, rowId := range tb.Rows().ChildrenIds {
+		row, err := pickRow(tb.s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row %s: %w", rowId, err)
+		}
+
+		for _, cellId := range row.Model().ChildrenIds {
+			_, colId, err := ParseCellId(cellId)
+			if err != nil {
+				return fmt.Errorf("parse cell id %s: %w", cellId, err)
+			}
+
+			colNumber := colIndex[colId]
+
+			ok := f(tb.s.Pick(cellId), CellPosition{
+				RowId: rowId, RowNumber: rowNumber,
+				ColId: colId, ColNumber: colNumber,
+				CellId: cellId,
+			})
+			if !ok {
+				return nil
+			}
+		}
+	}
+	return nil
 }
