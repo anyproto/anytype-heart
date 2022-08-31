@@ -274,45 +274,67 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 			return err
 		}
 
-		var maxSize int
-
 		rowsCount := len(tb.Rows().ChildrenIds)
 		colsCount := len(tb.Columns().ChildrenIds)
-		cells := make([][]*bytes.Buffer, rowsCount)
+		maxColWidth := make([]int, colsCount)
+		cells := make([][]string, rowsCount)
 		for rowIdx := range tb.Rows().ChildrenIds {
-			cells[rowIdx] = make([]*bytes.Buffer, colsCount)
+			cells[rowIdx] = make([]string, colsCount)
 		}
 
-		err = tb.FullIterate(func(b simple.Block, pos table.CellPosition) bool {
+		err = tb.Iterate(func(b simple.Block, pos table.CellPosition) bool {
 			if b == nil {
 				return true
 			}
 			cellBuf := &bytes.Buffer{}
 			h.render(cellBuf, in, b.Model())
-			if l := cellBuf.Len(); l > maxSize {
-				maxSize = l
+			content := cellBuf.String()
+			content = strings.ReplaceAll(content, "\r\n", " ")
+			content = strings.ReplaceAll(content, "\n", " ")
+			content = strings.TrimSpace(content)
+			if content == "" {
+				content = " "
 			}
-			cells[pos.RowNumber][pos.ColNumber] = cellBuf
+			content = " " + content + " "
+
+			if len(content) > maxColWidth[pos.ColNumber] {
+				maxColWidth[pos.ColNumber] = len(content)
+			}
+			cells[pos.RowNumber][pos.ColNumber] = content
 			return true
 		})
 		if err != nil {
 			return err
 		}
 
-		tmpl := fmt.Sprintf("%%%ds", maxSize)
-		for _, row := range cells {
-			var sep string
-			for _, cell := range row {
-				fmt.Fprint(buf, sep)
-				sep = "|"
-				var content string
-				if cell != nil {
-					content = cell.String()
-				}
-
-				fmt.Fprintf(buf, tmpl, content)
+		for i, row := range cells {
+			buf.WriteString(in.indent)
+			rowStart := "|"
+			for colNumber, cell := range row {
+				tmpl := fmt.Sprintf("%%%ds|", maxColWidth[colNumber])
+				fmt.Fprint(buf, rowStart)
+				rowStart = ""
+				fmt.Fprintf(buf, tmpl, cell)
 			}
 			fmt.Fprintln(buf)
+
+			// Header rule
+			if i == 0 {
+				buf.WriteString(in.indent)
+				rowStart := "|"
+				for colNumber := range row {
+					fmt.Fprint(buf, rowStart)
+					rowStart = ""
+					var fill strings.Builder
+					// Force left alignment
+					fill.WriteRune(':')
+					for i := 0; i < maxColWidth[colNumber]-1; i++ {
+						fill.WriteRune('-')
+					}
+					fmt.Fprintf(buf, "%s|", fill.String())
+				}
+				fmt.Fprintln(buf)
+			}
 		}
 
 		return nil

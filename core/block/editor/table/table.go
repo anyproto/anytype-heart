@@ -882,7 +882,6 @@ func (tb Table) Columns() *model.Block {
 	return b.Model()
 }
 
-// TODO: MEMOIZE
 func (tb Table) MakeColumnIndex() map[string]int {
 	colIdx := map[string]int{}
 	for i, c := range tb.Columns().ChildrenIds {
@@ -910,7 +909,8 @@ type CellPosition struct {
 	RowNumber, ColNumber int
 }
 
-func (tb Table) FullIterate(f func(b simple.Block, pos CellPosition) bool) error {
+// Iterate iterates by each existing cells
+func (tb Table) Iterate(f func(b simple.Block, pos CellPosition) bool) error {
 	colIndex := tb.MakeColumnIndex()
 
 	for rowNumber, rowId := range tb.Rows().ChildrenIds {
