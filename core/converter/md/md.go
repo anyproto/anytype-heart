@@ -84,6 +84,7 @@ func (in renderState) AddSpace() *renderState {
 type writer interface {
 	io.Writer
 	io.StringWriter
+	WriteRune(r rune) (n int, err error)
 }
 
 func (h *MD) render(buf writer, in *renderState, b *model.Block) {
@@ -283,11 +284,10 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 		}
 
 		err = tb.Iterate(func(b simple.Block, pos table.CellPosition) bool {
-			if b == nil {
-				return true
-			}
 			cellBuf := &bytes.Buffer{}
-			h.render(cellBuf, in, b.Model())
+			if b != nil {
+				h.render(cellBuf, in, b.Model())
+			}
 			content := cellBuf.String()
 			content = strings.ReplaceAll(content, "\r\n", " ")
 			content = strings.ReplaceAll(content, "\n", " ")
@@ -305,6 +305,12 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 		})
 		if err != nil {
 			return err
+		}
+
+		for i, w := range maxColWidth {
+			if w < 3 {
+				maxColWidth[i] = 3
+			}
 		}
 
 		for i, row := range cells {
@@ -325,13 +331,11 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 				for colNumber := range row {
 					fmt.Fprint(buf, rowStart)
 					rowStart = ""
-					var fill strings.Builder
-					// Force left alignment
-					fill.WriteRune(':')
+					buf.WriteRune(':')
 					for i := 0; i < maxColWidth[colNumber]-1; i++ {
-						fill.WriteRune('-')
+						buf.WriteRune('-')
 					}
-					fmt.Fprintf(buf, "%s|", fill.String())
+					buf.WriteRune('|')
 				}
 				fmt.Fprintln(buf)
 			}
@@ -339,6 +343,7 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 
 		return nil
 	}()
+	fmt.Fprintln(buf)
 
 	if err != nil {
 		fmt.Fprintf(buf, "error while rendering table: %s", err)
