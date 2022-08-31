@@ -790,7 +790,6 @@ message ObjectView {
         repeated RelationWithValue relations = 2;
     }
 
-    repeated ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
     repeated Relation relations = 7; // DEPRECATED, use relationLinks instead
     repeated RelationLink relationLinks = 10;
 

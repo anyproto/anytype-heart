@@ -3,8 +3,9 @@ package editor
 import (
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -308,7 +309,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	data := ctx.State.GetCollection(collectionKeyRelationOptions)
 	if data != nil && data.Fields != nil {
 		for subId := range data.Fields {
-			if err = p.initOption(subId); err != nil {
+			if err = p.initOption(ctx.State, subId); err != nil {
 				return
 			}
 		}

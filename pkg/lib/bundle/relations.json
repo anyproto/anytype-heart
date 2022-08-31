@@ -1639,5 +1639,15 @@
     "name": "IMDb rating",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "List of smartblock types",
+    "format": "number",
+    "hidden": true,
+    "key": "smartblockTypes",
+    "maxCount": 0,
+    "name": "Smartblock types",
+    "readonly": true,
+    "source": "derived"
   }
 ]

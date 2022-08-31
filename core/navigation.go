@@ -3,14 +3,17 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -103,7 +106,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, err error) *pb.RpcObjectCreateResponse {
-		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, PageId: id}
+		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, ObjectId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -113,11 +116,45 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	}
 
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
-		id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
-		return
-	})
+	var err error
+
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
+	ot := strings.TrimPrefix(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()), bundle.TypePrefix)
+	switch bundle.TypeKey(ot) {
+	case bundle.TypeKeyBookmark:
+		id, err = mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
+			// TODO: change to KeySource
+			Url: pbtypes.GetString(req.Details, bundle.RelationKeyUrl.String()),
+		})
+	case bundle.TypeKeySet:
+		id, err = mw.objectCreateSet(&pb.RpcObjectCreateSetRequest{
+			Details:       req.Details,
+			InternalFlags: req.InternalFlags,
+			Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
+		})
+	case bundle.TypeKeyObjectType:
+		id, _, err = mw.objectTypeCreate(&pb.RpcObjectCreateObjectTypeRequest{
+			Details:       req.Details,
+			InternalFlags: req.InternalFlags,
+		})
+	case bundle.TypeKeyRelation:
+		rl, err2 := mw.relationCreate(&pb.RpcObjectCreateRelationRequest{
+			Details: req.Details,
+		})
+		id = rl.Id
+		err = err2
+	case bundle.TypeKeyRelationOption:
+		id, err = mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
+			Details: req.Details,
+		})
+
+	default:
+		err = mw.doBlockService(func(bs block.Service) (err error) {
+			id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+			return
+		})
+	}
 
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", err)
