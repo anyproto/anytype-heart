@@ -3,8 +3,9 @@ package editor
 import (
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"

@@ -6,12 +6,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -968,24 +970,17 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 			continue
 		}
 
-		var details model.ObjectDetails
-		if err = proto.Unmarshal(rec.Value, &details); err != nil {
-			log.Errorf("failed to unmarshal: %s", err.Error())
-			total--
-			continue
-		}
-
 		key := ds.NewKey(rec.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
 
-		if details.Details == nil || details.Details.Fields == nil {
-			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
-		} else {
-			pb.StructDeleteEmptyFields(details.Details)
+		var details *model.ObjectDetails
+		details, err = unmarshalDetails(id, rec.Value)
+		if err != nil {
+			total--
+			log.Errorf("failed to unmarshal: %s", err.Error())
+			continue
 		}
-
-		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
 		results = append(results, database.Record{Details: details.Details})
 	}
 
@@ -1006,26 +1001,45 @@ func (m *dsObjectStore) QueryRaw(dsq query.Query) (records []database.Record, er
 	}
 
 	for rec := range res.Next() {
-		var details model.ObjectDetails
-		if err = proto.Unmarshal(rec.Value, &details); err != nil {
-			log.Errorf("failed to unmarshal: %s", err.Error())
-			continue
-		}
-
 		key := ds.NewKey(rec.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
 
-		if details.Details == nil || details.Details.Fields == nil {
-			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
-		} else {
-			pb.StructDeleteEmptyFields(details.Details)
+		var details *model.ObjectDetails
+		details, err = unmarshalDetails(id, rec.Value)
+		if err != nil {
+			log.Errorf("failed to unmarshal: %s", err.Error())
+			continue
 		}
-
-		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
 		records = append(records, database.Record{Details: details.Details})
 	}
 	return
+}
+
+func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
+	var details model.ObjectDetails
+	if err := proto.Unmarshal(rawValue, &details); err != nil {
+		return nil, err
+	}
+
+	if details.Details == nil || details.Details.Fields == nil {
+		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	} else {
+		pb.StructDeleteEmptyFields(details.Details)
+	}
+
+	// Inject smartblockTypes
+	if _, ok := details.Details.Fields[bundle.RelationKeySmartblockTypes.String()]; !ok {
+		sbTypes, err := state.ListSmartblockTypes(id)
+		if err == nil {
+			details.Details.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbTypes...)
+		} else {
+			log.Debugf("unmarshalDetails: ListSmartblockTypes %s: %s", id, err)
+		}
+	}
+
+	details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
+	return &details, nil
 }
 
 func (m *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
@@ -1181,17 +1195,12 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 			continue
 		}
 
-		var details model.ObjectDetails
-		if err = proto.Unmarshal(v, &details); err != nil {
+		var details *model.ObjectDetails
+		details, err = unmarshalDetails(id, v)
+		if err != nil {
 			log.Errorf("QueryByIds failed to unmarshal id: %s", id)
 			continue
 		}
-
-		if details.Details == nil || details.Details.Fields == nil {
-			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-
-		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
 		records = append(records, database.Record{Details: details.Details})
 	}
 
@@ -2143,23 +2152,21 @@ func isObjectBelongToType(txn noctxds.Txn, id, objType string) (bool, error) {
 /* internal */
 // getObjectDetails returns empty(not nil) details when not found in the DS
 func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
-	var details model.ObjectDetails
-	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
+	val, err := txn.Get(pagesDetailsBase.ChildString(id))
+	if err != nil {
 		if err != ds.ErrNotFound {
 			return nil, fmt.Errorf("failed to get relations: %w", err)
 		}
-		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		// return empty details in case not found
-		return &details, nil
-	} else if err := proto.Unmarshal(val, &details); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
+		return &model.ObjectDetails{
+			Details: &types.Struct{Fields: map[string]*types.Value{}},
+		}, nil
 	}
 
-	if details.GetDetails().GetFields() == nil {
-		log.Errorf("getObjectDetails got nil record for %s", id)
-		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	details, err := unmarshalDetails(id, val)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
-	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	for k, v := range details.GetDetails().GetFields() {
 		// todo: remove null cleanup(should be done when receiving from client)
@@ -2167,17 +2174,15 @@ func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) 
 			delete(details.Details.Fields, k)
 		}
 	}
-	return &details, nil
+	return details, nil
 }
 
 func (m *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
-	var details model.ObjectDetails
-	if val, err := txn.Get(pendingDetailsBase.ChildString(id)); err != nil {
+	val, err := txn.Get(pendingDetailsBase.ChildString(id))
+	if err != nil {
 		return nil, err
-	} else if err := proto.Unmarshal(val, &details); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
-	return &details, nil
+	return unmarshalDetails(id, val)
 }
 
 func hasObjectId(txn noctxds.Txn, id string) (bool, error) {

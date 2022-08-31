@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
+	"sync"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -17,9 +21,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
-	"net/url"
-	"strings"
-	"sync"
 )
 
 const CName = "relation"
@@ -37,7 +38,6 @@ func New() Service {
 
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error)
 }
 
 type Service interface {
@@ -46,7 +46,7 @@ type Service interface {
 	FetchKey(key string) (relation *Relation, err error)
 	FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error)
 
-	Create(rel *model.Relation) (rl *model.RelationLink, err error)
+	Create(details *types.Struct) (rl *model.RelationLink, err error)
 	//CreateOption(relationKey string, opt *model.RelationOption) (id string, err error)
 	MigrateRelations(rels []*model.Relation) (relLinks []*model.RelationLink, err error)
 	ValidateFormat(key string, v *types.Value) error
@@ -191,16 +191,16 @@ func (s *service) fetchOptionsByKey(key string) (relation *Relation, err error) 
 	return nil, ErrNotFound
 }
 
-func (s *service) Create(rel *model.Relation) (rl *model.RelationLink, err error) {
+func (s *service) Create(details *types.Struct) (rl *model.RelationLink, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if rel.Key == "" {
-		rel.Key = generateRelationKey()
+	rel := &model.Relation{
+		Key: generateRelationKey(),
 	}
-	return s.create(rel, true)
+	return s.create(rel, details, true)
 }
 
-func (s *service) create(rel *model.Relation, checkForExists bool) (rl *model.RelationLink, err error) {
+func (s *service) create(rel *model.Relation, reqDetails *types.Struct, checkForExists bool) (rl *model.RelationLink, err error) {
 	if checkForExists {
 		if _, e := s.fetchKey(rel.Key); e != ErrNotFound {
 			return nil, ErrExists
@@ -210,10 +210,12 @@ func (s *service) create(rel *model.Relation, checkForExists bool) (rl *model.Re
 	st.SetObjectType(bundle.TypeKeyRelation.URL())
 	r := &Relation{Relation: rel}
 	details := r.ToStruct()
+	details = pbtypes.StructMerge(details, reqDetails, false)
 	for k, v := range details.Fields {
 		st.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
-	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeIndexedRelation, nil, nil, st)
+
+	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeIndexedRelation, details, nil, st)
 	if err != nil {
 		return
 	}
@@ -252,7 +254,7 @@ func (s *service) migrateRelation(rel *model.Relation) (rl *model.RelationLink, 
 	if e == nil {
 		return dbRel.RelationLink(), nil
 	}
-	return s.create(rel, false)
+	return s.create(rel, nil, false)
 }
 
 func (s *service) migrateOptions(rel *model.Relation) (err error) {

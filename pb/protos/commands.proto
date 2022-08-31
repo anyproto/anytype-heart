@@ -749,7 +749,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string pageId = 3;
+                string objectId = 3;
                 ResponseEvent event = 4;
 
                 message Error {
@@ -773,7 +773,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string pageId = 2;
+                string objectId = 2;
 
                 message Error {
                     Code code = 1;
@@ -783,6 +783,104 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message CreateRelation {
+            message Request {
+                google.protobuf.Struct details = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string objectId = 2;
+                string key = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message CreateRelationOption {
+            message Request {
+                google.protobuf.Struct details = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string objectId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message CreateSet {
+            message Request {
+                repeated string source = 1;
+                google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
+                string templateId = 3; // optional template id for creating from template
+                repeated anytype.model.InternalFlag internalFlags = 4;
+            }
+
+            message Response {
+                Error error = 1;
+                string objectId = 3;
+                ResponseEvent event = 4;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_TYPE_URL = 3;
+                    }
+                }
+            }
+        }
+
+        message CreateObjectType {
+            message Request {
+                google.protobuf.Struct details = 1;
+                repeated anytype.model.InternalFlag internalFlags = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                google.protobuf.Struct newDetails = 2;
+                string objectId = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_TYPE_URL = 3;
                         // ...
                     }
                 }
@@ -831,33 +929,6 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         // ...
-                    }
-                }
-            }
-        }
-
-        message CreateSet {
-            message Request {
-                repeated string source = 1;
-                google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
-                string templateId = 3; // optional template id for creating from template
-                repeated anytype.model.InternalFlag internalFlags = 4;
-            }
-
-            message Response {
-                Error error = 1;
-                string id = 3;
-                ResponseEvent event = 4;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        UNKNOWN_OBJECT_TYPE_URL = 3;
                     }
                 }
             }
@@ -1694,50 +1765,6 @@ message Rpc {
     }
 
     message ObjectType {
-        message List {
-            message Request {
-            }
-
-            message Response {
-                Error error = 1;
-                repeated anytype.model.ObjectType objectTypes = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-        message Create {
-            message Request {
-                anytype.model.ObjectType objectType = 1;
-            }
-
-            message Response {
-                Error error = 1;
-                anytype.model.ObjectType objectType = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        UNKNOWN_OBJECT_TYPE_URL = 3;
-                        // ...
-                    }
-                }
-            }
-        }
         message Relation {
             message Add {
                 message Request {
@@ -1817,53 +1844,7 @@ message Rpc {
     }
 
     message Relation {
-        message Create {
-            message Request {
-                anytype.model.Relation relation = 2;
-            }
-
-            message Response {
-                Error error = 1;
-                string id = 2;
-                string key = 3;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                    }
-                }
-            }
-        }
-
-        message CreateOption {
-            message Request {
-                string relationKey = 1;
-                anytype.model.Relation.Option option = 3;
-            }
-
-            message Response {
-                Error error = 1;
-                string id = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                    }
-                }
-            }
-        }
-
-        message ListRemoveOption {
+         message ListRemoveOption {
             message Request {
                 repeated string optionIds = 1;
                 bool removeInObject = 2;
@@ -1921,7 +1902,7 @@ message Rpc {
         // returns list of versions (changes)
         message GetVersions {
             message Request {
-                string pageId = 1;
+                string objectId = 1;
                 // when indicated, results will include versions before given id
                 string lastVersionId = 2;
                 // desired count of versions
@@ -1949,7 +1930,7 @@ message Rpc {
         // returns blockShow event for given version
         message ShowVersion {
             message Request {
-                string pageId = 1;
+                string objectId = 1;
                 string versionId = 2;
                 string traceId = 3;
             }
@@ -1976,7 +1957,7 @@ message Rpc {
 
         message SetVersion {
             message Request {
-                string pageId = 1;
+                string objectId = 1;
                 string versionId = 2;
             }
 

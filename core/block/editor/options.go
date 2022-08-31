@@ -3,6 +3,8 @@ package editor
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -13,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"strings"
 )
 
 var ErrOptionNotFound = errors.New("option not found")
@@ -27,11 +28,13 @@ func (w *Workspaces) Open(subId string) (sb smartblock.SmartBlock, err error) {
 	return nil, ErrOptionNotFound
 }
 
-func (w *Workspaces) CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error) {
+func (w *Workspaces) CreateRelationOption(opt *types.Struct) (id string, err error) {
 	if opt == nil || opt.Fields == nil {
 		return "", fmt.Errorf("create option: no data")
 	}
-	opt.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(relationKey)
+	if pbtypes.GetString(opt, bundle.RelationKeyRelationKey.String()) == "" {
+		return "", fmt.Errorf("field relationKey is empty or absent")
+	}
 
 	subId := bson.NewObjectId().Hex()
 	id = w.Id() + util.SubIdSeparator + subId

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -841,10 +842,42 @@ func (s *State) InjectDerivedDetails() {
 		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
+
+	sbTypes, err := ListSmartblockTypes(s.RootId())
+	if err == nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
+	} else {
+		log.Debugf("ListSmartblockTypes: %s", err)
+	}
+
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(s.Snippet()))
+
+}
+
+func ListSmartblockTypes(objectId string) ([]int, error) {
+	if strings.HasPrefix(objectId, addr.BundledObjectTypeURLPrefix) {
+		var err error
+		objectType, err := bundle.GetTypeByUrl(objectId)
+		if err != nil {
+			if err == bundle.ErrNotFound {
+				return nil, fmt.Errorf("unknown object type")
+			}
+			return nil, err
+		}
+		res := make([]int, 0, len(objectType.Types))
+		for _, t := range objectType.Types {
+			res = append(res, int(t))
+		}
+		return res, nil
+	} else if !strings.HasPrefix(objectId, "b") {
+		return nil, fmt.Errorf("incorrect object type URL format")
+	}
+
+	// Default smartblock type for all custom object types
+	return []int{int(model.SmartBlockType_Page)}, nil
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
