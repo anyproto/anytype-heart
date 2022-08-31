@@ -37,8 +37,6 @@ const (
 	collectionKeyRelationOptions = "relationOptions"
 )
 
-const SubIdSeparator = ":"
-
 var (
 	ErrRelationNotFound = errors.New("relation not found")
 )
@@ -99,6 +97,16 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 		return err
 	}
 	st.RemoveFromStore([]string{source.WorkspaceCollection, objectId})
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (p *Workspaces) DeleteSubObject(objectId string) error {
+	st := p.NewState()
+	err := p.ObjectStore().DeleteObject(objectId)
+	if err != nil {
+		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id() , err.Error())
+	}
+	st.RemoveFromStore([]string{collectionKeyRelationOptions, objectId})
 	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 

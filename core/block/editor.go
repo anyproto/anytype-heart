@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
@@ -695,6 +697,11 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
+
+		if parts := strings.Split(objectId, util.SubIdSeparator); len(parts) > 1 {
+			return workspace.DeleteSubObject(objectId)
+		}
+
 		return workspace.DeleteObject(objectId)
 	})
 }

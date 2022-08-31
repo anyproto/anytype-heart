@@ -47,10 +47,10 @@ func start(t *testing.T, eventSender event.Sender) (setId string, rootPath strin
 }
 
 func TestRelations_New_Account(t *testing.T) {
-	if os.Getenv("ANYTYPE_TEST_INTEGRATION") != "1" {
-		t.Skip("ANYTYPE_TEST_INTEGRATION not set")
-		return
-	}
+	//if os.Getenv("ANYTYPE_TEST_INTEGRATION") != "1" {
+	//	t.Skip("ANYTYPE_TEST_INTEGRATION not set")
+	//	return
+	//}
 	eventHandler := func(event *pb.Event) {
 		return
 	}
@@ -163,7 +163,7 @@ func TestRelations_New_Account(t *testing.T) {
 				RelationKey:      bundle.RelationKeyType.String(),
 				RelationProperty: "",
 				Condition:        model.BlockContentDataviewFilter_Equal,
-				Value:            pbtypes.String("_otrelationOption"),
+				Value:            pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 				QuickOption:      0,
 			},
 			{
@@ -179,4 +179,46 @@ func TestRelations_New_Account(t *testing.T) {
 	require.Equal(t, 0, int(respObjectSearch.Error.Code), respObjectSearch.Error.Description)
 	require.Len(t, respObjectSearch.Records, 1)
 	require.Equal(t, respRelationCreateOption.Id, respObjectSearch.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+
+	// add option to relation
+	relationSetOptionResponse := mw.ObjectSetDetails(context.Background(), &pb.RpcObjectSetDetailsRequest{
+		ContextId: setId,
+		Details: []*pb.RpcObjectSetDetailsDetail{
+			{
+				Key:   respRelationCreate.Key,
+				Value: pbtypes.String(respRelationCreateOption.Id),
+			},
+		},
+	})
+	require.Equal(t, 0, int(relationSetOptionResponse.Error.Code), relationSetOptionResponse.Error.Description)
+
+	mw.RelationListRemoveOption(context.Background(), &pb.RpcRelationListRemoveOptionRequest{
+		OptionIds: []string{respRelationCreateOption.Id},
+		RemoveInObject: true,
+	})
+
+	// check if option has been deleted
+	respOptionDeletedSearch := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Operator:         0,
+				RelationKey:      bundle.RelationKeyType.String(),
+				RelationProperty: "",
+				Condition:        model.BlockContentDataviewFilter_Equal,
+				Value:            pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				QuickOption:      0,
+			},
+			{
+				Operator:         0,
+				RelationKey:      bundle.RelationKeyRelationKey.String(),
+				RelationProperty: "",
+				Condition:        model.BlockContentDataviewFilter_Equal,
+				Value:            pbtypes.String(respRelationCreate.Key),
+				QuickOption:      0,
+			},
+		},
+	})
+	require.Equal(t, 0, int(respOptionDeletedSearch.Error.Code), respOptionDeletedSearch.Error.Description)
+	require.Len(t, respOptionDeletedSearch.Records, 0)
+
 }

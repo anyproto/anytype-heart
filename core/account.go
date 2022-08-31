@@ -253,9 +253,9 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		continue
 	}
 
-	if code, err := checkInviteCode(cfg, req.AlphaInviteCode, account.Address()); err != nil {
-		return response(nil, code, err)
-	}
+	//if code, err := checkInviteCode(cfg, req.AlphaInviteCode, account.Address()); err != nil {
+	//	return response(nil, code, err)
+	//}
 
 	seedRaw, err := account.Raw()
 	if err != nil {
