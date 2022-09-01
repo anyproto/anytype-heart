@@ -43,7 +43,7 @@ func start(t *testing.T, eventSender event.Sender) (setId string, rootPath strin
 	resp := mw.ObjectCreateSet(context.Background(), &pb.RpcObjectCreateSetRequest{
 		Source: []string{bundle.TypeKeyNote.URL()},
 	})
-	return resp.Id, rootPath, mw, close
+	return resp.ObjectId, rootPath, mw, close
 }
 
 func TestRelations_New_Account(t *testing.T) {
@@ -65,20 +65,21 @@ func TestRelations_New_Account(t *testing.T) {
 
 	relName := "test_str"
 	relDesc := "test_str_desc"
-	respRelationCreate := mw.RelationCreate(context.Background(), &pb.RpcRelationCreateRequest{
-		Relation: &model.Relation{
-			Format:      model.RelationFormat_longtext,
-			Name:        relName,
-			Description: relDesc,
-		},
+
+	respRelationCreate := mw.ObjectCreateRelation(context.Background(), &pb.RpcObjectCreateRelationRequest{
+		Details: &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRelationFormat.String():       pbtypes.Float64(float64(model.RelationFormat_longtext)),
+			bundle.RelationKeyName.String():        pbtypes.String(relName),
+			bundle.RelationKeyDescription.String(): pbtypes.String(relDesc),
+		}},
 	})
 	require.Equal(t, 0, int(respRelationCreate.Error.Code), respRelationCreate.Error.Description)
 	require.True(t, respRelationCreate.Key != "")
-	require.True(t, respRelationCreate.Id != "")
+	require.True(t, respRelationCreate.ObjectId != "")
 
 	respObjectRelationAdd := mw.ObjectRelationAdd(context.Background(), &pb.RpcObjectRelationAddRequest{
 		ContextId:   setId,
-		RelationIds: []string{respRelationCreate.Id},
+		RelationIds: []string{respRelationCreate.ObjectId},
 	})
 	require.Equal(t, 0, int(respObjectRelationAdd.Error.Code), respObjectRelationAdd.Error.Description)
 
@@ -96,7 +97,7 @@ func TestRelations_New_Account(t *testing.T) {
 	respBlockDataviewRelationAdd := mw.BlockDataviewRelationAdd(context.Background(), &pb.RpcBlockDataviewRelationAddRequest{
 		ContextId:  setId,
 		BlockId:    "dataview",
-		RelationId: respRelationCreate.Id,
+		RelationId: respRelationCreate.ObjectId,
 	})
 
 	require.Equal(t, 0, int(respBlockDataviewRelationAdd.Error.Code), respBlockDataviewRelationAdd.Error.Description)
@@ -106,7 +107,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	var found bool
 	for _, rel := range respObjectShow.ObjectView.RelationLinks {
-		if rel.Id == respRelationCreate.Id && rel.Key == respRelationCreate.Key {
+		if rel.Id == respRelationCreate.ObjectId && rel.Key == respRelationCreate.Key {
 			found = true
 			break
 		}
@@ -115,7 +116,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	var details *types.Struct
 	for _, detEvent := range respObjectShow.ObjectView.Details {
-		if detEvent.Id == respRelationCreate.Id {
+		if detEvent.Id == respRelationCreate.ObjectId {
 			details = detEvent.Details
 			break
 		}
@@ -134,7 +135,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	found = false
 	for _, rel := range dataviewBlock.GetDataview().RelationLinks {
-		if rel.Id == respRelationCreate.Id && rel.Key == respRelationCreate.Key {
+		if rel.Id == respRelationCreate.ObjectId && rel.Key == respRelationCreate.Key {
 			found = true
 			break
 		}
@@ -142,18 +143,18 @@ func TestRelations_New_Account(t *testing.T) {
 
 	require.True(t, found)
 
-	respRelationCreateOption := mw.RelationCreateOption(context.Background(), &pb.RpcRelationCreateOptionRequest{
-		RelationKey: respRelationCreate.Key,
-		Option: &model.RelationOption{
-			Text:  "test_option_text",
-			Color: "red",
-		},
-	})
+	respRelationCreateOption := mw.ObjectCreateRelationOption(context.Background(), &pb.RpcObjectCreateRelationOptionRequest{
+		Details: &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRelationKey.String(): pbtypes.String(respRelationCreate.Key),
+			bundle.RelationKeyRelationOptionText.String(): pbtypes.String("test_option_text"),
+			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("red"),
+			},
+		}})
 
 	require.Equal(t, 0, int(respRelationCreateOption.Error.Code), respRelationCreateOption.Error.Description)
-	require.NotEmpty(t, respRelationCreateOption.Id)
+	require.NotEmpty(t, respRelationCreateOption.ObjectId)
 
-	respOptionShow := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{ObjectId: respRelationCreateOption.Id})
+	respOptionShow := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{ObjectId: respRelationCreateOption.ObjectId})
 	require.Equal(t, 0, int(respOptionShow.Error.Code), respOptionShow.Error.Description)
 
 	respObjectSearch := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
@@ -178,7 +179,7 @@ func TestRelations_New_Account(t *testing.T) {
 	})
 	require.Equal(t, 0, int(respObjectSearch.Error.Code), respObjectSearch.Error.Description)
 	require.Len(t, respObjectSearch.Records, 1)
-	require.Equal(t, respRelationCreateOption.Id, respObjectSearch.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+	require.Equal(t, respRelationCreateOption.ObjectId, respObjectSearch.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
 
 	// add option to relation
 	relationSetOptionResponse := mw.ObjectSetDetails(context.Background(), &pb.RpcObjectSetDetailsRequest{
@@ -186,14 +187,14 @@ func TestRelations_New_Account(t *testing.T) {
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   respRelationCreate.Key,
-				Value: pbtypes.String(respRelationCreateOption.Id),
+				Value: pbtypes.String(respRelationCreateOption.ObjectId),
 			},
 		},
 	})
 	require.Equal(t, 0, int(relationSetOptionResponse.Error.Code), relationSetOptionResponse.Error.Description)
 
 	mw.RelationListRemoveOption(context.Background(), &pb.RpcRelationListRemoveOptionRequest{
-		OptionIds: []string{respRelationCreateOption.Id},
+		OptionIds: []string{respRelationCreateOption.ObjectId},
 		RemoveInObject: true,
 	})
 

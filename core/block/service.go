@@ -191,7 +191,7 @@ type Service interface {
 	UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
-	CreateRelationOption(relationKey string, opt *types.Struct) (id string, err error)
+	CreateRelationOption(opt *types.Struct) (id string, err error)
 	RemoveListOption(ctx *session.Context, ids []string, removeInObjects bool) error
 
 	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
