@@ -2,6 +2,10 @@ package html
 
 import (
 	"bytes"
+	"net/url"
+	"path/filepath"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -9,9 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/util"
-	"net/url"
-	"path/filepath"
-	"strings"
 )
 
 var log = logging.Logger("anytype-anymark")
@@ -531,8 +532,32 @@ func (r *Renderer) renderImage(w blocksUtil.RWriter, source []byte, node ast.Nod
 }
 
 func (r *Renderer) renderRawHTML(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	// DO NOT RENDER
-	return ast.WalkSkipChildren, nil
+	n, ok := node.(*ast.RawHTML)
+	if !ok {
+		return ast.WalkSkipChildren, nil
+	}
+	for i := 0; i < n.Segments.Len(); i++ {
+		segment := n.Segments.At(i)
+		tag := segment.Value(source)
+		switch string(tag) {
+		case "<u>":
+			if !entering {
+				w.SetMarkStart()
+			}
+		case "</u>":
+			if entering {
+				tag := model.BlockContentTextMark_Underscored
+				to := int32(text.UTF16RuneCountString(w.GetText()))
+				w.AddMark(model.BlockContentTextMark{
+					Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
+					Type:  tag,
+				})
+			}
+		default:
+			return ast.WalkSkipChildren, nil
+		}
+	}
+	return ast.WalkContinue, nil
 }
 
 func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {

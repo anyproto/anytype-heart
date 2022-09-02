@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	utf16 "github.com/anytypeio/go-anytype-middleware/util/text"
 )
 
 const (
@@ -192,6 +193,12 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 			} else {
 				h.buf.WriteString("</span>")
 			}
+		case model.BlockContentTextMark_Underscored:
+			if start {
+				h.buf.WriteString("<u>")
+			} else {
+				h.buf.WriteString("</u>")
+			}	
 		}
 	}
 
@@ -203,19 +210,25 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 				breakpoints[int(m.Range.To)] = struct{}{}
 			}
 		}
-
-		for i, r := range []rune(text.Text) {
+		
+		textLen := utf16.UTF16RuneCountString(text.Text)
+		runes := []rune(text.Text)
+		// the end position of markdown text equals full length of text
+		for i := 0; i <= textLen; i++ {
 			if _, ok := breakpoints[i]; ok {
 				for _, m := range text.Marks.Marks {
 					if int(m.Range.To) == i {
 						writeMark(m, false)
 					}
+					// i == textLen
 					if int(m.Range.From) == i {
 						writeMark(m, true)
 					}
 				}
 			}
-			h.buf.WriteString(html.EscapeString(string(r)))
+			if i < len(runes) {
+				h.buf.WriteString(html.EscapeString(string(runes[i])))
+			}
 		}
 	}
 
