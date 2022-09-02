@@ -278,7 +278,7 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 
 	textArr := strings.Split(req.TextSlot, "\n")
 
-	if req.IsPartOfBlock == false && len(textArr) == 1 {
+	if req.IsPartOfBlock == false && len(textArr) == 1 && len(req.SelectedBlockIds) <= 1 {
 		req.IsPartOfBlock = true
 	}
 
