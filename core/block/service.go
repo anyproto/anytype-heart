@@ -1650,19 +1650,22 @@ func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 			return
 		}
 
-		if ob, ok := value.(*openedBlock); ok {
-			if sbO, ok := ob.SmartBlock.(SmartblockOpener); ok {
-				var sb smartblock.SmartBlock
-				if sb, err = sbO.Open(subId); err != nil {
-					return
-				}
-				return newOpenedBlock(sb), nil
-			} else {
-				return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, parentId)
-			}
-		} else {
+		var ok bool
+		var ob *openedBlock
+		if ob, ok = value.(*openedBlock); !ok {
 			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, parentId)
 		}
+
+		var sbOpener SmartblockOpener
+		if sbOpener, ok = ob.SmartBlock.(SmartblockOpener); !ok {
+			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, parentId)
+		}
+
+		var sb smartblock.SmartBlock
+		if sb, err = sbOpener.Open(subId); err != nil {
+			return
+		}
+		return newOpenedBlock(sb), nil
 	}
 	sb, err := s.newSmartBlock(id, nil)
 	if err != nil {
