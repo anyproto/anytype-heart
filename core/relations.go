@@ -352,8 +352,30 @@ func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelation
 }
 
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
-	//TODO implement me
-	panic("implement me")
+	ctx := mw.newContext(cctx)
+	response := func(err error) *pb.RpcRelationListRemoveOptionResponse {
+		if err != nil {
+			return &pb.RpcRelationListRemoveOptionResponse{
+				Error: &pb.RpcRelationListRemoveOptionResponseError{
+					Code:        pb.RpcRelationListRemoveOptionResponseError_UNKNOWN_ERROR,
+					Description: err.Error(),
+				},
+			}
+		}
+		return &pb.RpcRelationListRemoveOptionResponse{
+			Error: &pb.RpcRelationListRemoveOptionResponseError{
+				Code: pb.RpcRelationListRemoveOptionResponseError_NULL,
+			},
+		}
+	}
+
+	err := mw.doBlockService(func(bs block.Service) error {
+		var err error
+		err = bs.RemoveListOption(ctx, request.OptionIds, request.RemoveInObject)
+		return err
+	})
+
+	return response(err)
 }
 
 func (mw *Middleware) RelationOptions(cctx context.Context, request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {

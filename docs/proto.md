@@ -11123,6 +11123,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | optionIds | [string](#string) | repeated |  |
+| removeInObject | [bool](#bool) |  |  |
 
 
 

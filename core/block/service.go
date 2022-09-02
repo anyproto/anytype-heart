@@ -5,11 +5,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/util"
+	"github.com/ipfs/go-datastore/query"
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
@@ -190,6 +192,7 @@ type Service interface {
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
 	CreateRelationOption(opt *types.Struct) (id string, err error)
+	RemoveListOption(ctx *session.Context, ids []string, removeInObjects bool) error
 
 	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
@@ -808,9 +811,7 @@ func (s *service) DeleteObject(id string) (err error) {
 		workspaceId string
 		isFavorite  bool
 	)
-	if strings.Contains(id, "/") {
-		return fmt.Errorf("can't delete inherit objects")
-	}
+
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
@@ -1091,6 +1092,66 @@ func (s *service) CreateRelationOption(opt *types.Struct) (id string, err error)
 		return err
 	})
 	return
+}
+
+func (s *service) RemoveListOption(ctx *session.Context, optIds []string, removeInObjects bool) error {
+	var workspace *editor.Workspaces
+	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		var ok bool
+		if workspace, ok = b.(*editor.Workspaces); !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	for _, id := range optIds {
+		parts := strings.Split(id, util.SubIdSeparator)
+		if len(parts) != 2 {
+			return fmt.Errorf("not valid option id")
+		}
+		opt, err := workspace.Open(parts[1])
+
+		relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
+
+		q := database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					RelationKey: relKey,
+					Value:       pbtypes.String(opt.Id()),
+				},
+			},
+		}
+		f, err := database.NewFilters(q, nil, nil)
+		if err != nil {
+			return nil
+		}
+		records, err := s.objectStore.QueryRaw(query.Query{
+			Filters: []query.Filter{f},
+		})
+
+		if len(records) > 0 && !removeInObjects {
+			return fmt.Errorf("option has setted relations")
+		}
+
+		for _, rec := range records {
+			objId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+			if err := s.Do(objId, func(b smartblock.SmartBlock) error {
+				return b.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{{
+					Key:   relKey,
+					Value: nil,
+				}}, false)
+			}); err != nil {
+				return err
+			}
+		}
+
+		return s.DeleteObject(id)
+	}
+
+	return nil
 }
 
 func (s *service) Process() process.Service {
@@ -1582,21 +1643,29 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	if idx := strings.LastIndex(id, "/"); idx != -1 {
+	if idx := strings.LastIndex(id, util.SubIdSeparator); idx != -1 {
 		parentId := id[:idx]
 		subId := id[idx+1:]
 		if value, err = s.cache.Get(ctx, parentId); err != nil {
 			return
 		}
-		if sbO, ok := value.(SmartblockOpener); ok {
-			var sb smartblock.SmartBlock
-			if sb, err = sbO.Open(subId); err != nil {
-				return
-			}
-			return newOpenedBlock(sb), nil
-		} else {
-			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement opener", id, parentId)
+
+		var ok bool
+		var ob *openedBlock
+		if ob, ok = value.(*openedBlock); !ok {
+			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, parentId)
 		}
+
+		var sbOpener SmartblockOpener
+		if sbOpener, ok = ob.SmartBlock.(SmartblockOpener); !ok {
+			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, parentId)
+		}
+
+		var sb smartblock.SmartBlock
+		if sb, err = sbOpener.Open(subId); err != nil {
+			return
+		}
+		return newOpenedBlock(sb), nil
 	}
 	sb, err := s.newSmartBlock(id, nil)
 	if err != nil {

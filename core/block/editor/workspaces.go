@@ -101,6 +101,16 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
+func (p *Workspaces) DeleteSubObject(objectId string) error {
+	st := p.NewState()
+	err := p.ObjectStore().DeleteObject(objectId)
+	if err != nil {
+		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id() , err.Error())
+	}
+	st.RemoveFromStore([]string{collectionKeyRelationOptions, objectId})
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
 func (p *Workspaces) GetAllObjects() []string {
 	st := p.NewState()
 	workspaceCollection := st.GetCollection(source.WorkspaceCollection)

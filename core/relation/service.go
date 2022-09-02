@@ -146,7 +146,7 @@ func (s *service) fetchKey(key string) (relation *Relation, err error) {
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelation.String()),
+				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
 			},
 		},
 	}

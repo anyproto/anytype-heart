@@ -2,6 +2,7 @@ package smartblock
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -58,6 +59,9 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 			return 0, err
 		}
 		return SmartBlockType(sbt), nil
+	}
+	if strings.Index(id, util.SubIdSeparator) > -1 {
+		return SmartBlockTypePage, nil
 	}
 	if strings.HasPrefix(id, addr.DatePrefix) {
 		return SmartBlockTypeDate, nil
