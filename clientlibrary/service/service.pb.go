@@ -4,7 +4,6 @@
 package service
 
 import (
-	"context"
 	fmt "fmt"
 	pb "github.com/anytypeio/go-anytype-middleware/pb"
 	proto "github.com/gogo/protobuf/proto"
@@ -233,203 +232,203 @@ var fileDescriptor_93a29dc403579097 = []byte{
 var clientCommandsHandler ClientCommandsHandler
 
 type ClientCommandsHandler interface {
-	AppGetVersion(context.Context, *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse
-	AppSetDeviceState(context.Context, *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse
-	AppShutdown(context.Context, *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse
+	AppGetVersion(*pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse
+	AppSetDeviceState(*pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse
+	AppShutdown(*pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse
 	// Wallet
 	// ***
-	WalletCreate(context.Context, *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
-	WalletRecover(context.Context, *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
-	WalletConvert(context.Context, *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse
-	WalletCreateSession(context.Context, *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse
-	WalletCloseSession(context.Context, *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse
+	WalletCreate(*pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
+	WalletRecover(*pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
+	WalletConvert(*pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse
+	WalletCreateSession(*pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse
+	WalletCloseSession(*pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse
 	// Workspace
 	// ***
-	WorkspaceCreate(context.Context, *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse
-	WorkspaceSelect(context.Context, *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse
-	WorkspaceGetCurrent(context.Context, *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse
-	WorkspaceGetAll(context.Context, *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse
-	WorkspaceSetIsHighlighted(context.Context, *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse
-	WorkspaceExport(context.Context, *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse
+	WorkspaceCreate(*pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse
+	WorkspaceSelect(*pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse
+	WorkspaceGetCurrent(*pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse
+	WorkspaceGetAll(*pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse
+	WorkspaceSetIsHighlighted(*pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse
+	WorkspaceExport(*pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse
 	// Account
 	// ***
-	AccountRecover(context.Context, *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse
-	AccountCreate(context.Context, *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse
-	AccountDelete(context.Context, *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse
-	AccountSelect(context.Context, *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse
-	AccountStop(context.Context, *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse
-	AccountMove(context.Context, *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse
-	AccountConfigUpdate(context.Context, *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse
+	AccountRecover(*pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse
+	AccountCreate(*pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse
+	AccountDelete(*pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse
+	AccountSelect(*pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse
+	AccountStop(*pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse
+	AccountMove(*pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse
+	AccountConfigUpdate(*pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse
 	// Object
 	// ***
-	ObjectOpen(context.Context, *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse
-	ObjectClose(context.Context, *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse
-	ObjectShow(context.Context, *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse
+	ObjectOpen(*pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse
+	ObjectClose(*pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse
+	ObjectShow(*pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse
 	// ObjectCreate just creates the new page, without adding the link to it from some other page
-	ObjectCreate(context.Context, *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse
-	ObjectCreateBookmark(context.Context, *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse
+	ObjectCreate(*pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse
+	ObjectCreateBookmark(*pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse
 	// ObjectCreateSet just creates the new set, without adding the link to it from some other page
-	ObjectCreateSet(context.Context, *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse
-	ObjectGraph(context.Context, *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse
-	ObjectSearch(context.Context, *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse
-	ObjectSearchSubscribe(context.Context, *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse
-	ObjectRelationSearchDistinct(context.Context, *pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse
-	ObjectSubscribeIds(context.Context, *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse
-	ObjectSearchUnsubscribe(context.Context, *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse
-	ObjectSetDetails(context.Context, *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse
-	ObjectDuplicate(context.Context, *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse
+	ObjectCreateSet(*pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse
+	ObjectGraph(*pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse
+	ObjectSearch(*pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse
+	ObjectSearchSubscribe(*pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse
+	ObjectRelationSearchDistinct(*pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse
+	ObjectSubscribeIds(*pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse
+	ObjectSearchUnsubscribe(*pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse
+	ObjectSetDetails(*pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse
+	ObjectDuplicate(*pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse
 	// ObjectSetObjectType sets an existing object type to the object so it will appear in sets and suggests relations from this type
-	ObjectSetObjectType(context.Context, *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse
-	ObjectSetLayout(context.Context, *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse
-	ObjectSetIsFavorite(context.Context, *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse
-	ObjectSetIsArchived(context.Context, *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse
-	ObjectListDuplicate(context.Context, *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse
-	ObjectListDelete(context.Context, *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse
-	ObjectListSetIsArchived(context.Context, *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse
-	ObjectListSetIsFavorite(context.Context, *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse
-	ObjectApplyTemplate(context.Context, *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse
+	ObjectSetObjectType(*pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse
+	ObjectSetLayout(*pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse
+	ObjectSetIsFavorite(*pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse
+	ObjectSetIsArchived(*pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse
+	ObjectListDuplicate(*pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse
+	ObjectListDelete(*pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse
+	ObjectListSetIsArchived(*pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse
+	ObjectListSetIsFavorite(*pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse
+	ObjectApplyTemplate(*pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse
 	// ObjectToSet creates new set from given object and removes object
-	ObjectToSet(context.Context, *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse
-	ObjectAddWithObjectId(context.Context, *pb.RpcObjectAddWithObjectIdRequest) *pb.RpcObjectAddWithObjectIdResponse
-	ObjectShareByLink(context.Context, *pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse
-	ObjectOpenBreadcrumbs(context.Context, *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse
-	ObjectSetBreadcrumbs(context.Context, *pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse
-	ObjectUndo(context.Context, *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse
-	ObjectRedo(context.Context, *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse
-	ObjectImportMarkdown(context.Context, *pb.RpcObjectImportMarkdownRequest) *pb.RpcObjectImportMarkdownResponse
-	ObjectListExport(context.Context, *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse
-	ObjectBookmarkFetch(context.Context, *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse
-	ObjectToBookmark(context.Context, *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse
+	ObjectToSet(*pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse
+	ObjectAddWithObjectId(*pb.RpcObjectAddWithObjectIdRequest) *pb.RpcObjectAddWithObjectIdResponse
+	ObjectShareByLink(*pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse
+	ObjectOpenBreadcrumbs(*pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse
+	ObjectSetBreadcrumbs(*pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse
+	ObjectUndo(*pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse
+	ObjectRedo(*pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse
+	ObjectImportMarkdown(*pb.RpcObjectImportMarkdownRequest) *pb.RpcObjectImportMarkdownResponse
+	ObjectListExport(*pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse
+	ObjectBookmarkFetch(*pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse
+	ObjectToBookmark(*pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse
 	// Relations
 	// ***
-	ObjectCreateRelation(context.Context, *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse
-	ObjectCreateRelationOption(context.Context, *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse
-	RelationListRemoveOption(context.Context, *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse
-	RelationOptions(context.Context, *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse
+	ObjectCreateRelation(*pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse
+	ObjectCreateRelationOption(*pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse
+	RelationListRemoveOption(*pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse
+	RelationOptions(*pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse
 	// Object Relations
 	// ***
-	ObjectRelationAdd(context.Context, *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse
-	ObjectRelationDelete(context.Context, *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse
-	ObjectRelationAddFeatured(context.Context, *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse
-	ObjectRelationRemoveFeatured(context.Context, *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse
-	ObjectRelationListAvailable(context.Context, *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse
+	ObjectRelationAdd(*pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse
+	ObjectRelationDelete(*pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse
+	ObjectRelationAddFeatured(*pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse
+	ObjectRelationRemoveFeatured(*pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse
+	ObjectRelationListAvailable(*pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse
 	// ObjectType commands
 	// ***
-	ObjectCreateObjectType(context.Context, *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse
-	ObjectTypeRelationList(context.Context, *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse
-	ObjectTypeRelationAdd(context.Context, *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse
-	ObjectTypeRelationRemove(context.Context, *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse
-	HistoryShowVersion(context.Context, *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse
-	HistoryGetVersions(context.Context, *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse
-	HistorySetVersion(context.Context, *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse
+	ObjectCreateObjectType(*pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse
+	ObjectTypeRelationList(*pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse
+	ObjectTypeRelationAdd(*pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse
+	ObjectTypeRelationRemove(*pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse
+	HistoryShowVersion(*pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse
+	HistoryGetVersions(*pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse
+	HistorySetVersion(*pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse
 	// Files
 	// ***
-	FileOffload(context.Context, *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse
-	FileListOffload(context.Context, *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse
-	FileUpload(context.Context, *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse
-	FileDownload(context.Context, *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse
-	FileDrop(context.Context, *pb.RpcFileDropRequest) *pb.RpcFileDropResponse
-	NavigationListObjects(context.Context, *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse
-	NavigationGetObjectInfoWithLinks(context.Context, *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse
-	TemplateCreateFromObject(context.Context, *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse
-	TemplateCreateFromObjectType(context.Context, *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse
-	TemplateClone(context.Context, *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse
-	TemplateExportAll(context.Context, *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse
-	LinkPreview(context.Context, *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse
-	UnsplashSearch(context.Context, *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse
+	FileOffload(*pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse
+	FileListOffload(*pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse
+	FileUpload(*pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse
+	FileDownload(*pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse
+	FileDrop(*pb.RpcFileDropRequest) *pb.RpcFileDropResponse
+	NavigationListObjects(*pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse
+	NavigationGetObjectInfoWithLinks(*pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse
+	TemplateCreateFromObject(*pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse
+	TemplateCreateFromObjectType(*pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse
+	TemplateClone(*pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse
+	TemplateExportAll(*pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse
+	LinkPreview(*pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse
+	UnsplashSearch(*pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse
 	// UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
 	// The artist info is available in the object details
-	UnsplashDownload(context.Context, *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse
+	UnsplashDownload(*pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse
 	// General Block commands
 	// ***
-	BlockUpload(context.Context, *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
-	BlockReplace(context.Context, *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
-	BlockCreate(context.Context, *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
-	BlockSplit(context.Context, *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse
-	BlockMerge(context.Context, *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse
-	BlockCopy(context.Context, *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse
-	BlockPaste(context.Context, *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse
-	BlockCut(context.Context, *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse
-	BlockSetFields(context.Context, *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse
-	BlockExport(context.Context, *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse
-	BlockListDelete(context.Context, *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse
-	BlockListMoveToExistingObject(context.Context, *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse
-	BlockListMoveToNewObject(context.Context, *pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse
-	BlockListConvertToObjects(context.Context, *pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse
-	BlockListSetFields(context.Context, *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse
-	BlockListDuplicate(context.Context, *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse
-	BlockListSetBackgroundColor(context.Context, *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse
-	BlockListSetAlign(context.Context, *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse
-	BlockListSetVerticalAlign(context.Context, *pb.RpcBlockListSetVerticalAlignRequest) *pb.RpcBlockListSetVerticalAlignResponse
-	BlockListTurnInto(context.Context, *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse
+	BlockUpload(*pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
+	BlockReplace(*pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
+	BlockCreate(*pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
+	BlockSplit(*pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse
+	BlockMerge(*pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse
+	BlockCopy(*pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse
+	BlockPaste(*pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse
+	BlockCut(*pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse
+	BlockSetFields(*pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse
+	BlockExport(*pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse
+	BlockListDelete(*pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse
+	BlockListMoveToExistingObject(*pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse
+	BlockListMoveToNewObject(*pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse
+	BlockListConvertToObjects(*pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse
+	BlockListSetFields(*pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse
+	BlockListDuplicate(*pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse
+	BlockListSetBackgroundColor(*pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse
+	BlockListSetAlign(*pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse
+	BlockListSetVerticalAlign(*pb.RpcBlockListSetVerticalAlignRequest) *pb.RpcBlockListSetVerticalAlignResponse
+	BlockListTurnInto(*pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse
 	// Text Block commands
 	// ***
-	BlockTextSetText(context.Context, *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse
-	BlockTextSetColor(context.Context, *pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse
-	BlockTextSetStyle(context.Context, *pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse
-	BlockTextSetChecked(context.Context, *pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse
-	BlockTextSetIcon(context.Context, *pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse
-	BlockTextListSetColor(context.Context, *pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse
-	BlockTextListSetMark(context.Context, *pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse
-	BlockTextListSetStyle(context.Context, *pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse
-	BlockTextListClearStyle(context.Context, *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse
-	BlockTextListClearContent(context.Context, *pb.RpcBlockTextListClearContentRequest) *pb.RpcBlockTextListClearContentResponse
+	BlockTextSetText(*pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse
+	BlockTextSetColor(*pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse
+	BlockTextSetStyle(*pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse
+	BlockTextSetChecked(*pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse
+	BlockTextSetIcon(*pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse
+	BlockTextListSetColor(*pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse
+	BlockTextListSetMark(*pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse
+	BlockTextListSetStyle(*pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse
+	BlockTextListClearStyle(*pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse
+	BlockTextListClearContent(*pb.RpcBlockTextListClearContentRequest) *pb.RpcBlockTextListClearContentResponse
 	// File block commands
 	// ***
-	BlockFileSetName(context.Context, *pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse
-	BlockImageSetName(context.Context, *pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse
-	BlockVideoSetName(context.Context, *pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse
-	BlockFileCreateAndUpload(context.Context, *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse
-	BlockFileListSetStyle(context.Context, *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse
+	BlockFileSetName(*pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse
+	BlockImageSetName(*pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse
+	BlockVideoSetName(*pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse
+	BlockFileCreateAndUpload(*pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse
+	BlockFileListSetStyle(*pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse
 	// Dataview block commands
 	// ***
-	BlockDataviewViewCreate(context.Context, *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse
-	BlockDataviewViewDelete(context.Context, *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse
-	BlockDataviewViewUpdate(context.Context, *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse
-	BlockDataviewViewSetActive(context.Context, *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse
-	BlockDataviewViewSetPosition(context.Context, *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse
-	BlockDataviewSetSource(context.Context, *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse
-	BlockDataviewRelationAdd(context.Context, *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse
-	BlockDataviewRelationDelete(context.Context, *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse
-	BlockDataviewRelationListAvailable(context.Context, *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse
-	BlockDataviewGroupOrderUpdate(context.Context, *pb.RpcBlockDataviewGroupOrderUpdateRequest) *pb.RpcBlockDataviewGroupOrderUpdateResponse
-	BlockDataviewObjectOrderUpdate(context.Context, *pb.RpcBlockDataviewObjectOrderUpdateRequest) *pb.RpcBlockDataviewObjectOrderUpdateResponse
+	BlockDataviewViewCreate(*pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse
+	BlockDataviewViewDelete(*pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse
+	BlockDataviewViewUpdate(*pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse
+	BlockDataviewViewSetActive(*pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse
+	BlockDataviewViewSetPosition(*pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse
+	BlockDataviewSetSource(*pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse
+	BlockDataviewRelationAdd(*pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse
+	BlockDataviewRelationDelete(*pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse
+	BlockDataviewRelationListAvailable(*pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse
+	BlockDataviewGroupOrderUpdate(*pb.RpcBlockDataviewGroupOrderUpdateRequest) *pb.RpcBlockDataviewGroupOrderUpdateResponse
+	BlockDataviewObjectOrderUpdate(*pb.RpcBlockDataviewObjectOrderUpdateRequest) *pb.RpcBlockDataviewObjectOrderUpdateResponse
 	// Simple table block commands
 	// ***
-	BlockTableCreate(context.Context, *pb.RpcBlockTableCreateRequest) *pb.RpcBlockTableCreateResponse
-	BlockTableExpand(context.Context, *pb.RpcBlockTableExpandRequest) *pb.RpcBlockTableExpandResponse
-	BlockTableRowCreate(context.Context, *pb.RpcBlockTableRowCreateRequest) *pb.RpcBlockTableRowCreateResponse
-	BlockTableRowDelete(context.Context, *pb.RpcBlockTableRowDeleteRequest) *pb.RpcBlockTableRowDeleteResponse
-	BlockTableRowDuplicate(context.Context, *pb.RpcBlockTableRowDuplicateRequest) *pb.RpcBlockTableRowDuplicateResponse
-	BlockTableRowSetHeader(context.Context, *pb.RpcBlockTableRowSetHeaderRequest) *pb.RpcBlockTableRowSetHeaderResponse
-	BlockTableColumnCreate(context.Context, *pb.RpcBlockTableColumnCreateRequest) *pb.RpcBlockTableColumnCreateResponse
-	BlockTableColumnMove(context.Context, *pb.RpcBlockTableColumnMoveRequest) *pb.RpcBlockTableColumnMoveResponse
-	BlockTableColumnDelete(context.Context, *pb.RpcBlockTableColumnDeleteRequest) *pb.RpcBlockTableColumnDeleteResponse
-	BlockTableColumnDuplicate(context.Context, *pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse
-	BlockTableRowListFill(context.Context, *pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse
-	BlockTableRowListClean(context.Context, *pb.RpcBlockTableRowListCleanRequest) *pb.RpcBlockTableRowListCleanResponse
-	BlockTableColumnListFill(context.Context, *pb.RpcBlockTableColumnListFillRequest) *pb.RpcBlockTableColumnListFillResponse
-	BlockTableSort(context.Context, *pb.RpcBlockTableSortRequest) *pb.RpcBlockTableSortResponse
+	BlockTableCreate(*pb.RpcBlockTableCreateRequest) *pb.RpcBlockTableCreateResponse
+	BlockTableExpand(*pb.RpcBlockTableExpandRequest) *pb.RpcBlockTableExpandResponse
+	BlockTableRowCreate(*pb.RpcBlockTableRowCreateRequest) *pb.RpcBlockTableRowCreateResponse
+	BlockTableRowDelete(*pb.RpcBlockTableRowDeleteRequest) *pb.RpcBlockTableRowDeleteResponse
+	BlockTableRowDuplicate(*pb.RpcBlockTableRowDuplicateRequest) *pb.RpcBlockTableRowDuplicateResponse
+	BlockTableRowSetHeader(*pb.RpcBlockTableRowSetHeaderRequest) *pb.RpcBlockTableRowSetHeaderResponse
+	BlockTableColumnCreate(*pb.RpcBlockTableColumnCreateRequest) *pb.RpcBlockTableColumnCreateResponse
+	BlockTableColumnMove(*pb.RpcBlockTableColumnMoveRequest) *pb.RpcBlockTableColumnMoveResponse
+	BlockTableColumnDelete(*pb.RpcBlockTableColumnDeleteRequest) *pb.RpcBlockTableColumnDeleteResponse
+	BlockTableColumnDuplicate(*pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse
+	BlockTableRowListFill(*pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse
+	BlockTableRowListClean(*pb.RpcBlockTableRowListCleanRequest) *pb.RpcBlockTableRowListCleanResponse
+	BlockTableColumnListFill(*pb.RpcBlockTableColumnListFillRequest) *pb.RpcBlockTableColumnListFillResponse
+	BlockTableSort(*pb.RpcBlockTableSortRequest) *pb.RpcBlockTableSortResponse
 	// Other specific block commands
 	// ***
-	BlockLinkCreateWithObject(context.Context, *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse
-	BlockLinkListSetAppearance(context.Context, *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse
-	BlockBookmarkFetch(context.Context, *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse
-	BlockBookmarkCreateAndFetch(context.Context, *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse
-	BlockRelationSetKey(context.Context, *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse
-	BlockRelationAdd(context.Context, *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse
-	BlockDivListSetStyle(context.Context, *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse
-	BlockLatexSetText(context.Context, *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse
-	ProcessCancel(context.Context, *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
-	LogSend(context.Context, *pb.RpcLogSendRequest) *pb.RpcLogSendResponse
-	DebugSync(context.Context, *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse
-	DebugThread(context.Context, *pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse
-	DebugTree(context.Context, *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse
-	DebugExportLocalstore(context.Context, *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse
-	DebugPing(context.Context, *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse
-	MetricsSetParameters(context.Context, *pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse
+	BlockLinkCreateWithObject(*pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse
+	BlockLinkListSetAppearance(*pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse
+	BlockBookmarkFetch(*pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse
+	BlockBookmarkCreateAndFetch(*pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse
+	BlockRelationSetKey(*pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse
+	BlockRelationAdd(*pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse
+	BlockDivListSetStyle(*pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse
+	BlockLatexSetText(*pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse
+	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
+	LogSend(*pb.RpcLogSendRequest) *pb.RpcLogSendResponse
+	DebugSync(*pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse
+	DebugThread(*pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse
+	DebugTree(*pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse
+	DebugExportLocalstore(*pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse
+	DebugPing(*pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse
+	MetricsSetParameters(*pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse
 	// used only for lib-server via grpc
-	// Streams not supported ### ListenSessionEvents(context.Context, *pb.StreamRequest)
+	// Streams not supported ### ListenSessionEvents(*pb.StreamRequest)
 }
 
 func registerClientCommandsHandler(srv ClientCommandsHandler) {
@@ -452,7 +451,7 @@ func AppGetVersion(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AppGetVersion(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AppGetVersion(in).Marshal()
 	return resp
 }
 
@@ -472,7 +471,7 @@ func AppSetDeviceState(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AppSetDeviceState(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AppSetDeviceState(in).Marshal()
 	return resp
 }
 
@@ -492,7 +491,7 @@ func AppShutdown(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AppShutdown(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AppShutdown(in).Marshal()
 	return resp
 }
 
@@ -512,7 +511,7 @@ func WalletCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WalletCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WalletCreate(in).Marshal()
 	return resp
 }
 
@@ -532,7 +531,7 @@ func WalletRecover(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WalletRecover(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WalletRecover(in).Marshal()
 	return resp
 }
 
@@ -552,7 +551,7 @@ func WalletConvert(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WalletConvert(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WalletConvert(in).Marshal()
 	return resp
 }
 
@@ -572,7 +571,7 @@ func WalletCreateSession(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WalletCreateSession(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WalletCreateSession(in).Marshal()
 	return resp
 }
 
@@ -592,7 +591,7 @@ func WalletCloseSession(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WalletCloseSession(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WalletCloseSession(in).Marshal()
 	return resp
 }
 
@@ -612,7 +611,7 @@ func WorkspaceCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WorkspaceCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WorkspaceCreate(in).Marshal()
 	return resp
 }
 
@@ -632,7 +631,7 @@ func WorkspaceSelect(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WorkspaceSelect(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WorkspaceSelect(in).Marshal()
 	return resp
 }
 
@@ -652,7 +651,7 @@ func WorkspaceGetCurrent(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WorkspaceGetCurrent(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WorkspaceGetCurrent(in).Marshal()
 	return resp
 }
 
@@ -672,7 +671,7 @@ func WorkspaceGetAll(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WorkspaceGetAll(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WorkspaceGetAll(in).Marshal()
 	return resp
 }
 
@@ -692,7 +691,7 @@ func WorkspaceSetIsHighlighted(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WorkspaceSetIsHighlighted(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WorkspaceSetIsHighlighted(in).Marshal()
 	return resp
 }
 
@@ -712,7 +711,7 @@ func WorkspaceExport(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.WorkspaceExport(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.WorkspaceExport(in).Marshal()
 	return resp
 }
 
@@ -732,7 +731,7 @@ func AccountRecover(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AccountRecover(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AccountRecover(in).Marshal()
 	return resp
 }
 
@@ -752,7 +751,7 @@ func AccountCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AccountCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AccountCreate(in).Marshal()
 	return resp
 }
 
@@ -772,7 +771,7 @@ func AccountDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AccountDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AccountDelete(in).Marshal()
 	return resp
 }
 
@@ -792,7 +791,7 @@ func AccountSelect(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AccountSelect(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AccountSelect(in).Marshal()
 	return resp
 }
 
@@ -812,7 +811,7 @@ func AccountStop(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AccountStop(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AccountStop(in).Marshal()
 	return resp
 }
 
@@ -832,7 +831,7 @@ func AccountMove(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AccountMove(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AccountMove(in).Marshal()
 	return resp
 }
 
@@ -852,7 +851,7 @@ func AccountConfigUpdate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.AccountConfigUpdate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.AccountConfigUpdate(in).Marshal()
 	return resp
 }
 
@@ -872,7 +871,7 @@ func ObjectOpen(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectOpen(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectOpen(in).Marshal()
 	return resp
 }
 
@@ -892,7 +891,7 @@ func ObjectClose(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectClose(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectClose(in).Marshal()
 	return resp
 }
 
@@ -912,7 +911,7 @@ func ObjectShow(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectShow(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectShow(in).Marshal()
 	return resp
 }
 
@@ -932,7 +931,7 @@ func ObjectCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectCreate(in).Marshal()
 	return resp
 }
 
@@ -952,7 +951,7 @@ func ObjectCreateBookmark(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectCreateBookmark(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectCreateBookmark(in).Marshal()
 	return resp
 }
 
@@ -972,7 +971,7 @@ func ObjectCreateSet(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectCreateSet(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectCreateSet(in).Marshal()
 	return resp
 }
 
@@ -992,7 +991,7 @@ func ObjectGraph(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectGraph(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectGraph(in).Marshal()
 	return resp
 }
 
@@ -1012,7 +1011,7 @@ func ObjectSearch(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSearch(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSearch(in).Marshal()
 	return resp
 }
 
@@ -1032,7 +1031,7 @@ func ObjectSearchSubscribe(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSearchSubscribe(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSearchSubscribe(in).Marshal()
 	return resp
 }
 
@@ -1052,7 +1051,7 @@ func ObjectRelationSearchDistinct(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectRelationSearchDistinct(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectRelationSearchDistinct(in).Marshal()
 	return resp
 }
 
@@ -1072,7 +1071,7 @@ func ObjectSubscribeIds(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSubscribeIds(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSubscribeIds(in).Marshal()
 	return resp
 }
 
@@ -1092,7 +1091,7 @@ func ObjectSearchUnsubscribe(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSearchUnsubscribe(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSearchUnsubscribe(in).Marshal()
 	return resp
 }
 
@@ -1112,7 +1111,7 @@ func ObjectSetDetails(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSetDetails(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSetDetails(in).Marshal()
 	return resp
 }
 
@@ -1132,7 +1131,7 @@ func ObjectDuplicate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectDuplicate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectDuplicate(in).Marshal()
 	return resp
 }
 
@@ -1152,7 +1151,7 @@ func ObjectSetObjectType(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSetObjectType(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSetObjectType(in).Marshal()
 	return resp
 }
 
@@ -1172,7 +1171,7 @@ func ObjectSetLayout(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSetLayout(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSetLayout(in).Marshal()
 	return resp
 }
 
@@ -1192,7 +1191,7 @@ func ObjectSetIsFavorite(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSetIsFavorite(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSetIsFavorite(in).Marshal()
 	return resp
 }
 
@@ -1212,7 +1211,7 @@ func ObjectSetIsArchived(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSetIsArchived(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSetIsArchived(in).Marshal()
 	return resp
 }
 
@@ -1232,7 +1231,7 @@ func ObjectListDuplicate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectListDuplicate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectListDuplicate(in).Marshal()
 	return resp
 }
 
@@ -1252,7 +1251,7 @@ func ObjectListDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectListDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectListDelete(in).Marshal()
 	return resp
 }
 
@@ -1272,7 +1271,7 @@ func ObjectListSetIsArchived(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectListSetIsArchived(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectListSetIsArchived(in).Marshal()
 	return resp
 }
 
@@ -1292,7 +1291,7 @@ func ObjectListSetIsFavorite(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectListSetIsFavorite(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectListSetIsFavorite(in).Marshal()
 	return resp
 }
 
@@ -1312,7 +1311,7 @@ func ObjectApplyTemplate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectApplyTemplate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectApplyTemplate(in).Marshal()
 	return resp
 }
 
@@ -1332,7 +1331,7 @@ func ObjectToSet(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectToSet(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectToSet(in).Marshal()
 	return resp
 }
 
@@ -1352,7 +1351,7 @@ func ObjectAddWithObjectId(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectAddWithObjectId(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectAddWithObjectId(in).Marshal()
 	return resp
 }
 
@@ -1372,7 +1371,7 @@ func ObjectShareByLink(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectShareByLink(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectShareByLink(in).Marshal()
 	return resp
 }
 
@@ -1392,7 +1391,7 @@ func ObjectOpenBreadcrumbs(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectOpenBreadcrumbs(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectOpenBreadcrumbs(in).Marshal()
 	return resp
 }
 
@@ -1412,7 +1411,7 @@ func ObjectSetBreadcrumbs(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectSetBreadcrumbs(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectSetBreadcrumbs(in).Marshal()
 	return resp
 }
 
@@ -1432,7 +1431,7 @@ func ObjectUndo(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectUndo(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectUndo(in).Marshal()
 	return resp
 }
 
@@ -1452,7 +1451,7 @@ func ObjectRedo(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectRedo(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectRedo(in).Marshal()
 	return resp
 }
 
@@ -1472,7 +1471,7 @@ func ObjectImportMarkdown(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectImportMarkdown(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectImportMarkdown(in).Marshal()
 	return resp
 }
 
@@ -1492,7 +1491,7 @@ func ObjectListExport(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectListExport(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectListExport(in).Marshal()
 	return resp
 }
 
@@ -1512,7 +1511,7 @@ func ObjectBookmarkFetch(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectBookmarkFetch(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectBookmarkFetch(in).Marshal()
 	return resp
 }
 
@@ -1532,7 +1531,7 @@ func ObjectToBookmark(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectToBookmark(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectToBookmark(in).Marshal()
 	return resp
 }
 
@@ -1552,7 +1551,7 @@ func ObjectCreateRelation(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectCreateRelation(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectCreateRelation(in).Marshal()
 	return resp
 }
 
@@ -1572,7 +1571,7 @@ func ObjectCreateRelationOption(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectCreateRelationOption(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectCreateRelationOption(in).Marshal()
 	return resp
 }
 
@@ -1592,7 +1591,7 @@ func RelationListRemoveOption(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.RelationListRemoveOption(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.RelationListRemoveOption(in).Marshal()
 	return resp
 }
 
@@ -1612,7 +1611,7 @@ func RelationOptions(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.RelationOptions(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.RelationOptions(in).Marshal()
 	return resp
 }
 
@@ -1632,7 +1631,7 @@ func ObjectRelationAdd(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectRelationAdd(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectRelationAdd(in).Marshal()
 	return resp
 }
 
@@ -1652,7 +1651,7 @@ func ObjectRelationDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectRelationDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectRelationDelete(in).Marshal()
 	return resp
 }
 
@@ -1672,7 +1671,7 @@ func ObjectRelationAddFeatured(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectRelationAddFeatured(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectRelationAddFeatured(in).Marshal()
 	return resp
 }
 
@@ -1692,7 +1691,7 @@ func ObjectRelationRemoveFeatured(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectRelationRemoveFeatured(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectRelationRemoveFeatured(in).Marshal()
 	return resp
 }
 
@@ -1712,7 +1711,7 @@ func ObjectRelationListAvailable(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectRelationListAvailable(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectRelationListAvailable(in).Marshal()
 	return resp
 }
 
@@ -1732,7 +1731,7 @@ func ObjectCreateObjectType(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectCreateObjectType(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectCreateObjectType(in).Marshal()
 	return resp
 }
 
@@ -1752,7 +1751,7 @@ func ObjectTypeRelationList(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectTypeRelationList(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectTypeRelationList(in).Marshal()
 	return resp
 }
 
@@ -1772,7 +1771,7 @@ func ObjectTypeRelationAdd(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectTypeRelationAdd(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectTypeRelationAdd(in).Marshal()
 	return resp
 }
 
@@ -1792,7 +1791,7 @@ func ObjectTypeRelationRemove(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ObjectTypeRelationRemove(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ObjectTypeRelationRemove(in).Marshal()
 	return resp
 }
 
@@ -1812,7 +1811,7 @@ func HistoryShowVersion(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.HistoryShowVersion(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.HistoryShowVersion(in).Marshal()
 	return resp
 }
 
@@ -1832,7 +1831,7 @@ func HistoryGetVersions(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.HistoryGetVersions(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.HistoryGetVersions(in).Marshal()
 	return resp
 }
 
@@ -1852,7 +1851,7 @@ func HistorySetVersion(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.HistorySetVersion(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.HistorySetVersion(in).Marshal()
 	return resp
 }
 
@@ -1872,7 +1871,7 @@ func FileOffload(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.FileOffload(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.FileOffload(in).Marshal()
 	return resp
 }
 
@@ -1892,7 +1891,7 @@ func FileListOffload(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.FileListOffload(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.FileListOffload(in).Marshal()
 	return resp
 }
 
@@ -1912,7 +1911,7 @@ func FileUpload(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.FileUpload(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.FileUpload(in).Marshal()
 	return resp
 }
 
@@ -1932,7 +1931,7 @@ func FileDownload(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.FileDownload(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.FileDownload(in).Marshal()
 	return resp
 }
 
@@ -1952,7 +1951,7 @@ func FileDrop(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.FileDrop(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.FileDrop(in).Marshal()
 	return resp
 }
 
@@ -1972,7 +1971,7 @@ func NavigationListObjects(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.NavigationListObjects(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.NavigationListObjects(in).Marshal()
 	return resp
 }
 
@@ -1992,7 +1991,7 @@ func NavigationGetObjectInfoWithLinks(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.NavigationGetObjectInfoWithLinks(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.NavigationGetObjectInfoWithLinks(in).Marshal()
 	return resp
 }
 
@@ -2012,7 +2011,7 @@ func TemplateCreateFromObject(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.TemplateCreateFromObject(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.TemplateCreateFromObject(in).Marshal()
 	return resp
 }
 
@@ -2032,7 +2031,7 @@ func TemplateCreateFromObjectType(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.TemplateCreateFromObjectType(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.TemplateCreateFromObjectType(in).Marshal()
 	return resp
 }
 
@@ -2052,7 +2051,7 @@ func TemplateClone(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.TemplateClone(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.TemplateClone(in).Marshal()
 	return resp
 }
 
@@ -2072,7 +2071,7 @@ func TemplateExportAll(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.TemplateExportAll(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.TemplateExportAll(in).Marshal()
 	return resp
 }
 
@@ -2092,7 +2091,7 @@ func LinkPreview(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.LinkPreview(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.LinkPreview(in).Marshal()
 	return resp
 }
 
@@ -2112,7 +2111,7 @@ func UnsplashSearch(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.UnsplashSearch(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.UnsplashSearch(in).Marshal()
 	return resp
 }
 
@@ -2132,7 +2131,7 @@ func UnsplashDownload(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.UnsplashDownload(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.UnsplashDownload(in).Marshal()
 	return resp
 }
 
@@ -2152,7 +2151,7 @@ func BlockUpload(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockUpload(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockUpload(in).Marshal()
 	return resp
 }
 
@@ -2172,7 +2171,7 @@ func BlockReplace(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockReplace(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockReplace(in).Marshal()
 	return resp
 }
 
@@ -2192,7 +2191,7 @@ func BlockCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockCreate(in).Marshal()
 	return resp
 }
 
@@ -2212,7 +2211,7 @@ func BlockSplit(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockSplit(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockSplit(in).Marshal()
 	return resp
 }
 
@@ -2232,7 +2231,7 @@ func BlockMerge(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockMerge(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockMerge(in).Marshal()
 	return resp
 }
 
@@ -2252,7 +2251,7 @@ func BlockCopy(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockCopy(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockCopy(in).Marshal()
 	return resp
 }
 
@@ -2272,7 +2271,7 @@ func BlockPaste(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockPaste(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockPaste(in).Marshal()
 	return resp
 }
 
@@ -2292,7 +2291,7 @@ func BlockCut(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockCut(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockCut(in).Marshal()
 	return resp
 }
 
@@ -2312,7 +2311,7 @@ func BlockSetFields(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockSetFields(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockSetFields(in).Marshal()
 	return resp
 }
 
@@ -2332,7 +2331,7 @@ func BlockExport(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockExport(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockExport(in).Marshal()
 	return resp
 }
 
@@ -2352,7 +2351,7 @@ func BlockListDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListDelete(in).Marshal()
 	return resp
 }
 
@@ -2372,7 +2371,7 @@ func BlockListMoveToExistingObject(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListMoveToExistingObject(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListMoveToExistingObject(in).Marshal()
 	return resp
 }
 
@@ -2392,7 +2391,7 @@ func BlockListMoveToNewObject(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListMoveToNewObject(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListMoveToNewObject(in).Marshal()
 	return resp
 }
 
@@ -2412,7 +2411,7 @@ func BlockListConvertToObjects(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListConvertToObjects(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListConvertToObjects(in).Marshal()
 	return resp
 }
 
@@ -2432,7 +2431,7 @@ func BlockListSetFields(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListSetFields(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListSetFields(in).Marshal()
 	return resp
 }
 
@@ -2452,7 +2451,7 @@ func BlockListDuplicate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListDuplicate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListDuplicate(in).Marshal()
 	return resp
 }
 
@@ -2472,7 +2471,7 @@ func BlockListSetBackgroundColor(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListSetBackgroundColor(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListSetBackgroundColor(in).Marshal()
 	return resp
 }
 
@@ -2492,7 +2491,7 @@ func BlockListSetAlign(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListSetAlign(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListSetAlign(in).Marshal()
 	return resp
 }
 
@@ -2512,7 +2511,7 @@ func BlockListSetVerticalAlign(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListSetVerticalAlign(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListSetVerticalAlign(in).Marshal()
 	return resp
 }
 
@@ -2532,7 +2531,7 @@ func BlockListTurnInto(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockListTurnInto(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockListTurnInto(in).Marshal()
 	return resp
 }
 
@@ -2552,7 +2551,7 @@ func BlockTextSetText(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextSetText(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextSetText(in).Marshal()
 	return resp
 }
 
@@ -2572,7 +2571,7 @@ func BlockTextSetColor(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextSetColor(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextSetColor(in).Marshal()
 	return resp
 }
 
@@ -2592,7 +2591,7 @@ func BlockTextSetStyle(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextSetStyle(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextSetStyle(in).Marshal()
 	return resp
 }
 
@@ -2612,7 +2611,7 @@ func BlockTextSetChecked(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextSetChecked(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextSetChecked(in).Marshal()
 	return resp
 }
 
@@ -2632,7 +2631,7 @@ func BlockTextSetIcon(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextSetIcon(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextSetIcon(in).Marshal()
 	return resp
 }
 
@@ -2652,7 +2651,7 @@ func BlockTextListSetColor(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextListSetColor(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextListSetColor(in).Marshal()
 	return resp
 }
 
@@ -2672,7 +2671,7 @@ func BlockTextListSetMark(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextListSetMark(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextListSetMark(in).Marshal()
 	return resp
 }
 
@@ -2692,7 +2691,7 @@ func BlockTextListSetStyle(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextListSetStyle(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextListSetStyle(in).Marshal()
 	return resp
 }
 
@@ -2712,7 +2711,7 @@ func BlockTextListClearStyle(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextListClearStyle(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextListClearStyle(in).Marshal()
 	return resp
 }
 
@@ -2732,7 +2731,7 @@ func BlockTextListClearContent(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTextListClearContent(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTextListClearContent(in).Marshal()
 	return resp
 }
 
@@ -2752,7 +2751,7 @@ func BlockFileSetName(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockFileSetName(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockFileSetName(in).Marshal()
 	return resp
 }
 
@@ -2772,7 +2771,7 @@ func BlockImageSetName(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockImageSetName(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockImageSetName(in).Marshal()
 	return resp
 }
 
@@ -2792,7 +2791,7 @@ func BlockVideoSetName(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockVideoSetName(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockVideoSetName(in).Marshal()
 	return resp
 }
 
@@ -2812,7 +2811,7 @@ func BlockFileCreateAndUpload(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockFileCreateAndUpload(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockFileCreateAndUpload(in).Marshal()
 	return resp
 }
 
@@ -2832,7 +2831,7 @@ func BlockFileListSetStyle(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockFileListSetStyle(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockFileListSetStyle(in).Marshal()
 	return resp
 }
 
@@ -2852,7 +2851,7 @@ func BlockDataviewViewCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewViewCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewViewCreate(in).Marshal()
 	return resp
 }
 
@@ -2872,7 +2871,7 @@ func BlockDataviewViewDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewViewDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewViewDelete(in).Marshal()
 	return resp
 }
 
@@ -2892,7 +2891,7 @@ func BlockDataviewViewUpdate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewViewUpdate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewViewUpdate(in).Marshal()
 	return resp
 }
 
@@ -2912,7 +2911,7 @@ func BlockDataviewViewSetActive(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewViewSetActive(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewViewSetActive(in).Marshal()
 	return resp
 }
 
@@ -2932,7 +2931,7 @@ func BlockDataviewViewSetPosition(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewViewSetPosition(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewViewSetPosition(in).Marshal()
 	return resp
 }
 
@@ -2952,7 +2951,7 @@ func BlockDataviewSetSource(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewSetSource(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewSetSource(in).Marshal()
 	return resp
 }
 
@@ -2972,7 +2971,7 @@ func BlockDataviewRelationAdd(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewRelationAdd(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewRelationAdd(in).Marshal()
 	return resp
 }
 
@@ -2992,7 +2991,7 @@ func BlockDataviewRelationDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewRelationDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewRelationDelete(in).Marshal()
 	return resp
 }
 
@@ -3012,7 +3011,7 @@ func BlockDataviewRelationListAvailable(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewRelationListAvailable(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewRelationListAvailable(in).Marshal()
 	return resp
 }
 
@@ -3032,7 +3031,7 @@ func BlockDataviewGroupOrderUpdate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewGroupOrderUpdate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewGroupOrderUpdate(in).Marshal()
 	return resp
 }
 
@@ -3052,7 +3051,7 @@ func BlockDataviewObjectOrderUpdate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDataviewObjectOrderUpdate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDataviewObjectOrderUpdate(in).Marshal()
 	return resp
 }
 
@@ -3072,7 +3071,7 @@ func BlockTableCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableCreate(in).Marshal()
 	return resp
 }
 
@@ -3092,7 +3091,7 @@ func BlockTableExpand(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableExpand(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableExpand(in).Marshal()
 	return resp
 }
 
@@ -3112,7 +3111,7 @@ func BlockTableRowCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableRowCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableRowCreate(in).Marshal()
 	return resp
 }
 
@@ -3132,7 +3131,7 @@ func BlockTableRowDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableRowDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableRowDelete(in).Marshal()
 	return resp
 }
 
@@ -3152,7 +3151,7 @@ func BlockTableRowDuplicate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableRowDuplicate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableRowDuplicate(in).Marshal()
 	return resp
 }
 
@@ -3172,7 +3171,7 @@ func BlockTableRowSetHeader(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableRowSetHeader(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableRowSetHeader(in).Marshal()
 	return resp
 }
 
@@ -3192,7 +3191,7 @@ func BlockTableColumnCreate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableColumnCreate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableColumnCreate(in).Marshal()
 	return resp
 }
 
@@ -3212,7 +3211,7 @@ func BlockTableColumnMove(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableColumnMove(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableColumnMove(in).Marshal()
 	return resp
 }
 
@@ -3232,7 +3231,7 @@ func BlockTableColumnDelete(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableColumnDelete(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableColumnDelete(in).Marshal()
 	return resp
 }
 
@@ -3252,7 +3251,7 @@ func BlockTableColumnDuplicate(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableColumnDuplicate(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableColumnDuplicate(in).Marshal()
 	return resp
 }
 
@@ -3272,7 +3271,7 @@ func BlockTableRowListFill(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableRowListFill(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableRowListFill(in).Marshal()
 	return resp
 }
 
@@ -3292,7 +3291,7 @@ func BlockTableRowListClean(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableRowListClean(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableRowListClean(in).Marshal()
 	return resp
 }
 
@@ -3312,7 +3311,7 @@ func BlockTableColumnListFill(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableColumnListFill(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableColumnListFill(in).Marshal()
 	return resp
 }
 
@@ -3332,7 +3331,7 @@ func BlockTableSort(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockTableSort(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockTableSort(in).Marshal()
 	return resp
 }
 
@@ -3352,7 +3351,7 @@ func BlockLinkCreateWithObject(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockLinkCreateWithObject(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockLinkCreateWithObject(in).Marshal()
 	return resp
 }
 
@@ -3372,7 +3371,7 @@ func BlockLinkListSetAppearance(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockLinkListSetAppearance(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockLinkListSetAppearance(in).Marshal()
 	return resp
 }
 
@@ -3392,7 +3391,7 @@ func BlockBookmarkFetch(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockBookmarkFetch(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockBookmarkFetch(in).Marshal()
 	return resp
 }
 
@@ -3412,7 +3411,7 @@ func BlockBookmarkCreateAndFetch(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockBookmarkCreateAndFetch(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockBookmarkCreateAndFetch(in).Marshal()
 	return resp
 }
 
@@ -3432,7 +3431,7 @@ func BlockRelationSetKey(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockRelationSetKey(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockRelationSetKey(in).Marshal()
 	return resp
 }
 
@@ -3452,7 +3451,7 @@ func BlockRelationAdd(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockRelationAdd(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockRelationAdd(in).Marshal()
 	return resp
 }
 
@@ -3472,7 +3471,7 @@ func BlockDivListSetStyle(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockDivListSetStyle(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockDivListSetStyle(in).Marshal()
 	return resp
 }
 
@@ -3492,7 +3491,7 @@ func BlockLatexSetText(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockLatexSetText(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockLatexSetText(in).Marshal()
 	return resp
 }
 
@@ -3512,7 +3511,7 @@ func ProcessCancel(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.ProcessCancel(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.ProcessCancel(in).Marshal()
 	return resp
 }
 
@@ -3532,7 +3531,7 @@ func LogSend(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.LogSend(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.LogSend(in).Marshal()
 	return resp
 }
 
@@ -3552,7 +3551,7 @@ func DebugSync(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.DebugSync(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.DebugSync(in).Marshal()
 	return resp
 }
 
@@ -3572,7 +3571,7 @@ func DebugThread(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.DebugThread(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.DebugThread(in).Marshal()
 	return resp
 }
 
@@ -3592,7 +3591,7 @@ func DebugTree(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.DebugTree(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.DebugTree(in).Marshal()
 	return resp
 }
 
@@ -3612,7 +3611,7 @@ func DebugExportLocalstore(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.DebugExportLocalstore(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.DebugExportLocalstore(in).Marshal()
 	return resp
 }
 
@@ -3632,7 +3631,7 @@ func DebugPing(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.DebugPing(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.DebugPing(in).Marshal()
 	return resp
 }
 
@@ -3652,7 +3651,7 @@ func MetricsSetParameters(b []byte) (resp []byte) {
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.MetricsSetParameters(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.MetricsSetParameters(in).Marshal()
 	return resp
 }
 
