@@ -257,7 +257,7 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
-      "url",
+      "source",
       "picture",
       "notes",
       "quote"

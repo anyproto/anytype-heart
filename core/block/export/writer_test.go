@@ -17,7 +17,7 @@ func TestDirWriter_WriteFile(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
 
-	wr, err := newDirWriter(path)
+	wr, err := newDirWriter(path, false)
 	require.NoError(t, err)
 	require.NoError(t, wr.WriteFile("some.test", strings.NewReader("some string")))
 	require.NoError(t, wr.Close())

@@ -2044,10 +2044,14 @@ func (m *BlockContentDiv) GetStyle() BlockContentDivStyle {
 //
 // Bookmark is to keep a web-link and to preview a content.
 type BlockContentBookmark struct {
-	Url            string                    `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Title          string                    `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Description    string                    `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	ImageHash      string                    `protobuf:"bytes,4,opt,name=imageHash,proto3" json:"imageHash,omitempty"`
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	// Deprecated. Get this data from the target object.
+	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// Deprecated. Get this data from the target object.
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	// Deprecated. Get this data from the target object.
+	ImageHash string `protobuf:"bytes,4,opt,name=imageHash,proto3" json:"imageHash,omitempty"`
+	// Deprecated. Get this data from the target object.
 	FaviconHash    string                    `protobuf:"bytes,5,opt,name=faviconHash,proto3" json:"faviconHash,omitempty"`
 	Type           LinkPreviewType           `protobuf:"varint,6,opt,name=type,proto3,enum=anytype.model.LinkPreviewType" json:"type,omitempty"`
 	TargetObjectId string                    `protobuf:"bytes,7,opt,name=targetObjectId,proto3" json:"targetObjectId,omitempty"`

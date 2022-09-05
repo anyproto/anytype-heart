@@ -1191,7 +1191,7 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 		}
 		v, err := txn.Get(pagesDetailsBase.ChildString(id))
 		if err != nil {
-			log.Errorf("QueryByIds failed to find id: %s", id)
+			log.Infof("QueryByIds failed to find id: %s", id)
 			continue
 		}
 

@@ -11,7 +11,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/globalsign/mgo/bson"
 )
@@ -146,12 +148,30 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 	content := bm.GetContent()
 
+	// Fix broken empty bookmarks
+	// we had a bug that migrated empty bookmarks blocks into bookmark objects. Now we need to reset them
+	// todo: remove this after we stop to populate bookmark block fields
+	if content.Url == "" && content.State == model.BlockContentBookmark_Done && content.Title == "" && content.FaviconHash == "" && content.TargetObjectId != "" {
+		det, _ := b.Anytype().ObjectStore().GetDetails(content.TargetObjectId)
+		if det != nil && pbtypes.GetString(det.Details, bundle.RelationKeyUrl.String()) == "" && pbtypes.GetString(det.Details, bundle.RelationKeySource.String()) == "" {
+			bm.UpdateContent(func(content *model.BlockContentBookmark) {
+				content.State = model.BlockContentBookmark_Empty
+				content.TargetObjectId = ""
+			})
+		}
+		return nil
+	}
+
 	if content.TargetObjectId != "" {
 		if content.State != model.BlockContentBookmark_Done {
 			bm.UpdateContent(func(content *model.BlockContentBookmark) {
 				content.State = model.BlockContentBookmark_Done
 			})
 		}
+		return nil
+	}
+
+	if content.Url == "" {
 		return nil
 	}
 

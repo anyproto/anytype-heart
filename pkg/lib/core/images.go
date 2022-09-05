@@ -68,6 +68,9 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 
 	details, err := img.Details()
 	if err != nil {
+		if err == ErrFileNotIndexable {
+			return img, nil
+		}
 		return nil, err
 	}
 

@@ -1649,5 +1649,14 @@
     "name": "Smartblock types",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "url",
+    "hidden": false,
+    "key": "source",
+    "maxCount": 1,
+    "name": "Source",
+    "readonly": false,
+    "source": "details"
   }
 ]

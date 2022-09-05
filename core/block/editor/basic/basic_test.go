@@ -79,11 +79,15 @@ func TestBasic_Duplicate(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
 		AddBlock(simple.New(&model.Block{Id: "3"}))
 
-	b := NewBasic(sb)
-	newIds, err := b.Duplicate(nil, pb.RpcBlockListDuplicateRequest{
+	st := sb.NewState()
+	newIds, err := Duplicate(pb.RpcBlockListDuplicateRequest{
 		BlockIds: []string{"2"},
-	})
+	}, st, st)
 	require.NoError(t, err)
+
+	err = sb.Apply(st)
+	require.NoError(t, err)
+
 	require.Len(t, newIds, 1)
 	s := sb.NewState()
 	assert.Len(t, s.Pick(newIds[0]).Model().ChildrenIds, 1)

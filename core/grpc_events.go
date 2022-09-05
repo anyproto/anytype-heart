@@ -32,9 +32,9 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 	select {
 	case <-stopChan:
 		log.Errorf("stream %s interrupted", req.Token)
-		return
 	case <-srv.Done:
 		log.Errorf("stream %s closed", req.Token)
-		return
+	case <-srv.Server.Context().Done():
+		log.Errorf("stream %s context canceled", req.Token)
 	}
 }
