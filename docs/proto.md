@@ -9400,6 +9400,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | contextId | [string](#string) |  | id of the context blo1k |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 
 
@@ -10247,6 +10248,7 @@ deprecated, to be removed |
 | contextId | [string](#string) |  | deprecated |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 
 

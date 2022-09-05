@@ -116,6 +116,7 @@ type SmartBlock interface {
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
+	EnabledRelationAsDependentObjects()
 	AddHook(f HookCallback, events ...Hook)
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() (doc.DocInfo, error)
@@ -164,8 +165,9 @@ type smartBlock struct {
 	objectStore         objectstore.ObjectStore
 	relationService     relation2.Service
 	isDeleted           bool
+	disableLayouts      bool
 
-	disableLayouts bool
+	includeRelationObjectsAsDependents bool // used by some clients
 
 	hooks map[Hook][]HookCallback
 
@@ -347,7 +349,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	}
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
-	sb.depIds = sb.dependentSmartIds(true, true, true)
+	sb.depIds = sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
 	sort.Strings(sb.depIds)
 	var records []database.Record
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
@@ -474,7 +476,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 }
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
-func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool, includeHidden bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, includeHidden bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 
 	if sb.Type() != model.SmartBlockType_Breadcrumbs {
@@ -492,6 +494,9 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 
 		for _, rel := range sb.Relations(nil) {
 			// do not index local dates such as lastOpened/lastModified
+			if includeRelations {
+				ids = append(ids, rel.Id)
+			}
 			if rel.Format == model.RelationFormat_date &&
 				(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
 				relInt := pbtypes.GetInt64(details, rel.Key)
@@ -563,6 +568,10 @@ func (sb *smartBlock) IsLocked() bool {
 
 func (sb *smartBlock) DisableLayouts() {
 	sb.disableLayouts = true
+}
+
+func (sb *smartBlock) EnabledRelationAsDependentObjects() {
+	sb.includeRelationObjectsAsDependents = true
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
@@ -700,7 +709,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIds := sb.dependentSmartIds(true, true, true)
+	depIds := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
 	sort.Strings(depIds)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
@@ -1302,7 +1311,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-	links := sb.dependentSmartIds(false, false, false)
+	links := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, false, false, false)
 
 	links = slice.Remove(links, sb.Id())
 	// so links will have this order
