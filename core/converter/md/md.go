@@ -308,6 +308,7 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 		}
 
 		for i, w := range maxColWidth {
+			// The minimum width of a column must be 3
 			if w < 3 {
 				maxColWidth[i] = 3
 			}
