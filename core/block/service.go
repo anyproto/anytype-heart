@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/util"
+	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-datastore/query"
 	"net/url"
 	"strings"
@@ -1643,30 +1644,30 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	if idx := strings.LastIndex(id, util.SubIdSeparator); idx != -1 {
-		parentId := id[:idx]
-		subId := id[idx+1:]
-		if value, err = s.cache.Get(ctx, parentId); err != nil {
+	if bson.IsObjectIdHex(id) {
+		workspaceId := s.anytype.PredefinedBlocks().Account
+		if value, err = s.cache.Get(ctx, workspaceId); err != nil {
 			return
 		}
 
 		var ok bool
 		var ob *openedBlock
 		if ob, ok = value.(*openedBlock); !ok {
-			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, parentId)
+			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, workspaceId)
 		}
 
 		var sbOpener SmartblockOpener
 		if sbOpener, ok = ob.SmartBlock.(SmartblockOpener); !ok {
-			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, parentId)
+			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, workspaceId)
 		}
 
 		var sb smartblock.SmartBlock
-		if sb, err = sbOpener.Open(subId); err != nil {
+		if sb, err = sbOpener.Open(id); err != nil {
 			return
 		}
 		return newOpenedBlock(sb), nil
 	}
+
 	sb, err := s.newSmartBlock(id, nil)
 	if err != nil {
 		return
