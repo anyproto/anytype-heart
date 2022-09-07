@@ -192,7 +192,7 @@ type Service interface {
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
 	CreateRelationOption(opt *types.Struct) (id string, err error)
-	RemoveListOption(ctx *session.Context, ids []string, removeInObjects bool) error
+	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error
 
 	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
@@ -1094,7 +1094,7 @@ func (s *service) CreateRelationOption(opt *types.Struct) (id string, err error)
 	return
 }
 
-func (s *service) RemoveListOption(ctx *session.Context, optIds []string, removeInObjects bool) error {
+func (s *service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
 	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		var ok bool
@@ -1107,9 +1107,8 @@ func (s *service) RemoveListOption(ctx *session.Context, optIds []string, remove
 	}
 
 	for _, id := range optIds {
-		if removeInObjects {
+		if checkInObjects {
 			opt, err := workspace.Open(id)
-
 			relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
 
 			q := database.Query{
@@ -1129,16 +1128,8 @@ func (s *service) RemoveListOption(ctx *session.Context, optIds []string, remove
 				Filters: []query.Filter{f},
 			})
 
-			for _, rec := range records {
-				objId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-				if err := s.Do(objId, func(b smartblock.SmartBlock) error {
-					return b.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{{
-						Key:   relKey,
-						Value: nil,
-					}}, false)
-				}); err != nil {
-					return err
-				}
+			if len(records) > 0 {
+				return ErrOptionUsedByOtherObjects
 			}
 		}
 

@@ -11105,7 +11105,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | optionIds | [string](#string) | repeated |  |
-| removeInObject | [bool](#bool) |  |  |
+| checkInObjects | [bool](#bool) |  |  |
 
 
 
@@ -14360,6 +14360,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| OPTION_USED_BY_OBJECTS | 3 |  |
 
 
 
