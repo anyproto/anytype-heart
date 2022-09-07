@@ -520,6 +520,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 	if s.parent != nil && s.relationLinks != nil {
 		added, removed := s.relationLinks.Diff(s.parent.relationLinks)
+
 		if len(removed) > 0 {
 			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
 				{
@@ -833,6 +834,7 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
+
 	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
 		if b := s.Get("dataview"); b != nil {
 			source := b.Model().GetDataview().GetSource()
@@ -1548,10 +1550,12 @@ func (s *State) SelectRoots(ids []string) []string {
 }
 
 func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
+	links := make([]*model.RelationLink, 0, len(keys))
 	for _, key := range keys {
 		rel := bundle.MustGetRelation(key)
-		s.AddRelationLinks(&model.RelationLink{Id: rel.Id, Key: rel.Key})
+		links = append(links, &model.RelationLink{Id: rel.Id, Key: rel.Key})
 	}
+	s.AddRelationLinks(links...)
 }
 
 type linkSource interface {
