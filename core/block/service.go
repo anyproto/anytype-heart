@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/util"
 	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-datastore/query"
 	"net/url"
@@ -1108,48 +1107,44 @@ func (s *service) RemoveListOption(ctx *session.Context, optIds []string, remove
 	}
 
 	for _, id := range optIds {
-		parts := strings.Split(id, util.SubIdSeparator)
-		if len(parts) != 2 {
-			return fmt.Errorf("not valid option id")
-		}
-		opt, err := workspace.Open(parts[1])
+		if removeInObjects {
+			opt, err := workspace.Open(id)
 
-		relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
+			relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
 
-		q := database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: relKey,
-					Value:       pbtypes.String(opt.Id()),
+			q := database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						RelationKey: relKey,
+						Value:       pbtypes.String(opt.Id()),
+					},
 				},
-			},
-		}
-		f, err := database.NewFilters(q, nil, nil)
-		if err != nil {
-			return nil
-		}
-		records, err := s.objectStore.QueryRaw(query.Query{
-			Filters: []query.Filter{f},
-		})
+			}
+			f, err := database.NewFilters(q, nil, nil)
+			if err != nil {
+				return nil
+			}
+			records, err := s.objectStore.QueryRaw(query.Query{
+				Filters: []query.Filter{f},
+			})
 
-		if len(records) > 0 && !removeInObjects {
-			return fmt.Errorf("option has setted relations")
-		}
-
-		for _, rec := range records {
-			objId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-			if err := s.Do(objId, func(b smartblock.SmartBlock) error {
-				return b.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{{
-					Key:   relKey,
-					Value: nil,
-				}}, false)
-			}); err != nil {
-				return err
+			for _, rec := range records {
+				objId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+				if err := s.Do(objId, func(b smartblock.SmartBlock) error {
+					return b.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{{
+						Key:   relKey,
+						Value: nil,
+					}}, false)
+				}); err != nil {
+					return err
+				}
 			}
 		}
 
-		return s.DeleteObject(id)
+		if err := s.DeleteObject(id); err != nil {
+			return err
+		}
 	}
 
 	return nil
