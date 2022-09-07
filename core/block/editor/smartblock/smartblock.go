@@ -262,12 +262,14 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 
-	// СМОТРЕТЬ СЮДА Add bundled relations
+	// Add bundled relations
+	var relKeys []bundle.RelationKey
 	for k := range ctx.State.Details().GetFields() {
 		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
-			ctx.State.AddBundledRelations(bundle.RelationKey(k))
+			relKeys = append(relKeys, bundle.RelationKey(k))
 		}
 	}
+	ctx.State.AddBundledRelations(relKeys...)
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
