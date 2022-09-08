@@ -46,6 +46,10 @@ func TestHTML_Convert(t *testing.T) {
 									Type:  model.BlockContentTextMark_TextColor,
 									Param: "grey",
 								},
+								{
+									Range: &model.Range{From: 3, To: 4},
+									Type:  model.BlockContentTextMark_Underscored,
+								},
 							},
 						},
 					},
@@ -55,7 +59,7 @@ func TestHTML_Convert(t *testing.T) {
 		res := NewHTMLConverter(nil, s).Convert()
 		res = strings.ReplaceAll(res, wrapCopyStart, "")
 		res = strings.ReplaceAll(res, wrapCopyEnd, "")
-		exp := `<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;"><b>0<i>1</b></i><a href="http://test.test">2</a><span style="color:#aca996">3</span>456789</div>`
+		exp := `<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;"><b>0<i>1</b></i><a href="http://test.test">2</a><span style="color:#aca996"><u>3</span></u>456789</div>`
 		assert.Equal(t, exp, res)
 	})
 	t.Run("lists", func(t *testing.T) {
