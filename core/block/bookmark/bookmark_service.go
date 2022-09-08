@@ -289,7 +289,11 @@ func loadImage(stor core.Service, title, url string) (hash string, err error) {
 
 	fileName := strings.Split(filepath.Base(url), "?")[0]
 	if value := resp.Header.Get("Content-Disposition"); value != "" {
-		fileName = value
+		contentDisposition := strings.Split(value, "filename=")
+		if len(contentDisposition) > 1 {
+			fileName = strings.Trim(contentDisposition[1], "\"")
+		}
+
 	}
 
 	if title != "" {

@@ -191,7 +191,13 @@ func (u *uploader) SetUrl(url string) Uploader {
 			return nil, err
 		}
 
-		fileName := resp.Header.Get("Content-Disposition")
+		var fileName string
+		if content := resp.Header.Get("Content-Disposition"); content != "" {
+			contentDisposition := strings.Split(content, "filename=")
+			if len(contentDisposition) > 1 {
+				fileName = strings.Trim(contentDisposition[1], "\"")
+			}
+		}
 
 		tmpFile, err := ioutil.TempFile(u.anytype.TempDir(), "anytype_downloaded_file_*")
 		if err != nil {
@@ -221,11 +227,11 @@ func (u *uploader) SetUrl(url string) Uploader {
 				return resp.Body.Close()
 			},
 		}
-		return &fileReader {
+		return &fileReader{
 			bufioSeekClose: bsc,
 			getFileName: func() string {
 				return fileName
-			},	
+			},
 		}, nil
 	}
 	return u
@@ -410,24 +416,4 @@ func (u *uploader) updateBlock() {
 			log.Warnf("upload file: can't update info: %v", err)
 		}
 	}
-}
-
-// move to utils.file.go?
-func getFileName(url string) string {
-	fileName := strings.Split(filepath.Base(url), "?")[0]
-	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, url, nil)
-	if err != nil {
-		log.Warnf("upload file: can't get filename: %v", err)
-		return fileName
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Warnf("upload file: can't get filename: %v", err)
-		return fileName
-	}
-	if content := resp.Header.Get("Content-Disposition"); content != "" {
-		return content
-
-	}
-	return fileName
 }
