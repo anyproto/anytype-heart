@@ -847,7 +847,9 @@ func NewTable(s *state.State, id string) (*Table, error) {
 // destructureDivs removes child dividers from block
 func destructureDivs(s *state.State, blockId string) {
 	parent := s.Pick(blockId)
-
+	if parent == nil {
+		return
+	}
 	var foundDiv bool
 	var ids []string
 	for _, id := range parent.Model().ChildrenIds {
