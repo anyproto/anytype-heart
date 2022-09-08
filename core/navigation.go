@@ -124,8 +124,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	switch bundle.TypeKey(ot) {
 	case bundle.TypeKeyBookmark:
 		id, err = mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
-			// TODO: change to KeySource
-			Url: pbtypes.GetString(req.Details, bundle.RelationKeyUrl.String()),
+			Details: req.Details,
 		})
 	case bundle.TypeKeySet:
 		id, err = mw.objectCreateSet(&pb.RpcObjectCreateSetRequest{

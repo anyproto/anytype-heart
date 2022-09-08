@@ -772,7 +772,7 @@ message Rpc {
 
         message CreateBookmark {
             message Request {
-                string url = 1;
+                google.protobuf.Struct details = 1;
             }
 
             message Response {

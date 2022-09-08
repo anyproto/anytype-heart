@@ -34,7 +34,7 @@ const CName = "bookmark"
 type ContentFuture func() *model.BlockContentBookmark
 
 type Service interface {
-	CreateBookmarkObject(url string, getContent ContentFuture) (objectId string, err error)
+	CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	Fetch(id string, params bookmark.FetchParams) (err error)
 	ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
@@ -72,7 +72,16 @@ func (s service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateBookmarkObject(url string, getContent ContentFuture) (objectId string, err error) {
+func (s *service) CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, err error) {
+	if details == nil || details.Fields == nil {
+		return "", fmt.Errorf("empty details")
+	}
+
+	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	if url == "" {
+		return "", fmt.Errorf("source field is empty or not provided")
+	}
+
 	records, _, err := s.store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
@@ -100,12 +109,7 @@ func (s *service) CreateBookmarkObject(url string, getContent ContentFuture) (ob
 		rec := records[0]
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
-		details := &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyType.String():   pbtypes.String(bundle.TypeKeyBookmark.URL()),
-				bundle.RelationKeySource.String(): pbtypes.String(url),
-			},
-		}
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
 		objectId, _, err = s.objectManager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
 		if err != nil {
 			return "", fmt.Errorf("create bookmark object: %w", err)

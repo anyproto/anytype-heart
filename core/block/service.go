@@ -5,13 +5,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/util"
 	"github.com/ipfs/go-datastore/query"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
@@ -1598,12 +1599,12 @@ func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
 func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error) {
-	url, err := uri.ProcessURI(req.Url)
+	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
 		return "", fmt.Errorf("process uri: %w", err)
 	}
-	res := s.fetchBookmarkContent(url)
-	return s.bookmark.CreateBookmarkObject(url, res)
+	res := s.fetchBookmarkContent(u)
+	return s.bookmark.CreateBookmarkObject(req.Details, res)
 }
 
 func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
@@ -1622,7 +1623,11 @@ func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 
 func (s *service) ObjectToBookmark(id string, url string) (objectId string, err error) {
 	objectId, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
-		Url: url,
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeySource.String(): pbtypes.String(url),
+			},
+		},
 	})
 	if err != nil {
 		return
