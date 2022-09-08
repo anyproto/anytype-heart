@@ -28,7 +28,7 @@ func (w *Workspaces) Open(subId string) (sb smartblock.SmartBlock, err error) {
 	return nil, ErrOptionNotFound
 }
 
-func (w *Workspaces) CreateRelationOption(opt *types.Struct) (id string, err error) {
+func (w *Workspaces) CreateRelationOption(opt *types.Struct) (subId string, err error) {
 	if opt == nil || opt.Fields == nil {
 		return "", fmt.Errorf("create option: no data")
 	}
@@ -36,9 +36,8 @@ func (w *Workspaces) CreateRelationOption(opt *types.Struct) (id string, err err
 		return "", fmt.Errorf("field relationKey is empty or absent")
 	}
 
-	subId := bson.NewObjectId().Hex()
-	id = w.Id() + util.SubIdSeparator + subId
-	opt.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	subId = bson.NewObjectId().Hex()
+	opt.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subId)
 
 	st := w.NewState()
 	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(opt))
@@ -58,7 +57,7 @@ func (w *Workspaces) initOption(st *state.State, subId string) (err error) {
 		return
 	}
 	if err = opt.Init(&smartblock.InitContext{
-		Source: w.sourceService.NewStaticSource(w.Id()+util.SubIdSeparator+subId, model.SmartBlockType_RelationOption, subState, w.onOptionChange),
+		Source: w.sourceService.NewStaticSource(subId, model.SmartBlockType_RelationOption, subState, w.onOptionChange),
 		App:    w.app,
 	}); err != nil {
 		return
@@ -82,12 +81,11 @@ func (w *Workspaces) Locked() bool {
 }
 
 func (w *Workspaces) optionSubState(st *state.State, subId string) (*state.State, error) {
-	id := w.Id() + util.SubIdSeparator + subId
 	optData := pbtypes.GetStruct(st.GetCollection(collectionKeyRelationOptions), subId)
 	if optData == nil || optData.Fields == nil {
-		return nil, fmt.Errorf("no data for option: %v", id)
+		return nil, fmt.Errorf("no data for option: %v", subId)
 	}
-	subState := state.NewDoc(id, nil).(*state.State)
+	subState := state.NewDoc(subId, nil).(*state.State)
 	for k, v := range optData.Fields {
 		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
 			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)

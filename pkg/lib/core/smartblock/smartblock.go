@@ -2,7 +2,7 @@ package smartblock
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util"
+	"github.com/globalsign/mgo/bson"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -60,7 +60,7 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 		}
 		return SmartBlockType(sbt), nil
 	}
-	if strings.Index(id, util.SubIdSeparator) > -1 {
+	if bson.IsObjectIdHex(id) {
 		return SmartBlockTypePage, nil
 	}
 	if strings.HasPrefix(id, addr.DatePrefix) {

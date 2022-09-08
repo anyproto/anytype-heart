@@ -536,7 +536,10 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 				ids = append(ids, v)
 			}
 
-			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
+			if rel.Format != model.RelationFormat_object &&
+				rel.Format != model.RelationFormat_file &&
+				rel.Format != model.RelationFormat_status &&
+				rel.Format != model.RelationFormat_tag {
 				continue
 			}
 

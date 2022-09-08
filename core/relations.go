@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -353,29 +354,36 @@ func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelation
 
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
 	ctx := mw.newContext(cctx)
-	response := func(err error) *pb.RpcRelationListRemoveOptionResponse {
+	response := func(code pb.RpcRelationListRemoveOptionResponseErrorCode, err error) *pb.RpcRelationListRemoveOptionResponse {
 		if err != nil {
 			return &pb.RpcRelationListRemoveOptionResponse{
 				Error: &pb.RpcRelationListRemoveOptionResponseError{
-					Code:        pb.RpcRelationListRemoveOptionResponseError_UNKNOWN_ERROR,
+					Code:        code,
 					Description: err.Error(),
 				},
 			}
 		}
+
 		return &pb.RpcRelationListRemoveOptionResponse{
 			Error: &pb.RpcRelationListRemoveOptionResponseError{
-				Code: pb.RpcRelationListRemoveOptionResponseError_NULL,
+				Code:        code,
 			},
 		}
 	}
 
 	err := mw.doBlockService(func(bs block.Service) error {
 		var err error
-		err = bs.RemoveListOption(ctx, request.OptionIds, request.RemoveInObject)
+		err = bs.RemoveListOption(ctx, request.OptionIds, request.CheckInObjects)
 		return err
 	})
+	if err != nil {
+		if errors.Is(err, block.ErrOptionUsedByOtherObjects) {
+			return response(pb.RpcRelationListRemoveOptionResponseError_OPTION_USED_BY_OBJECTS, nil)
+		}
+		return response(pb.RpcRelationListRemoveOptionResponseError_UNKNOWN_ERROR, nil)
+	}
 
-	return response(err)
+	return response(pb.RpcRelationListRemoveOptionResponseError_NULL, nil)
 }
 
 func (mw *Middleware) RelationOptions(cctx context.Context, request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {

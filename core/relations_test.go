@@ -68,7 +68,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	respRelationCreate := mw.ObjectCreateRelation(context.Background(), &pb.RpcObjectCreateRelationRequest{
 		Details: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRelationFormat.String():       pbtypes.Float64(float64(model.RelationFormat_longtext)),
+			bundle.RelationKeyRelationFormat.String():       pbtypes.Float64(float64(model.RelationFormat_tag)),
 			bundle.RelationKeyName.String():        pbtypes.String(relName),
 			bundle.RelationKeyDescription.String(): pbtypes.String(relDesc),
 		}},
@@ -187,7 +187,7 @@ func TestRelations_New_Account(t *testing.T) {
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   respRelationCreate.Key,
-				Value: pbtypes.String(respRelationCreateOption.ObjectId),
+				Value: pbtypes.StringList([]string{respRelationCreateOption.ObjectId}),
 			},
 		},
 	})
@@ -195,7 +195,6 @@ func TestRelations_New_Account(t *testing.T) {
 
 	mw.RelationListRemoveOption(context.Background(), &pb.RpcRelationListRemoveOptionRequest{
 		OptionIds: []string{respRelationCreateOption.ObjectId},
-		RemoveInObject: true,
 	})
 
 	// check if option has been deleted
