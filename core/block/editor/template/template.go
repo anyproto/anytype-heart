@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -21,13 +22,6 @@ const (
 	DataviewBlockId     = "dataview"
 	FeaturedRelationsId = "featuredRelations"
 )
-
-func init() {
-	bookmarkRelationKeysString = make([]string, len(bookmarkRelationKeys))
-	for i, k := range bookmarkRelationKeys {
-		bookmarkRelationKeysString[i] = k.String()
-	}
-}
 
 var log = logging.Logger("anytype-state-template")
 
@@ -449,6 +443,84 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 		}
 	}
 }
+var WithDataviewRelationMigrationRelation = func(id string, source string, from bundle.RelationKey, to bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		rel := bundle.MustGetRelation(to)
+		b := s.Get(id)
+		if b == nil {
+			return
+		}
+		var blockNeedToUpdate bool
+		if dvBlock, ok := b.(simpleDataview.Block); !ok {
+			log.Errorf("WithDataviewRequiredRelation got not dataview block")
+			return
+		} else {
+			dv := dvBlock.Model().GetDataview()
+			if dv == nil {
+				return
+			}
+			if len(dv.Source) != 1 || dv.Source[0] != source {
+				return
+			}
+			var alreadyExists bool
+			for _, r := range dv.Relations {
+				if r.Key == to.String() {
+					alreadyExists = true
+				}
+			}
+
+			if !alreadyExists {
+				for i, r := range dv.Relations {
+					if r.Key == from.String() {
+						blockNeedToUpdate = true
+						dv.Relations[i] = rel
+						break
+					}
+				}
+			}
+
+			for _, view := range dv.Views {
+				if view.Relations == nil {
+					continue
+				}
+
+				var alreadyExists bool
+				for _, r := range view.Relations {
+					if r.Key == to.String() {
+						alreadyExists = true
+					}
+				}
+				if !alreadyExists {
+					for i, er := range view.Relations {
+						if er.Key == from.String() {
+							blockNeedToUpdate = true
+							view.Relations[i] = &model.BlockContentDataviewRelation{
+								Key:             rel.Key,
+								IsVisible:       true,
+								Width:           er.Width,
+								DateIncludeTime: er.DateIncludeTime,
+								TimeFormat:      er.TimeFormat,
+								DateFormat:      er.DateFormat,
+							}
+							break
+						}
+					}
+				}
+
+				for i, f := range view.Filters {
+					if f.RelationKey == from.String() {
+						blockNeedToUpdate = true
+						view.Filters[i].RelationKey = rel.Key
+						break
+					}
+				}
+			}
+			if blockNeedToUpdate {
+				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
+			}
+		}
+	}
+}
 
 var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
@@ -680,16 +752,22 @@ var WithLinkFieldsMigration = func(s *state.State) {
 	return
 }
 
-var bookmarkRelationKeys = []bundle.RelationKey{
-	bundle.RelationKeyUrl,
-	bundle.RelationKeyPicture,
-	bundle.RelationKeyCreatedDate,
-	bundle.RelationKeyTag,
-	bundle.RelationKeyNotes,
-	bundle.RelationKeyQuote,
+var bookmarkRelationKeys = []string{
+	bundle.RelationKeySource.String(),
+	bundle.RelationKeyTag.String(),
 }
 
-var bookmarkRelationKeysString []string
+var oldBookmarkRelationBlocks = []string{
+	bundle.RelationKeyUrl.String(),
+	bundle.RelationKeyPicture.String(),
+	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeyNotes.String(),
+	bundle.RelationKeyQuote.String(),
+}
+
+var oldBookmarkRelations = []string{
+	bundle.RelationKeyUrl.String(),
+}
 
 func makeRelationBlock(k string) *model.Block {
 	return &model.Block{
@@ -703,11 +781,33 @@ func makeRelationBlock(k string) *model.Block {
 }
 
 var WithBookmarkBlocks = func(s *state.State) {
-	s.AddBundledRelations(bookmarkRelationKeys...)
+	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySource, s.Details().Fields[bundle.RelationKeyUrl.String()])
+	}
+
+	for _, oldRel := range oldBookmarkRelationBlocks {
+		s.Unlink(oldRel)
+	}
+
+	for _, oldRel := range oldBookmarkRelations {
+		s.RemoveRelation(addr.BundledRelationURLPrefix + oldRel)
+	}
+
+	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+
+	if slice.FindPos(fr, bundle.RelationKeyCreatedDate.String()) == -1 {
+		fr = append(fr, bundle.RelationKeyCreatedDate.String())
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	}
+
+	for _, k := range bookmarkRelationKeys {
+		if !s.HasRelation(k) {
+			s.AddBundledRelations(bundle.RelationKey(k))
+		}
+	}
 
 	for _, rk := range bookmarkRelationKeys {
-		k := rk.String()
-		if b := s.Pick(k); b != nil {
+		if b := s.Pick(rk); b != nil {
 			if ok := s.Unlink(b.Model().Id); !ok {
 				log.Errorf("can't unlink block %s", b.Model().Id)
 				return
@@ -715,14 +815,14 @@ var WithBookmarkBlocks = func(s *state.State) {
 			continue
 		}
 
-		ok := s.Add(simple.New(makeRelationBlock(k)))
+		ok := s.Add(simple.New(makeRelationBlock(rk)))
 		if !ok {
-			log.Errorf("can't add block %s", k)
+			log.Errorf("can't add block %s", rk)
 			return
 		}
 	}
 
-	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeysString...); err != nil {
+	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
 		log.Errorf("insert relation blocks: %w", err)
 		return
 	}

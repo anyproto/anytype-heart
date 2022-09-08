@@ -303,9 +303,9 @@
     "description": "Indicates whether the relation value is readonly",
     "format": "checkbox",
     "hidden": true,
-    "key": "relationReadonly",
+    "key": "relationReadonlyValue",
     "maxCount": 1,
-    "name": "Relation is readonly",
+    "name": "Relation value is readonly",
     "readonly": true,
     "source": "details"
   },
@@ -1649,5 +1649,14 @@
     "name": "Smartblock types",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "url",
+    "hidden": false,
+    "key": "source",
+    "maxCount": 1,
+    "name": "Source",
+    "readonly": false,
+    "source": "details"
   }
 ]

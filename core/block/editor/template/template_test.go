@@ -49,11 +49,9 @@ func TestWithBookmarkBlocks(t *testing.T) {
 
 	t.Run("required relation blocks placed in chaotic order", func(t *testing.T) {
 		s := state.NewDoc("test", nil).NewState()
-		s.Add(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"extra1", "quote", "tag", "url"}}))
+		s.Add(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"extra1", "tag"}}))
 		s.Add(simple.New(&model.Block{Id: "extra1"}))
-		s.Add(simple.New(makeRelationBlock("quote")))
 		s.Add(simple.New(makeRelationBlock("tag")))
-		s.Add(simple.New(makeRelationBlock("url")))
 
 		WithBookmarkBlocks(s)
 

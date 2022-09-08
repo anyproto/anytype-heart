@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "03239937498effdbe9d978294735509019b36c81c0dd292fdbeeb6bcc589fb23"
+const RelationChecksum = "ddb751b69260a732b2356ebbcf85bc29e63f254b4157a3a8eeb34ccebbbe201e"
 
 type RelationKey string
 
@@ -45,7 +45,7 @@ const (
 	RelationKeyFounders                  RelationKey = "founders"
 	RelationKeyWebsite                   RelationKey = "website"
 	RelationKeyRelationFormat            RelationKey = "relationFormat"
-	RelationKeyRelationReadonly          RelationKey = "relationReadonly"
+	RelationKeyRelationReadonlyValue     RelationKey = "relationReadonlyValue"
 	RelationKeyIconImage                 RelationKey = "iconImage"
 	RelationKeyIngredients               RelationKey = "ingredients"
 	RelationKeyTotal                     RelationKey = "total"
@@ -185,6 +185,7 @@ const (
 	RelationKeyPhone                     RelationKey = "phone"
 	RelationKeyImdbRating                RelationKey = "imdbRating"
 	RelationKeySmartblockTypes           RelationKey = "smartblockTypes"
+	RelationKeySource                    RelationKey = "source"
 )
 
 var (
@@ -1846,16 +1847,16 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyRelationReadonly: {
+		RelationKeyRelationReadonlyValue: {
 
 			DataSource:       model.Relation_details,
 			Description:      "Indicates whether the relation value is readonly",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
-			Id:               "_brrelationReadonly",
-			Key:              "relationReadonly",
+			Id:               "_brrelationReadonlyValue",
+			Key:              "relationReadonlyValue",
 			MaxCount:         1,
-			Name:             "Relation is readonly",
+			Name:             "Relation value is readonly",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2078,6 +2079,19 @@ var (
 			Key:              "solution",
 			MaxCount:         1,
 			Name:             "Solution",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySource: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_url,
+			Id:               "_brsource",
+			Key:              "source",
+			MaxCount:         1,
+			Name:             "Source",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

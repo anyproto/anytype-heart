@@ -22,7 +22,6 @@ import (
 
 type Basic interface {
 	Create(ctx *session.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
-	Duplicate(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(ctx *session.Context, id ...string) (err error)
 	Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
 	Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error)
@@ -80,28 +79,21 @@ func (bs *basic) Create(ctx *session.Context, groupId string, req pb.RpcBlockCre
 	return id, nil
 }
 
-func (bs *basic) Duplicate(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
-	if bs.Type() == model.SmartBlockType_Set {
-		return nil, ErrNotSupported
-	}
+func Duplicate(req pb.RpcBlockListDuplicateRequest, srcState, destState *state.State) (newIds []string, err error) {
 
-	s := bs.NewStateCtx(ctx)
 	pos := req.Position
 	targetId := req.TargetId
 	for _, id := range req.BlockIds {
-		copyId, e := bs.copy(s, id)
+		copyId, e := copyBlocks(srcState, destState, id)
 		if e != nil {
 			return nil, e
 		}
-		if err = s.InsertTo(targetId, pos, copyId); err != nil {
+		if err = destState.InsertTo(targetId, pos, copyId); err != nil {
 			return
 		}
 		pos = model.Block_Bottom
 		targetId = copyId
 		newIds = append(newIds, copyId)
-	}
-	if err = bs.Apply(s); err != nil {
-		return
 	}
 	return
 }
@@ -111,32 +103,32 @@ type duplicatable interface {
 	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
-func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
-	b := s.Get(sourceId)
+func copyBlocks(srcState, destState *state.State, sourceId string) (id string, err error) {
+	b := srcState.Pick(sourceId)
 	if b == nil {
 		return "", smartblock.ErrSimpleBlockNotFound
 	}
 	if v, ok := b.(duplicatable); ok {
-		newId, _, blocks, err := v.Duplicate(s)
+		newId, _, blocks, err := v.Duplicate(srcState)
 		if err != nil {
 			return "", fmt.Errorf("custom block duplication: %w", err)
 		}
 		for _, b := range blocks {
-			s.Add(b)
+			destState.Add(b)
 		}
 		return newId, nil
 	}
 
 	m := b.Copy().Model()
 	m.Id = "" // reset id
-	copy := simple.New(m)
-	s.Add(copy)
-	for i, childrenId := range copy.Model().ChildrenIds {
-		if copy.Model().ChildrenIds[i], err = bs.copy(s, childrenId); err != nil {
+	result := simple.New(m)
+	destState.Add(result)
+	for i, childrenId := range result.Model().ChildrenIds {
+		if result.Model().ChildrenIds[i], err = copyBlocks(srcState, destState, childrenId); err != nil {
 			return
 		}
 	}
-	return copy.Model().Id, nil
+	return result.Model().Id, nil
 }
 
 func (bs *basic) Unlink(ctx *session.Context, ids ...string) (err error) {
@@ -181,6 +173,10 @@ func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObj
 		}
 	}
 
+	if req.DropTargetId == "" {
+		req.DropTargetId = s.RootId()
+		req.Position = model.Block_Inner
+	}
 	target := s.Get(req.DropTargetId)
 	if target == nil {
 		return fmt.Errorf("target block not found")

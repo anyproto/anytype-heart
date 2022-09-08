@@ -82,14 +82,15 @@ func newFixture(t *testing.T) *fixture {
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{
-		BundledObjectTypes:         bundle.TypeChecksum,
-		BundledRelations:           bundle.RelationChecksum,
-		BundledLayouts:             "",
-		ObjectsForceReindexCounter: indexer.ForceThreadsObjectsReindexCounter,
-		FilesForceReindexCounter:   indexer.ForceFilesReindexCounter,
-		IdxRebuildCounter:          indexer.ForceIdxRebuildCounter,
-		FulltextRebuild:            indexer.ForceFulltextIndexCounter,
-		BundledObjects:             indexer.ForceBundledObjectsReindexCounter,
+		BundledObjectTypes:               bundle.TypeChecksum,
+		BundledRelations:                 bundle.RelationChecksum,
+		BundledLayouts:                   "",
+		ObjectsForceReindexCounter:       indexer.ForceThreadsObjectsReindexCounter,
+		FilesForceReindexCounter:         indexer.ForceFilesReindexCounter,
+		IdxRebuildCounter:                indexer.ForceIdxRebuildCounter,
+		FulltextRebuild:                  indexer.ForceFulltextIndexCounter,
+		BundledObjects:                   indexer.ForceBundledObjectsReindexCounter,
+		FilestoreKeysForceReindexCounter: indexer.ForceFilestoreKeysReindexCounter,
 	}).Times(1)
 
 	fx.Indexer = indexer.New()

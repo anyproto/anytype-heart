@@ -84,11 +84,6 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 	log.Warnf("listening %s\n", token)
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
-
-	if s, ok := es.Servers[token]; ok {
-		close(s.Done)
-	}
-
 	if es.Servers == nil {
 		es.Servers = map[string]SessionServer{}
 	}
@@ -96,6 +91,8 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 		Done:   make(chan struct{}),
 		Server: server,
 	}
+
+	// Old connection with this token will be cancelled automatically
 	es.Servers[token] = srv
 	return srv
 }

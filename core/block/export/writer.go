@@ -21,9 +21,13 @@ func uniqName() string {
 	return time.Now().Format("Anytype.20060102.150405.99")
 }
 
-func newDirWriter(path string) (writer, error) {
+func newDirWriter(path string, includeFiles bool) (writer, error) {
 	path = filepath.Join(path, uniqName())
-	if err := os.MkdirAll(filepath.Join(path, "files"), 0777); err != nil {
+	fullPath := path
+	if includeFiles {
+		fullPath = filepath.Join(path, "files")
+	}
+	if err := os.MkdirAll(fullPath, 0777); err != nil {
 		return nil, err
 	}
 	return &dirWriter{

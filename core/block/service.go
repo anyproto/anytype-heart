@@ -96,8 +96,8 @@ type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
 	DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error
 
-	OpenBlock(ctx *session.Context, id string) (*model.ObjectView, error)
-	ShowBlock(ctx *session.Context, id string) (*model.ObjectView, error)
+	OpenBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (*model.ObjectView, error)
+	ShowBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (*model.ObjectView, error)
 	OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectView, blockId string, err error)
 	SetBreadcrumbs(ctx *session.Context, req pb.RpcObjectSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
@@ -375,11 +375,14 @@ func (s *service) Anytype() core.Service {
 	return s.anytype
 }
 
-func (s *service) OpenBlock(ctx *session.Context, id string) (obj *model.ObjectView, err error) {
+func (s *service) OpenBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
 	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
 	if err != nil {
 		return nil, err
+	}
+	if includeRelationsAsDependentObjects {
+		ob.EnabledRelationAsDependentObjects()
 	}
 	afterSmartBlockTime := time.Now()
 	defer s.cache.Release(id)
@@ -432,9 +435,12 @@ func (s *service) OpenBlock(ctx *session.Context, id string) (obj *model.ObjectV
 	return obj, nil
 }
 
-func (s *service) ShowBlock(ctx *session.Context, id string) (obj *model.ObjectView, err error) {
+func (s *service) ShowBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	cctx := context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_show")
 	err2 := s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
+		if includeRelationsAsDependentObjects {
+			b.EnabledRelationAsDependentObjects()
+		}
 		obj, err = b.Show(ctx)
 		return err
 	})

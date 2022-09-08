@@ -41,6 +41,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	templates := []template.StateTransformer{
+		template.WithDataviewRelationMigrationRelation(template.DataviewBlockId, bundle.TypeKeyBookmark.URL(), bundle.RelationKeyUrl, bundle.RelationKeySource),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()})),
 		template.WithDescription,
