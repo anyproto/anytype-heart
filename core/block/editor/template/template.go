@@ -88,13 +88,15 @@ var WithObjectTypeLayoutMigration = func() StateTransformer {
 
 var WithRelations = func(rels []bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
+		var links []*model.RelationLink
 		for _, relKey := range rels {
 			if s.HasRelation(relKey.String()) {
 				continue
 			}
 			rel := bundle.MustGetRelation(relKey)
-			s.AddRelationLinks(&model.RelationLink{Id: rel.Id, Key: rel.Key})
+			links = append(links, &model.RelationLink{Id: rel.Id, Key: rel.Key})
 		}
+		s.AddRelationLinks(links...)
 	}
 }
 
