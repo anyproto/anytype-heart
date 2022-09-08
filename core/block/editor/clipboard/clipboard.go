@@ -278,6 +278,10 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 
 	textArr := strings.Split(req.TextSlot, "\n")
 
+	if !req.IsPartOfBlock && len(textArr) == 1 && len(req.SelectedBlockIds) <= 1 {
+		req.IsPartOfBlock = true
+	}
+
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)
 		if block != nil {

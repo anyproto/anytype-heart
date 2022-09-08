@@ -11,7 +11,6 @@ var (
 		'\r':     struct{}{},
 		'\u200B': struct{}{}, // Zero width space.
 		'\u200C': struct{}{}, // Zero width non-joiner.
-		'\u200D': struct{}{}, // Zero width joiner.
 		'\u2060': struct{}{}, // Word joiner.
 		'\uFEFF': struct{}{}, // Zero width no-break.
 	}
