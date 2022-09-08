@@ -264,6 +264,15 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 
+	// Add bundled relations
+	var relKeys []bundle.RelationKey
+	for k := range ctx.State.Details().GetFields() {
+		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
+			relKeys = append(relKeys, bundle.RelationKey(k))
+		}
+	}
+	ctx.State.AddBundledRelations(relKeys...)
+
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
@@ -536,7 +545,10 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 				ids = append(ids, v)
 			}
 
-			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
+			if rel.Format != model.RelationFormat_object &&
+				rel.Format != model.RelationFormat_file &&
+				rel.Format != model.RelationFormat_status &&
+				rel.Format != model.RelationFormat_tag {
 				continue
 			}
 
@@ -785,8 +797,17 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 			rel := aggregatedRelations.GetByKey(detail.Key)
 			if rel == nil {
-				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
-				return fmt.Errorf("relation not found: you should add the missing relation first")
+				key := bundle.RelationKey(detail.Key)
+				_, err = bundle.GetRelation(key)
+				// Add missing bundled relation
+				if _, ok := s.Details().GetFields()[detail.Key]; err == nil && ok {
+					s.AddBundledRelations(key)
+				} else if bundle.HasRelationKey(bundle.RequiredInternalRelations, key) {
+					s.AddBundledRelations(key)
+				} else {
+					log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
+					return fmt.Errorf("relation not found: you should add the missing relation first")
+				}
 			}
 
 			err = sb.RelationService().ValidateFormat(detail.Key, detail.Value)
