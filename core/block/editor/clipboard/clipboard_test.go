@@ -503,6 +503,17 @@ func TestClipboard_TitleOps(t *testing.T) {
 			},
 		})
 	}
+
+	newBookmark := func(url string) simple.Block {
+		return simple.New(&model.Block{
+			Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{
+					Url: url,
+				},
+			},
+		})
+	}
+
 	withTitle := func(t *testing.T, title string, textBlocks ...string) *smarttest.SmartTest {
 		sb := smarttest.New("text")
 		s := sb.NewState()
@@ -513,6 +524,31 @@ func TestClipboard_TitleOps(t *testing.T) {
 			s.Add(tb)
 			s.InsertTo("", 0, tb.Model().Id)
 		}
+		_, _, err := state.ApplyState(s, false)
+		require.NoError(t, err)
+		return sb
+	}
+
+	withBookmark := func(t *testing.T, firstTextBlock, lastTextBlock, bookmarkUrl string) *smarttest.SmartTest {
+		sb := smarttest.New("text")
+		s := sb.NewState()
+		require.NoError(t, template.InitTemplate(s, template.WithTitle))
+		if firstTextBlock != "" {
+			tb := newTextBlock(firstTextBlock)
+			tb.Model().Id = "firstTextBlockId"
+			s.Add(tb)
+			s.InsertTo("", 0, tb.Model().Id)
+		}
+		if lastTextBlock != "" {
+			tb := newTextBlock(lastTextBlock)
+			tb.Model().Id = "lastTextBlockId"
+			s.Add(tb)
+			s.InsertTo("", 0, tb.Model().Id)
+		}
+		bm := newBookmark(bookmarkUrl)
+		bm.Model().Id = "bookmarkId"
+		s.Add(bm)
+		s.InsertTo("", 0, bm.Model().Id)
 		_, _, err := state.ApplyState(s, false)
 		require.NoError(t, err)
 		return sb
@@ -628,6 +664,69 @@ func TestClipboard_TitleOps(t *testing.T) {
 		assert.Contains(t, htmlSlot, ">it<")
 		require.Len(t, anySlot, 1)
 		assert.Equal(t, "it", anySlot[0].GetText().Text)
+	})
+
+	t.Run("cut text and object block", func(t *testing.T) {
+		var (
+			url              = "http://example.com"
+			text             = "simple text"
+			firstTextBlockId = "firstTextBlockId"
+			bookmarkId       = "bookmarkId"
+			result           = text + "\n"
+		)
+		st := withBookmark(t, text, "", url)
+		cb := NewClipboard(st, nil)
+		textBlock := newTextBlock(text).Model()
+		textBlock.Id = firstTextBlockId
+		bookmark := newBookmark(url).Model()
+		bookmark.Id = bookmarkId
+		blockCutReq := pb.RpcBlockCutRequest{
+			ContextId:         "context",
+			SelectedTextRange: &model.Range{From: 0, To: 11},
+			Blocks:            []*model.Block{textBlock, bookmark},
+		}
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, blockCutReq)
+		require.NoError(t, err)
+		assert.Equal(t, result, textSlot)
+		assert.Len(t, anySlot, 2)
+		assert.Equal(t, firstTextBlockId, anySlot[0].Id)
+		assert.Equal(t, bookmarkId, anySlot[1].Id)
+		assert.Contains(t, htmlSlot, text)
+		assert.Contains(t, htmlSlot, url)
+	})
+	t.Run("cut simple text, link object and simple text", func(t *testing.T) {
+		var (
+			url              = "http://example.com"
+			firstText        = "first text"
+			firstTextBlockId = "firstTextBlockId"
+			lastTextBlockId  = "lastTextBlockId"
+			bookmarkId       = "bookmarkId"
+			secondText       = "second text"
+			result           = firstText + "\n" + secondText + "\n"
+		)
+		st := withBookmark(t, firstText, secondText, url)
+		cb := NewClipboard(st, nil)
+		textBlock := newTextBlock(firstText).Model()
+		textBlock.Id = firstTextBlockId
+		bookmark := newBookmark(url).Model()
+		bookmark.Id = bookmarkId
+		lastTextBlock := newTextBlock(secondText).Model()
+		lastTextBlock.Id = lastTextBlockId
+		blockCutReq := pb.RpcBlockCutRequest{
+			ContextId:         "context",
+			SelectedTextRange: &model.Range{From: 0, To: 11},
+			Blocks:            []*model.Block{textBlock, bookmark, lastTextBlock},
+		}
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, blockCutReq)
+		require.NoError(t, err)
+		assert.Equal(t, result, textSlot)
+		assert.Len(t, anySlot, 3)
+		assert.Equal(t, firstTextBlockId, anySlot[0].Id)
+		assert.Equal(t, bookmarkId, anySlot[1].Id)
+		assert.Equal(t, lastTextBlockId, anySlot[2].Id)
+		assert.Contains(t, htmlSlot, firstText)
+		assert.Contains(t, htmlSlot, url)
+		assert.Contains(t, htmlSlot, secondText)
 	})
 }
 
