@@ -111,7 +111,7 @@ type bufioSeekClose struct {
 
 type fileReader struct {
 	*bufioSeekClose
-	getFileName func() string
+	fileName string
 }
 
 func (bc *bufioSeekClose) Close() error {
@@ -129,10 +129,7 @@ func (bc *bufioSeekClose) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (fr *fileReader) GetFileName() string {
-	if fr.getFileName != nil {
-		return fr.getFileName()
-	}
-	return ""
+	return fr.fileName
 }
 
 func (u *uploader) SetBlock(block file.Block) Uploader {
@@ -229,9 +226,7 @@ func (u *uploader) SetUrl(url string) Uploader {
 		}
 		return &fileReader{
 			bufioSeekClose: bsc,
-			getFileName: func() string {
-				return fileName
-			},
+			fileName:       fileName,
 		}, nil
 	}
 	return u
