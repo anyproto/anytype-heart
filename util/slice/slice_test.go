@@ -39,3 +39,10 @@ func TestHasPrefix(t *testing.T) {
 	assert.True(t, HasPrefix([]string{"1"}, nil))
 	assert.False(t, HasPrefix([]string{"1", "2"}, []string{"1", "3"}))
 }
+
+func TestUnion(t *testing.T) {
+	assert.Equal(t, []string{"a", "b", "c"}, Union([]string{}, []string{"a", "b", "c"}))
+	assert.Equal(t, []string{"a", "b", "c"}, Union([]string{"a"}, []string{"a", "b", "c"}))
+	assert.Equal(t, []string{"a", "b", "c"}, Union([]string{"a"}, []string{"b", "c"}))
+	assert.Equal(t, []string{"a", "b", "c"}, Union([]string{"a", "b", "c"}, []string{}))
+}
