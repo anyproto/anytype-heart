@@ -992,6 +992,10 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
 func (s *service) CreateLinkToTheNewObject(ctx *session.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+	if req.ContextId == req.TemplateId && req.ContextId != "" {
+		err = fmt.Errorf("object can`t create link to itself")
+		return
+	}
 	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
 
 	var creator func(ctx context.Context) (string, error)
