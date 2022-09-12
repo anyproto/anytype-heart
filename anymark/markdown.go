@@ -169,6 +169,7 @@ func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, 
 func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string) {
 	preprocessedSource := string(source)
 
+	preprocessedSource = transformCSSUnderscore(preprocessedSource)
 	// special wiki spaces
 	preprocessedSource = strings.ReplaceAll(preprocessedSource, "<span> </span>", " ")
 	preprocessedSource = reWikiWbr.ReplaceAllString(preprocessedSource, ``)
@@ -193,6 +194,13 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 			return htmlConverter.String("~" + content + "~")
 		},
 	}
+	underscore := htmlConverter.Rule{
+		Filter: []string{"u", "ins"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			content = strings.TrimSpace(content)
+			return htmlConverter.String("<u>" + content + "</u>")
+		},
+	}
 
 	br := htmlConverter.Rule{
 		Filter: []string{"br"},
@@ -207,7 +215,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 		AllowHeaderBreak: true,
 		EmDelimiter:      "*",
 	})
-	converter.AddRules(strikethrough, br)
+	converter.AddRules(strikethrough, br, underscore)
 
 	md, _ := converter.ConvertString(preprocessedSource)
 

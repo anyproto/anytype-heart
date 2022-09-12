@@ -40,7 +40,7 @@ type KeyOrder struct {
 func (ko KeyOrder) Compare(a, b Getter) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
-	comp := av.Compare(bv)
+	comp := 0
 	_, aString := av.GetKind().(*types.Value_StringValue)
 	_, bString := bv.GetKind().(*types.Value_StringValue)
 	if ko.EmptyLast && (aString || av == nil) && (bString || bv == nil) {
@@ -49,6 +49,12 @@ func (ko KeyOrder) Compare(a, b Getter) int {
 		} else if av.GetStringValue() != "" && bv.GetStringValue() == "" {
 			comp = -1
 		}
+	}
+	if aString && bString && comp == 0 {
+		comp = strings.Compare(strings.ToLower(av.GetStringValue()), strings.ToLower(bv.GetStringValue()))
+	}
+	if comp == 0 {
+		comp = av.Compare(bv)
 	}
 	if ko.Type == model.BlockContentDataviewSort_Desc {
 		comp = -comp
@@ -71,16 +77,16 @@ func NewCustomOrder(key string, needOrder []*types.Value, keyOrd KeyOrder) Custo
 	}
 
 	return CustomOrder{
-		Key: key,
+		Key:          key,
 		NeedOrderMap: m,
-		KeyOrd: keyOrd,
+		KeyOrd:       keyOrd,
 	}
 }
 
 type CustomOrder struct {
-	Key string
+	Key          string
 	NeedOrderMap map[string]int
-	KeyOrd KeyOrder
+	KeyOrd       KeyOrder
 }
 
 func (co CustomOrder) Compare(a, b Getter) int {

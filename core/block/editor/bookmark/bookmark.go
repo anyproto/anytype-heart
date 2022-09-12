@@ -163,6 +163,14 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 		return nil
 	}
 
+	if content.State == model.BlockContentBookmark_Error {
+		bm.UpdateContent(func(content *model.BlockContentBookmark) {
+			content.State = model.BlockContentBookmark_Empty
+			content.TargetObjectId = ""
+		})
+		return nil
+	}
+
 	if content.TargetObjectId != "" {
 		if content.State != model.BlockContentBookmark_Done {
 			bm.UpdateContent(func(content *model.BlockContentBookmark) {
