@@ -686,7 +686,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	sb.reportChange(st)
 
-	if hasDepIds(&act) {
+	if hasDepIds(sb.Relations(st), &act) {
 		sb.CheckSubscriptions()
 	}
 	afterReportChangeTime := time.Now()
@@ -1118,7 +1118,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		})
 	}
 	sb.storeFileKeys(s)
-	if hasDepIds(&act) {
+	if hasDepIds(sb.Relations(s), &act) {
 		sb.CheckSubscriptions()
 	}
 	sb.reportChange(s)
@@ -1178,10 +1178,29 @@ func (sb *smartBlock) Close() (err error) {
 	return
 }
 
-func hasDepIds(act *undo.Action) bool {
+func hasDepIds(relations relation2.Relations, act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
+	if act.ObjectTypes != nil {
+		return true
+	}
+	if act.Details != nil {
+		for k, after := range act.Details.After.Fields {
+			rel := relations.GetByKey(k)
+			if rel != nil && len(rel.ObjectTypes) > 0 {
+				before := act.Details.Before.Fields[k]
+				// Check that value is actually changed
+				if before == nil {
+					return true
+				}
+				if !before.Equal(after) {
+					return true
+				}
+			}
+		}
+	}
+
 	for _, edit := range act.Change {
 		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
 			return true
