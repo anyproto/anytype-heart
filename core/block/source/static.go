@@ -18,6 +18,7 @@ func (s *service) NewStaticSource(id string, sbType model.SmartBlockType, doc *s
 		doc:    doc,
 		a:      s.anytype,
 		s:      s,
+		pushChange: pushChange,
 	}
 }
 
@@ -47,7 +48,7 @@ func (s *static) Virtual() bool {
 }
 
 func (s *static) ReadOnly() bool {
-	return true
+	return s.pushChange == nil
 }
 
 func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {

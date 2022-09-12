@@ -3,15 +3,12 @@ package editor
 import (
 	"errors"
 	"fmt"
-	"strings"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -56,13 +53,13 @@ func (w *Workspaces) initOption(st *state.State, subId string) (err error) {
 	if err != nil {
 		return
 	}
+	w.options[subId] = opt
 	if err = opt.Init(&smartblock.InitContext{
 		Source: w.sourceService.NewStaticSource(subId, model.SmartBlockType_RelationOption, subState, w.onOptionChange),
 		App:    w.app,
 	}); err != nil {
 		return
 	}
-	w.options[subId] = opt
 	return
 }
 
@@ -110,18 +107,12 @@ func (w *Workspaces) updateOptions(info smartblock.ApplyInfo) (err error) {
 }
 
 func (w *Workspaces) onOptionChange(params source.PushChangeParams) (changeId string, err error) {
-	w.Lock()
-	defer w.Unlock()
 	st := w.NewState()
 	id := params.State.RootId()
-	var subId string
-	if idx := strings.Index(id, util.SubIdSeparator); idx != -1 {
-		subId = id[idx+1:]
-	}
-	if _, ok := w.options[subId]; !ok {
+	if _, ok := w.options[id]; !ok {
 		return "", fmt.Errorf("onOptionChange: option not exists")
 	}
-	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(params.State.CombinedDetails()))
+	st.SetInStore([]string{collectionKeyRelationOptions, id}, pbtypes.Struct(params.State.CombinedDetails()))
 	return "", w.Apply(st, smartblock.NoHooks)
 }
 
