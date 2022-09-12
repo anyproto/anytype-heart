@@ -63,6 +63,14 @@ func (r *Relation) ToStruct() *types.Struct {
 
 type Relations []*Relation
 
+func RelationsFromModel(relations []*model.Relation) Relations {
+	res := make([]*Relation, 0, len(relations))
+	for _, r := range relations {
+		res = append(res, &Relation{r})
+	}
+	return res
+}
+
 func (rs Relations) Models() []*model.Relation {
 	res := make([]*model.Relation, 0, len(rs))
 	for _, r := range rs {

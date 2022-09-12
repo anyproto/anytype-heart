@@ -799,10 +799,15 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 			if rel == nil {
 				key := bundle.RelationKey(detail.Key)
 				_, err = bundle.GetRelation(key)
+
+				otype, oerr := bundle.GetTypeByUrl(sb.ObjectType())
+
 				// Add missing bundled relation
 				if _, ok := s.Details().GetFields()[detail.Key]; err == nil && ok {
 					s.AddBundledRelations(key)
 				} else if bundle.HasRelationKey(bundle.RequiredInternalRelations, key) {
+					s.AddBundledRelations(key)
+				} else if oerr == nil && relation2.RelationsFromModel(otype.Relations).GetByKey(detail.Key) != nil {
 					s.AddBundledRelations(key)
 				} else {
 					log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
