@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -10,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
@@ -40,10 +42,17 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		return err
 	}
 
+	var featuredRelations []string
+	if ctx.State != nil {
+		featuredRelations = pbtypes.GetStringList(ctx.State.Details(), bundle.RelationKeyFeaturedRelations.String())
+	}
+	// Add missing required featured relations
+	featuredRelations = slice.Union(featuredRelations, []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()})
+
 	templates := []template.StateTransformer{
 		template.WithDataviewRelationMigrationRelation(template.DataviewBlockId, bundle.TypeKeyBookmark.URL(), bundle.RelationKeyUrl, bundle.RelationKeySource),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()})),
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(featuredRelations)),
 		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithBlockEditRestricted(p.Id()),

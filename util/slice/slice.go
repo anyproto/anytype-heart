@@ -6,6 +6,19 @@ import (
 	"sort"
 )
 
+func Union(a, b []string) []string {
+	set := make(map[string]struct{}, len(a))
+	for _, v := range a {
+		set[v] = struct{}{}
+	}
+	for _, v := range b {
+		if _, ok := set[v]; !ok {
+			a = append(a, v)
+		}
+	}
+	return a
+}
+
 func DifferenceRemovedAdded(a, b []string) (removed []string, added []string) {
 	var amap = map[string]struct{}{}
 	var bmap = map[string]struct{}{}
