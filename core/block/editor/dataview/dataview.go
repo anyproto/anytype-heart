@@ -2,6 +2,7 @@ package dataview
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -52,8 +53,8 @@ type Dataview interface {
 	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *session.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
-	AddRelation(ctx *session.Context, blockId, relationId string, showEvent bool) error
-	DeleteRelation(ctx *session.Context, blockId, relationId string, showEvent bool) error
+	AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
+	DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
 	UpdateView(ctx *session.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
 	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
@@ -107,17 +108,19 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 	return d.Apply(s, smartblock.NoRestrictions)
 }
 
-func (d *sdataview) AddRelation(ctx *session.Context, blockId string, relationId string, showEvent bool) (err error) {
+func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
-		return
+		return err
 	}
-	relation, err := d.RelationService().FetchId(relationId)
-	if err != nil {
-		return
+	for _, id := range relationIds {
+		relation, err2 := d.RelationService().FetchId(id)
+		if err2 != nil {
+			return err2
+		}
+		tb.AddRelation(relation.RelationLink())
 	}
-	tb.AddRelation(relation.RelationLink())
 	if showEvent {
 		return d.Apply(s)
 	} else {
@@ -125,15 +128,17 @@ func (d *sdataview) AddRelation(ctx *session.Context, blockId string, relationId
 	}
 }
 
-func (d *sdataview) DeleteRelation(ctx *session.Context, blockId string, relationId string, showEvent bool) error {
+func (d *sdataview) DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 
-	if err = tb.DeleteRelation(relationId); err != nil {
-		return err
+	for _, id := range relationIds {
+		if err = tb.DeleteRelation(id); err != nil {
+			return err
+		}
 	}
 
 	if showEvent {

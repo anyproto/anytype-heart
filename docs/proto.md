@@ -4191,7 +4191,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
-| relationId | [string](#string) |  |  |
+| relationIds | [string](#string) | repeated |  |
 
 
 
@@ -4250,7 +4250,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
-| relationId | [string](#string) |  |  |
+| relationIds | [string](#string) | repeated |  |
 
 
 
