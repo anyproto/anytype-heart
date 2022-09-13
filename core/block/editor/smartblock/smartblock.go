@@ -1186,15 +1186,15 @@ func hasDepIds(relations relation2.Relations, act *undo.Action) bool {
 		return true
 	}
 	if act.Details != nil {
+		if act.Details.Before == nil || act.Details.After == nil {
+			return true
+		}
 		for k, after := range act.Details.After.Fields {
 			rel := relations.GetByKey(k)
 			if rel != nil && len(rel.ObjectTypes) > 0 {
 				before := act.Details.Before.Fields[k]
 				// Check that value is actually changed
-				if before == nil {
-					return true
-				}
-				if !before.Equal(after) {
+				if before == nil || !before.Equal(after) {
 					return true
 				}
 			}
