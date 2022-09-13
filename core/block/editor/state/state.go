@@ -1450,7 +1450,7 @@ func (s *State) PickRelationLinks() pbtypes.RelationLinks {
 		return s.relationLinks
 	}
 	if s.parent != nil {
-		return s.parent.relationLinks
+		return s.parent.PickRelationLinks()
 	}
 	return nil
 }
@@ -1460,7 +1460,8 @@ func (s *State) GetRelationLinks() pbtypes.RelationLinks {
 		return s.relationLinks
 	}
 	if s.parent != nil {
-		s.relationLinks = s.parent.relationLinks.Copy()
+		parentLinks := s.parent.PickRelationLinks()
+		s.relationLinks = parentLinks.Copy()
 		return s.relationLinks
 	}
 	return nil
