@@ -3,6 +3,7 @@ package dataview
 import (
 	"errors"
 	"fmt"
+
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -303,7 +304,6 @@ func (d *Dataview) AddRelation(relation *model.RelationLink) error {
 }
 
 func (d *Dataview) DeleteRelation(relationId string) error {
-	var found bool
 	relationKey, ok := pbtypes.RelationLinks(d.content.RelationLinks).Key(relationId)
 	if !ok {
 		return nil
@@ -328,11 +328,6 @@ func (d *Dataview) DeleteRelation(relationId string) error {
 		}
 		view.Sorts = filteredSorts
 	}
-
-	if !found {
-		return fmt.Errorf("relation not found")
-	}
-
 	return nil
 }
 
