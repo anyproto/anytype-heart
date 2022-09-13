@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/globalsign/mgo/bson"
 	"time"
+
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -246,7 +247,7 @@ func (s *service) CreateDataviewView(ctx *session.Context, req pb.RpcBlockDatavi
 
 func (s *service) AddDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.AddRelation(ctx, req.BlockId, req.RelationId, true)
+		return b.AddRelations(ctx, req.BlockId, req.RelationIds, true)
 	})
 
 	return
@@ -254,7 +255,7 @@ func (s *service) AddDataviewRelation(ctx *session.Context, req pb.RpcBlockDatav
 
 func (s *service) DeleteDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.DeleteRelation(ctx, req.BlockId, req.RelationId, true)
+		return b.DeleteRelations(ctx, req.BlockId, req.RelationIds, true)
 	})
 }
 

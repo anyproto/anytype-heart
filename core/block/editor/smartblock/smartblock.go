@@ -773,11 +773,6 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 		}
 	}
 
-	workspaceId, err := sb.Anytype().GetWorkspaceIdForObject(sb.Id())
-	if err != nil {
-		return fmt.Errorf("workspace for object is not found: %w", err)
-	}
-
 	for _, detail := range details {
 		if detail.Value != nil {
 			if detail.Key == bundle.RelationKeyType.String() {
@@ -798,7 +793,8 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 				continue
 			}
 
-			rel, err := sb.RelationService().FetchKey(detail.Key, relation2.WithWorkspaceId(workspaceId))
+			// TODO: add relation2.WithWorkspaceId(workspaceId) filter
+			rel, err := sb.RelationService().FetchKey(detail.Key)
 			if err != nil {
 				return fmt.Errorf("fetch relation by key %s: %w", detail.Key, err)
 			}
