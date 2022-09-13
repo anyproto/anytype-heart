@@ -288,10 +288,33 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 	md := anymark.New()
 	blocks, _, err := md.MarkdownToBlocks([]byte(mdText), "", []string{})
 	if err != nil {
-		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
+		return cb.pasteRawText(ctx, req, textArr, groupId)
 	}
 	req.AnySlot = append(req.AnySlot, blocks...)
 
+	return cb.pasteAny(ctx, req, groupId)
+}
+
+func (cb *clipboard) pasteRawText(ctx *session.Context, req *pb.RpcBlockPasteRequest, textArr []string, groupId string) ([]string, []pb.RpcBlockUploadRequest, int32, bool, error) {
+	if len(req.FocusedBlockId) > 0 {
+		block := cb.Pick(req.FocusedBlockId)
+		if block != nil {
+			if b := block.Model().GetText(); b != nil && b.Style == model.BlockContentText_Code {
+				textArr = []string{req.TextSlot}
+			}
+		}
+	}
+
+	req.AnySlot = make([]*model.Block, 0, len(textArr))
+	for _, text := range textArr {
+		if text != "" {
+			req.AnySlot = append(req.AnySlot, &model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Text: text},
+				},
+			})
+		}
+	}
 	return cb.pasteAny(ctx, req, groupId)
 }
 
