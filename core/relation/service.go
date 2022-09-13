@@ -43,7 +43,7 @@ type objectCreator interface {
 type Service interface {
 	FetchIds(ids ...string) (relations Relations, err error)
 	FetchId(id string) (relation *Relation, err error)
-	FetchKey(key string) (relation *Relation, err error)
+	FetchKey(key string, opts ...FetchOption) (relation *Relation, err error)
 	FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error)
 
 	Create(details *types.Struct) (rl *model.RelationLink, err error)
@@ -125,16 +125,32 @@ func (s *service) FetchId(id string) (relation *Relation, err error) {
 	return rels[0], nil
 }
 
-func (s *service) FetchKey(key string) (relation *Relation, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.fetchKey(key)
+type fetchOptions struct {
+	workspaceId *string
 }
 
-func (s *service) fetchKey(key string) (relation *Relation, err error) {
+type FetchOption func(options *fetchOptions)
+
+func WithWorkspaceId(id string) FetchOption {
+	return func(options *fetchOptions) {
+		options.workspaceId = &id
+	}
+}
+
+func (s *service) FetchKey(key string, opts ...FetchOption) (relation *Relation, err error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.fetchKey(key, opts...)
+}
+
+func (s *service) fetchKey(key string, opts ...FetchOption) (relation *Relation, err error) {
 	if b, _ := bundle.GetRelation(bundle.RelationKey(key)); b != nil {
 		b.Id = addr.BundledRelationURLPrefix + key
 		return &Relation{b}, nil
+	}
+	o := &fetchOptions{}
+	for _, apply := range opts {
+		apply(o)
 	}
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -149,6 +165,13 @@ func (s *service) fetchKey(key string) (relation *Relation, err error) {
 				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
 			},
 		},
+	}
+	if o.workspaceId != nil {
+		q.Filters = append(q.Filters, &model.BlockContentDataviewFilter{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyWorkspaceId.String(),
+			Value:       pbtypes.String(*o.workspaceId),
+		})
 	}
 	f, err := database.NewFilters(q, nil, nil)
 	if err != nil {

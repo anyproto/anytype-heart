@@ -773,7 +773,10 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 		}
 	}
 
-	aggregatedRelations := sb.Relations(s)
+	workspaceId, err := sb.Anytype().GetWorkspaceIdForObject(sb.Id())
+	if err != nil {
+		return fmt.Errorf("workspace for object is not found: %w", err)
+	}
 
 	for _, detail := range details {
 		if detail.Value != nil {
@@ -795,20 +798,17 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 				continue
 			}
 
-			rel := aggregatedRelations.GetByKey(detail.Key)
-			if rel == nil {
-				key := bundle.RelationKey(detail.Key)
-				_, err = bundle.GetRelation(key)
-				// Add missing bundled relation
-				if _, ok := s.Details().GetFields()[detail.Key]; err == nil && ok {
-					s.AddBundledRelations(key)
-				} else if bundle.HasRelationKey(bundle.RequiredInternalRelations, key) {
-					s.AddBundledRelations(key)
-				} else {
-					log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
-					return fmt.Errorf("relation not found: you should add the missing relation first")
-				}
+			rel, err := sb.RelationService().FetchKey(detail.Key, relation2.WithWorkspaceId(workspaceId))
+			if err != nil {
+				return fmt.Errorf("fetch relation by key %s: %w", detail.Key, err)
 			}
+			if rel == nil {
+				return fmt.Errorf("relation %s is not found", detail.Key)
+			}
+			s.AddRelationLinks(&model.RelationLink{
+				Id:  rel.Id,
+				Key: rel.Key,
+			})
 
 			err = sb.RelationService().ValidateFormat(detail.Key, detail.Value)
 			if err != nil {
