@@ -283,6 +283,15 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 		req.IsPartOfBlock = true
 	}
 
+	if len(req.FocusedBlockId) > 0 {
+		block := cb.Pick(req.FocusedBlockId)
+		if block != nil {
+			if b := block.Model().GetText(); b != nil && b.Style == model.BlockContentText_Code {
+				return cb.pasteRawText(ctx, req, []string{req.TextSlot}, groupId)
+			}
+		}
+	}
+
 	mdText := spaceReplace.WhitespaceNormalizeString(req.TextSlot)
 
 	md := anymark.New()
@@ -296,15 +305,6 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 }
 
 func (cb *clipboard) pasteRawText(ctx *session.Context, req *pb.RpcBlockPasteRequest, textArr []string, groupId string) ([]string, []pb.RpcBlockUploadRequest, int32, bool, error) {
-	if len(req.FocusedBlockId) > 0 {
-		block := cb.Pick(req.FocusedBlockId)
-		if block != nil {
-			if b := block.Model().GetText(); b != nil && b.Style == model.BlockContentText_Code {
-				textArr = []string{req.TextSlot}
-			}
-		}
-	}
-
 	req.AnySlot = make([]*model.Block, 0, len(textArr))
 	for _, text := range textArr {
 		if text != "" {
