@@ -155,6 +155,11 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 			} else {
 				lastTextBlock = b
 			}
+		} else {
+			// if text block + object block - go to cutBlocks scenario imediately 
+			firstTextBlock = nil
+			lastTextBlock = nil
+			break
 		}
 	}
 
