@@ -1113,8 +1113,8 @@ func (s *service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExis
 	}
 	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
 		srcState := cb.NewState()
-		err := s.Do(req.TargetContextId, func(cb smartblock.SmartBlock) error {
-			destState := cb.NewState()
+		err := s.Do(req.TargetContextId, func(sb smartblock.SmartBlock) error {
+			destState := sb.NewState()
 			_, err := basic.Duplicate(pb.RpcBlockListDuplicateRequest{
 				ContextId:       req.ContextId,
 				TargetId:        req.DropTargetId,
@@ -1126,7 +1126,7 @@ func (s *service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExis
 				return fmt.Errorf("paste: %w", err)
 			}
 			basic.CutBlocks(srcState, req.BlockIds)
-			return cb.Apply(destState)
+			return sb.Apply(destState)
 		})
 		if err != nil {
 			return err
