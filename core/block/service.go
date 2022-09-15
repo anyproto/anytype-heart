@@ -1665,7 +1665,9 @@ func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		return newOpenedBlock(sb), nil
 	}
 
-	sb, err := s.newSmartBlock(id, nil)
+	sb, err := s.newSmartBlock(id, &smartblock.InitContext{
+		Ctx: ctx,
+	})
 	if err != nil {
 		return
 	}
