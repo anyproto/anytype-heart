@@ -205,10 +205,19 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 }
 
 
-func EventToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change {
+func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change {
 	var res []slice.Change
 	for _, eventCh := range changes {
 		res = append(res, slice.Change{Op: slice.DiffOperation(eventCh.Op), Ids: eventCh.Ids, AfterId: eventCh.AfterId})
+	}
+
+	return res
+}
+
+func SliceChangeToEvents(changes []slice.Change) []*pb.EventBlockDataviewSliceChange {
+	var res []*pb.EventBlockDataviewSliceChange
+	for _, sliceCh := range changes {
+		res = append(res, &pb.EventBlockDataviewSliceChange{Op: pb.EventBlockDataviewSliceOperation(sliceCh.Op), Ids: sliceCh.Ids, AfterId: sliceCh.AfterId})
 	}
 
 	return res

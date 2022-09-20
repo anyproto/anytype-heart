@@ -220,7 +220,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				for _, order := range b.Model().GetDataview().ObjectOrders {
 					if order.ViewId == o.BlockDataViewObjectOrderUpdate.ViewId && order.GroupId == o.BlockDataViewObjectOrderUpdate.GroupId {
 						changes := o.BlockDataViewObjectOrderUpdate.GetSliceChanges()
-						changedIds := slice.ApplyChanges(order.ObjectIds, pbtypes.EventToSliceChange(changes))
+						changedIds := slice.ApplyChanges(order.ObjectIds, pbtypes.EventsToSliceChange(changes))
 						order.ObjectIds = changedIds
 					}
 				}

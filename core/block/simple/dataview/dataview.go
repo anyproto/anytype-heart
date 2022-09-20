@@ -114,11 +114,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 	for _, order2 := range dv.content.ObjectOrders {
 		var found bool
-		var changed bool
+		var changes []slice.Change
 		for _, order1 := range d.content.ObjectOrders {
 			if order1.ViewId == order2.ViewId && order1.GroupId == order2.GroupId {
 				found = true
-				changed = !proto.Equal(order1, order2)
+				changes = slice.Diff(order1.ObjectIds, order2.ObjectIds)
 				break
 			}
 		}
@@ -135,7 +135,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 						}}}})
 		}
 
-		if changed {
+		if len(changes) > 0 {
 			msgs = append(msgs,
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
@@ -143,7 +143,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 							Id:         dv.Id,
 							ViewId: order2.ViewId,
 							GroupId: order2.GroupId,
-							SliceChanges: []*pb.EventBlockDataviewSliceChange{{Op: pb.EventBlockDataview_SliceOperationReplace, Ids: order2.ObjectIds}},
+							SliceChanges: pbtypes.SliceChangeToEvents(changes),
 						}}}})
 		}
 	}
