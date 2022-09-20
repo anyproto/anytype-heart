@@ -1,6 +1,7 @@
 package pbtypes
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -201,4 +202,14 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 		}
 	}
 	return
+}
+
+
+func EventToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change {
+	var res []slice.Change
+	for _, eventCh := range changes {
+		res = append(res, slice.Change{Op: slice.DiffOperation(eventCh.Op), Ids: eventCh.Ids, AfterId: eventCh.AfterId})
+	}
+
+	return res
 }

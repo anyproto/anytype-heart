@@ -112,6 +112,42 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		}
 	}
 
+	for _, order2 := range dv.content.ObjectOrders {
+		var found bool
+		var changed bool
+		for _, order1 := range d.content.ObjectOrders {
+			if order1.ViewId == order2.ViewId && order1.GroupId == order2.GroupId {
+				found = true
+				changed = !proto.Equal(order1, order2)
+				break
+			}
+		}
+
+		if !found {
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+						&pb.EventBlockDataviewObjectOrderUpdate{
+							Id:         dv.Id,
+							ViewId: order2.ViewId,
+							GroupId: order2.GroupId,
+							SliceChanges: []*pb.EventBlockDataviewSliceChange{{Op: pb.EventBlockDataview_SliceOperationAdd, Ids: order2.ObjectIds}},
+						}}}})
+		}
+
+		if changed {
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+						&pb.EventBlockDataviewObjectOrderUpdate{
+							Id:         dv.Id,
+							ViewId: order2.ViewId,
+							GroupId: order2.GroupId,
+							SliceChanges: []*pb.EventBlockDataviewSliceChange{{Op: pb.EventBlockDataview_SliceOperationReplace, Ids: order2.ObjectIds}},
+						}}}})
+		}
+	}
+
 	// @TODO: rewrite for optimised compare
 	for _, view2 := range dv.content.Views {
 		var found bool
