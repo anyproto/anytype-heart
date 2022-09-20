@@ -52,7 +52,7 @@ var FormatFilePossibleTargetObjectTypes = []string{
 
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
-	coresb.SmartBlockTypeProfilePage: TypeKeyProfile,
+	coresb.SmartBlockTypeProfilePage: TypeKeyPage,
 	coresb.SmartBlockTypeSet:         TypeKeySet,
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
 	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
