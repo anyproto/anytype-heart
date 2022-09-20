@@ -15644,9 +15644,9 @@ sent when the dataview relation has been changed or added
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| Op | [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation) |  |  |
-| Ids | [string](#string) | repeated |  |
-| AfterId | [string](#string) |  |  |
+| op | [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation) |  |  |
+| ids | [string](#string) | repeated |  |
+| afterId | [string](#string) |  |  |
 
 
 

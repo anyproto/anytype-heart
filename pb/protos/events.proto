@@ -750,9 +750,9 @@ message Event {
             }
 
             message SliceChange {
-                SliceOperation Op = 1;
-                repeated string Ids = 2;
-                string AfterId = 3;
+                SliceOperation op = 1;
+                repeated string ids = 2;
+                string afterId = 3;
             }
 
             enum SliceOperation {
