@@ -71,6 +71,14 @@ func (rs Relations) Models() []*model.Relation {
 	return res
 }
 
+func (rs Relations) RelationLinks() []*model.RelationLink {
+	res := make([]*model.RelationLink, 0, len(rs))
+	for _, r := range rs {
+		res = append(res, r.RelationLink())
+	}
+	return res
+}
+
 func (rs Relations) GetByKey(key string) *Relation {
 	for _, r := range rs {
 		if r.Key == key {

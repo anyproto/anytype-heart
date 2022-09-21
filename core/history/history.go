@@ -94,11 +94,11 @@ func (h *history) Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.
 
 	rels, _ := h.relationService.FetchLinks(s.PickRelationLinks())
 	return &model.ObjectView{
-		RootId:    pageId,
-		Type:      model.SmartBlockType(sbType),
-		Blocks:    s.Blocks(),
-		Details:   details,
-		Relations: rels.Models(),
+		RootId:        pageId,
+		Type:          model.SmartBlockType(sbType),
+		Blocks:        s.Blocks(),
+		Details:       details,
+		RelationLinks: rels.RelationLinks(),
 	}, ver, nil
 }
 
