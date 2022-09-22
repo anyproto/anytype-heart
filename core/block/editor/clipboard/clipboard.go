@@ -157,7 +157,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 				lastTextBlock = b
 			}
 		} else {
-			// if text block + object block - go to cutBlocks scenario imediately 
+			// if text block + object block - go to cutBlocks scenario imediately
 			firstTextBlock = nil
 			lastTextBlock = nil
 			break
@@ -271,6 +271,19 @@ func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteReques
 
 	if err != nil {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
+	}
+	for _, v := range cb.Blocks() {
+		if v.Id == req.FocusedBlockId {
+			for _, block := range blocks {
+				if reqContent, ok := v.Content.(*model.BlockContentOfText); ok && reqContent.Text != nil && reqContent.Text.Style != model.BlockContentText_Paragraph {
+					if targetBlockContent, ok := block.Content.(*model.BlockContentOfText); ok && targetBlockContent.Text.Style == model.BlockContentText_Paragraph {
+						targetBlockContent.Text.Style = reqContent.Text.Style
+					} else {
+						break
+					}
+				}
+			}
+		}
 	}
 
 	req.AnySlot = blocks
