@@ -1,5 +1,9 @@
 package slice
 
+import (
+	"github.com/mb0/diff"
+)
+
 type DiffOperation int
 
 const (
@@ -15,24 +19,63 @@ type Change struct {
 	AfterId string
 }
 
+type MixedInput struct {
+	A []string
+	B []string
+}
+
+func (m *MixedInput) Equal(a, b int) bool {
+	return m.A[a] == m.B[b]
+}
+
 func Diff(origin, changed []string) []Change {
-	return []Change{{Op: OperationReplace, Ids: changed}}
+	m := &MixedInput{
+		origin,
+		changed,
+	}
+
+	var chs []Change
+
+	changes := diff.Diff(len(m.A), len(m.B), m)
+	for _, c := range changes {
+		if c.Del > 0 {
+			chs = append(chs, Change{Op: OperationRemove, Ids: m.A[c.A:c.A+c.Del]})
+		}
+	}
+
+	for _, c := range changes {
+		if c.Ins > 0 {
+			inserts := m.B[c.B:c.B+c.Ins]
+			afterId := ""
+			if c.A >  0 {
+				afterId = m.A[c.A-1]
+			}
+			chs = append(chs, Change{Op: OperationAdd, Ids: inserts, AfterId: afterId})
+		}
+	}
+
+	return chs
 }
 
 func ApplyChanges(origin []string, change []Change) []string {
 	for _, ch := range change {
-		pos := 0
-		if ch.AfterId != "" {
-			pos = FindPos(origin, ch.AfterId)
-		}
 
 		switch ch.Op {
 		case OperationAdd:
-			Insert(origin,pos)
+			pos := 0
+			if ch.AfterId != "" {
+				pos = FindPos(origin, ch.AfterId)
+			}
+			if pos < 0 {
+				continue
+			}
+			Insert(origin, pos+1, ch.Ids...)
 		case OperationMove:
 			// TODO
 		case OperationRemove:
-			// TODO
+			origin = Filter(origin, func(id string) bool{
+				return FindPos(ch.Ids, id) > -1
+			})
 		case OperationReplace:
 			origin = ch.Ids
 		}
