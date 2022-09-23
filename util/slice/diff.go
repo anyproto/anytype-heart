@@ -37,10 +37,15 @@ func Diff(origin, changed []string) []Change {
 	var chs []Change
 
 	changes := diff.Diff(len(m.A), len(m.B), m)
+	var delIds []string
 	for _, c := range changes {
 		if c.Del > 0 {
-			chs = append(chs, Change{Op: OperationRemove, Ids: m.A[c.A:c.A+c.Del]})
+			delIds = append(delIds, m.A[c.A:c.A+c.Del]...)
 		}
+	}
+
+	if len(delIds) > 0 {
+		chs = append(chs, Change{Op: OperationRemove, Ids: delIds})
 	}
 
 	for _, c := range changes {
