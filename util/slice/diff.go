@@ -74,12 +74,12 @@ func ApplyChanges(origin []string, change []Change) []string {
 			if pos < 0 {
 				continue
 			}
-			Insert(origin, pos+1, ch.Ids...)
+			origin = Insert(origin, pos+1, ch.Ids...)
 		case OperationMove:
 			// TODO
 		case OperationRemove:
 			origin = Filter(origin, func(id string) bool{
-				return FindPos(ch.Ids, id) > -1
+				return FindPos(ch.Ids, id) < 0
 			})
 		case OperationReplace:
 			origin = ch.Ids
