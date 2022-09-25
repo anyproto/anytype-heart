@@ -62,29 +62,35 @@ func Diff(origin, changed []string) []Change {
 	return chs
 }
 
-func ApplyChanges(origin []string, change []Change) []string {
-	for _, ch := range change {
+func ApplyChanges(origin []string, changes []Change) []string {
+	result := make([]string, len(origin))
+	copy(result, origin)
+
+	for _, ch := range changes {
 
 		switch ch.Op {
 		case OperationAdd:
-			pos := 0
+			pos := -1
 			if ch.AfterId != "" {
-				pos = FindPos(origin, ch.AfterId)
+				pos = FindPos(result, ch.AfterId)
+				if pos < 0 {
+					continue
+				}
 			}
-			if pos < 0 {
-				continue
-			}
-			origin = Insert(origin, pos+1, ch.Ids...)
+
+			ids := make([]string, len(ch.Ids))
+			copy(ids, ch.Ids)
+			result = Insert(result, pos+1, ids...)
 		case OperationMove:
 			// TODO
 		case OperationRemove:
-			origin = Filter(origin, func(id string) bool{
+			result = Filter(result, func(id string) bool{
 				return FindPos(ch.Ids, id) < 0
 			})
 		case OperationReplace:
-			origin = ch.Ids
+			result = ch.Ids
 		}
 	}
 
-	return origin
+	return result
 }
