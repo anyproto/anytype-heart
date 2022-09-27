@@ -15,9 +15,8 @@ func Test_Diff(t *testing.T) {
 	chs := Diff(origin, changed)
 
 	assert.Equal(t, chs, []Change{
-		{Op: OperationRemove, Ids: []string{"004", "008"}},
-		{Op: OperationAdd, Ids: []string{"008"}, AfterId: "000"},
-		{Op: OperationAdd, Ids: []string{"004"}, AfterId: "009"}},
+		{Op: OperationMove, Ids: []string{"008"}, AfterId: "000"},
+		{Op: OperationMove, Ids: []string{"004"}, AfterId: "009"}},
 	)
 }
 
