@@ -17820,7 +17820,7 @@ Precondition: user A and user B opened the same block
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| SliceOperationNone | 0 |  |
+| SliceOperationNone | 0 | not used |
 | SliceOperationAdd | 1 |  |
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
