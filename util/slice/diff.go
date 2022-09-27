@@ -84,7 +84,7 @@ func Diff(origin, changed []string) []Change {
 	}
 
 	if len(delMap) > 0 { // remove
-		delIds := make([]string, len(delMap))
+		delIds := make([]string, 0, len(delMap))
 		for id := range delMap {
 			delIds = append(delIds, id)
 		}
