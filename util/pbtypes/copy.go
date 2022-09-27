@@ -207,7 +207,6 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 
 func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change {
 	sliceOpMap := map[pb.EventBlockDataviewSliceOperation]slice.DiffOperation{
-		pb.EventBlockDataview_SliceOperationNone: slice.OperationNone,
 		pb.EventBlockDataview_SliceOperationAdd: slice.OperationAdd,
 		pb.EventBlockDataview_SliceOperationMove: slice.OperationMove,
 		pb.EventBlockDataview_SliceOperationRemove: slice.OperationRemove,
@@ -224,7 +223,6 @@ func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Ch
 
 func SliceChangeToEvents(changes []slice.Change) []*pb.EventBlockDataviewSliceChange {
 	eventsOpMap := map[slice.DiffOperation]pb.EventBlockDataviewSliceOperation {
-		slice.OperationNone: pb.EventBlockDataview_SliceOperationNone,
 		slice.OperationAdd: pb.EventBlockDataview_SliceOperationAdd,
 		slice.OperationMove: pb.EventBlockDataview_SliceOperationMove,
 		slice.OperationRemove: pb.EventBlockDataview_SliceOperationRemove,

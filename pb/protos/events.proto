@@ -756,7 +756,6 @@ message Event {
             }
 
             enum SliceOperation {
-                SliceOperationNone = 0;
                 SliceOperationAdd = 1;
                 SliceOperationMove = 2;
                 SliceOperationRemove = 3;
