@@ -157,7 +157,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 				lastTextBlock = b
 			}
 		} else {
-			// if text block + object block - go to cutBlocks scenario imediately 
+			// if text block + object block - go to cutBlocks scenario imediately
 			firstTextBlock = nil
 			lastTextBlock = nil
 			break
@@ -458,8 +458,46 @@ func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteReque
 		}
 		blockIds = append(blockIds, b.Model().Id)
 	}
-	if err = s.InsertTo(req.FocusedBlockId, model.Block_Bottom, blockIds...); err != nil {
+
+	if err = s.InsertTo(req.FocusedBlockId, cb.getFilePosition(req), blockIds...); err != nil {
 		return
 	}
 	return blockIds, cb.Apply(s)
+}
+
+func (cb *clipboard) getFilePosition(req *pb.RpcBlockPasteRequest) model.BlockPosition {
+	for _, block := range cb.Blocks() {
+		if block.Id == req.FocusedBlockId {
+			switch cont := block.Content.(type) {
+			case *model.BlockContentOfSmartblock:
+				return model.Block_Bottom
+			case *model.BlockContentOfText:
+				if cont.Text.Text != "" {
+					return model.Block_Bottom
+				} else {
+					return model.Block_Replace
+				}
+			case *model.BlockContentOfFile:
+				if cont.File.Hash != "" {
+					return model.Block_Bottom
+				} else {
+					return model.Block_Replace
+				}
+			case *model.BlockContentOfBookmark:
+				return model.Block_Bottom
+			case *model.BlockContentOfDiv:
+				return model.Block_Replace
+			case *model.BlockContentOfLayout:
+				return model.Block_Bottom
+			case *model.BlockContentOfLink:
+				return model.Block_Bottom
+			case *model.BlockContentOfTable:
+				return model.Block_Bottom
+			default:
+				return model.Block_Bottom
+			}
+			break
+		}
+	}
+	return model.Block_Bottom
 }
