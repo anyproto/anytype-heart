@@ -274,10 +274,10 @@ func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteReques
 	}
 	for _, v := range cb.Blocks() {
 		if v.Id == req.FocusedBlockId {
-			for _, block := range blocks {
-				if reqContent, ok := v.Content.(*model.BlockContentOfText); ok && reqContent.Text != nil && reqContent.Text.Style != model.BlockContentText_Paragraph {
+			if reqText := v.GetText(); reqText != nil && reqText.Style != model.BlockContentText_Paragraph {
+				for _, block := range blocks {
 					if targetBlockContent, ok := block.Content.(*model.BlockContentOfText); ok && targetBlockContent.Text.Style == model.BlockContentText_Paragraph {
-						targetBlockContent.Text.Style = reqContent.Text.Style
+						targetBlockContent.Text.Style = reqText.Style
 					} else {
 						break
 					}
