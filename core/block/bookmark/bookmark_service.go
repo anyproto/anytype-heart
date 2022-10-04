@@ -174,6 +174,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 	if err != nil {
 		updaters <- func(c *model.BlockContentBookmark) {
 			c.State = model.BlockContentBookmark_Error
+			c.Url = url
 		}
 		close(updaters)
 		return updaters, fmt.Errorf("bookmark: can't fetch link %s: %w", url, err)
