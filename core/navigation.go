@@ -138,11 +138,10 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 			InternalFlags: req.InternalFlags,
 		})
 	case bundle.TypeKeyRelation:
-		rl, err2 := mw.relationCreate(&pb.RpcObjectCreateRelationRequest{
+		id, _, err = mw.objectCreateRelation(&pb.RpcObjectCreateRelationRequest{
 			Details: req.Details,
 		})
-		id = rl.Id
-		err = err2
+
 	case bundle.TypeKeyRelationOption:
 		id, err = mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
 			Details: req.Details,

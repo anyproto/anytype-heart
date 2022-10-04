@@ -3,6 +3,7 @@ package dataview
 import (
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -62,7 +63,7 @@ type Block interface {
 	// AddRelationOld DEPRECATED
 	AddRelationOld(relation model.Relation)
 	// UpdateRelation DEPRECATED
-	UpdateRelation(relationKey string, relation model.Relation) error
+	UpdateRelationOld(relationKey string, relation model.Relation) error
 	// DeleteRelationOld DEPRECATED
 	DeleteRelationOld(relationKey string) error
 }
@@ -286,7 +287,7 @@ func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
 
 func (l *Dataview) FillSmartIds(ids []string) []string {
 	for _, rl := range l.content.RelationLinks {
-		ids = append(ids, rl.Id)
+		ids = append(ids, addr.RelationKeyToIdPrefix+rl.Key)
 	}
 	return ids
 }
@@ -296,20 +297,15 @@ func (l *Dataview) HasSmartIds() bool {
 }
 
 func (d *Dataview) AddRelation(relation *model.RelationLink) error {
-	if pbtypes.RelationLinks(d.content.RelationLinks).Has(relation.Id) {
+	if pbtypes.RelationLinks(d.content.RelationLinks).Has(relation.Key) {
 		return ErrRelationExists
 	}
 	d.content.RelationLinks = append(d.content.RelationLinks, relation)
 	return nil
 }
 
-func (d *Dataview) DeleteRelation(relationId string) error {
-	relationKey, ok := pbtypes.RelationLinks(d.content.RelationLinks).Key(relationId)
-	if !ok {
-		return nil
-	}
-
-	d.content.RelationLinks = pbtypes.RelationLinks(d.content.RelationLinks).Remove(relationId)
+func (d *Dataview) DeleteRelation(relationKey string) error {
+	d.content.RelationLinks = pbtypes.RelationLinks(d.content.RelationLinks).Remove(relationKey)
 
 	for _, view := range d.content.Views {
 		var filteredFilters []*model.BlockContentDataviewFilter
@@ -454,7 +450,7 @@ func (s *Dataview) GetRelation(relationKey string) (*model.Relation, error) {
 	return nil, ErrRelationNotFound
 }
 
-func (s *Dataview) UpdateRelation(relationKey string, rel model.Relation) error {
+func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) error {
 	var found bool
 	if relationKey != rel.Key {
 		return fmt.Errorf("changing key of existing relation is retricted")

@@ -192,6 +192,7 @@ type Service interface {
 	UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
+	CreateRelation(opt *types.Struct) (id, key string, err error)
 	CreateRelationOption(opt *types.Struct) (id string, err error)
 	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error
 
@@ -1101,6 +1102,19 @@ func (s *service) CreateRelationOption(opt *types.Struct) (id string, err error)
 	return
 }
 
+func (s *service) CreateRelation(rel *types.Struct) (id, key string, err error) {
+	// todo: rewrite to the current workspace id
+	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		id, key, err = workspace.CreateRelation(rel)
+		return err
+	})
+	return
+}
+
 func (s *service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
 	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
@@ -1194,9 +1208,12 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType()
-	case model.SmartBlockType_BundledRelation,
-		model.SmartBlockType_IndexedRelation:
+	case model.SmartBlockType_BundledRelation:
+		sb = editor.NewSet()
+	case model.SmartBlockType_SubObjectRelation:
 		sb = editor.NewRelation()
+	case model.SmartBlockType_SubObjectRelationOption:
+		sb = editor.NewOption()
 	case model.SmartBlockType_File:
 		sb = editor.NewFiles()
 	case model.SmartBlockType_MarketplaceType:

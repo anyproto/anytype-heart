@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"sort"
 	"strings"
 	"sync"
@@ -100,7 +102,7 @@ type SmartBlock interface {
 	Anytype() core.Service
 	RelationService() relation2.Service
 	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
-	Relations(s *state.State) relation2.Relations
+	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
 	AddExtraRelations(ctx *session.Context, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
@@ -176,7 +178,7 @@ type smartBlock struct {
 }
 
 func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
-	for _, rel := range sb.Relations(s) {
+	for _, rel := range s.GetRelationLinks() {
 		// coverId can contains both hash or predefined cover id
 		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {
@@ -188,7 +190,7 @@ func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
-	for _, rel := range sb.Relations(s) {
+	for _, rel := range s.GetRelationLinks() {
 		if rel.Key == key {
 			return true
 		}
@@ -501,10 +503,10 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 
 		details := sb.CombinedDetails()
 
-		for _, rel := range sb.Relations(nil) {
+		for _, rel := range sb.GetRelationLinks() {
 			// do not index local dates such as lastOpened/lastModified
 			if includeRelations {
-				ids = append(ids, rel.Id)
+				ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
 			}
 			if rel.Format == model.RelationFormat_date &&
 				(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
@@ -525,9 +527,10 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 				continue
 			}
 
-			if rel.Hidden && !includeHidden {
-				continue
-			}
+			// todo refactor: should we have this case preserved? we don't have hidden flag available in the state anymore
+			//if rel.Hidden && !includeHidden {
+			//	continue
+			//}
 
 			if rel.Key == bundle.RelationKeyId.String() ||
 				rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
@@ -802,8 +805,8 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 				return fmt.Errorf("relation %s is not found", detail.Key)
 			}
 			s.AddRelationLinks(&model.RelationLink{
-				Id:  rel.Id,
-				Key: rel.Key,
+				Format: rel.Format,
+				Key:    rel.Key,
 			})
 
 			err = sb.RelationService().ValidateFormat(detail.Key, detail.Value)
@@ -852,19 +855,19 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 	return nil
 }
 
-func (sb *smartBlock) AddExtraRelations(ctx *session.Context, relationIds ...string) (err error) {
+func (sb *smartBlock) AddExtraRelations(ctx *session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
-	if err = sb.addRelations(s, relationIds...); err != nil {
+	if err = sb.addRelations(s, relationKeys...); err != nil {
 		return
 	}
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) addRelations(s *state.State, relationIds ...string) (err error) {
-	if len(relationIds) == 0 {
+func (sb *smartBlock) addRelations(s *state.State, relationKeys ...string) (err error) {
+	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.relationService.FetchIds(relationIds...)
+	relations, err := sb.relationService.FetchKeys(relationKeys...)
 	if err != nil {
 		return
 	}
@@ -1174,7 +1177,8 @@ func (sb *smartBlock) Close() (err error) {
 	return
 }
 
-func hasDepIds(relations relation2.Relations, act *undo.Action) bool {
+// todo refactor: use relationLinks instead
+func hasDepIds(relations relationutils.Relations, act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
@@ -1313,7 +1317,8 @@ func (sb *smartBlock) baseRelations() []*model.Relation {
 	return rels
 }
 
-func (sb *smartBlock) Relations(s *state.State) relation2.Relations {
+// deprecated, use RelationLinks instead
+func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink
 	if s == nil {
 		links = sb.Doc.GetRelationLinks()

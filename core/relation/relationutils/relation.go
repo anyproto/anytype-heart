@@ -1,4 +1,4 @@
-package relation
+package relationutils
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -37,8 +37,8 @@ type Relation struct {
 
 func (r *Relation) RelationLink() *model.RelationLink {
 	return &model.RelationLink{
-		Id:  r.Id,
-		Key: r.Key,
+		Format: r.Format,
+		Key:    r.Key,
 	}
 }
 
@@ -93,4 +93,15 @@ func (rs Relations) GetModelByKey(key string) *model.Relation {
 		return r.Relation
 	}
 	return nil
+}
+
+func MigrateRelationsModels(rels []*model.Relation) (relLinks []*model.RelationLink) {
+	relLinks = make([]*model.RelationLink, 0, len(rels))
+	for _, rel := range rels {
+		relLinks = append(relLinks, &model.RelationLink{
+			Key:    rel.Key,
+			Format: rel.Format,
+		})
+	}
+	return
 }

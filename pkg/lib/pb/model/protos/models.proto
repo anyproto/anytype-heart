@@ -36,14 +36,14 @@ enum SmartBlockType {
     MarketplaceRelation = 0x111;
     MarketplaceTemplate = 0x112;
 
-    BundledRelation = 0x200;
-    IndexedRelation = 0x201;
+    BundledRelation = 0x200; // DEPRECATED
+    SubObjectRelation = 0x201;
     BundledObjectType = 0x202;
     AnytypeProfile = 0x203;
     Date = 0x204;
     WorkspaceOld = 0x205; // deprecated thread-based workspace
     Workspace = 0x206;
-    RelationOption = 0x207;
+    SubObjectRelationOption = 0x207;
 }
 
 message Block {
@@ -749,8 +749,8 @@ enum RelationFormat {
 }
 
 message RelationLink {
-    string id = 1;
-    string key = 2;
+    string key = 1;
+    RelationFormat format = 2;
 }
 
 message Relations {

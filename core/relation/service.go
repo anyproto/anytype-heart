@@ -1,23 +1,19 @@
 package relation
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"net/url"
-	"strings"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
@@ -36,34 +32,26 @@ func New() Service {
 	return new(service)
 }
 
-type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-}
-
 type Service interface {
-	FetchIds(ids ...string) (relations Relations, err error)
-	FetchId(id string) (relation *Relation, err error)
-	FetchKey(key string, opts ...FetchOption) (relation *Relation, err error)
-	FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error)
+	FetchKeys(keys ...string) (relations relationutils.Relations, err error)
+	FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
+	FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 
-	Create(details *types.Struct) (rl *model.RelationLink, err error)
+	//Create(details *types.Struct) (rl *model.RelationLink, err error)
 	//CreateOption(relationKey string, opt *model.RelationOption) (id string, err error)
-	MigrateRelations(rels []*model.Relation) (relLinks []*model.RelationLink, err error)
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
 }
 
 type service struct {
-	objectStore   objectstore.ObjectStore
-	objectCreator objectCreator
-	mu            sync.RWMutex
+	objectStore objectstore.ObjectStore
+	mu          sync.RWMutex
 
 	migrateCache map[string]*model.RelationLink
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.objectCreator = a.MustComponent(blockServiceCName).(objectCreator)
 	s.migrateCache = make(map[string]*model.RelationLink)
 	return
 }
@@ -72,34 +60,25 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations Relations, err error) {
-	ids := make([]string, 0, len(links))
+func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+	keys := make([]string, 0, len(links))
 	for _, l := range links {
-		ids = append(ids, l.Id)
+		keys = append(keys, l.Key)
 	}
-	return s.fetchIds(ids...)
+	return s.fetchKeys(keys...)
 }
 
-func (s *service) FetchIds(ids ...string) (relations Relations, err error) {
+func (s *service) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.fetchIds(ids...)
+	return s.fetchKeys(keys...)
 }
 
-func (s *service) fetchIds(ids ...string) (relations []*Relation, err error) {
-	ids = slice.Filter(ids, func(id string) bool {
-		if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
-			return true
-		}
-		r, _ := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
-		if r != nil {
-			r.Id = id
-			relations = append(relations, &Relation{r})
-			return false
-		}
-		return true
-	})
-
+func (s *service) fetchKeys(keys ...string) (relations []*relationutils.Relation, err error) {
+	ids := make([]string, 0, len(keys))
+	for _, key := range keys {
+		ids = append(ids, addr.RelationKeyToIdPrefix+key)
+	}
 	records, err := s.objectStore.QueryById(ids)
 	if err != nil {
 		return
@@ -109,20 +88,9 @@ func (s *service) fetchIds(ids ...string) (relations []*Relation, err error) {
 		if pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
 			continue
 		}
-		relations = append(relations, RelationFromStruct(rec.Details))
+		relations = append(relations, relationutils.RelationFromStruct(rec.Details))
 	}
 	return
-}
-
-func (s *service) FetchId(id string) (relation *Relation, err error) {
-	rels, err := s.FetchIds(id)
-	if err != nil {
-		return
-	}
-	if len(rels) == 0 {
-		return nil, ErrNotFound
-	}
-	return rels[0], nil
 }
 
 type fetchOptions struct {
@@ -137,17 +105,13 @@ func WithWorkspaceId(id string) FetchOption {
 	}
 }
 
-func (s *service) FetchKey(key string, opts ...FetchOption) (relation *Relation, err error) {
+func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.fetchKey(key, opts...)
 }
 
-func (s *service) fetchKey(key string, opts ...FetchOption) (relation *Relation, err error) {
-	if b, _ := bundle.GetRelation(bundle.RelationKey(key)); b != nil {
-		b.Id = addr.BundledRelationURLPrefix + key
-		return &Relation{b}, nil
-	}
+func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
 	o := &fetchOptions{}
 	for _, apply := range opts {
 		apply(o)
@@ -181,12 +145,12 @@ func (s *service) fetchKey(key string, opts ...FetchOption) (relation *Relation,
 		Filters: []query.Filter{f},
 	})
 	for _, rec := range records {
-		return RelationFromStruct(rec.Details), nil
+		return relationutils.RelationFromStruct(rec.Details), nil
 	}
 	return nil, ErrNotFound
 }
 
-func (s *service) fetchOptionsByKey(key string) (relation *Relation, err error) {
+func (s *service) fetchOptionsByKey(key string) (relation *relationutils.Relation, err error) {
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -209,75 +173,9 @@ func (s *service) fetchOptionsByKey(key string) (relation *Relation, err error) 
 		Filters: []query.Filter{f},
 	})
 	for _, rec := range records {
-		return RelationFromStruct(rec.Details), nil
+		return relationutils.RelationFromStruct(rec.Details), nil
 	}
 	return nil, ErrNotFound
-}
-
-func (s *service) Create(details *types.Struct) (rl *model.RelationLink, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	rel := &model.Relation{
-		Key: generateRelationKey(),
-	}
-	return s.create(rel, details, true)
-}
-
-func (s *service) create(rel *model.Relation, reqDetails *types.Struct, checkForExists bool) (rl *model.RelationLink, err error) {
-	if checkForExists {
-		if _, e := s.fetchKey(rel.Key); e != ErrNotFound {
-			return nil, ErrExists
-		}
-	}
-	st := state.NewDoc("", nil).(*state.State)
-	st.SetObjectType(bundle.TypeKeyRelation.URL())
-	r := &Relation{Relation: rel}
-	details := r.ToStruct()
-	details = pbtypes.StructMerge(details, reqDetails, false)
-	for k, v := range details.Fields {
-		st.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
-	}
-
-	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeIndexedRelation, details, nil, st)
-	if err != nil {
-		return
-	}
-	return &model.RelationLink{
-		Id:  id,
-		Key: rel.Key,
-	}, nil
-}
-
-func (s *service) MigrateRelations(rels []*model.Relation) (relLinks []*model.RelationLink, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	relLinks = make([]*model.RelationLink, 0, len(rels))
-
-	for _, rel := range rels {
-		link, ok := s.migrateCache[rel.Key]
-		if !ok {
-			link, err = s.migrateRelation(rel)
-			if err != nil {
-				return
-			}
-			s.migrateCache[rel.Key] = link
-		}
-		relLinks = append(relLinks, link)
-		if len(rel.SelectDict) > 0 {
-			if err = s.migrateOptions(rel); err != nil {
-				return
-			}
-		}
-	}
-	return
-}
-
-func (s *service) migrateRelation(rel *model.Relation) (rl *model.RelationLink, err error) {
-	dbRel, e := s.fetchKey(rel.Key)
-	if e == nil {
-		return dbRel.RelationLink(), nil
-	}
-	return s.create(rel, nil, false)
 }
 
 func (s *service) migrateOptions(rel *model.Relation) (err error) {
@@ -412,7 +310,7 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 	}
 }
 
-func (s *service) validateOptions(rel *Relation, v []string) error {
+func (s *service) validateOptions(rel *relationutils.Relation, v []string) error {
 	//TODO:
 	return nil
 }

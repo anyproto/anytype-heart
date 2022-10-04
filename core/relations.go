@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -75,7 +74,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 	}
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.AddExtraRelations(nil, objType.Url, req.RelationIds)
+		err = bs.AddExtraRelations(nil, objType.Url, req.RelationKeys)
 		if err != nil {
 			return err
 		}
@@ -300,24 +299,12 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 			Key:      key,
 		}
 	}
-	rl, err := mw.relationCreate(req)
+	id, key, err := mw.objectCreateRelation(req)
+
 	if err != nil {
 		return response("", "", err)
 	}
-	return response(rl.Id, rl.Key, err)
-}
-
-func (mw *Middleware) relationCreate(req *pb.RpcObjectCreateRelationRequest) (*model.RelationLink, error) {
-	var rl *model.RelationLink
-	err := mw.doRelationService(func(rs relation.Service) error {
-		var err error
-		rl, err = rs.Create(req.Details)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	return rl, err
+	return response(id, key, err)
 }
 
 func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
@@ -343,13 +330,28 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, error) {
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 	var id string
 	err := mw.doBlockService(func(rs block.Service) error {
 		var err error
-		id, err = rs.CreateRelationOption(req.Details)
+		id, err = rs.
+			CreateRelationOption(req.Details)
 		return err
 	})
 	return id, err
+}
+
+func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id, key string, err error) {
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+
+	err = mw.doBlockService(func(rs block.Service) error {
+		var err error
+		id, key, err = rs.CreateRelation(req.Details)
+		return err
+	})
+	return
 }
 
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
@@ -366,7 +368,7 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 
 		return &pb.RpcRelationListRemoveOptionResponse{
 			Error: &pb.RpcRelationListRemoveOptionResponseError{
-				Code:        code,
+				Code: code,
 			},
 		}
 	}

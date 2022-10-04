@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
@@ -159,8 +160,14 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewOldRelationSet:
 		if err = apply(o.BlockDataviewOldRelationSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok && o.BlockDataviewOldRelationSet.Relation != nil {
-				if er := f.UpdateRelation(o.BlockDataviewOldRelationSet.RelationKey, *o.BlockDataviewOldRelationSet.Relation); er == dataview.ErrRelationNotFound {
-					f.AddRelationOld(*o.BlockDataviewOldRelationSet.Relation)
+				if er := f.UpdateRelationOld(o.BlockDataviewOldRelationSet.RelationKey, *o.BlockDataviewOldRelationSet.Relation); er == dataview.ErrRelationNotFound {
+					rel := o.BlockDataviewOldRelationSet.Relation
+					f.AddRelationOld(*rel)
+					// MIGRATION: reinterpretation of old changes as new changes
+					f.AddRelation(&model.RelationLink{
+						Key:    rel.Key,
+						Format: rel.Format,
+					})
 				} else {
 					return er
 				}
@@ -173,7 +180,12 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewOldRelationDelete:
 		if err = apply(o.BlockDataviewOldRelationDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				return f.DeleteRelationOld(o.BlockDataviewOldRelationDelete.RelationKey)
+				err = f.DeleteRelationOld(o.BlockDataviewOldRelationDelete.RelationKey)
+				if err != nil {
+					return err
+				}
+				// MIGRATION: reinterpretation of old changes as new changes
+				f.DeleteRelation(o.BlockDataviewOldRelationDelete.RelationKey)
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -191,7 +203,19 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-
+	case *pb.EventMessageValueOfBlockDataviewRelationDelete:
+		if err = apply(o.BlockDataviewRelationDelete.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				for _, rel := range o.BlockDataviewRelationDelete.RelationIds {
+					// todo: implement DeleteRelations?
+					f.DeleteRelation(rel)
+				}
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
 	case *pb.EventMessageValueOfBlockSetRelation:
 		if err = apply(o.BlockSetRelation.Id, func(b simple.Block) error {
 			if f, ok := b.(relation.Block); ok {

@@ -1657,7 +1657,7 @@ message Rpc {
         message Add {
             message Request {
                 string contextId = 1;
-                repeated string relationIds = 2;
+                repeated string relationKeys = 2;
             }
 
             message Response {
@@ -1680,7 +1680,7 @@ message Rpc {
         message Delete {
             message Request {
                 string contextId = 1;
-                string relationId = 2;
+                string relationKey = 2;
             }
 
             message Response {
@@ -1773,7 +1773,7 @@ message Rpc {
             message Add {
                 message Request {
                     string objectTypeUrl = 1;
-                    repeated string relationIds = 2;
+                    repeated string relationKeys = 2;
                 }
 
                 message Response {
@@ -1798,7 +1798,7 @@ message Rpc {
             message Remove {
                 message Request {
                     string objectTypeUrl = 1;
-                    string relationId = 2;
+                    string relationKey = 2;
                 }
 
                 message Response {
@@ -3900,7 +3900,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                string relationId = 3;
+                string relationKey = 3;
             }
 
             message Response {
@@ -4132,7 +4132,7 @@ message Rpc {
                 message Request {
                     string contextId = 1;
                     string blockId = 2; // id of dataview block to add relation
-                    repeated string relationIds = 3;
+                    repeated string relationKeys = 3;
                 }
 
                 message Response {
@@ -4156,7 +4156,7 @@ message Rpc {
                 message Request {
                     string contextId = 1;
                     string blockId = 2; // id of dataview block to add relation
-                    repeated string relationIds = 3;
+                    repeated string relationKeys = 3;
                 }
 
                 message Response {

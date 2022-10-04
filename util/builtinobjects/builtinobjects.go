@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 	"io"
@@ -159,10 +160,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	f["analyticsOriginalId"] = pbtypes.String(oldId)
 
 	st.Set(simple.New(m))
-	rels, err := b.relService.MigrateRelations(st.OldExtraRelations())
-	if err != nil {
-		return err
-	}
+	rels := relationutils.MigrateRelationsModels(st.OldExtraRelations())
 	st.AddRelationLinks(rels...)
 
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())

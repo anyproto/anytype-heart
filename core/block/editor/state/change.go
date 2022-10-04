@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -37,13 +38,17 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		blocks:         blocks,
 		details:        pbtypes.StructCutKeys(snapshot.Data.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...)),
 		extraRelations: snapshot.Data.ExtraRelations,
+		relationLinks:  snapshot.Data.RelationLinks,
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
 		store:          snapshot.Data.Collections,
-		relationLinks:  snapshot.Data.RelationLinks,
 	}
-	s.InjectDerivedDetails()
 
+	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
+		s.relationLinks = relationutils.MigrateRelationsModels(snapshot.Data.ExtraRelations)
+	}
+
+	s.InjectDerivedDetails()
 	return s
 }
 
@@ -210,7 +215,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	rl := s.GetRelationLinks()
 	for _, r := range add.RelationLinks {
-		if !rl.Has(r.Id) {
+		if !rl.Has(r.Key) {
 			rl = rl.Append(r)
 		}
 	}
@@ -219,11 +224,17 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 }
 
 func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
-	s.RemoveRelation(rem.RelationId...)
+	s.RemoveRelation(rem.RelationKey...)
 	return nil
 }
 
 func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
+	// MIGRATION: add old relation as new relationLinks
+	err := s.changeRelationAdd(&pb.ChangeRelationAdd{RelationLinks: []*model.RelationLink{{Key: add.Relation.Key, Format: add.Relation.Format}}})
+	if err != nil {
+		return err
+	}
+
 	for _, rel := range s.OldExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
@@ -248,6 +259,11 @@ func (s *State) changeOldRelationRemove(remove *pb.Change_RelationRemove) error 
 			s.extraRelations = append(rels[:i], rels[i+1:]...)
 			return nil
 		}
+	}
+
+	err := s.changeRelationRemove(&pb.ChangeRelationRemove{RelationKey: []string{remove.Key}})
+	if err != nil {
+		return err
 	}
 
 	log.Warnf("changeOldRelationRemove: relation to remove not found")
@@ -470,7 +486,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfRelationRemove{
 				RelationRemove: &pb.ChangeRelationRemove{
-					RelationId: delRelIds,
+					RelationKey: delRelIds,
 				},
 			},
 		})

@@ -313,7 +313,7 @@ func (bs *basic) AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelation
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := bs.RelationService().FetchId(req.RelationId)
+	rel, err := bs.RelationService().FetchKey(req.RelationKey)
 	if err != nil {
 		return
 	}

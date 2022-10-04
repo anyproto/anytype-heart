@@ -247,7 +247,7 @@ func (s *service) CreateDataviewView(ctx *session.Context, req pb.RpcBlockDatavi
 
 func (s *service) AddDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.AddRelations(ctx, req.BlockId, req.RelationIds, true)
+		return b.AddRelations(ctx, req.BlockId, req.RelationKeys, true)
 	})
 
 	return
@@ -255,7 +255,7 @@ func (s *service) AddDataviewRelation(ctx *session.Context, req pb.RpcBlockDatav
 
 func (s *service) DeleteDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.DeleteRelations(ctx, req.BlockId, req.RelationIds, true)
+		return b.DeleteRelations(ctx, req.BlockId, req.RelationKeys, true)
 	})
 }
 
@@ -584,7 +584,7 @@ func (s *service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSe
 		if err != nil {
 			return err
 		}
-		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{RelationId: rel.Id, BlockId: req.BlockId, ContextId: req.ContextId})
+		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId})
 	})
 }
 

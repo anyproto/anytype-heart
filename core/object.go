@@ -500,12 +500,12 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 		}
 		return m
 	}
-	if len(req.RelationIds) == 0 {
+	if len(req.RelationKeys) == 0 {
 		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.AddExtraRelations(ctx, req.ContextId, req.RelationIds)
+		return bs.AddExtraRelations(ctx, req.ContextId, req.RelationKeys)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
@@ -526,7 +526,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.RemoveExtraRelations(ctx, req.ContextId, []string{req.RelationId})
+		return bs.RemoveExtraRelations(ctx, req.ContextId, []string{req.RelationKey})
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationDeleteResponseError_BAD_INPUT, err)

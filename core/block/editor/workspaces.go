@@ -36,6 +36,7 @@ const (
 	collectionKeyId              = "id"
 	collectionKeyKey             = "key"
 	collectionKeyRelationOptions = "relationOptions"
+	collectionKeyRelations       = "relations"
 )
 
 var (
@@ -47,6 +48,7 @@ func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 		Set:             NewSet(),
 		DetailsModifier: dmservice,
 		options:         map[string]*Option{},
+		relations:       map[string]*Relation{},
 	}
 }
 
@@ -58,7 +60,8 @@ type Workspaces struct {
 
 	changedRelationIds, changedRelationIdsOptions []string
 
-	options map[string]*Option
+	options   map[string]*Option
+	relations map[string]*Relation
 
 	sourceService source.Service
 	app           *app.App
@@ -105,7 +108,7 @@ func (p *Workspaces) DeleteSubObject(objectId string) error {
 	st := p.NewState()
 	err := p.ObjectStore().DeleteObject(objectId)
 	if err != nil {
-		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id() , err.Error())
+		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id(), err.Error())
 	}
 	st.RemoveFromStore([]string{collectionKeyRelationOptions, objectId})
 	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
@@ -314,7 +317,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	p.AddHook(p.updateOptions, smartblock.HookAfterApply)
+	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 
 	data := ctx.State.GetCollection(collectionKeyRelationOptions)
 	if data != nil && data.Fields != nil {

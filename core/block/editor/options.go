@@ -8,21 +8,31 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"strings"
 )
 
-var ErrOptionNotFound = errors.New("option not found")
+var ErrSubObjectNotFound = errors.New("sub object not found")
 
 func (w *Workspaces) Open(subId string) (sb smartblock.SmartBlock, err error) {
 	w.Lock()
 	defer w.Unlock()
+	if strings.HasPrefix(subId, addr.RelationKeyToIdPrefix) {
+		subId = strings.TrimPrefix(subId, addr.RelationKeyToIdPrefix)
+		if opt, ok := w.relations[subId]; ok {
+			return opt, nil
+		}
+		return nil, ErrSubObjectNotFound
+	}
 	if opt, ok := w.options[subId]; ok {
 		return opt, nil
 	}
-	return nil, ErrOptionNotFound
+
+	return nil, ErrSubObjectNotFound
 }
 
 func (w *Workspaces) CreateRelationOption(opt *types.Struct) (subId string, err error) {
@@ -49,13 +59,13 @@ func (w *Workspaces) CreateRelationOption(opt *types.Struct) (subId string, err 
 
 func (w *Workspaces) initOption(st *state.State, subId string) (err error) {
 	opt := NewOption()
-	subState, err := w.optionSubState(st, subId)
+	subState, err := w.subState(st, collectionKeyRelationOptions, subId)
 	if err != nil {
 		return
 	}
 	w.options[subId] = opt
 	if err = opt.Init(&smartblock.InitContext{
-		Source: w.sourceService.NewStaticSource(subId, model.SmartBlockType_RelationOption, subState, w.onOptionChange),
+		Source: w.sourceService.NewStaticSource(subId, model.SmartBlockType_SubObjectRelationOption, subState, w.onOptionChange),
 		App:    w.app,
 	}); err != nil {
 		return
@@ -74,30 +84,31 @@ func (w *Workspaces) Locked() bool {
 			return true
 		}
 	}
+
+	for _, rel := range w.relations {
+		if rel.Locked() {
+			return true
+		}
+	}
 	return false
 }
 
-func (w *Workspaces) optionSubState(st *state.State, subId string) (*state.State, error) {
-	optData := pbtypes.GetStruct(st.GetCollection(collectionKeyRelationOptions), subId)
-	if optData == nil || optData.Fields == nil {
-		return nil, fmt.Errorf("no data for option: %v", subId)
-	}
-	subState := state.NewDoc(subId, nil).(*state.State)
-	for k, v := range optData.Fields {
-		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
-			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
-		}
-	}
-	return subState, nil
-}
-
-func (w *Workspaces) updateOptions(info smartblock.ApplyInfo) (err error) {
+func (w *Workspaces) updateSubObject(info smartblock.ApplyInfo) (err error) {
 	for _, ch := range info.Changes {
 		if keySet := ch.GetStoreKeySet(); keySet != nil {
-			if len(keySet.Path) >= 2 && keySet.Path[0] == collectionKeyRelationOptions {
-				if opt, ok := w.options[keySet.Path[1]]; ok {
-					if e := opt.SetStruct(pbtypes.GetStruct(w.NewState().GetCollection(collectionKeyRelationOptions), keySet.Path[1])); e != nil {
-						log.With("threadId", w.Id()).Errorf("options: can't set struct: %v", e)
+			if len(keySet.Path) >= 2 {
+				switch keySet.Path[0] {
+				case collectionKeyRelationOptions:
+					if opt, ok := w.options[keySet.Path[1]]; ok {
+						if e := opt.SetStruct(pbtypes.GetStruct(w.NewState().GetCollection(collectionKeyRelationOptions), keySet.Path[1])); e != nil {
+							log.With("threadId", w.Id()).Errorf("options: can't set struct: %v", e)
+						}
+					}
+				case collectionKeyRelations:
+					if opt, ok := w.relations[keySet.Path[1]]; ok {
+						if e := opt.SetStruct(pbtypes.GetStruct(w.NewState().GetCollection(collectionKeyRelations), keySet.Path[1])); e != nil {
+							log.With("threadId", w.Id()).Errorf("relations: can't set struct: %v", e)
+						}
 					}
 				}
 			}

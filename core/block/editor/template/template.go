@@ -94,7 +94,7 @@ var WithRelations = func(rels []bundle.RelationKey) StateTransformer {
 				continue
 			}
 			rel := bundle.MustGetRelation(relKey)
-			links = append(links, &model.RelationLink{Id: rel.Id, Key: rel.Key})
+			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 		}
 		s.AddRelationLinks(links...)
 	}

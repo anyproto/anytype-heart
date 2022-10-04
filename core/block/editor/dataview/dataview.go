@@ -108,14 +108,14 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 	return d.Apply(s, smartblock.NoRestrictions)
 }
 
-func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error {
+func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationKeys []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
-	for _, id := range relationIds {
-		relation, err2 := d.RelationService().FetchId(id)
+	for _, key := range relationKeys {
+		relation, err2 := d.RelationService().FetchKey(key)
 		if err2 != nil {
 			return err2
 		}
@@ -420,7 +420,7 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 			hasType = true
 		}
 
-		if sbt == smartblock2.SmartBlockTypeIndexedRelation || sbt == smartblock2.SmartBlockTypeBundledRelation {
+		if sbt == smartblock2.SmartBlockTypeBundledRelation {
 			if hasType {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
@@ -619,8 +619,8 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 
 	for _, rel := range schema.RequiredRelations() {
 		relations = append(relations, &model.RelationLink{
-			Id:  rel.Id,
-			Key: rel.Key,
+			Format: rel.Format,
+			Key:    rel.Key,
 		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
 	}
@@ -632,8 +632,8 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 		}
 
 		relations = append(relations, &model.RelationLink{
-			Id:  rel.Id,
-			Key: rel.Key,
+			Format: rel.Format,
+			Key:    rel.Key,
 		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}
@@ -652,8 +652,8 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 			continue
 		}
 		relations = append(relations, &model.RelationLink{
-			Id:  rel.Id,
-			Key: rel.Key,
+			Format: rel.Format,
+			Key:    rel.Key,
 		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}

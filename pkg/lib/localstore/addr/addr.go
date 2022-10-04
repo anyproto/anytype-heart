@@ -7,6 +7,8 @@ import (
 )
 
 const (
+	RelationKeyToIdPrefix = ":rel:"
+
 	BundledRelationURLPrefix   = "_br"
 	BundledObjectTypeURLPrefix = "_ot"
 	CustomRelationURLPrefix    = "_ir"

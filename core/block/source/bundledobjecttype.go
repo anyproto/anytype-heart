@@ -72,6 +72,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *
 		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
 		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
 		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
+		bundle.RelationKeyWorkspaceId.String():          pbtypes.String("_anytype_marketplace"),
 	}}
 
 	return extraRels, det, nil
@@ -85,7 +86,7 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		return nil, err
 	}
 	for _, r := range rels {
-		s.AddRelationLinks(&model.RelationLink{Id: addr.BundledRelationURLPrefix + r.Key, Key: r.Key})
+		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
 	s.SetObjectType(bundle.TypeKeyObjectType.URL())

@@ -1148,8 +1148,8 @@ func (s *State) Copy() *State {
 	relationLinks := make([]*model.RelationLink, len(s.relationLinks))
 	for i, rl := range s.relationLinks {
 		relationLinks[i] = &model.RelationLink{
-			Id:  rl.Id,
-			Key: rl.Key,
+			Format: rl.Format,
+			Key:    rl.Key,
 		}
 	}
 	copy := &State{
@@ -1438,7 +1438,7 @@ func (s *State) SetContext(context *session.Context) {
 func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 	relLinks := s.GetRelationLinks()
 	for _, l := range links {
-		if !relLinks.Has(l.Id) {
+		if !relLinks.Has(l.Key) {
 			relLinks = append(relLinks, l)
 		}
 	}
@@ -1467,21 +1467,24 @@ func (s *State) GetRelationLinks() pbtypes.RelationLinks {
 	return nil
 }
 
-func (s *State) RemoveRelation(ids ...string) {
+func (s *State) RemoveRelation(keys ...string) {
 	relLinks := s.GetRelationLinks()
-	keysToRemove := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if keyToRemove, ok := relLinks.Key(id); ok {
-			keysToRemove = append(keysToRemove, keyToRemove)
-			relLinks = relLinks.Remove(id)
+	relLinksFiltered := make(pbtypes.RelationLinks, 0, len(relLinks))
+	for _, link := range relLinks {
+		if slice.FindPos(keys, link.Key) < 0 {
+			continue
 		}
+		relLinksFiltered = append(relLinksFiltered, &model.RelationLink{
+			Key:    link.Key,
+			Format: link.Format,
+		})
 	}
 	// remove detail value
-	s.RemoveDetail(keysToRemove...)
+	s.RemoveDetail(keys...)
 	// remove from the list of featured relations
 	featuredList := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 	featuredList = slice.Filter(featuredList, func(s string) bool {
-		return slice.FindPos(keysToRemove, s) == -1
+		return slice.FindPos(keys, s) == -1
 	})
 	s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(featuredList))
 	s.relationLinks = relLinks
@@ -1559,7 +1562,7 @@ func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
 	links := make([]*model.RelationLink, 0, len(keys))
 	for _, key := range keys {
 		rel := bundle.MustGetRelation(key)
-		links = append(links, &model.RelationLink{Id: rel.Id, Key: rel.Key})
+		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 	}
 	s.AddRelationLinks(links...)
 }

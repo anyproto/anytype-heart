@@ -404,7 +404,7 @@ var (
 			Name:        "Relation",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyCreator], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId], relations[RelationKeyInternalFlags], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyRelationFormat], relations[RelationKeyRelationMaxCount], relations[RelationKeyRelationDefaultValue], relations[RelationKeyRelationFormatObjectTypes]},
-			Types:       []model.SmartBlockType{model.SmartBlockType_IndexedRelation, model.SmartBlockType_BundledRelation},
+			Types:       []model.SmartBlockType{model.SmartBlockType_SubObjectRelation},
 			Url:         TypePrefix + "relation",
 		},
 		TypeKeyRelationOption: {
@@ -416,7 +416,7 @@ var (
 			Name:        "Relation option",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId], relations[RelationKeyInternalFlags]},
-			Types:       []model.SmartBlockType{model.SmartBlockType_RelationOption},
+			Types:       []model.SmartBlockType{model.SmartBlockType_SubObjectRelationOption},
 			Url:         TypePrefix + "relationOption",
 		},
 		TypeKeyResume: {
