@@ -14931,8 +14931,6 @@ sent when the view have been changed or added
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
 | view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) |  |  |
-| offset | [uint32](#uint32) |  | middleware will try to preserve the current aciveview&#39;s offset&amp;limit but may reset it in case it becomes invalid or not actual anymore |
-| limit | [uint32](#uint32) |  |  |
 
 
 

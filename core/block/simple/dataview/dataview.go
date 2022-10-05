@@ -136,8 +136,6 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 							Id:     dv.Id,
 							ViewId: view2.Id,
 							View:   view2,
-							Offset: 0,
-							Limit:  0,
 						}}}})
 		}
 	}
