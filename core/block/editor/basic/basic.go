@@ -380,7 +380,7 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		return true
 	})
 	// TODO: use relations service with state
-	rels := bs.Relations(s)
+	rels := bs.GetRelationLinks()
 	details := s.Details()
 	for _, rel := range rels {
 		if rel.Format == model.RelationFormat_object {

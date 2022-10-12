@@ -479,8 +479,8 @@ func RelationFormatCanHaveListValue(format model.RelationFormat) bool {
 }
 
 func RelationIdToKey(id string) (string, error) {
-	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
-		return strings.TrimPrefix(id, addr.CustomRelationURLPrefix), nil
+	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
 	}
 
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {

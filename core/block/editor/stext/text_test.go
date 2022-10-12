@@ -312,7 +312,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			BlockId: "1",
 			Text:    "1",
 		}))
-		tb.(*textImpl).flushSetTextState()
+		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
 		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "2",

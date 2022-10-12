@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -14,6 +13,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	"strings"
 )
+
+var ErrSubObjectAlreadyExists = fmt.Errorf("subobject already exists in the collection")
 
 func (w *Workspaces) CreateRelation(details *types.Struct) (id, key string, err error) {
 	if details == nil || details.Fields == nil {
@@ -35,13 +36,21 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id, key string, err 
 	if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
 		return "", "", fmt.Errorf("incorrect object type")
 	}
-
-	key = bson.NewObjectId().Hex()
+	key = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
+	st := w.NewState()
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		// no need to check for the generated bson's
+		if st.HasInStore([]string{collectionKeyRelations, key}) {
+			return id, key, ErrSubObjectAlreadyExists
+		}
+	}
 	id = addr.RelationKeyToIdPrefix + key
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
 
-	st := w.NewState()
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(details))
 	if err = w.initRelation(st, key); err != nil {
 		return
@@ -54,7 +63,7 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id, key string, err 
 
 func (w *Workspaces) initRelation(st *state.State, relationKey string) (err error) {
 	rel := NewRelation()
-	subState, err := w.subState(st, collectionKeyRelations, addr.RelationKeyToIdPrefix+relationKey)
+	subState, err := smartblock.SubState(st, collectionKeyRelations, addr.RelationKeyToIdPrefix+relationKey)
 	if err != nil {
 		return
 	}
@@ -69,27 +78,6 @@ func (w *Workspaces) initRelation(st *state.State, relationKey string) (err erro
 	return
 }
 
-func (w *Workspaces) subState(st *state.State, collection string, id string) (*state.State, error) {
-	var subId string
-	if collection == collectionKeyRelations {
-		subId = strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
-	} else {
-		subId = id
-	}
-	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
-	if data == nil || data.Fields == nil {
-		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
-	}
-	subState := state.NewDoc(id, nil).(*state.State)
-	for k, v := range data.Fields {
-		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
-			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
-		}
-	}
-	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
-	return subState, nil
-}
-
 func (w *Workspaces) onRelationChange(params source.PushChangeParams) (changeId string, err error) {
 	st := w.NewState()
 	id := params.State.RootId()
@@ -97,7 +85,13 @@ func (w *Workspaces) onRelationChange(params source.PushChangeParams) (changeId 
 	if _, ok := w.relations[subId]; !ok {
 		return "", fmt.Errorf("onRelationChange: relation not exists")
 	}
-	st.SetInStore([]string{collectionKeyRelations, subId}, pbtypes.Struct(params.State.CombinedDetails()))
+	changed := st.SetInStore([]string{collectionKeyRelations, subId}, pbtypes.Struct(params.State.CombinedDetails()))
+	if id == "rel-artist" {
+		fmt.Println()
+	}
+	if !changed {
+		return "", nil
+	}
 	return "", w.Apply(st, smartblock.NoHooks)
 }
 
@@ -115,9 +109,7 @@ func (o *Relation) Init(ctx *smartblock.InitContext) (err error) {
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return smartblock.ObjectApplyTemplate(o, ctx.State,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyRelation.URL()}),
-	)
+	return nil
 }
 
 func (o *Relation) SetStruct(st *types.Struct) error {

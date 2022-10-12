@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"net/url"
 	"sync"
 
@@ -26,6 +27,7 @@ const blockServiceCName = "blockService"
 var (
 	ErrNotFound = errors.New("relation not found")
 	ErrExists   = errors.New("relation with given key already exists")
+	log         = logging.Logger("anytype-relations")
 )
 
 func New() Service {
@@ -36,6 +38,7 @@ type Service interface {
 	FetchKeys(keys ...string) (relations relationutils.Relations, err error)
 	FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
 	FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
+	MigrateOldRelations(relations []*model.Relation) (err error)
 
 	//Create(details *types.Struct) (rl *model.RelationLink, err error)
 	//CreateOption(relationKey string, opt *model.RelationOption) (id string, err error)
@@ -43,17 +46,76 @@ type Service interface {
 	app.Component
 }
 
-type service struct {
-	objectStore objectstore.ObjectStore
-	mu          sync.RWMutex
+type relationCreator interface {
+	CreateRelation(opt *types.Struct) (id, key string, err error)
+	CreateRelationOption(details *types.Struct) (id string, err error)
+}
 
-	migrateCache map[string]*model.RelationLink
+var errSubobjectAlreadyExists = fmt.Errorf("subobject already exists in the collection")
+
+type service struct {
+	objectStore     objectstore.ObjectStore
+	relationCreator relationCreator
+
+	mu sync.RWMutex
+
+	migrateCache map[string]struct{}
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.migrateCache = make(map[string]*model.RelationLink)
+	s.relationCreator = a.MustComponent(blockServiceCName).(relationCreator)
+
+	s.migrateCache = make(map[string]struct{})
 	return
+}
+
+func (s *service) MigrateOldRelations(relations []*model.Relation) (err error) {
+	if len(relations) == 0 {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, rel := range relations {
+		for _, opt := range rel.SelectDict {
+			if _, exists := s.migrateCache[opt.Id]; exists {
+				continue
+			}
+			opt.RelationKey = rel.Key
+			_, err = s.relationCreator.CreateRelationOption((&relationutils.Option{RelationOption: opt}).ToStruct())
+			if err != nil {
+
+				// todo: extract this error somewhere else
+				if err.Error() == errSubobjectAlreadyExists.Error() {
+					log.Errorf("migration of %s already exists: %s", opt.Id, err.Error())
+
+				}
+			}
+			s.migrateCache[opt.Id] = struct{}{}
+		}
+		if _, exists := s.migrateCache[rel.Key]; exists {
+			continue
+		}
+		_, _, err = s.relationCreator.CreateRelation((&relationutils.Relation{Relation: rel}).ToStruct())
+		if err != nil {
+
+			// todo: extract this error somewhere else
+			if err.Error() == errSubobjectAlreadyExists.Error() {
+				log.Errorf("migration of %s already exists: %s", rel.Key, err.Error())
+
+				continue
+				err = nil
+			} else {
+				log.Errorf("migration of %s got error: %s", rel.Key, err.Error())
+
+				return
+			}
+		} else {
+			s.migrateCache[rel.Key] = struct{}{}
+			log.Warnf("#migration of %s done\n", rel.Key)
+		}
+	}
+	return nil
 }
 
 func (s *service) Name() (name string) {

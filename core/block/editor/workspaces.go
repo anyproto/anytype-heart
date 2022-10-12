@@ -35,8 +35,8 @@ const (
 	collectionKeyAddrs           = "addrs"
 	collectionKeyId              = "id"
 	collectionKeyKey             = "key"
-	collectionKeyRelationOptions = "relationOptions"
-	collectionKeyRelations       = "relations"
+	collectionKeyRelationOptions = "opt"
+	collectionKeyRelations       = "rel"
 )
 
 var (

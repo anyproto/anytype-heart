@@ -218,7 +218,7 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) *types2.Struct {
 	if bundled {
 		prefix = addr.BundledRelationURLPrefix
 	} else {
-		prefix = addr.CustomRelationURLPrefix
+		prefix = addr.RelationKeyToIdPrefix
 	}
 
 	return &types2.Struct{Fields: map[string]*types2.Value{

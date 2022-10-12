@@ -682,7 +682,7 @@ func (s *service) ModifyLocalDetails(objectId string, modifier func(current *typ
 
 func (s *service) AddExtraRelations(ctx *session.Context, objectId string, relationIds []string) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.AddExtraRelations(ctx, relationIds...)
+		return b.AddRelationLinks(ctx, relationIds...)
 	})
 }
 

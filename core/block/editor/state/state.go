@@ -602,6 +602,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.relationLinks = s.relationLinks
 	}
 
+	if s.parent != nil && s.extraRelations != nil {
+		s.parent.extraRelations = s.extraRelations
+	}
+
 	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
 		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
@@ -656,6 +660,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.relationLinks != nil {
 		s.parent.relationLinks = s.relationLinks
+	}
+	if s.extraRelations != nil {
+		s.parent.extraRelations = s.extraRelations
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
@@ -1252,8 +1259,11 @@ func (s *State) createOrCopyStoreFromParent() {
 	}
 }
 
-func (s *State) SetInStore(path []string, value *types.Value) {
-	s.setInStore(path, value)
+func (s *State) SetInStore(path []string, value *types.Value) (changed bool) {
+	changed = s.setInStore(path, value)
+	if !changed {
+		return
+	}
 	if value != nil {
 		s.changes = append(s.changes, &pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfStoreKeySet{
@@ -1267,9 +1277,26 @@ func (s *State) SetInStore(path []string, value *types.Value) {
 			},
 		})
 	}
+	return
 }
 
-func (s *State) setInStore(path []string, value *types.Value) {
+func (s *State) HasInStore(path []string) bool {
+	store := s.Store()
+	if store.GetFields() == nil {
+		return false
+	}
+
+	for _, key := range path {
+		_, ok := store.Fields[key]
+		if !ok {
+			return false
+		}
+		store = store.Fields[key].Kind.(*types.Value_StructValue).StructValue
+	}
+	return true
+}
+
+func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 	if len(path) == 0 {
 		return
 	}
@@ -1310,9 +1337,12 @@ func (s *State) setInStore(path []string, value *types.Value) {
 		store.Fields = map[string]*types.Value{}
 	}
 	if value != nil {
+		oldval := store.Fields[path[len(path)-1]]
+		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
 		return
 	}
+	changed = true
 	delete(store.Fields, path[len(path)-1])
 	// cleaning empty structs from collection to avoid empty pb values
 	idx := len(path) - 2
@@ -1321,6 +1351,7 @@ func (s *State) setInStore(path []string, value *types.Value) {
 		store = storeStack[idx]
 		idx--
 	}
+	return
 }
 
 func (s *State) ContainsInStore(path []string) bool {
@@ -1404,11 +1435,15 @@ func (s *State) Store() *types.Struct {
 }
 
 func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {
-	if s.store == nil || s.parent == nil {
+	if s.store == nil {
 		return nil
 	}
 	pbtypes.StructIterate(s.store, func(path []string, v *types.Value) {
-		if slice.HasPrefix(path, prefixPath) {
+		if slice.HasPrefix(path, prefixPath) || prefixPath == nil {
+			if s.parent == nil {
+				paths = append(paths, path)
+				return
+			}
 			parentVal := pbtypes.Get(s.parent.store, path...)
 			if st := v.GetStructValue(); st != nil && parentVal.GetStructValue() != nil {
 				if !pbtypes.StructEqualKeys(st, parentVal.GetStructValue()) {
@@ -1471,7 +1506,7 @@ func (s *State) RemoveRelation(keys ...string) {
 	relLinks := s.GetRelationLinks()
 	relLinksFiltered := make(pbtypes.RelationLinks, 0, len(relLinks))
 	for _, link := range relLinks {
-		if slice.FindPos(keys, link.Key) < 0 {
+		if slice.FindPos(keys, link.Key) >= 0 {
 			continue
 		}
 		relLinksFiltered = append(relLinksFiltered, &model.RelationLink{
@@ -1482,12 +1517,19 @@ func (s *State) RemoveRelation(keys ...string) {
 	// remove detail value
 	s.RemoveDetail(keys...)
 	// remove from the list of featured relations
+	var foundInFeatured bool
 	featuredList := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 	featuredList = slice.Filter(featuredList, func(s string) bool {
-		return slice.FindPos(keys, s) == -1
+		if slice.FindPos(keys, s) == -1 {
+			return true
+		}
+		foundInFeatured = true
+		return false
 	})
-	s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(featuredList))
-	s.relationLinks = relLinks
+	if foundInFeatured {
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(featuredList))
+	}
+	s.relationLinks = relLinksFiltered
 	return
 }
 

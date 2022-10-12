@@ -2,6 +2,11 @@ package indexer_test
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"io"
 	"io/ioutil"
 	"os"
@@ -66,7 +71,6 @@ func newFixture(t *testing.T) *fixture {
 	for _, rk := range bundle.ListRelationsKeys() {
 		fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
 		fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
-
 	}
 	for _, ok := range bundle.ListTypesKeys() {
 		fx.objectStore.EXPECT().GetDetails(ok.URL())
@@ -102,6 +106,7 @@ func newFixture(t *testing.T) *fixture {
 	ta.With(&cfg).With(wallet.NewWithRepoPathAndKeys(rootPath, nil, nil)).
 		With(clientds.New()).
 		With(ftsearch.New()).
+		With(&rs{}).
 		With(fx.rb).
 		With(fx.Indexer).
 		With(fx.docService).
@@ -127,4 +132,34 @@ func (fx *fixture) tearDown() {
 	fx.rb.(io.Closer).Close()
 	fx.ta.Close()
 	fx.ctrl.Finish()
+}
+
+type rs struct{}
+
+func (b *rs) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
+	return
+}
+
+func (b *rs) FetchKey(key string, opts ...relation.FetchOption) (relation *relationutils.Relation, err error) {
+	return
+}
+
+func (b *rs) FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+	return
+}
+
+func (b *rs) MigrateOldRelations(relations []*model.Relation) (err error) {
+	return
+}
+
+func (b *rs) ValidateFormat(key string, v *types.Value) error {
+	return nil
+}
+
+func (b *rs) Init(_ *app.App) (err error) {
+	return
+}
+
+func (b *rs) Name() (name string) {
+	return "relation"
 }

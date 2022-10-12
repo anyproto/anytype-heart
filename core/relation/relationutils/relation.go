@@ -49,6 +49,7 @@ func (r *Relation) ToStruct() *types.Struct {
 			bundle.RelationKeyRelationKey.String():               pbtypes.String(r.GetKey()),
 			bundle.RelationKeyRelationFormat.String():            pbtypes.Float64(float64(r.GetFormat())),
 			bundle.RelationKeyName.String():                      pbtypes.String(r.GetName()),
+			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.URL()),
 			bundle.RelationKeyRelationDefaultValue.String():      r.GetDefaultValue(),
 			bundle.RelationKeyIsHidden.String():                  pbtypes.Bool(r.GetHidden()),
 			bundle.RelationKeyIsReadonly.String():                pbtypes.Bool(r.GetReadOnly()),

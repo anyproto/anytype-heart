@@ -35,22 +35,35 @@ func (w *Workspaces) Open(subId string) (sb smartblock.SmartBlock, err error) {
 	return nil, ErrSubObjectNotFound
 }
 
-func (w *Workspaces) CreateRelationOption(opt *types.Struct) (subId string, err error) {
-	if opt == nil || opt.Fields == nil {
+func (w *Workspaces) CreateRelationOption(details *types.Struct) (subId string, err error) {
+	if details == nil || details.Fields == nil {
 		return "", fmt.Errorf("create option: no data")
 	}
-	if pbtypes.GetString(opt, bundle.RelationKeyRelationKey.String()) == "" {
-		return "", fmt.Errorf("field relationKey is empty or absent")
+
+	if pbtypes.GetString(details, bundle.RelationKeyRelationOptionText.String()) == "" {
+		return "", fmt.Errorf("missing option text")
+	} else if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelationOption.URL() {
+		return "", fmt.Errorf("invalid type: not an option")
+	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
+		return "", fmt.Errorf("invalid relation key: unknown enum")
 	}
 
-	subId = bson.NewObjectId().Hex()
-	opt.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subId)
-
+	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
 	st := w.NewState()
-	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(opt))
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		// no need to check for the generated bson's
+		if st.HasInStore([]string{collectionKeyRelationOptions, key}) {
+			return key, ErrSubObjectAlreadyExists
+		}
+	}
+
+	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(details))
 	if err = w.initOption(st, subId); err != nil {
 		return
 	}
+
 	if err = w.Apply(st, smartblock.NoHooks); err != nil {
 		return
 	}
@@ -59,7 +72,7 @@ func (w *Workspaces) CreateRelationOption(opt *types.Struct) (subId string, err 
 
 func (w *Workspaces) initOption(st *state.State, subId string) (err error) {
 	opt := NewOption()
-	subState, err := w.subState(st, collectionKeyRelationOptions, subId)
+	subState, err := smartblock.SubState(st, collectionKeyRelationOptions, subId)
 	if err != nil {
 		return
 	}
@@ -123,7 +136,10 @@ func (w *Workspaces) onOptionChange(params source.PushChangeParams) (changeId st
 	if _, ok := w.options[id]; !ok {
 		return "", fmt.Errorf("onOptionChange: option not exists")
 	}
-	st.SetInStore([]string{collectionKeyRelationOptions, id}, pbtypes.Struct(params.State.CombinedDetails()))
+	changed := st.SetInStore([]string{collectionKeyRelationOptions, id}, pbtypes.Struct(params.State.CombinedDetails()))
+	if !changed {
+		return "", nil
+	}
 	return "", w.Apply(st, smartblock.NoHooks)
 }
 

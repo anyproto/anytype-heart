@@ -248,7 +248,7 @@ func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
 		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(pbtypes.CopyRelations(s.OldExtraRelations()), rel)
+	s.extraRelations = pbtypes.CopyRelations(append(s.OldExtraRelations(), rel))
 	return nil
 }
 

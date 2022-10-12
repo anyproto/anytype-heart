@@ -1183,7 +1183,6 @@
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
     - [ObjectType.Layout](#anytype.model.ObjectType.Layout)
     - [Relation.DataSource](#anytype.model.Relation.DataSource)
-    - [Relation.Option.Scope](#anytype.model.Relation.Option.Scope)
     - [Relation.Scope](#anytype.model.Relation.Scope)
     - [RelationFormat](#anytype.model.RelationFormat)
     - [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction)
@@ -18077,7 +18076,9 @@ scope from which this relation have been aggregated |
 | id | [string](#string) |  | id generated automatically if omitted |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
-| scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+| relationKey | [string](#string) |  | 4 is reserved for old relation format
+
+stored |
 
 
 
@@ -18666,19 +18667,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | derived | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
 | local | 3 | stored locally |
-
-
-
-<a name="anytype.model.Relation.Option.Scope"></a>
-
-### Relation.Option.Scope
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| local | 0 | stored within the object/aggregated from set |
-| relation | 1 | aggregated from all relation of this relation&#39;s key |
-| format | 2 | aggregated from all relations of this relation&#39;s format |
 
 
 

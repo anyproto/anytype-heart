@@ -104,7 +104,7 @@ type SmartBlock interface {
 	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddExtraRelations(ctx *session.Context, relationIds ...string) (err error)
+	AddRelationLinks(ctx *session.Context, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
@@ -855,7 +855,7 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 	return nil
 }
 
-func (sb *smartBlock) AddExtraRelations(ctx *session.Context, relationKeys ...string) (err error) {
+func (sb *smartBlock) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.addRelations(s, relationKeys...); err != nil {
 		return
@@ -1368,11 +1368,95 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	}
 }
 
+func SubStates(st *state.State, collection string) (map[string]*state.State, error) {
+	coll := st.GetCollection(collection)
+	if coll == nil {
+		return nil, fmt.Errorf("collection not found")
+	}
+
+	m := make(map[string]*state.State, len(coll.Fields))
+	for k, v := range coll.GetFields() {
+		m[k] = structToState(k, v.GetStructValue())
+	}
+	return m, nil
+}
+
+func SubState(st *state.State, collection string, id string) (*state.State, error) {
+	if collection == source.WorkspaceCollection {
+		return nil, fmt.Errorf("substate not supported")
+	}
+	subId := strings.TrimPrefix(id, collection+addr.VirtualObjectSeparator)
+	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
+	if data == nil || data.Fields == nil {
+		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
+	}
+	subst := structToState(id, data)
+	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy}
+	for _, rk := range relationsToCopy {
+		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
+	}
+	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate)
+	return subst, nil
+}
+
+func structToState(id string, data *types.Struct) *state.State {
+	subState := state.NewDoc(id, nil).(*state.State)
+	for k, v := range data.Fields {
+		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
+			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
+		}
+	}
+	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
+	return subState
+}
+
 func (sb *smartBlock) reportChange(s *state.State) {
 	if sb.doc == nil {
 		return
 	}
-	sb.doc.ReportChange(context.TODO(), sb.getDocInfo(s))
+	docInfo := sb.getDocInfo(s)
+	sb.doc.ReportChange(context.TODO(), docInfo)
+
+	if hasStoreChanges(s.GetChanges()) {
+		var path []string
+		var m = make(map[string]struct{})
+		for _, ch := range s.GetChanges() {
+			storeSet := ch.GetStoreKeySet()
+			if storeSet != nil {
+				path = storeSet.Path
+			}
+
+			storeUnset := ch.GetStoreKeyUnset()
+			if storeUnset != nil {
+				path = storeUnset.Path
+			}
+			if len(path) < 2 {
+				// only process the full state
+				continue
+			}
+			mapKey := path[0] + "_" + path[1]
+			if _, exists := m[mapKey]; exists {
+				continue
+			}
+
+			m[mapKey] = struct{}{}
+
+			st, _ := SubState(s, path[0], path[1])
+			if st == nil {
+				// not a valid state, may be threadDB
+				continue
+			}
+			d := doc.DocInfo{
+				Id:         pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyId.String()),
+				Links:      nil,
+				FileHashes: nil,
+				LogHeads:   docInfo.LogHeads,
+				Creator:    docInfo.Creator,
+				State:      st,
+			}
+			sb.doc.ReportChange(context.TODO(), d)
+		}
+	}
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {

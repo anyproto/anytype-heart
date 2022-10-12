@@ -3,6 +3,7 @@ package smarttest
 import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -40,6 +41,10 @@ type SmartTest struct {
 	state.Doc
 	isDeleted bool
 	os        *testMock.MockObjectStore
+}
+
+func (st *SmartTest) EnabledRelationAsDependentObjects() {
+	return
 }
 
 func (st *SmartTest) IsLocked() bool {
@@ -104,11 +109,16 @@ func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hoo
 	return
 }
 
-func (st *SmartTest) HasRelation(s *state.State, relationKey string) bool {
-	return st.NewState().HasRelation(relationKey)
+func (st *SmartTest) HasRelation(s *state.State, key string) bool {
+	for _, rel := range s.GetRelationLinks() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
-func (st *SmartTest) Relations(s *state.State) relation.Relations {
+func (st *SmartTest) Relations(s *state.State) relationutils.Relations {
 	return nil
 }
 
@@ -120,7 +130,19 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddExtraRelations(ctx *session.Context, relationIds ...string) (err error) {
+func (st *SmartTest) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
+	if st.meta == nil {
+		st.meta = &core.SmartBlockMeta{
+			Details: &types.Struct{
+				Fields: make(map[string]*types.Value),
+			}}
+	}
+	for _, key := range relationKeys {
+		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+			Key:    key,
+			Format: 0, // todo
+		})
+	}
 	return nil
 }
 

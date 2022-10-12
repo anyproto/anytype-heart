@@ -2,6 +2,11 @@ package history
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -53,6 +58,7 @@ func newFixture(t *testing.T) *fixture {
 	h := New()
 	ta := testapp.New().
 		With(&bs{}).
+		With(&rs{}).
 		With(h)
 	a := testMock.RegisterMockAnytype(ctrl, ta)
 	a.EXPECT().PredefinedBlocks().Return(threads.DerivedSmartblockIds{
@@ -99,6 +105,36 @@ func (b *bs) Name() (name string) {
 
 func (b *bs) ResetToState(pageId string, s *state.State) (err error) {
 	return
+}
+
+type rs struct{}
+
+func (b *rs) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
+	return
+}
+
+func (b *rs) FetchKey(key string, opts ...relation.FetchOption) (relation *relationutils.Relation, err error) {
+	return
+}
+
+func (b *rs) FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+	return
+}
+
+func (b *rs) MigrateOldRelations(relations []*model.Relation) (err error) {
+	return
+}
+
+func (b *rs) ValidateFormat(key string, v *types.Value) error {
+	return nil
+}
+
+func (b *rs) Init(_ *app.App) (err error) {
+	return
+}
+
+func (b *rs) Name() (name string) {
+	return "relation"
 }
 
 func newSnapshot(id, snapshotId string, heads map[string]string, prevIds ...string) *change.Change {

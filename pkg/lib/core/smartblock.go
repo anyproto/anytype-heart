@@ -54,9 +54,9 @@ type SmartBlockContentChange struct {
 }
 
 type SmartBlockMeta struct {
-	ObjectTypes []string
-	Relations   []*model.Relation
-	Details     *types.Struct
+	ObjectTypes   []string
+	RelationLinks []*model.RelationLink
+	Details       *types.Struct
 }
 
 type SmartBlockMetaChange struct {

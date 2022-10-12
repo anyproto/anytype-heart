@@ -703,13 +703,8 @@ message Relation {
         string id = 1; // id generated automatically if omitted
         string text = 2;
         string color = 3; // stored
-        Scope scope = 4; // on-store contains only local-scope relations. All others injected on-the-fly
-
-        enum Scope {
-            local = 0; // stored within the object/aggregated from set
-            relation = 1; // aggregated from all relation of this relation's key
-            format = 2; // aggregated from all relations of this relation's format
-        }
+        // 4 is reserved for old relation format
+        string relationKey = 5; // stored
     }
 
     enum Scope {

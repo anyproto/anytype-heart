@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"

@@ -294,7 +294,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{},
 			}}))
-		sb.AddExtraRelations(nil, "testRelId")
+		sb.AddRelationLinks(nil, "testRelKey")
 	}
 	t.Run("correct", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -302,7 +302,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 		b := NewBasic(sb)
 		err := b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "2",
-			Key:     "testRelId",
+			Key:     "testRelKey",
 		})
 		require.NoError(t, err)
 		var setRelationEvent *pb.EventBlockSetRelation
@@ -315,8 +315,8 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			}
 		}
 		require.NotNil(t, setRelationEvent)
-		assert.Equal(t, "key", setRelationEvent.GetKey().Value)
-		assert.Equal(t, "key", sb.NewState().Pick("2").Model().GetRelation().Key)
+		assert.Equal(t, "testRelKey", setRelationEvent.GetKey().Value)
+		assert.Equal(t, "testRelKey", sb.NewState().Pick("2").Model().GetRelation().Key)
 	})
 	t.Run("not relation block", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -342,8 +342,8 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
 	template.WithTitle(s)
-	s.AddRelation(bundle.MustGetRelation(bundle.RelationKeyName))
-	s.AddRelation(bundle.MustGetRelation(bundle.RelationKeyDescription))
+	s.AddBundledRelations(bundle.RelationKeyName)
+	s.AddBundledRelations(bundle.RelationKeyDescription)
 	require.NoError(t, sb.Apply(s))
 
 	b := NewBasic(sb)
@@ -376,7 +376,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
 	s.SetDetail("link", pbtypes.String(oldId))
-	s.AddRelation(&model.Relation{Key: "link", Format: model.RelationFormat_object})
+	s.AddRelationLinks(&model.RelationLink{Key: "link", Format: model.RelationFormat_object})
 	template.WithDescription(s)
 	newBlocks := []simple.Block{
 		simple.New(&model.Block{Content: &model.BlockContentOfLink{
@@ -403,7 +403,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 	require.NoError(t, b.ReplaceLink(oldId, newId))
 
 	res := sb.NewState()
-	assert.Equal(t, pbtypes.GetString(res.Details(), "link"), newId)
-	assert.Equal(t, res.Pick(newBlocks[0].Model().Id).Model().GetLink().TargetBlockId, newId)
-	assert.Equal(t, res.Pick(newBlocks[1].Model().Id).Model().GetText().GetMarks().Marks[0].Param, newId)
+	assert.Equal(t, newId, pbtypes.GetString(res.Details(), "link"))
+	assert.Equal(t, newId, res.Pick(newBlocks[0].Model().Id).Model().GetLink().TargetBlockId)
+	assert.Equal(t, newId, res.Pick(newBlocks[1].Model().Id).Model().GetText().GetMarks().Marks[0].Param)
 }

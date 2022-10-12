@@ -506,13 +506,14 @@ func TestState_GetChangedStoreKeys(t *testing.T) {
 	p.SetInStore([]string{"one", "two", "v2"}, pbtypes.String("val2"))
 	p.SetInStore([]string{"one", "two", "v3"}, pbtypes.String("val3"))
 	p.SetInStore([]string{"other"}, pbtypes.String("val42"))
+	changed := p.GetChangedStoreKeys()
 
 	s := p.NewState()
 	s.SetInStore([]string{"one", "two", "v2"}, pbtypes.String("val2ch"))
 	s.SetInStore([]string{"other"}, pbtypes.String("changed"))
 	s.RemoveFromStore([]string{"one", "two", "v3"})
 
-	changed := s.GetChangedStoreKeys()
+	changed = s.GetChangedStoreKeys()
 	assert.Len(t, changed, 3)
 	assert.Contains(t, changed, []string{"one", "two", "v2"})
 	assert.Contains(t, changed, []string{"one", "two"})
