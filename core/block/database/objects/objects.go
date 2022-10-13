@@ -94,7 +94,17 @@ func (sp setOfObjects) Create(ctx context.Context, relations []*model.Relation, 
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectType.Url)
 	}
 
-	id, newDetails, err := sp.createSmartBlock(ctx, coresb.SmartBlockTypePage, rec.Details, relsToSet, templateId)
+	var sbType = coresb.SmartBlockTypePage
+	if sp.objectType != nil {
+		ot, err := bundle.TypeKeyFromUrl(sp.objectType.Url)
+		if err == nil {
+			if t, exists := bundle.DefaultSmartblockTypePerObjectType[ot]; exists {
+				sbType = t
+			}
+		}
+	}
+
+	id, newDetails, err := sp.createSmartBlock(ctx, sbType, rec.Details, relsToSet, templateId)
 	if err != nil {
 		return rec, err
 	}
