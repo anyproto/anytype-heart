@@ -95,10 +95,12 @@ func (sp setOfObjects) Create(ctx context.Context, relations []*model.Relation, 
 	}
 
 	var sbType = coresb.SmartBlockTypePage
-	ot, err := bundle.TypeKeyFromUrl(sp.objectType.Url)
-	if err == nil {
-		if t, exists := bundle.DefaultSmartblockTypePerObjectType[ot]; exists {
-			sbType = t
+	if sp.objectType != nil {
+		ot, err := bundle.TypeKeyFromUrl(sp.objectType.Url)
+		if err == nil {
+			if t, exists := bundle.DefaultSmartblockTypePerObjectType[ot]; exists {
+				sbType = t
+			}
 		}
 	}
 

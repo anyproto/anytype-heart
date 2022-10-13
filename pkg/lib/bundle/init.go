@@ -301,7 +301,7 @@ func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
 }
 
 func TypeKeyFromUrl(url string) (TypeKey, error) {
-	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
+	if !strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
 		return "", fmt.Errorf("invalid type url: no prefix found")
 	}
 	return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
