@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"strconv"
 	"strings"
 	"time"
@@ -298,8 +299,8 @@ func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.Rp
 		return errResponse(errors.New("app must be started"))
 	}
 
-	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	groups, err := store.RelationSearchDistinct(req.RelationKey, req.Filters)
+	kanbanSrv := mw.app.MustComponent(kanban.CName).(*kanban.Service)
+	groups, err := kanbanSrv.MakeGroups(req.RelationKey, req.Filters)
 	if err != nil {
 		return errResponse(err)
 	}
