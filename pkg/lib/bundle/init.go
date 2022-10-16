@@ -58,6 +58,14 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
 }
 
+var DefaultSmartblockTypePerObjectType = map[TypeKey]coresb.SmartBlockType{
+	TypeKeyPage:       coresb.SmartBlockTypePage,
+	TypeKeySet:        coresb.SmartBlockTypeSet,
+	TypeKeyObjectType: coresb.SmartBlockTypeObjectType,
+	TypeKeyTemplate:   coresb.SmartBlockTypeTemplate,
+	TypeKeyDashboard:  coresb.SmartBlockTypeHome,
+}
+
 // filled in init
 var LocalRelationsKeys []string   // stored only in localstore
 var DerivedRelationsKeys []string // derived
@@ -245,4 +253,11 @@ func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
 	}
 
 	return false
+}
+
+func TypeKeyFromUrl(url string) (TypeKey, error) {
+	if !strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
+		return "", fmt.Errorf("invalid type url: no prefix found")
+	}
+	return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
 }

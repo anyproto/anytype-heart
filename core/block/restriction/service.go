@@ -3,9 +3,9 @@ package restriction
 import (
 	"errors"
 
-	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -26,7 +26,7 @@ type simpleObject struct {
 }
 
 func newSimpleObject(id string) (Object, error) {
-	tp, err := smartblock2.SmartBlockTypeFromID(id)
+	tp, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,12 @@ type Service interface {
 	app.Component
 }
 
-type service struct{}
+type service struct {
+	anytype core.Service
+}
 
 func (s *service) Init(a *app.App) (err error) {
+	s.anytype = a.MustComponent(core.CName).(core.Service)
 	return
 }
 

@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
@@ -238,6 +239,26 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		if err = apply(o.BlockDataViewGroupOrderUpdate.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
 				f.SetViewGroupOrder(o.BlockDataViewGroupOrderUpdate.GroupOrder)
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
+		if err = apply(o.BlockDataViewObjectOrderUpdate.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+
+				for _, order := range b.Model().GetDataview().ObjectOrders {
+					if order.ViewId == o.BlockDataViewObjectOrderUpdate.ViewId && order.GroupId == o.BlockDataViewObjectOrderUpdate.GroupId {
+						changes := o.BlockDataViewObjectOrderUpdate.GetSliceChanges()
+						changedIds := slice.ApplyChanges(order.ObjectIds, pbtypes.EventsToSliceChange(changes))
+						order.ObjectIds = changedIds
+					}
+				}
+
+				f.SetViewObjectOrder(b.Model().GetDataview().ObjectOrders)
+
 				return nil
 			}
 			return fmt.Errorf("not a dataview block")

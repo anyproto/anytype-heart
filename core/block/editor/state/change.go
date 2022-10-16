@@ -464,6 +464,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			newRelLinks = append(newRelLinks, msg.Msg.GetObjectRelationsAmend().RelationLinks...)
 		case *pb.EventMessageValueOfObjectRelationsRemove:
 			delRelIds = append(delRelIds, msg.Msg.GetObjectRelationsRemove().RelationIds...)
+		case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
+			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)
 		}

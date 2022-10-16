@@ -943,10 +943,12 @@
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Dataview](#anytype.Event.Block.Dataview)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype.Event.Block.Dataview.GroupOrderUpdate)
+    - [Event.Block.Dataview.ObjectOrderUpdate](#anytype.Event.Block.Dataview.ObjectOrderUpdate)
     - [Event.Block.Dataview.OldRelationDelete](#anytype.Event.Block.Dataview.OldRelationDelete)
     - [Event.Block.Dataview.OldRelationSet](#anytype.Event.Block.Dataview.OldRelationSet)
     - [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete)
     - [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet)
+    - [Event.Block.Dataview.SliceChange](#anytype.Event.Block.Dataview.SliceChange)
     - [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet)
     - [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete)
     - [Event.Block.Dataview.ViewOrder](#anytype.Event.Block.Dataview.ViewOrder)
@@ -1080,6 +1082,7 @@
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
     - [ResponseEvent](#anytype.ResponseEvent)
   
+    - [Event.Block.Dataview.SliceOperation](#anytype.Event.Block.Dataview.SliceOperation)
     - [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus)
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
@@ -14806,6 +14809,24 @@ B. Partial block load
 
 
 
+<a name="anytype.Event.Block.Dataview.ObjectOrderUpdate"></a>
+
+### Event.Block.Dataview.ObjectOrderUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  |  |
+| groupId | [string](#string) |  |  |
+| sliceChanges | [Event.Block.Dataview.SliceChange](#anytype.Event.Block.Dataview.SliceChange) | repeated |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Dataview.OldRelationDelete"></a>
 
 ### Event.Block.Dataview.OldRelationDelete
@@ -14865,6 +14886,23 @@ sent when the dataview relation has been changed or added
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
 | relationLinks | [model.RelationLink](#anytype.model.RelationLink) | repeated | relation id to update |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Dataview.SliceChange"></a>
+
+### Event.Block.Dataview.SliceChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| op | [Event.Block.Dataview.SliceOperation](#anytype.Event.Block.Dataview.SliceOperation) |  |  |
+| ids | [string](#string) | repeated |  |
+| afterId | [string](#string) |  |  |
 
 
 
@@ -16376,11 +16414,12 @@ Precondition: user A opened a block
 | blockSetLatex | [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype.Event.Block.Set.VerticalAlign) |  |  |
 | blockSetTableRow | [Event.Block.Set.TableRow](#anytype.Event.Block.Set.TableRow) |  |  |
-| blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype.Event.Block.Dataview.GroupOrderUpdate) |  |  |
-| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype.Event.Block.Dataview.ViewOrder) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet) |  |  |
+| blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype.Event.Block.Dataview.GroupOrderUpdate) |  |  |
+| blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype.Event.Block.Dataview.ObjectOrderUpdate) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype.Event.Block.Dataview.OldRelationDelete) |  | deprecated |
@@ -16982,6 +17021,21 @@ Precondition: user A and user B opened the same block
 
 
  
+
+
+<a name="anytype.Event.Block.Dataview.SliceOperation"></a>
+
+### Event.Block.Dataview.SliceOperation
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SliceOperationNone | 0 | not used |
+| SliceOperationAdd | 1 |  |
+| SliceOperationMove | 2 |  |
+| SliceOperationRemove | 3 |  |
+| SliceOperationReplace | 4 |  |
+
 
 
 <a name="anytype.Event.Status.Thread.SyncStatus"></a>

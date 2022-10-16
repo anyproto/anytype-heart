@@ -93,6 +93,51 @@ func TestUploader_Upload(t *testing.T) {
 		b := res.ToBlock()
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
 	})
+	t.Run("file from Content-Disposition", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Disposition", "form-data; name=\"fieldName\"; filename=\"filename\"")
+			http.ServeFile(w, r, "./testdata/unnamed.jpg")
+		})
+		serv := httptest.NewServer(mux)
+		defer serv.Close()
+
+		fx := newFixture(t)
+		defer fx.tearDown()
+		fx.anytype.EXPECT().TempDir().AnyTimes()
+		im := fx.newImage("123")
+		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
+		im.EXPECT().GetOriginalFile(gomock.Any())
+		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
+		require.NoError(t, res.Err)
+		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.Name, "filename")
+		res.Size = 1
+		b := res.ToBlock()
+		assert.Equal(t, b.Model().GetFile().Name, "filename")
+	})
+	t.Run("file without url params", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, "./testdata/unnamed.jpg")
+		})
+		serv := httptest.NewServer(mux)
+		defer serv.Close()
+
+		fx := newFixture(t)
+		defer fx.tearDown()
+		fx.anytype.EXPECT().TempDir().AnyTimes()
+		im := fx.newImage("123")
+		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
+		im.EXPECT().GetOriginalFile(gomock.Any())
+		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
+		require.NoError(t, res.Err)
+		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.Name, "unnamed.jpg")
+		res.Size = 1
+		b := res.ToBlock()
+		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
+	})
 	t.Run("bytes", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()

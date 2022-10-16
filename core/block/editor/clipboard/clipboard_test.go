@@ -379,43 +379,43 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa\nbbbbb", "qwerty", "55555"})
 	})
 
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 2, To: 2}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "erty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qwaaaaa\nbbbbberty", "55555"})
 	})
 
 	t.Run("3. Cursor: end, range == 0. Expected behaviour: insert after block", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 6, To: 6}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qwertyaaaaa\nbbbbb", "55555"})
 	})
 
 	t.Run("4. Cursor from 1/4 to 3/4, range == 1/2. Expected behaviour: split block: top + bottom, remove Range, insert in a middle", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 2, To: 4}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "ty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qwaaaaa\nbbbbbty", "55555"})
 	})
 
 	t.Run("5. Cursor from stast to middle, range == 1/2. Expected behaviour: insert top, remove Range", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 0, To: 3}, []string{}, "eeeee\naaaaa\nbbbbb\nccccc")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "eeeee", "aaaaa", "bbbbb", "ccccc", "rty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "eeeee\naaaaa\nbbbbb\ncccccrty", "55555"})
 	})
 
 	t.Run("6. Cursor: middle to end, range == 1/2. Expected Behavior: bottom insert, range removal", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 3, To: 6}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qwe", "aaaaa", "bbbbb", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qweaaaaa\nbbbbb", "55555"})
 	})
 
 	t.Run("7. Cursor from start to end, range == 1. Expected behavior: bottom / top insert, block deletion", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 0, To: 6}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa\nbbbbb", "55555"})
 	})
 
 	t.Run("8.0 Cursor in the middle. Paste two blocks", func(t *testing.T) {
@@ -453,31 +453,31 @@ func TestCommonSmart_TextSlot_CommonCases(t *testing.T) {
 	t.Run("should split block on paste", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "abcde", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 2, To: 4}, []string{}, "22222\n33333")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "ab", "22222", "33333", "e", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "ab22222\n33333e", "55555"})
 	})
 
 	t.Run("should paste to the end when no focus", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
 		pasteText(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "44444", "55555", "aaaaa", "bbbbb"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "44444", "55555", "aaaaa\nbbbbb"})
 	})
 
 	t.Run("should paste to the end when no focus", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
 		pasteText(t, sb, "", model.Range{From: 0, To: 0}, []string{"2", "3", "4"}, "22222\n33333")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222\n33333", "55555"})
 	})
 
 	t.Run("should paste to the empty page", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
 		pasteText(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "22222\n33333")
-		checkBlockText(t, sb, []string{"22222", "33333"})
+		checkBlockText(t, sb, []string{"22222\n33333"})
 	})
 
 	t.Run("should paste when all blocks selected", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
 		pasteText(t, sb, "", model.Range{From: 0, To: 0}, []string{"1", "2", "3", "4", "5"}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"aaaaa", "bbbbb"})
+		checkBlockText(t, sb, []string{ "aaaaa\nbbbbb"})
 	})
 
 	t.Run("paste single to empty block", func(t *testing.T) {
@@ -489,7 +489,7 @@ func TestCommonSmart_TextSlot_CommonCases(t *testing.T) {
 	t.Run("paste multi to empty block", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "", "33333"}, emptyMarks))
 		pasteText(t, sb, "2", model.Range{From: 0, To: 0}, []string{}, "text\ntext2")
-		checkBlockText(t, sb, []string{"11111", "text", "text2", "33333"})
+		checkBlockText(t, sb, []string{"11111", "text\ntext2", "33333"})
 	})
 }
 
@@ -503,6 +503,17 @@ func TestClipboard_TitleOps(t *testing.T) {
 			},
 		})
 	}
+
+	newBookmark := func(url string) simple.Block {
+		return simple.New(&model.Block{
+			Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{
+					Url: url,
+				},
+			},
+		})
+	}
+
 	withTitle := func(t *testing.T, title string, textBlocks ...string) *smarttest.SmartTest {
 		sb := smarttest.New("text")
 		s := sb.NewState()
@@ -513,6 +524,31 @@ func TestClipboard_TitleOps(t *testing.T) {
 			s.Add(tb)
 			s.InsertTo("", 0, tb.Model().Id)
 		}
+		_, _, err := state.ApplyState(s, false)
+		require.NoError(t, err)
+		return sb
+	}
+
+	withBookmark := func(t *testing.T, firstTextBlock, lastTextBlock, bookmarkUrl string) *smarttest.SmartTest {
+		sb := smarttest.New("text")
+		s := sb.NewState()
+		require.NoError(t, template.InitTemplate(s, template.WithTitle))
+		if firstTextBlock != "" {
+			tb := newTextBlock(firstTextBlock)
+			tb.Model().Id = "firstTextBlockId"
+			s.Add(tb)
+			s.InsertTo("", 0, tb.Model().Id)
+		}
+		if lastTextBlock != "" {
+			tb := newTextBlock(lastTextBlock)
+			tb.Model().Id = "lastTextBlockId"
+			s.Add(tb)
+			s.InsertTo("", 0, tb.Model().Id)
+		}
+		bm := newBookmark(bookmarkUrl)
+		bm.Model().Id = "bookmarkId"
+		s.Add(bm)
+		s.InsertTo("", 0, bm.Model().Id)
 		_, _, err := state.ApplyState(s, false)
 		require.NoError(t, err)
 		return sb
@@ -628,6 +664,69 @@ func TestClipboard_TitleOps(t *testing.T) {
 		assert.Contains(t, htmlSlot, ">it<")
 		require.Len(t, anySlot, 1)
 		assert.Equal(t, "it", anySlot[0].GetText().Text)
+	})
+
+	t.Run("cut text and object block", func(t *testing.T) {
+		var (
+			url              = "http://example.com"
+			text             = "simple text"
+			firstTextBlockId = "firstTextBlockId"
+			bookmarkId       = "bookmarkId"
+			result           = text + "\n"
+		)
+		st := withBookmark(t, text, "", url)
+		cb := NewClipboard(st, nil)
+		textBlock := newTextBlock(text).Model()
+		textBlock.Id = firstTextBlockId
+		bookmark := newBookmark(url).Model()
+		bookmark.Id = bookmarkId
+		blockCutReq := pb.RpcBlockCutRequest{
+			ContextId:         "context",
+			SelectedTextRange: &model.Range{From: 0, To: 11},
+			Blocks:            []*model.Block{textBlock, bookmark},
+		}
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, blockCutReq)
+		require.NoError(t, err)
+		assert.Equal(t, result, textSlot)
+		assert.Len(t, anySlot, 2)
+		assert.Equal(t, firstTextBlockId, anySlot[0].Id)
+		assert.Equal(t, bookmarkId, anySlot[1].Id)
+		assert.Contains(t, htmlSlot, text)
+		assert.Contains(t, htmlSlot, url)
+	})
+	t.Run("cut simple text, link object and simple text", func(t *testing.T) {
+		var (
+			url              = "http://example.com"
+			firstText        = "first text"
+			firstTextBlockId = "firstTextBlockId"
+			lastTextBlockId  = "lastTextBlockId"
+			bookmarkId       = "bookmarkId"
+			secondText       = "second text"
+			result           = firstText + "\n" + secondText + "\n"
+		)
+		st := withBookmark(t, firstText, secondText, url)
+		cb := NewClipboard(st, nil)
+		textBlock := newTextBlock(firstText).Model()
+		textBlock.Id = firstTextBlockId
+		bookmark := newBookmark(url).Model()
+		bookmark.Id = bookmarkId
+		lastTextBlock := newTextBlock(secondText).Model()
+		lastTextBlock.Id = lastTextBlockId
+		blockCutReq := pb.RpcBlockCutRequest{
+			ContextId:         "context",
+			SelectedTextRange: &model.Range{From: 0, To: 11},
+			Blocks:            []*model.Block{textBlock, bookmark, lastTextBlock},
+		}
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, blockCutReq)
+		require.NoError(t, err)
+		assert.Equal(t, result, textSlot)
+		assert.Len(t, anySlot, 3)
+		assert.Equal(t, firstTextBlockId, anySlot[0].Id)
+		assert.Equal(t, bookmarkId, anySlot[1].Id)
+		assert.Equal(t, lastTextBlockId, anySlot[2].Id)
+		assert.Contains(t, htmlSlot, firstText)
+		assert.Contains(t, htmlSlot, url)
+		assert.Contains(t, htmlSlot, secondText)
 	})
 }
 

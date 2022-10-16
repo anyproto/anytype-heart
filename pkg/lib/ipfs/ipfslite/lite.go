@@ -144,6 +144,13 @@ func newDHT(ctx context.Context, h host.Host, ds ds.Batching) (*dualdht.DHT, err
 	return dualdht.New(ctx, h, dhtOpts...)
 }
 
+func withForceReachability(reachability network.Reachability) libp2p.Option {
+	return func(cfg *libp2p.Config) error {
+		cfg.AutoNATConfig.ForceReachability = &reachability
+		return nil
+	}
+}
+
 func setupLibP2PNode(ctx context.Context, cfg *Config, blockDS, peerDS ds.Batching) (host.Host, *dualdht.DHT, error) {
 	var ddht *dualdht.DHT
 	var err error
@@ -179,6 +186,7 @@ func setupLibP2PNode(ctx context.Context, cfg *Config, blockDS, peerDS ds.Batchi
 			ddht, err = newDHT(ctx, h, blockDS)
 			return ddht, err
 		}),
+		withForceReachability(network.ReachabilityPrivate), // most of the clients are behind NAT, so start with that assumption and then in case it wrong we will switch to public
 		libp2p.ConnectionManager(cnmgr),
 		libp2p.Peerstore(pstore),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
