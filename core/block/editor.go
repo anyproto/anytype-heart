@@ -923,22 +923,26 @@ func (s *service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExis
 		})
 	}
 	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
-		return s.DoClipboard(req.TargetContextId, func(tb clipboard.Clipboard) error {
-			cs := cb.NewState()
-			bs := basic.CutBlocks(cs, req.BlockIds)
-			blocks := make([]*model.Block, 0, len(bs))
-			for _, b := range bs {
-				blocks = append(blocks, b.Model())
-			}
-			_, _, _, _, err := tb.Paste(ctx, &pb.RpcBlockPasteRequest{
-				FocusedBlockId: req.DropTargetId,
-				AnySlot:        blocks,
-			}, "")
+		srcState := cb.NewState()
+		err := s.Do(req.TargetContextId, func(sb smartblock.SmartBlock) error {
+			destState := sb.NewState()
+			_, err := basic.Duplicate(pb.RpcBlockListDuplicateRequest{
+				ContextId:       req.ContextId,
+				TargetId:        req.DropTargetId,
+				BlockIds:        req.BlockIds,
+				Position:        req.Position,
+				TargetContextId: req.TargetContextId,
+			}, srcState, destState)
 			if err != nil {
 				return fmt.Errorf("paste: %w", err)
 			}
-			return cb.Apply(cs)
+			basic.CutBlocks(srcState, req.BlockIds)
+			return sb.Apply(destState)
 		})
+		if err != nil {
+			return err
+		}
+		return cb.Apply(srcState)
 	})
 }
 

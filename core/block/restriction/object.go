@@ -94,6 +94,12 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 
 func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
 	var ok bool
+	if obj.Type() == model.SmartBlockType_ProfilePage && s.anytype.PredefinedBlocks().Profile != obj.Id() {
+		if r, ok = objectRestrictionsByPbType[model.SmartBlockType_Page]; ok {
+			return
+		}
+	}
+
 	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {
 		return
 	}

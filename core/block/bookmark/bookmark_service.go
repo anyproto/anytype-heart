@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -177,6 +178,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 	if err != nil {
 		updaters <- func(c *model.BlockContentBookmark) {
 			c.State = model.BlockContentBookmark_Error
+			c.Url = url
 		}
 		close(updaters)
 		return updaters, fmt.Errorf("bookmark: can't fetch link %s: %w", url, err)
@@ -202,7 +204,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.svc, data.ImageUrl)
+			hash, err := loadImage(s.svc, data.Title, data.ImageUrl)
 			if err != nil {
 				log.Errorf("can't load image url %s: %s", data.ImageUrl, err)
 				return
@@ -216,7 +218,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.svc, data.FaviconUrl)
+			hash, err := loadImage(s.svc, "", data.FaviconUrl)
 			if err != nil {
 				log.Errorf("can't load favicon url %s: %s", data.FaviconUrl, err)
 				return
@@ -256,7 +258,7 @@ func (s *service) fetcher(id string, params bookmark.FetchParams) error {
 	return nil
 }
 
-func loadImage(stor core.Service, url string) (hash string, err error) {
+func loadImage(stor core.Service, title, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -290,7 +292,20 @@ func loadImage(stor core.Service, url string) (hash string, err error) {
 		return "", err
 	}
 
-	im, err := stor.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(filepath.Base(url)))
+	fileName := strings.Split(filepath.Base(url), "?")[0]
+	if value := resp.Header.Get("Content-Disposition"); value != "" {
+		contentDisposition := strings.Split(value, "filename=")
+		if len(contentDisposition) > 1 {
+			fileName = strings.Trim(contentDisposition[1], "\"")
+		}
+
+	}
+
+	if title != "" {
+		fileName = title
+	}
+
+	im, err := stor.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(fileName))
 	if err != nil {
 		return
 	}
