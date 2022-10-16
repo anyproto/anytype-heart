@@ -23,6 +23,10 @@ import (
 func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	blocks := make(map[string]simple.Block)
 	for _, b := range snapshot.Data.Blocks {
+		// migrate old dataview blocks with relations
+		if dvBlock := b.GetDataview(); dvBlock != nil {
+			dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
+		}
 		blocks[b.Id] = simple.New(b)
 	}
 	fileKeys := make([]pb.ChangeFileKeys, 0, len(snapshot.FileKeys))
@@ -30,6 +34,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		fileKeys = append(fileKeys, *fk)
 	}
 
+	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
+		snapshot.Data.RelationLinks = relationutils.MigrateRelationsModels(snapshot.Data.ExtraRelations)
+	}
 	// clear nil values
 	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
 
@@ -44,10 +51,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		store:          snapshot.Data.Collections,
 	}
 
-	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
-		s.relationLinks = relationutils.MigrateRelationsModels(snapshot.Data.ExtraRelations)
-	}
-
+	// migrate old relations from dataview block
+	// do not consider other possible dataview blocks
 	s.InjectDerivedDetails()
 	return s
 }
@@ -333,6 +338,9 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		bIds[i] = b.Model().Id
 		s.Unlink(bIds[i])
 		s.Set(b)
+		if dv := b.Model().GetDataview(); dv != nil {
+			dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
+		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
 }
