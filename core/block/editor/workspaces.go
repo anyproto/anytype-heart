@@ -561,7 +561,7 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id, key string, err 
 	return
 }
 
-func (w *Workspaces) CreateRelationOption(details *types.Struct) (subId string, err error) {
+func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err error) {
 	if details == nil || details.Fields == nil {
 		return "", fmt.Errorf("create option: no data")
 	}
@@ -585,8 +585,8 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (subId string, 
 		}
 	}
 
-	st.SetInStore([]string{collectionKeyRelationOptions, subId}, pbtypes.Struct(details))
-	if err = w.initSubObject(st, collectionKeyRelationOptions, subId); err != nil {
+	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(details))
+	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
 		return
 	}
 
