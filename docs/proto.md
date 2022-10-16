@@ -18765,13 +18765,12 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | MarketplaceRelation | 273 |  |
 | MarketplaceTemplate | 274 |  |
 | BundledRelation | 512 | DEPRECATED |
-| SubObjectRelation | 513 |  |
+| SubObject | 513 |  |
 | BundledObjectType | 514 |  |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | WorkspaceOld | 517 | deprecated thread-based workspace |
 | Workspace | 518 |  |
-| SubObjectRelationOption | 519 |  |
 
 
  

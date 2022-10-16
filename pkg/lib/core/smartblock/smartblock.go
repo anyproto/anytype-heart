@@ -17,28 +17,27 @@ type SmartBlockType uint64
 const (
 	SmartBlockTypeAccountOld = SmartBlockType(model.SmartBlockType_AccountOld)
 
-	SmartBlockTypePage                    = SmartBlockType(model.SmartBlockType_Page)
-	SmartBlockTypeProfilePage             = SmartBlockType(model.SmartBlockType_ProfilePage)
-	SmartBlockTypeHome                    = SmartBlockType(model.SmartBlockType_Home)
-	SmartBlockTypeArchive                 = SmartBlockType(model.SmartBlockType_Archive)
-	SmartBlockTypeDatabase                = SmartBlockType(model.SmartBlockType_Database)
-	SmartBlockTypeSet                     = SmartBlockType(model.SmartBlockType_Set)
-	SmartBlockTypeObjectType              = SmartBlockType(model.SmartBlockType_STObjectType)
-	SmartBlockTypeFile                    = SmartBlockType(model.SmartBlockType_File)
-	SmartblockTypeMarketplaceType         = SmartBlockType(model.SmartBlockType_MarketplaceType)
-	SmartblockTypeMarketplaceRelation     = SmartBlockType(model.SmartBlockType_MarketplaceRelation)
-	SmartblockTypeMarketplaceTemplate     = SmartBlockType(model.SmartBlockType_MarketplaceTemplate)
-	SmartBlockTypeTemplate                = SmartBlockType(model.SmartBlockType_Template)
-	SmartBlockTypeBundledTemplate         = SmartBlockType(model.SmartBlockType_BundledTemplate)
-	SmartBlockTypeBundledRelation         = SmartBlockType(model.SmartBlockType_BundledRelation)
-	SmartBlockTypeSubObjectRelation       = SmartBlockType(model.SmartBlockType_SubObjectRelation)
-	SmartBlockTypeSubObjectRelationOption = SmartBlockType(model.SmartBlockType_SubObjectRelationOption)
-	SmartBlockTypeBundledObjectType       = SmartBlockType(model.SmartBlockType_BundledObjectType)
-	SmartBlockTypeAnytypeProfile          = SmartBlockType(model.SmartBlockType_AnytypeProfile)
-	SmartBlockTypeDate                    = SmartBlockType(model.SmartBlockType_Date)
-	SmartBlockTypeBreadcrumbs             = SmartBlockType(model.SmartBlockType_Breadcrumbs)
-	SmartBlockTypeWorkspaceOld            = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
-	SmartBlockTypeWorkspace               = SmartBlockType(model.SmartBlockType_Workspace)
+	SmartBlockTypePage                = SmartBlockType(model.SmartBlockType_Page)
+	SmartBlockTypeProfilePage         = SmartBlockType(model.SmartBlockType_ProfilePage)
+	SmartBlockTypeHome                = SmartBlockType(model.SmartBlockType_Home)
+	SmartBlockTypeArchive             = SmartBlockType(model.SmartBlockType_Archive)
+	SmartBlockTypeDatabase            = SmartBlockType(model.SmartBlockType_Database)
+	SmartBlockTypeSet                 = SmartBlockType(model.SmartBlockType_Set)
+	SmartBlockTypeObjectType          = SmartBlockType(model.SmartBlockType_STObjectType)
+	SmartBlockTypeFile                = SmartBlockType(model.SmartBlockType_File)
+	SmartblockTypeMarketplaceType     = SmartBlockType(model.SmartBlockType_MarketplaceType)
+	SmartblockTypeMarketplaceRelation = SmartBlockType(model.SmartBlockType_MarketplaceRelation)
+	SmartblockTypeMarketplaceTemplate = SmartBlockType(model.SmartBlockType_MarketplaceTemplate)
+	SmartBlockTypeTemplate            = SmartBlockType(model.SmartBlockType_Template)
+	SmartBlockTypeBundledTemplate     = SmartBlockType(model.SmartBlockType_BundledTemplate)
+	SmartBlockTypeBundledRelation     = SmartBlockType(model.SmartBlockType_BundledRelation)
+	SmartBlockTypeSubObject           = SmartBlockType(model.SmartBlockType_SubObject)
+	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
+	SmartBlockTypeDate                = SmartBlockType(model.SmartBlockType_Date)
+	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
+	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
+	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -46,11 +45,11 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 		return SmartBlockTypeBundledRelation, nil
 	}
 	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-		return SmartBlockTypeSubObjectRelation, nil
+		return SmartBlockTypeSubObject, nil
 	}
 	// workaround for options that have no prefix
 	if bson.IsObjectIdHex(id) {
-		return SmartBlockTypeSubObjectRelationOption, nil
+		return SmartBlockTypeSubObject, nil
 	}
 
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {

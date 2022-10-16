@@ -208,11 +208,12 @@ func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectCreateObjectTypeRequest)
 	}
 
 	for _, rel := range bundle.RequiredInternalRelations {
-		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
+		recommendedRelationKeys = append(recommendedRelationKeys, addr.RelationKeyToIdPrefix+rel.String())
 	}
 
 	for _, rel := range layout.RequiredRelations {
-		k := addr.BundledRelationURLPrefix + rel.Key
+		// todo: check if relation is installed?
+		k := addr.RelationKeyToIdPrefix + rel.Key
 		if slice.FindPos(recommendedRelationKeys, k) != -1 {
 			continue
 		}

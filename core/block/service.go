@@ -11,7 +11,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -1210,10 +1209,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewObjectType()
 	case model.SmartBlockType_BundledRelation:
 		sb = editor.NewSet()
-	case model.SmartBlockType_SubObjectRelation:
-		sb = editor.NewRelation()
-	case model.SmartBlockType_SubObjectRelationOption:
-		sb = editor.NewOption()
+	case model.SmartBlockType_SubObject:
+		sb = editor.NewSubObject()
 	case model.SmartBlockType_File:
 		sb = editor.NewFiles()
 	case model.SmartBlockType_MarketplaceType:
@@ -1658,7 +1655,8 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	if bson.IsObjectIdHex(id) {
+	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	if sbt == coresb.SmartBlockTypeSubObject {
 		workspaceId := s.anytype.PredefinedBlocks().Account
 		if value, err = s.cache.Get(ctx, workspaceId); err != nil {
 			return

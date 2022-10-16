@@ -37,13 +37,12 @@ enum SmartBlockType {
     MarketplaceTemplate = 0x112;
 
     BundledRelation = 0x200; // DEPRECATED
-    SubObjectRelation = 0x201;
+    SubObject = 0x201;
     BundledObjectType = 0x202;
     AnytypeProfile = 0x203;
     Date = 0x204;
     WorkspaceOld = 0x205; // deprecated thread-based workspace
     Workspace = 0x206;
-    SubObjectRelationOption = 0x207;
 }
 
 message Block {
