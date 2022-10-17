@@ -13,7 +13,7 @@ import "google/protobuf/descriptor.proto";
 
 // To disable authorization in specific method use no_auth option inside Request of that method
 extend google.protobuf.MessageOptions {
-    optional bool no_auth = 7777;
+    bool no_auth = 7777;
 }
 
 /*
