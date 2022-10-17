@@ -77,15 +77,6 @@ func (sp setOfObjects) Create(ctx context.Context, relations []*model.Relation, 
 		}
 	}
 
-	// todo: remove this? As we can only create SmartBlockTypePage via sets now
-	var sbType = coresb.SmartBlockTypePage
-	for sbT, objType := range bundle.DefaultObjectTypePerSmartblockType {
-		if sp.objectType != nil && objType.URL() == sp.objectType.Url {
-			sbType = sbT
-			break
-		}
-	}
-
 	if targetType := pbtypes.GetString(rec.Details, bundle.RelationKeyTargetObjectType.String()); targetType != "" {
 		var types []string
 		if sp.objectType != nil {
@@ -101,6 +92,16 @@ func (sp setOfObjects) Create(ctx context.Context, relations []*model.Relation, 
 		}
 	} else {
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectType.Url)
+	}
+
+	var sbType = coresb.SmartBlockTypePage
+	if sp.objectType != nil {
+		ot, err := bundle.TypeKeyFromUrl(sp.objectType.Url)
+		if err == nil {
+			if t, exists := bundle.DefaultSmartblockTypePerObjectType[ot]; exists {
+				sbType = t
+			}
+		}
 	}
 
 	id, newDetails, err := sp.createSmartBlock(ctx, sbType, rec.Details, relsToSet, templateId)
