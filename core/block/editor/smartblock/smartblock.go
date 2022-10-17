@@ -1400,7 +1400,11 @@ func SubState(st *state.State, collection string, id string) (*state.State, erro
 }
 
 func structToState(id string, data *types.Struct) *state.State {
-	subState := state.NewDoc(id, nil).(*state.State)
+	blocks := map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
+	}
+	subState := state.NewDoc(id, blocks).(*state.State)
+	template.WithTitle(subState)
 	for k, v := range data.Fields {
 		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
 			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
