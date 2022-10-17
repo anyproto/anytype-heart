@@ -25,7 +25,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	for _, b := range snapshot.Data.Blocks {
 		// migrate old dataview blocks with relations
 		if dvBlock := b.GetDataview(); dvBlock != nil {
-			dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
+			if len(dvBlock.RelationLinks) == 0 {
+				dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
+			}
 		}
 		blocks[b.Id] = simple.New(b)
 	}
@@ -339,7 +341,9 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		s.Unlink(bIds[i])
 		s.Set(b)
 		if dv := b.Model().GetDataview(); dv != nil {
-			dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
+			if len(dv.RelationLinks) == 0 {
+				dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
+			}
 		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
