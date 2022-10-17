@@ -80,6 +80,7 @@ const cacheTimeout = 4 * time.Second
 
 const (
 	reindexBundledTypes reindexFlags = 1 << iota
+	removeAllIndexedObjects
 	reindexBundledRelations
 	eraseIndexes
 	reindexThreadObjects
@@ -357,6 +358,18 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		}
 	}
 
+	if reindex&removeAllIndexedObjects != 0 {
+		ids, err := i.store.ListIds()
+		if err != nil {
+			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err.Error())
+		}
+		for _, id := range ids {
+			err = i.store.DeleteDetails(id)
+			if err != nil {
+				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
+			}
+		}
+	}
 	var indexesWereRemoved bool
 	if reindex&eraseIndexes != 0 {
 		err = i.store.EraseIndexes()
@@ -690,6 +703,9 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 }
 
 func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
+	if strings.HasPrefix(info.Id, "_ir") {
+		fmt.Println()
+	}
 	startTime := time.Now()
 	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
 	if err != nil {
