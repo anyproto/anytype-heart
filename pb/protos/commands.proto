@@ -1159,6 +1159,32 @@ message Rpc {
             }
         }
 
+        message GroupsSubscribe {
+            message Request {
+                string relationKey = 1;
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                repeated anytype.model.Block.Content.Dataview.Group groups = 2;
+
+                string subId = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
         message SubscribeIds {
             message Request {
                 // (optional) subscription identifier

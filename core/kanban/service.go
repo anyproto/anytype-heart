@@ -40,7 +40,7 @@ func (s *Service) Name() (name string) {
 	return CName
 }
 
-func (s *Service) MakeGroups(key string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewGroup, error) {
+func (s *Service) Grouper(key string) (Grouper, error) {
 	rel, err := s.objectStore.GetRelation(key)
 	if err != nil {
 		return nil, err
@@ -51,9 +51,5 @@ func (s *Service) MakeGroups(key string, filters []*model.BlockContentDataviewFi
 		return nil, errors.New("unsupported relation format")
 	}
 
-	if err := grouper.Init(filters); err != nil {
-		return nil, err
-	}
-
-	return grouper.MakeDataViewGroups()
+	return grouper, nil
 }

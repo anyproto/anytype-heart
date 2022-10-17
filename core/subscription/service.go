@@ -3,6 +3,7 @@ package subscription
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"sync"
 	"time"
 
@@ -38,6 +39,7 @@ type Service interface {
 	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
+	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
 
@@ -60,6 +62,7 @@ type service struct {
 	recBatch      *mb.MB
 
 	objectStore objectstore.ObjectStore
+	kanban 		*kanban.Service
 	sendEvent   func(e *pb.Event)
 
 	m      sync.Mutex
@@ -71,6 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	s.kanban = a.MustComponent(kanban.CName).(*kanban.Service)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.ctxBuf = &opCtx{c: s.cache}
@@ -211,6 +215,47 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 		Records:      subRecords,
 		Dependencies: depRecords,
 		SubId:        req.SubId,
+	}, nil
+}
+
+func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+	subId := ""
+
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	grouper, err := s.kanban.Grouper(req.RelationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := grouper.Init(req.Filters); err != nil {
+		return nil, err
+	}
+
+	groups, err := grouper.MakeDataViewGroups()
+
+	if tagGrouper, ok := grouper.(*kanban.GroupTag); ok {
+		subId = bson.NewObjectId().Hex()
+		sub := s.newGroupSub(subId)
+
+		entries := make([]*entry, 0, len(tagGrouper.Records))
+		for _, r := range tagGrouper.Records {
+			entries = append(entries, &entry{
+				id:   pbtypes.GetString(r.Details, "id"),
+				data: r.Details,
+			})
+		}
+		if err := sub.init(entries); err != nil {
+			return nil, err
+		}
+		s.subscriptions[sub.id] = sub
+	}
+
+	return &pb.RpcObjectGroupsSubscribeResponse{
+		Error: &pb.RpcObjectGroupsSubscribeResponseError{},
+		Groups:      groups,
+		SubId:        subId,
 	}, nil
 }
 

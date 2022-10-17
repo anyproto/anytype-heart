@@ -300,7 +300,16 @@ func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.Rp
 	}
 
 	kanbanSrv := mw.app.MustComponent(kanban.CName).(*kanban.Service)
-	groups, err := kanbanSrv.MakeGroups(req.RelationKey, req.Filters)
+	grouper, err := kanbanSrv.Grouper(req.RelationKey)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	if err := grouper.Init(req.Filters); err != nil {
+		return errResponse(err)
+	}
+
+	groups, err := grouper.MakeDataViewGroups()
 	if err != nil {
 		return errResponse(err)
 	}
@@ -308,6 +317,36 @@ func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.Rp
 	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
 		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
 	}, Groups: groups}
+}
+
+func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
+	errResponse := func(err error) *pb.RpcObjectGroupsSubscribeResponse {
+		r := &pb.RpcObjectGroupsSubscribeResponse{
+			Error: &pb.RpcObjectGroupsSubscribeResponseError{
+				Code: pb.RpcObjectGroupsSubscribeResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(errors.New("app must be started"))
+	}
+
+	subService := mw.app.MustComponent(subscription.CName).(subscription.Service)
+
+	resp, err := subService.SubscribeGroups(*req)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return resp
 }
 
 func (mw *Middleware) ObjectSubscribeIds(_ context.Context, req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {

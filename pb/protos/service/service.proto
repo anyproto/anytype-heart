@@ -51,6 +51,7 @@ service ClientCommands {
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
     rpc ObjectRelationSearchDistinct (anytype.Rpc.Object.RelationSearchDistinct.Request) returns (anytype.Rpc.Object.RelationSearchDistinct.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
+    rpc ObjectGroupsSubscribe (anytype.Rpc.Object.GroupsSubscribe.Request) returns (anytype.Rpc.Object.GroupsSubscribe.Response);
     rpc ObjectSearchUnsubscribe (anytype.Rpc.Object.SearchUnsubscribe.Request) returns (anytype.Rpc.Object.SearchUnsubscribe.Response);
     rpc ObjectSetDetails (anytype.Rpc.Object.SetDetails.Request) returns (anytype.Rpc.Object.SetDetails.Response);
     rpc ObjectDuplicate (anytype.Rpc.Object.Duplicate.Request) returns (anytype.Rpc.Object.Duplicate.Response);

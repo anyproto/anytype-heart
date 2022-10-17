@@ -544,6 +544,10 @@
     - [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request)
     - [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response)
     - [Rpc.Object.Graph.Response.Error](#anytype-Rpc-Object-Graph-Response-Error)
+    - [Rpc.Object.GroupsSubscribe](#anytype-Rpc-Object-GroupsSubscribe)
+    - [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request)
+    - [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response)
+    - [Rpc.Object.GroupsSubscribe.Response.Error](#anytype-Rpc-Object-GroupsSubscribe-Response-Error)
     - [Rpc.Object.ImportMarkdown](#anytype-Rpc-Object-ImportMarkdown)
     - [Rpc.Object.ImportMarkdown.Request](#anytype-Rpc-Object-ImportMarkdown-Request)
     - [Rpc.Object.ImportMarkdown.Response](#anytype-Rpc-Object-ImportMarkdown-Response)
@@ -914,6 +918,7 @@
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
+    - [Rpc.Object.GroupsSubscribe.Response.Error.Code](#anytype-Rpc-Object-GroupsSubscribe-Response-Error-Code)
     - [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype-Rpc-Object-ImportMarkdown-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
@@ -1298,6 +1303,7 @@
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
 | ObjectRelationSearchDistinct | [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request) | [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
+| ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request) | [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response) |  |
 | ObjectDuplicate | [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request) | [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response) |  |
@@ -9327,6 +9333,65 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-GroupsSubscribe"></a>
+
+### Rpc.Object.GroupsSubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-GroupsSubscribe-Request"></a>
+
+### Rpc.Object.GroupsSubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-GroupsSubscribe-Response"></a>
+
+### Rpc.Object.GroupsSubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.GroupsSubscribe.Response.Error](#anytype-Rpc-Object-GroupsSubscribe-Response-Error) |  |  |
+| groups | [model.Block.Content.Dataview.Group](#anytype-model-Block-Content-Dataview-Group) | repeated |  |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-GroupsSubscribe-Response-Error"></a>
+
+### Rpc.Object.GroupsSubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.GroupsSubscribe.Response.Error.Code](#anytype-Rpc-Object-GroupsSubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ImportMarkdown"></a>
 
 ### Rpc.Object.ImportMarkdown
@@ -14538,6 +14603,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-GroupsSubscribe-Response-Error-Code"></a>
+
+### Rpc.Object.GroupsSubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

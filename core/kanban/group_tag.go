@@ -27,6 +27,7 @@ func (t *GroupTag) Init(reqFilters []*model.BlockContentDataviewFilter) error {
 			bundle.TypeKeyVideo.URL(),
 			bundle.TypeKeyAudio.URL(),
 		})},
+		{RelationKey: string(bundle.RelationKeyTag), Condition: model.BlockContentDataviewFilter_NotEmpty},
 	}
 
 	filters = append(filters, reqFilters...)
