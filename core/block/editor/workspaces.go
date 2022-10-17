@@ -585,6 +585,9 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err
 		}
 	}
 
+	// options has a short id for now to avoid migration of values inside relations
+	id = key
+
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(details))
 	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
 		return
