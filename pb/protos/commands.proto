@@ -1798,7 +1798,7 @@ message Rpc {
             message Remove {
                 message Request {
                     string objectTypeUrl = 1;
-                    string relationKey = 2;
+                    repeated string relationKeys = 2;
                 }
 
                 message Response {

@@ -10995,7 +10995,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
-| relationKey | [string](#string) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
