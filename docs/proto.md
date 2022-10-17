@@ -17326,6 +17326,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
 | marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
 | deviceId | [string](#string) |  |  |
+| accountSpaceId | [string](#string) |  | marketplace template id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
