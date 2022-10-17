@@ -13,9 +13,10 @@ const (
 	BundledRelationURLPrefix   = "_br"
 	BundledObjectTypeURLPrefix = "_ot"
 
-	AnytypeProfileId = "_anytype_profile"
-	VirtualPrefix    = "_virtual"
-	DatePrefix       = "_date_"
+	AnytypeProfileId            = "_anytype_profile"
+	AnytypeMarketplaceWorkspace = "_anytype_marketplace"
+	VirtualPrefix               = "_virtual"
+	DatePrefix                  = "_date_"
 )
 
 func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {

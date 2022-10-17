@@ -72,7 +72,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *
 		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
 		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
 		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
-		bundle.RelationKeyWorkspaceId.String():          pbtypes.String("_anytype_marketplace"),
+		bundle.RelationKeyWorkspaceId.String():          pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 	}}
 
 	return extraRels, det, nil

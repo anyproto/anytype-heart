@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -122,9 +123,9 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
-						RelationKey: bundle.RelationKeyIsHidden.String(),
-						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.Bool(true),
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 				{
@@ -138,9 +139,9 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
-						RelationKey: bundle.RelationKeyIsHidden.String(),
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
 						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.Bool(true),
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 			},
