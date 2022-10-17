@@ -549,7 +549,7 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id, key string, err 
 	id = addr.RelationKeyToIdPrefix + key
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(details))
 	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
