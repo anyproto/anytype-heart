@@ -509,7 +509,7 @@
       "relationFormatObjectTypes"
     ],
     "types": [
-      "IndexedRelation",
+      "SubObject",
       "BundledRelation"
     ]
   },
@@ -942,7 +942,7 @@
       "internalFlags"
     ],
     "types": [
-      "RelationOption"
+      "SubObject"
     ]
   },
   {

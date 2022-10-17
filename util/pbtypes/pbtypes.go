@@ -323,6 +323,15 @@ func GetRelationKeys(rels []*model.Relation) []string {
 	return keys
 }
 
+func GetRelationListKeys(rels []*model.RelationLink) []string {
+	var keys []string
+	for _, rel := range rels {
+		keys = append(keys, rel.Key)
+	}
+
+	return keys
+}
+
 func GetOptionIds(opts []*model.RelationOption) []string {
 	var keys []string
 	for _, opt := range opts {

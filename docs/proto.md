@@ -10953,7 +10953,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Relation.List.Response.Error](#anytype.Rpc.ObjectType.Relation.List.Response.Error) |  |  |
-| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
+| relations | [model.RelationLink](#anytype.model.RelationLink) | repeated |  |
 
 
 
@@ -17983,7 +17983,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  | leave empty in case you want to create the new one |
 | name | [string](#string) |  | name of objectType (can be localized for bundled types) |
-| relations | [Relation](#anytype.model.Relation) | repeated | cannot contain more than one Relation with the same RelationType |
+| relationLinks | [RelationLink](#anytype.model.RelationLink) | repeated | cannot contain more than one Relation with the same RelationType |
 | layout | [ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
 | iconEmoji | [string](#string) |  | emoji symbol |
 | description | [string](#string) |  |  |

@@ -22,7 +22,7 @@ import (
 )
 
 func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
-	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*model.Relation, err error) *pb.RpcObjectTypeRelationListResponse {
+	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*model.RelationLink, err error) *pb.RpcObjectTypeRelationListResponse {
 		m := &pb.RpcObjectTypeRelationListResponse{Relations: relations, Error: &pb.RpcObjectTypeRelationListResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -43,7 +43,7 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 	}
 
 	// todo: AppendRelationsFromOtherTypes case
-	return response(pb.RpcObjectTypeRelationListResponseError_NULL, objType.Relations, nil)
+	return response(pb.RpcObjectTypeRelationListResponseError_NULL, objType.RelationLinks, nil)
 }
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {

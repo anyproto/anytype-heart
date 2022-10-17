@@ -2503,10 +2503,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 			continue
 		}
 
-		relCopy := pbtypes.CopyRelation(rel)
-		relCopy.Scope = model.Relation_type
-
-		objectType.Relations = append(objectType.Relations, relCopy)
+		objectType.RelationLinks = append(objectType.RelationLinks, (&relationutils.Relation{rel}).RelationLink())
 	}
 
 	objectType.Url = url

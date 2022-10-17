@@ -187,7 +187,8 @@ func (s *service) SetFieldsList(ctx *session.Context, req pb.RpcBlockListSetFiel
 
 func (s *service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		relations, err = b.GetAggregatedRelations(req.BlockId)
+		// todo: remove or replace
+		//relations, err = b.GetAggregatedRelations(req.BlockId)
 		return err
 	})
 

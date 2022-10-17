@@ -38,8 +38,8 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot}))}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyObjectType).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyObjectType).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,
@@ -109,8 +109,8 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyRelation).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyRelation).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,
@@ -173,8 +173,8 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyTemplate).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyTemplate).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,

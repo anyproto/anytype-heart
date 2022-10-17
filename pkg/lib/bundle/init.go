@@ -118,6 +118,17 @@ func MustGetRelation(rk RelationKey) *model.Relation {
 	panic(ErrNotFound)
 }
 
+// MustGetRelation returns built-in relation by predefined RelationKey constant
+// PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
+func MustGetRelationLink(rk RelationKey) *model.RelationLink {
+	if v, exists := relations[rk]; exists {
+		return &model.RelationLink{Key: v.Key, Format: v.Format}
+	}
+
+	// we can safely panic in case RelationKey is a generated constant
+	panic(ErrNotFound)
+}
+
 func MustGetRelations(rks []RelationKey) []*model.Relation {
 	rels := make([]*model.Relation, 0, len(rks))
 	for _, rk := range rks {

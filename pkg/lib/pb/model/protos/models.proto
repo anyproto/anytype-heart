@@ -629,7 +629,7 @@ message ThreadCreateQueueEntry {
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one
     string name = 2; // name of objectType (can be localized for bundled types)
-    repeated Relation relations = 3; // cannot contain more than one Relation with the same RelationType
+    repeated RelationLink relationLinks = 3; // cannot contain more than one Relation with the same RelationType
     Layout layout = 4;
     string iconEmoji = 5; // emoji symbol
     string description = 6;

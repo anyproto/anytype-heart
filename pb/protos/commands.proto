@@ -1828,7 +1828,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
-                    repeated anytype.model.Relation relations = 2;
+                    repeated anytype.model.RelationLink relations = 2;
 
                     message Error {
                         Code code = 1;

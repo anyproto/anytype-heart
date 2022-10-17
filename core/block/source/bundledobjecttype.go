@@ -46,17 +46,17 @@ func (v *bundledObjectType) Virtual() bool {
 	return true
 }
 
-func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *types.Struct, err error) {
+func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *types.Struct, err error) {
 	ot, err := bundle.GetTypeByUrl(id)
 	if err != nil {
 		return nil, nil, err
 	}
-	extraRels = []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelation(bundle.RelationKeyRecommendedLayout)}
+	extraRels = []*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelationLink(bundle.RelationKeyRecommendedLayout)}
 
 	var relationKeys []string
-	for i := range ot.Relations {
-		extraRels = append(extraRels, ot.Relations[i])
-		relationKeys = append(relationKeys, addr.BundledRelationURLPrefix+ot.Relations[i].Key)
+	for i := range ot.RelationLinks {
+		extraRels = append(extraRels, ot.RelationLinks[i])
+		relationKeys = append(relationKeys, addr.RelationKeyToIdPrefix+ot.RelationLinks[i].Key)
 	}
 
 	det := &types.Struct{Fields: map[string]*types.Value{

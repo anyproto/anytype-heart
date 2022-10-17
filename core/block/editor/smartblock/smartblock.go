@@ -322,7 +322,7 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 	// omit relations
 	// todo: switch to other pb type
 	for _, ot := range objectTypes {
-		ot.Relations = nil
+		ot.RelationLinks = nil
 	}
 
 	for _, det := range details {
