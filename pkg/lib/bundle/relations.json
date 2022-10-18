@@ -933,7 +933,7 @@
     "key": "addedDate",
     "maxCount": 1,
     "name": "Added date",
-    "readonly": false,
+    "readonly": true,
     "source": "details"
   },
   {
