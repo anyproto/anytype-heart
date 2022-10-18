@@ -47,7 +47,7 @@ type Service interface {
 }
 
 type relationCreator interface {
-	CreateRelation(opt *types.Struct) (id, key string, err error)
+	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
 	CreateRelationOption(details *types.Struct) (id string, err error)
 }
 

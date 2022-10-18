@@ -516,40 +516,39 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 	}, nil
 }
 
-func (w *Workspaces) CreateRelation(details *types.Struct) (id, key string, err error) {
+func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
-		return "", "", fmt.Errorf("create relation: no data")
+		return "", nil, fmt.Errorf("create relation: no data")
 	}
 
 	if v, ok := details.GetFields()[bundle.RelationKeyRelationFormat.String()]; !ok {
-		return "", "", fmt.Errorf("missing relation format")
+		return "", nil, fmt.Errorf("missing relation format")
 	} else if i, ok := v.Kind.(*types.Value_NumberValue); !ok {
-		return "", "", fmt.Errorf("invalid relation format: not a number")
+		return "", nil, fmt.Errorf("invalid relation format: not a number")
 	} else if model.RelationFormat(int(i.NumberValue)).String() == "" {
-		return "", "", fmt.Errorf("invalid relation format: unknown enum")
+		return "", nil, fmt.Errorf("invalid relation format: unknown enum")
 	}
 
 	if pbtypes.GetString(details, bundle.RelationKeyName.String()) == "" {
-		return "", "", fmt.Errorf("missing relation name")
+		return "", nil, fmt.Errorf("missing relation name")
 	}
 
-	if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
-		return "", "", fmt.Errorf("incorrect object type")
-	}
-	key = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
+	object = pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	st := w.NewState()
 	if key == "" {
 		key = bson.NewObjectId().Hex()
 	} else {
 		// no need to check for the generated bson's
 		if st.HasInStore([]string{collectionKeyRelations, key}) {
-			return id, key, ErrSubObjectAlreadyExists
+			return id, object, ErrSubObjectAlreadyExists
 		}
 	}
 	id = addr.RelationKeyToIdPrefix + key
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
+	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
 
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(details))
 	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {

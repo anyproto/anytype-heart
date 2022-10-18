@@ -264,7 +264,7 @@ func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectT
 }
 
 func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
-	response := func(id, key string, err error) *pb.RpcObjectCreateRelationResponse {
+	response := func(id string, object *types.Struct, err error) *pb.RpcObjectCreateRelationResponse {
 		if err != nil {
 			return &pb.RpcObjectCreateRelationResponse{
 				Error: &pb.RpcObjectCreateRelationResponseError{
@@ -273,20 +273,21 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 				},
 			}
 		}
+		key := pbtypes.GetString(object, bundle.RelationKeyRelationKey.String())
 		return &pb.RpcObjectCreateRelationResponse{
 			Error: &pb.RpcObjectCreateRelationResponseError{
 				Code: pb.RpcObjectCreateRelationResponseError_NULL,
 			},
 			ObjectId: id,
 			Key:      key,
+			Details:  object,
 		}
 	}
-	id, key, err := mw.objectCreateRelation(req)
-
+	id, object, err := mw.objectCreateRelation(req)
 	if err != nil {
-		return response("", "", err)
+		return response("", nil, err)
 	}
-	return response(id, key, err)
+	return response(id, object, err)
 }
 
 func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
@@ -324,14 +325,11 @@ func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelation
 	return id, err
 }
 
-func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id, key string, err error) {
-	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
-	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-
+func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
 	err = mw.doBlockService(func(rs block.Service) error {
-		var err error
-		id, key, err = rs.CreateRelation(req.Details)
-		return err
+		var err2 error
+		id, object, err2 = rs.CreateRelation(req.Details)
+		return err2
 	})
 	return
 }

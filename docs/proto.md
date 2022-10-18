@@ -8750,6 +8750,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | error | [Rpc.Object.CreateRelation.Response.Error](#anytype.Rpc.Object.CreateRelation.Response.Error) |  |  |
 | objectId | [string](#string) |  |  |
 | key | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 
@@ -8807,6 +8808,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateRelationOption.Response.Error](#anytype.Rpc.Object.CreateRelationOption.Response.Error) |  |  |
 | objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 

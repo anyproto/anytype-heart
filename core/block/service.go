@@ -191,7 +191,7 @@ type Service interface {
 	UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
-	CreateRelation(details *types.Struct) (id, key string, err error)
+	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
 	CreateRelationOption(details *types.Struct) (id string, err error)
 	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error
 
@@ -1105,14 +1105,14 @@ func (s *service) CreateRelationOption(opt *types.Struct) (id string, err error)
 	return
 }
 
-func (s *service) CreateRelation(rel *types.Struct) (id, key string, err error) {
+func (s *service) CreateRelation(rel *types.Struct) (id string, object *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		id, key, err = workspace.CreateRelation(rel)
+		id, object, err = workspace.CreateRelation(rel)
 		return err
 	})
 	return
