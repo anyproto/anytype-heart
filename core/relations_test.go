@@ -65,12 +65,13 @@ func TestRelations_New_Account(t *testing.T) {
 
 	relName := "test_str"
 	relDesc := "test_str_desc"
-
+	relFormat := model.RelationFormat_tag
 	respRelationCreate := mw.ObjectCreateRelation(context.Background(), &pb.RpcObjectCreateRelationRequest{
 		Details: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRelationFormat.String():       pbtypes.Float64(float64(model.RelationFormat_tag)),
-			bundle.RelationKeyName.String():        pbtypes.String(relName),
-			bundle.RelationKeyDescription.String(): pbtypes.String(relDesc),
+			bundle.RelationKeyRelationFormat.String(): pbtypes.Float64(float64(relFormat)),
+			bundle.RelationKeyName.String():           pbtypes.String(relName),
+			bundle.RelationKeyDescription.String():    pbtypes.String(relDesc),
+			bundle.RelationKeyType.String():           pbtypes.String(bundle.TypeKeyRelation.URL()),
 		}},
 	})
 	require.Equal(t, 0, int(respRelationCreate.Error.Code), respRelationCreate.Error.Description)
@@ -78,8 +79,8 @@ func TestRelations_New_Account(t *testing.T) {
 	require.True(t, respRelationCreate.ObjectId != "")
 
 	respObjectRelationAdd := mw.ObjectRelationAdd(context.Background(), &pb.RpcObjectRelationAddRequest{
-		ContextId:   setId,
-		RelationIds: []string{respRelationCreate.ObjectId},
+		ContextId:    setId,
+		RelationKeys: []string{respRelationCreate.Key},
 	})
 	require.Equal(t, 0, int(respObjectRelationAdd.Error.Code), respObjectRelationAdd.Error.Description)
 
@@ -95,9 +96,9 @@ func TestRelations_New_Account(t *testing.T) {
 	require.Equal(t, 0, int(respObjectSetDetails.Error.Code), respObjectSetDetails.Error.Description)
 
 	respBlockDataviewRelationAdd := mw.BlockDataviewRelationAdd(context.Background(), &pb.RpcBlockDataviewRelationAddRequest{
-		ContextId:  setId,
-		BlockId:    "dataview",
-		RelationId: respRelationCreate.ObjectId,
+		ContextId:    setId,
+		BlockId:      "dataview",
+		RelationKeys: []string{respRelationCreate.Key},
 	})
 
 	require.Equal(t, 0, int(respBlockDataviewRelationAdd.Error.Code), respBlockDataviewRelationAdd.Error.Description)
@@ -107,7 +108,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	var found bool
 	for _, rel := range respObjectShow.ObjectView.RelationLinks {
-		if rel.Id == respRelationCreate.ObjectId && rel.Key == respRelationCreate.Key {
+		if rel.Key == respRelationCreate.Key && rel.Format == relFormat {
 			found = true
 			break
 		}
@@ -135,7 +136,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	found = false
 	for _, rel := range dataviewBlock.GetDataview().RelationLinks {
-		if rel.Id == respRelationCreate.ObjectId && rel.Key == respRelationCreate.Key {
+		if rel.Format == relFormat && rel.Key == respRelationCreate.Key {
 			found = true
 			break
 		}
@@ -145,10 +146,10 @@ func TestRelations_New_Account(t *testing.T) {
 
 	respRelationCreateOption := mw.ObjectCreateRelationOption(context.Background(), &pb.RpcObjectCreateRelationOptionRequest{
 		Details: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRelationKey.String(): pbtypes.String(respRelationCreate.Key),
-			bundle.RelationKeyRelationOptionText.String(): pbtypes.String("test_option_text"),
+			bundle.RelationKeyRelationKey.String():         pbtypes.String(respRelationCreate.Key),
+			bundle.RelationKeyRelationOptionText.String():  pbtypes.String("test_option_text"),
 			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("red"),
-			},
+		},
 		}})
 
 	require.Equal(t, 0, int(respRelationCreateOption.Error.Code), respRelationCreateOption.Error.Description)

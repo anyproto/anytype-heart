@@ -11,7 +11,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -192,7 +191,8 @@ type Service interface {
 	UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
-	CreateRelationOption(opt *types.Struct) (id string, err error)
+	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
+	CreateRelationOption(details *types.Struct) (id string, err error)
 	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error
 
 	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
@@ -988,6 +988,10 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
 func (s *service) CreateLinkToTheNewObject(ctx *session.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+	if req.ContextId == req.TemplateId && req.ContextId != "" {
+		err = fmt.Errorf("unable to create link to template from this template")
+		return
+	}
 	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
 
 	var creator func(ctx context.Context) (string, error)
@@ -1101,6 +1105,19 @@ func (s *service) CreateRelationOption(opt *types.Struct) (id string, err error)
 	return
 }
 
+func (s *service) CreateRelation(rel *types.Struct) (id string, object *types.Struct, err error) {
+	// todo: rewrite to the current workspace id
+	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		id, object, err = workspace.CreateRelation(rel)
+		return err
+	})
+	return
+}
+
 func (s *service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
 	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
@@ -1194,9 +1211,10 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType()
-	case model.SmartBlockType_BundledRelation,
-		model.SmartBlockType_IndexedRelation:
-		sb = editor.NewRelation()
+	case model.SmartBlockType_BundledRelation:
+		sb = editor.NewSet()
+	case model.SmartBlockType_SubObject:
+		sb = editor.NewSubObject()
 	case model.SmartBlockType_File:
 		sb = editor.NewFiles()
 	case model.SmartBlockType_MarketplaceType:
@@ -1641,7 +1659,8 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	if bson.IsObjectIdHex(id) {
+	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	if sbt == coresb.SmartBlockTypeSubObject {
 		workspaceId := s.anytype.PredefinedBlocks().Account
 		if value, err = s.cache.Get(ctx, workspaceId); err != nil {
 			return

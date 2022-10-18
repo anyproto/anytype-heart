@@ -943,10 +943,12 @@
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
+    - [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate)
     - [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete)
     - [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet)
     - [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete)
     - [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet)
+    - [Event.Block.Dataview.SliceChange](#anytype-Event-Block-Dataview-SliceChange)
     - [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet)
     - [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete)
     - [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder)
@@ -1080,6 +1082,7 @@
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
     - [ResponseEvent](#anytype-ResponseEvent)
   
+    - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
     - [Model.Process.Type](#anytype-Model-Process-Type)
@@ -1183,7 +1186,6 @@
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
-    - [Relation.Option.Scope](#anytype-model-Relation-Option-Scope)
     - [Relation.Scope](#anytype-model-Relation-Scope)
     - [RelationFormat](#anytype-model-RelationFormat)
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
@@ -1636,7 +1638,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relationId | [string](#string) | repeated |  |
+| relationKey | [string](#string) | repeated |  |
 
 
 
@@ -4191,7 +4193,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
-| relationIds | [string](#string) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -4250,7 +4252,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
-| relationIds | [string](#string) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -5340,7 +5342,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| relationId | [string](#string) |  |  |
+| relationKey | [string](#string) |  |  |
 
 
 
@@ -8748,6 +8750,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | error | [Rpc.Object.CreateRelation.Response.Error](#anytype-Rpc-Object-CreateRelation-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
 | key | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -8805,6 +8808,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateRelationOption.Response.Error](#anytype-Rpc-Object-CreateRelationOption-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -10568,7 +10572,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| relationIds | [string](#string) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -10684,7 +10688,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| relationId | [string](#string) |  |  |
+| relationKey | [string](#string) |  |  |
 
 
 
@@ -10877,7 +10881,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
-| relationIds | [string](#string) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -10951,7 +10955,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Relation.List.Response.Error](#anytype-Rpc-ObjectType-Relation-List-Response-Error) |  |  |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
+| relations | [model.RelationLink](#anytype-model-RelationLink) | repeated |  |
 
 
 
@@ -10993,7 +10997,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
-| relationId | [string](#string) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -14807,6 +14811,24 @@ B. Partial block load
 
 
 
+<a name="anytype-Event-Block-Dataview-ObjectOrderUpdate"></a>
+
+### Event.Block.Dataview.ObjectOrderUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  |  |
+| groupId | [string](#string) |  |  |
+| sliceChanges | [Event.Block.Dataview.SliceChange](#anytype-Event-Block-Dataview-SliceChange) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Dataview-OldRelationDelete"></a>
 
 ### Event.Block.Dataview.OldRelationDelete
@@ -14866,6 +14888,23 @@ sent when the dataview relation has been changed or added
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
 | relationLinks | [model.RelationLink](#anytype-model-RelationLink) | repeated | relation id to update |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-SliceChange"></a>
+
+### Event.Block.Dataview.SliceChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| op | [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation) |  |  |
+| ids | [string](#string) | repeated |  |
+| afterId | [string](#string) |  |  |
 
 
 
@@ -16375,11 +16414,12 @@ Precondition: user A opened a block
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
 | blockSetTableRow | [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow) |  |  |
-| blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
-| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  |  |
+| blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
+| blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
@@ -16983,6 +17023,21 @@ Precondition: user A and user B opened the same block
  
 
 
+<a name="anytype-Event-Block-Dataview-SliceOperation"></a>
+
+### Event.Block.Dataview.SliceOperation
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SliceOperationNone | 0 | not used |
+| SliceOperationAdd | 1 |  |
+| SliceOperationMove | 2 |  |
+| SliceOperationRemove | 3 |  |
+| SliceOperationReplace | 4 |  |
+
+
+
 <a name="anytype-Event-Status-Thread-SyncStatus"></a>
 
 ### Event.Status.Thread.SyncStatus
@@ -17271,6 +17326,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
 | marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
 | deviceId | [string](#string) |  |  |
+| accountSpaceId | [string](#string) |  | marketplace template id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
@@ -17928,7 +17984,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  | leave empty in case you want to create the new one |
 | name | [string](#string) |  | name of objectType (can be localized for bundled types) |
-| relations | [Relation](#anytype-model-Relation) | repeated | cannot contain more than one Relation with the same RelationType |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | cannot contain more than one Relation with the same RelationType |
 | layout | [ObjectType.Layout](#anytype-model-ObjectType-Layout) |  |  |
 | iconEmoji | [string](#string) |  | emoji symbol |
 | description | [string](#string) |  |  |
@@ -18075,7 +18131,9 @@ scope from which this relation have been aggregated |
 | id | [string](#string) |  | id generated automatically if omitted |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
-| scope | [Relation.Option.Scope](#anytype-model-Relation-Option-Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+| relationKey | [string](#string) |  | 4 is reserved for old relation format
+
+stored |
 
 
 
@@ -18090,8 +18148,8 @@ scope from which this relation have been aggregated |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
 | key | [string](#string) |  |  |
+| format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
 
 
 
@@ -18667,19 +18725,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
-<a name="anytype-model-Relation-Option-Scope"></a>
-
-### Relation.Option.Scope
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| local | 0 | stored within the object/aggregated from set |
-| relation | 1 | aggregated from all relation of this relation&#39;s key |
-| format | 2 | aggregated from all relations of this relation&#39;s format |
-
-
-
 <a name="anytype-model-Relation-Scope"></a>
 
 ### Relation.Scope
@@ -18774,14 +18819,13 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | MarketplaceType | 272 |  |
 | MarketplaceRelation | 273 |  |
 | MarketplaceTemplate | 274 |  |
-| BundledRelation | 512 |  |
-| IndexedRelation | 513 |  |
+| BundledRelation | 512 | DEPRECATED |
+| SubObject | 513 |  |
 | BundledObjectType | 514 |  |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | WorkspaceOld | 517 | deprecated thread-based workspace |
 | Workspace | 518 |  |
-| RelationOption | 519 |  |
 
 
  

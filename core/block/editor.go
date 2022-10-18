@@ -187,7 +187,8 @@ func (s *service) SetFieldsList(ctx *session.Context, req pb.RpcBlockListSetFiel
 
 func (s *service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		relations, err = b.GetAggregatedRelations(req.BlockId)
+		// todo: remove or replace
+		//relations, err = b.GetAggregatedRelations(req.BlockId)
 		return err
 	})
 
@@ -247,7 +248,7 @@ func (s *service) CreateDataviewView(ctx *session.Context, req pb.RpcBlockDatavi
 
 func (s *service) AddDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.AddRelations(ctx, req.BlockId, req.RelationIds, true)
+		return b.AddRelations(ctx, req.BlockId, req.RelationKeys, true)
 	})
 
 	return
@@ -255,7 +256,7 @@ func (s *service) AddDataviewRelation(ctx *session.Context, req pb.RpcBlockDatav
 
 func (s *service) DeleteDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.DeleteRelations(ctx, req.BlockId, req.RelationIds, true)
+		return b.DeleteRelations(ctx, req.BlockId, req.RelationKeys, true)
 	})
 }
 
@@ -584,7 +585,7 @@ func (s *service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSe
 		if err != nil {
 			return err
 		}
-		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{RelationId: rel.Id, BlockId: req.BlockId, ContextId: req.ContextId})
+		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId})
 	})
 }
 
@@ -682,7 +683,7 @@ func (s *service) ModifyLocalDetails(objectId string, modifier func(current *typ
 
 func (s *service) AddExtraRelations(ctx *session.Context, objectId string, relationIds []string) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.AddExtraRelations(ctx, relationIds...)
+		return b.AddRelationLinks(ctx, relationIds...)
 	})
 }
 
@@ -923,22 +924,26 @@ func (s *service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExis
 		})
 	}
 	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
-		return s.DoClipboard(req.TargetContextId, func(tb clipboard.Clipboard) error {
-			cs := cb.NewState()
-			bs := basic.CutBlocks(cs, req.BlockIds)
-			blocks := make([]*model.Block, 0, len(bs))
-			for _, b := range bs {
-				blocks = append(blocks, b.Model())
-			}
-			_, _, _, _, err := tb.Paste(ctx, &pb.RpcBlockPasteRequest{
-				FocusedBlockId: req.DropTargetId,
-				AnySlot:        blocks,
-			}, "")
+		srcState := cb.NewState()
+		err := s.Do(req.TargetContextId, func(sb smartblock.SmartBlock) error {
+			destState := sb.NewState()
+			_, err := basic.Duplicate(pb.RpcBlockListDuplicateRequest{
+				ContextId:       req.ContextId,
+				TargetId:        req.DropTargetId,
+				BlockIds:        req.BlockIds,
+				Position:        req.Position,
+				TargetContextId: req.TargetContextId,
+			}, srcState, destState)
 			if err != nil {
 				return fmt.Errorf("paste: %w", err)
 			}
-			return cb.Apply(cs)
+			basic.CutBlocks(srcState, req.BlockIds)
+			return sb.Apply(destState)
 		})
+		if err != nil {
+			return err
+		}
+		return cb.Apply(srcState)
 	})
 }
 

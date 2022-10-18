@@ -1,4 +1,4 @@
-package relation
+package relationutils
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -10,10 +10,10 @@ import (
 func OptionFromStruct(st *types.Struct) *Option {
 	return &Option{
 		RelationOption: &model.RelationOption{
-			Id:    pbtypes.GetString(st, bundle.RelationKeyId.String()),
-			Text:  pbtypes.GetString(st, bundle.RelationKeyRelationOptionText.String()),
-			Color: pbtypes.GetString(st, bundle.RelationKeyRelationOptionColor.String()),
-			Scope: model.RelationOptionScope(pbtypes.GetInt64(st, bundle.RelationKeyScope.String())),
+			Id:          pbtypes.GetString(st, bundle.RelationKeyId.String()),
+			Text:        pbtypes.GetString(st, bundle.RelationKeyRelationOptionText.String()),
+			Color:       pbtypes.GetString(st, bundle.RelationKeyRelationOptionColor.String()),
+			RelationKey: pbtypes.GetString(st, bundle.RelationKeyRelationKey.String()),
 		},
 	}
 }
@@ -26,9 +26,10 @@ func (o *Option) ToStruct() *types.Struct {
 	return &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():                  pbtypes.String(o.Id),
-			bundle.RelationKeyScope.String():               pbtypes.Int64(int64(o.Scope)),
+			bundle.RelationKeyType.String():                pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 			bundle.RelationKeyRelationOptionText.String():  pbtypes.String(o.Text),
 			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(o.Color),
+			bundle.RelationKeyRelationKey.String():         pbtypes.String(o.RelationKey),
 		},
 	}
 }

@@ -2,6 +2,9 @@ package dataview
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -46,7 +49,7 @@ func init() {
 type Dataview interface {
 	SetSource(ctx *session.Context, blockId string, source []string) (err error)
 
-	GetAggregatedRelations(blockId string) ([]*model.Relation, error)
+	//GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 
 	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
@@ -108,14 +111,14 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 	return d.Apply(s, smartblock.NoRestrictions)
 }
 
-func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error {
+func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationKeys []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
-	for _, id := range relationIds {
-		relation, err2 := d.RelationService().FetchId(id)
+	for _, key := range relationKeys {
+		relation, err2 := d.RelationService().FetchKey(key)
 		if err2 != nil {
 			return err2
 		}
@@ -145,50 +148,6 @@ func (d *sdataview) DeleteRelations(ctx *session.Context, blockId string, relati
 		return d.Apply(s)
 	}
 	return d.Apply(s, smartblock.NoEvent)
-}
-
-func (d *sdataview) GetAggregatedRelations(blockId string) ([]*model.Relation, error) {
-	st := d.NewState()
-	tb, err := getDataviewBlock(st, blockId)
-	if err != nil {
-		return nil, err
-	}
-
-	sch, err := d.getSchema(tb)
-	if err != nil {
-		return nil, err
-	}
-
-	hasRelations := func(rels []*model.Relation, key string) bool {
-		for _, rel := range rels {
-			if rel.Key == key {
-				return true
-			}
-		}
-		return false
-	}
-
-	rels := sch.ListRelations()
-	for _, rel := range tb.Model().GetDataview().GetRelations() {
-		if hasRelations(rels, rel.Key) {
-			continue
-		}
-		rels = append(rels, pbtypes.CopyRelation(rel))
-	}
-
-	agRels, err := d.Anytype().ObjectStore().ListRelations(sch.ObjectType().GetUrl())
-	if err != nil {
-		return nil, err
-	}
-
-	for _, rel := range agRels {
-		if hasRelations(rels, rel.Key) {
-			continue
-		}
-		rels = append(rels, pbtypes.CopyRelation(rel))
-	}
-
-	return rels, nil
 }
 
 func (d *sdataview) GetDataviewRelations(blockId string) ([]*model.Relation, error) {
@@ -313,8 +272,13 @@ func (d *sdataview) CreateView(ctx *session.Context, id string, view model.Block
 		relsM := make(map[string]struct{}, len(view.Relations))
 		// by default use list of relations from the schema
 		for _, rel := range sch.ListRelations() {
+			var isHidden bool
 			relsM[rel.Key] = struct{}{}
-			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
+			r, _ := bundle.GetRelation(bundle.RelationKey(rel.Key))
+			if r != nil {
+				isHidden = r.Hidden
+			}
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !isHidden})
 		}
 		for _, relKey := range DefaultDataviewRelations {
 			if _, exists := relsM[relKey.String()]; exists {
@@ -379,29 +343,7 @@ func (d *sdataview) UpdateViewObjectOrder(ctx *session.Context, blockId string, 
 	return d.Apply(st)
 }
 
-// returns empty string
-func (d *sdataview) getObjectTypeSource(dvBlock dataview.Block) string {
-	sources := dvBlock.Model().GetDataview().Source
-	if len(sources) > 1 {
-		return ""
-	}
-
-	for _, source := range sources {
-		sbt, err := smartblock2.SmartBlockTypeFromID(source)
-		if err != nil {
-			return ""
-		}
-
-		if sbt == smartblock2.SmartBlockTypeObjectType || sbt == smartblock2.SmartBlockTypeBundledObjectType {
-			return source
-		}
-		return ""
-	}
-
-	return ""
-}
-
-func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRelations []*model.Relation) (schema.Schema, error) {
+func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
 	var hasRelations, hasType bool
 
 	for _, source := range sources {
@@ -420,7 +362,7 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 			hasType = true
 		}
 
-		if sbt == smartblock2.SmartBlockTypeIndexedRelation || sbt == smartblock2.SmartBlockTypeBundledRelation {
+		if strings.HasPrefix(source, addr.RelationKeyToIdPrefix) {
 			if hasType {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
@@ -453,7 +395,7 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 			return nil, err
 		}
 
-		var relations []*model.Relation
+		var relations []*model.RelationLink
 		for _, relId := range sources {
 			relKey, err := pbtypes.RelationIdToKey(relId)
 			if err != nil {
@@ -465,7 +407,7 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 				return nil, fmt.Errorf("failed to get relation %s: %s", relKey, err.Error())
 			}
 
-			relations = append(relations, rel)
+			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
 		}
 		sch := schema.NewByRelations(ids, relations, optionalRelations)
 		return sch, nil
@@ -475,7 +417,7 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 }
 
 func (d *sdataview) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
-	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.Anytype().ObjectStore(), dvBlock.Model().GetDataview().Relations)
+	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.Anytype().ObjectStore(), dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -619,8 +561,8 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 
 	for _, rel := range schema.RequiredRelations() {
 		relations = append(relations, &model.RelationLink{
-			Id:  rel.Id,
-			Key: rel.Key,
+			Format: rel.Format,
+			Key:    rel.Key,
 		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
 	}
@@ -632,15 +574,15 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 		}
 
 		relations = append(relations, &model.RelationLink{
-			Id:  rel.Id,
-			Key: rel.Key,
+			Format: rel.Format,
+			Key:    rel.Key,
 		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}
 
 	schemaRelations := schema.ListRelations()
-	if !pbtypes.HasRelation(schemaRelations, bundle.RelationKeyName.String()) {
-		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
+	if !pbtypes.HasRelationLink(schemaRelations, bundle.RelationKeyName.String()) {
+		schemaRelations = append([]*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyName)}, schemaRelations...)
 	}
 
 	for _, relKey := range DefaultDataviewRelations {
@@ -652,8 +594,8 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 			continue
 		}
 		relations = append(relations, &model.RelationLink{
-			Id:  rel.Id,
-			Key: rel.Key,
+			Format: rel.Format,
+			Key:    rel.Key,
 		})
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}

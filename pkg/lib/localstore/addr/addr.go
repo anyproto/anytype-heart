@@ -7,15 +7,16 @@ import (
 )
 
 const (
+	VirtualObjectSeparator = "-"
+	RelationKeyToIdPrefix  = "rel-" //
+
 	BundledRelationURLPrefix   = "_br"
 	BundledObjectTypeURLPrefix = "_ot"
-	CustomRelationURLPrefix    = "_ir"
 
-	AnytypeProfileId              = "_anytype_profile"
-	VirtualPrefix                 = "_virtual"
-	DatePrefix                    = "_date_"
-	OldCustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	OldBundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
+	AnytypeProfileId            = "_anytype_profile"
+	AnytypeMarketplaceWorkspace = "_anytype_marketplace"
+	VirtualPrefix               = "_virtual"
+	DatePrefix                  = "_date_"
 )
 
 func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
@@ -35,4 +36,9 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 		return model.SmartBlockType(v), nil
 	}
 	return 0, fmt.Errorf("sb type '%s' not found", sbTypeName)
+}
+
+// returns the
+func GetVirtualCollectionObjectId(collectionName, key string) string {
+	return collectionName + VirtualObjectSeparator + key
 }

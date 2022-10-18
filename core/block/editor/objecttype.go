@@ -4,6 +4,7 @@ import (
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -118,9 +119,9 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 
 		relCopy := pbtypes.CopyRelation(rel)
-		relCopy.Scope = model.Relation_type
+
 		recommendedRelations = append(recommendedRelations, relCopy)
-		dataview.Dataview.Relations = append(dataview.Dataview.Relations, relCopy)
+		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, (&relationutils.Relation{rel}).RelationLink())
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
 			Key:       rel.Key,
 			IsVisible: !rel.Hidden,

@@ -1,8 +1,8 @@
 package editor
 
 import (
-	"errors"
 	"fmt"
+	"github.com/globalsign/mgo/bson"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -35,18 +35,15 @@ const (
 	collectionKeyAddrs           = "addrs"
 	collectionKeyId              = "id"
 	collectionKeyKey             = "key"
-	collectionKeyRelationOptions = "relationOptions"
-)
-
-var (
-	ErrRelationNotFound = errors.New("relation not found")
+	collectionKeyRelationOptions = "opt"
+	collectionKeyRelations       = "rel"
 )
 
 func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
 		Set:             NewSet(),
 		DetailsModifier: dmservice,
-		options:         map[string]*Option{},
+		collections:     map[string]map[string]*SubObject{},
 	}
 }
 
@@ -57,8 +54,7 @@ type Workspaces struct {
 	threadQueue     threads.ThreadQueue
 
 	changedRelationIds, changedRelationIdsOptions []string
-
-	options map[string]*Option
+	collections                                   map[string]map[string]*SubObject
 
 	sourceService source.Service
 	app           *app.App
@@ -105,7 +101,7 @@ func (p *Workspaces) DeleteSubObject(objectId string) error {
 	st := p.NewState()
 	err := p.ObjectStore().DeleteObject(objectId)
 	if err != nil {
-		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id() , err.Error())
+		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id(), err.Error())
 	}
 	st.RemoveFromStore([]string{collectionKeyRelationOptions, objectId})
 	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
@@ -233,7 +229,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	dataviewAllHighlightedObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
+			Source:    []string{addr.RelationKeyToIdPrefix + bundle.RelationKeyName.String()},
 			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)},
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -276,7 +272,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	dataviewAllWorkspaceObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
+			Source:    []string{addr.RelationKeyToIdPrefix + bundle.RelationKeyName.String()},
 			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName), bundle.MustGetRelation(bundle.RelationKeyCreator)},
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -314,13 +310,20 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	p.AddHook(p.updateOptions, smartblock.HookAfterApply)
+	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 
-	data := ctx.State.GetCollection(collectionKeyRelationOptions)
+	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
-		for subId := range data.Fields {
-			if err = p.initOption(ctx.State, subId); err != nil {
-				return
+		for collName, coll := range data.Fields {
+			if collName == source.WorkspaceCollection {
+				continue
+			}
+			if coll != nil && coll.GetStructValue() != nil {
+				for sub := range coll.GetStructValue().GetFields() {
+					if err = p.initSubObject(ctx.State, collName, sub); err != nil {
+						return
+					}
+				}
 			}
 		}
 	}
@@ -511,4 +514,86 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 		Key:   thread.NewKey(sk, pk).String(),
 		Addrs: pbtypes.GetStringListValue(fields.Fields[collectionKeyAddrs]),
 	}, nil
+}
+
+func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create relation: no data")
+	}
+
+	if v, ok := details.GetFields()[bundle.RelationKeyRelationFormat.String()]; !ok {
+		return "", nil, fmt.Errorf("missing relation format")
+	} else if i, ok := v.Kind.(*types.Value_NumberValue); !ok {
+		return "", nil, fmt.Errorf("invalid relation format: not a number")
+	} else if model.RelationFormat(int(i.NumberValue)).String() == "" {
+		return "", nil, fmt.Errorf("invalid relation format: unknown enum")
+	}
+
+	if pbtypes.GetString(details, bundle.RelationKeyName.String()) == "" {
+		return "", nil, fmt.Errorf("missing relation name")
+	}
+
+	object = pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
+	st := w.NewState()
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		// no need to check for the generated bson's
+		if st.HasInStore([]string{collectionKeyRelations, key}) {
+			return id, object, ErrSubObjectAlreadyExists
+		}
+	}
+	id = addr.RelationKeyToIdPrefix + key
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
+	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
+
+	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(details))
+	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
+		return
+	}
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err error) {
+	if details == nil || details.Fields == nil {
+		return "", fmt.Errorf("create option: no data")
+	}
+
+	if pbtypes.GetString(details, bundle.RelationKeyRelationOptionText.String()) == "" {
+		return "", fmt.Errorf("missing option text")
+	} else if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelationOption.URL() {
+		return "", fmt.Errorf("invalid type: not an option")
+	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
+		return "", fmt.Errorf("invalid relation key: unknown enum")
+	}
+
+	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	st := w.NewState()
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		// no need to check for the generated bson's
+		if st.HasInStore([]string{collectionKeyRelationOptions, key}) {
+			return key, ErrSubObjectAlreadyExists
+		}
+	}
+
+	// options has a short id for now to avoid migration of values inside relations
+	id = key
+
+	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(details))
+	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
+		return
+	}
+
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
 }

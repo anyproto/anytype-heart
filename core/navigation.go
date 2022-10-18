@@ -3,8 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -120,7 +118,9 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 
 	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
 
-	ot := strings.TrimPrefix(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()), bundle.TypePrefix)
+	ot, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()))
+	var sbType = coresb.SmartBlockTypePage
+
 	switch bundle.TypeKey(ot) {
 	case bundle.TypeKeyBookmark:
 		id, err = mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
@@ -138,19 +138,19 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 			InternalFlags: req.InternalFlags,
 		})
 	case bundle.TypeKeyRelation:
-		rl, err2 := mw.relationCreate(&pb.RpcObjectCreateRelationRequest{
+		id, _, err = mw.objectCreateRelation(&pb.RpcObjectCreateRelationRequest{
 			Details: req.Details,
 		})
-		id = rl.Id
-		err = err2
+
 	case bundle.TypeKeyRelationOption:
 		id, err = mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
 			Details: req.Details,
 		})
-
+	case bundle.TypeKeyTemplate:
+		sbType = coresb.SmartBlockTypeTemplate
 	default:
 		err = mw.doBlockService(func(bs block.Service) (err error) {
-			id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+			id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), sbType, req.Details, nil, req.TemplateId)
 			return
 		})
 	}

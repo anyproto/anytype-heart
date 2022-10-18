@@ -313,7 +313,7 @@ func (bs *basic) AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelation
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := bs.RelationService().FetchId(req.RelationId)
+	rel, err := bs.RelationService().FetchKey(req.RelationKey)
 	if err != nil {
 		return
 	}
@@ -380,7 +380,7 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		return true
 	})
 	// TODO: use relations service with state
-	rels := bs.Relations(s)
+	rels := bs.GetRelationLinks()
 	details := s.Details()
 	for _, rel := range rels {
 		if rel.Format == model.RelationFormat_object {

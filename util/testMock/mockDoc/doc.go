@@ -11,7 +11,7 @@ func RegisterMockDoc(ctrl *gomock.Controller, ta *testapp.TestApp) *MockService 
 	ms := NewMockService(ctrl)
 	ms.EXPECT().Name().AnyTimes().Return(doc.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
-	ms.EXPECT().Run().AnyTimes()
+	ms.EXPECT().Run(gomock.Any()).AnyTimes()
 	ms.EXPECT().Close().AnyTimes()
 	ta.Register(ms)
 	return ms

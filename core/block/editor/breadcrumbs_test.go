@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -62,7 +63,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.mockDoc = mockDoc.RegisterMockDoc(fx.ctrl, fx.app)
 	fx.mockAnytype = testMock.RegisterMockAnytype(fx.ctrl, fx.app)
 	fx.app.Register(restriction.New())
-	require.NoError(t, fx.app.Start())
+	require.NoError(t, fx.app.Start(context.Background()))
 	return fx
 }
 

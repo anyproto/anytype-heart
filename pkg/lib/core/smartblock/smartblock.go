@@ -31,7 +31,7 @@ const (
 	SmartBlockTypeTemplate            = SmartBlockType(model.SmartBlockType_Template)
 	SmartBlockTypeBundledTemplate     = SmartBlockType(model.SmartBlockType_BundledTemplate)
 	SmartBlockTypeBundledRelation     = SmartBlockType(model.SmartBlockType_BundledRelation)
-	SmartBlockTypeIndexedRelation     = SmartBlockType(model.SmartBlockType_IndexedRelation)
+	SmartBlockTypeSubObject           = SmartBlockType(model.SmartBlockType_SubObject)
 	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)
 	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate                = SmartBlockType(model.SmartBlockType_Date)
@@ -44,9 +44,14 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return SmartBlockTypeBundledRelation, nil
 	}
-	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
-		return SmartBlockTypeIndexedRelation, nil
+	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+		return SmartBlockTypeSubObject, nil
 	}
+	// workaround for options that have no prefix
+	if bson.IsObjectIdHex(id) {
+		return SmartBlockTypeSubObject, nil
+	}
+
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		return SmartBlockTypeBundledObjectType, nil
 	}
@@ -59,9 +64,6 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 			return 0, err
 		}
 		return SmartBlockType(sbt), nil
-	}
-	if bson.IsObjectIdHex(id) {
-		return SmartBlockTypePage, nil
 	}
 	if strings.HasPrefix(id, addr.DatePrefix) {
 		return SmartBlockTypeDate, nil

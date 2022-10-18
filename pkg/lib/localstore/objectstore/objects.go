@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -140,9 +141,7 @@ var (
 				}
 
 				for _, opt := range v.SelectDict {
-					if opt.Scope != model.RelationOption_local {
-						continue
-					}
+					// todo: migration?
 
 					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Key, opt.Id}))
 				}
@@ -252,7 +251,7 @@ type ObjectStore interface {
 
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
-	GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error)
+	GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error)
 
 	RelationSearchDistinct(relationKey string, reqFilters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewGroup, error)
 
@@ -687,44 +686,31 @@ func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string
 }
 
 // GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
-func (m *dsObjectStore) GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error) {
-	objectsByOptionId, err := m.AggregateObjectIdsByOptionForRelation(relationKey)
-	if err != nil {
-		return nil, err
+func (m *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error) {
+	// todo: add workspace
+	records, _, err := m.Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Value:       pbtypes.String(relationKey),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyType.String(),
+				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			},
+		},
+	})
+
+	for _, rec := range records {
+		options = append(options, relationutils.OptionFromStruct(rec.Details).RelationOption)
 	}
-
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, err
-	}
-
-	for optId, objIds := range objectsByOptionId {
-		var scope = model.RelationOption_relation
-		if objectType != "" {
-			for _, objId := range objIds {
-				exists, err := isObjectBelongToType(txn, objId, objectType)
-				if err != nil {
-					return nil, err
-				}
-
-				if exists {
-					scope = model.RelationOption_local
-					break
-				}
-			}
-		}
-		opt, err := getOption(txn, optId)
-		if err != nil {
-			return nil, err
-		}
-		opt.Scope = scope
-		options = append(options, opt)
-	}
-
 	return
 }
 
 func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewGroup, error) {
+	// todo: should pass workspace
 	rel, err := m.GetRelation(relationKey)
 	if err != nil {
 		return nil, err
@@ -734,7 +720,7 @@ func (m *dsObjectStore) RelationSearchDistinct(relationKey string, reqFilters []
 
 	switch rel.Format {
 	case model.RelationFormat_status:
-		options, err := m.GetAggregatedOptions(relationKey, "")
+		options, err := m.GetAggregatedOptions(relationKey)
 		if err != nil {
 			return nil, err
 		}
@@ -1208,6 +1194,7 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 }
 
 func (m *dsObjectStore) GetRelation(relationKey string) (*model.Relation, error) {
+	// todo: should pass workspace
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -2516,10 +2503,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 			continue
 		}
 
-		relCopy := pbtypes.CopyRelation(rel)
-		relCopy.Scope = model.Relation_type
-
-		objectType.Relations = append(objectType.Relations, relCopy)
+		objectType.RelationLinks = append(objectType.RelationLinks, (&relationutils.Relation{rel}).RelationLink())
 	}
 
 	objectType.Url = url

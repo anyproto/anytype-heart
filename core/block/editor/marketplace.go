@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -37,8 +38,8 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot}))}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyObjectType).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyObjectType).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,
@@ -108,8 +109,8 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyRelation).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyRelation).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,
@@ -122,9 +123,9 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
-						RelationKey: bundle.RelationKeyIsHidden.String(),
-						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.Bool(true),
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 				{
@@ -138,9 +139,9 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
-						RelationKey: bundle.RelationKeyIsHidden.String(),
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
 						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.Bool(true),
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 			},
@@ -172,8 +173,8 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyTemplate).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyTemplate).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,

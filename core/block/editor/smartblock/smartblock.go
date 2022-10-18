@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/google/uuid"
 	"sort"
 	"strings"
 	"sync"
@@ -100,9 +103,9 @@ type SmartBlock interface {
 	Anytype() core.Service
 	RelationService() relation2.Service
 	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
-	Relations(s *state.State) relation2.Relations
+	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddExtraRelations(ctx *session.Context, relationIds ...string) (err error)
+	AddRelationLinks(ctx *session.Context, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
@@ -176,7 +179,7 @@ type smartBlock struct {
 }
 
 func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
-	for _, rel := range sb.Relations(s) {
+	for _, rel := range s.GetRelationLinks() {
 		// coverId can contains both hash or predefined cover id
 		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {
@@ -188,7 +191,7 @@ func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
-	for _, rel := range sb.Relations(s) {
+	for _, rel := range s.GetRelationLinks() {
 		if rel.Key == key {
 			return true
 		}
@@ -320,7 +323,7 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 	// omit relations
 	// todo: switch to other pb type
 	for _, ot := range objectTypes {
-		ot.Relations = nil
+		ot.RelationLinks = nil
 	}
 
 	for _, det := range details {
@@ -501,10 +504,10 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 
 		details := sb.CombinedDetails()
 
-		for _, rel := range sb.Relations(nil) {
+		for _, rel := range sb.GetRelationLinks() {
 			// do not index local dates such as lastOpened/lastModified
 			if includeRelations {
-				ids = append(ids, rel.Id)
+				ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
 			}
 			if rel.Format == model.RelationFormat_date &&
 				(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
@@ -525,9 +528,10 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 				continue
 			}
 
-			if rel.Hidden && !includeHidden {
-				continue
-			}
+			// todo refactor: should we have this case preserved? we don't have hidden flag available in the state anymore
+			//if rel.Hidden && !includeHidden {
+			//	continue
+			//}
 
 			if rel.Key == bundle.RelationKeyId.String() ||
 				rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
@@ -686,7 +690,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	sb.reportChange(st)
 
-	if hasDepIds(sb.Relations(st), &act) {
+	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
 	afterReportChangeTime := time.Now()
@@ -802,8 +806,8 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 				return fmt.Errorf("relation %s is not found", detail.Key)
 			}
 			s.AddRelationLinks(&model.RelationLink{
-				Id:  rel.Id,
-				Key: rel.Key,
+				Format: rel.Format,
+				Key:    rel.Key,
 			})
 
 			err = sb.RelationService().ValidateFormat(detail.Key, detail.Value)
@@ -852,19 +856,19 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 	return nil
 }
 
-func (sb *smartBlock) AddExtraRelations(ctx *session.Context, relationIds ...string) (err error) {
+func (sb *smartBlock) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
-	if err = sb.addRelations(s, relationIds...); err != nil {
+	if err = sb.addRelations(s, relationKeys...); err != nil {
 		return
 	}
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) addRelations(s *state.State, relationIds ...string) (err error) {
-	if len(relationIds) == 0 {
+func (sb *smartBlock) addRelations(s *state.State, relationKeys ...string) (err error) {
+	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.relationService.FetchIds(relationIds...)
+	relations, err := sb.relationService.FetchKeys(relationKeys...)
 	if err != nil {
 		return
 	}
@@ -1114,7 +1118,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		})
 	}
 	sb.storeFileKeys(s)
-	if hasDepIds(sb.Relations(s), &act) {
+	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
 	sb.reportChange(s)
@@ -1174,7 +1178,7 @@ func (sb *smartBlock) Close() (err error) {
 	return
 }
 
-func hasDepIds(relations relation2.Relations, act *undo.Action) bool {
+func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
@@ -1186,8 +1190,8 @@ func hasDepIds(relations relation2.Relations, act *undo.Action) bool {
 			return true
 		}
 		for k, after := range act.Details.After.Fields {
-			rel := relations.GetByKey(k)
-			if rel != nil && len(rel.ObjectTypes) > 0 {
+			rel := relations.Get(k)
+			if rel != nil && rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_object {
 				before := act.Details.Before.Fields[k]
 				// Check that value is actually changed
 				if before == nil || !before.Equal(after) {
@@ -1313,7 +1317,8 @@ func (sb *smartBlock) baseRelations() []*model.Relation {
 	return rels
 }
 
-func (sb *smartBlock) Relations(s *state.State) relation2.Relations {
+// deprecated, use RelationLinks instead
+func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink
 	if s == nil {
 		links = sb.Doc.GetRelationLinks()
@@ -1363,11 +1368,167 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	}
 }
 
+func SubStates(st *state.State, collection string) (map[string]*state.State, error) {
+	coll := st.GetCollection(collection)
+	if coll == nil {
+		return nil, fmt.Errorf("collection not found")
+	}
+
+	m := make(map[string]*state.State, len(coll.Fields))
+	for k, v := range coll.GetFields() {
+		m[k] = structToState(k, v.GetStructValue())
+	}
+	return m, nil
+}
+
+func SubState(st *state.State, collection string, id string) (*state.State, error) {
+	if collection == source.WorkspaceCollection {
+		return nil, fmt.Errorf("substate not supported")
+	}
+	subId := strings.TrimPrefix(id, collection+addr.VirtualObjectSeparator)
+	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
+	if data == nil || data.Fields == nil {
+		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
+	}
+	subst := structToState(id, data)
+	if collection == "rel" {
+		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
+		dataview := model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Source: []string{id},
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   uuid.New().String(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: relKey,
+								Type:        model.BlockContentDataviewSort_Asc,
+							},
+						},
+						Relations: []*model.BlockContentDataviewRelation{{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+							{
+								Key:       relKey,
+								IsVisible: true,
+							},
+						},
+						Filters: nil,
+					},
+				},
+			},
+		}
+
+		template.WithTitle(subst)
+		template.WithDescription(subst)
+		template.WithDefaultFeaturedRelations(subst)
+		template.WithDataview(dataview, false)(subst)
+
+	} else if collection == "opt" {
+		dataview := model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Source: []string{pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())},
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   uuid.New().String(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: "name",
+								Type:        model.BlockContentDataviewSort_Asc,
+							},
+						},
+						Relations: []*model.BlockContentDataviewRelation{},
+						Filters: []*model.BlockContentDataviewFilter{{
+							RelationKey: pbtypes.GetString(data, bundle.RelationKeyRelationKey.String()),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String(pbtypes.GetString(data, bundle.RelationKeyId.String())),
+						}},
+					},
+				},
+			},
+		}
+
+		template.WithTitle(subst)
+		template.WithDescription(subst)
+		template.WithDefaultFeaturedRelations(subst)
+		template.WithDataview(dataview, false)(subst)
+	}
+
+	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy}
+	for _, rk := range relationsToCopy {
+		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
+	}
+	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate)
+	return subst, nil
+}
+
+func structToState(id string, data *types.Struct) *state.State {
+	blocks := map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
+	}
+	subState := state.NewDoc(id, blocks).(*state.State)
+
+	for k, v := range data.Fields {
+		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
+			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
+		}
+	}
+	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
+	return subState
+}
+
 func (sb *smartBlock) reportChange(s *state.State) {
 	if sb.doc == nil {
 		return
 	}
-	sb.doc.ReportChange(context.TODO(), sb.getDocInfo(s))
+	docInfo := sb.getDocInfo(s)
+	sb.doc.ReportChange(context.TODO(), docInfo)
+
+	if hasStoreChanges(s.GetChanges()) {
+		var path []string
+		var m = make(map[string]struct{})
+		for _, ch := range s.GetChanges() {
+			storeSet := ch.GetStoreKeySet()
+			if storeSet != nil {
+				path = storeSet.Path
+			}
+
+			storeUnset := ch.GetStoreKeyUnset()
+			if storeUnset != nil {
+				path = storeUnset.Path
+			}
+			if len(path) < 2 {
+				// only process the full state
+				continue
+			}
+			mapKey := path[0] + "_" + path[1]
+			if _, exists := m[mapKey]; exists {
+				continue
+			}
+
+			m[mapKey] = struct{}{}
+
+			st, _ := SubState(s, path[0], path[1])
+			if st == nil {
+				// not a valid state, may be threadDB
+				continue
+			}
+			d := doc.DocInfo{
+				Id:         pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyId.String()),
+				Links:      nil,
+				FileHashes: nil,
+				LogHeads:   docInfo.LogHeads,
+				Creator:    docInfo.Creator,
+				State:      st,
+			}
+			sb.doc.ReportChange(context.TODO(), d)
+		}
+	}
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {

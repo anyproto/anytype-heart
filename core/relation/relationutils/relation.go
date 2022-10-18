@@ -1,4 +1,4 @@
-package relation
+package relationutils
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -37,8 +37,8 @@ type Relation struct {
 
 func (r *Relation) RelationLink() *model.RelationLink {
 	return &model.RelationLink{
-		Id:  r.Id,
-		Key: r.Key,
+		Format: r.Format,
+		Key:    r.Key,
 	}
 }
 
@@ -49,9 +49,10 @@ func (r *Relation) ToStruct() *types.Struct {
 			bundle.RelationKeyRelationKey.String():               pbtypes.String(r.GetKey()),
 			bundle.RelationKeyRelationFormat.String():            pbtypes.Float64(float64(r.GetFormat())),
 			bundle.RelationKeyName.String():                      pbtypes.String(r.GetName()),
+			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.URL()),
 			bundle.RelationKeyRelationDefaultValue.String():      r.GetDefaultValue(),
 			bundle.RelationKeyIsHidden.String():                  pbtypes.Bool(r.GetHidden()),
-			bundle.RelationKeyIsReadonly.String():                pbtypes.Bool(r.GetReadOnly()),
+			bundle.RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(r.GetReadOnly()),
 			bundle.RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(r.GetObjectTypes()),
 			bundle.RelationKeyRelationMaxCount.String():          pbtypes.Float64(float64(r.GetMaxCount())),
 			bundle.RelationKeyDescription.String():               pbtypes.String(r.GetDescription()),
@@ -93,4 +94,15 @@ func (rs Relations) GetModelByKey(key string) *model.Relation {
 		return r.Relation
 	}
 	return nil
+}
+
+func MigrateRelationsModels(rels []*model.Relation) (relLinks []*model.RelationLink) {
+	relLinks = make([]*model.RelationLink, 0, len(rels))
+	for _, rel := range rels {
+		relLinks = append(relLinks, &model.RelationLink{
+			Key:    rel.Key,
+			Format: rel.Format,
+		})
+	}
+	return
 }

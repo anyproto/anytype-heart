@@ -81,7 +81,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 		return &files{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{a: s.anytype}, nil
-	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
+	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeWorkspaceOld:
 		return &threadDB{a: s.anytype}, nil

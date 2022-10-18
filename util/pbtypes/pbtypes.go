@@ -323,6 +323,15 @@ func GetRelationKeys(rels []*model.Relation) []string {
 	return keys
 }
 
+func GetRelationListKeys(rels []*model.RelationLink) []string {
+	var keys []string
+	for _, rel := range rels {
+		keys = append(keys, rel.Key)
+	}
+
+	return keys
+}
+
 func GetOptionIds(opts []*model.RelationOption) []string {
 	var keys []string
 	for _, opt := range opts {
@@ -479,8 +488,8 @@ func RelationFormatCanHaveListValue(format model.RelationFormat) bool {
 }
 
 func RelationIdToKey(id string) (string, error) {
-	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
-		return strings.TrimPrefix(id, addr.CustomRelationURLPrefix), nil
+	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
 	}
 
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {

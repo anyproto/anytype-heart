@@ -157,15 +157,15 @@ func TestState_SetParent(t *testing.T) {
 	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}}))
 	orig.Add(simple.New(&model.Block{Id: "header"}))
 	orig.SetObjectType("orig")
-	orig.AddRelationLinks(&model.RelationLink{Id: "k1", Key: "one"})
+	orig.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "one"})
 	st := orig.Copy()
 
 	newState := NewDoc("root", nil).(*State)
 	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
 	newState.SetObjectTypes([]string{"newOT1", "newOT2"})
-	orig.AddRelationLinks(&model.RelationLink{Id: "k2", Key: "newOne"})
-	orig.AddRelationLinks(&model.RelationLink{Id: "k3", Key: "newTwo"})
+	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newOne"})
+	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newTwo"})
 
 	ns := newState.Copy()
 
@@ -176,8 +176,7 @@ func TestState_SetParent(t *testing.T) {
 
 	st2 := orig.Copy()
 	require.NoError(t, st2.ApplyChange(st.GetChanges()...))
-	// TODO: check relId instead
-	//assert.Equal(t, st.StringDebug(), st2.StringDebug())
+	assert.Equal(t, st.StringDebug(), st2.StringDebug())
 }
 
 func TestStateNormalizeMerge(t *testing.T) {
@@ -492,10 +491,10 @@ func Test_ApplyChange(t *testing.T) {
 
 func TestRelationChanges(t *testing.T) {
 	a := NewDoc("root", nil).(*State)
-	a.relationLinks = []*model.RelationLink{{Id: "1"}, {Id: "2"}, {Id: "3"}}
+	a.relationLinks = []*model.RelationLink{{Key: "1"}, {Key: "2"}, {Key: "3"}}
 	ac := a.Copy()
 	b := a.NewState()
-	b.relationLinks = []*model.RelationLink{{Id: "3"}, {Id: "4"}, {Id: "5"}}
+	b.relationLinks = []*model.RelationLink{{Key: "3"}, {Key: "4"}, {Key: "5"}}
 	_, _, err := ApplyState(b, false)
 	require.NoError(t, err)
 	chs := a.GetChanges()

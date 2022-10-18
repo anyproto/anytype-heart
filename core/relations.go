@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -23,7 +22,7 @@ import (
 )
 
 func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
-	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*model.Relation, err error) *pb.RpcObjectTypeRelationListResponse {
+	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*model.RelationLink, err error) *pb.RpcObjectTypeRelationListResponse {
 		m := &pb.RpcObjectTypeRelationListResponse{Relations: relations, Error: &pb.RpcObjectTypeRelationListResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -44,7 +43,7 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 	}
 
 	// todo: AppendRelationsFromOtherTypes case
-	return response(pb.RpcObjectTypeRelationListResponseError_NULL, objType.Relations, nil)
+	return response(pb.RpcObjectTypeRelationListResponseError_NULL, objType.RelationLinks, nil)
 }
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
@@ -75,7 +74,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 	}
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.AddExtraRelations(nil, objType.Url, req.RelationIds)
+		err = bs.AddExtraRelations(nil, objType.Url, req.RelationKeys)
 		if err != nil {
 			return err
 		}
@@ -126,46 +125,27 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
 	}
 
-	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
-	if err != nil {
-		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
-		}
-
-		return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_ERROR, err)
-	}
-
-	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
+	if strings.HasPrefix(req.ObjectTypeUrl, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
-	err = mw.doBlockService(func(bs block.Service) (err error) {
-		// TODO:
-		/*
-			err = bs.ModifyDetails(objType.Url, func(current *types.Struct) (*types.Struct, error) {
-				list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
-				var relId string
-				if bundle.HasRelation(req.RelationKey) {
-					relId = addr.BundledRelationURLPrefix + req.RelationKey
-				} else {
-					relId = addr.CustomRelationURLPrefix + req.RelationKey
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
+			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
+			for _, relKey := range req.RelationKeys {
+				relId := addr.RelationKeyToIdPrefix + relKey
+				if slice.FindPos(list, relId) == -1 {
+					list = append(list, relId)
 				}
-
-				list = slice.Remove(list, relId)
-				detCopy := pbtypes.CopyStruct(current)
-				detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
-				return detCopy, nil
-			})
-			if err != nil {
-				return err
 			}
-			err = bs.RemoveExtraRelations(nil, objType.Url, []string{req.RelationKey})
-			if err != nil {
-				return err
-			}
-			return nil
 
-		*/
+			detCopy := pbtypes.CopyStruct(current)
+			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
+			return detCopy, nil
+		})
+		if err != nil {
+			return err
+		}
 		return
 	})
 
@@ -209,11 +189,12 @@ func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectCreateObjectTypeRequest)
 	}
 
 	for _, rel := range bundle.RequiredInternalRelations {
-		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
+		recommendedRelationKeys = append(recommendedRelationKeys, addr.RelationKeyToIdPrefix+rel.String())
 	}
 
 	for _, rel := range layout.RequiredRelations {
-		k := addr.BundledRelationURLPrefix + rel.Key
+		// todo: check if relation is installed?
+		k := addr.RelationKeyToIdPrefix + rel.Key
 		if slice.FindPos(recommendedRelationKeys, k) != -1 {
 			continue
 		}
@@ -283,7 +264,7 @@ func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectT
 }
 
 func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
-	response := func(id, key string, err error) *pb.RpcObjectCreateRelationResponse {
+	response := func(id string, object *types.Struct, err error) *pb.RpcObjectCreateRelationResponse {
 		if err != nil {
 			return &pb.RpcObjectCreateRelationResponse{
 				Error: &pb.RpcObjectCreateRelationResponseError{
@@ -292,32 +273,21 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 				},
 			}
 		}
+		key := pbtypes.GetString(object, bundle.RelationKeyRelationKey.String())
 		return &pb.RpcObjectCreateRelationResponse{
 			Error: &pb.RpcObjectCreateRelationResponseError{
 				Code: pb.RpcObjectCreateRelationResponseError_NULL,
 			},
 			ObjectId: id,
 			Key:      key,
+			Details:  object,
 		}
 	}
-	rl, err := mw.relationCreate(req)
+	id, object, err := mw.objectCreateRelation(req)
 	if err != nil {
-		return response("", "", err)
+		return response("", nil, err)
 	}
-	return response(rl.Id, rl.Key, err)
-}
-
-func (mw *Middleware) relationCreate(req *pb.RpcObjectCreateRelationRequest) (*model.RelationLink, error) {
-	var rl *model.RelationLink
-	err := mw.doRelationService(func(rs relation.Service) error {
-		var err error
-		rl, err = rs.Create(req.Details)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	return rl, err
+	return response(id, object, err)
 }
 
 func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
@@ -343,13 +313,25 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, error) {
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 	var id string
 	err := mw.doBlockService(func(rs block.Service) error {
 		var err error
-		id, err = rs.CreateRelationOption(req.Details)
+		id, err = rs.
+			CreateRelationOption(req.Details)
 		return err
 	})
 	return id, err
+}
+
+func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
+	err = mw.doBlockService(func(rs block.Service) error {
+		var err2 error
+		id, object, err2 = rs.CreateRelation(req.Details)
+		return err2
+	})
+	return
 }
 
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
@@ -366,7 +348,7 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 
 		return &pb.RpcRelationListRemoveOptionResponse{
 			Error: &pb.RpcRelationListRemoveOptionResponseError{
-				Code:        code,
+				Code: code,
 			},
 		}
 	}

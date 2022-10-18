@@ -4,26 +4,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/anytypeio/go-anytype-middleware/anymark/spaceReplace"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
 )
 
 var (
@@ -155,6 +156,11 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 			} else {
 				lastTextBlock = b
 			}
+		} else {
+			// if text block + object block - go to cutBlocks scenario imediately 
+			firstTextBlock = nil
+			lastTextBlock = nil
+			break
 		}
 	}
 
@@ -286,11 +292,24 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 		block := cb.Pick(req.FocusedBlockId)
 		if block != nil {
 			if b := block.Model().GetText(); b != nil && b.Style == model.BlockContentText_Code {
-				textArr = []string{req.TextSlot}
+				return cb.pasteRawText(ctx, req, []string{req.TextSlot}, groupId)
 			}
 		}
 	}
 
+	mdText := spaceReplace.WhitespaceNormalizeString(req.TextSlot)
+
+	md := anymark.New()
+	blocks, _, err := md.MarkdownToBlocks([]byte(mdText), "", []string{})
+	if err != nil {
+		return cb.pasteRawText(ctx, req, textArr, groupId)
+	}
+	req.AnySlot = append(req.AnySlot, blocks...)
+
+	return cb.pasteAny(ctx, req, groupId)
+}
+
+func (cb *clipboard) pasteRawText(ctx *session.Context, req *pb.RpcBlockPasteRequest, textArr []string, groupId string) ([]string, []pb.RpcBlockUploadRequest, int32, bool, error) {
 	req.AnySlot = make([]*model.Block, 0, len(textArr))
 	for _, text := range textArr {
 		if text != "" {

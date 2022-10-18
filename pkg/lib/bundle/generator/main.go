@@ -224,9 +224,9 @@ func generateTypes() error {
 						log.Fatalf("duplicate relation '%s' for object type '%s'", rel, ot.ID)
 					}
 					m[rel] = struct{}{}
-					t = append(t, Id("relations").Index(Id(relConst(rel))))
+					t = append(t, Id("MustGetRelationLink").Add(CallFunc(func(g *Group) { g.Id(relConst(rel)) })))
 				}
-				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
+				map[Code]Code(dictS)[Id("RelationLinks")] = Index().Op("*").Qual(relPbPkg, "RelationLink").Values(t...)
 			}
 			if len(ot.Types) > 0 {
 				var t []Code

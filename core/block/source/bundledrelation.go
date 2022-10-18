@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
@@ -57,7 +58,11 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 		return nil, err
 	}
 	rel.Creator = addr.AnytypeProfileId
-	return bundle.GetDetailsForRelation(true, rel), nil
+	details := bundle.GetDetailsForRelation(true, rel)
+	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
+	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
+
+	return details, nil
 }
 
 func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {

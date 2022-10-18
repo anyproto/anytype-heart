@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -22,6 +23,12 @@ import (
 func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	blocks := make(map[string]simple.Block)
 	for _, b := range snapshot.Data.Blocks {
+		// migrate old dataview blocks with relations
+		if dvBlock := b.GetDataview(); dvBlock != nil {
+			if len(dvBlock.RelationLinks) == 0 {
+				dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
+			}
+		}
 		blocks[b.Id] = simple.New(b)
 	}
 	fileKeys := make([]pb.ChangeFileKeys, 0, len(snapshot.FileKeys))
@@ -29,6 +36,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		fileKeys = append(fileKeys, *fk)
 	}
 
+	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
+		snapshot.Data.RelationLinks = relationutils.MigrateRelationsModels(snapshot.Data.ExtraRelations)
+	}
 	// clear nil values
 	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
 
@@ -37,13 +47,15 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		blocks:         blocks,
 		details:        pbtypes.StructCutKeys(snapshot.Data.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...)),
 		extraRelations: snapshot.Data.ExtraRelations,
+		relationLinks:  snapshot.Data.RelationLinks,
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
 		store:          snapshot.Data.Collections,
-		relationLinks:  snapshot.Data.RelationLinks,
 	}
-	s.InjectDerivedDetails()
 
+	// migrate old relations from dataview block
+	// do not consider other possible dataview blocks
+	s.InjectDerivedDetails()
 	return s
 }
 
@@ -210,7 +222,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	rl := s.GetRelationLinks()
 	for _, r := range add.RelationLinks {
-		if !rl.Has(r.Id) {
+		if !rl.Has(r.Key) {
 			rl = rl.Append(r)
 		}
 	}
@@ -219,11 +231,17 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 }
 
 func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
-	s.RemoveRelation(rem.RelationId...)
+	s.RemoveRelation(rem.RelationKey...)
 	return nil
 }
 
 func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
+	// MIGRATION: add old relation as new relationLinks
+	err := s.changeRelationAdd(&pb.ChangeRelationAdd{RelationLinks: []*model.RelationLink{{Key: add.Relation.Key, Format: add.Relation.Format}}})
+	if err != nil {
+		return err
+	}
+
 	for _, rel := range s.OldExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
@@ -237,7 +255,7 @@ func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
 		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(pbtypes.CopyRelations(s.OldExtraRelations()), rel)
+	s.extraRelations = pbtypes.CopyRelations(append(s.OldExtraRelations(), rel))
 	return nil
 }
 
@@ -248,6 +266,11 @@ func (s *State) changeOldRelationRemove(remove *pb.Change_RelationRemove) error 
 			s.extraRelations = append(rels[:i], rels[i+1:]...)
 			return nil
 		}
+	}
+
+	err := s.changeRelationRemove(&pb.ChangeRelationRemove{RelationKey: []string{remove.Key}})
+	if err != nil {
+		return err
 	}
 
 	log.Warnf("changeOldRelationRemove: relation to remove not found")
@@ -317,6 +340,11 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		bIds[i] = b.Model().Id
 		s.Unlink(bIds[i])
 		s.Set(b)
+		if dv := b.Model().GetDataview(); dv != nil {
+			if len(dv.RelationLinks) == 0 {
+				dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
+			}
+		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
 }
@@ -440,6 +468,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			newRelLinks = append(newRelLinks, msg.Msg.GetObjectRelationsAmend().RelationLinks...)
 		case *pb.EventMessageValueOfObjectRelationsRemove:
 			delRelIds = append(delRelIds, msg.Msg.GetObjectRelationsRemove().RelationIds...)
+		case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
+			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)
 		}
@@ -470,7 +500,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfRelationRemove{
 				RelationRemove: &pb.ChangeRelationRemove{
-					RelationId: delRelIds,
+					RelationKey: delRelIds,
 				},
 			},
 		})

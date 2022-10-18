@@ -154,9 +154,9 @@ func genRandomRelations(strings []string, count int) *model.Relations {
 				Name:         randString(60),
 				DefaultValue: nil,
 				SelectDict: []*model.RelationOption{
-					{"id1", "option1", "red", model.RelationOption_local},
-					{"id2", "option2", "red", model.RelationOption_local},
-					{"id3", "option3", "red", model.RelationOption_local},
+					{"id1", "option1", "red", strings[i]},
+					{"id2", "option2", "red", strings[i]},
+					{"id3", "option3", "red", strings[i]},
 				},
 			},
 			{

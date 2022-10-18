@@ -58,6 +58,14 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
 }
 
+var DefaultSmartblockTypePerObjectType = map[TypeKey]coresb.SmartBlockType{
+	TypeKeyPage:       coresb.SmartBlockTypePage,
+	TypeKeySet:        coresb.SmartBlockTypeSet,
+	TypeKeyObjectType: coresb.SmartBlockTypeObjectType,
+	TypeKeyTemplate:   coresb.SmartBlockTypeTemplate,
+	TypeKeyDashboard:  coresb.SmartBlockTypeHome,
+}
+
 // filled in init
 var LocalRelationsKeys []string   // stored only in localstore
 var DerivedRelationsKeys []string // derived
@@ -104,6 +112,17 @@ func MustGetRelation(rk RelationKey) *model.Relation {
 		d := pbtypes.CopyRelation(v)
 		d.Id = addr.BundledRelationURLPrefix + d.Key
 		return d
+	}
+
+	// we can safely panic in case RelationKey is a generated constant
+	panic(ErrNotFound)
+}
+
+// MustGetRelation returns built-in relation by predefined RelationKey constant
+// PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
+func MustGetRelationLink(rk RelationKey) *model.RelationLink {
+	if v, exists := relations[rk]; exists {
+		return &model.RelationLink{Key: v.Key, Format: v.Format}
 	}
 
 	// we can safely panic in case RelationKey is a generated constant
@@ -218,7 +237,7 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) *types2.Struct {
 	if bundled {
 		prefix = addr.BundledRelationURLPrefix
 	} else {
-		prefix = addr.CustomRelationURLPrefix
+		prefix = addr.RelationKeyToIdPrefix
 	}
 
 	return &types2.Struct{Fields: map[string]*types2.Value{
@@ -245,4 +264,11 @@ func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
 	}
 
 	return false
+}
+
+func TypeKeyFromUrl(url string) (TypeKey, error) {
+	if !strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
+		return "", fmt.Errorf("invalid type url: no prefix found")
+	}
+	return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
 }

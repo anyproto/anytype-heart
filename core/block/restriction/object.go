@@ -46,7 +46,7 @@ var (
 		model.SmartBlockType_Archive:             objRestrictAll,
 		model.SmartBlockType_Set:                 objRestrictEdit,
 		model.SmartBlockType_BundledRelation:     objRestrictAll,
-		model.SmartBlockType_IndexedRelation: {
+		model.SmartBlockType_SubObject: {
 			model.Restrictions_Blocks,
 			model.Restrictions_Relations,
 			model.Restrictions_LayoutChange,
@@ -57,7 +57,6 @@ var (
 		model.SmartBlockType_STObjectType:      objRestrictEdit,
 		model.SmartBlockType_BundledTemplate:   objRestrictAll,
 		model.SmartBlockType_Template:          {},
-		model.SmartBlockType_RelationOption:    objRestrictEdit,
 	}
 )
 
@@ -94,6 +93,12 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 
 func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
 	var ok bool
+	if obj.Type() == model.SmartBlockType_ProfilePage && s.anytype.PredefinedBlocks().Profile != obj.Id() {
+		if r, ok = objectRestrictionsByPbType[model.SmartBlockType_Page]; ok {
+			return
+		}
+	}
+
 	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {
 		return
 	}
