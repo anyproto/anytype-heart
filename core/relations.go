@@ -60,35 +60,15 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
 	}
 
-	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
-	if err != nil {
-		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
-		}
-
-		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, err)
-	}
-
-	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
+	if strings.HasPrefix(req.ObjectTypeUrl, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
-	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.AddExtraRelations(nil, objType.Url, req.RelationKeys)
-		if err != nil {
-			return err
-		}
-		// TODO:
-		/*err = bs.ModifyDetails(objType.Url, func(current *types.Struct) (*types.Struct, error) {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
-			for _, rel := range relations {
-				var relId string
-				if bundle.HasRelation(rel.Key) {
-					relId = addr.BundledRelationURLPrefix + rel.Key
-				} else {
-					relId = addr.CustomRelationURLPrefix + rel.Key
-				}
-
+			for _, relKey := range req.RelationKeys {
+				relId := addr.RelationKeyToIdPrefix + relKey
 				if slice.FindPos(list, relId) == -1 {
 					list = append(list, relId)
 				}
@@ -100,7 +80,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 		if err != nil {
 			return err
 		}
-		*/
+
 		return nil
 	})
 
@@ -134,8 +114,8 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 			for _, relKey := range req.RelationKeys {
 				relId := addr.RelationKeyToIdPrefix + relKey
-				if slice.FindPos(list, relId) == -1 {
-					list = append(list, relId)
+				if pos := slice.FindPos(list, relId); pos != -1 {
+					list = append(list[:pos], list[pos+1:]...)
 				}
 			}
 
