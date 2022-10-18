@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/google/uuid"
 	"sort"
 	"strings"
 	"sync"
@@ -1391,6 +1392,74 @@ func SubState(st *state.State, collection string, id string) (*state.State, erro
 		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
 	}
 	subst := structToState(id, data)
+	if collection == "rel" {
+		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
+		dataview := model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Source: []string{id},
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   uuid.New().String(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: relKey,
+								Type:        model.BlockContentDataviewSort_Asc,
+							},
+						},
+						Relations: []*model.BlockContentDataviewRelation{{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+							{
+								Key:       relKey,
+								IsVisible: true,
+							},
+						},
+						Filters: nil,
+					},
+				},
+			},
+		}
+
+		template.WithTitle(subst)
+		template.WithDescription(subst)
+		template.WithDefaultFeaturedRelations(subst)
+		template.WithDataview(dataview, false)(subst)
+
+	} else if collection == "opt" {
+		dataview := model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Source: []string{pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())},
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   uuid.New().String(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: "name",
+								Type:        model.BlockContentDataviewSort_Asc,
+							},
+						},
+						Relations: []*model.BlockContentDataviewRelation{},
+						Filters: []*model.BlockContentDataviewFilter{{
+							RelationKey: pbtypes.GetString(data, bundle.RelationKeyRelationKey.String()),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String(pbtypes.GetString(data, bundle.RelationKeyId.String())),
+						}},
+					},
+				},
+			},
+		}
+
+		template.WithTitle(subst)
+		template.WithDescription(subst)
+		template.WithDefaultFeaturedRelations(subst)
+		template.WithDataview(dataview, false)(subst)
+	}
+
 	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy}
 	for _, rk := range relationsToCopy {
 		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
@@ -1404,7 +1473,7 @@ func structToState(id string, data *types.Struct) *state.State {
 		"root": simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
 	}
 	subState := state.NewDoc(id, blocks).(*state.State)
-	template.WithTitle(subState)
+
 	for k, v := range data.Fields {
 		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
 			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
