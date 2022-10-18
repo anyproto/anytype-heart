@@ -1459,7 +1459,7 @@ func SubState(st *state.State, collection string, id string) (*state.State, erro
 		template.WithDataview(dataview, false)(subst)
 	}
 
-	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy}
+	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy, bundle.RelationKeyWorkspaceId}
 	for _, rk := range relationsToCopy {
 		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
 	}
