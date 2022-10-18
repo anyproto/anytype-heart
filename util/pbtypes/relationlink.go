@@ -4,6 +4,15 @@ import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 type RelationLinks []*model.RelationLink
 
+func (rl RelationLinks) Get(key string) *model.RelationLink {
+	for _, l := range rl {
+		if l.Key == key {
+			return l
+		}
+	}
+	return nil
+}
+
 func (rl RelationLinks) Has(key string) bool {
 	for _, l := range rl {
 		if l.Key == key {
@@ -11,15 +20,6 @@ func (rl RelationLinks) Has(key string) bool {
 		}
 	}
 	return false
-}
-
-func (rl RelationLinks) Key(id string) (key string, ok bool) {
-	for _, l := range rl {
-		if l.Key == id {
-			return l.Key, true
-		}
-	}
-	return
 }
 
 func (rl RelationLinks) Append(l *model.RelationLink) RelationLinks {

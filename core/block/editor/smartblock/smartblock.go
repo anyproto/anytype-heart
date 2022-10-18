@@ -690,7 +690,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	sb.reportChange(st)
 
-	if hasDepIds(sb.Relations(st), &act) {
+	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
 	afterReportChangeTime := time.Now()
@@ -1118,7 +1118,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		})
 	}
 	sb.storeFileKeys(s)
-	if hasDepIds(sb.Relations(s), &act) {
+	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
 	sb.reportChange(s)
@@ -1178,8 +1178,7 @@ func (sb *smartBlock) Close() (err error) {
 	return
 }
 
-// todo refactor: use relationLinks instead
-func hasDepIds(relations relationutils.Relations, act *undo.Action) bool {
+func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
@@ -1191,8 +1190,8 @@ func hasDepIds(relations relationutils.Relations, act *undo.Action) bool {
 			return true
 		}
 		for k, after := range act.Details.After.Fields {
-			rel := relations.GetByKey(k)
-			if rel != nil && len(rel.ObjectTypes) > 0 {
+			rel := relations.Get(k)
+			if rel != nil && rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_object {
 				before := act.Details.Before.Fields[k]
 				// Check that value is actually changed
 				if before == nil || !before.Equal(after) {
