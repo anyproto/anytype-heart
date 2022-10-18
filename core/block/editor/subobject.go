@@ -134,8 +134,9 @@ func (o *SubObject) SetStruct(st *types.Struct) error {
 func (w *Workspaces) initSubObject(st *state.State, collection string, subId string) (err error) {
 	subObj := NewSubObject()
 	var fullId string
-	if collection == "" {
+	if collection == "" || collection == defaultCollectionName {
 		fullId = subId
+		collection = defaultCollectionName
 	} else {
 		fullId = collection + addr.VirtualObjectSeparator + subId
 	}

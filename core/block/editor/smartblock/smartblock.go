@@ -279,6 +279,12 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
+	has, _ := sb.objectStore.HasIDs(sb.Id())
+	if len(has) == 0 {
+		// in case we have not yet indexed this object report the change so the indexer will start
+		// todo: do it in a more clean way
+		sb.reportChange(sb.Doc.NewState())
+	}
 	return
 }
 
@@ -1381,21 +1387,21 @@ func SubStates(st *state.State, collection string) (map[string]*state.State, err
 	return m, nil
 }
 
-func SubState(st *state.State, collection string, id string) (*state.State, error) {
+func SubState(st *state.State, collection string, fullId string) (*state.State, error) {
 	if collection == source.WorkspaceCollection {
 		return nil, fmt.Errorf("substate not supported")
 	}
-	subId := strings.TrimPrefix(id, collection+addr.VirtualObjectSeparator)
+	subId := strings.TrimPrefix(fullId, collection+addr.VirtualObjectSeparator)
 	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
 	if data == nil || data.Fields == nil {
 		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
 	}
-	subst := structToState(id, data)
+	subst := structToState(fullId, data)
 	if collection == "rel" {
 		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				Source: []string{id},
+				Source: []string{fullId},
 				Views: []*model.BlockContentDataviewView{
 					{
 						Id:   uuid.New().String(),
