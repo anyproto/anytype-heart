@@ -23,11 +23,8 @@ const defaultCollectionName = "opt"
 
 // todo: extract collection of subobjects into a separate smartblock impl
 
-func (w *Workspaces) Open(subId string) (sb smartblock.SmartBlock, err error) {
-	w.Lock()
-	defer w.Unlock()
-	parts := strings.Split(subId, addr.VirtualObjectSeparator)
-	var collection, key string
+func getCollectionAndKeyFromId(id string) (collection, key string) {
+	parts := strings.Split(id, addr.VirtualObjectSeparator)
 	if len(parts) == 1 {
 		collection = defaultCollectionName
 		key = parts[0]
@@ -35,6 +32,14 @@ func (w *Workspaces) Open(subId string) (sb smartblock.SmartBlock, err error) {
 		collection = parts[0]
 		key = parts[1]
 	}
+	return
+}
+
+func (w *Workspaces) Open(subId string) (sb smartblock.SmartBlock, err error) {
+	w.Lock()
+	defer w.Unlock()
+
+	collection, key := getCollectionAndKeyFromId(subId)
 	if coll, exists := w.collections[collection]; exists {
 		if sub, exists := coll[key]; exists {
 			return sub, nil
@@ -79,19 +84,19 @@ func (w *Workspaces) updateSubObject(info smartblock.ApplyInfo) (err error) {
 	return
 }
 
-func (w *Workspaces) onSubObjectChange(collection string) func(p source.PushChangeParams) (string, error) {
+func (w *Workspaces) onSubObjectChange(collection, subId string) func(p source.PushChangeParams) (string, error) {
 	return func(p source.PushChangeParams) (string, error) {
 		st := w.NewState()
-		id := p.State.RootId()
+
 		coll, exists := w.collections[collection]
 		if !exists {
 			return "", fmt.Errorf("collection not found")
 		}
 
-		if _, ok := coll[id]; !ok {
-			return "", fmt.Errorf("onSubObjectChange: subObject not exists")
+		if _, ok := coll[subId]; !ok {
+			return "", fmt.Errorf("onSubObjectChange: subObject '%s' not exists in collection '%s'", subId, collection)
 		}
-		changed := st.SetInStore([]string{collection, id}, pbtypes.Struct(p.State.CombinedDetails()))
+		changed := st.SetInStore([]string{collection, subId}, pbtypes.Struct(p.State.CombinedDetails()))
 		if !changed {
 			return "", nil
 		}
@@ -101,12 +106,12 @@ func (w *Workspaces) onSubObjectChange(collection string) func(p source.PushChan
 
 func NewSubObject() *SubObject {
 	return &SubObject{
-		SmartBlock: smartblock.New(),
+		Set: NewSet(),
 	}
 }
 
 type SubObject struct {
-	smartblock.SmartBlock
+	*Set
 }
 
 func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
@@ -141,7 +146,7 @@ func (w *Workspaces) initSubObject(st *state.State, collection string, subId str
 	}
 	w.collections[collection][subId] = subObj
 	if err = subObj.Init(&smartblock.InitContext{
-		Source: w.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, w.onSubObjectChange(collection)),
+		Source: w.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, w.onSubObjectChange(collection, subId)),
 		App:    w.app,
 	}); err != nil {
 		return
