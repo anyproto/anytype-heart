@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -138,6 +140,7 @@ func (w *Workspaces) initSubObject(st *state.State, collection string, subId str
 		fullId = collection + addr.VirtualObjectSeparator + subId
 	}
 	subState, err := smartblock.SubState(st, collection, fullId)
+	template.WithForcedDetail(bundle.RelationKeyWorkspaceId, pbtypes.String(w.Id()))(subState)
 	if err != nil {
 		return
 	}
