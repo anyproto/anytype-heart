@@ -583,6 +583,7 @@ func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err err
 	for c.LastSnapshotId != "" {
 		var rec *core.SmartblockRecordEnvelope
 		if rec, err = s.sb.GetRecord(ctx, c.LastSnapshotId); err != nil {
+			log.With("thread", s.id).With("logid", s.logId).With("recordId", c.LastSnapshotId).Errorf("failed to load first change: %s", err.Error())
 			return
 		}
 		if c, err = change.NewChangeFromRecord(*rec); err != nil {
