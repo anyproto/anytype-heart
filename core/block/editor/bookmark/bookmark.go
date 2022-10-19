@@ -31,7 +31,7 @@ type Bookmark interface {
 }
 
 type BookmarkService interface {
-	CreateBookmarkObject(details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, err error)
+	CreateBookmarkObject(details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	Fetch(id string, params bookmark.FetchParams) (err error)
 }
 
@@ -133,7 +133,7 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 	}
 
 	content := block.GetContent()
-	pageId, err := b.bookmarkSvc.CreateBookmarkObject(block.ToDetails(), func() *model.BlockContentBookmark {
+	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(block.ToDetails(), func() *model.BlockContentBookmark {
 		return content
 	})
 	if err != nil {
@@ -184,7 +184,7 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 		return nil
 	}
 
-	pageId, err := b.bookmarkSvc.CreateBookmarkObject(bm.ToDetails(), func() *model.BlockContentBookmark {
+	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(bm.ToDetails(), func() *model.BlockContentBookmark {
 		return content
 	})
 	if err != nil {

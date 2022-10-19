@@ -736,7 +736,7 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 	})
 }
 
-func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err error) {
+func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
 
 	var dvContent model.BlockContentOfDataview
@@ -762,7 +762,7 @@ func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
 	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	setId = csm.ID()
@@ -797,20 +797,20 @@ func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err
 	}
 
 	if err = template.InitTemplate(state, tmpls...); err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
 		State: state,
 	})
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	_, ok := sb.(*editor.Set)
 	if !ok {
-		return setId, fmt.Errorf("unexpected set block type: %T", sb)
+		return setId, nil, fmt.Errorf("unexpected set block type: %T", sb)
 	}
-	return setId, err
+	return setId, sb.Details(), err
 }
 
 func (s *service) ObjectToSet(id string, source []string) (newId string, err error) {
@@ -839,7 +839,7 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 	}
 
 	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
-	newId, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
+	newId, _, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
 		Source:  source,
 		Details: details,
 	})

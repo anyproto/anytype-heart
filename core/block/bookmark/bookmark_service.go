@@ -35,7 +35,7 @@ const CName = "bookmark"
 type ContentFuture func() *model.BlockContentBookmark
 
 type Service interface {
-	CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, err error)
+	CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	Fetch(id string, params bookmark.FetchParams) (err error)
 	ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
@@ -73,14 +73,14 @@ func (s service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, err error) {
+func (s *service) CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
-		return "", fmt.Errorf("empty details")
+		return "", nil, fmt.Errorf("empty details")
 	}
 
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 	if url == "" {
-		return "", fmt.Errorf("source field is empty or not provided")
+		return "", nil, fmt.Errorf("source field is empty or not provided")
 	}
 
 	records, _, err := s.store.Query(nil, database.Query{
@@ -103,7 +103,7 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("query: %w", err)
+		return "", nil, fmt.Errorf("query: %w", err)
 	}
 
 	if len(records) > 0 {
@@ -111,9 +111,9 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
-		objectId, _, err = s.objectManager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+		objectId, newDetails, err = s.objectManager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
 		if err != nil {
-			return "", fmt.Errorf("create bookmark object: %w", err)
+			return "", nil, fmt.Errorf("create bookmark object: %w", err)
 		}
 	}
 
@@ -125,7 +125,7 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		}
 	}()
 
-	return objectId, nil
+	return objectId, newDetails, nil
 }
 
 func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.Value {
