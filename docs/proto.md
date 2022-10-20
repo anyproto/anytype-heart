@@ -1112,6 +1112,7 @@
     - [Event.Object.Subscription](#anytype-Event-Object-Subscription)
     - [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add)
     - [Event.Object.Subscription.Counters](#anytype-Event-Object-Subscription-Counters)
+    - [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups)
     - [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position)
     - [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove)
     - [Event.Ping](#anytype-Event-Ping)
@@ -9351,6 +9352,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
 | relationKey | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 
@@ -17219,6 +17221,7 @@ Precondition: user A opened a block
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove) |  |  |
 | subscriptionPosition | [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position) |  |  |
 | subscriptionCounters | [Event.Object.Subscription.Counters](#anytype-Event-Object-Subscription-Counters) |  |  |
+| subscriptionGroups | [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups) |  |  |
 | blockAdd | [Event.Block.Add](#anytype-Event-Block-Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype-Event-Block-Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype-Event-Block-FilesUpload) |  |  |
@@ -17506,6 +17509,23 @@ Adds new document to subscriptions
 | nextCount | [int64](#int64) |  | how many records available after |
 | prevCount | [int64](#int64) |  | how many records available before |
 | subId | [string](#string) |  | subscription id |
+
+
+
+
+
+
+<a name="anytype-Event-Object-Subscription-Groups"></a>
+
+### Event.Object.Subscription.Groups
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+| group | [model.Block.Content.Dataview.Group](#anytype-model-Block-Content-Dataview-Group) |  |  |
+| remove | [bool](#bool) |  |  |
 
 
 

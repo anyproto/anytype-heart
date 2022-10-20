@@ -53,3 +53,14 @@ func (s *Service) Grouper(key string) (Grouper, error) {
 
 	return grouper, nil
 }
+
+
+func GroupsToStrSlice(groups []*model.BlockContentDataviewGroup) []string {
+	res := make([]string, len(groups))
+
+	for i, g := range groups {
+		res[i] = g.Id
+	}
+
+	return res
+}

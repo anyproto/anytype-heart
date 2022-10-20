@@ -233,11 +233,22 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		return nil, err
 	}
 
-	groups, err := grouper.MakeDataViewGroups()
+	dataViewGroups, err := grouper.MakeDataViewGroups()
+	if err != nil {
+		return nil, err
+	}
 
 	if tagGrouper, ok := grouper.(*kanban.GroupTag); ok {
-		subId = bson.NewObjectId().Hex()
-		sub := s.newGroupSub(subId)
+		groups, err := tagGrouper.MakeDataViewGroups()
+		if err != nil {
+			return nil, err
+		}
+
+		subId = req.SubId
+		if subId == "" {
+			subId = bson.NewObjectId().Hex()
+		}
+		sub := s.newGroupSub(subId, req.RelationKey, groups)
 
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {
@@ -246,6 +257,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 				data: r.Details,
 			})
 		}
+
 		if err := sub.init(entries); err != nil {
 			return nil, err
 		}
@@ -254,7 +266,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 
 	return &pb.RpcObjectGroupsSubscribeResponse{
 		Error: &pb.RpcObjectGroupsSubscribeResponseError{},
-		Groups:      groups,
+		Groups:      dataViewGroups,
 		SubId:        subId,
 	}, nil
 }
