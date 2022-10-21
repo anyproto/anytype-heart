@@ -968,6 +968,7 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	id = csm.ID()
 	createState.SetRootId(id)
 	createState.SetObjectTypes(objectTypes)
+	createState.InjectDerivedDetails()
 
 	initCtx := &smartblock.InitContext{
 		ObjectTypeUrls: objectTypes,
