@@ -138,7 +138,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 
 func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
 	response := func(code pb.RpcObjectCreateObjectTypeResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateObjectTypeResponse {
-		m := &pb.RpcObjectCreateObjectTypeResponse{ObjectId: id, NewDetails: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}
+		m := &pb.RpcObjectCreateObjectTypeResponse{ObjectId: id, Details: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -205,38 +205,40 @@ func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectCreateObjectTypeRequest)
 
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, err error) *pb.RpcObjectCreateSetResponse {
+	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateSetResponse {
 		m := &pb.RpcObjectCreateSetResponse{Error: &pb.RpcObjectCreateSetResponseError{Code: code}, ObjectId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
 			m.Event = ctx.GetResponseEvent()
+			m.Details = newDetails
 		}
 		return m
 	}
 
-	id, err := mw.objectCreateSet(req)
+	id, newDetails, err := mw.objectCreateSet(req)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", err)
+			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", nil, err)
 		}
-		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 
-	return response(pb.RpcObjectCreateSetResponseError_NULL, id, nil)
+	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
 }
 
-func (mw *Middleware) objectCreateSet(req *pb.RpcObjectCreateSetRequest) (string, error) {
+func (mw *Middleware) objectCreateSet(req *pb.RpcObjectCreateSetRequest) (string, *types.Struct, error) {
 	var id string
+	var newDetails *types.Struct
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		if req.GetDetails().GetFields() == nil {
 			req.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		}
 		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-		id, err = bs.CreateSet(*req)
+		id, newDetails, err = bs.CreateSet(*req)
 		return err
 	})
-	return id, err
+	return id, newDetails, err
 }
 
 func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectType, error) {
@@ -285,6 +287,7 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 				Code: pb.RpcObjectCreateRelationOptionResponseError_NULL,
 			},
 			ObjectId: id,
+			Details:  req.Details,
 		}
 	}
 
@@ -298,8 +301,7 @@ func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelation
 	var id string
 	err := mw.doBlockService(func(rs block.Service) error {
 		var err error
-		id, err = rs.
-			CreateRelationOption(req.Details)
+		id, err = rs.CreateRelationOption(req.Details)
 		return err
 	})
 	return id, err

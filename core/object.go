@@ -683,29 +683,30 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 }
 
 func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectCreateBookmarkResponse {
-		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id}
+	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
+		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
 
-	id, err := mw.objectCreateBookmark(req)
+	id, details, err := mw.objectCreateBookmark(req)
 	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", details, err)
 	}
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, details, nil)
 }
 
-func (mw *Middleware) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, error) {
+func (mw *Middleware) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, *types.Struct, error) {
 	var id string
+	var details *types.Struct
 	err := mw.doBlockService(func(bs block.Service) error {
 		var err error
-		id, err = bs.ObjectCreateBookmark(*req)
+		id, details, err = bs.ObjectCreateBookmark(*req)
 		return err
 	})
-	return id, err
+	return id, details, err
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {

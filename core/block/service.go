@@ -125,7 +125,7 @@ type Service interface {
 	GetRelations(objectId string) (relations []*model.Relation, err error)
 	AddExtraRelations(ctx *session.Context, id string, relations []string) (err error)
 	RemoveExtraRelations(ctx *session.Context, id string, relationKeys []string) (err error)
-	CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err error)
+	CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error)
 	SetDataviewSource(ctx *session.Context, contextId, blockId string, source []string) error
 
 	ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error)
@@ -199,7 +199,7 @@ type Service interface {
 	BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
-	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error)
+	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (objectId string, newDetails *types.Struct, err error)
 	ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error)
 	ObjectToBookmark(id string, url string) (newId string, err error)
 
@@ -998,7 +998,7 @@ func (s *service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 
 	if pbtypes.GetString(req.Details, bundle.RelationKeyType.String()) == bundle.TypeKeySet.URL() {
 		creator = func(ctx context.Context) (string, error) {
-			objectId, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
+			objectId, _, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
 				Details: req.Details,
 			})
 			if err != nil {
@@ -1603,10 +1603,10 @@ func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error) {
+func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (objectId string, newDetails *types.Struct, err error) {
 	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
-		return "", fmt.Errorf("process uri: %w", err)
+		return "", nil, fmt.Errorf("process uri: %w", err)
 	}
 	res := s.fetchBookmarkContent(u)
 	return s.bookmark.CreateBookmarkObject(req.Details, res)
@@ -1627,7 +1627,7 @@ func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 }
 
 func (s *service) ObjectToBookmark(id string, url string) (objectId string, err error) {
-	objectId, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
+	objectId, _, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeySource.String(): pbtypes.String(url),
