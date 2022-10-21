@@ -800,6 +800,7 @@ func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, new
 		return "", nil, err
 	}
 
+	state.InjectDerivedDetails()
 	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
 		State: state,
 	})
@@ -810,7 +811,7 @@ func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, new
 	if !ok {
 		return setId, nil, fmt.Errorf("unexpected set block type: %T", sb)
 	}
-	return setId, sb.Details(), err
+	return setId, sb.CombinedDetails(), err
 }
 
 func (s *service) ObjectToSet(id string, source []string) (newId string, err error) {

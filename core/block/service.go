@@ -192,7 +192,7 @@ type Service interface {
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
 
 	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
-	CreateRelationOption(details *types.Struct) (id string, err error)
+	CreateRelationOption(details *types.Struct) (id string, newDetails *types.Struct, err error)
 	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error
 
 	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
@@ -1093,14 +1093,14 @@ func (s *service) createObject(ctx *session.Context, contextBlock smartblock.Sma
 	return
 }
 
-func (s *service) CreateRelationOption(opt *types.Struct) (id string, err error) {
+func (s *service) CreateRelationOption(opt *types.Struct) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		id, err = workspace.CreateRelationOption(opt)
+		id, newDetails, err = workspace.CreateRelationOption(opt)
 		return err
 	})
 	return

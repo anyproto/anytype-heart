@@ -564,22 +564,22 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *t
 	return
 }
 
-func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err error) {
+func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
-		return "", fmt.Errorf("create option: no data")
+		return "", nil, fmt.Errorf("create option: no data")
 	}
 
 	if pbtypes.GetString(details, "relationOptionText") != "" {
-		return "", fmt.Errorf("use name instead of relationOptionText")
+		return "", nil, fmt.Errorf("use name instead of relationOptionText")
 	} else if pbtypes.GetString(details, "name") == "" {
-		return "", fmt.Errorf("name is empty")
+		return "", nil, fmt.Errorf("name is empty")
 	} else if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelationOption.URL() {
-		return "", fmt.Errorf("invalid type: not an option")
+		return "", nil, fmt.Errorf("invalid type: not an option")
 	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
-		return "", fmt.Errorf("invalid relation key: unknown enum")
+		return "", nil, fmt.Errorf("invalid relation key: unknown enum")
 	}
 
-	object := pbtypes.CopyStruct(details)
+	object = pbtypes.CopyStruct(details)
 	key := pbtypes.GetString(object, bundle.RelationKeyId.String())
 	st := w.NewState()
 	if key == "" {
@@ -587,7 +587,7 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err
 	} else {
 		// no need to check for the generated bson's
 		if st.HasInStore([]string{collectionKeyRelationOptions, key}) {
-			return key, ErrSubObjectAlreadyExists
+			return key, object, ErrSubObjectAlreadyExists
 		}
 	}
 	// options has a short id for now to avoid migration of values inside relations

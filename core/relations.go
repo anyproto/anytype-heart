@@ -273,7 +273,7 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 }
 
 func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
-	response := func(id string, err error) *pb.RpcObjectCreateRelationOptionResponse {
+	response := func(id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateRelationOptionResponse {
 		if err != nil {
 			return &pb.RpcObjectCreateRelationOptionResponse{
 				Error: &pb.RpcObjectCreateRelationOptionResponseError{
@@ -287,24 +287,25 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 				Code: pb.RpcObjectCreateRelationOptionResponseError_NULL,
 			},
 			ObjectId: id,
-			Details:  req.Details,
+			Details:  newDetails,
 		}
 	}
 
-	id, err := mw.objectCreateRelationOption(req)
-	return response(id, err)
+	id, newDetails, err := mw.objectCreateRelationOption(req)
+	return response(id, newDetails, err)
 }
 
-func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, error) {
+func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, *types.Struct, error) {
 	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
 	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 	var id string
+	var newDetails *types.Struct
 	err := mw.doBlockService(func(rs block.Service) error {
 		var err error
-		id, err = rs.CreateRelationOption(req.Details)
+		id, newDetails, err = rs.CreateRelationOption(req.Details)
 		return err
 	})
-	return id, err
+	return id, newDetails, err
 }
 
 func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
