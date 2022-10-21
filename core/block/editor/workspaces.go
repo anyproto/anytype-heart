@@ -2,8 +2,9 @@ package editor
 
 import (
 	"fmt"
-	"github.com/globalsign/mgo/bson"
 	"time"
+
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 
@@ -589,6 +590,7 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err
 
 	// options has a short id for now to avoid migration of values inside relations
 	id = key
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(details))
 	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
