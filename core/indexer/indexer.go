@@ -45,7 +45,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 7  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 17 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 18 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFilestoreKeysReindexCounter  int32 = 1
 )

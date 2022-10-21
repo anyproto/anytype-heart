@@ -534,7 +534,7 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *t
 	}
 
 	object = pbtypes.CopyStruct(details)
-	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
+	key := pbtypes.GetString(object, bundle.RelationKeyRelationKey.String())
 	st := w.NewState()
 	if key == "" {
 		key = bson.NewObjectId().Hex()
@@ -550,7 +550,7 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *t
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
 
-	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(details))
+	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(object))
 	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
 		return
 	}
