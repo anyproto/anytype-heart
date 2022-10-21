@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "3dcd26c96bd4da63892a2402c9707ffc8083577d6e3c402c497eaae3ed171dcb"
+const RelationChecksum = "7fbd46473909c01de3b49e01682e922a02946dd49695034725a55584c0e49631"
 
 type RelationKey string
 
@@ -25,7 +25,6 @@ const (
 	RelationKeyToBeDeletedDate           RelationKey = "toBeDeletedDate"
 	RelationKeyRelationFormatObjectTypes RelationKey = "relationFormatObjectTypes"
 	RelationKeyRelationKey               RelationKey = "relationKey"
-	RelationKeyRelationOptionText        RelationKey = "relationOptionText"
 	RelationKeyRelationOptionColor       RelationKey = "relationOptionColor"
 	RelationKeyInstructions              RelationKey = "instructions"
 	RelationKeyDone                      RelationKey = "done"
@@ -1816,20 +1815,6 @@ var (
 			Key:              "relationOptionColor",
 			MaxCount:         1,
 			Name:             "Relation option color",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyRelationOptionText: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Relation option text",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brrelationOptionText",
-			Key:              "relationOptionText",
-			MaxCount:         1,
-			Name:             "Relation option text",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
