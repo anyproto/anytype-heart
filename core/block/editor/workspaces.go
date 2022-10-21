@@ -543,6 +543,9 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *t
 		if st.HasInStore([]string{collectionKeyRelations, key}) {
 			return id, object, ErrSubObjectAlreadyExists
 		}
+		if bundle.HasRelation(key) {
+			object.Fields[bundle.RelationKeySource.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
+		}
 	}
 	id = addr.RelationKeyToIdPrefix + key
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
