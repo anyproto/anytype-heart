@@ -569,15 +569,18 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err
 		return "", fmt.Errorf("create option: no data")
 	}
 
-	if pbtypes.GetString(details, bundle.RelationKeyRelationOptionText.String()) == "" {
-		return "", fmt.Errorf("missing option text")
+	if pbtypes.GetString(details, "relationOptionText") != "" {
+		return "", fmt.Errorf("use name instead of relationOptionText")
+	} else if pbtypes.GetString(details, "name") == "" {
+		return "", fmt.Errorf("name is empty")
 	} else if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelationOption.URL() {
 		return "", fmt.Errorf("invalid type: not an option")
 	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
 		return "", fmt.Errorf("invalid relation key: unknown enum")
 	}
 
-	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	object := pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(object, bundle.RelationKeyId.String())
 	st := w.NewState()
 	if key == "" {
 		key = bson.NewObjectId().Hex()
@@ -587,12 +590,13 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, err
 			return key, ErrSubObjectAlreadyExists
 		}
 	}
-
 	// options has a short id for now to avoid migration of values inside relations
 	id = key
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
+	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
 
-	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(details))
+	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(object))
 	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
 		return
 	}

@@ -79,6 +79,10 @@ const (
 
 type key int
 
+const (
+	collectionRelations       = "rel"
+	collectionRelationOptions = "opt"
+)
 const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -1397,7 +1401,7 @@ func SubState(st *state.State, collection string, fullId string) (*state.State, 
 		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
 	}
 	subst := structToState(fullId, data)
-	if collection == "rel" {
+	if collection == collectionRelations {
 		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
@@ -1427,13 +1431,15 @@ func SubState(st *state.State, collection string, fullId string) (*state.State, 
 				},
 			},
 		}
-
+		template.WithAllBlocksEditsRestricted(subst)
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation)))(subst)
+		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))(subst)
 		template.WithTitle(subst)
 		template.WithDescription(subst)
 		template.WithDefaultFeaturedRelations(subst)
 		template.WithDataview(dataview, false)(subst)
 
-	} else if collection == "opt" {
+	} else if collection == collectionRelationOptions {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
 				Source: []string{pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())},
@@ -1451,8 +1457,8 @@ func SubState(st *state.State, collection string, fullId string) (*state.State, 
 						Relations: []*model.BlockContentDataviewRelation{},
 						Filters: []*model.BlockContentDataviewFilter{{
 							RelationKey: pbtypes.GetString(data, bundle.RelationKeyRelationKey.String()),
-							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String(pbtypes.GetString(data, bundle.RelationKeyId.String())),
+							Condition:   model.BlockContentDataviewFilter_In,
+							Value:       pbtypes.String(fullId),
 						}},
 					},
 				},
@@ -1460,7 +1466,7 @@ func SubState(st *state.State, collection string, fullId string) (*state.State, 
 		}
 
 		template.WithTitle(subst)
-		template.WithDescription(subst)
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relationOption)))(subst)
 		template.WithDefaultFeaturedRelations(subst)
 		template.WithDataview(dataview, false)(subst)
 	}
