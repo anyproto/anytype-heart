@@ -139,7 +139,9 @@ func (b *treeBuilder) writeChange(id string) (nextIds []string) {
 	}
 	b.log.Printf("write change: %v", id)
 	st := time.Now()
-	rec, err := b.b.GetRecord(context.TODO(), id)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	rec, err := b.b.GetRecord(ctx, id)
 	if err != nil {
 		b.log.Printf("can't get record: %v: %v", id, err)
 		return
