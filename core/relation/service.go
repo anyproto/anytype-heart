@@ -3,10 +3,11 @@ package relation
 import (
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"net/url"
 	"sync"
+
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -48,7 +49,7 @@ type Service interface {
 
 type relationCreator interface {
 	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
-	CreateRelationOption(details *types.Struct) (id string, err error)
+	CreateRelationOption(details *types.Struct) (id string, newDetails *types.Struct, err error)
 }
 
 var errSubobjectAlreadyExists = fmt.Errorf("subobject already exists in the collection")
@@ -82,7 +83,7 @@ func (s *service) MigrateOldRelations(relations []*model.Relation) (err error) {
 				continue
 			}
 			opt.RelationKey = rel.Key
-			_, err = s.relationCreator.CreateRelationOption((&relationutils.Option{RelationOption: opt}).ToStruct())
+			_, _, err = s.relationCreator.CreateRelationOption((&relationutils.Option{RelationOption: opt}).ToStruct())
 			if err != nil {
 
 				// todo: extract this error somewhere else

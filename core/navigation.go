@@ -147,10 +147,9 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		})
 
 	case bundle.TypeKeyRelationOption:
-		id, err = mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
+		id, newDetails, err = mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
 			Details: req.Details,
 		})
-		newDetails = req.Details
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
 	default:
