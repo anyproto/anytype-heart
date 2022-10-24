@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "20e7c6cc7c4d5346f393aa2ec84ec6a211a9940878ba05016fda2fada0d83c78"
+const TypeChecksum = "dceb8ca5a8c6d10c340c03078e3519f500a7ffa4437ab1a450fb6c70e465ad87"
 
 type TypeKey string
 
@@ -342,7 +342,6 @@ var (
 		TypeKeyObjectType: {
 
 			Description:   "Object that contains a definition of some object type",
-			Hidden:        true,
 			IconEmoji:     "🥚",
 			Layout:        model.ObjectType_objectType,
 			Name:          "Type",

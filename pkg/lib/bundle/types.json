@@ -867,7 +867,7 @@
   {
     "description": "Object that contains a definition of some object type",
     "emoji": "🥚",
-    "hidden": true,
+    "hidden": false,
     "id": "objectType",
     "layout": "objectType",
     "name": "Type",
