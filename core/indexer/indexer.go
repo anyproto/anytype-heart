@@ -599,20 +599,27 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 }
 
 func (i *indexer) migrateRelations(s *state.State) {
-	go func(rels []*model.Relation) {
-		err := i.relationService.MigrateOldRelations(rels)
-		if err != nil {
-			log.Errorf("failed to migrate relations: %s", err.Error())
-		}
-	}(s.OldExtraRelations())
+	if len(pbtypes.GetStringList(s.Details(), "tag")) > 0 {
+		fmt.Println()
+	}
+	if rels := s.OldExtraRelations(); len(rels) > 0 {
+		go func(rels []*model.Relation) {
+			err := i.relationService.MigrateOldRelations(rels)
+			if err != nil {
+				log.Errorf("failed to migrate relations: %s", err.Error())
+			}
+		}(rels)
+	}
 
 	if dvBlock := s.Pick(template.DataviewBlockId); dvBlock != nil {
-		go func(rels []*model.Relation) {
-			err := i.relationService.MigrateOldRelations(dvBlock.Model().GetDataview().Relations)
-			if err != nil {
-				log.Errorf("failed to migrate relations in set: %s", err.Error())
-			}
-		}(dvBlock.Model().GetDataview().Relations)
+		if len(dvBlock.Model().GetDataview().Relations) > 0 {
+			go func(rels []*model.Relation) {
+				err := i.relationService.MigrateOldRelations(dvBlock.Model().GetDataview().Relations)
+				if err != nil {
+					log.Errorf("failed to migrate relations in set: %s", err.Error())
+				}
+			}(dvBlock.Model().GetDataview().Relations)
+		}
 	}
 }
 func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved bool) error {
@@ -626,6 +633,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
 		return fmt.Errorf("failed to open doc: %s", err.Error())
 	}
+	log.Errorf("obj reindexDoc %s: %d", id, pbtypes.Sprint(d.State.CombinedDetails()))
 
 	i.migrateRelations(d.State)
 	indexDetails, indexLinks := t.Indexable()
@@ -703,6 +711,7 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 }
 
 func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
+	log.Errorf("obj index %s: %s", info.Id, pbtypes.Sprint(info.State.CombinedDetails()))
 	if strings.HasPrefix(info.Id, "_ir") {
 		fmt.Println()
 	}

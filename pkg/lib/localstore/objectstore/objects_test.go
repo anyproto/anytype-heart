@@ -329,15 +329,11 @@ func Test_SearchRelationDistinct(t *testing.T) {
 		"tag":  pbtypes.StringList([]string{"tag1", "tag2", "tag3"}),
 	}}, nil, "s3"))
 
-	statusOpts, err := ds.RelationSearchDistinct("rel1", nil)
+	statusOpts, err := ds.RelationSearchDistinct("tag", nil)
 	require.NoError(t, err)
-	require.Len(t, statusOpts, 6)
+	require.Len(t, statusOpts, 3)
 
-	tagsOptsAll, err := ds.RelationSearchDistinct("rel4", nil)
+	tagsOptsFilter, err := ds.RelationSearchDistinct("tag", []*model.BlockContentDataviewFilter{{RelationKey: "name", Condition: 1, Value: pbtypes.String("three")}})
 	require.NoError(t, err)
-	require.Len(t, tagsOptsAll, 3)
-
-	tagsOptsFilter, err := ds.RelationSearchDistinct("rel4", []*model.BlockContentDataviewFilter{{RelationKey: "name", Condition: 1, Value: pbtypes.String("three")}})
-	require.NoError(t, err)
-	require.Len(t, tagsOptsFilter, 2)
+	require.Len(t, tagsOptsFilter, 2) // because results should always contain an option with empty tags set
 }

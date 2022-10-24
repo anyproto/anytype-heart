@@ -147,7 +147,7 @@ func TestRelations_New_Account(t *testing.T) {
 	respRelationCreateOption := mw.ObjectCreateRelationOption(context.Background(), &pb.RpcObjectCreateRelationOptionRequest{
 		Details: &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyRelationKey.String():         pbtypes.String(respRelationCreate.Key),
-			bundle.RelationKeyRelationOptionText.String():  pbtypes.String("test_option_text"),
+			bundle.RelationKeyName.String():                pbtypes.String("test_option_text"),
 			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("red"),
 		},
 		}})

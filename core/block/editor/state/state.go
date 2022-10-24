@@ -521,9 +521,11 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.relationLinks != nil {
 		added, removed := s.relationLinks.Diff(s.parent.relationLinks)
 
-		action.RelationLinks = &undo.RelationLinks{
-			Before: s.parent.relationLinks,
-			After:  s.relationLinks,
+		if len(added)+len(removed) > 0 {
+			action.RelationLinks = &undo.RelationLinks{
+				Before: s.parent.relationLinks,
+				After:  s.relationLinks,
+			}
 		}
 
 		if len(removed) > 0 {

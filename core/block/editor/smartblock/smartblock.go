@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/google/uuid"
 	"sort"
@@ -283,11 +284,14 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-	has, _ := sb.objectStore.HasIDs(sb.Id())
-	if len(has) == 0 {
-		// in case we have not yet indexed this object report the change so the indexer will start
-		// todo: do it in a more clean way
-		sb.reportChange(sb.Doc.NewState())
+	sbt, _ := smartblock.SmartBlockTypeFromID(sb.Id())
+	if indexableDetails, _ := sbt.Indexable(); indexableDetails {
+		has, _ := sb.objectStore.HasIDs(sb.Id())
+		if len(has) == 0 {
+			// in case we have not yet indexed this object report the change so the indexer will start
+			// todo: do it in a more clean way
+			sb.reportChange(sb.Doc.NewState())
+		}
 	}
 	return
 }
@@ -1501,6 +1505,9 @@ func (sb *smartBlock) reportChange(s *state.State) {
 	docInfo := sb.getDocInfo(s)
 	sb.doc.ReportChange(context.TODO(), docInfo)
 
+	if strings.HasPrefix(s.RootId(), "rel-") {
+		fmt.Println()
+	}
 	if hasStoreChanges(s.GetChanges()) {
 		var path []string
 		var m = make(map[string]struct{})

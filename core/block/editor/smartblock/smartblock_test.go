@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/gogo/protobuf/types"
 	"testing"
 
@@ -117,6 +118,8 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(store).
 		Register(restriction.New())
 	md := mockDoc.RegisterMockDoc(ctrl, a)
+	mockRelation.RegisterMockRelation(ctrl, a)
+
 	return &fixture{
 		SmartBlock: New(),
 		t:          t,
@@ -145,6 +148,8 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
+	fx.store.EXPECT().HasIDs(id).Return([]string{}, nil)
+
 	fx.md.EXPECT().ReportChange(gomock.Any(), gomock.Any()).AnyTimes()
 	fx.store.EXPECT().GetPendingLocalDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},

@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/gogo/protobuf/types"
 	"io"
 	"io/ioutil"
@@ -106,13 +107,13 @@ func newFixture(t *testing.T) *fixture {
 	ta.With(&cfg).With(wallet.NewWithRepoPathAndKeys(rootPath, nil, nil)).
 		With(clientds.New()).
 		With(ftsearch.New()).
-		With(&rs{}).
 		With(fx.rb).
 		With(fx.Indexer).
 		With(fx.docService).
 		With(source.New())
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
+	mockRelation.RegisterMockRelation(fx.ctrl, ta)
 	require.NoError(t, ta.Start(context.Background()))
 	return fx
 }

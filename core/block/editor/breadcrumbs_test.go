@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,9 +19,8 @@ import (
 func TestBreadcrumbs_Init(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.Finish()
-	fx.expectDerivedDetails()
-	fx.mockDoc.EXPECT().ReportChange(gomock.Any(), gomock.Any())
 	b := NewBreadcrumbs()
+	fx.expectDerivedDetails()
 	err := b.Init(&smartblock.InitContext{
 		App:    fx.app.App,
 		Source: source.NewVirtual(fx.mockAnytype, model.SmartBlockType_Breadcrumbs),
@@ -63,6 +63,8 @@ func newFixture(t *testing.T) *fixture {
 	fx.mockDoc = mockDoc.RegisterMockDoc(fx.ctrl, fx.app)
 	fx.mockAnytype = testMock.RegisterMockAnytype(fx.ctrl, fx.app)
 	fx.app.Register(restriction.New())
+	mockRelation.RegisterMockRelation(fx.ctrl, fx.app)
+
 	require.NoError(t, fx.app.Start(context.Background()))
 	return fx
 }
@@ -80,6 +82,7 @@ func (fx *fixture) expectDerivedDetails() {
 	fx.mockStore.EXPECT().GetDetails(gomock.Any()).Return(&model.ObjectDetails{}, nil)
 	fx.mockStore.EXPECT().GetPendingLocalDetails(gomock.Any()).Return(&model.ObjectDetails{}, nil)
 	fx.mockStore.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any())
+	fx.mockDoc.EXPECT().ReportChange(gomock.Any(), gomock.Any())
 }
 
 func (fx *fixture) Finish() {
