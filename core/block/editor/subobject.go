@@ -70,6 +70,10 @@ func (w *Workspaces) Locked() bool {
 }
 
 func (w *Workspaces) updateSubObject(info smartblock.ApplyInfo) (err error) {
+	if len(info.Changes) == 0 {
+		return nil
+	}
+	st := w.NewState()
 	for _, ch := range info.Changes {
 		if keySet := ch.GetStoreKeySet(); keySet != nil {
 			if len(keySet.Path) >= 2 {
