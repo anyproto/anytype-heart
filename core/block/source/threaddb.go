@@ -230,7 +230,7 @@ func (v *threadDB) processThreadActions(buffer []threadsDb.Action) {
 			}
 		}
 		return
-	})
+	}, nil)
 	if err != nil {
 		log.Errorf("failed to append state with new workspace thread: %v", err)
 	}
@@ -287,7 +287,7 @@ func (v *threadDB) processThreadAction(action threadsDb.Action) {
 			s.RemoveFromStore([]string{WorkspaceCollection, action.ID.String()})
 		}
 		return
-	})
+	}, nil)
 	if err != nil {
 		log.Errorf("failed to append state with new workspace thread: %v", err)
 	}

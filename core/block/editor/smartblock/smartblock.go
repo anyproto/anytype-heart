@@ -1110,7 +1110,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *session.Context, relationIds []s
 	return sb.Apply(st)
 }
 
-func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
+func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error), changes []*pb.ChangeContent) error {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
@@ -1136,7 +1136,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		sb.CheckSubscriptions()
 	}
 	sb.reportChange(s)
-	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: s.GetChanges()})
+	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
 
 	return nil
 }

@@ -32,7 +32,7 @@ var (
 )
 
 type ChangeReceiver interface {
-	StateAppend(func(d state.Doc) (s *state.State, err error)) error
+	StateAppend(func(d state.Doc) (s *state.State, err error), []*pb.ChangeContent) error
 	StateRebuild(d state.Doc) (err error)
 	sync.Locker
 }
@@ -512,10 +512,14 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 		// existing or not complete
 		return nil
 	case change.Append:
+		changesContent := make([]*pb.ChangeContent, 0, len(changes))
+		for _, ch := range changes {
+			changesContent = append(changesContent, ch.Content...)
+		}
 		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
 			return change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
-		})
+		}, changesContent)
 	case change.Rebuild:
 		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
 		doc, err := s.buildState()
