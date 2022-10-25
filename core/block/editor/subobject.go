@@ -78,6 +78,10 @@ func (w *Workspaces) updateSubObject(info smartblock.ApplyInfo) (err error) {
 						if e := opt.SetStruct(pbtypes.GetStruct(w.NewState().GetCollection(collectionKeyRelationOptions), keySet.Path[1])); e != nil {
 							log.With("threadId", w.Id()).Errorf("options: can't set struct: %v", e)
 						}
+					} else {
+						if err = w.initSubObject(st, keySet.Path[0], keySet.Path[1]); err != nil {
+							return
+						}
 					}
 				}
 			}

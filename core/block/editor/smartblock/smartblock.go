@@ -1508,46 +1508,7 @@ func (sb *smartBlock) reportChange(s *state.State) {
 	if strings.HasPrefix(s.RootId(), "rel-") {
 		fmt.Println()
 	}
-	if hasStoreChanges(s.GetChanges()) {
-		var path []string
-		var m = make(map[string]struct{})
-		for _, ch := range s.GetChanges() {
-			storeSet := ch.GetStoreKeySet()
-			if storeSet != nil {
-				path = storeSet.Path
-			}
 
-			storeUnset := ch.GetStoreKeyUnset()
-			if storeUnset != nil {
-				path = storeUnset.Path
-			}
-			if len(path) < 2 {
-				// only process the full state
-				continue
-			}
-			mapKey := path[0] + "_" + path[1]
-			if _, exists := m[mapKey]; exists {
-				continue
-			}
-
-			m[mapKey] = struct{}{}
-
-			st, _ := SubState(s, path[0], path[1])
-			if st == nil {
-				// not a valid state, may be threadDB
-				continue
-			}
-			d := doc.DocInfo{
-				Id:         pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyId.String()),
-				Links:      nil,
-				FileHashes: nil,
-				LogHeads:   docInfo.LogHeads,
-				Creator:    docInfo.Creator,
-				State:      st,
-			}
-			sb.doc.ReportChange(context.TODO(), d)
-		}
-	}
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
