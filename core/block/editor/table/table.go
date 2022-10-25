@@ -727,16 +727,20 @@ func (t *editor) addColumnHeader(s *state.State) (string, error) {
 }
 
 func (t *editor) addRow(s *state.State) (string, error) {
-	row := simple.New(&model.Block{
-		Id: t.generateRowId(),
-		Content: &model.BlockContentOfTableRow{
-			TableRow: &model.BlockContentTableRow{},
-		},
-	})
+	row := makeRow(t.generateRowId())
 	if !s.Add(row) {
 		return "", fmt.Errorf("add row block")
 	}
 	return row.Model().Id, nil
+}
+
+func makeRow(id string) simple.Block {
+	return simple.New(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfTableRow{
+			TableRow: &model.BlockContentTableRow{},
+		},
+	})
 }
 
 func getRow(s *state.State, id string) (simple.Block, error) {
