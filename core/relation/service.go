@@ -39,84 +39,105 @@ type Service interface {
 	FetchKeys(keys ...string) (relations relationutils.Relations, err error)
 	FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
 	FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
-	MigrateOldRelations(relations []*model.Relation) (err error)
-
-	//Create(details *types.Struct) (rl *model.RelationLink, err error)
-	//CreateOption(relationKey string, opt *model.RelationOption) (id string, err error)
+	CreateBulkMigration() BulkMigration
+	Migrate(relations []*model.Relation) error
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
+}
+
+type BulkMigration interface {
+	AddRelations(relations []*model.Relation)
+	Commit() error
 }
 
 type relationCreator interface {
 	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
 	CreateRelationOption(details *types.Struct) (id string, newDetails *types.Struct, err error)
+	CreateRelations(details []*types.Struct) (id []string, object []*types.Struct, err error)
+	CreateRelationOptions(details []*types.Struct) (id []string, newDetails []*types.Struct, err error)
 }
 
 var errSubobjectAlreadyExists = fmt.Errorf("subobject already exists in the collection")
+
+type bulkMigration struct {
+	cache     map[string]struct{}
+	s         relationCreator
+	relations []*types.Struct
+	options   []*types.Struct
+	mu        sync.Mutex
+}
+
+func (b *bulkMigration) AddRelations(relations []*model.Relation) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, rel := range relations {
+		for _, opt := range rel.SelectDict {
+			if _, exists := b.cache["opt"+opt.Id]; exists {
+				continue
+			}
+			opt.RelationKey = rel.Key
+			b.options = append(b.options, (&relationutils.Option{RelationOption: opt}).ToStruct())
+			b.cache["opt"+opt.Id] = struct{}{}
+		}
+		if _, exists := b.cache["rel"+rel.Key]; exists {
+			continue
+		}
+		b.relations = append(b.relations, (&relationutils.Relation{Relation: rel}).ToStruct())
+		b.cache["rel"+rel.Key] = struct{}{}
+	}
+}
+
+func (b *bulkMigration) Commit() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.options) == 0 && len(b.relations) == 0 {
+		return nil
+	}
+
+	if len(b.relations) > 0 {
+		ids, _, err1 := b.s.CreateRelations(b.relations)
+		log.Errorf("relations migration done %d/%d: %v", len(ids), len(b.relations), err1)
+
+		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
+			return err1
+		}
+	}
+	if len(b.options) > 0 {
+		ids, _, err1 := b.s.CreateRelationOptions(b.options)
+		log.Errorf("options migration done %d/%d: %v", len(ids), len(b.options), err1)
+
+		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
+			return err1
+		}
+	}
+	b.options = nil
+	b.relations = nil
+
+	return nil
+}
 
 type service struct {
 	objectStore     objectstore.ObjectStore
 	relationCreator relationCreator
 
 	mu sync.RWMutex
+}
 
-	migrateCache map[string]struct{}
+func (s *service) Migrate(relations []*model.Relation) error {
+	b := s.CreateBulkMigration()
+	b.AddRelations(relations)
+	return b.Commit()
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.relationCreator = a.MustComponent(blockServiceCName).(relationCreator)
 
-	s.migrateCache = make(map[string]struct{})
 	return
 }
 
-func (s *service) MigrateOldRelations(relations []*model.Relation) (err error) {
-	if len(relations) == 0 {
-		return nil
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, rel := range relations {
-		for _, opt := range rel.SelectDict {
-			if _, exists := s.migrateCache[opt.Id]; exists {
-				continue
-			}
-			opt.RelationKey = rel.Key
-			_, _, err = s.relationCreator.CreateRelationOption((&relationutils.Option{RelationOption: opt}).ToStruct())
-			if err != nil {
-
-				// todo: extract this error somewhere else
-				if err.Error() == errSubobjectAlreadyExists.Error() {
-					log.Errorf("migration of %s already exists: %s", opt.Id, err.Error())
-
-				}
-			}
-			s.migrateCache[opt.Id] = struct{}{}
-		}
-		if _, exists := s.migrateCache[rel.Key]; exists {
-			continue
-		}
-		_, _, err = s.relationCreator.CreateRelation((&relationutils.Relation{Relation: rel}).ToStruct())
-		if err != nil {
-
-			// todo: extract this error somewhere else
-			if err.Error() == errSubobjectAlreadyExists.Error() {
-				log.Errorf("migration of %s already exists: %s", rel.Key, err.Error())
-
-				continue
-				err = nil
-			} else {
-				log.Errorf("migration of %s got error: %s", rel.Key, err.Error())
-
-				return
-			}
-		} else {
-			s.migrateCache[rel.Key] = struct{}{}
-			log.Warnf("#migration of %s done\n", rel.Key)
-		}
-	}
-	return nil
+func (s *service) CreateBulkMigration() BulkMigration {
+	return &bulkMigration{cache: map[string]struct{}{}, s: s.relationCreator}
 }
 
 func (s *service) Name() (name string) {
@@ -239,11 +260,6 @@ func (s *service) fetchOptionsByKey(key string) (relation *relationutils.Relatio
 		return relationutils.RelationFromStruct(rec.Details), nil
 	}
 	return nil, ErrNotFound
-}
-
-func (s *service) migrateOptions(rel *model.Relation) (err error) {
-
-	return
 }
 
 func (s *service) ValidateFormat(key string, v *types.Value) error {

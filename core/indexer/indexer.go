@@ -107,6 +107,9 @@ type indexer struct {
 	favoriteMap map[string]struct{}
 	newAccount  bool
 	forceFt     chan struct{}
+
+	relationBulkMigration relation.BulkMigration
+	relationMigratorMu    sync.Mutex
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -348,6 +351,16 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	if reindex != 0 {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v, reindexFileKeys=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0, reindex&reindexFileKeys != 0)
 	}
+	defer func() {
+		i.relationMigratorMu.Lock()
+		defer i.relationMigratorMu.Unlock()
+		err2 := i.relationBulkMigration.Commit()
+		i.relationBulkMigration = nil
+		if err2 != nil {
+			log.Errorf("reindex relation migration error: %s", err2.Error())
+		}
+	}()
+	i.relationBulkMigration = i.relationService.CreateBulkMigration()
 
 	if reindex&reindexFileKeys != 0 {
 		err = i.anytype.FileStore().RemoveEmpty()
@@ -598,27 +611,32 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	return i.saveLatestChecksums()
 }
 
-func (i *indexer) migrateRelations(s *state.State) {
-	if len(pbtypes.GetStringList(s.Details(), "tag")) > 0 {
-		fmt.Println()
-	}
-	if rels := s.OldExtraRelations(); len(rels) > 0 {
-		go func(rels []*model.Relation) {
-			err := i.relationService.MigrateOldRelations(rels)
-			if err != nil {
-				log.Errorf("failed to migrate relations: %s", err.Error())
-			}
-		}(rels)
+func extractRelationsFromState(s *state.State) []*model.Relation {
+	var rels []*model.Relation
+	if objRels := s.OldExtraRelations(); len(objRels) > 0 {
+		rels = append(rels, s.OldExtraRelations()...)
 	}
 
 	if dvBlock := s.Pick(template.DataviewBlockId); dvBlock != nil {
-		if len(dvBlock.Model().GetDataview().Relations) > 0 {
-			go func(rels []*model.Relation) {
-				err := i.relationService.MigrateOldRelations(dvBlock.Model().GetDataview().Relations)
-				if err != nil {
-					log.Errorf("failed to migrate relations in set: %s", err.Error())
-				}
-			}(dvBlock.Model().GetDataview().Relations)
+		rels = append(rels, dvBlock.Model().GetDataview().Relations...)
+	}
+
+	return rels
+}
+
+func (i *indexer) migrateRelations(rels []*model.Relation) {
+	if !i.relationMigratorMu.TryLock() {
+		fmt.Println()
+		return
+	}
+	defer i.relationMigratorMu.Unlock()
+
+	if i.relationBulkMigration != nil {
+		i.relationBulkMigration.AddRelations(rels)
+	} else {
+		err := i.relationService.Migrate(rels)
+		if err != nil {
+			log.Errorf("migrateRelations got error: %s", err.Error())
 		}
 	}
 }
@@ -635,7 +653,6 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	}
 	log.Errorf("obj reindexDoc %s: %d", id, pbtypes.Sprint(d.State.CombinedDetails()))
 
-	i.migrateRelations(d.State)
 	indexDetails, indexLinks := t.Indexable()
 	if indexLinks {
 		if err := i.store.UpdateObjectLinks(d.Id, d.Links); err != nil {
@@ -711,10 +728,6 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 }
 
 func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
-	log.Errorf("obj index %s: %s", info.Id, pbtypes.Sprint(info.State.CombinedDetails()))
-	if strings.HasPrefix(info.Id, "_ir") {
-		fmt.Println()
-	}
 	startTime := time.Now()
 	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
 	if err != nil {
@@ -730,7 +743,10 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	}
 
 	indexDetails, indexLinks := sbType.Indexable()
-	i.migrateRelations(info.State)
+	if info.State.ObjectType() != bundle.TypeKeyRelation.URL() && sbType != smartblock.SmartBlockTypeWorkspace {
+		// avoid recursions
+		i.migrateRelations(extractRelationsFromState(info.State))
+	}
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
 		return nil

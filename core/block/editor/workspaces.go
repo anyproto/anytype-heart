@@ -517,7 +517,7 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 	}, nil
 }
 
-func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create relation: no data")
 	}
@@ -536,7 +536,6 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *t
 
 	object = pbtypes.CopyStruct(details)
 	key := pbtypes.GetString(object, bundle.RelationKeyRelationKey.String())
-	st := w.NewState()
 	if key == "" {
 		key = bson.NewObjectId().Hex()
 	} else {
@@ -553,9 +552,17 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *t
 	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
-
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(object))
 	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *types.Struct, err error) {
+	st := w.NewState()
+	id, object, err = w.createRelation(st, details)
+	if err != nil {
 		return
 	}
 	if err = w.Apply(st, smartblock.NoHooks); err != nil {
@@ -564,7 +571,25 @@ func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *t
 	return
 }
 
-func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) CreateRelations(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	st := w.NewState()
+	for _, rel := range details {
+		id, object, err2 := w.createRelation(st, rel)
+		if err2 != nil {
+			log.Errorf("failed to createRelation: %s", err2.Error())
+			continue
+		}
+		ids = append(ids, id)
+		objects = append(objects, object)
+	}
+
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create option: no data")
 	}
@@ -581,7 +606,6 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, obj
 
 	object = pbtypes.CopyStruct(details)
 	key := pbtypes.GetString(object, bundle.RelationKeyId.String())
-	st := w.NewState()
 	if key == "" {
 		key = bson.NewObjectId().Hex()
 	} else {
@@ -599,6 +623,32 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, obj
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(object))
 	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
 		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, object *types.Struct, err error) {
+	st := w.NewState()
+	id, object, err = w.createRelationOption(st, details)
+	if err != nil {
+		return "", nil, err
+	}
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelationOptions(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	st := w.NewState()
+	for _, rel := range details {
+		id, object, err2 := w.createRelationOption(st, rel)
+		if err2 != nil {
+			log.Errorf("failed to createRelationOption: %s", err2.Error())
+			continue
+		}
+		ids = append(ids, id)
+		objects = append(objects, object)
 	}
 
 	if err = w.Apply(st, smartblock.NoHooks); err != nil {

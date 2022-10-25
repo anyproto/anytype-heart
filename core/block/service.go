@@ -1119,6 +1119,32 @@ func (s *service) CreateRelation(rel *types.Struct) (id string, object *types.St
 	return
 }
 
+func (s *service) CreateRelations(rel []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	// todo: rewrite to the current workspace id
+	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		ids, objects, err = workspace.CreateRelations(rel)
+		return err
+	})
+	return
+}
+
+func (s *service) CreateRelationOptions(rel []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	// todo: rewrite to the current workspace id
+	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		ids, objects, err = workspace.CreateRelationOptions(rel)
+		return err
+	})
+	return
+}
+
 func (s *service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
 	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
