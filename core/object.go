@@ -19,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
@@ -840,4 +841,27 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 		return response(pb.RpcObjectToBookmarkResponseError_UNKNOWN_ERROR, "", err)
 	}
 	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcObjectSetInternalFlagsRequest) *pb.RpcObjectSetInternalFlagsResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectSetInternalFlagsResponseErrorCode, err error) *pb.RpcObjectSetInternalFlagsResponse {
+		m := &pb.RpcObjectSetInternalFlagsResponse{Error: &pb.RpcObjectSetInternalFlagsResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
+			d := pbtypes.CopyStruct(current)
+			return internalflag.AddToDetails(d, req.InternalFlags), nil
+		})
+	})
+	if err != nil {
+		return response(pb.RpcObjectSetInternalFlagsResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectSetInternalFlagsResponseError_NULL, nil)
 }
