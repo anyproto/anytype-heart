@@ -116,10 +116,14 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		return m
 	}
 
-	var id string
-	var err error
-	var newDetails *types.Struct
+	id, newDetails, err := mw.objectCreate(req)
+	if err != nil {
+		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+	}
+	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
+}
 
+func (mw *Middleware) objectCreate(req *pb.RpcObjectCreateRequest) (id string, details *types.Struct, err error) {
 	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
 
 	ot, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()))
@@ -127,40 +131,35 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 
 	switch ot {
 	case bundle.TypeKeyBookmark:
-		id, newDetails, err = mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
+		return mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			Details: req.Details,
 		})
 	case bundle.TypeKeySet:
-		id, newDetails, err = mw.objectCreateSet(&pb.RpcObjectCreateSetRequest{
+		return mw.objectCreateSet(&pb.RpcObjectCreateSetRequest{
 			Details:       req.Details,
 			InternalFlags: req.InternalFlags,
 			Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
 		})
 	case bundle.TypeKeyObjectType:
-		id, newDetails, err = mw.objectTypeCreate(&pb.RpcObjectCreateObjectTypeRequest{
+		return mw.objectTypeCreate(&pb.RpcObjectCreateObjectTypeRequest{
 			Details:       req.Details,
 			InternalFlags: req.InternalFlags,
 		})
 	case bundle.TypeKeyRelation:
-		id, newDetails, err = mw.objectCreateRelation(&pb.RpcObjectCreateRelationRequest{
+		return mw.objectCreateRelation(&pb.RpcObjectCreateRelationRequest{
 			Details: req.Details,
 		})
 
 	case bundle.TypeKeyRelationOption:
-		id, newDetails, err = mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
+		return mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
 			Details: req.Details,
 		})
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
-	default:
-		err = mw.doBlockService(func(bs block.Service) (err error) {
-			id, newDetails, err = bs.CreateSmartBlockFromTemplate(context.TODO(), sbType, req.Details, nil, req.TemplateId)
-			return
-		})
 	}
-
-	if err != nil {
-		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
-	}
-	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
+	err = mw.doBlockService(func(bs block.Service) (err error) {
+		id, details, err = bs.CreateSmartBlockFromTemplate(context.TODO(), sbType, req.Details, nil, req.TemplateId)
+		return
+	})
+	return
 }
