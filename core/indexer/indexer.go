@@ -4,6 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
@@ -42,7 +45,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 7  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 12 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 18 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFilestoreKeysReindexCounter  int32 = 1
 )
@@ -77,6 +80,7 @@ const cacheTimeout = 4 * time.Second
 
 const (
 	reindexBundledTypes reindexFlags = 1 << iota
+	removeAllIndexedObjects
 	reindexBundledRelations
 	eraseIndexes
 	reindexThreadObjects
@@ -90,17 +94,22 @@ const (
 type indexer struct {
 	store objectstore.ObjectStore
 	// todo: move logstore to separate component?
-	anytype       core.Service
-	source        source.Service
-	threadService threads.Service
-	doc           doc.Service
-	quit          chan struct{}
-	mu            sync.Mutex
-	btHash        Hasher
-	archivedMap   map[string]struct{}
-	favoriteMap   map[string]struct{}
-	newAccount    bool
-	forceFt       chan struct{}
+	anytype         core.Service
+	source          source.Service
+	threadService   threads.Service
+	relationService relation.Service
+
+	doc         doc.Service
+	quit        chan struct{}
+	mu          sync.Mutex
+	btHash      Hasher
+	archivedMap map[string]struct{}
+	favoriteMap map[string]struct{}
+	newAccount  bool
+	forceFt     chan struct{}
+
+	relationBulkMigration relation.BulkMigration
+	relationMigratorMu    sync.Mutex
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -111,6 +120,8 @@ func (i *indexer) Init(a *app.App) (err error) {
 	if ts != nil {
 		i.threadService = ts.(threads.Service)
 	}
+	i.relationService = a.MustComponent(relation.CName).(relation.Service)
+
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.doc = a.MustComponent(doc.CName).(doc.Service)
@@ -162,11 +173,11 @@ func (i *indexer) Run(context.Context) (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
+	i.doc.OnWholeChange(i.index)
 	err = i.reindexIfNeeded()
 	if err != nil {
 		return err
 	}
-	i.doc.OnWholeChange(i.index)
 	i.migrateRemoveNonindexableObjects()
 	go i.ftLoop()
 	return
@@ -340,6 +351,21 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	if reindex != 0 {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v, reindexFileKeys=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0, reindex&reindexFileKeys != 0)
 	}
+	defer func() {
+		i.relationMigratorMu.Lock()
+		defer i.relationMigratorMu.Unlock()
+		if i.relationBulkMigration == nil {
+			return
+		}
+		err2 := i.relationBulkMigration.Commit()
+		i.relationBulkMigration = nil
+		if err2 != nil {
+			log.Errorf("reindex relation migration error: %s", err2.Error())
+		}
+	}()
+	i.relationMigratorMu.Lock()
+	i.relationBulkMigration = i.relationService.CreateBulkMigration()
+	i.relationMigratorMu.Unlock()
 
 	if reindex&reindexFileKeys != 0 {
 		err = i.anytype.FileStore().RemoveEmpty()
@@ -350,6 +376,18 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		}
 	}
 
+	if reindex&removeAllIndexedObjects != 0 {
+		ids, err := i.store.ListIds()
+		if err != nil {
+			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err.Error())
+		}
+		for _, id := range ids {
+			err = i.store.DeleteDetails(id)
+			if err != nil {
+				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
+			}
+		}
+	}
 	var indexesWereRemoved bool
 	if reindex&eraseIndexes != 0 {
 		err = i.store.EraseIndexes()
@@ -578,6 +616,32 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	return i.saveLatestChecksums()
 }
 
+func extractRelationsFromState(s *state.State) []*model.Relation {
+	var rels []*model.Relation
+	if objRels := s.OldExtraRelations(); len(objRels) > 0 {
+		rels = append(rels, s.OldExtraRelations()...)
+	}
+
+	if dvBlock := s.Pick(template.DataviewBlockId); dvBlock != nil {
+		rels = append(rels, dvBlock.Model().GetDataview().Relations...)
+	}
+
+	return rels
+}
+
+func (i *indexer) migrateRelations(rels []*model.Relation) {
+	i.relationMigratorMu.Lock()
+	defer i.relationMigratorMu.Unlock()
+
+	if i.relationBulkMigration != nil {
+		i.relationBulkMigration.AddRelations(rels)
+	} else {
+		err := i.relationService.Migrate(rels)
+		if err != nil {
+			log.Errorf("migrateRelations got error: %s", err.Error())
+		}
+	}
+}
 func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved bool) error {
 	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
@@ -620,11 +684,11 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, bundle.LocalRelationsKeys)
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails.GetFields() == nil {
-			if err := i.store.CreateObject(id, details, &model.Relations{d.State.ExtraRelations()}, d.Links, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
+			if err := i.store.CreateObject(id, details, d.Links, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't create object in the store: %v", err)
 			}
 		} else {
-			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.State.ExtraRelations()}, true); err != nil {
+			if err := i.store.UpdateObjectDetails(id, details, true); err != nil {
 				return fmt.Errorf("can't update object in the store: %v", err)
 			}
 		}
@@ -680,6 +744,10 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	}
 
 	indexDetails, indexLinks := sbType.Indexable()
+	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
+		// avoid recursions
+		i.migrateRelations(extractRelationsFromState(info.State))
+	}
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
 		return nil
@@ -690,25 +758,6 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
 	if setCreator == "" {
 		setCreator = i.anytype.ProfileID()
-	}
-
-	if info.State.ObjectType() == bundle.TypeKeySet.URL() {
-		b := info.State.Get("dataview")
-		var dv *model.BlockContentDataview
-		if b != nil {
-			dv = b.Model().GetDataview()
-		}
-		if b != nil && dv != nil {
-			if len(dv.Source) == 1 {
-				sbt, err := smartblock.SmartBlockTypeFromID(dv.Source[0])
-				// in case we have set by objectType we need to store relations for improved aggregation
-				if err == nil && (sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType) {
-					if err = i.store.UpdateRelationsInSetByObjectType(info.Id, dv.Source[0], setCreator, dv.Relations); err != nil {
-						log.With("thread", info.Id).Errorf("failed to index dataview relations: %s", err.Error())
-					}
-				}
-			}
-		}
 	}
 	indexSetTime := time.Now()
 	var hasError bool
@@ -721,7 +770,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(info.Id, details, &model.Relations{Relations: info.State.ExtraRelations()}, false); err != nil {
+		if err := i.store.UpdateObjectDetails(info.Id, details, false); err != nil {
 			hasError = true
 			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
 		}
@@ -748,9 +797,8 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
 		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		RelationsCount:          len(info.State.ExtraRelations()),
+		RelationsCount:          len(info.State.PickRelationLinks()),
 		DetailsCount:            detailsCount,
-		SetRelationsCount:       len(info.SetRelations),
 	})
 
 	return nil
@@ -826,15 +874,6 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 				log.With("id", hash).Error(err.Error())
 			}
 		}
-	}
-
-	if len(info.SetRelations) > 1 && len(info.SetSource) == 1 {
-		if sbType == smartblock.SmartBlockTypeObjectType || sbType == smartblock.SmartBlockTypeBundledObjectType {
-			if err := i.store.UpdateRelationsInSetByObjectType(id, info.SetSource[0], info.Creator, info.SetRelations); err != nil {
-				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
-			}
-		}
-
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {

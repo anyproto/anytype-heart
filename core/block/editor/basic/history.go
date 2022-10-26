@@ -41,9 +41,7 @@ func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 		copy(ot, action.ObjectTypes.Before)
 		s.SetObjectTypes(ot)
 	}
-	if action.Relations != nil {
-		s.SetExtraRelations(pbtypes.CopyRelations(action.Relations.Before))
-	}
+
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.Before))
 	}
@@ -74,9 +72,6 @@ func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 		ot := make([]string, len(action.ObjectTypes.After))
 		copy(ot, action.ObjectTypes.After)
 		s.SetObjectTypes(ot)
-	}
-	if action.Relations != nil {
-		s.SetExtraRelations(pbtypes.CopyRelations(action.Relations.After))
 	}
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.After))

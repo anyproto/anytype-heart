@@ -26,10 +26,13 @@ import (
 )
 
 var log = logging.Logger("anytype-mw-source")
-var ErrObjectNotFound = errors.New("object not found")
+var (
+	ErrObjectNotFound = errors.New("object not found")
+	ErrReadOnly       = errors.New("object is read only")
+)
 
 type ChangeReceiver interface {
-	StateAppend(func(d state.Doc) (s *state.State, err error)) error
+	StateAppend(func(d state.Doc) (s *state.State, err error), []*pb.ChangeContent) error
 	StateRebuild(d state.Doc) (err error)
 	sync.Locker
 }
@@ -78,12 +81,12 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 		return &files{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{a: s.anytype}, nil
-	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
+	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeWorkspaceOld:
 		return &threadDB{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
+		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil, nil), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
@@ -395,9 +398,10 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:         params.State.BlocksToSave(),
 				Details:        params.State.Details(),
-				ExtraRelations: params.State.ExtraRelations(),
+				ExtraRelations: nil,
 				ObjectTypes:    params.State.ObjectTypes(),
 				Collections:    params.State.Store(),
+				RelationLinks:  params.State.PickRelationLinks(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}
@@ -508,10 +512,14 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 		// existing or not complete
 		return nil
 	case change.Append:
+		changesContent := make([]*pb.ChangeContent, 0, len(changes))
+		for _, ch := range changes {
+			changesContent = append(changesContent, ch.Content...)
+		}
 		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
 			return change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
-		})
+		}, changesContent)
 	case change.Rebuild:
 		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
 		doc, err := s.buildState()
@@ -579,6 +587,7 @@ func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err err
 	for c.LastSnapshotId != "" {
 		var rec *core.SmartblockRecordEnvelope
 		if rec, err = s.sb.GetRecord(ctx, c.LastSnapshotId); err != nil {
+			log.With("thread", s.id).With("logid", s.logId).With("recordId", c.LastSnapshotId).Errorf("failed to load first change: %s", err.Error())
 			return
 		}
 		if c, err = change.NewChangeFromRecord(*rec); err != nil {

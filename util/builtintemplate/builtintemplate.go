@@ -114,7 +114,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		if _, ok := b.(relation.Block); ok {
 			relKey := b.Model().GetRelation().Key
 			if !st.HasRelation(relKey) {
-				st.AddRelation(bundle.MustGetRelation(bundle.RelationKey(relKey)))
+				st.AddBundledRelations(bundle.RelationKey(relKey))
 			}
 		}
 		return true
@@ -124,7 +124,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return
 	}
 	b.source.RegisterStaticSource(id, func() source.Source {
-		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy())
+		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil)
 	})
 	return
 }
@@ -140,6 +140,8 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectType() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), tt)
 	}
+	// todo: update templates and return the validation
+	return nil
 	var relKeys []string
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if rb, ok := b.(relation.Block); ok {

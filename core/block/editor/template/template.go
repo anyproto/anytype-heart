@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -86,94 +85,22 @@ var WithObjectTypeLayoutMigration = func() StateTransformer {
 	}
 }
 
-var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relation) StateTransformer {
-	return func(s *state.State) {
-		var relIds []string
-		ot := bundle.MustGetType(bundle.TypeKeyObjectType)
-		rels := ot.GetRelations()
-
-		var objectTypeOnlyRelations []*model.Relation
-		for _, rel := range rels {
-			var found bool
-			for _, requiredRel := range bundle.RequiredInternalRelations {
-				if rel.Key == requiredRel.String() {
-					found = true
-					break
-				}
-			}
-			if !found {
-				objectTypeOnlyRelations = append(objectTypeOnlyRelations, pbtypes.CopyRelation(rel))
-			}
-		}
-
-		for _, rel := range append(relations, s.ExtraRelations()...) {
-			// so the idea is that we need to add all relations EXCEPT that only exists in the objectType
-			// e.g. we don't need to recommendedRelation and recommendedLayout
-			if pbtypes.HasRelation(objectTypeOnlyRelations, rel.Key) {
-				continue
-			}
-			var relId string
-			if bundle.HasRelation(rel.Key) {
-				relId = addr.BundledRelationURLPrefix + rel.Key
-			} else {
-				relId = addr.CustomRelationURLPrefix + rel.Key
-			}
-			if slice.FindPos(relIds, relId) > -1 {
-				continue
-			}
-
-			relIds = append(relIds, relId)
-			var found bool
-			for _, exRel := range s.ExtraRelations() {
-				if exRel.Key == rel.Key {
-					found = true
-					break
-				}
-			}
-			if !found {
-				s.AddRelation(rel)
-			}
-		}
-
-		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds))
-	}
-}
-
 var WithRelations = func(rels []bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
+		var links []*model.RelationLink
 		for _, relKey := range rels {
 			if s.HasRelation(relKey.String()) {
 				continue
 			}
 			rel := bundle.MustGetRelation(relKey)
-			s.AddRelation(rel)
+			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 		}
+		s.AddRelationLinks(links...)
 	}
 }
 
 var WithRequiredRelations = func() StateTransformer {
 	return WithRelations(bundle.RequiredInternalRelations)
-}
-
-var WithMaxCountMigration = func(s *state.State) {
-	d := s.Details()
-	if d == nil || d.Fields == nil {
-		return
-	}
-
-	rels := s.ExtraRelations()
-	for k, v := range d.Fields {
-		rel := pbtypes.GetRelation(rels, k)
-		if rel == nil {
-			log.Warnf("obj %s relation %s is missing but detail is set", s.RootId(), k)
-		} else if rel.MaxCount == 1 {
-			if b := v.GetListValue(); b != nil {
-				if len(b.Values) > 0 {
-					d.Fields[k] = pbtypes.CopyVal(b.Values[0])
-				}
-			}
-		}
-	}
 }
 
 var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
@@ -216,11 +143,7 @@ var WithCondition = func(condition bool, f StateTransformer) StateTransformer {
 var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil {
-			s.SetDetail(key.String(), value)
-		}
-
-		if rel := pbtypes.GetRelation(s.ExtraRelations(), key.String()); rel == nil {
-			s.SetExtraRelation(bundle.MustGetRelation(key))
+			s.SetDetailAndBundledRelation(key, value)
 		}
 	}
 }
@@ -228,11 +151,7 @@ var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransform
 var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil || !s.Details().Fields[key.String()].Equal(value) {
-			s.SetDetail(key.String(), value)
-		}
-
-		if rel := pbtypes.GetRelation(s.ExtraRelations(), key.String()); rel == nil {
-			s.SetExtraRelation(bundle.MustGetRelation(key))
+			s.SetDetailAndBundledRelation(key, value)
 		}
 	}
 }
@@ -650,6 +569,7 @@ var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) State
 
 var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
+		WithEmpty(s)
 		// remove old dataview
 		var blockNeedToUpdate bool
 		s.Iterate(func(b simple.Block) (isContinue bool) {
@@ -766,6 +686,19 @@ var WithNoRootLink = func(targetBlockId string) StateTransformer {
 	}
 }
 
+func WithBlockField(blockId, fieldName string, value *types.Value) StateTransformer {
+	return func(s *state.State) {
+		if b := s.Get(blockId); b != nil {
+			fields := b.Model().Fields
+			if fields == nil || fields.Fields == nil {
+				fields = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			fields.Fields[fieldName] = value
+			b.Model().Fields = fields
+		}
+	}
+}
+
 func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	for _, template := range templates {
 		template(s)
@@ -858,7 +791,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 	}
 
 	for _, oldRel := range oldBookmarkRelations {
-		s.RemoveExtraRelation(bundle.RelationKey(oldRel))
+		s.RemoveRelation(oldRel)
 	}
 
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
@@ -870,10 +803,12 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, k := range bookmarkRelationKeys {
 		if !s.HasRelation(k) {
-			s.AddRelation(bundle.MustGetRelation(bundle.RelationKey(k)))
+			s.AddBundledRelations(bundle.RelationKey(k))
 		}
+	}
 
-		if b := s.Pick(k); b != nil {
+	for _, rk := range bookmarkRelationKeys {
+		if b := s.Pick(rk); b != nil {
 			if ok := s.Unlink(b.Model().Id); !ok {
 				log.Errorf("can't unlink block %s", b.Model().Id)
 				return
@@ -881,9 +816,9 @@ var WithBookmarkBlocks = func(s *state.State) {
 			continue
 		}
 
-		ok := s.Add(simple.New(makeRelationBlock(k)))
+		ok := s.Add(simple.New(makeRelationBlock(rk)))
 		if !ok {
-			log.Errorf("can't add block %s", k)
+			log.Errorf("can't add block %s", rk)
 			return
 		}
 	}

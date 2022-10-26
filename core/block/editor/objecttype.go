@@ -1,9 +1,10 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -15,9 +16,9 @@ type ObjectType struct {
 	*Set
 }
 
-func NewObjectType(dbCtrl database.Ctrl) *ObjectType {
+func NewObjectType() *ObjectType {
 	return &ObjectType{
-		Set: NewSet(dbCtrl),
+		Set: NewSet(),
 	}
 }
 
@@ -74,7 +75,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
-	rels := p.RelationsState(ctx.State, false)
+	rels := p.Relations(ctx.State)
 	var recommendedRelationsKeys []string
 	for _, relId := range pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String()) {
 		relKey, err := pbtypes.RelationIdToKey(relId)
@@ -109,7 +110,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	var recommendedRelations []*model.Relation
 	for _, rk := range recommendedRelationsKeys {
-		rel := pbtypes.GetRelation(rels, rk)
+		rel := rels.GetModelByKey(rk)
 		if rel == nil {
 			rel, _ = bundle.GetRelation(bundle.RelationKey(rk))
 			if rel == nil {
@@ -118,16 +119,18 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 
 		relCopy := pbtypes.CopyRelation(rel)
-		relCopy.Scope = model.Relation_type
+
 		recommendedRelations = append(recommendedRelations, relCopy)
-		dataview.Dataview.Relations = append(dataview.Dataview.Relations, relCopy)
+		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, (&relationutils.Relation{rel}).RelationLink())
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
 			Key:       rel.Key,
 			IsVisible: !rel.Hidden,
 		})
 	}
 
-	err = smartblock.ObjectApplyTemplate(p, ctx.State,
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
+
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithEmpty,
 		template.WithTitle,
@@ -144,14 +147,9 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
 			}
 		}),
-		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
+		//template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
+		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 	)
-	if err != nil {
-		return err
-	}
-
-	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
-	return p.Set.SetNewRecordDefaultFields("templates", defaultValue)
 }

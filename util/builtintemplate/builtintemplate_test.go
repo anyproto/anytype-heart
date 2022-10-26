@@ -17,7 +17,7 @@ func Test_registerBuiltin(t *testing.T) {
 	s := mockSource.NewMockService(ctrl)
 	s.EXPECT().Name().Return(source.CName).AnyTimes()
 	s.EXPECT().Init(gomock.Any()).AnyTimes()
-	s.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	s.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any(), nil).AnyTimes()
 	s.EXPECT().RegisterStaticSource(gomock.Any(), gomock.Any()).AnyTimes()
 
 	a := testapp.New().With(s).With(New())

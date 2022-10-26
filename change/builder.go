@@ -471,8 +471,15 @@ func (sb *stateBuilder) loadChange(ctx context.Context, id string) (ch *Change, 
 			Errorf("long loadChange %.2fs for %s. Total %.2f(%d records)", s.Seconds(), id, sb.qt.Seconds(), sb.qr)
 	}
 	chp := new(pb.Change)
-	if err = sr.Unmarshal(chp); err != nil {
-		return
+	if err3 := sr.Unmarshal(chp); err3 != nil {
+		// skip this error for the future compatibility
+		log.With("thread", sb.smartblock.ID()).
+			With("logid", sr.LogID).
+			With("change", id).Errorf("failed to unmarshal change: %s; continue", err3.Error())
+		if chp == nil || chp.PreviousIds == nil {
+			// no way we can continue when we don't have some minimal information
+			return nil, err3
+		}
 	}
 	ch = &Change{
 		Id:      id,

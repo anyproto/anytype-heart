@@ -427,7 +427,7 @@ func (t *editor) ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFi
 	return nil
 }
 
-func (t *editor) cleanupTables() {
+func (t *editor) cleanupTables(_ smartblock.ApplyInfo) error {
 	s := t.NewState()
 
 	err := s.Iterate(func(b simple.Block) bool {
@@ -456,6 +456,7 @@ func (t *editor) cleanupTables() {
 	if err = t.Apply(s); err != nil {
 		log.Errorf("cleanup apply: %s", err)
 	}
+	return nil
 }
 
 func (t *editor) ColumnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) error {

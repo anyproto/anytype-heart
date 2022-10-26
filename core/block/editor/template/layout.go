@@ -12,7 +12,6 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		WithDefaultFeaturedRelations,
 		WithFeaturedRelations,
 		WithRequiredRelations(),
-		WithMaxCountMigration,
 		WithLinkFieldsMigration,
 		WithCreatorRemovedFromFeaturedRelations,
 	)
