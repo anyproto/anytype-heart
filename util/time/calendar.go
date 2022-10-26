@@ -7,7 +7,7 @@ var Week = Day * 7
 
 func NewCalendar(t time.Time, loc *time.Location) Calendar {
 	if loc == nil {
-		loc = time.UTC
+		loc = time.Now().Location()
 	}
 	return Calendar{t:t, loc: loc}
 }
