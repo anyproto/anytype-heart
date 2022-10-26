@@ -1148,6 +1148,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	d.(*state.State).InjectDerivedDetails()
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
+	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
 	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))

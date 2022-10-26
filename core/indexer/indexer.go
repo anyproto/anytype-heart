@@ -653,7 +653,6 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
 		return fmt.Errorf("failed to open doc: %s", err.Error())
 	}
-	log.Errorf("obj reindexDoc %s: %d", id, pbtypes.Sprint(d.State.CombinedDetails()))
 
 	indexDetails, indexLinks := t.Indexable()
 	if indexLinks {
