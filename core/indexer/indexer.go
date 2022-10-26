@@ -354,13 +354,18 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	defer func() {
 		i.relationMigratorMu.Lock()
 		defer i.relationMigratorMu.Unlock()
+		if i.relationBulkMigration == nil {
+			return
+		}
 		err2 := i.relationBulkMigration.Commit()
 		i.relationBulkMigration = nil
 		if err2 != nil {
 			log.Errorf("reindex relation migration error: %s", err2.Error())
 		}
 	}()
+	i.relationMigratorMu.Lock()
 	i.relationBulkMigration = i.relationService.CreateBulkMigration()
+	i.relationMigratorMu.Unlock()
 
 	if reindex&reindexFileKeys != 0 {
 		err = i.anytype.FileStore().RemoveEmpty()
@@ -625,10 +630,7 @@ func extractRelationsFromState(s *state.State) []*model.Relation {
 }
 
 func (i *indexer) migrateRelations(rels []*model.Relation) {
-	if !i.relationMigratorMu.TryLock() {
-		fmt.Println()
-		return
-	}
+	i.relationMigratorMu.Lock()
 	defer i.relationMigratorMu.Unlock()
 
 	if i.relationBulkMigration != nil {
@@ -743,7 +745,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	}
 
 	indexDetails, indexLinks := sbType.Indexable()
-	if info.State.ObjectType() != bundle.TypeKeyRelation.URL() && sbType != smartblock.SmartBlockTypeWorkspace {
+	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
 		// avoid recursions
 		i.migrateRelations(extractRelationsFromState(info.State))
 	}

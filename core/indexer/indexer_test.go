@@ -113,7 +113,8 @@ func newFixture(t *testing.T) *fixture {
 		With(source.New())
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
-	mockRelation.RegisterMockRelation(fx.ctrl, ta)
+	rs := mockRelation.RegisterMockRelation(fx.ctrl, ta)
+	rs.EXPECT().CreateBulkMigration().Times(1)
 	require.NoError(t, ta.Start(context.Background()))
 	return fx
 }
