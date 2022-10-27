@@ -13,7 +13,7 @@ type GroupStatus struct {
 }
 
 func (gs *GroupStatus) Init(reqFilters []*model.BlockContentDataviewFilter) error {
-	options, err := gs.store.GetAggregatedOptions(bundle.RelationKeyStatus.String(), "")
+	options, err := gs.store.GetAggregatedOptions(bundle.RelationKeyStatus.String())
 	if err != nil {
 		return err
 	}
