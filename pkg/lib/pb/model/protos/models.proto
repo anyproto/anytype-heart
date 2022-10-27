@@ -385,6 +385,7 @@ message Block {
                 Condition condition = 3;
                 google.protobuf.Value value = 4;
                 QuickOption quickOption = 6;
+                RelationFormat format = 7;
 
                 enum Operator {
                     And = 0;
