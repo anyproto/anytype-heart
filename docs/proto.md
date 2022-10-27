@@ -17563,6 +17563,7 @@ Bookmark is to keep a web-link and to preview a content.
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
+| includeTime | [bool](#bool) |  |  |
 
 
 
