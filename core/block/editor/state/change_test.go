@@ -157,15 +157,15 @@ func TestState_SetParent(t *testing.T) {
 	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}}))
 	orig.Add(simple.New(&model.Block{Id: "header"}))
 	orig.SetObjectType("orig")
-	orig.AddRelation(&model.Relation{Key: "one"})
+	orig.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "one"})
 	st := orig.Copy()
 
 	newState := NewDoc("root", nil).(*State)
 	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
 	newState.SetObjectTypes([]string{"newOT1", "newOT2"})
-	newState.AddRelation(&model.Relation{Key: "newOne"})
-	newState.AddRelation(&model.Relation{Key: "newTwo"})
+	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newOne"})
+	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newTwo"})
 
 	ns := newState.Copy()
 
@@ -176,7 +176,6 @@ func TestState_SetParent(t *testing.T) {
 
 	st2 := orig.Copy()
 	require.NoError(t, st2.ApplyChange(st.GetChanges()...))
-
 	assert.Equal(t, st.StringDebug(), st2.StringDebug())
 }
 
@@ -465,7 +464,7 @@ func Test_ApplyChange(t *testing.T) {
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfStoreKeySet{
 				StoreKeySet: &pb.ChangeStoreKeySet{
-					Path:   []string{"coll1", "key1"},
+					Path:  []string{"coll1", "key1"},
 					Value: pbtypes.String("1"),
 				},
 			},
@@ -488,6 +487,19 @@ func Test_ApplyChange(t *testing.T) {
 		}))
 		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, s.Store())
 	})
+}
+
+func TestRelationChanges(t *testing.T) {
+	a := NewDoc("root", nil).(*State)
+	a.relationLinks = []*model.RelationLink{{Key: "1"}, {Key: "2"}, {Key: "3"}}
+	ac := a.Copy()
+	b := a.NewState()
+	b.relationLinks = []*model.RelationLink{{Key: "3"}, {Key: "4"}, {Key: "5"}}
+	_, _, err := ApplyState(b, false)
+	require.NoError(t, err)
+	chs := a.GetChanges()
+	require.NoError(t, ac.ApplyChange(chs...))
+	require.Equal(t, a.relationLinks, ac.relationLinks)
 }
 
 func newMoveChange(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {

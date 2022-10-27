@@ -19,35 +19,35 @@ type Schema interface {
 	String() string      // describes the schema
 	Description() string // describes the schema
 
-	ListRelations() []*model.Relation
-	RequiredRelations() []*model.Relation
+	ListRelations() []*model.RelationLink
+	RequiredRelations() []*model.RelationLink
 }
 
 type schemaByType struct {
 	ObjType           *model.ObjectType
-	OptionalRelations []*model.Relation
+	OptionalRelations []*model.RelationLink
 }
 
 type schemaByRelations struct {
 	ObjectTypeIds     []string
-	CommonRelations   []*model.Relation
-	OptionalRelations []*model.Relation
+	CommonRelations   []*model.RelationLink
+	OptionalRelations []*model.RelationLink
 }
 
-func NewByType(objType *model.ObjectType, relations []*model.Relation) Schema {
+func NewByType(objType *model.ObjectType, relations []*model.RelationLink) Schema {
 	return &schemaByType{ObjType: objType, OptionalRelations: relations}
 }
 
-func NewByRelations(objTypes []string, commonRelations, optionalRelations []*model.Relation) Schema {
+func NewByRelations(objTypes []string, commonRelations, optionalRelations []*model.RelationLink) Schema {
 	return &schemaByRelations{ObjectTypeIds: objTypes, OptionalRelations: optionalRelations, CommonRelations: commonRelations}
 }
 
-func (sch *schemaByType) ListRelations() []*model.Relation {
-	var total = len(sch.OptionalRelations) + len(sch.ObjType.Relations)
+func (sch *schemaByType) ListRelations() []*model.RelationLink {
+	var total = len(sch.OptionalRelations) + len(sch.ObjType.RelationLinks)
 
 	var m = make(map[string]struct{}, total)
-	var rels = make([]*model.Relation, 0, total)
-	for _, rel := range append(sch.ObjType.Relations, sch.OptionalRelations...) {
+	var rels = make([]*model.RelationLink, 0, total)
+	for _, rel := range append(sch.ObjType.RelationLinks, sch.OptionalRelations...) {
 		if _, exists := m[rel.Key]; exists {
 			continue
 		}
@@ -58,8 +58,8 @@ func (sch *schemaByType) ListRelations() []*model.Relation {
 	return rels
 }
 
-func (sch *schemaByType) RequiredRelations() []*model.Relation {
-	return []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}
+func (sch *schemaByType) RequiredRelations() []*model.RelationLink {
+	return []*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyName)}
 }
 
 func (sch *schemaByType) ObjectType() *model.ObjectType {
@@ -86,21 +86,22 @@ func (sch *schemaByType) Description() string {
 	return fmt.Sprintf("%s", sch.ObjType.Name)
 }
 
-func (sch *schemaByRelations) RequiredRelations() []*model.Relation {
-	var rels = []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName), bundle.MustGetRelation(bundle.RelationKeyType)}
+func (sch *schemaByRelations) RequiredRelations() []*model.RelationLink {
+	var rels = []*model.RelationLink{
+		bundle.MustGetRelationLink(bundle.RelationKeyName), bundle.MustGetRelationLink(bundle.RelationKeyType)}
 	for _, rel := range sch.CommonRelations {
-		if !pbtypes.HasRelation(rels, rel.Key) {
+		if !pbtypes.HasRelationLink(rels, rel.Key) {
 			rels = append(rels, rel)
 		}
 	}
 	return rels
 }
 
-func (sch *schemaByRelations) ListRelations() []*model.Relation {
+func (sch *schemaByRelations) ListRelations() []*model.RelationLink {
 	var total = len(sch.OptionalRelations) + len(sch.CommonRelations)
 
 	var m = make(map[string]struct{}, total)
-	var rels = make([]*model.Relation, 0, total)
+	var rels = make([]*model.RelationLink, 0, total)
 	for _, rel := range append(sch.CommonRelations, sch.OptionalRelations...) {
 		if _, exists := m[rel.Key]; exists {
 			continue
@@ -135,13 +136,13 @@ func (sch *schemaByRelations) ObjectType() *model.ObjectType {
 }
 
 func (sch *schemaByRelations) String() string {
-	return fmt.Sprintf("relations: %v", pbtypes.GetRelationKeys(sch.CommonRelations))
+	return fmt.Sprintf("relations: %v", pbtypes.GetRelationListKeys(sch.CommonRelations))
 }
 
 func (sch *schemaByRelations) Description() string {
 	var relName []string
 	for _, rel := range sch.CommonRelations {
-		relName = append(relName, rel.Name)
+		relName = append(relName, rel.Key)
 	}
 	if len(relName) == 1 {
 		return fmt.Sprintf("Relation %s", relName[0])

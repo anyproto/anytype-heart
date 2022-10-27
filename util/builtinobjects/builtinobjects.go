@@ -11,6 +11,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 	"io"
@@ -58,6 +60,8 @@ type builtinObjects struct {
 	l          sync.Mutex
 	source     source.Service
 	service    block.Service
+	relService relation2.Service
+
 	newAccount bool
 	idsMap     map[string]string
 }
@@ -66,7 +70,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.service = a.MustComponent(block.CName).(block.Service)
 	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
-
+	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
 	b.cancel = func() {}
 	return
 }
@@ -156,6 +160,8 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	f["analyticsOriginalId"] = pbtypes.String(oldId)
 
 	st.Set(simple.New(m))
+	rels := relationutils.MigrateRelationsModels(st.OldExtraRelations())
+	st.AddRelationLinks(rels...)
 
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
@@ -248,10 +254,10 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 
 func (b *builtinObjects) validate(st *state.State) (err error) {
 	var relKeys []string
-	for _, rel := range st.ExtraRelations() {
+	for _, rel := range st.PickRelationLinks() {
 		if !bundle.HasRelation(rel.Key) {
 			// todo: temporarily, make this as error
-			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Key, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
 			//return fmt.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
 		}
 	}

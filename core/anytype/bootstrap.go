@@ -5,13 +5,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"os"
 
-	"github.com/anytypeio/go-anytype-middleware/core/account"
-	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -23,6 +21,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -100,6 +100,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 	a.Register(clientds.New()).
+		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
 		Register(filestore.New()).

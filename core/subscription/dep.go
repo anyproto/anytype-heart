@@ -109,7 +109,7 @@ func (ds *dependencyService) isRelationObject(key string) bool {
 		log.Errorf("can't get relation: %v", err)
 		return false
 	}
-	isObj := rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file
+	isObj := rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status
 	ds.isRelationObjMap[key] = isObj
 	return isObj
 }

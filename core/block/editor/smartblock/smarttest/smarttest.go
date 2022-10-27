@@ -1,7 +1,9 @@
 package smarttest
 
 import (
-	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -15,9 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -36,10 +36,27 @@ type SmartTest struct {
 	hist             undo.History
 	meta             *core.SmartBlockMeta
 	TestRestrictions restriction.Restrictions
+	App              *app.App
 	sync.Mutex
 	state.Doc
 	isDeleted bool
 	os        *testMock.MockObjectStore
+}
+
+func (st *SmartTest) EnabledRelationAsDependentObjects() {
+	return
+}
+
+func (st *SmartTest) IsLocked() bool {
+	return false
+}
+
+func (st *SmartTest) RelationService() relation.Service {
+	return st.App.Component(relation.CName).(relation.Service)
+}
+
+func (st *SmartTest) Locked() bool {
+	return false
 }
 
 func (st *SmartTest) DocService() doc.Service {
@@ -88,20 +105,21 @@ func (st *SmartTest) GetDocInfo() (doc.DocInfo, error) {
 	}, nil
 }
 
-func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
+func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hook) {
 	return
 }
 
-func (st *SmartTest) HasRelation(relationKey string) bool {
-	return st.NewState().HasRelation(relationKey)
+func (st *SmartTest) HasRelation(s *state.State, key string) bool {
+	for _, rel := range s.GetRelationLinks() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
-func (st *SmartTest) Relations() []*model.Relation {
-	return st.Doc.ExtraRelations()
-}
-
-func (st *SmartTest) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
-	return st.Doc.ExtraRelations()
+func (st *SmartTest) Relations(s *state.State) relationutils.Relations {
+	return nil
 }
 
 func (st *SmartTest) DefaultObjectTypeUrl() string {
@@ -112,22 +130,20 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
-	rel := pbtypes.GetRelation(st.Relations(), relationKey)
-	if rel == nil {
-		return nil, fmt.Errorf("relation not found")
+func (st *SmartTest) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
+	if st.meta == nil {
+		st.meta = &core.SmartBlockMeta{
+			Details: &types.Struct{
+				Fields: make(map[string]*types.Value),
+			}}
 	}
-
-	if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-		return nil, fmt.Errorf("incorrect relation format")
+	for _, key := range relationKeys {
+		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+			Key:    key,
+			Format: 0, // todo
+		})
 	}
-
-	newOption, err := st.Doc.(*state.State).AddExtraRelationOption(*rel, option)
-	if err != nil {
-		return nil, err
-	}
-
-	return newOption, nil
+	return nil
 }
 
 func (st *SmartTest) CheckSubscriptions() (changed bool) {
@@ -135,96 +151,6 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 }
 
 func (st *SmartTest) RefreshLocalDetails(ctx *session.Context) error {
-	return nil
-}
-
-func (st *SmartTest) UpdateExtraRelationOption(ctx *session.Context, relationKey string, option model.RelationOption, showEvent bool) error {
-	for _, rel := range st.ExtraRelations() {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == option.Id {
-				copy := pbtypes.CopyRelation(rel)
-				copy.SelectDict[i] = &option
-				st.Doc.(*state.State).SetExtraRelation(copy)
-
-				return nil
-			}
-		}
-
-		return fmt.Errorf("relation option not found")
-	}
-
-	return fmt.Errorf("relation not found")
-}
-
-func (st *SmartTest) DeleteExtraRelationOption(ctx *session.Context, relationKey string, optionId string, showEvent bool) error {
-	for _, rel := range st.ExtraRelations() {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == optionId {
-				copy := pbtypes.CopyRelation(rel)
-				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
-				st.Doc.(*state.State).SetExtraRelation(copy)
-				return nil
-			}
-		}
-		// todo: should we remove option and value from all objects within type?
-
-		return fmt.Errorf("relation option not found")
-	}
-
-	return fmt.Errorf("relation not found")
-}
-
-func (st *SmartTest) AddExtraRelations(ctx *session.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
-	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			}}
-	}
-	for _, d := range relations {
-		if d.Key == "" {
-			d.Key = bson.NewObjectId().Hex()
-		}
-		st.meta.Relations = append(st.meta.Relations, pbtypes.CopyRelation(d))
-	}
-	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
-	return st.meta.Relations, nil
-}
-
-func (st *SmartTest) UpdateExtraRelations(ctx *session.Context, relations []*model.Relation, createIfMissing bool) (err error) {
-	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			}}
-	}
-	for _, d := range relations {
-		var found bool
-		for i, rel := range st.meta.Relations {
-			if rel.Key != d.Key {
-				continue
-			}
-			found = true
-			st.meta.Relations[i] = d
-		}
-		if !found && !createIfMissing {
-			return fmt.Errorf("relation not found")
-		}
-	}
-
-	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
 	return nil
 }
 
@@ -247,7 +173,6 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 func (st *SmartTest) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
-			Relations: st.ExtraRelations(),
 			Details: &types.Struct{
 				Fields: make(map[string]*types.Value),
 			}}
@@ -273,10 +198,6 @@ func (st *SmartTest) Type() model.SmartBlockType {
 
 func (st *SmartTest) Show(*session.Context) (obj *model.ObjectView, err error) {
 	return
-}
-
-func (st *SmartTest) Meta() *core.SmartBlockMeta {
-	return st.meta
 }
 
 func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
@@ -338,7 +259,7 @@ func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 	return nil
 }
 
-func (st *SmartTest) FileRelationKeys() []string {
+func (st *SmartTest) FileRelationKeys(s *state.State) []string {
 	return nil
 }
 

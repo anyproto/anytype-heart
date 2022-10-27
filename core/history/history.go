@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -44,15 +46,17 @@ type BlockService interface {
 }
 
 type history struct {
-	a            core.Service
-	blockService BlockService
-	objectStore  objectstore.ObjectStore
+	a               core.Service
+	blockService    BlockService
+	objectStore     objectstore.ObjectStore
+	relationService relation.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
 	h.a = a.MustComponent(core.CName).(core.Service)
 	h.blockService = a.MustComponent(block.CName).(BlockService)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	h.relationService = a.MustComponent(relation.CName).(relation.Service)
 	return
 }
 
@@ -88,14 +92,13 @@ func (h *history) Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.
 		}
 	}
 
-	objectTypes, _ := objectstore.GetObjectTypes(h.objectStore, uniqueObjTypes)
+	rels, _ := h.relationService.FetchLinks(s.PickRelationLinks())
 	return &model.ObjectView{
-		RootId:      pageId,
-		Type:        model.SmartBlockType(sbType),
-		Blocks:      s.Blocks(),
-		Details:     details,
-		ObjectTypes: objectTypes,
-		Relations:   s.ExtraRelations(),
+		RootId:        pageId,
+		Type:          model.SmartBlockType(sbType),
+		Blocks:        s.Blocks(),
+		Details:       details,
+		RelationLinks: rels.RelationLinks(),
 	}, ver, nil
 }
 

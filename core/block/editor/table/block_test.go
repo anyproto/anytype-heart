@@ -69,6 +69,30 @@ func TestNormalize(t *testing.T) {
 	}
 }
 
+func TestNormalizeAbsentRow(t *testing.T) {
+	source := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{
+		{"row1-c11", "row1-col2"},
+		{"row2-col3"},
+	})
+	source.CleanupBlock("row3")
+	
+	want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{
+		{"row1-col2"},
+		{},
+		{},
+	})
+
+	tb, err := NewTable(source, "table")
+
+	require.NoError(t, err)
+
+	st := source.Copy()
+	err = tb.block.(Block).Normalize(st)
+	require.NoError(t, err)
+
+	assert.Equal(t, want.Blocks(), st.Blocks())
+}
+
 func TestDuplicate(t *testing.T) {
 	s := mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"},
 		[][]string{

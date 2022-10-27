@@ -53,16 +53,11 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 		// template.WithAlignedDescription(model.Block_AlignCenter, true),
 		template.WithFeaturedRelations,
 		template.WithRequiredRelations(),
-		template.WithMaxCountMigration,
 	)
 }
 
 func (p *Profile) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if err = p.SmartBlock.SetDetails(ctx, details, showEvent); err != nil {
-		return
-	}
-	meta := p.SmartBlock.Meta()
-	if meta == nil {
 		return
 	}
 	p.sendEvent(&pb.Event{
@@ -71,7 +66,7 @@ func (p *Profile) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDet
 				Value: &pb.EventMessageValueOfAccountDetails{
 					AccountDetails: &pb.EventAccountDetails{
 						ProfileId: p.Id(),
-						Details:   meta.Details,
+						Details:   p.Details(),
 					},
 				},
 			},

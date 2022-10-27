@@ -49,7 +49,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err = ds.CreateObject(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
-	}, nil, nil, "")
+	}, nil, "")
 	require.NoError(t, err)
 
 	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
@@ -60,7 +60,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 
 	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
-	}, nil, true)
+	}, true)
 	require.NoError(t, err)
 
 	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
@@ -71,7 +71,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 
 	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
-	}, nil, false)
+	}, false)
 	require.NoError(t, err)
 
 	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
@@ -163,9 +163,9 @@ func TestDsObjectStore_Query(t *testing.T) {
 	id1 := tid1.String()
 	id2 := tid2.String()
 	id3 := tid3.String()
-	require.NoError(t, ds.CreateObject(id1, newDet("one"), nil, nil, "s1"))
-	require.NoError(t, ds.CreateObject(id2, newDet("two"), nil, nil, "s2"))
-	require.NoError(t, ds.CreateObject(id3, newDet("three"), nil, nil, "s3"))
+	require.NoError(t, ds.CreateObject(id1, newDet("one"), nil, "s1"))
+	require.NoError(t, ds.CreateObject(id2, newDet("two"), nil, "s2"))
+	require.NoError(t, ds.CreateObject(id3, newDet("three"), nil, "s3"))
 	require.NoError(t, fts.Index(ftsearch.SearchDoc{
 		Id:    id1,
 		Title: "one",
@@ -255,103 +255,6 @@ func TestDsObjectStore_PrefixQuery(t *testing.T) {
 	require.Equal(t, "/p1/abc/def/1", entries[0].Key)
 
 }
-func TestDsObjectStore_RelationsIndex(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-
-	logging.ApplyLevelsFromEnv()
-	app := testapp.New()
-	defer app.Close()
-	ds := New()
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
-	require.NoError(t, err)
-
-	newDet := func(name, objtype string) *types.Struct {
-		return &types.Struct{
-			Fields: map[string]*types.Value{
-				"name": pbtypes.String(name),
-				"type": pbtypes.StringList([]string{objtype}),
-			},
-		}
-	}
-	id1 := getId()
-	id2 := getId()
-	id3 := getId()
-	require.NoError(t, ds.CreateObject(id1, newDet("one", "_ota1"), &model.Relations{Relations: []*model.Relation{
-		{
-			Key:          "rel1",
-			Format:       model.RelationFormat_status,
-			Name:         "rel 1",
-			DefaultValue: nil,
-			SelectDict: []*model.RelationOption{
-				{"id1", "option1", "red", model.RelationOption_local},
-				{"id2", "option2", "red", model.RelationOption_local},
-				{"id3", "option3", "red", model.RelationOption_local},
-			},
-		},
-		{
-			Key:          "rel2",
-			Format:       model.RelationFormat_shorttext,
-			Name:         "rel 2",
-			DefaultValue: nil,
-		},
-	}}, nil, "s1"))
-
-	require.NoError(t, ds.CreateObject(id2, newDet("two", "_ota2"), &model.Relations{Relations: []*model.Relation{
-		{
-			Key:          "rel1",
-			Format:       model.RelationFormat_status,
-			Name:         "rel 1",
-			DefaultValue: nil,
-			SelectDict: []*model.RelationOption{
-				{"id3", "option3", "yellow", model.RelationOption_local},
-				{"id4", "option4", "red", model.RelationOption_local},
-				{"id5", "option5", "red", model.RelationOption_local},
-			},
-		},
-		{
-			Key:          "rel3",
-			Format:       model.RelationFormat_status,
-			Name:         "rel 3",
-			DefaultValue: nil,
-			SelectDict: []*model.RelationOption{
-				{"id5", "option5", "red", model.RelationOption_local},
-				{"id6", "option6", "red", model.RelationOption_local},
-			},
-		},
-		{
-			Key:          "rel4",
-			Format:       model.RelationFormat_tag,
-			Name:         "rel 4",
-			DefaultValue: nil,
-			SelectDict: []*model.RelationOption{
-				{"id7", "option7", "red", model.RelationOption_local},
-			},
-		},
-	}}, nil, "s2"))
-	require.NoError(t, ds.CreateObject(id3, newDet("three", "_ota2"), nil, nil, "s3"))
-
-	restOpts, err := ds.GetAggregatedOptions("rel1", "_otffff")
-	require.NoError(t, err)
-	require.Len(t, restOpts, 5)
-
-	time.Sleep(time.Millisecond * 50)
-	rels, err := ds.AggregateRelationsFromObjectsOfType("_ota1")
-	require.NoError(t, err)
-	require.Len(t, rels, 2)
-
-	require.Equal(t, "rel1", rels[0].Key)
-	require.Equal(t, "rel2", rels[1].Key)
-
-	rels, err = ds.ListRelations("_ota1")
-	require.NoError(t, err)
-	require.Len(t, rels, len(bundle.ListRelationsKeys())+4)
-
-	require.Equal(t, "rel1", rels[0].Key)
-	require.Equal(t, "rel2", rels[1].Key)
-	require.Equal(t, "rel3", rels[2].Key)
-	require.Equal(t, "rel4", rels[3].Key)
-}
 
 func Test_removeByPrefix(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
@@ -378,7 +281,7 @@ func Test_removeByPrefix(t *testing.T) {
 			rand.Read(key)
 			links = append(links, fmt.Sprintf("%x", key))
 		}
-		require.NoError(t, ds.CreateObject(objId, nil, nil, links, ""))
+		require.NoError(t, ds.CreateObject(objId, nil, links, ""))
 	}
 	tx, err := ds2.ds.NewTransaction(false)
 	_, err = removeByPrefixInTx(tx, pagesInboundLinksBase.String())

@@ -18,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
 )
 
 type Basic interface {
@@ -281,7 +280,7 @@ func (bs *basic) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSet
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-	if !bs.HasRelation(req.Key) {
+	if !bs.HasRelation(s, req.Key) {
 		return fmt.Errorf("relation with given key not found")
 	}
 	if rel, ok := b.(relation.Block); ok {
@@ -313,18 +312,18 @@ func (bs *basic) AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelation
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-	key := req.Relation.Key
-	if !s.HasRelation(key) {
-		if req.Relation.Key == "" {
-			req.Relation.Key = bson.NewObjectId().Hex()
-		}
-		s.AddRelation(req.Relation)
+
+	rel, err := bs.RelationService().FetchKey(req.RelationKey)
+	if err != nil {
+		return
 	}
-	if rel, ok := b.(relation.Block); ok {
-		rel.SetKey(req.Relation.Key)
+
+	if rb, ok := b.(relation.Block); ok {
+		rb.SetKey(rel.Key)
 	} else {
 		return fmt.Errorf("unexpected block type: %T (want relation)", b)
 	}
+	s.AddRelationLinks(rel.RelationLink())
 	return bs.Apply(s)
 }
 
@@ -334,7 +333,7 @@ func (bs *basic) FeaturedRelationAdd(ctx *session.Context, relations ...string) 
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
-		if bs.HasRelation(r) && slice.FindPos(frc, r) == -1 {
+		if bs.HasRelation(s, r) && slice.FindPos(frc, r) == -1 {
 			frc = append(frc, r)
 		}
 	}
@@ -380,7 +379,8 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		}
 		return true
 	})
-	rels := bs.RelationsState(s, true)
+	// TODO: use relations service with state
+	rels := bs.GetRelationLinks()
 	details := s.Details()
 	for _, rel := range rels {
 		if rel.Format == model.RelationFormat_object {

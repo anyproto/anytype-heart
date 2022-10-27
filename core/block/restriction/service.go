@@ -114,6 +114,10 @@ func (r Restrictions) Proto() *model.Restrictions {
 	return res
 }
 
+func (r Restrictions) Equal(r2 Restrictions) bool {
+	return r.Object.Equal(r2.Object) && r.Dataview.Equal(r2.Dataview)
+}
+
 func (r Restrictions) Copy() Restrictions {
 	return Restrictions{
 		Object:   r.Object.Copy(),

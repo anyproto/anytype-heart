@@ -2,7 +2,13 @@ package editor
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"time"
+
+	"github.com/globalsign/mgo/bson"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -18,7 +24,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/textileio/go-threads/core/thread"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -26,17 +31,20 @@ import (
 )
 
 const (
-	collectionKeySignature = "signature"
-	collectionKeyAccount   = "account"
-	collectionKeyAddrs     = "addrs"
-	collectionKeyId        = "id"
-	collectionKeyKey       = "key"
+	collectionKeySignature       = "signature"
+	collectionKeyAccount         = "account"
+	collectionKeyAddrs           = "addrs"
+	collectionKeyId              = "id"
+	collectionKeyKey             = "key"
+	collectionKeyRelationOptions = "opt"
+	collectionKeyRelations       = "rel"
 )
 
-func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
+func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
-		Set:             NewSet(dbCtrl),
+		Set:             NewSet(),
 		DetailsModifier: dmservice,
+		collections:     map[string]map[string]*SubObject{},
 	}
 }
 
@@ -45,6 +53,12 @@ type Workspaces struct {
 	DetailsModifier DetailsModifier
 	threadService   threads.Service
 	threadQueue     threads.ThreadQueue
+
+	changedRelationIds, changedRelationIdsOptions []string
+	collections                                   map[string]map[string]*SubObject
+
+	sourceService source.Service
+	app           *app.App
 }
 
 type WorkspaceParameters struct {
@@ -71,7 +85,7 @@ func (p *Workspaces) CreateObject(id thread.ID, sbType smartblock2.SmartBlockTyp
 	}
 	st.SetInStore([]string{source.WorkspaceCollection, threadInfo.ID.String()}, p.pbThreadInfoValueFromStruct(threadInfo))
 
-	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
+	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) DeleteObject(objectId string) error {
@@ -81,7 +95,17 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 		return err
 	}
 	st.RemoveFromStore([]string{source.WorkspaceCollection, objectId})
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (p *Workspaces) DeleteSubObject(objectId string) error {
+	st := p.NewState()
+	err := p.ObjectStore().DeleteObject(objectId)
+	if err != nil {
+		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id(), err.Error())
+	}
+	st.RemoveFromStore([]string{collectionKeyRelationOptions, objectId})
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) GetAllObjects() []string {
@@ -113,7 +137,7 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	}
 	st.SetInStore([]string{source.CreatorCollection, deviceId}, p.pbCreatorInfoValue(info))
 
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) (int, error) {
@@ -130,7 +154,7 @@ func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) (int, error) {
 		migrated++
 	}
 
-	err := p.Apply(st)
+	err := p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 	if err != nil {
 		return 0, err
 	}
@@ -150,7 +174,7 @@ func (p *Workspaces) AddObject(objectId string, key string, addrs []string) erro
 	}
 	st.SetInStore([]string{source.WorkspaceCollection, objectId}, p.pbThreadInfoValue(objectId, key, addrs))
 
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
@@ -187,10 +211,13 @@ func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 
 	st := p.NewState()
 	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
+	p.app = ctx.App
+	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
+
 	if ctx.Source.Type() != model.SmartBlockType_Workspace && ctx.Source.Type() != model.SmartBlockType_AccountOld {
 		return fmt.Errorf("source type should be a workspace or an old account")
 	}
@@ -203,7 +230,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	dataviewAllHighlightedObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
+			Source:    []string{addr.RelationKeyToIdPrefix + bundle.RelationKeyName.String()},
 			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)},
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -246,7 +273,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	dataviewAllWorkspaceObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
+			Source:    []string{addr.RelationKeyToIdPrefix + bundle.RelationKeyName.String()},
 			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName), bundle.MustGetRelation(bundle.RelationKeyCreator)},
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -284,7 +311,26 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	err = smartblock.ObjectApplyTemplate(p, ctx.State,
+	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
+
+	data := ctx.State.Store()
+	if data != nil && data.Fields != nil {
+		for collName, coll := range data.Fields {
+			if collName == source.WorkspaceCollection {
+				continue
+			}
+			if coll != nil && coll.GetStructValue() != nil {
+				for sub := range coll.GetStructValue().GetFields() {
+					if err = p.initSubObject(ctx.State, collName, sub); err != nil {
+						return
+					}
+				}
+			}
+		}
+	}
+
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
@@ -294,20 +340,14 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, false),
-		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, false),
+		template.WithDataviewID(template.DataviewBlockId, dataviewAllWorkspaceObjects, false),
+		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 	)
-	if err != nil {
-		return err
-	}
-	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
-	return p.Set.SetNewRecordDefaultFields("dataview", defaultValue)
 }
 
 // TODO: try to save results from processing of previous state and get changes from apply for performance
-func (p *Workspaces) updateObjects() {
-	st := p.NewState()
-
-	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
+func (p *Workspaces) updateObjects(info smartblock.ApplyInfo) error {
+	objects, parameters := p.workspaceObjectsAndParametersFromState(info.State)
 	startTime := time.Now()
 	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
 	metrics.SharedClient.RecordEvent(metrics.ProcessThreadsEvent{WaitTimeMs: time.Now().Sub(startTime).Milliseconds()})
@@ -317,6 +357,7 @@ func (p *Workspaces) updateObjects() {
 		delete(storedParameters, p.Id())
 		p.updateDetailsIfParametersChanged(storedParameters, parameters)
 	}
+	return nil
 }
 
 func (p *Workspaces) storedRecordsForWorkspace() []database2.Record {
@@ -474,4 +515,144 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 		Key:   thread.NewKey(sk, pk).String(),
 		Addrs: pbtypes.GetStringListValue(fields.Fields[collectionKeyAddrs]),
 	}, nil
+}
+
+func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create relation: no data")
+	}
+
+	if v, ok := details.GetFields()[bundle.RelationKeyRelationFormat.String()]; !ok {
+		return "", nil, fmt.Errorf("missing relation format")
+	} else if i, ok := v.Kind.(*types.Value_NumberValue); !ok {
+		return "", nil, fmt.Errorf("invalid relation format: not a number")
+	} else if model.RelationFormat(int(i.NumberValue)).String() == "" {
+		return "", nil, fmt.Errorf("invalid relation format: unknown enum")
+	}
+
+	if pbtypes.GetString(details, bundle.RelationKeyName.String()) == "" {
+		return "", nil, fmt.Errorf("missing relation name")
+	}
+
+	object = pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(object, bundle.RelationKeyRelationKey.String())
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		// no need to check for the generated bson's
+		if st.HasInStore([]string{collectionKeyRelations, key}) {
+			return id, object, ErrSubObjectAlreadyExists
+		}
+		if bundle.HasRelation(key) {
+			object.Fields[bundle.RelationKeySource.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
+		}
+	}
+	id = addr.RelationKeyToIdPrefix + key
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
+	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
+	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(object))
+	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *types.Struct, err error) {
+	st := w.NewState()
+	id, object, err = w.createRelation(st, details)
+	if err != nil {
+		return
+	}
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelations(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	st := w.NewState()
+	for _, rel := range details {
+		id, object, err2 := w.createRelation(st, rel)
+		if err2 != nil {
+			log.Errorf("failed to createRelation: %s", err2.Error())
+			continue
+		}
+		ids = append(ids, id)
+		objects = append(objects, object)
+	}
+
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create option: no data")
+	}
+
+	if pbtypes.GetString(details, "relationOptionText") != "" {
+		return "", nil, fmt.Errorf("use name instead of relationOptionText")
+	} else if pbtypes.GetString(details, "name") == "" {
+		return "", nil, fmt.Errorf("name is empty")
+	} else if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelationOption.URL() {
+		return "", nil, fmt.Errorf("invalid type: not an option")
+	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
+		return "", nil, fmt.Errorf("invalid relation key: unknown enum")
+	}
+
+	object = pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(object, bundle.RelationKeyId.String())
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		// no need to check for the generated bson's
+		if st.HasInStore([]string{collectionKeyRelationOptions, key}) {
+			return key, object, ErrSubObjectAlreadyExists
+		}
+	}
+	// options has a short id for now to avoid migration of values inside relations
+	id = key
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
+	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
+
+	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(object))
+	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, object *types.Struct, err error) {
+	st := w.NewState()
+	id, object, err = w.createRelationOption(st, details)
+	if err != nil {
+		return "", nil, err
+	}
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) CreateRelationOptions(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	st := w.NewState()
+	for _, rel := range details {
+		id, object, err2 := w.createRelationOption(st, rel)
+		if err2 != nil {
+			log.Errorf("failed to createRelationOption: %s", err2.Error())
+			continue
+		}
+		ids = append(ids, id)
+		objects = append(objects, object)
+	}
+
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
 }

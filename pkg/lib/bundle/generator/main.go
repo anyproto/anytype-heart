@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io/ioutil"
 	"log"
 	"os"
@@ -117,14 +118,15 @@ func generateRelations() error {
 		var dict = make(map[Code]Code)
 		for _, relation := range relations {
 			dictS := Dict{
-				Id("Key"):            Lit(relation.Key),
-				Id("Name"):           Lit(relation.Name),
-				Id("Format"):         Qual(relPbPkg, "RelationFormat_"+relation.Format),
-				Id("DataSource"):     Qual(relPbPkg, "Relation_"+relation.Source),
-				Id("ReadOnly"):       Lit(relation.Readonly),
+				Id("Id"):               Lit(addr.BundledRelationURLPrefix + relation.Key),
+				Id("Key"):              Lit(relation.Key),
+				Id("Name"):             Lit(relation.Name),
+				Id("Format"):           Qual(relPbPkg, "RelationFormat_"+relation.Format),
+				Id("DataSource"):       Qual(relPbPkg, "Relation_"+relation.Source),
+				Id("ReadOnly"):         Lit(relation.Readonly),
 				Id("ReadOnlyRelation"): Lit(true),
-				Id("Description"):    Lit(relation.Description),
-				Id("Scope"):          Qual(relPbPkg, "Relation_type"),
+				Id("Description"):      Lit(relation.Description),
+				Id("Scope"):            Qual(relPbPkg, "Relation_type"),
 			}
 			if relation.Hidden {
 				dictS[Id("Hidden")] = Lit(relation.Hidden)
@@ -222,9 +224,9 @@ func generateTypes() error {
 						log.Fatalf("duplicate relation '%s' for object type '%s'", rel, ot.ID)
 					}
 					m[rel] = struct{}{}
-					t = append(t, Id("relations").Index(Id(relConst(rel))))
+					t = append(t, Id("MustGetRelationLink").Add(CallFunc(func(g *Group) { g.Id(relConst(rel)) })))
 				}
-				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
+				map[Code]Code(dictS)[Id("RelationLinks")] = Index().Op("*").Qual(relPbPkg, "RelationLink").Values(t...)
 			}
 			if len(ot.Types) > 0 {
 				var t []Code

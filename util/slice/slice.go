@@ -6,6 +6,19 @@ import (
 	"sort"
 )
 
+func Union(a, b []string) []string {
+	set := make(map[string]struct{}, len(a))
+	for _, v := range a {
+		set[v] = struct{}{}
+	}
+	for _, v := range b {
+		if _, ok := set[v]; !ok {
+			a = append(a, v)
+		}
+	}
+	return a
+}
+
 func DifferenceRemovedAdded(a, b []string) (removed []string, added []string) {
 	var amap = map[string]struct{}{}
 	var bmap = map[string]struct{}{}
@@ -117,4 +130,22 @@ func UnsortedEquals(s1, s2 []string) bool {
 	sort.Strings(s2Sorted)
 
 	return SortedEquals(s1Sorted, s2Sorted)
+}
+
+func HasPrefix(value, prefix []string) bool {
+	if len(value) < len(prefix) {
+		return false
+	}
+	for i, p := range prefix {
+		if value[i] != p {
+			return false
+		}
+	}
+	return true
+}
+
+func Copy(s []string) []string {
+	res := make([]string, len(s))
+	copy(res, s)
+	return res
 }

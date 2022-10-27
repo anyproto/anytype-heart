@@ -22,13 +22,15 @@
     - [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove)
     - [Change.RelationAdd](#anytype-Change-RelationAdd)
     - [Change.RelationRemove](#anytype-Change-RelationRemove)
-    - [Change.RelationUpdate](#anytype-Change-RelationUpdate)
-    - [Change.RelationUpdate.Dict](#anytype-Change-RelationUpdate-Dict)
-    - [Change.RelationUpdate.ObjectTypes](#anytype-Change-RelationUpdate-ObjectTypes)
     - [Change.Snapshot](#anytype-Change-Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype-Change-Snapshot-LogHeadsEntry)
     - [Change.StoreKeySet](#anytype-Change-StoreKeySet)
     - [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset)
+    - [Change._RelationAdd](#anytype-Change-_RelationAdd)
+    - [Change._RelationRemove](#anytype-Change-_RelationRemove)
+    - [Change._RelationUpdate](#anytype-Change-_RelationUpdate)
+    - [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict)
+    - [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes)
   
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
@@ -206,10 +208,6 @@
     - [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error)
-    - [Rpc.BlockDataview.Relation.Update](#anytype-Rpc-BlockDataview-Relation-Update)
-    - [Rpc.BlockDataview.Relation.Update.Request](#anytype-Rpc-BlockDataview-Relation-Update-Request)
-    - [Rpc.BlockDataview.Relation.Update.Response](#anytype-Rpc-BlockDataview-Relation-Update-Response)
-    - [Rpc.BlockDataview.Relation.Update.Response.Error](#anytype-Rpc-BlockDataview-Relation-Update-Response-Error)
     - [Rpc.BlockDataview.SetSource](#anytype-Rpc-BlockDataview-SetSource)
     - [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request)
     - [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response)
@@ -235,32 +233,6 @@
     - [Rpc.BlockDataview.View.Update.Request](#anytype-Rpc-BlockDataview-View-Update-Request)
     - [Rpc.BlockDataview.View.Update.Response](#anytype-Rpc-BlockDataview-View-Update-Response)
     - [Rpc.BlockDataview.View.Update.Response.Error](#anytype-Rpc-BlockDataview-View-Update-Response-Error)
-    - [Rpc.BlockDataviewRecord](#anytype-Rpc-BlockDataviewRecord)
-    - [Rpc.BlockDataviewRecord.Create](#anytype-Rpc-BlockDataviewRecord-Create)
-    - [Rpc.BlockDataviewRecord.Create.Request](#anytype-Rpc-BlockDataviewRecord-Create-Request)
-    - [Rpc.BlockDataviewRecord.Create.Response](#anytype-Rpc-BlockDataviewRecord-Create-Response)
-    - [Rpc.BlockDataviewRecord.Create.Response.Error](#anytype-Rpc-BlockDataviewRecord-Create-Response-Error)
-    - [Rpc.BlockDataviewRecord.Delete](#anytype-Rpc-BlockDataviewRecord-Delete)
-    - [Rpc.BlockDataviewRecord.Delete.Request](#anytype-Rpc-BlockDataviewRecord-Delete-Request)
-    - [Rpc.BlockDataviewRecord.Delete.Response](#anytype-Rpc-BlockDataviewRecord-Delete-Response)
-    - [Rpc.BlockDataviewRecord.Delete.Response.Error](#anytype-Rpc-BlockDataviewRecord-Delete-Response-Error)
-    - [Rpc.BlockDataviewRecord.RelationOption](#anytype-Rpc-BlockDataviewRecord-RelationOption)
-    - [Rpc.BlockDataviewRecord.RelationOption.Add](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add)
-    - [Rpc.BlockDataviewRecord.RelationOption.Add.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Request)
-    - [Rpc.BlockDataviewRecord.RelationOption.Add.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response)
-    - [Rpc.BlockDataviewRecord.RelationOption.Add.Response.Error](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response-Error)
-    - [Rpc.BlockDataviewRecord.RelationOption.Delete](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete)
-    - [Rpc.BlockDataviewRecord.RelationOption.Delete.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Request)
-    - [Rpc.BlockDataviewRecord.RelationOption.Delete.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response)
-    - [Rpc.BlockDataviewRecord.RelationOption.Delete.Response.Error](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response-Error)
-    - [Rpc.BlockDataviewRecord.RelationOption.Update](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update)
-    - [Rpc.BlockDataviewRecord.RelationOption.Update.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Request)
-    - [Rpc.BlockDataviewRecord.RelationOption.Update.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response)
-    - [Rpc.BlockDataviewRecord.RelationOption.Update.Response.Error](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response-Error)
-    - [Rpc.BlockDataviewRecord.Update](#anytype-Rpc-BlockDataviewRecord-Update)
-    - [Rpc.BlockDataviewRecord.Update.Request](#anytype-Rpc-BlockDataviewRecord-Update-Request)
-    - [Rpc.BlockDataviewRecord.Update.Response](#anytype-Rpc-BlockDataviewRecord-Update-Response)
-    - [Rpc.BlockDataviewRecord.Update.Response.Error](#anytype-Rpc-BlockDataviewRecord-Update-Response-Error)
     - [Rpc.BlockDiv](#anytype-Rpc-BlockDiv)
     - [Rpc.BlockDiv.ListSetStyle](#anytype-Rpc-BlockDiv-ListSetStyle)
     - [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request)
@@ -531,6 +503,18 @@
     - [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request)
     - [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response)
     - [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error)
+    - [Rpc.Object.CreateObjectType](#anytype-Rpc-Object-CreateObjectType)
+    - [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request)
+    - [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response)
+    - [Rpc.Object.CreateObjectType.Response.Error](#anytype-Rpc-Object-CreateObjectType-Response-Error)
+    - [Rpc.Object.CreateRelation](#anytype-Rpc-Object-CreateRelation)
+    - [Rpc.Object.CreateRelation.Request](#anytype-Rpc-Object-CreateRelation-Request)
+    - [Rpc.Object.CreateRelation.Response](#anytype-Rpc-Object-CreateRelation-Response)
+    - [Rpc.Object.CreateRelation.Response.Error](#anytype-Rpc-Object-CreateRelation-Response-Error)
+    - [Rpc.Object.CreateRelationOption](#anytype-Rpc-Object-CreateRelationOption)
+    - [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request)
+    - [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response)
+    - [Rpc.Object.CreateRelationOption.Response.Error](#anytype-Rpc-Object-CreateRelationOption-Response-Error)
     - [Rpc.Object.CreateSet](#anytype-Rpc-Object-CreateSet)
     - [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request)
     - [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response)
@@ -609,6 +593,10 @@
     - [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request)
     - [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response)
     - [Rpc.Object.SetDetails.Response.Error](#anytype-Rpc-Object-SetDetails-Response-Error)
+    - [Rpc.Object.SetInternalFlags](#anytype-Rpc-Object-SetInternalFlags)
+    - [Rpc.Object.SetInternalFlags.Request](#anytype-Rpc-Object-SetInternalFlags-Request)
+    - [Rpc.Object.SetInternalFlags.Response](#anytype-Rpc-Object-SetInternalFlags-Response)
+    - [Rpc.Object.SetInternalFlags.Response.Error](#anytype-Rpc-Object-SetInternalFlags-Response-Error)
     - [Rpc.Object.SetIsArchived](#anytype-Rpc-Object-SetIsArchived)
     - [Rpc.Object.SetIsArchived.Request](#anytype-Rpc-Object-SetIsArchived-Request)
     - [Rpc.Object.SetIsArchived.Response](#anytype-Rpc-Object-SetIsArchived-Response)
@@ -671,32 +659,7 @@
     - [Rpc.ObjectRelation.RemoveFeatured.Request](#anytype-Rpc-ObjectRelation-RemoveFeatured-Request)
     - [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error)
-    - [Rpc.ObjectRelation.Update](#anytype-Rpc-ObjectRelation-Update)
-    - [Rpc.ObjectRelation.Update.Request](#anytype-Rpc-ObjectRelation-Update-Request)
-    - [Rpc.ObjectRelation.Update.Response](#anytype-Rpc-ObjectRelation-Update-Response)
-    - [Rpc.ObjectRelation.Update.Response.Error](#anytype-Rpc-ObjectRelation-Update-Response-Error)
-    - [Rpc.ObjectRelationOption](#anytype-Rpc-ObjectRelationOption)
-    - [Rpc.ObjectRelationOption.Add](#anytype-Rpc-ObjectRelationOption-Add)
-    - [Rpc.ObjectRelationOption.Add.Request](#anytype-Rpc-ObjectRelationOption-Add-Request)
-    - [Rpc.ObjectRelationOption.Add.Response](#anytype-Rpc-ObjectRelationOption-Add-Response)
-    - [Rpc.ObjectRelationOption.Add.Response.Error](#anytype-Rpc-ObjectRelationOption-Add-Response-Error)
-    - [Rpc.ObjectRelationOption.Delete](#anytype-Rpc-ObjectRelationOption-Delete)
-    - [Rpc.ObjectRelationOption.Delete.Request](#anytype-Rpc-ObjectRelationOption-Delete-Request)
-    - [Rpc.ObjectRelationOption.Delete.Response](#anytype-Rpc-ObjectRelationOption-Delete-Response)
-    - [Rpc.ObjectRelationOption.Delete.Response.Error](#anytype-Rpc-ObjectRelationOption-Delete-Response-Error)
-    - [Rpc.ObjectRelationOption.Update](#anytype-Rpc-ObjectRelationOption-Update)
-    - [Rpc.ObjectRelationOption.Update.Request](#anytype-Rpc-ObjectRelationOption-Update-Request)
-    - [Rpc.ObjectRelationOption.Update.Response](#anytype-Rpc-ObjectRelationOption-Update-Response)
-    - [Rpc.ObjectRelationOption.Update.Response.Error](#anytype-Rpc-ObjectRelationOption-Update-Response-Error)
     - [Rpc.ObjectType](#anytype-Rpc-ObjectType)
-    - [Rpc.ObjectType.Create](#anytype-Rpc-ObjectType-Create)
-    - [Rpc.ObjectType.Create.Request](#anytype-Rpc-ObjectType-Create-Request)
-    - [Rpc.ObjectType.Create.Response](#anytype-Rpc-ObjectType-Create-Response)
-    - [Rpc.ObjectType.Create.Response.Error](#anytype-Rpc-ObjectType-Create-Response-Error)
-    - [Rpc.ObjectType.List](#anytype-Rpc-ObjectType-List)
-    - [Rpc.ObjectType.List.Request](#anytype-Rpc-ObjectType-List-Request)
-    - [Rpc.ObjectType.List.Response](#anytype-Rpc-ObjectType-List-Response)
-    - [Rpc.ObjectType.List.Response.Error](#anytype-Rpc-ObjectType-List-Response-Error)
     - [Rpc.ObjectType.Relation](#anytype-Rpc-ObjectType-Relation)
     - [Rpc.ObjectType.Relation.Add](#anytype-Rpc-ObjectType-Relation-Add)
     - [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request)
@@ -710,15 +673,20 @@
     - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
     - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
     - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
-    - [Rpc.ObjectType.Relation.Update](#anytype-Rpc-ObjectType-Relation-Update)
-    - [Rpc.ObjectType.Relation.Update.Request](#anytype-Rpc-ObjectType-Relation-Update-Request)
-    - [Rpc.ObjectType.Relation.Update.Response](#anytype-Rpc-ObjectType-Relation-Update-Response)
-    - [Rpc.ObjectType.Relation.Update.Response.Error](#anytype-Rpc-ObjectType-Relation-Update-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
     - [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response)
     - [Rpc.Process.Cancel.Response.Error](#anytype-Rpc-Process-Cancel-Response-Error)
+    - [Rpc.Relation](#anytype-Rpc-Relation)
+    - [Rpc.Relation.ListRemoveOption](#anytype-Rpc-Relation-ListRemoveOption)
+    - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
+    - [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response)
+    - [Rpc.Relation.ListRemoveOption.Response.Error](#anytype-Rpc-Relation-ListRemoveOption-Response-Error)
+    - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
+    - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
+    - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
+    - [Rpc.Relation.Options.Response.Error](#anytype-Rpc-Relation-Options-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -836,19 +804,12 @@
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code)
-    - [Rpc.BlockDataview.Relation.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Update-Response-Error-Code)
     - [Rpc.BlockDataview.SetSource.Response.Error.Code](#anytype-Rpc-BlockDataview-SetSource-Response-Error-Code)
     - [Rpc.BlockDataview.View.Create.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Create-Response-Error-Code)
     - [Rpc.BlockDataview.View.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.View.SetActive.Response.Error.Code](#anytype-Rpc-BlockDataview-View-SetActive-Response-Error-Code)
     - [Rpc.BlockDataview.View.SetPosition.Response.Error.Code](#anytype-Rpc-BlockDataview-View-SetPosition-Response-Error-Code)
     - [Rpc.BlockDataview.View.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Update-Response-Error-Code)
-    - [Rpc.BlockDataviewRecord.Create.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-Create-Response-Error-Code)
-    - [Rpc.BlockDataviewRecord.Delete.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-Delete-Response-Error-Code)
-    - [Rpc.BlockDataviewRecord.RelationOption.Add.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response-Error-Code)
-    - [Rpc.BlockDataviewRecord.RelationOption.Delete.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response-Error-Code)
-    - [Rpc.BlockDataviewRecord.RelationOption.Update.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response-Error-Code)
-    - [Rpc.BlockDataviewRecord.Update.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-Update-Response-Error-Code)
     - [Rpc.BlockDiv.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockDiv-ListSetStyle-Response-Error-Code)
     - [Rpc.BlockFile.CreateAndUpload.Response.Error.Code](#anytype-Rpc-BlockFile-CreateAndUpload-Response-Error-Code)
     - [Rpc.BlockFile.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockFile-ListSetStyle-Response-Error-Code)
@@ -914,6 +875,9 @@
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
     - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
+    - [Rpc.Object.CreateObjectType.Response.Error.Code](#anytype-Rpc-Object-CreateObjectType-Response-Error-Code)
+    - [Rpc.Object.CreateRelation.Response.Error.Code](#anytype-Rpc-Object-CreateRelation-Response-Error-Code)
+    - [Rpc.Object.CreateRelationOption.Response.Error.Code](#anytype-Rpc-Object-CreateRelationOption-Response-Error-Code)
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
@@ -935,6 +899,7 @@
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.SetBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-SetBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.SetDetails.Response.Error.Code](#anytype-Rpc-Object-SetDetails-Response-Error-Code)
+    - [Rpc.Object.SetInternalFlags.Response.Error.Code](#anytype-Rpc-Object-SetInternalFlags-Response-Error-Code)
     - [Rpc.Object.SetIsArchived.Response.Error.Code](#anytype-Rpc-Object-SetIsArchived-Response-Error-Code)
     - [Rpc.Object.SetIsFavorite.Response.Error.Code](#anytype-Rpc-Object-SetIsFavorite-Response-Error-Code)
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype-Rpc-Object-SetLayout-Response-Error-Code)
@@ -950,17 +915,12 @@
     - [Rpc.ObjectRelation.Delete.Response.Error.Code](#anytype-Rpc-ObjectRelation-Delete-Response-Error-Code)
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
-    - [Rpc.ObjectRelation.Update.Response.Error.Code](#anytype-Rpc-ObjectRelation-Update-Response-Error-Code)
-    - [Rpc.ObjectRelationOption.Add.Response.Error.Code](#anytype-Rpc-ObjectRelationOption-Add-Response-Error-Code)
-    - [Rpc.ObjectRelationOption.Delete.Response.Error.Code](#anytype-Rpc-ObjectRelationOption-Delete-Response-Error-Code)
-    - [Rpc.ObjectRelationOption.Update.Response.Error.Code](#anytype-Rpc-ObjectRelationOption-Update-Response-Error-Code)
-    - [Rpc.ObjectType.Create.Response.Error.Code](#anytype-Rpc-ObjectType-Create-Response-Error-Code)
-    - [Rpc.ObjectType.List.Response.Error.Code](#anytype-Rpc-ObjectType-List-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-List-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
-    - [Rpc.ObjectType.Relation.Update.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Update-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
+    - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
+    - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.CreateFromObjectType.Response.Error.Code](#anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code)
@@ -994,10 +954,8 @@
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
     - [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate)
-    - [Event.Block.Dataview.RecordsDelete](#anytype-Event-Block-Dataview-RecordsDelete)
-    - [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert)
-    - [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet)
-    - [Event.Block.Dataview.RecordsUpdate](#anytype-Event-Block-Dataview-RecordsUpdate)
+    - [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete)
+    - [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet)
     - [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete)
     - [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet)
     - [Event.Block.Dataview.SliceChange](#anytype-Event-Block-Dataview-SliceChange)
@@ -1101,14 +1059,11 @@
     - [Event.Object.Details.Amend.KeyValue](#anytype-Event-Object-Details-Amend-KeyValue)
     - [Event.Object.Details.Set](#anytype-Event-Object-Details-Set)
     - [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset)
-    - [Event.Object.Relation](#anytype-Event-Object-Relation)
-    - [Event.Object.Relation.Remove](#anytype-Event-Object-Relation-Remove)
-    - [Event.Object.Relation.Set](#anytype-Event-Object-Relation-Set)
     - [Event.Object.Relations](#anytype-Event-Object-Relations)
     - [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend)
     - [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove)
-    - [Event.Object.Relations.Set](#anytype-Event-Object-Relations-Set)
     - [Event.Object.Remove](#anytype-Event-Object-Remove)
+    - [Event.Object.Restriction](#anytype-Event-Object-Restriction)
     - [Event.Object.Subscription](#anytype-Event-Object-Subscription)
     - [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add)
     - [Event.Object.Subscription.Counters](#anytype-Event-Object-Subscription-Counters)
@@ -1204,6 +1159,7 @@
     - [Range](#anytype-model-Range)
     - [Relation](#anytype-model-Relation)
     - [Relation.Option](#anytype-model-Relation-Option)
+    - [RelationLink](#anytype-model-RelationLink)
     - [RelationOptions](#anytype-model-RelationOptions)
     - [RelationWithValue](#anytype-model-RelationWithValue)
     - [Relations](#anytype-model-Relations)
@@ -1241,7 +1197,6 @@
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
-    - [Relation.Option.Scope](#anytype-model-Relation-Option-Scope)
     - [Relation.Scope](#anytype-model-Relation-Scope)
     - [RelationFormat](#anytype-model-RelationFormat)
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
@@ -1310,6 +1265,7 @@
 | ObjectDuplicate | [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request) | [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response) |  |
 | ObjectSetObjectType | [Rpc.Object.SetObjectType.Request](#anytype-Rpc-Object-SetObjectType-Request) | [Rpc.Object.SetObjectType.Response](#anytype-Rpc-Object-SetObjectType-Response) | ObjectSetObjectType sets an existing object type to the object so it will appear in sets and suggests relations from this type |
 | ObjectSetLayout | [Rpc.Object.SetLayout.Request](#anytype-Rpc-Object-SetLayout-Request) | [Rpc.Object.SetLayout.Response](#anytype-Rpc-Object-SetLayout-Response) |  |
+| ObjectSetInternalFlags | [Rpc.Object.SetInternalFlags.Request](#anytype-Rpc-Object-SetInternalFlags-Request) | [Rpc.Object.SetInternalFlags.Response](#anytype-Rpc-Object-SetInternalFlags-Response) |  |
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype-Rpc-Object-SetIsFavorite-Request) | [Rpc.Object.SetIsFavorite.Response](#anytype-Rpc-Object-SetIsFavorite-Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype-Rpc-Object-SetIsArchived-Request) | [Rpc.Object.SetIsArchived.Response](#anytype-Rpc-Object-SetIsArchived-Response) |  |
 | ObjectListDuplicate | [Rpc.Object.ListDuplicate.Request](#anytype-Rpc-Object-ListDuplicate-Request) | [Rpc.Object.ListDuplicate.Response](#anytype-Rpc-Object-ListDuplicate-Response) |  |
@@ -1328,20 +1284,18 @@
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
 | ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
+| ObjectCreateRelation | [Rpc.Object.CreateRelation.Request](#anytype-Rpc-Object-CreateRelation-Request) | [Rpc.Object.CreateRelation.Response](#anytype-Rpc-Object-CreateRelation-Response) | Relations *** |
+| ObjectCreateRelationOption | [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request) | [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response) |  |
+| RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response) |  |
+| RelationOptions | [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request) | [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request) | [Rpc.ObjectRelation.Add.Response](#anytype-Rpc-ObjectRelation-Add-Response) | Object Relations *** |
-| ObjectRelationUpdate | [Rpc.ObjectRelation.Update.Request](#anytype-Rpc-ObjectRelation-Update-Request) | [Rpc.ObjectRelation.Update.Response](#anytype-Rpc-ObjectRelation-Update-Response) |  |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype-Rpc-ObjectRelation-Delete-Request) | [Rpc.ObjectRelation.Delete.Response](#anytype-Rpc-ObjectRelation-Delete-Response) |  |
 | ObjectRelationAddFeatured | [Rpc.ObjectRelation.AddFeatured.Request](#anytype-Rpc-ObjectRelation-AddFeatured-Request) | [Rpc.ObjectRelation.AddFeatured.Response](#anytype-Rpc-ObjectRelation-AddFeatured-Response) |  |
 | ObjectRelationRemoveFeatured | [Rpc.ObjectRelation.RemoveFeatured.Request](#anytype-Rpc-ObjectRelation-RemoveFeatured-Request) | [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response) |  |
 | ObjectRelationListAvailable | [Rpc.ObjectRelation.ListAvailable.Request](#anytype-Rpc-ObjectRelation-ListAvailable-Request) | [Rpc.ObjectRelation.ListAvailable.Response](#anytype-Rpc-ObjectRelation-ListAvailable-Response) |  |
-| ObjectRelationOptionAdd | [Rpc.ObjectRelationOption.Add.Request](#anytype-Rpc-ObjectRelationOption-Add-Request) | [Rpc.ObjectRelationOption.Add.Response](#anytype-Rpc-ObjectRelationOption-Add-Response) |  |
-| ObjectRelationOptionUpdate | [Rpc.ObjectRelationOption.Update.Request](#anytype-Rpc-ObjectRelationOption-Update-Request) | [Rpc.ObjectRelationOption.Update.Response](#anytype-Rpc-ObjectRelationOption-Update-Response) |  |
-| ObjectRelationOptionDelete | [Rpc.ObjectRelationOption.Delete.Request](#anytype-Rpc-ObjectRelationOption-Delete-Request) | [Rpc.ObjectRelationOption.Delete.Response](#anytype-Rpc-ObjectRelationOption-Delete-Response) |  |
-| ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype-Rpc-ObjectType-Create-Request) | [Rpc.ObjectType.Create.Response](#anytype-Rpc-ObjectType-Create-Response) | ObjectType commands *** |
-| ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype-Rpc-ObjectType-List-Request) | [Rpc.ObjectType.List.Response](#anytype-Rpc-ObjectType-List-Response) | ObjectTypeList lists all object types both bundled and created by user |
+| ObjectCreateObjectType | [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request) | [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response) | ObjectType commands *** |
 | ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype-Rpc-ObjectType-Relation-List-Request) | [Rpc.ObjectType.Relation.List.Response](#anytype-Rpc-ObjectType-Relation-List-Response) |  |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
-| ObjectTypeRelationUpdate | [Rpc.ObjectType.Relation.Update.Request](#anytype-Rpc-ObjectType-Relation-Update-Request) | [Rpc.ObjectType.Relation.Update.Response](#anytype-Rpc-ObjectType-Relation-Update-Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
@@ -1402,17 +1356,10 @@
 | BlockDataviewViewSetPosition | [Rpc.BlockDataview.View.SetPosition.Request](#anytype-Rpc-BlockDataview-View-SetPosition-Request) | [Rpc.BlockDataview.View.SetPosition.Response](#anytype-Rpc-BlockDataview-View-SetPosition-Response) |  |
 | BlockDataviewSetSource | [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request) | [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response) |  |
 | BlockDataviewRelationAdd | [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request) | [Rpc.BlockDataview.Relation.Add.Response](#anytype-Rpc-BlockDataview-Relation-Add-Response) |  |
-| BlockDataviewRelationUpdate | [Rpc.BlockDataview.Relation.Update.Request](#anytype-Rpc-BlockDataview-Relation-Update-Request) | [Rpc.BlockDataview.Relation.Update.Response](#anytype-Rpc-BlockDataview-Relation-Update-Response) |  |
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response) |  |
 | BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response) |  |
 | BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
 | BlockDataviewObjectOrderUpdate | [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request) | [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response) |  |
-| BlockDataviewRecordCreate | [Rpc.BlockDataviewRecord.Create.Request](#anytype-Rpc-BlockDataviewRecord-Create-Request) | [Rpc.BlockDataviewRecord.Create.Response](#anytype-Rpc-BlockDataviewRecord-Create-Response) |  |
-| BlockDataviewRecordUpdate | [Rpc.BlockDataviewRecord.Update.Request](#anytype-Rpc-BlockDataviewRecord-Update-Request) | [Rpc.BlockDataviewRecord.Update.Response](#anytype-Rpc-BlockDataviewRecord-Update-Response) |  |
-| BlockDataviewRecordDelete | [Rpc.BlockDataviewRecord.Delete.Request](#anytype-Rpc-BlockDataviewRecord-Delete-Request) | [Rpc.BlockDataviewRecord.Delete.Response](#anytype-Rpc-BlockDataviewRecord-Delete-Response) |  |
-| BlockDataviewRecordRelationOptionAdd | [Rpc.BlockDataviewRecord.RelationOption.Add.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Request) | [Rpc.BlockDataviewRecord.RelationOption.Add.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response) |  |
-| BlockDataviewRecordRelationOptionUpdate | [Rpc.BlockDataviewRecord.RelationOption.Update.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Request) | [Rpc.BlockDataviewRecord.RelationOption.Update.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response) |  |
-| BlockDataviewRecordRelationOptionDelete | [Rpc.BlockDataviewRecord.RelationOption.Delete.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Request) | [Rpc.BlockDataviewRecord.RelationOption.Delete.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response) |  |
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
 | BlockTableExpand | [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request) | [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response) |  |
 | BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
@@ -1571,11 +1518,13 @@ the element of change tree used to store and internal apply smartBlock history
 | blockRemove | [Change.BlockRemove](#anytype-Change-BlockRemove) |  |  |
 | blockMove | [Change.BlockMove](#anytype-Change-BlockMove) |  |  |
 | blockDuplicate | [Change.BlockDuplicate](#anytype-Change-BlockDuplicate) |  |  |
-| detailsSet | [Change.DetailsSet](#anytype-Change-DetailsSet) |  |  |
-| detailsUnset | [Change.DetailsUnset](#anytype-Change-DetailsUnset) |  |  |
 | relationAdd | [Change.RelationAdd](#anytype-Change-RelationAdd) |  |  |
 | relationRemove | [Change.RelationRemove](#anytype-Change-RelationRemove) |  |  |
-| relationUpdate | [Change.RelationUpdate](#anytype-Change-RelationUpdate) |  |  |
+| detailsSet | [Change.DetailsSet](#anytype-Change-DetailsSet) |  |  |
+| detailsUnset | [Change.DetailsUnset](#anytype-Change-DetailsUnset) |  |  |
+| old_relationAdd | [Change._RelationAdd](#anytype-Change-_RelationAdd) |  | deprecated |
+| old_relationRemove | [Change._RelationRemove](#anytype-Change-_RelationRemove) |  |  |
+| old_relationUpdate | [Change._RelationUpdate](#anytype-Change-_RelationUpdate) |  |  |
 | objectTypeAdd | [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd) |  |  |
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove) |  |  |
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
@@ -1687,7 +1636,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
+| relationLinks | [model.RelationLink](#anytype-model-RelationLink) | repeated |  |
 
 
 
@@ -1702,58 +1651,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-RelationUpdate"></a>
-
-### Change.RelationUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| format | [model.RelationFormat](#anytype-model-RelationFormat) |  |  |
-| name | [string](#string) |  |  |
-| defaultValue | [google.protobuf.Value](#google-protobuf-Value) |  |  |
-| objectTypes | [Change.RelationUpdate.ObjectTypes](#anytype-Change-RelationUpdate-ObjectTypes) |  |  |
-| multi | [bool](#bool) |  |  |
-| selectDict | [Change.RelationUpdate.Dict](#anytype-Change-RelationUpdate-Dict) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-RelationUpdate-Dict"></a>
-
-### Change.RelationUpdate.Dict
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| dict | [model.Relation.Option](#anytype-model-Relation-Option) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-RelationUpdate-ObjectTypes"></a>
-
-### Change.RelationUpdate.ObjectTypes
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypes | [string](#string) | repeated |  |
+| relationKey | [string](#string) | repeated |  |
 
 
 
@@ -1818,6 +1716,87 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Change-_RelationAdd"></a>
+
+### Change._RelationAdd
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relation | [model.Relation](#anytype-model-Relation) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-_RelationRemove"></a>
+
+### Change._RelationRemove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-_RelationUpdate"></a>
+
+### Change._RelationUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| format | [model.RelationFormat](#anytype-model-RelationFormat) |  |  |
+| name | [string](#string) |  |  |
+| defaultValue | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+| objectTypes | [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes) |  |  |
+| multi | [bool](#bool) |  |  |
+| selectDict | [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-_RelationUpdate-Dict"></a>
+
+### Change._RelationUpdate.Dict
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dict | [model.Relation.Option](#anytype-model-Relation-Option) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Change-_RelationUpdate-ObjectTypes"></a>
+
+### Change._RelationUpdate.ObjectTypes
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypes | [string](#string) | repeated |  |
 
 
 
@@ -4227,7 +4206,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -4244,8 +4223,6 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockDataview.Relation.Add.Response.Error](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-| relationKey | [string](#string) |  | deprecated |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
 
 
 
@@ -4288,7 +4265,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
-| relationKey | [string](#string) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -4378,66 +4355,6 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-Update"></a>
-
-### Rpc.BlockDataview.Relation.Update
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-Update-Request"></a>
-
-### Rpc.BlockDataview.Relation.Update.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block to add relation |
-| relationKey | [string](#string) |  | key of relation to update |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-Update-Response"></a>
-
-### Rpc.BlockDataview.Relation.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.Relation.Update.Response.Error](#anytype-Rpc-BlockDataview-Relation-Update-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Relation-Update-Response-Error"></a>
-
-### Rpc.BlockDataview.Relation.Update.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.Relation.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Update-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4807,388 +4724,6 @@ set the current active view (persisted only within a session)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.View.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Update-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord"></a>
-
-### Rpc.BlockDataviewRecord
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Create"></a>
-
-### Rpc.BlockDataviewRecord.Create
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Create-Request"></a>
-
-### Rpc.BlockDataviewRecord.Create.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| record | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| templateId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Create-Response"></a>
-
-### Rpc.BlockDataviewRecord.Create.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataviewRecord.Create.Response.Error](#anytype-Rpc-BlockDataviewRecord-Create-Response-Error) |  |  |
-| record | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Create-Response-Error"></a>
-
-### Rpc.BlockDataviewRecord.Create.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataviewRecord.Create.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-Create-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Delete"></a>
-
-### Rpc.BlockDataviewRecord.Delete
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Delete-Request"></a>
-
-### Rpc.BlockDataviewRecord.Delete.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| recordId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Delete-Response"></a>
-
-### Rpc.BlockDataviewRecord.Delete.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataviewRecord.Delete.Response.Error](#anytype-Rpc-BlockDataviewRecord-Delete-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Delete-Response-Error"></a>
-
-### Rpc.BlockDataviewRecord.Delete.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataviewRecord.Delete.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-Delete-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Add"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Add
-Add may return existing option in case object specified with recordId already have the option with the same name or ID
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Request"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Add.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block to add relation |
-| relationKey | [string](#string) |  | relation key to add the option |
-| option | [model.Relation.Option](#anytype-model-Relation-Option) |  | id of select options will be autogenerated |
-| recordId | [string](#string) |  | id of record which is used to add an option |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Add.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataviewRecord.RelationOption.Add.Response.Error](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-| option | [model.Relation.Option](#anytype-model-Relation-Option) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response-Error"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Add.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataviewRecord.RelationOption.Add.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Delete"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Delete
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Request"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Delete.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block to add relation |
-| relationKey | [string](#string) |  | relation key to add the option |
-| optionId | [string](#string) |  | id of select options to remove |
-| recordId | [string](#string) |  | id of record which is used to delete an option |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Delete.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataviewRecord.RelationOption.Delete.Response.Error](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response-Error"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Delete.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataviewRecord.RelationOption.Delete.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Update"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Update
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Request"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Update.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block to add relation |
-| relationKey | [string](#string) |  | relation key to add the option |
-| option | [model.Relation.Option](#anytype-model-Relation-Option) |  | id of select options will be autogenerated |
-| recordId | [string](#string) |  | id of record which is used to update an option |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataviewRecord.RelationOption.Update.Response.Error](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response-Error"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Update.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataviewRecord.RelationOption.Update.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Update"></a>
-
-### Rpc.BlockDataviewRecord.Update
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Update-Request"></a>
-
-### Rpc.BlockDataviewRecord.Update.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| recordId | [string](#string) |  |  |
-| record | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Update-Response"></a>
-
-### Rpc.BlockDataviewRecord.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataviewRecord.Update.Response.Error](#anytype-Rpc-BlockDataviewRecord-Update-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Update-Response-Error"></a>
-
-### Rpc.BlockDataviewRecord.Update.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataviewRecord.Update.Response.Error.Code](#anytype-Rpc-BlockDataviewRecord-Update-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -5820,7 +5355,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
+| relationKey | [string](#string) |  |  |
 
 
 
@@ -8281,7 +7816,7 @@ returns list of versions (changes)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | lastVersionId | [string](#string) |  | when indicated, results will include versions before given id |
 | limit | [int32](#int32) |  | desired count of versions |
 
@@ -8340,7 +7875,7 @@ returns list of versions (changes)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | versionId | [string](#string) |  |  |
 
 
@@ -8397,7 +7932,7 @@ returns blockShow event for given version
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | versionId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
 
@@ -9052,8 +8587,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Create.Response.Error](#anytype-Rpc-Object-Create-Response-Error) |  |  |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -9094,7 +8630,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| url | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -9110,7 +8646,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error) |  |  |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -9126,6 +8663,182 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateObjectType"></a>
+
+### Rpc.Object.CreateObjectType
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateObjectType-Request"></a>
+
+### Rpc.Object.CreateObjectType.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateObjectType-Response"></a>
+
+### Rpc.Object.CreateObjectType.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CreateObjectType.Response.Error](#anytype-Rpc-Object-CreateObjectType-Response-Error) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateObjectType-Response-Error"></a>
+
+### Rpc.Object.CreateObjectType.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CreateObjectType.Response.Error.Code](#anytype-Rpc-Object-CreateObjectType-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelation"></a>
+
+### Rpc.Object.CreateRelation
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelation-Request"></a>
+
+### Rpc.Object.CreateRelation.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelation-Response"></a>
+
+### Rpc.Object.CreateRelation.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CreateRelation.Response.Error](#anytype-Rpc-Object-CreateRelation-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+| key | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelation-Response-Error"></a>
+
+### Rpc.Object.CreateRelation.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CreateRelation.Response.Error.Code](#anytype-Rpc-Object-CreateRelation-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelationOption"></a>
+
+### Rpc.Object.CreateRelationOption
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelationOption-Request"></a>
+
+### Rpc.Object.CreateRelationOption.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelationOption-Response"></a>
+
+### Rpc.Object.CreateRelationOption.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CreateRelationOption.Response.Error](#anytype-Rpc-Object-CreateRelationOption-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateRelationOption-Response-Error"></a>
+
+### Rpc.Object.CreateRelationOption.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CreateRelationOption.Response.Error.Code](#anytype-Rpc-Object-CreateRelationOption-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9170,8 +8883,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateSet.Response.Error](#anytype-Rpc-Object-CreateSet-Response-Error) |  |  |
-| id | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -9766,6 +9480,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | contextId | [string](#string) |  | id of the context blo1k |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 
 
@@ -10303,6 +10018,64 @@ deprecated, to be removed |
 
 
 
+<a name="anytype-Rpc-Object-SetInternalFlags"></a>
+
+### Rpc.Object.SetInternalFlags
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetInternalFlags-Request"></a>
+
+### Rpc.Object.SetInternalFlags.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetInternalFlags-Response"></a>
+
+### Rpc.Object.SetInternalFlags.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SetInternalFlags.Response.Error](#anytype-Rpc-Object-SetInternalFlags-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetInternalFlags-Response-Error"></a>
+
+### Rpc.Object.SetInternalFlags.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SetInternalFlags.Response.Error.Code](#anytype-Rpc-Object-SetInternalFlags-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-SetIsArchived"></a>
 
 ### Rpc.Object.SetIsArchived
@@ -10613,6 +10386,7 @@ deprecated, to be removed |
 | contextId | [string](#string) |  | deprecated |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 
 
@@ -10932,7 +10706,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -10949,8 +10723,6 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectRelation.Add.Response.Error](#anytype-Rpc-ObjectRelation-Add-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-| relationKey | [string](#string) |  | deprecated |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
 
 
 
@@ -11204,367 +10976,10 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-ObjectRelation-Update"></a>
-
-### Rpc.ObjectRelation.Update
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelation-Update-Request"></a>
-
-### Rpc.ObjectRelation.Update.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| relationKey | [string](#string) |  | key of relation to update |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelation-Update-Response"></a>
-
-### Rpc.ObjectRelation.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectRelation.Update.Response.Error](#anytype-Rpc-ObjectRelation-Update-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelation-Update-Response-Error"></a>
-
-### Rpc.ObjectRelation.Update.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectRelation.Update.Response.Error.Code](#anytype-Rpc-ObjectRelation-Update-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption"></a>
-
-### Rpc.ObjectRelationOption
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Add"></a>
-
-### Rpc.ObjectRelationOption.Add
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Add-Request"></a>
-
-### Rpc.ObjectRelationOption.Add.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| relationKey | [string](#string) |  | relation key to add the option |
-| option | [model.Relation.Option](#anytype-model-Relation-Option) |  | id of select options will be autogenerated |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Add-Response"></a>
-
-### Rpc.ObjectRelationOption.Add.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectRelationOption.Add.Response.Error](#anytype-Rpc-ObjectRelationOption-Add-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-| option | [model.Relation.Option](#anytype-model-Relation-Option) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Add-Response-Error"></a>
-
-### Rpc.ObjectRelationOption.Add.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectRelationOption.Add.Response.Error.Code](#anytype-Rpc-ObjectRelationOption-Add-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Delete"></a>
-
-### Rpc.ObjectRelationOption.Delete
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Delete-Request"></a>
-
-### Rpc.ObjectRelationOption.Delete.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| relationKey | [string](#string) |  | relation key to add the option |
-| optionId | [string](#string) |  | id of select options to remove |
-| confirmRemoveAllValuesInRecords | [bool](#bool) |  | confirm remove all values in records |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Delete-Response"></a>
-
-### Rpc.ObjectRelationOption.Delete.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectRelationOption.Delete.Response.Error](#anytype-Rpc-ObjectRelationOption-Delete-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Delete-Response-Error"></a>
-
-### Rpc.ObjectRelationOption.Delete.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectRelationOption.Delete.Response.Error.Code](#anytype-Rpc-ObjectRelationOption-Delete-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Update"></a>
-
-### Rpc.ObjectRelationOption.Update
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Update-Request"></a>
-
-### Rpc.ObjectRelationOption.Update.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| relationKey | [string](#string) |  | relation key to add the option |
-| option | [model.Relation.Option](#anytype-model-Relation-Option) |  | id of select options will be autogenerated |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Update-Response"></a>
-
-### Rpc.ObjectRelationOption.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectRelationOption.Update.Response.Error](#anytype-Rpc-ObjectRelationOption-Update-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Update-Response-Error"></a>
-
-### Rpc.ObjectRelationOption.Update.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectRelationOption.Update.Response.Error.Code](#anytype-Rpc-ObjectRelationOption-Update-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-ObjectType"></a>
 
 ### Rpc.ObjectType
 
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Create"></a>
-
-### Rpc.ObjectType.Create
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Create-Request"></a>
-
-### Rpc.ObjectType.Create.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectType | [model.ObjectType](#anytype-model-ObjectType) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Create-Response"></a>
-
-### Rpc.ObjectType.Create.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Create.Response.Error](#anytype-Rpc-ObjectType-Create-Response-Error) |  |  |
-| objectType | [model.ObjectType](#anytype-model-ObjectType) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Create-Response-Error"></a>
-
-### Rpc.ObjectType.Create.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Create.Response.Error.Code](#anytype-Rpc-ObjectType-Create-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List"></a>
-
-### Rpc.ObjectType.List
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Request"></a>
-
-### Rpc.ObjectType.List.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Response"></a>
-
-### Rpc.ObjectType.List.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.List.Response.Error](#anytype-Rpc-ObjectType-List-Response-Error) |  |  |
-| objectTypes | [model.ObjectType](#anytype-model-ObjectType) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Response-Error"></a>
-
-### Rpc.ObjectType.List.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.List.Response.Error.Code](#anytype-Rpc-ObjectType-List-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -11600,7 +11015,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -11674,7 +11089,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Relation.List.Response.Error](#anytype-Rpc-ObjectType-Relation-List-Response-Error) |  |  |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
+| relations | [model.RelationLink](#anytype-model-RelationLink) | repeated |  |
 
 
 
@@ -11716,7 +11131,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
-| relationKey | [string](#string) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -11747,63 +11162,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Update"></a>
-
-### Rpc.ObjectType.Relation.Update
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Update-Request"></a>
-
-### Rpc.ObjectType.Relation.Update.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Update-Response"></a>
-
-### Rpc.ObjectType.Relation.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Relation.Update.Response.Error](#anytype-Rpc-ObjectType-Relation-Update-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Update-Response-Error"></a>
-
-### Rpc.ObjectType.Relation.Update.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Relation.Update.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Update-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11870,6 +11228,130 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation"></a>
+
+### Rpc.Relation
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListRemoveOption"></a>
+
+### Rpc.Relation.ListRemoveOption
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListRemoveOption-Request"></a>
+
+### Rpc.Relation.ListRemoveOption.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| optionIds | [string](#string) | repeated |  |
+| checkInObjects | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListRemoveOption-Response"></a>
+
+### Rpc.Relation.ListRemoveOption.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.ListRemoveOption.Response.Error](#anytype-Rpc-Relation-ListRemoveOption-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListRemoveOption-Response-Error"></a>
+
+### Rpc.Relation.ListRemoveOption.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-Options"></a>
+
+### Rpc.Relation.Options
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-Options-Request"></a>
+
+### Rpc.Relation.Options.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-Options-Response"></a>
+
+### Rpc.Relation.Options.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.Options.Response.Error](#anytype-Rpc-Relation-Options-Response-Error) |  |  |
+| options | [model.RelationOptions](#anytype-model-RelationOptions) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-Options-Response-Error"></a>
+
+### Rpc.Relation.Options.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -13533,19 +13015,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockDataview-Relation-Update-Response-Error-Code"></a>
-
-### Rpc.BlockDataview.Relation.Update.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-BlockDataview-SetSource-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.SetSource.Response.Error.Code
@@ -13614,84 +13083,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockDataview-View-Update-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.View.Update.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Create-Response-Error-Code"></a>
-
-### Rpc.BlockDataviewRecord.Create.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Delete-Response-Error-Code"></a>
-
-### Rpc.BlockDataviewRecord.Delete.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Add-Response-Error-Code"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Add.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response-Error-Code"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Delete.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response-Error-Code"></a>
-
-### Rpc.BlockDataviewRecord.RelationOption.Update.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-BlockDataviewRecord-Update-Response-Error-Code"></a>
-
-### Rpc.BlockDataviewRecord.Update.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -14556,6 +13947,46 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CreateObjectType-Response-Error-Code"></a>
+
+### Rpc.Object.CreateObjectType.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
+
+
+
+<a name="anytype-Rpc-Object-CreateRelation-Response-Error-Code"></a>
+
+### Rpc.Object.CreateRelation.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-CreateRelationOption-Response-Error-Code"></a>
+
+### Rpc.Object.CreateRelationOption.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-CreateSet-Response-Error-Code"></a>
 
 ### Rpc.Object.CreateSet.Response.Error.Code
@@ -14835,6 +14266,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-SetInternalFlags-Response-Error-Code"></a>
+
+### Rpc.Object.SetInternalFlags.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+
+
+
 <a name="anytype-Rpc-Object-SetIsArchived-Response-Error-Code"></a>
 
 ### Rpc.Object.SetIsArchived.Response.Error.Code
@@ -15034,86 +14479,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-ObjectRelation-Update-Response-Error-Code"></a>
-
-### Rpc.ObjectRelation.Update.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Add-Response-Error-Code"></a>
-
-### Rpc.ObjectRelationOption.Add.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Delete-Response-Error-Code"></a>
-
-### Rpc.ObjectRelationOption.Delete.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| SOME_RECORDS_HAS_RELATION_VALUE_WITH_THIS_OPTION | 3 | need to confirm with confirmRemoveAllValuesInRecords=true |
-
-
-
-<a name="anytype-Rpc-ObjectRelationOption-Update-Response-Error-Code"></a>
-
-### Rpc.ObjectRelationOption.Update.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-ObjectType-Create-Response-Error-Code"></a>
-
-### Rpc.ObjectType.Create.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
-
-
-
-<a name="anytype-Rpc-ObjectType-List-Response-Error-Code"></a>
-
-### Rpc.ObjectType.List.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Relation.Add.Response.Error.Code
@@ -15158,9 +14523,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-ObjectType-Relation-Update-Response-Error-Code"></a>
+<a name="anytype-Rpc-Process-Cancel-Response-Error-Code"></a>
 
-### Rpc.ObjectType.Relation.Update.Response.Error.Code
+### Rpc.Process.Cancel.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -15168,14 +14533,26 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
-| READONLY_OBJECT_TYPE | 4 | ... |
 
 
 
-<a name="anytype-Rpc-Process-Cancel-Response-Error-Code"></a>
+<a name="anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code"></a>
 
-### Rpc.Process.Cancel.Response.Error.Code
+### Rpc.Relation.ListRemoveOption.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| OPTION_USED_BY_OBJECTS | 3 |  |
+
+
+
+<a name="anytype-Rpc-Relation-Options-Response-Error-Code"></a>
+
+### Rpc.Relation.Options.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -15613,70 +14990,33 @@ B. Partial block load
 
 
 
-<a name="anytype-Event-Block-Dataview-RecordsDelete"></a>
+<a name="anytype-Event-Block-Dataview-OldRelationDelete"></a>
 
-### Event.Block.Dataview.RecordsDelete
-sent when client should remove existing records on the active view
+### Event.Block.Dataview.OldRelationDelete
+
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| removed | [string](#string) | repeated |  |
+| relationKey | [string](#string) |  | relation key to remove |
 
 
 
 
 
 
-<a name="anytype-Event-Block-Dataview-RecordsInsert"></a>
+<a name="anytype-Event-Block-Dataview-OldRelationSet"></a>
 
-### Event.Block.Dataview.RecordsInsert
-sent when client should insert new records on the active view
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
-| insertPosition | [uint32](#uint32) |  | position to insert |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Dataview-RecordsSet"></a>
-
-### Event.Block.Dataview.RecordsSet
-sent when the active view&#39;s visible records should be replaced
+### Event.Block.Dataview.OldRelationSet
+sent when the dataview relation has been changed or added
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
-| total | [uint32](#uint32) |  | total number of records |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Dataview-RecordsUpdate"></a>
-
-### Event.Block.Dataview.RecordsUpdate
-sent when client should update existing records on the active view
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated | records to update. Use &#39;id&#39; field to get records ids |
+| relationKey | [string](#string) |  | relation key to update |
+| relation | [model.Relation](#anytype-model-Relation) |  |  |
 
 
 
@@ -15692,7 +15032,7 @@ sent when client should update existing records on the active view
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| relationKey | [string](#string) |  | relation key to remove |
+| relationIds | [string](#string) | repeated | relation key to remove |
 
 
 
@@ -15708,8 +15048,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| relationKey | [string](#string) |  | relation key to update |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
+| relationLinks | [model.RelationLink](#anytype-model-RelationLink) | repeated | relation id to update |
 
 
 
@@ -15792,8 +15131,6 @@ sent when the view have been changed or added
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
 | view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) |  |  |
-| offset | [uint32](#uint32) |  | middleware will try to preserve the current aciveview&#39;s offset&amp;limit but may reset it in case it becomes invalid or not actual anymore |
-| limit | [uint32](#uint32) |  |  |
 
 
 
@@ -17213,7 +16550,6 @@ Precondition: user A opened a block
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |
-| objectRelationsSet | [Event.Object.Relations.Set](#anytype-Event-Object-Relations-Set) |  |  |
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype-Event-Object-Remove) |  |  |
@@ -17240,18 +16576,16 @@ Precondition: user A opened a block
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
 | blockSetTableRow | [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow) |  |  |
-| blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet) |  |  |
-| blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype-Event-Block-Dataview-RecordsUpdate) |  |  |
-| blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert) |  |  |
-| blockDataviewRecordsDelete | [Event.Block.Dataview.RecordsDelete](#anytype-Event-Block-Dataview-RecordsDelete) |  |  |
-| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
-| blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
-| blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  |  |
 | blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
 | blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate) |  |  |
+| blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
+| blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
+| blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
+| blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype-Event-User-Block-Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype-Event-User-Block-SelectRange) |  |  |
@@ -17354,49 +16688,6 @@ Unset existing detail keys
 
 
 
-<a name="anytype-Event-Object-Relation"></a>
-
-### Event.Object.Relation
-
-
-
-
-
-
-
-<a name="anytype-Event-Object-Relation-Remove"></a>
-
-### Event.Object.Relation.Remove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | context objectId |
-| relationKey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Object-Relation-Set"></a>
-
-### Event.Object.Relation.Set
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | context objectId |
-| relationKey | [string](#string) |  |  |
-| relation | [model.Relation](#anytype-model-Relation) |  | missing value means relation should be removed |
-
-
-
-
-
-
 <a name="anytype-Event-Object-Relations"></a>
 
 ### Event.Object.Relations
@@ -17416,7 +16707,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
+| relationLinks | [model.RelationLink](#anytype-model-RelationLink) | repeated |  |
 
 
 
@@ -17432,23 +16723,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| keys | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Event-Object-Relations-Set"></a>
-
-### Event.Object.Relations.Set
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | context objectId |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
+| relationIds | [string](#string) | repeated |  |
 
 
 
@@ -17464,6 +16739,22 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated | notifies that objects were removed |
+
+
+
+
+
+
+<a name="anytype-Event-Object-Restriction"></a>
+
+### Event.Object.Restriction
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| restrictions | [model.Restrictions](#anytype-model-Restrictions) |  |  |
 
 
 
@@ -18214,6 +17505,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
 | marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
 | deviceId | [string](#string) |  |  |
+| accountSpaceId | [string](#string) |  | marketplace template id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
@@ -18318,10 +17610,11 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
-| relations | [Relation](#anytype-model-Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
+| relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
 | activeView | [string](#string) |  | saved within a session |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 
 
 
@@ -18870,7 +18163,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  | leave empty in case you want to create the new one |
 | name | [string](#string) |  | name of objectType (can be localized for bundled types) |
-| relations | [Relation](#anytype-model-Relation) | repeated | cannot contain more than one Relation with the same RelationType |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | cannot contain more than one Relation with the same RelationType |
 | layout | [ObjectType.Layout](#anytype-model-ObjectType-Layout) |  |  |
 | iconEmoji | [string](#string) |  | emoji symbol |
 | description | [string](#string) |  |  |
@@ -18897,8 +18190,8 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
 | details | [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet) | repeated | details for the current and dependent objects |
 | type | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
-| objectTypes | [ObjectType](#anytype-model-ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| relations | [Relation](#anytype-model-Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED, use relationLinks instead |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
 | history | [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize) |  |  |
 
@@ -18980,6 +18273,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | key | [string](#string) |  | Key under which the value is stored in the map. Must be unique for the object type. It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types. |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  | format of the underlying data |
 | name | [string](#string) |  | name to show (can be localized for bundled types) |
@@ -19016,7 +18310,25 @@ scope from which this relation have been aggregated |
 | id | [string](#string) |  | id generated automatically if omitted |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
-| scope | [Relation.Option.Scope](#anytype-model-Relation-Option-Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+| relationKey | [string](#string) |  | 4 is reserved for old relation format
+
+stored |
+
+
+
+
+
+
+<a name="anytype-model-RelationLink"></a>
+
+### RelationLink
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
 
 
 
@@ -19112,9 +18424,10 @@ scope from which this relation have been aggregated |
 | blocks | [Block](#anytype-model-Block) | repeated |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | fileKeys | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| extraRelations | [Relation](#anytype-model-Relation) | repeated |  |
+| extraRelations | [Relation](#anytype-model-Relation) | repeated | deprecated |
 | objectTypes | [string](#string) | repeated |  |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 
 
 
@@ -19571,6 +18884,8 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | note | 9 |  |
 | space | 10 |  |
 | bookmark | 11 |  |
+| relationOptionsList | 12 |  |
+| relationOption | 13 |  |
 | database | 20 | to be released later |
 
 
@@ -19586,19 +18901,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | derived | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
 | local | 3 | stored locally |
-
-
-
-<a name="anytype-model-Relation-Option-Scope"></a>
-
-### Relation.Option.Scope
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| local | 0 | stored within the object/aggregated from set |
-| relation | 1 | aggregated from all relation of this relation&#39;s key |
-| format | 2 | aggregated from all relations of this relation&#39;s format |
 
 
 
@@ -19696,8 +18998,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | MarketplaceType | 272 |  |
 | MarketplaceRelation | 273 |  |
 | MarketplaceTemplate | 274 |  |
-| BundledRelation | 512 |  |
-| IndexedRelation | 513 |  |
+| BundledRelation | 512 | DEPRECATED |
+| SubObject | 513 |  |
 | BundledObjectType | 514 |  |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |

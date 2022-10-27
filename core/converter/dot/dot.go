@@ -101,7 +101,8 @@ func (d *dot) Add(st *state.State) error {
 	layout := pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())
 	n.Set("layout", fmt.Sprintf("%d", layout))
 
-	for _, rel := range st.ExtraRelations() {
+	// TODO: rewrite to relation service
+	for _, rel := range st.OldExtraRelations() {
 		if rel.Format != model.RelationFormat_object {
 			continue
 		}

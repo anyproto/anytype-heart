@@ -10,9 +10,9 @@
   },
   {
     "description": "Strict dictionary to select relation values from",
-    "format": "tag",
-    "hidden": false,
-    "key": "relationDict",
+    "format": "object",
+    "hidden": true,
+    "key": "relationOptionsDict",
     "maxCount": 0,
     "name": "Dictionary",
     "readonly": false,
@@ -83,6 +83,26 @@
     "key": "relationFormatObjectTypes",
     "maxCount": 0,
     "name": "Object type",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Relation key",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "relationKey",
+    "maxCount": 1,
+    "name": "Relation key",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Relation option color",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "relationOptionColor",
+    "maxCount": 1,
+    "name": "Relation option color",
     "readonly": true,
     "source": "details"
   },
@@ -266,6 +286,16 @@
     "key": "relationFormat",
     "maxCount": 1,
     "name": "Format",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Indicates whether the relation value is readonly",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "relationReadonlyValue",
+    "maxCount": 1,
+    "name": "Relation value is readonly",
     "readonly": true,
     "source": "details"
   },
@@ -893,7 +923,7 @@
     "key": "addedDate",
     "maxCount": 1,
     "name": "Added date",
-    "readonly": false,
+    "readonly": true,
     "source": "details"
   },
   {
@@ -1599,6 +1629,16 @@
     "name": "IMDb rating",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "List of smartblock types",
+    "format": "number",
+    "hidden": true,
+    "key": "smartblockTypes",
+    "maxCount": 0,
+    "name": "Smartblock types",
+    "readonly": true,
+    "source": "derived"
   },
   {
     "format": "url",

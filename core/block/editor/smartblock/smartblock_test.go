@@ -2,10 +2,16 @@ package smartblock
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
+	"github.com/gogo/protobuf/types"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -16,7 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,25 +93,41 @@ func TestBasic_SetAlign(t *testing.T) {
 type fixture struct {
 	t        *testing.T
 	ctrl     *gomock.Controller
+	app      *app.App
 	source   *mockSource.MockSource
 	snapshot *testMock.MockSmartBlockSnapshot
 	store    *testMock.MockObjectStore
+	md       *mockDoc.MockService
 	SmartBlock
 }
 
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
+
+	at := testMock.NewMockService(ctrl)
+	at.EXPECT().ProfileID().Return("").AnyTimes()
+	at.EXPECT().Account().Return("").AnyTimes()
+
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
-	source.EXPECT().Anytype().AnyTimes().Return(nil)
+	source.EXPECT().Anytype().AnyTimes().Return(at)
 	source.EXPECT().Virtual().AnyTimes().Return(false)
 	store := testMock.NewMockObjectStore(ctrl)
+	store.EXPECT().Name().Return(objectstore.CName).AnyTimes()
+	a := testapp.New()
+	a.Register(store).
+		Register(restriction.New())
+	md := mockDoc.RegisterMockDoc(ctrl, a)
+	mockRelation.RegisterMockRelation(ctrl, a)
+
 	return &fixture{
 		SmartBlock: New(),
 		t:          t,
 		ctrl:       ctrl,
 		store:      store,
+		app:        a.App,
 		source:     source,
+		md:         md,
 	}
 }
 
@@ -123,13 +144,17 @@ func (fx *fixture) init(blocks []*model.Block) {
 	doc := state.NewDoc(id, bm)
 	fx.source.EXPECT().ReadDoc(context.Background(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
+	fx.source.EXPECT().LogHeads().Return(nil).AnyTimes()
 	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
+	fx.store.EXPECT().HasIDs(id).Return([]string{}, nil)
+
+	fx.md.EXPECT().ReportChange(gomock.Any(), gomock.Any()).AnyTimes()
 	fx.store.EXPECT().GetPendingLocalDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
 	fx.store.EXPECT().UpdatePendingLocalDetails(id, nil).Return(nil)
-	err := fx.Init(&InitContext{Source: fx.source, Restriction: restriction.New(), ObjectStore: fx.store})
+	err := fx.Init(&InitContext{Source: fx.source, App: fx.app})
 	require.NoError(fx.t, err)
 }

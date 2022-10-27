@@ -55,6 +55,14 @@ func (b *block) Normalize(s *state.State) error {
 
 	for _, rowId := range tb.Rows().ChildrenIds {
 		row := s.Get(rowId)
+		// Fix data integrity by adding missing row
+		if row == nil {
+			row := makeRow(rowId)
+			if !s.Add(row) {
+				return fmt.Errorf("add missing row block %s", rowId)
+			}
+			continue
+		}
 		normalizeRow(colIdx, row)
 	}
 
@@ -181,6 +189,9 @@ func normalizeRows(s *state.State, tb *Table) error {
 }
 
 func normalizeRow(colIdx map[string]int, row simple.Block) {
+	if row == nil || row.Model() == nil {
+		return
+	}
 	rs := &rowSort{
 		cells:   make([]string, 0, len(row.Model().ChildrenIds)),
 		indices: make([]int, 0, len(row.Model().ChildrenIds)),

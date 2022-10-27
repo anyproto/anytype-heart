@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -22,6 +23,12 @@ import (
 func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	blocks := make(map[string]simple.Block)
 	for _, b := range snapshot.Data.Blocks {
+		// migrate old dataview blocks with relations
+		if dvBlock := b.GetDataview(); dvBlock != nil {
+			if len(dvBlock.RelationLinks) == 0 {
+				dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
+			}
+		}
 		blocks[b.Id] = simple.New(b)
 	}
 	fileKeys := make([]pb.ChangeFileKeys, 0, len(snapshot.FileKeys))
@@ -29,6 +36,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		fileKeys = append(fileKeys, *fk)
 	}
 
+	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
+		snapshot.Data.RelationLinks = relationutils.MigrateRelationsModels(snapshot.Data.ExtraRelations)
+	}
 	// clear nil values
 	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
 
@@ -37,12 +47,15 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		blocks:         blocks,
 		details:        pbtypes.StructCutKeys(snapshot.Data.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...)),
 		extraRelations: snapshot.Data.ExtraRelations,
+		relationLinks:  snapshot.Data.RelationLinks,
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
 		store:          snapshot.Data.Collections,
 	}
-	s.InjectDerivedDetails()
 
+	// migrate old relations from dataview block
+	// do not consider other possible dataview blocks
+	s.InjectDerivedDetails()
 	return s
 }
 
@@ -140,8 +153,16 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeRelationRemove(ch.GetRelationRemove()); err != nil {
 			return
 		}
-	case ch.GetRelationUpdate() != nil:
-		if err = s.changeRelationUpdate(ch.GetRelationUpdate()); err != nil {
+	case ch.GetOldRelationAdd() != nil:
+		if err = s.changeOldRelationAdd(ch.GetOldRelationAdd()); err != nil {
+			return
+		}
+	case ch.GetOldRelationRemove() != nil:
+		if err = s.changeOldRelationRemove(ch.GetOldRelationRemove()); err != nil {
+			return
+		}
+	case ch.GetOldRelationUpdate() != nil:
+		if err = s.changeOldRelationUpdate(ch.GetOldRelationUpdate()); err != nil {
 			return
 		}
 	case ch.GetObjectTypeAdd() != nil:
@@ -199,10 +220,32 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 }
 
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
-	for _, rel := range s.ExtraRelations() {
+	rl := s.GetRelationLinks()
+	for _, r := range add.RelationLinks {
+		if !rl.Has(r.Key) {
+			rl = rl.Append(r)
+		}
+	}
+	s.relationLinks = rl
+	return nil
+}
+
+func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
+	s.RemoveRelation(rem.RelationKey...)
+	return nil
+}
+
+func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
+	// MIGRATION: add old relation as new relationLinks
+	err := s.changeRelationAdd(&pb.ChangeRelationAdd{RelationLinks: []*model.RelationLink{{Key: add.Relation.Key, Format: add.Relation.Format}}})
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range s.OldExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
-			log.Warnf("changeRelationAdd, relation already exists")
+			log.Warnf("changeOldRelationAdd, relation already exists")
 			return nil
 		}
 	}
@@ -212,12 +255,12 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), rel)
+	s.extraRelations = pbtypes.CopyRelations(append(s.OldExtraRelations(), rel))
 	return nil
 }
 
-func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
-	rels := pbtypes.CopyRelations(s.ExtraRelations())
+func (s *State) changeOldRelationRemove(remove *pb.Change_RelationRemove) error {
+	rels := pbtypes.CopyRelations(s.OldExtraRelations())
 	for i, rel := range rels {
 		if rel.Key == remove.Key {
 			s.extraRelations = append(rels[:i], rels[i+1:]...)
@@ -225,25 +268,30 @@ func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
 		}
 	}
 
-	log.Warnf("changeRelationRemove: relation to remove not found")
+	err := s.changeRelationRemove(&pb.ChangeRelationRemove{RelationKey: []string{remove.Key}})
+	if err != nil {
+		return err
+	}
+
+	log.Warnf("changeOldRelationRemove: relation to remove not found")
 	return nil
 }
 
-func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
-	rels := pbtypes.CopyRelations(s.ExtraRelations())
+func (s *State) changeOldRelationUpdate(update *pb.Change_RelationUpdate) error {
+	rels := pbtypes.CopyRelations(s.OldExtraRelations())
 	for _, rel := range rels {
 		if rel.Key != update.Key {
 			continue
 		}
 
 		switch val := update.Value.(type) {
-		case *pb.ChangeRelationUpdateValueOfFormat:
+		case *pb.Change_RelationUpdateValueOfFormat:
 			rel.Format = val.Format
-		case *pb.ChangeRelationUpdateValueOfName:
+		case *pb.Change_RelationUpdateValueOfName:
 			rel.Name = val.Name
-		case *pb.ChangeRelationUpdateValueOfDefaultValue:
+		case *pb.Change_RelationUpdateValueOfDefaultValue:
 			rel.DefaultValue = val.DefaultValue
-		case *pb.ChangeRelationUpdateValueOfSelectDict:
+		case *pb.Change_RelationUpdateValueOfSelectDict:
 			rel.SelectDict = val.SelectDict.Dict
 		}
 		s.extraRelations = rels
@@ -292,6 +340,11 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		bIds[i] = b.Model().Id
 		s.Unlink(bIds[i])
 		s.Set(b)
+		if dv := b.Model().GetDataview(); dv != nil {
+			if len(dv.RelationLinks) == 0 {
+				dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
+			}
+		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
 }
@@ -342,7 +395,8 @@ func (s *State) GetChanges() []*pb.ChangeContent {
 
 func (s *State) fillChanges(msgs []simple.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
-	var delIds []string
+	var delIds, delRelIds []string
+	var newRelLinks pbtypes.RelationLinks
 	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
 	var b1, b2 []byte
 	for i, msg := range msgs {
@@ -410,6 +464,10 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataViewGroupOrderUpdate:
 			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfObjectRelationsAmend:
+			newRelLinks = append(newRelLinks, msg.Msg.GetObjectRelationsAmend().RelationLinks...)
+		case *pb.EventMessageValueOfObjectRelationsRemove:
+			delRelIds = append(delRelIds, msg.Msg.GetObjectRelationsRemove().RelationIds...)
 		case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
@@ -429,6 +487,24 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			},
 		})
 	}
+	if len(newRelLinks) > 0 {
+		cb.AddChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfRelationAdd{
+				RelationAdd: &pb.ChangeRelationAdd{
+					RelationLinks: newRelLinks,
+				},
+			},
+		})
+	}
+	if len(delRelIds) > 0 {
+		cb.AddChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfRelationRemove{
+				RelationRemove: &pb.ChangeRelationRemove{
+					RelationKey: delRelIds,
+				},
+			},
+		})
+	}
 	if len(updMsgs) > 0 {
 		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfBlockUpdate{
@@ -441,7 +517,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.collapseSameKeyStoreChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
-	s.changes = append(s.changes, s.makeRelationsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
 
 }
@@ -569,120 +644,6 @@ func (s *State) collapseSameKeyStoreChanges() {
 		filteredChanges[l-i-1] = temp
 	}
 	s.changes = filteredChanges
-}
-
-func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.ChangeRelationUpdate, error) {
-	var updates []*pb.ChangeRelationUpdate
-
-	if prev.Key != new.Key {
-		return nil, fmt.Errorf("key should be the same")
-	}
-
-	if prev.Name != new.Name {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfName{Name: new.Name},
-		})
-	}
-
-	if prev.Format != new.Format {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfFormat{Format: new.Format},
-		})
-	}
-
-	if !slice.UnsortedEquals(prev.ObjectTypes, new.ObjectTypes) {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfObjectTypes{ObjectTypes: &pb.ChangeRelationUpdateObjectTypes{ObjectTypes: new.ObjectTypes}},
-		})
-	}
-
-	if !prev.DefaultValue.Equal(new.DefaultValue) {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfDefaultValue{DefaultValue: new.DefaultValue},
-		})
-	}
-
-	if prev.Multi != new.Multi {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfMulti{Multi: new.Multi},
-		})
-	}
-
-	if new.Format == model.RelationFormat_tag || new.Format == model.RelationFormat_status {
-		newDict := pbtypes.RelationOptionsFilterScope(new.SelectDict, model.RelationOption_local)
-		if !pbtypes.RelationSelectDictEqual(pbtypes.RelationOptionsFilterScope(prev.SelectDict, model.RelationOption_local), newDict) {
-			// todo: CRDT SelectDict patches
-			updates = append(updates, &pb.ChangeRelationUpdate{
-				Key:   prev.Key,
-				Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: newDict}},
-			})
-		}
-	}
-
-	return updates, nil
-}
-
-func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
-	if s.extraRelations == nil {
-		return nil
-	}
-	var prev []*model.Relation
-	if s.parent != nil {
-		prev = s.parent.ExtraRelations()
-	}
-
-	var prevMap = pbtypes.CopyRelationsToMap(prev)
-	var curMap = pbtypes.CopyRelationsToMap(s.extraRelations)
-
-	for _, v := range s.extraRelations {
-		var rel *model.Relation
-		if v.Format == model.RelationFormat_tag || v.Format == model.RelationFormat_status {
-			rel = pbtypes.CopyRelation(v)
-			// filter-out non-local scope options which we can have in the state to receive events
-			rel.SelectDict = pbtypes.RelationOptionsFilterScope(rel.SelectDict, model.RelationOption_local)
-		} else {
-			rel = v
-		}
-
-		pv, ok := prevMap[v.Key]
-		if !ok {
-			ch = append(ch, &pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfRelationAdd{
-					RelationAdd: &pb.ChangeRelationAdd{Relation: v},
-				},
-			})
-		} else {
-			updates, err := diffRelationsIntoUpdates(*pv, *v)
-			if err != nil {
-				// bad input(not equal keys), return the fatal error
-				log.Fatal("diffRelationsIntoUpdates fatal error: %s", err.Error())
-			}
-
-			for _, update := range updates {
-				ch = append(ch, &pb.ChangeContent{
-					Value: &pb.ChangeContentValueOfRelationUpdate{
-						RelationUpdate: update,
-					},
-				})
-			}
-		}
-	}
-	for _, v := range prev {
-		_, ok := curMap[v.Key]
-		if !ok {
-			ch = append(ch, &pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfRelationRemove{
-					RelationRemove: &pb.ChangeRelationRemove{Key: v.Key},
-				},
-			})
-		}
-	}
-	return
 }
 
 func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {

@@ -82,6 +82,13 @@ func CopyVal(in *types.Value) (out *types.Value) {
 	return
 }
 
+func CopyRelationLink(in *model.RelationLink) (out *model.RelationLink) {
+	return &model.RelationLink{
+		Key:    in.Key,
+		Format: in.Format,
+	}
+}
+
 func CopyRelation(in *model.Relation) (out *model.Relation) {
 	if in == nil {
 		return nil
@@ -204,13 +211,12 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 	return
 }
 
-
 func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change {
 	sliceOpMap := map[pb.EventBlockDataviewSliceOperation]slice.DiffOperation{
-		pb.EventBlockDataview_SliceOperationNone: slice.OperationNone,
-		pb.EventBlockDataview_SliceOperationAdd: slice.OperationAdd,
-		pb.EventBlockDataview_SliceOperationMove: slice.OperationMove,
-		pb.EventBlockDataview_SliceOperationRemove: slice.OperationRemove,
+		pb.EventBlockDataview_SliceOperationNone:    slice.OperationNone,
+		pb.EventBlockDataview_SliceOperationAdd:     slice.OperationAdd,
+		pb.EventBlockDataview_SliceOperationMove:    slice.OperationMove,
+		pb.EventBlockDataview_SliceOperationRemove:  slice.OperationRemove,
 		pb.EventBlockDataview_SliceOperationReplace: slice.OperationReplace,
 	}
 
@@ -223,11 +229,11 @@ func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Ch
 }
 
 func SliceChangeToEvents(changes []slice.Change) []*pb.EventBlockDataviewSliceChange {
-	eventsOpMap := map[slice.DiffOperation]pb.EventBlockDataviewSliceOperation {
-		slice.OperationNone: pb.EventBlockDataview_SliceOperationNone,
-		slice.OperationAdd: pb.EventBlockDataview_SliceOperationAdd,
-		slice.OperationMove: pb.EventBlockDataview_SliceOperationMove,
-		slice.OperationRemove: pb.EventBlockDataview_SliceOperationRemove,
+	eventsOpMap := map[slice.DiffOperation]pb.EventBlockDataviewSliceOperation{
+		slice.OperationNone:    pb.EventBlockDataview_SliceOperationNone,
+		slice.OperationAdd:     pb.EventBlockDataview_SliceOperationAdd,
+		slice.OperationMove:    pb.EventBlockDataview_SliceOperationMove,
+		slice.OperationRemove:  pb.EventBlockDataview_SliceOperationRemove,
 		slice.OperationReplace: pb.EventBlockDataview_SliceOperationReplace,
 	}
 

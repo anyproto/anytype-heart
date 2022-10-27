@@ -24,8 +24,8 @@ type Details struct {
 	Before, After *types.Struct
 }
 
-type Relations struct {
-	Before, After []*model.Relation
+type RelationLinks struct {
+	Before, After []*model.RelationLink
 }
 
 type ObjectType struct {
@@ -33,17 +33,17 @@ type ObjectType struct {
 }
 
 type Action struct {
-	Add         []simple.Block
-	Change      []Change
-	Remove      []simple.Block
-	Details     *Details
-	Group       string
-	Relations   *Relations
-	ObjectTypes *ObjectType
+	Add           []simple.Block
+	Change        []Change
+	Remove        []simple.Block
+	Details       *Details
+	RelationLinks *RelationLinks
+	Group         string
+	ObjectTypes   *ObjectType
 }
 
 func (a Action) IsEmpty() bool {
-	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.Relations == nil && a.ObjectTypes == nil
+	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.ObjectTypes == nil && a.RelationLinks == nil
 }
 
 func (a Action) Merge(b Action) (result Action) {

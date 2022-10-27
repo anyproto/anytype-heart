@@ -24,7 +24,7 @@ func New() Service {
 type Service interface {
 	NewSource(id string, listenToOwnChanges bool) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
-	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State) SourceWithType
+	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
@@ -63,8 +63,6 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return NewBundledObjectType(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBundledRelation:
 		return NewBundledRelation(s.anytype, id), nil
-	case smartblock.SmartBlockTypeIndexedRelation:
-		return NewIndexedRelation(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBreadcrumbs:
 		return NewVirtual(s.anytype, st.ToProto()), nil
 	case smartblock.SmartBlockTypeWorkspaceOld:
@@ -73,16 +71,18 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return NewThreadDB(s.anytype, id), nil
 	}
 
-	tid, err := thread.Decode(id)
-	if err != nil {
-		err = fmt.Errorf("can't restore thread ID %s: %w", id, err)
-		return
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if newStatic := s.staticIds[id]; newStatic != nil {
 		return newStatic(), nil
 	}
+
+	tid, err := thread.Decode(id)
+	if err != nil {
+		err = fmt.Errorf("can't restore thread ID %s: %w", id, err)
+		return
+	}
+
 	return newSource(s.anytype, s.statusService, tid, listenToOwnChanges)
 }
 

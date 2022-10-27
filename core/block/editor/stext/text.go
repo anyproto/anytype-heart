@@ -252,12 +252,12 @@ func (t *textImpl) newSetTextState(blockId string, ctx *session.Context) *state.
 		}
 		t.Lock()
 		defer t.Unlock()
-		t.flushSetTextState()
+		t.flushSetTextState(smartblock.ApplyInfo{})
 	}()
 	return t.lastSetTextState
 }
 
-func (t *textImpl) flushSetTextState() {
+func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
 		ctx := session.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
@@ -278,6 +278,7 @@ func (t *textImpl) flushSetTextState() {
 		}
 		t.cancelSetTextState()
 	}
+	return nil
 }
 
 func (t *textImpl) cancelSetTextState() {
@@ -332,7 +333,7 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 		sort.Strings(afterIds)
 		if !slice.SortedEquals(beforeIds, afterIds) {
 			// mentions changed
-			t.flushSetTextState()
+			t.flushSetTextState(smartblock.ApplyInfo{})
 		}
 	}
 

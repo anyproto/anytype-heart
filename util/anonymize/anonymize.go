@@ -23,9 +23,6 @@ func State(s *state.State) (res *state.State) {
 		return true
 	})
 	s.SetDetails(Struct(s.Details()))
-	for i, er := range s.ExtraRelations() {
-		s.ExtraRelations()[i] = Relation(er)
-	}
 	return
 }
 
@@ -78,10 +75,7 @@ func ChangeContent(chc *pb.ChangeContent) (res *pb.ChangeContent) {
 		v.DetailsSet.Value = StructValue(v.DetailsSet.Value)
 	case *pb.ChangeContentValueOfDetailsUnset:
 	case *pb.ChangeContentValueOfRelationAdd:
-		v.RelationAdd.Relation = Relation(v.RelationAdd.Relation)
 	case *pb.ChangeContentValueOfRelationRemove:
-	case *pb.ChangeContentValueOfRelationUpdate:
-		// TODO:
 	case *pb.ChangeContentValueOfObjectTypeAdd:
 	case *pb.ChangeContentValueOfObjectTypeRemove:
 	}
@@ -98,14 +92,6 @@ func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 	case *pb.EventMessageValueOfObjectDetailsAmend:
 		for i, d := range v.ObjectDetailsAmend.Details {
 			v.ObjectDetailsAmend.Details[i].Value = StructValue(d.Value)
-		}
-	case *pb.EventMessageValueOfObjectRelationsSet:
-		for i, er := range v.ObjectRelationsSet.Relations {
-			v.ObjectRelationsSet.Relations[i] = Relation(er)
-		}
-	case *pb.EventMessageValueOfObjectRelationsAmend:
-		for i, er := range v.ObjectRelationsAmend.Relations {
-			v.ObjectRelationsAmend.Relations[i] = Relation(er)
 		}
 	case *pb.EventMessageValueOfBlockAdd:
 		if v.BlockAdd.Blocks != nil {

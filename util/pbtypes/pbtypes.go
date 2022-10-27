@@ -36,6 +36,12 @@ func String(v string) *types.Value {
 	}
 }
 
+func Struct(v *types.Struct) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_StructValue{StructValue: v},
+	}
+}
+
 func StringList(s []string) *types.Value {
 	var vals = make([]*types.Value, 0, len(s))
 	for _, str := range s {
@@ -92,6 +98,16 @@ func GetString(s *types.Struct, name string) string {
 		return v.GetStringValue()
 	}
 	return ""
+}
+
+func GetStruct(s *types.Struct, name string) *types.Struct {
+	if s == nil || s.Fields == nil {
+		return nil
+	}
+	if v, ok := s.Fields[name]; ok {
+		return v.GetStructValue()
+	}
+	return nil
 }
 
 func GetBool(s *types.Struct, name string) bool {
@@ -211,6 +227,16 @@ func HasRelation(rels []*model.Relation, key string) bool {
 	return false
 }
 
+func HasRelationLink(rels []*model.RelationLink, key string) bool {
+	for _, rel := range rels {
+		if rel.Key == key {
+			return true
+		}
+	}
+
+	return false
+}
+
 func MergeRelations(rels1 []*model.Relation, rels2 []*model.Relation) []*model.Relation {
 	if rels1 == nil {
 		return rels2
@@ -274,14 +300,30 @@ func HasOption(opts []*model.RelationOption, id string) bool {
 	return false
 }
 
-func Get(st *types.Struct, key string) *types.Value {
-	if st == nil || st.Fields == nil {
-		return nil
+func Get(st *types.Struct, keys ...string) *types.Value {
+	for i, key := range keys {
+		if st == nil || st.Fields == nil {
+			return nil
+		}
+		if i == len(keys)-1 {
+			return st.Fields[key]
+		} else {
+			st = GetStruct(st, key)
+		}
 	}
-	return st.Fields[key]
+	return nil
 }
 
 func GetRelationKeys(rels []*model.Relation) []string {
+	var keys []string
+	for _, rel := range rels {
+		keys = append(keys, rel.Key)
+	}
+
+	return keys
+}
+
+func GetRelationListKeys(rels []*model.RelationLink) []string {
 	var keys []string
 	for _, rel := range rels {
 		keys = append(keys, rel.Key)
@@ -446,8 +488,8 @@ func RelationFormatCanHaveListValue(format model.RelationFormat) bool {
 }
 
 func RelationIdToKey(id string) (string, error) {
-	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
-		return strings.TrimPrefix(id, addr.CustomRelationURLPrefix), nil
+	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
 	}
 
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
@@ -508,8 +550,41 @@ func Map(s *types.Struct, keys ...string) *types.Struct {
 	return ns
 }
 
+func StructIterate(st *types.Struct, f func(path []string, v *types.Value)) {
+	var iterate func(s *types.Struct, f func(path []string, v *types.Value), path []string)
+	iterate = func(s *types.Struct, f func(path []string, v *types.Value), path []string) {
+		if s == nil || s.Fields == nil {
+			return
+		}
+		for k, v := range s.Fields {
+			p := append(path, k)
+			f(p, v)
+			iterate(GetStruct(s, k), f, p)
+		}
+	}
+	iterate(st, f, nil)
+}
+
+func StructEqualKeys(st1, st2 *types.Struct) bool {
+	if (st1 == nil) != (st2 == nil) {
+		return false
+	}
+	if (st1.Fields == nil) != (st2.Fields == nil) {
+		return false
+	}
+	if len(st1.Fields) != len(st2.Fields) {
+		return false
+	}
+	for k := range st1.Fields {
+		if _, ok := st2.Fields[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func Sprint(p proto.Message) string {
 	m := jsonpb.Marshaler{Indent: " "}
 	result, _ := m.MarshalToString(p)
-	return string(result)
+	return result
 }

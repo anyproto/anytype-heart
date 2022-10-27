@@ -2,6 +2,12 @@ package indexer_test
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
+	"github.com/gogo/protobuf/types"
 	"io"
 	"io/ioutil"
 	"os"
@@ -66,7 +72,6 @@ func newFixture(t *testing.T) *fixture {
 	for _, rk := range bundle.ListRelationsKeys() {
 		fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
 		fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
-
 	}
 	for _, ok := range bundle.ListTypesKeys() {
 		fx.objectStore.EXPECT().GetDetails(ok.URL())
@@ -79,7 +84,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
 	fx.objectStore.EXPECT().UpdateObjectLinks(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{
 		BundledObjectTypes:               bundle.TypeChecksum,
@@ -108,6 +113,8 @@ func newFixture(t *testing.T) *fixture {
 		With(source.New())
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
+	rs := mockRelation.RegisterMockRelation(fx.ctrl, ta)
+	rs.EXPECT().CreateBulkMigration().Times(1)
 	require.NoError(t, ta.Start(context.Background()))
 	return fx
 }
@@ -127,4 +134,34 @@ func (fx *fixture) tearDown() {
 	fx.rb.(io.Closer).Close()
 	fx.ta.Close()
 	fx.ctrl.Finish()
+}
+
+type rs struct{}
+
+func (b *rs) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
+	return
+}
+
+func (b *rs) FetchKey(key string, opts ...relation.FetchOption) (relation *relationutils.Relation, err error) {
+	return
+}
+
+func (b *rs) FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+	return
+}
+
+func (b *rs) MigrateOldRelations(relations []*model.Relation) (err error) {
+	return
+}
+
+func (b *rs) ValidateFormat(key string, v *types.Value) error {
+	return nil
+}
+
+func (b *rs) Init(_ *app.App) (err error) {
+	return
+}
+
+func (b *rs) Name() (name string) {
+	return "relation"
 }
