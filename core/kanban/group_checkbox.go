@@ -7,7 +7,7 @@ import (
 type GroupCheckBox struct {
 }
 
-func (gCh *GroupCheckBox) Init(reqFilters []*model.BlockContentDataviewFilter) error {
+func (gCh *GroupCheckBox) InitGroups(reqFilters []*model.BlockContentDataviewFilter) error {
 	return nil
 }
 

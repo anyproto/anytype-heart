@@ -16,9 +16,14 @@ func New() *Service{
 }
 
 type Grouper interface {
-	Init(reqFilters []*model.BlockContentDataviewFilter) error
+	InitGroups(reqFilters []*model.BlockContentDataviewFilter) error
 	MakeGroups() ([]Group, error)
 	MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error)
+}
+
+
+type KanbanService interface {
+	app.ComponentRunnable
 }
 
 type Service struct {

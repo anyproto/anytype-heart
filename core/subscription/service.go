@@ -229,7 +229,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		return nil, err
 	}
 
-	if err := grouper.Init(req.Filters); err != nil {
+	if err := grouper.InitGroups(req.Filters); err != nil {
 		return nil, err
 	}
 

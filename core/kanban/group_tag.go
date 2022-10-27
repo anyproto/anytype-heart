@@ -17,7 +17,7 @@ type GroupTag struct {
 	Records []database.Record
 }
 
-func (t *GroupTag) Init(reqFilters []*model.BlockContentDataviewFilter) error {
+func (t *GroupTag) InitGroups(reqFilters []*model.BlockContentDataviewFilter) error {
 	filters := []*model.BlockContentDataviewFilter{
 		{RelationKey: string(bundle.RelationKeyIsDeleted), Condition: model.BlockContentDataviewFilter_Equal},
 		{RelationKey: string(bundle.RelationKeyIsArchived), Condition: model.BlockContentDataviewFilter_Equal},

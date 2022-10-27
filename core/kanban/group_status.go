@@ -12,7 +12,7 @@ type GroupStatus struct {
 	Options []*model.RelationOption
 }
 
-func (gs *GroupStatus) Init(reqFilters []*model.BlockContentDataviewFilter) error {
+func (gs *GroupStatus) InitGroups(reqFilters []*model.BlockContentDataviewFilter) error {
 	options, err := gs.store.GetAggregatedOptions(bundle.RelationKeyStatus.String())
 	if err != nil {
 		return err

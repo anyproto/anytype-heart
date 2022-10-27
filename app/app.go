@@ -38,7 +38,7 @@ type ComponentRunnable interface {
 	// Non-nil error also will be aborted app start
 	Run(ctx context.Context) (err error)
 	// Close will be called when app shutting down
-	// Also will be called when service return error on Init or Run stage
+	// Also will be called when service return error on InitGroups or Run stage
 	// Non-nil error will be printed to log
 	Close() (err error)
 }

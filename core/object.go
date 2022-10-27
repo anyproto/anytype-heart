@@ -306,7 +306,7 @@ func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.Rp
 		return errResponse(err)
 	}
 
-	if err := grouper.Init(req.Filters); err != nil {
+	if err := grouper.InitGroups(req.Filters); err != nil {
 		return errResponse(err)
 	}
 
