@@ -316,9 +316,6 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 	case model.RelationFormat_file, model.RelationFormat_object:
 		switch s := v.Kind.(type) {
 		case *types.Value_StringValue:
-			if r.MaxCount != 1 {
-				return fmt.Errorf("incorrect type: %T instead of list(maxCount!=1)", v.Kind)
-			}
 			return nil
 		case *types.Value_ListValue:
 			if r.MaxCount > 0 && len(s.ListValue.Values) > int(r.MaxCount) {
