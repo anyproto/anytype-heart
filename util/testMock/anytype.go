@@ -7,8 +7,10 @@ import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockKanban"
 	"github.com/golang/mock/gomock"
 )
 
@@ -34,6 +36,14 @@ func RegisterMockObjectStore(ctrl *gomock.Controller, ta App) *MockObjectStore {
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
 	ms.EXPECT().Run(context.Background()).AnyTimes()
 	ms.EXPECT().Close().AnyTimes()
+	ta.Register(ms)
+	return ms
+}
+
+func RegisterMockKanban(ctrl *gomock.Controller, ta App) *mockKanban.MockService {
+	ms := mockKanban.NewMockService(ctrl)
+	ms.EXPECT().Name().AnyTimes().Return(kanban.CName)
+	ms.EXPECT().Init(gomock.Any()).AnyTimes()
 	ta.Register(ms)
 	return ms
 }

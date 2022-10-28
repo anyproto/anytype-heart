@@ -300,7 +300,7 @@ func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.Rp
 		return errResponse(errors.New("app must be started"))
 	}
 
-	kanbanSrv := mw.app.MustComponent(kanban.CName).(*kanban.Service)
+	kanbanSrv := mw.app.MustComponent(kanban.CName).(kanban.Service)
 	grouper, err := kanbanSrv.Grouper(req.RelationKey)
 	if err != nil {
 		return errResponse(err)

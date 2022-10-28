@@ -62,7 +62,7 @@ type service struct {
 	recBatch      *mb.MB
 
 	objectStore objectstore.ObjectStore
-	kanban 		*kanban.Service
+	kanban 		kanban.Service
 	sendEvent   func(e *pb.Event)
 
 	m      sync.Mutex
@@ -74,7 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.kanban = a.MustComponent(kanban.CName).(*kanban.Service)
+	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.ctxBuf = &opCtx{c: s.cache}

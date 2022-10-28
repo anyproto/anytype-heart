@@ -11,8 +11,8 @@ const (
 	CName = "kanban"
 )
 
-func New() *Service{
-	return &Service{groupColumns: make(map[model.RelationFormat]Grouper)}
+func New() Service{
+	return &service{groupColumns: make(map[model.RelationFormat]Grouper)}
 }
 
 type Grouper interface {
@@ -21,17 +21,18 @@ type Grouper interface {
 	MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error)
 }
 
+type Service interface {
+	Grouper(key string) (Grouper, error)
 
-type KanbanService interface {
-	app.ComponentRunnable
+	app.Component
 }
 
-type Service struct {
+type service struct {
 	objectStore objectstore.ObjectStore
 	groupColumns map[model.RelationFormat]Grouper
 }
 
-func (s *Service) Init(a *app.App) (err error) {
+func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 
 	s.groupColumns[model.RelationFormat_status] = &GroupStatus{store: s.objectStore}
@@ -41,11 +42,11 @@ func (s *Service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *Service) Name() (name string) {
+func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *Service) Grouper(key string) (Grouper, error) {
+func (s *service) Grouper(key string) (Grouper, error) {
 	rel, err := s.objectStore.GetRelation(key)
 	if err != nil {
 		return nil, err
