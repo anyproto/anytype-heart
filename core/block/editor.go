@@ -737,7 +737,7 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 }
 
 func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
-	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema

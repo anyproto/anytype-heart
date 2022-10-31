@@ -124,7 +124,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 }
 
 func (mw *Middleware) objectCreate(req *pb.RpcObjectCreateRequest) (id string, details *types.Struct, err error) {
-	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	ot, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()))
 	var sbType = coresb.SmartBlockTypePage
