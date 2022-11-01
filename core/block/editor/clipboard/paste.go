@@ -92,7 +92,7 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 	if !req.IsPartOfBlock && selRangeNotEmpty {
 		req.IsPartOfBlock = true
 	}
-	p.mode.multiRange = len(p.selIds) > 1 && selRangeNotEmpty
+	p.mode.multiRange = len(p.selIds) > 1
 	if !p.mode.multiRange {
 		var (
 			textCount, nonTextCount int
