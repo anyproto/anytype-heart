@@ -157,7 +157,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 				lastTextBlock = b
 			}
 		} else {
-			// if text block + object block - go to cutBlocks scenario imediately 
+			// if text block + object block - go to cutBlocks scenario imediately
 			firstTextBlock = nil
 			lastTextBlock = nil
 			break
@@ -458,8 +458,20 @@ func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteReque
 		}
 		blockIds = append(blockIds, b.Model().Id)
 	}
-	if err = s.InsertTo(req.FocusedBlockId, model.Block_Bottom, blockIds...); err != nil {
+
+	if err = s.InsertTo(req.FocusedBlockId, cb.getFileBlockPosition(req), blockIds...); err != nil {
 		return
 	}
 	return blockIds, cb.Apply(s)
+}
+
+func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.BlockPosition {
+	b := cb.Pick(req.FocusedBlockId)
+	if b == nil {
+		return model.Block_Bottom
+	}
+	if txt := b.Model().GetText(); txt != nil && txt.Text == "" {
+		return model.Block_Replace
+	}
+	return model.Block_Bottom
 }
