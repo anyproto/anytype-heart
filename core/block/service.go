@@ -993,7 +993,7 @@ func (s *service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
 	}
-	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	var creator func(ctx context.Context) (string, error)
 

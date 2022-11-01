@@ -56,19 +56,15 @@ func (s Set) AddToState(st *state.State) {
 	st.SetDetailAndBundledRelation(relationKey, pbtypes.IntList(s.flags...))
 }
 
-func AddToDetails(details *types.Struct, flags []*model.InternalFlag) *types.Struct {
+func PutToDetails(details *types.Struct, flags []*model.InternalFlag) *types.Struct {
 	ints := make([]int, 0, len(flags))
 	for _, f := range flags {
 		ints = append(ints, int(f.Value))
 	}
-	return addToDetails(details, ints)
+	return putToDetails(details, ints)
 }
 
-func addToDetails(details *types.Struct, flags []int) *types.Struct {
-	if len(flags) == 0 {
-		return details
-	}
-
+func putToDetails(details *types.Struct, flags []int) *types.Struct {
 	if details == nil {
 		details = &types.Struct{
 			Fields: map[string]*types.Value{},

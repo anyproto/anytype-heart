@@ -157,7 +157,7 @@ func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectCreateObjectTypeRequest)
 	if req.Details == nil {
 		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	var sbId string
 	var recommendedRelationKeys []string
