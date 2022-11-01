@@ -272,15 +272,16 @@ func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteReques
 	if err != nil {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 	}
-	for _, v := range cb.Blocks() {
-		if v.Id == req.FocusedBlockId {
-			if reqText := v.GetText(); reqText != nil && reqText.Style != model.BlockContentText_Paragraph {
-				for _, block := range blocks {
-					if targetBlockContent, ok := block.Content.(*model.BlockContentOfText); ok && targetBlockContent.Text.Style == model.BlockContentText_Paragraph {
-						targetBlockContent.Text.Style = reqText.Style
-					} else {
-						break
-					}
+
+	// See GO-250 for more details
+	// In short: if we paste plaintext blocks into a styled block, we make first ones to inherit style from this block
+	if focused := cb.Pick(req.FocusedBlockId); focused != nil {
+		if focusedTxt := focused.Model().GetText(); focusedTxt != nil && focusedTxt.Style != model.BlockContentText_Paragraph {
+			for _, b := range blocks {
+				if txt := b.GetText(); txt.Style == model.BlockContentText_Paragraph {
+					txt.Style = focusedTxt.Style
+				} else {
+					break
 				}
 			}
 		}
