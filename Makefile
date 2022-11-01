@@ -14,6 +14,7 @@ export PATH=$(GOPATH)/bin:$(shell echo $$PATH)
 
 all:
 	@set -e;
+	@git config core.hooksPath .githooks;
 .PHONY :
 
 setup: setup-go

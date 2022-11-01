@@ -6,8 +6,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 func init() {
@@ -28,6 +30,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
+	ToDetails() *types.Struct
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *model.BlockContentBookmark))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -40,6 +43,14 @@ type Bookmark struct {
 
 func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
+}
+
+func (b *Bookmark) ToDetails() *types.Struct {
+	return &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
+		},
+	}
 }
 
 func (b *Bookmark) UpdateContent(updater func(bookmark *model.BlockContentBookmark)) {

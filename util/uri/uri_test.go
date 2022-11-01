@@ -42,6 +42,13 @@ func TestURI_ProcessURI(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("should process url with additional content and numbers", func(t *testing.T) {
+		uri := "webs1te.com/123/456"
+		processedUri, err := ProcessURI(uri)
+		assert.Equal(t, "http://"+uri, processedUri)
+		assert.NoError(t, err)
+	})
+
 	t.Run("should return error if it is not a uri", func(t *testing.T) {
 		uri := "website"
 		processedUri, err := ProcessURI(uri)

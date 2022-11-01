@@ -46,11 +46,17 @@ var (
 		model.SmartBlockType_Archive:             objRestrictAll,
 		model.SmartBlockType_Set:                 objRestrictEdit,
 		model.SmartBlockType_BundledRelation:     objRestrictAll,
-		model.SmartBlockType_IndexedRelation:     objRestrictAll,
-		model.SmartBlockType_BundledObjectType:   objRestrictAll,
-		model.SmartBlockType_STObjectType:        objRestrictEdit,
-		model.SmartBlockType_BundledTemplate:     objRestrictAll,
-		model.SmartBlockType_Template:            {},
+		model.SmartBlockType_SubObject: {
+			model.Restrictions_Blocks,
+			model.Restrictions_Relations,
+			model.Restrictions_LayoutChange,
+			model.Restrictions_TypeChange,
+			model.Restrictions_Template,
+		},
+		model.SmartBlockType_BundledObjectType: objRestrictAll,
+		model.SmartBlockType_STObjectType:      objRestrictEdit,
+		model.SmartBlockType_BundledTemplate:   objRestrictAll,
+		model.SmartBlockType_Template:          {},
 	}
 )
 
@@ -67,6 +73,18 @@ func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (e
 	return
 }
 
+func (or ObjectRestrictions) Equal(or2 ObjectRestrictions) bool {
+	if len(or) != len(or2) {
+		return false
+	}
+	for _, r := range or {
+		if or2.Check(r) == nil {
+			return false
+		}
+	}
+	return true
+}
+
 func (or ObjectRestrictions) Copy() ObjectRestrictions {
 	obj := make(ObjectRestrictions, len(or))
 	copy(obj, or)
@@ -75,6 +93,12 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 
 func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
 	var ok bool
+	if obj.Type() == model.SmartBlockType_ProfilePage && s.anytype.PredefinedBlocks().Profile != obj.Id() {
+		if r, ok = objectRestrictionsByPbType[model.SmartBlockType_Page]; ok {
+			return
+		}
+	}
+
 	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {
 		return
 	}

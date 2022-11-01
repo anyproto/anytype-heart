@@ -213,28 +213,6 @@ func TestApplyState(t *testing.T) {
 
 }
 
-func TestState_Diff(t *testing.T) {
-	s1 := NewDoc("root", map[string]simple.Block{
-		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2", "3"}}),
-		"2":    base.NewBase(&model.Block{Id: "2"}),
-		"3":    base.NewBase(&model.Block{Id: "3"}),
-	}).NewState()
-	s2 := NewDoc("root", map[string]simple.Block{
-		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2", "4"}}),
-		"2":    base.NewBase(&model.Block{Id: "2"}),
-		"4":    base.NewBase(&model.Block{Id: "4"}),
-	}).NewState()
-
-	msgs, err := s1.Diff(s2)
-	require.NoError(t, err)
-	assert.Len(t, msgs, 3)
-	assert.NotNil(t, msgs[0].Msg.GetBlockSetChildrenIds())
-	require.NotNil(t, msgs[1].Msg.GetBlockAdd())
-	assert.Len(t, msgs[1].Msg.GetBlockAdd().Blocks, 1)
-	require.NotNil(t, msgs[2].Msg.GetBlockDelete())
-	assert.Len(t, msgs[2].Msg.GetBlockDelete().BlockIds, 1)
-}
-
 func TestState_IsChild(t *testing.T) {
 	s := NewDoc("root", map[string]simple.Block{
 		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2"}}),
@@ -520,4 +498,29 @@ func BenchmarkState_SelectRoots(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = s.SelectRoots([]string{"3", "root", "2", "1.3.1", "1.2", "1.3", "1.1"})
 	}
+}
+
+func TestState_GetChangedStoreKeys(t *testing.T) {
+	p := NewDoc("test", nil).(*State)
+	p.SetInStore([]string{"one", "two", "v1"}, pbtypes.String("val1"))
+	p.SetInStore([]string{"one", "two", "v2"}, pbtypes.String("val2"))
+	p.SetInStore([]string{"one", "two", "v3"}, pbtypes.String("val3"))
+	p.SetInStore([]string{"other"}, pbtypes.String("val42"))
+	changed := p.GetChangedStoreKeys()
+
+	s := p.NewState()
+	s.SetInStore([]string{"one", "two", "v2"}, pbtypes.String("val2ch"))
+	s.SetInStore([]string{"other"}, pbtypes.String("changed"))
+	s.RemoveFromStore([]string{"one", "two", "v3"})
+
+	changed = s.GetChangedStoreKeys()
+	assert.Len(t, changed, 3)
+	assert.Contains(t, changed, []string{"one", "two", "v2"})
+	assert.Contains(t, changed, []string{"one", "two"})
+	assert.Contains(t, changed, []string{"other"})
+
+	changed = s.GetChangedStoreKeys("one")
+	assert.Len(t, changed, 2)
+	changed = s.GetChangedStoreKeys("one", "two", "v2")
+	assert.Len(t, changed, 1)
 }

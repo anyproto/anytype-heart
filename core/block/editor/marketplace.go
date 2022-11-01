@@ -1,10 +1,10 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -14,8 +14,8 @@ const (
 	viewIdMarketplace = "marketplace"
 )
 
-func NewMarketplaceType(dbCtrl database.Ctrl) *MarketplaceType {
-	return &MarketplaceType{Set: NewSet(dbCtrl)}
+func NewMarketplaceType() *MarketplaceType {
+	return &MarketplaceType{Set: NewSet()}
 }
 
 type MarketplaceType struct {
@@ -38,8 +38,8 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot}))}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyObjectType).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyObjectType).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,
@@ -78,21 +78,22 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 			},
 		},
 	}
-	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Types"), template.WithDetailIconEmoji("📒"), template.WithRequiredRelations())
+	templates = append(templates,
+		template.WithDataview(dataview, true),
+		template.WithDetailName("Types"),
+		template.WithDetailIconEmoji("📒"),
+		template.WithRequiredRelations(),
+	)
 
-	if err = smartblock.ObjectApplyTemplate(p, ctx.State, templates...); err != nil {
-		return
-	}
-	p.WithSystemObjects(true)
-	return p.FillAggregatedOptions(nil)
+	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)
 }
 
 type MarketplaceRelation struct {
 	*Set
 }
 
-func NewMarketplaceRelation(dbCtrl database.Ctrl) *MarketplaceRelation {
-	return &MarketplaceRelation{Set: NewSet(dbCtrl)}
+func NewMarketplaceRelation() *MarketplaceRelation {
+	return &MarketplaceRelation{Set: NewSet()}
 }
 
 func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
@@ -108,8 +109,8 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyRelation).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyRelation).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,
@@ -122,9 +123,9 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
-						RelationKey: bundle.RelationKeyIsHidden.String(),
-						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.Bool(true),
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 				{
@@ -138,9 +139,9 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
-						RelationKey: bundle.RelationKeyIsHidden.String(),
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
 						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.Bool(true),
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 			},
@@ -148,19 +149,15 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"), template.WithRequiredRelations())
 
-	if err = smartblock.ObjectApplyTemplate(p, ctx.State, templates...); err != nil {
-		return
-	}
-
-	return p.FillAggregatedOptions(nil)
+	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)
 }
 
 type MarketplaceTemplate struct {
 	*Set
 }
 
-func NewMarketplaceTemplate(dbCtrl database.Ctrl) *MarketplaceTemplate {
-	return &MarketplaceTemplate{Set: NewSet(dbCtrl)}
+func NewMarketplaceTemplate() *MarketplaceTemplate {
+	return &MarketplaceTemplate{Set: NewSet()}
 }
 
 func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
@@ -176,8 +173,8 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    []string{ot},
-			Relations: bundle.MustGetType(bundle.TypeKeyTemplate).Relations,
+			Source:        []string{ot},
+			RelationLinks: bundle.MustGetType(bundle.TypeKeyTemplate).RelationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:    viewIdMarketplace,
@@ -214,11 +211,11 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 			},
 		},
 	}
-	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"))
+	templates = append(templates,
+		template.WithDataview(dataview, true),
+		template.WithDetailName("Relations"),
+		template.WithDetailIconEmoji("📒"),
+	)
 
-	if err = smartblock.ObjectApplyTemplate(p, ctx.State, templates...); err != nil {
-		return
-	}
-
-	return p.FillAggregatedOptions(nil)
+	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)
 }

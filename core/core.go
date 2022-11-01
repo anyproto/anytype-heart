@@ -7,12 +7,12 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/core/account"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -81,6 +81,15 @@ func (mw *Middleware) getBlockService() (bs block.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
+func (mw *Middleware) getRelationService() (rs relation.Service, err error) {
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+	if mw.app != nil {
+		return mw.app.MustComponent(relation.CName).(relation.Service), nil
+	}
+	return nil, ErrNotLoggedIn
+}
+
 func (mw *Middleware) getAccountService() (a account.Service, err error) {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
@@ -96,6 +105,14 @@ func (mw *Middleware) doBlockService(f func(bs block.Service) error) (err error)
 		return
 	}
 	return f(bs)
+}
+
+func (mw *Middleware) doRelationService(f func(rs relation.Service) error) (err error) {
+	rs, err := mw.getRelationService()
+	if err != nil {
+		return
+	}
+	return f(rs)
 }
 
 func (mw *Middleware) doAccountService(f func(a account.Service) error) (err error) {

@@ -356,7 +356,7 @@ func OptionEqual(opt1, opt2 *model.RelationOption) bool {
 	if opt1.Color != opt2.Color {
 		return false
 	}
-	if opt1.Scope != opt2.Scope {
+	if opt1.RelationKey != opt2.RelationKey {
 		return false
 	}
 	return true
@@ -494,13 +494,6 @@ func SortedRange(s *types.Struct, f func(k string, v *types.Value)) {
 	for _, k := range keys {
 		f(k, s.Fields[k])
 	}
-}
-
-// RelationOptionsFilterScope returns only options with provided scope reusing underlying pb values pointers
-func RelationOptionsFilterScope(options []*model.RelationOption, scope model.RelationOptionScope) []*model.RelationOption {
-	return RelationOptionsFilter(options, func(option *model.RelationOption) bool {
-		return option.Scope == scope
-	})
 }
 
 func RelationOptionsFilter(options []*model.RelationOption, f func(option *model.RelationOption) bool) []*model.RelationOption {

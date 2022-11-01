@@ -19,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
@@ -491,12 +492,8 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 
 func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
 	ctx := mw.newContext(cctx)
-	response := func(relation *model.Relation, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
-		var relKey string
-		if relation != nil {
-			relKey = relation.Key
-		}
-		m := &pb.RpcObjectRelationAddResponse{RelationKey: relKey, Relation: relation, Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
+		m := &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -504,45 +501,18 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 		}
 		return m
 	}
-	if req.Relation == nil {
-		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
+	if len(req.RelationKeys) == 0 {
+		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
 	}
 
-	var relations []*model.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddExtraRelations(ctx, req.ContextId, []*model.Relation{req.Relation})
-		return err
+		return bs.AddExtraRelations(ctx, req.ContextId, req.RelationKeys)
 	})
 	if err != nil {
-		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
+		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
 	}
 
-	if len(relations) == 0 {
-		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, nil)
-	}
-
-	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationUpdate(cctx context.Context, req *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectRelationUpdateResponseErrorCode, err error) *pb.RpcObjectRelationUpdateResponse {
-		m := &pb.RpcObjectRelationUpdateResponse{Error: &pb.RpcObjectRelationUpdateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateExtraRelations(nil, req.ContextId, []*model.Relation{req.Relation}, false)
-	})
-	if err != nil {
-		return response(pb.RpcObjectRelationUpdateResponseError_BAD_INPUT, err)
-	}
-
-	return response(pb.RpcObjectRelationUpdateResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
@@ -563,72 +533,6 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 		return response(pb.RpcObjectRelationDeleteResponseError_BAD_INPUT, err)
 	}
 	return response(pb.RpcObjectRelationDeleteResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationOptionAdd(cctx context.Context, req *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse {
-	ctx := mw.newContext(cctx)
-	response := func(opt *model.RelationOption, code pb.RpcObjectRelationOptionAddResponseErrorCode, err error) *pb.RpcObjectRelationOptionAddResponse {
-		m := &pb.RpcObjectRelationOptionAddResponse{Option: opt, Error: &pb.RpcObjectRelationOptionAddResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	var opt *model.RelationOption
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		var err2 error
-		opt, err2 = bs.AddExtraRelationOption(ctx, *req)
-		return err2
-	})
-	if err != nil {
-		return response(nil, pb.RpcObjectRelationOptionAddResponseError_BAD_INPUT, err)
-	}
-
-	return response(opt, pb.RpcObjectRelationOptionAddResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationOptionUpdate(cctx context.Context, req *pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectRelationOptionUpdateResponseErrorCode, err error) *pb.RpcObjectRelationOptionUpdateResponse {
-		m := &pb.RpcObjectRelationOptionUpdateResponse{Error: &pb.RpcObjectRelationOptionUpdateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateExtraRelationOption(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectRelationOptionUpdateResponseError_BAD_INPUT, err)
-	}
-
-	return response(pb.RpcObjectRelationOptionUpdateResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationOptionDelete(cctx context.Context, req *pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectRelationOptionDeleteResponseErrorCode, err error) *pb.RpcObjectRelationOptionDeleteResponse {
-		m := &pb.RpcObjectRelationOptionDeleteResponse{Error: &pb.RpcObjectRelationOptionDeleteResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DeleteExtraRelationOption(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectRelationOptionDeleteResponseError_BAD_INPUT, err)
-	}
-
-	return response(pb.RpcObjectRelationOptionDeleteResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {
@@ -780,25 +684,30 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 }
 
 func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectCreateBookmarkResponse {
-		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, PageId: id}
+	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
+		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
 
+	id, details, err := mw.objectCreateBookmark(req)
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", details, err)
+	}
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, details, nil)
+}
+
+func (mw *Middleware) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, *types.Struct, error) {
 	var id string
+	var details *types.Struct
 	err := mw.doBlockService(func(bs block.Service) error {
 		var err error
-		id, err = bs.ObjectCreateBookmark(*req)
+		id, details, err = bs.ObjectCreateBookmark(*req)
 		return err
 	})
-
-	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
-	}
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
+	return id, details, err
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
@@ -840,4 +749,27 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 		return response(pb.RpcObjectToBookmarkResponseError_UNKNOWN_ERROR, "", err)
 	}
 	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcObjectSetInternalFlagsRequest) *pb.RpcObjectSetInternalFlagsResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectSetInternalFlagsResponseErrorCode, err error) *pb.RpcObjectSetInternalFlagsResponse {
+		m := &pb.RpcObjectSetInternalFlagsResponse{Error: &pb.RpcObjectSetInternalFlagsResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
+			d := pbtypes.CopyStruct(current)
+			return internalflag.AddToDetails(d, req.InternalFlags), nil
+		})
+	})
+	if err != nil {
+		return response(pb.RpcObjectSetInternalFlagsResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectSetInternalFlagsResponseError_NULL, nil)
 }

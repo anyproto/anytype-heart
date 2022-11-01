@@ -19,7 +19,7 @@ func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc 
 	}
 
 	for _, f := range filters {
-		if f.QuickOption > model.BlockContentDataviewFilter_ExactDate {
+		if f.QuickOption > model.BlockContentDataviewFilter_ExactDate || f.Format == model.RelationFormat_date {
 			d1, d2 := getRange(f, loc)
 			switch f.Condition {
 			case model.BlockContentDataviewFilter_Equal:
@@ -94,11 +94,12 @@ func getRange(f *model.BlockContentDataviewFilter, loc *time.Location) (int64, i
 		daysCnt := f.Value.GetNumberValue()
 		d1 = calendar.DayNumStart(0)
 		d2 = calendar.DayNumEnd(int(daysCnt))
-	//case model.BlockContentDataviewFilter_ExactDate:
-	//	timestamp := f.GetValue().GetNumberValue()
-	//	t := time.Unix(int64(timestamp), 0)
-	//	d1 = timeutil.DayStart(t)
-	//	d2 = timeutil.DayEnd(t)
+	case model.BlockContentDataviewFilter_ExactDate:
+		timestamp := f.GetValue().GetNumberValue()
+		t := time.Unix(int64(timestamp), 0)
+		calendar2 := timeutil.NewCalendar(t, loc)
+		d1 = calendar2.DayNumStart(0)
+		d2 = calendar2.DayNumEnd(0)
 	}
 
 	return d1.Unix(), d2.Unix()

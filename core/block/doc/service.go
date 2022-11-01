@@ -5,12 +5,12 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -23,14 +23,17 @@ func New() Service {
 }
 
 type DocInfo struct {
-	Id           string
-	Links        []string
-	FileHashes   []string
-	LogHeads     map[string]string
-	SetRelations []*model.Relation
-	SetSource    []string
-	Creator      string
-	State        *state.State
+	Id         string
+	Links      []string
+	FileHashes []string
+	LogHeads   map[string]string
+	Creator    string
+	State      *state.State
+}
+
+type RelationOptionsInfo struct {
+	RelationId string
+	Options    []*types.Struct
 }
 
 type OnDocChangeCallback func(ctx context.Context, info DocInfo) error
@@ -39,6 +42,7 @@ type Service interface {
 	GetDocInfo(ctx context.Context, id string) (info DocInfo, err error)
 	OnWholeChange(cb OnDocChangeCallback)
 	ReportChange(ctx context.Context, info DocInfo)
+	WakeupIds(ids ...string)
 
 	app.ComponentRunnable
 }
@@ -85,6 +89,12 @@ func (l *listener) OnWholeChange(cb OnDocChangeCallback) {
 	l.m.Lock()
 	defer l.m.Unlock()
 	l.wholeCallbacks = append(l.wholeCallbacks, cb)
+}
+
+func (l *listener) WakeupIds(ids ...string) {
+	for _, id := range ids {
+		l.records.Add(core.ThreadRecordInfo{ThreadID: id})
+	}
 }
 
 func (l *listener) GetDocInfo(ctx context.Context, id string) (info DocInfo, err error) {

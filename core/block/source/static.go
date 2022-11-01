@@ -11,22 +11,24 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func (s *service) NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State) SourceWithType {
+func (s *service) NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
 	return &static{
 		id:     id,
 		sbType: sbType,
 		doc:    doc,
 		a:      s.anytype,
 		s:      s,
+		pushChange: pushChange,
 	}
 }
 
 type static struct {
-	id     string
-	sbType model.SmartBlockType
-	doc    *state.State
-	a      core.Service
-	s      *service
+	id         string
+	sbType     model.SmartBlockType
+	doc        *state.State
+	pushChange func(p PushChangeParams) (string, error)
+	a          core.Service
+	s          *service
 }
 
 func (s *static) Id() string {
@@ -46,7 +48,7 @@ func (s *static) Virtual() bool {
 }
 
 func (s *static) ReadOnly() bool {
-	return true
+	return s.pushChange == nil
 }
 
 func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -58,6 +60,9 @@ func (s *static) ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc sta
 }
 
 func (s *static) PushChange(params PushChangeParams) (id string, err error) {
+	if s.pushChange != nil {
+		return s.pushChange(params)
+	}
 	return
 }
 

@@ -2,7 +2,6 @@ package bundle
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -59,6 +58,14 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
 }
 
+var DefaultSmartblockTypePerObjectType = map[TypeKey]coresb.SmartBlockType{
+	TypeKeyPage:       coresb.SmartBlockTypePage,
+	TypeKeySet:        coresb.SmartBlockTypeSet,
+	TypeKeyObjectType: coresb.SmartBlockTypeObjectType,
+	TypeKeyTemplate:   coresb.SmartBlockTypeTemplate,
+	TypeKeyDashboard:  coresb.SmartBlockTypeHome,
+}
+
 // filled in init
 var LocalRelationsKeys []string   // stored only in localstore
 var DerivedRelationsKeys []string // derived
@@ -102,7 +109,20 @@ func MustGetType(tk TypeKey) *model.ObjectType {
 // PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
 func MustGetRelation(rk RelationKey) *model.Relation {
 	if v, exists := relations[rk]; exists {
-		return pbtypes.CopyRelation(v)
+		d := pbtypes.CopyRelation(v)
+		d.Id = addr.BundledRelationURLPrefix + d.Key
+		return d
+	}
+
+	// we can safely panic in case RelationKey is a generated constant
+	panic(ErrNotFound)
+}
+
+// MustGetRelation returns built-in relation by predefined RelationKey constant
+// PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
+func MustGetRelationLink(rk RelationKey) *model.RelationLink {
+	if v, exists := relations[rk]; exists {
+		return &model.RelationLink{Key: v.Key, Format: v.Format}
 	}
 
 	// we can safely panic in case RelationKey is a generated constant
@@ -119,7 +139,9 @@ func MustGetRelations(rks []RelationKey) []*model.Relation {
 
 func GetRelation(rk RelationKey) (*model.Relation, error) {
 	if v, exists := relations[rk]; exists {
-		return pbtypes.CopyRelation(v), nil
+		v := pbtypes.CopyRelation(v)
+		v.Id = addr.BundledRelationURLPrefix + v.Key
+		return v, nil
 	}
 
 	return nil, ErrNotFound
@@ -210,76 +232,28 @@ func ListTypesKeys() []TypeKey {
 	return keys
 }
 
-func GetDetailsForRelation(bundled bool, rel *model.Relation) ([]*model.Relation, *types2.Struct) {
+func GetDetailsForRelation(bundled bool, rel *model.Relation) *types2.Struct {
 	var prefix string
 	if bundled {
 		prefix = addr.BundledRelationURLPrefix
 	} else {
-		prefix = addr.CustomRelationURLPrefix
+		prefix = addr.RelationKeyToIdPrefix
 	}
 
-	d := &types2.Struct{Fields: map[string]*types2.Value{
-		RelationKeyName.String():             pbtypes.String(rel.Name),
-		RelationKeyDescription.String():      pbtypes.String(rel.Description),
-		RelationKeyId.String():               pbtypes.String(prefix + rel.Key),
-		RelationKeyType.String():             pbtypes.String(TypeKeyRelation.URL()),
-		RelationKeyCreator.String():          pbtypes.String(rel.Creator),
-		RelationKeyLayout.String():           pbtypes.Float64(float64(model.ObjectType_relation)),
-		RelationKeyRelationFormat.String():   pbtypes.Float64(float64(rel.Format)),
-		RelationKeyIsHidden.String():         pbtypes.Bool(rel.Hidden),
-		RelationKeyIsReadonly.String():       pbtypes.Bool(rel.ReadOnlyRelation),
-		RelationKeyMpAddedToLibrary.String(): pbtypes.Bool(true), // temp
+	return &types2.Struct{Fields: map[string]*types2.Value{
+		RelationKeyName.String():                  pbtypes.String(rel.Name),
+		RelationKeyDescription.String():           pbtypes.String(rel.Description),
+		RelationKeyId.String():                    pbtypes.String(prefix + rel.Key),
+		RelationKeyRelationKey.String():           pbtypes.String(rel.Key),
+		RelationKeyType.String():                  pbtypes.String(TypeKeyRelation.URL()),
+		RelationKeyCreator.String():               pbtypes.String(rel.Creator),
+		RelationKeyLayout.String():                pbtypes.Float64(float64(model.ObjectType_relation)),
+		RelationKeyRelationFormat.String():        pbtypes.Float64(float64(rel.Format)),
+		RelationKeyIsHidden.String():              pbtypes.Bool(rel.Hidden),
+		RelationKeyIsReadonly.String():            pbtypes.Bool(rel.ReadOnlyRelation),
+		RelationKeyRelationReadonlyValue.String(): pbtypes.Bool(rel.ReadOnly),
+		RelationKeyMpAddedToLibrary.String():      pbtypes.Bool(true), // temp
 	}}
-
-	var rels []*model.Relation
-	for k := range d.Fields {
-		rels = append(rels, MustGetRelation(RelationKey(k)))
-	}
-	return rels, d
-}
-
-func MergeRelationsKeys(rels1 []RelationKey, rels2 []RelationKey) []RelationKey {
-	if rels1 == nil {
-		return rels2
-	}
-	if rels2 == nil {
-		return rels1
-	}
-
-	rels := make([]RelationKey, 0, len(rels2)+len(rels1))
-	for _, rel := range rels2 {
-		rels = append(rels, rel)
-	}
-
-	for _, rel := range rels1 {
-		if HasRelationKey(rels, rel) {
-			continue
-		}
-		rels = append(rels, rel)
-	}
-
-	return rels
-}
-
-func SortRelationKeys(rels []RelationKey) []RelationKey {
-	sort.Slice(rels, func(i, j int) bool {
-		return rels[i] < rels[j]
-	})
-
-	return rels
-}
-
-func GetRelationsKeys(rels []*model.Relation) []RelationKey {
-	if rels == nil {
-		return nil
-	}
-
-	relsKeys := make([]RelationKey, 0, len(rels))
-	for _, rel := range rels {
-		relsKeys = append(relsKeys, RelationKey(rel.Key))
-	}
-
-	return relsKeys
 }
 
 func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
@@ -290,4 +264,11 @@ func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
 	}
 
 	return false
+}
+
+func TypeKeyFromUrl(url string) (TypeKey, error) {
+	if !strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
+		return "", fmt.Errorf("invalid type url: no prefix found")
+	}
+	return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
 }
