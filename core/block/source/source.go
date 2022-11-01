@@ -595,6 +595,7 @@ func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err err
 			log.With("thread", s.id).
 				With("logid", s.logId).
 				With("change", rec.ID).Errorf("FindFirstChange: failed to unmarshal change: %s; continue", err.Error())
+			err = nil
 		}
 	}
 	return
