@@ -2,6 +2,7 @@ package change
 
 import (
 	"encoding/json"
+
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/gogo/protobuf/jsonpb"
@@ -9,15 +10,13 @@ import (
 
 func NewChangeFromRecord(record core.SmartblockRecordEnvelope) (*Change, error) {
 	var ch = &pb.Change{}
-	if err := record.Unmarshal(ch); err != nil {
-		return nil, err
-	}
+	err := record.Unmarshal(ch)
 	return &Change{
 		Id:      record.ID,
 		Account: record.AccountID,
 		Device:  record.LogID,
 		Change:  ch,
-	}, nil
+	}, err
 }
 
 type Change struct {

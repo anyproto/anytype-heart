@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/logstore"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/logstore"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -591,7 +592,9 @@ func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err err
 			return
 		}
 		if c, err = change.NewChangeFromRecord(*rec); err != nil {
-			return
+			log.With("thread", s.id).
+				With("logid", s.logId).
+				With("change", rec.ID).Errorf("FindFirstChange: failed to unmarshal change: %s; continue", err.Error())
 		}
 	}
 	return

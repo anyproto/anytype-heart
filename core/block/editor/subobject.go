@@ -3,6 +3,8 @@ package editor
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -12,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"strings"
 )
 
 var (
@@ -149,10 +150,11 @@ func (w *Workspaces) initSubObject(st *state.State, collection string, subId str
 		fullId = collection + addr.VirtualObjectSeparator + subId
 	}
 	subState, err := smartblock.SubState(st, collection, fullId)
-	template.WithForcedDetail(bundle.RelationKeyWorkspaceId, pbtypes.String(w.Id()))(subState)
 	if err != nil {
 		return
 	}
+	template.WithForcedDetail(bundle.RelationKeyWorkspaceId, pbtypes.String(w.Id()))(subState)
+
 	if _, exists := w.collections[collection]; !exists {
 		w.collections[collection] = map[string]*SubObject{}
 	}
