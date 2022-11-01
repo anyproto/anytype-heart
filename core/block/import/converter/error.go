@@ -26,7 +26,7 @@ func (ce ConvertError) IsEmpty() bool {
 }
 
 func (ce ConvertError) Error() error {
-	var pattern = "file: %s, error: %s" + "\n"
+	var pattern = "source: %s, error: %s" + "\n"
 	var errorString bytes.Buffer
 	if ce.IsEmpty() {
 		return nil

@@ -42,7 +42,7 @@ type Markdown struct {
 	blockConverter MarkdownToBlocksConverter
 }
 
-const Name = "Notion"
+const Name = "Markdown"
 
 func New(s core.Service) converter.Converter {
 	return &Markdown{blockConverter: NewMarkdownToBlocks(s)}
@@ -53,8 +53,8 @@ func (m *Markdown) Name() string {
 }
 
 func (m *Markdown) GetParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
-	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfNotionParams); ok {
-		return p.NotionParams.GetPath(), nil
+	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfMarkdownParams); ok {
+		return p.MarkdownParams.GetPath(), nil
 	}
 	return "", errors.Wrap(errors.New("wrong parameters format"), "Markdown: GetParams")
 }
