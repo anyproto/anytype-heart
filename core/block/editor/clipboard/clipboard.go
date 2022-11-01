@@ -459,7 +459,7 @@ func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteReque
 		blockIds = append(blockIds, b.Model().Id)
 	}
 
-	if err = s.InsertTo(req.FocusedBlockId, cb.getFileBlockPosition(req), blockIds...); err != nil {
+	if err = s.InsertTo(req.FocusedBlockId, cb.getFileBlockPosition(s, req), blockIds...); err != nil {
 		return
 	}
 	return blockIds, cb.Apply(s)
