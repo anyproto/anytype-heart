@@ -459,14 +459,14 @@ func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteReque
 		blockIds = append(blockIds, b.Model().Id)
 	}
 
-	if err = s.InsertTo(req.FocusedBlockId, cb.getFileBlockPosition(s, req), blockIds...); err != nil {
+	if err = s.InsertTo(req.FocusedBlockId, cb.getFileBlockPosition(req), blockIds...); err != nil {
 		return
 	}
 	return blockIds, cb.Apply(s)
 }
 
-func (cb *clipboard) getFileBlockPosition(s *state.State, req *pb.RpcBlockPasteRequest) model.BlockPosition {
-	b := s.Pick(req.FocusedBlockId)
+func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.BlockPosition {
+	b := cb.Pick(req.FocusedBlockId)
 	if b == nil {
 		return model.Block_Bottom
 	}
