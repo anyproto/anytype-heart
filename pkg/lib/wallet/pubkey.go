@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/strkey"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	crypto_pb "github.com/libp2p/go-libp2p-core/crypto/pb"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	crypto_pb "github.com/libp2p/go-libp2p/core/crypto/pb"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type PubKey interface {

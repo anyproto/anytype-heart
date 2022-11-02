@@ -13,9 +13,9 @@ import (
 	"github.com/gogo/protobuf/types"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/textileio/crypto"
 	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/go-threads/crypto"
 )
 
 type SmartBlockSnapshot interface {

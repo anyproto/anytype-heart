@@ -10,7 +10,7 @@ import (
 	"github.com/dgtony/collections/hashset"
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"

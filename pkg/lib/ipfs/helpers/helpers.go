@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	bsfetcher "github.com/ipfs/go-fetcher/impl/blockservice"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	"io"
@@ -40,7 +43,7 @@ const (
 
 // DataAtPath return bytes under an ipfs path
 func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
-	resolvedPath, err := ResolvePath(ctx, node, path.New(pth))
+	resolvedPath, err := ResolvePath(ctx, blockservice.New(node.BlockStore(), offline.Exchange(node.BlockStore())), path.New(pth))
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
@@ -95,7 +98,7 @@ func LinksAtCid(ctx context.Context, dag ipld.DAGService, pathCid string) ([]*ip
 	return dir.Links(ctx)
 }
 
-func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Resolved, error) {
+func ResolvePath(ctx context.Context, bs blockservice.BlockService, p path.Path) (path.Resolved, error) {
 	if _, ok := p.(path.Resolved); ok {
 		return p.(path.Resolved), nil
 	}
@@ -105,21 +108,8 @@ func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Re
 
 	ipath := ipfspath.Path(p.String())
 
-	var resolveOnce resolver.ResolveOnce
-
-	switch ipath.Segments()[0] {
-	case "ipfs":
-		resolveOnce = uio.ResolveUnixfsOnce
-	case "ipld":
-		resolveOnce = resolver.ResolveSingle
-	default:
-		return nil, fmt.Errorf("unsupported path namespace: %s", p.Namespace())
-	}
-
-	r := &resolver.Resolver{
-		DAG:         dag,
-		ResolveOnce: resolveOnce,
-	}
+	fetcherFactory := bsfetcher.NewFetcherConfig(bs)
+	r := resolver.NewBasicResolver(fetcherFactory)
 
 	node, rest, err := r.ResolveToLastNode(ctx, ipath)
 	if err != nil {
