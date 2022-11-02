@@ -164,6 +164,7 @@ type Service interface {
 
 	SetFileStyle(ctx *session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string) error
 	UploadFile(req pb.RpcFileUploadRequest) (hash string, err error)
+	UploadFileBlockWithHash(ctx *session.Context, contextId string, req pb.RpcBlockUploadRequest) (hash string, err error) 
 	UploadBlockFile(ctx *session.Context, req pb.RpcBlockUploadRequest, groupId string) error
 	UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploadRequest) (err error)
 	CreateAndUploadFile(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
@@ -307,7 +308,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
-	s.bookmark = a.MustComponent(bookmarksvc.CName).(bookmarksvc.Service)
+	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
