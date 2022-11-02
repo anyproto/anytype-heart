@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -805,11 +806,58 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
 			d := pbtypes.CopyStruct(current)
-			return internalflag.AddToDetails(d, req.InternalFlags), nil
+			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetInternalFlagsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectSetInternalFlagsResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
+	ctx := mw.newContext(cctx)
+
+
+	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
+		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
+	err := importer.Import(ctx, req)
+
+	if err != nil {
+		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, err)
+	}
+	return response(pb.RpcObjectImportResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
+	ctx := mw.newContext(cctx)
+
+	response := func(res []*pb.RpcObjectImportListImportResponse, code pb.RpcObjectImportListResponseErrorCode, err error) *pb.RpcObjectImportListResponse {
+		m := &pb.RpcObjectImportListResponse{Response: res, Error: &pb.RpcObjectImportListResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
+	res, err := importer.ListImports(ctx, req)
+
+	if err != nil {
+		return response(res, pb.RpcObjectImportListResponseError_INTERNAL_ERROR, err)
+	}
+	return response(res, pb.RpcObjectImportListResponseError_NULL, nil)
 }

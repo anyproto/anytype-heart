@@ -29,7 +29,7 @@ type Basic interface {
 	Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 	SetDivStyle(ctx *session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 
-	PasteBlocks(blocks []simple.Block) (err error)
+	PasteBlocks(blocks []simple.Block, position model.BlockPosition) (err error)
 	SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
 	AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error
@@ -42,9 +42,9 @@ type Basic interface {
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-func (bs *basic) PasteBlocks(blocks []simple.Block) (err error) {
+func (bs *basic) PasteBlocks(blocks []simple.Block, position model.BlockPosition) (err error) {
 	s := bs.NewState()
-	if err := PasteBlocks(s, blocks, "", model.Block_Inner); err != nil {
+	if err := PasteBlocks(s, blocks, "", position); err != nil {
 		return fmt.Errorf("paste blocks: %w", err)
 	}
 	return bs.Apply(s)

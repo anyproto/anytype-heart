@@ -1706,6 +1706,85 @@ message Rpc {
                 GRAPH_JSON = 5;
             }
         }
+
+        message Import {
+            message Request {
+                oneof params {
+                    NotionParams notionParams = 1;
+                    BookmarksParams bookmarksParams = 2;
+                }
+                repeated Snapshot snapshots = 3; // optional, for external developers usage
+                bool updateExistingObjects = 4;
+                Type type = 5;
+                Mode mode = 6;
+
+                message NotionParams {
+                    string path = 1;
+                }
+
+                message BookmarksParams {
+                    string url = 1;
+                }
+
+                enum Mode {
+                    ALL_OR_NOTHING = 0;
+                    IGNORE_ERRORS = 1;
+                };
+
+                message Snapshot {
+                    string id = 1; 
+                    anytype.model.SmartBlockSnapshotBase snapshot = 2;
+                };
+                enum Type {
+                    Notion = 0;
+                    External = 1; // external developers use it
+                };
+
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+                    
+                    enum Code {
+                        NULL = 0;
+                        INTERNAL_ERROR = 1;
+                        UNKNOWN_ERROR = 2;
+                        BAD_INPUT = 3;
+                    }
+                }
+            }
+        }
+        message ImportList {
+            message Request {}
+
+            message Response {
+                Error error = 1;
+                repeated ImportResponse response = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+                    
+                    enum Code {
+                        NULL = 0;
+                        INTERNAL_ERROR = 1;
+                        UNKNOWN_ERROR = 2;
+                        BAD_INPUT = 3;
+                    }
+                }
+                
+            }
+            message ImportResponse {
+                Type type = 1; 
+                enum Type {
+                    Notion = 0;
+                };
+            }
+        }
     }
 
     message ObjectRelation {

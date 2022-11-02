@@ -157,7 +157,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 				lastTextBlock = b
 			}
 		} else {
-			// if text block + object block - go to cutBlocks scenario imediately 
+			// if text block + object block - go to cutBlocks scenario imediately
 			firstTextBlock = nil
 			lastTextBlock = nil
 			break
@@ -271,6 +271,20 @@ func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteReques
 
 	if err != nil {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
+	}
+
+	// See GO-250 for more details
+	// In short: if we paste plaintext blocks into a styled block, we make first ones to inherit style from this block
+	if focused := cb.Pick(req.FocusedBlockId); focused != nil {
+		if focusedTxt := focused.Model().GetText(); focusedTxt != nil && focusedTxt.Style != model.BlockContentText_Paragraph {
+			for _, b := range blocks {
+				if txt := b.GetText(); txt.Style == model.BlockContentText_Paragraph {
+					txt.Style = focusedTxt.Style
+				} else {
+					break
+				}
+			}
+		}
 	}
 
 	req.AnySlot = blocks
@@ -458,8 +472,20 @@ func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteReque
 		}
 		blockIds = append(blockIds, b.Model().Id)
 	}
-	if err = s.InsertTo(req.FocusedBlockId, model.Block_Bottom, blockIds...); err != nil {
+
+	if err = s.InsertTo(req.FocusedBlockId, cb.getFileBlockPosition(req), blockIds...); err != nil {
 		return
 	}
 	return blockIds, cb.Apply(s)
+}
+
+func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.BlockPosition {
+	b := cb.Pick(req.FocusedBlockId)
+	if b == nil {
+		return model.Block_Bottom
+	}
+	if txt := b.Model().GetText(); txt != nil && txt.Text == "" {
+		return model.Block_Replace
+	}
+	return model.Block_Bottom
 }

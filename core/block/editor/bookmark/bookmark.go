@@ -12,12 +12,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
+
+var log = logging.Logger("bookmark")
 
 func NewBookmark(sb smartblock.SmartBlock, blockService BlockService, bookmarkSvc BookmarkService) Bookmark {
 	return &sbookmark{SmartBlock: sb, blockService: blockService, bookmarkSvc: bookmarkSvc}

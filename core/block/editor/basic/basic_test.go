@@ -280,7 +280,7 @@ func TestBasic_PasteBlocks(t *testing.T) {
 		simple.New(&model.Block{Id: "1.1.1"}),
 		simple.New(&model.Block{Id: "2", ChildrenIds: []string{"2.1"}}),
 		simple.New(&model.Block{Id: "2.1"}),
-	})
+	}, model.Block_Inner)
 	require.NoError(t, err)
 	s := sb.NewState()
 	require.Len(t, s.Blocks(), 6)

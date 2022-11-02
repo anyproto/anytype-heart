@@ -152,7 +152,7 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 	}
 
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.PasteBlocks(blocks)
+		return b.PasteBlocks(blocks, model.Block_Inner)
 	})
 }
 
@@ -543,6 +543,23 @@ func (s *service) SetFileStyle(ctx *session.Context, contextId string, style mod
 	})
 }
 
+func (s *service) UploadFileBlockWithHash(ctx *session.Context, contextId string, req pb.RpcBlockUploadRequest) (hash string, err error) {
+	err = s.DoFile(contextId, func(b file.File) error {
+		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
+			Path:    req.FilePath,
+			Url:     req.Url,
+			GroupId: "",
+		})
+		if err != nil {
+			return err
+		}
+		hash = res.Hash
+		return nil
+	})
+	
+	return hash, err
+}
+
 func (s *service) Undo(ctx *session.Context, req pb.RpcObjectUndoRequest) (counters pb.RpcObjectUndoRedoCounter, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
 		counters, err = b.Undo(ctx)
@@ -737,7 +754,7 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 }
 
 func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
-	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
