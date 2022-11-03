@@ -528,6 +528,18 @@
     - [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request)
     - [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response)
     - [Rpc.Object.Graph.Response.Error](#anytype-Rpc-Object-Graph-Response-Error)
+    - [Rpc.Object.Import](#anytype-Rpc-Object-Import)
+    - [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request)
+    - [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams)
+    - [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams)
+    - [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot)
+    - [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response)
+    - [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error)
+    - [Rpc.Object.ImportList](#anytype-Rpc-Object-ImportList)
+    - [Rpc.Object.ImportList.ImportResponse](#anytype-Rpc-Object-ImportList-ImportResponse)
+    - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
+    - [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response)
+    - [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error)
     - [Rpc.Object.ImportMarkdown](#anytype-Rpc-Object-ImportMarkdown)
     - [Rpc.Object.ImportMarkdown.Request](#anytype-Rpc-Object-ImportMarkdown-Request)
     - [Rpc.Object.ImportMarkdown.Response](#anytype-Rpc-Object-ImportMarkdown-Response)
@@ -878,6 +890,11 @@
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
+    - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
+    - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
+    - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
+    - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
+    - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
     - [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype-Rpc-Object-ImportMarkdown-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
@@ -1277,6 +1294,8 @@
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
 | ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
+| ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
+| ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectCreateRelation | [Rpc.Object.CreateRelation.Request](#anytype-Rpc-Object-CreateRelation-Request) | [Rpc.Object.CreateRelation.Response](#anytype-Rpc-Object-CreateRelation-Response) | Relations *** |
 | ObjectCreateRelationOption | [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request) | [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response) |  |
 | RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response) |  |
@@ -9041,6 +9060,180 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-Import"></a>
+
+### Rpc.Object.Import
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Request"></a>
+
+### Rpc.Object.Import.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams) |  |  |
+| bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  |  |
+| snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot) | repeated | optional, for external developers usage |
+| updateExistingObjects | [bool](#bool) |  |  |
+| type | [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type) |  |  |
+| mode | [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-BookmarksParams"></a>
+
+### Rpc.Object.Import.Request.BookmarksParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-NotionParams"></a>
+
+### Rpc.Object.Import.Request.NotionParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-Snapshot"></a>
+
+### Rpc.Object.Import.Request.Snapshot
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| snapshot | [model.SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Response"></a>
+
+### Rpc.Object.Import.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Response-Error"></a>
+
+### Rpc.Object.Import.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportList"></a>
+
+### Rpc.Object.ImportList
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportList-ImportResponse"></a>
+
+### Rpc.Object.ImportList.ImportResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportList-Request"></a>
+
+### Rpc.Object.ImportList.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportList-Response"></a>
+
+### Rpc.Object.ImportList.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error) |  |  |
+| response | [Rpc.Object.ImportList.ImportResponse](#anytype-Rpc-Object-ImportList-ImportResponse) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportList-Response-Error"></a>
+
+### Rpc.Object.ImportList.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ImportMarkdown"></a>
 
 ### Rpc.Object.ImportMarkdown
@@ -13969,6 +14162,69 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-Mode"></a>
+
+### Rpc.Object.Import.Request.Mode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ALL_OR_NOTHING | 0 |  |
+| IGNORE_ERRORS | 1 |  |
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-Type"></a>
+
+### Rpc.Object.Import.Request.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Notion | 0 |  |
+| External | 1 | external developers use it |
+
+
+
+<a name="anytype-Rpc-Object-Import-Response-Error-Code"></a>
+
+### Rpc.Object.Import.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| INTERNAL_ERROR | 1 |  |
+| UNKNOWN_ERROR | 2 |  |
+| BAD_INPUT | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportList-ImportResponse-Type"></a>
+
+### Rpc.Object.ImportList.ImportResponse.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Notion | 0 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportList-Response-Error-Code"></a>
+
+### Rpc.Object.ImportList.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| INTERNAL_ERROR | 1 |  |
+| UNKNOWN_ERROR | 2 |  |
+| BAD_INPUT | 3 |  |
 
 
 

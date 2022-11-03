@@ -49,7 +49,7 @@ type File interface {
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx *session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-
+	UploadFileWithHash(blockId string, source FileSource) (UploadResult, error) 
 	dropFilesHandler
 }
 
@@ -71,14 +71,17 @@ func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSy
 		source.GroupId = bson.NewObjectId().Hex()
 	}
 	s := sf.NewStateCtx(ctx).SetGroupId(source.GroupId)
-	if err = sf.upload(s, id, source, isSync); err != nil {
+	if res := sf.upload(s, id, source, isSync); res.Err != nil {
 		return
 	}
 	return sf.Apply(s)
 }
 
 func (sf *sfile) UploadState(s *state.State, id string, source FileSource, isSync bool) (err error) {
-	return sf.upload(s, id, source, isSync)
+	if res := sf.upload(s, id, source, isSync); res.Err != nil {
+		return res.Err
+	}
+	return 
 }
 
 func (sf *sfile) SetFileStyle(ctx *session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error) {
@@ -117,8 +120,8 @@ func (sf *sfile) CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreate
 	if err = sf.upload(s, newId, FileSource{
 		Path: req.LocalPath,
 		Url:  req.Url,
-	}, false); err != nil {
-		return
+	}, false).Err; err != nil {
+		return 
 	}
 	if err = sf.Apply(s); err != nil {
 		return
@@ -126,11 +129,11 @@ func (sf *sfile) CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreate
 	return
 }
 
-func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync bool) (err error) {
+func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync bool) (res UploadResult) {
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
-		return fmt.Errorf("not a file block")
+		return UploadResult{Err: fmt.Errorf("not a file block")}
 	}
 	upl := sf.newUploader().SetBlock(f)
 	if source.Path != "" {
@@ -141,11 +144,11 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 		upl.SetBytes(source.Bytes).SetName(source.Name)
 	}
 	if isSync {
-		return upl.Upload(context.TODO()).Err
+		return upl.Upload(context.TODO())
 	} else {
 		upl.SetGroupId(s.GroupId()).AsyncUpdates(sf.Id()).UploadAsync(context.TODO())
 	}
-	return
+	return 
 }
 
 func (sf *sfile) newUploader() Uploader {
@@ -177,6 +180,14 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	go process.Start(sf.RootId(), req.DropTargetId, req.Position, ch)
 	err = <-ch
 	return
+}
+
+func (sf *sfile) UploadFileWithHash(blockId string, source FileSource) (UploadResult, error) {
+	if source.GroupId == "" {
+		source.GroupId = bson.NewObjectId().Hex()
+	}
+	s := sf.NewState().SetGroupId(source.GroupId)
+	return sf.upload(s, blockId, source, true), sf.Apply(s)
 }
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
