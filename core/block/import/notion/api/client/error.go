@@ -13,15 +13,11 @@ type NotionErrorResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-func (ne *NotionErrorResponse) Error() error {
-	return fmt.Errorf("status: %d, code: %s, message: %s", ne.Status, ne.Code, ne.Message)
-}
-
-func TransformHttpCodeToError(response []byte) *NotionErrorResponse {
-	var notionErr = NotionErrorResponse{}
+func TransformHttpCodeToError(response []byte) error {
+	var notionErr NotionErrorResponse
 	if err := json.Unmarshal(response, &notionErr); err != nil {
 		logging.Logger("client").Error("failed to parse error response from notion %s", err)
 		return nil
 	}
-	return &notionErr
+	return fmt.Errorf("status: %d, code: %s, message: %s", notionErr.Status, notionErr.Code, notionErr.Message)
 }

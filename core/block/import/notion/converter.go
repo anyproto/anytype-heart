@@ -28,7 +28,7 @@ func New(core.Service) converter.Converter {
 
 func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	ce := converter.NewError()
-	apiKey := n.getParams(req.Params)
+	apiKey := n.getParams(req)
 	if apiKey == "" {
 		ce.Add("apiKey", fmt.Errorf("failed to extract apikey"))
 		return &converter.Response{
@@ -38,9 +38,9 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 	return n.database.GetDatabase(context.TODO(), req.Mode, apiKey)
 }
 
-func (n *Notion) getParams(param pb.IsRpcObjectImportRequestParams) string {
-	if p, ok := param.(*pb.RpcObjectImportRequestParamsOfNotionParams); ok {
-		return p.NotionParams.GetApiKey()
+func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {
+	if p := param.GetNotionParams(); p != nil {
+		return p.GetApiKey()
 	}
 	return ""
 }

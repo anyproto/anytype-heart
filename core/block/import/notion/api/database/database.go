@@ -72,19 +72,15 @@ type ListDatabasesResponse struct {
 
 func (ds *DatabaseService) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, apiKey string) *converter.Response {
 	var convereterError = converter.ConvertError{}
-	databases, notionErr, err := ds.listDatabases(ctx, apiKey, pageSize)
+	databases, err := ds.listDatabases(ctx, apiKey, pageSize)
 	if err != nil {
 		convereterError.Add(endpoint, err)
 		return &converter.Response{Error: convereterError} 
 	}
-	if notionErr != nil {
-		convereterError.Add(endpoint, notionErr.Error())
-		return &converter.Response{Error: convereterError}
-	}
 	return ds.mapDatabasesToSnaphots(ctx, mode, databases, convereterError)
 }
 
-func (ds *DatabaseService) listDatabases(ctx context.Context, apiKey string, pageSize int64) ([]Database, *client.NotionErrorResponse, error) {
+func (ds *DatabaseService) listDatabases(ctx context.Context, apiKey string, pageSize int64) ([]Database, error) {
 	var (
 		hasMore         = true
 		body            = &bytes.Buffer{}
@@ -98,41 +94,42 @@ func (ds *DatabaseService) listDatabases(ctx context.Context, apiKey string, pag
 	err := json.NewEncoder(body).Encode(&Option{PageSize: pageSize, StartCursor: startCursor})
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+		return nil, fmt.Errorf("ListDatabases: %s", err)
 	}
 
 	req, err := ds.client.PrepareRequest(ctx, apiKey, http.MethodPost, endpoint, body)
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+		return nil, fmt.Errorf("ListDatabases: %s", err)
 	}
 
 	for hasMore {
 		res, err := ds.client.HttpClient.Do(req)
+
 		if err != nil {
-			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+			return nil, fmt.Errorf("ListDatabases: %s", err)
 		}
 		defer res.Body.Close()
 
 		b, err := ioutil.ReadAll(res.Body)
 
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		var databases ListDatabasesResponse
 		if res.StatusCode != http.StatusOK {
 			notionErr := client.TransformHttpCodeToError(b)
 			if notionErr == nil {
-				return nil, nil, fmt.Errorf("failed http request, %d code", res.StatusCode)
+				return nil, fmt.Errorf("failed http request, %d code", res.StatusCode)
 			}
-			return nil, notionErr, nil
+			return nil, notionErr
 		}
 
 		err = json.Unmarshal(b, &databases)
 
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-
 		for _, d := range databases.Results {
 			if d.Object == objectType {
 				resultDatabases = append(resultDatabases, d)
@@ -147,7 +144,7 @@ func (ds *DatabaseService) listDatabases(ctx context.Context, apiKey string, pag
 		startCursor += pageSize
 
 	}
-	return resultDatabases, nil, nil
+	return resultDatabases, nil
 }
 
 func (ds *DatabaseService) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, convereterError converter.ConvertError) *converter.Response {
@@ -191,6 +188,7 @@ func (ds *DatabaseService) transformDatabase(d Database) *model.SmartBlockSnapsh
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.String(d.LastEditedTime.String())
 	details[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(d.LastEditedBy.Name)
 	details[bundle.RelationKeyDescription.String()] = pbtypes.String(api.RichTextToDescription(d.Description))
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true) 
 
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks: []*model.Block{},
