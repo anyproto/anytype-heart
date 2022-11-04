@@ -1814,7 +1814,7 @@ message Rpc {
         message Delete {
             message Request {
                 string contextId = 1;
-                string relationKey = 2;
+                repeated string relationKeys = 2;
             }
 
             message Response {

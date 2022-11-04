@@ -11015,7 +11015,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| relationKey | [string](#string) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 
@@ -15288,7 +15288,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| relationIds | [string](#string) | repeated | relation key to remove |
+| relationKeys | [string](#string) | repeated | relation key to remove |
 
 
 
@@ -16979,7 +16979,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| relationIds | [string](#string) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
 
 
 

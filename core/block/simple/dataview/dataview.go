@@ -3,6 +3,7 @@ package dataview
 import (
 	"errors"
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/globalsign/mgo/bson"
@@ -51,7 +52,7 @@ type Block interface {
 	SetViewObjectOrder(order []*model.BlockContentDataviewObjectOrder)
 
 	AddRelation(relation *model.RelationLink) error
-	DeleteRelation(relationId string) error
+	DeleteRelation(relationKey string) error
 
 	GetSource() []string
 	SetSource(source []string) error
@@ -200,8 +201,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		msgs = append(msgs, simple.EventMessage{
 			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
 				BlockDataviewRelationDelete: &pb.EventBlockDataviewRelationDelete{
-					Id:          dv.Id,
-					RelationIds: removed,
+					Id:           dv.Id,
+					RelationKeys: removed,
 				},
 			}},
 		})
