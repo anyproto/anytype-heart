@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"strconv"
 	"strings"
 	"time"
@@ -279,46 +278,6 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	}
 
 	return resp
-}
-
-func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse {
-	errResponse := func(err error) *pb.RpcObjectRelationSearchDistinctResponse {
-		r := &pb.RpcObjectRelationSearchDistinctResponse{
-			Error: &pb.RpcObjectRelationSearchDistinctResponseError{
-				Code: pb.RpcObjectRelationSearchDistinctResponseError_UNKNOWN_ERROR,
-			},
-		}
-		if err != nil {
-			r.Error.Description = err.Error()
-		}
-		return r
-	}
-
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
-	if mw.app == nil {
-		return errResponse(errors.New("app must be started"))
-	}
-
-	kanbanSrv := mw.app.MustComponent(kanban.CName).(kanban.Service)
-	grouper, err := kanbanSrv.Grouper(req.RelationKey)
-	if err != nil {
-		return errResponse(err)
-	}
-
-	if err := grouper.InitGroups(req.Filters); err != nil {
-		return errResponse(err)
-	}
-
-	groups, err := grouper.MakeDataViewGroups()
-	if err != nil {
-		return errResponse(err)
-	}
-
-	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
-		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
-	}, Groups: groups}
 }
 
 func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
