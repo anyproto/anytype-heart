@@ -1,18 +1,12 @@
 package database
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -23,22 +17,12 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-type DatabaseID string
+const ObjectType = "database"
 
-const (
-	endpoint = "/search"
-	pageSize = 100
-	objectType = "database"
-)
+type Service struct {}
 
-type DatabaseService struct {
-	client *client.Client
-}
-
-func New() *DatabaseService {
-	return &DatabaseService{
-		client: client.NewClient(),
-	}
+func New() *Service {
+	return &Service{}
 }
 
 type Database struct {
@@ -49,7 +33,7 @@ type Database struct {
 	CreatedBy      api.User       `json:"created_by,omitempty"`
 	LastEditedBy   api.User       `json:"last_edited_by,omitempty"`
 	Title          []api.RichText `json:"title"`
-	Parent         Parent         `json:"parent"`
+	Parent         api.Parent     `json:"parent"`
 	URL            string         `json:"url"`
 	Properties     interface{}    `json:"properties"` // can't support it for databases yet
 	Description    []api.RichText `json:"description"`
@@ -59,95 +43,16 @@ type Database struct {
 	Cover          *block.Image   `json:"cover,omitempty"`
 }
 
-type Parent struct {
-	Type   string `json:"type,omitempty"`
-	PageID string `json:"page_id"`
+func (p Database) GetObjectType() string {
+	return ObjectType
 }
 
-type ListDatabasesResponse struct {
-	Results    []Database `json:"results"`
-	HasMore    bool       `json:"has_more"`
-	NextCursor *string    `json:"next_cursor"`
-}
-
-func (ds *DatabaseService) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, apiKey string) *converter.Response {
-	var convereterError = converter.ConvertError{}
-	databases, err := ds.listDatabases(ctx, apiKey, pageSize)
-	if err != nil {
-		convereterError.Add(endpoint, err)
-		return &converter.Response{Error: convereterError} 
-	}
+func (ds *Service) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database) *converter.Response {
+	var convereterError converter.ConvertError
 	return ds.mapDatabasesToSnaphots(ctx, mode, databases, convereterError)
 }
 
-func (ds *DatabaseService) listDatabases(ctx context.Context, apiKey string, pageSize int64) ([]Database, error) {
-	var (
-		hasMore         = true
-		body            = &bytes.Buffer{}
-		resultDatabases = make([]Database, 0)
-		startCursor     int64
-	)
-	type Option struct {
-		PageSize    int64 `json:"page_size,omitempty"`
-		StartCursor int64 `json:"start_cursor,omitempty"`
-	}
-	err := json.NewEncoder(body).Encode(&Option{PageSize: pageSize, StartCursor: startCursor})
-
-	if err != nil {
-		return nil, fmt.Errorf("ListDatabases: %s", err)
-	}
-
-	req, err := ds.client.PrepareRequest(ctx, apiKey, http.MethodPost, endpoint, body)
-
-	if err != nil {
-		return nil, fmt.Errorf("ListDatabases: %s", err)
-	}
-
-	for hasMore {
-		res, err := ds.client.HttpClient.Do(req)
-
-		if err != nil {
-			return nil, fmt.Errorf("ListDatabases: %s", err)
-		}
-		defer res.Body.Close()
-
-		b, err := ioutil.ReadAll(res.Body)
-
-		if err != nil {
-			return nil, err
-		}
-		var databases ListDatabasesResponse
-		if res.StatusCode != http.StatusOK {
-			notionErr := client.TransformHttpCodeToError(b)
-			if notionErr == nil {
-				return nil, fmt.Errorf("failed http request, %d code", res.StatusCode)
-			}
-			return nil, notionErr
-		}
-
-		err = json.Unmarshal(b, &databases)
-
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range databases.Results {
-			if d.Object == objectType {
-				resultDatabases = append(resultDatabases, d)
-			}
-		}
-
-		if !databases.HasMore {
-			hasMore = false
-			continue
-		}
-
-		startCursor += pageSize
-
-	}
-	return resultDatabases, nil
-}
-
-func (ds *DatabaseService) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, convereterError converter.ConvertError) *converter.Response {
+func (ds *Service) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, convereterError converter.ConvertError) *converter.Response {
 	var allSnapshots = make([]*converter.Snapshot, 0)
 	for _, d := range databases {
 		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
@@ -173,7 +78,7 @@ func (ds *DatabaseService) mapDatabasesToSnaphots(ctx context.Context, mode pb.R
 	return &converter.Response{Snapshots: allSnapshots, Error: convereterError} 
 }
 
-func (ds *DatabaseService) transformDatabase(d Database) *model.SmartBlockSnapshotBase {
+func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {
 	details := make(map[string]*types.Value, 0)
 	details[bundle.RelationKeySource.String()] = pbtypes.String(d.URL)
 	if len(d.Title) > 0{

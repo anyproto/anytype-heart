@@ -84,6 +84,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 
 	newId, details, err := oc.createSmartBlock(sbType, st)
 
+	st.SetDetails(snapshot.Details)
 	if err != nil {
 		return nil, fmt.Errorf("crear object '%s'", st.RootId())
 	}

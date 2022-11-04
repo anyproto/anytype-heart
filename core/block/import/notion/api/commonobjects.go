@@ -96,6 +96,15 @@ type Person struct {
 	Email string `json:"email"`
 }
 
+type Parent struct {
+	Type   string `json:"type,omitempty"`
+	PageID string `json:"page_id"`
+}
+
+type Object interface {
+	GetObjectType() string
+}
+
 func RichTextToDescription(rt []RichText) string {
 	var description bytes.Buffer
 
