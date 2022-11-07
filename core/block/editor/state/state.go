@@ -533,8 +533,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 				{
 					Value: &pb.EventMessageValueOfObjectRelationsRemove{
 						ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
-							Id:          s.RootId(),
-							RelationIds: removed,
+							Id:           s.RootId(),
+							RelationKeys: removed,
 						},
 					},
 				},
