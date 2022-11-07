@@ -85,7 +85,7 @@ func (v *bundledRelation) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc s
 
 func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {
 	if params.State.ChangeId() == "" {
-		// allow the first changes created by InitGroups
+		// allow the first changes created by Init
 		return "virtual", nil
 	}
 	return "", ErrReadOnly

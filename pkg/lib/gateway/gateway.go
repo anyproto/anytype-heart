@@ -77,7 +77,7 @@ func GatewayAddr() string {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.Node = a.MustComponent(core.CName).(core.Service)
 	g.addr = GatewayAddr()
-	log.Debugf("gateway.InitGroups: %s", g.addr)
+	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
 }
 
