@@ -296,3 +296,44 @@ func Test_removeByPrefix(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 10*8000, got)
 }
+
+func Test_SearchRelationDistinct(t *testing.T) {
+	tmpDir, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(tmpDir)
+
+	logging.ApplyLevelsFromEnv()
+	app := testapp.New()
+	defer app.Close()
+	ds := New()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
+	require.NoError(t, err)
+
+	id1 := getId()
+	id2 := getId()
+	id3 := getId()
+	require.NoError(t, ds.CreateObject(id1, &types.Struct{
+		Fields: map[string]*types.Value{
+			"name": pbtypes.String("one"),
+			"type": pbtypes.StringList([]string{"_ota1"}),
+		},
+	}, nil, "s1"))
+
+	require.NoError(t, ds.CreateObject(id2, &types.Struct{Fields: map[string]*types.Value{
+		"name": pbtypes.String("two"),
+		"type": pbtypes.StringList([]string{"_ota2"}),
+		"tag":  pbtypes.StringList([]string{"tag1"}),
+	}}, nil, "s2"))
+	require.NoError(t, ds.CreateObject(id3, &types.Struct{Fields: map[string]*types.Value{
+		"name": pbtypes.String("three"),
+		"type": pbtypes.StringList([]string{"_ota2"}),
+		"tag":  pbtypes.StringList([]string{"tag1", "tag2", "tag3"}),
+	}}, nil, "s3"))
+
+	statusOpts, err := ds.RelationSearchDistinct("tag", nil)
+	require.NoError(t, err)
+	require.Len(t, statusOpts, 3)
+
+	tagsOptsFilter, err := ds.RelationSearchDistinct("tag", []*model.BlockContentDataviewFilter{{RelationKey: "name", Condition: 1, Value: pbtypes.String("three")}})
+	require.NoError(t, err)
+	require.Len(t, tagsOptsFilter, 2) // because results should always contain an option with empty tags set
+}
