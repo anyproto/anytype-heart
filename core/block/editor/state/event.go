@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 
@@ -207,9 +208,9 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewRelationDelete:
 		if err = apply(o.BlockDataviewRelationDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				for _, rel := range o.BlockDataviewRelationDelete.RelationIds {
+				for _, key := range o.BlockDataviewRelationDelete.RelationKeys {
 					// todo: implement DeleteRelations?
-					f.DeleteRelation(rel)
+					f.DeleteRelation(key)
 				}
 				return nil
 			}
