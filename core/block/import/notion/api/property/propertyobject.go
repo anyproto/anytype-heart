@@ -7,327 +7,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
-type DetailSetter interface {
-	SetDetail(key string, details map[string]*types.Value)
-}
-
 const endpoint = "/pages/%s/properties/%s"
-
-type Title struct {
-	Object string         `json:"object"`
-	ID     string         `json:"id"`
-	Type   string         `json:"type"`
-	Title  []api.RichText `json:"title"`
-}
-
-func (t Title) SetDetail(key string, details map[string]*types.Value) {
-	var title string
-	for i, rt := range t.Title {
-		title += rt.PlainText
-		if i != len(t.Title) {
-			title += "\n"
-		}
-	}
-	details[key] = pbtypes.String(title)
-}
-
-type TitleResponse struct {
-	Results    []Title `json:"results"`
-	HasMore    bool    `json:"has_more"`
-	NextCursor string  `json:"next_cursor"`
-}
-
-type RichText struct {
-	Object   string         `json:"object"`
-	ID       string         `json:"id"`
-	Type     string         `json:"type"`
-	RichText []api.RichText `json:"rich_text"`
-}
-
-func (rt RichText) SetDetail(key string, details map[string]*types.Value) {
-	var richText string
-	for i, r := range rt.RichText {
-		richText += r.PlainText
-		if i != len(rt.RichText) {
-			richText += "\n"
-		}
-	}
-	details[key] = pbtypes.String(richText)
-}
-
-type RichTextResponse struct {
-	Results    []RichText `json:"results"`
-	HasMore    bool       `json:"has_more"`
-	NextCursor string     `json:"next_cursor"`
-}
-
-type NumberProperty struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	Number int64  `json:"number"`
-}
-
-func (np NumberProperty) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.Int64(np.Number)
-}
-
-type SelectProperty struct {
-	Object string       `json:"object"`
-	ID     string       `json:"id"`
-	Type   string       `json:"type"`
-	Select SelectOption `json:"select"`
-}
-
-func (sp SelectProperty) SetDetail(key string, details map[string]*types.Value) {
-	//TODO
-}
-
-type MultiSelect struct {
-	Object      string         `json:"object"`
-	ID          string         `json:"id"`
-	Type        string         `json:"type"`
-	MultiSelect []SelectOption `json:"multi_select"`
-}
-
-func (ms MultiSelect) SetDetail(key string, details map[string]*types.Value) {
-	//TODO
-}
-
-type DateProperty struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	Date   Date   `json:"date"`
-}
-
-func (dp DateProperty) SetDetail(key string, details map[string]*types.Value) {
-	return
-}
-
-type Date struct {
-	Start    string `json:"start"`
-	End      string `json:"end"`
-	TimeZone string `json:"time_zone"`
-}
-
-type Formula struct {
-	Object  string      `json:"object"`
-	ID      string      `json:"id"`
-	Type    string      `json:"type"`
-	Formula FormulaType `json:"formula"`
-}
-
-func (f Formula) SetDetail(key string, details map[string]*types.Value) {
-	switch t := f.Formula.(type) {
-	case StringFormula:
-		details[key] = pbtypes.String(t.String)
-	case NumberFormula:
-		details[key] = pbtypes.Int64(t.Number)
-	case BooleanFormula:
-		details[key] = pbtypes.Bool(t.Boolean)
-	default:
-		return
-	}
-}
-
-type FormulaType interface {
-	FormulaType()
-}
-
-type StringFormula struct {
-	Type   string `json:"type"`
-	String string `json:"string"`
-}
-
-func (StringFormula) FormulaType() {}
-
-type NumberFormula struct {
-	Type   string `json:"type"`
-	Number int64  `json:"number"`
-}
-
-func (NumberFormula) FormulaType() {}
-
-type BooleanFormula struct {
-	Type    string `json:"type"`
-	Boolean bool   `json:"boolean"`
-}
-
-func (BooleanFormula) FormulaType() {}
-
-type DateFormula struct {
-	Type string `json:"type"`
-	Date Date   `json:"date"`
-}
-
-func (DateFormula) FormulaType() {}
-
-type RelationProperty struct {
-	Object   string   `json:"object"`
-	ID       string   `json:"id"`
-	Type     string   `json:"type"`
-	Relation Relation `json:"relation"`
-}
-
-func (rp RelationProperty) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(rp.Relation.ID)
-}
-
-type Relation struct {
-	ID string `json:"id"`
-}
-
-type RelationResponse struct {
-	Results    []Relation `json:"results"`
-	HasMore    bool       `json:"has_more"`
-	NextCursor string     `json:"next_cursor"`
-}
-
-type Rollup struct {
-	Object string `json:"object"`
-}
-
-func (r Rollup) SetDetail(key string, details map[string]*types.Value) {
-	return
-}
-
-type People struct {
-	Object string   `json:"object"`
-	ID     string   `json:"id"`
-	Type   string   `json:"type"`
-	People api.User `json:"type"`
-}
-
-func (p People) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(p.People.Name)
-}
-
-type PeopleResponse struct {
-	Results    []People `json:"results"`
-	HasMore    bool     `json:"has_more"`
-	NextCursor string   `json:"next_cursor"`
-}
-
-type File struct {
-	Object string           `json:"object"`
-	ID     string           `json:"id"`
-	Type   string           `json:"type"`
-	File   []api.FileObject `json:"files"`
-}
-
-func (f File) SetDetail(key string, details map[string]*types.Value) {
-	var fileList = make([]string, len(f.File))
-	for i, fo := range f.File {
-		if fo.External != nil {
-			fileList[i] = fo.External.URL
-		} else if fo.File != nil {
-			fileList[i] = fo.File.URL
-		}
-	}
-	details[key] = pbtypes.StringList(fileList)
-}
-
-type Checkbox struct {
-	Object   string `json:"object"`
-	ID       string `json:"id"`
-	Type     string `json:"type"`
-	Checkbox bool   `json:"checkbox"`
-}
-
-func (c Checkbox) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.Bool(c.Checkbox)
-}
-
-type Url struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	URL    string `json:"url"`
-}
-
-func (u Url) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(u.URL)
-}
-
-type Email struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	Email  string `json:"email"`
-}
-
-func (e Email) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(e.Email)
-}
-
-type Phone struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	Phone  string `json:"phone_number"`
-}
-
-func (p Phone) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(p.Phone)
-}
-
-type CreatedTime struct {
-	Object      string `json:"object"`
-	ID          string `json:"id"`
-	Type        string `json:"type"`
-	CreatedTime string `json:"created_time"`
-}
-
-func (ct CreatedTime) SetDetail(key string, details map[string]*types.Value) {
-	t, _ := time.Parse(time.RFC3339, ct.CreatedTime)
-	details[key] = pbtypes.Int64(t.Unix())
-}
-
-type CreatedBy struct {
-	Object    string   `json:"object"`
-	ID        string   `json:"id"`
-	Type      string   `json:"type"`
-	CreatedBy api.User `json:"created_by"`
-}
-
-func (cb CreatedBy) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(cb.CreatedBy.Name)
-}
-
-type LastEditedTime struct {
-	Object         string `json:"object"`
-	ID             string `json:"id"`
-	Type           string `json:"type"`
-	LastEditedTime string `json:"last_edited_time"`
-}
-
-func (le LastEditedTime) SetDetail(key string, details map[string]*types.Value) {
-	t, _ := time.Parse(time.RFC3339, le.LastEditedTime)
-	details[key] = pbtypes.Int64(t.Unix())
-}
-
-type LastEditedBy struct {
-	Object       string   `json:"object"`
-	ID           string   `json:"id"`
-	Type         string   `json:"type"`
-	LastEditedBy api.User `json:"last_edited_by"`
-}
-
 type Service struct {
 	client *client.Client
-}
-
-func (lb LastEditedBy) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(lb.LastEditedBy.Name)
 }
 
 func New(client *client.Client) *Service {
@@ -336,12 +22,106 @@ func New(client *client.Client) *Service {
 	}
 }
 
+type Properties map[string]PropertyObject
+
+func (p *Properties) UnmarshalJSON(data []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	props, err := parsePropertyConfigs(raw)
+	if err != nil {
+		return err
+	}
+
+	*p = props
+	return nil
+}
+
+func parsePropertyConfigs(raw map[string]interface{}) (Properties, error) {
+	result := make(Properties)
+	for k, v := range raw {
+		var p PropertyObject
+		switch rawProperty := v.(type) {
+		case map[string]interface{}:
+			switch PropertyConfigType(rawProperty["type"].(string)) {
+			case PropertyConfigTypeTitle:
+				p = &Title{}
+			case PropertyConfigTypeRichText:
+				p = &RichText{}
+			case PropertyConfigTypeNumber:
+				p = &NumberProperty{}
+			case PropertyConfigTypeSelect:
+				p = &SelectProperty{}
+			case PropertyConfigTypeMultiSelect:
+				p = &MultiSelect{}
+			case PropertyConfigTypeDate:
+				p = &DateProperty{}
+			case PropertyConfigTypePeople:
+				p = &People{}
+			case PropertyConfigTypeFiles:
+				p = &File{}
+			case PropertyConfigTypeCheckbox:
+				p = &Checkbox{}
+			case PropertyConfigTypeURL:
+				p = &Url{}
+			case PropertyConfigTypeEmail:
+				p = &Email{}
+			case PropertyConfigTypePhoneNumber:
+				p = &Phone{}
+			case PropertyConfigTypeFormula:
+				p = &Formula{}
+			case PropertyConfigTypeRelation:
+				p = &RelationProperty{}
+			case PropertyConfigTypeRollup:
+				p = &Rollup{}
+			case PropertyConfigCreatedTime:
+				p = &CreatedTime{}
+			case PropertyConfigCreatedBy:
+				p = &CreatedBy{}
+			case PropertyConfigLastEditedTime:
+				p = &LastEditedTime{}
+			case PropertyConfigLastEditedBy:
+				p = &LastEditedBy{}
+			case PropertyConfigStatus:
+				p = &StatusProperty{}
+			default:
+				return nil, fmt.Errorf("unsupported property type: %s", rawProperty["type"].(string))
+			}
+			b, err := json.Marshal(rawProperty)
+			if err != nil {
+				return nil, err
+			}
+
+			if err = json.Unmarshal(b, &p); err != nil {
+				return nil, err
+			}
+
+			result[k] = p
+		default:
+			return nil, fmt.Errorf("unsupported property format %T", v)
+		}
+	}
+
+	return result, nil
+}
+
+type PropertyPaginatedRespone struct{
+	Object       string   `json:"object"`
+	ID           string   `json:"id"`
+	Type         string   `json:"type"`
+	Results      []interface{}   `json:"results"`
+	Item         interface{} `json:"property_item"`
+	HasMore      bool       `json:"has_more"`
+	NextCursor   string     `json:"next_cursor"`
+}
+
 func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, apiKey string, propertyType PropertyConfigType) ([]interface{}, error) {
 	var (
 		hasMore           = true
 		body              = &bytes.Buffer{}
 		startCursor       string
-		response          interface{}
+		response          PropertyPaginatedRespone
 		paginatedResponse = make([]interface{}, 0)
 	)
 
@@ -384,160 +164,170 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 		}
 
 		switch propertyType {
-		case PropertyConfigTypeTitle:
-			response = &TitleResponse{}
-		case PropertyConfigTypeRichText:
-			response = &RichTextResponse{}
+		case PropertyConfigTypeTitle, PropertyConfigTypeRichText, PropertyConfigTypeRelation, PropertyConfigTypePeople:
+			err = json.Unmarshal(b, &response)
+			if err != nil {
+				continue
+			}
+			res := response.Results
+			for _, v := range res {
+				buffer, err := json.Marshal(v)
+				if err != nil {
+					continue
+				}
+				if propertyType == PropertyConfigTypeTitle {
+					p := Title{}
+					err = json.Unmarshal(buffer, &p)
+					if err != nil { 
+						continue
+					}
+					paginatedResponse = append(paginatedResponse, p)
+				}
+				if propertyType == PropertyConfigTypeRichText {
+					p := RichText{}
+					err = json.Unmarshal(buffer, &p)
+					if err != nil { 
+						continue
+					}
+					paginatedResponse = append(paginatedResponse, p)
+				}
+				if propertyType == PropertyConfigTypeRelation {
+					p := Relation{}
+					err = json.Unmarshal(buffer, &p)
+					if err != nil { 
+						continue
+					}
+					paginatedResponse = append(paginatedResponse, p)
+				}
+				if propertyType == PropertyConfigTypePeople {
+					p := People{}
+					err = json.Unmarshal(buffer, &p)
+					if err != nil { 
+						continue
+					}
+					paginatedResponse = append(paginatedResponse, p)
+				}
+			}
+			if response.HasMore {
+				startCursor = response.NextCursor
+				continue
+			}
 		case PropertyConfigTypeNumber:
-			response = &NumberProperty{}
+			p := NumberProperty{}
+			err = json.Unmarshal(b, &p)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, p)
 		case PropertyConfigTypeSelect:
-			response = &SelectProperty{}
+			p := SelectProperty{}
+			err = json.Unmarshal(b, &p)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, p)
 		case PropertyConfigTypeMultiSelect:
-			response = &MultiSelect{}
+			p := MultiSelect{}
+			err = json.Unmarshal(b, &p)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, p)
 		case PropertyConfigTypeDate:
-			response = &DateProperty{}
-		case PropertyConfigTypePeople:
-			response = &PeopleResponse{}
+			date := DateProperty{}
+			err = json.Unmarshal(b, &date)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, date)
 		case PropertyConfigTypeFiles:
-			response = &File{}
+			file := File{}
+			err = json.Unmarshal(b, &file)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, file)
 		case PropertyConfigTypeCheckbox:
-			response = &Checkbox{}
+			checkbox := Checkbox{}
+			err = json.Unmarshal(b, &checkbox)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, checkbox)
 		case PropertyConfigTypeURL:
-			response = &Url{}
+			url := Url{}
+			err = json.Unmarshal(b, &url)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, url)
 		case PropertyConfigTypeEmail:
-			response = &Email{}
+			email := Email{}
+			err = json.Unmarshal(b, &email)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, email)
 		case PropertyConfigTypePhoneNumber:
-			response = &Phone{}
+			phone := Phone{}
+			err = json.Unmarshal(b, &phone)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, phone)
 		case PropertyConfigTypeFormula:
-			response = &Formula{}
-		case PropertyConfigTypeRelation:
-			response = &RelationProperty{}
+			formula := Formula{}
+			err = json.Unmarshal(b, &formula)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, formula)
 		case PropertyConfigTypeRollup:
-			response = &Rollup{}
+			rollup := Rollup{}
+			err = json.Unmarshal(b, &rollup)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, rollup)
 		case PropertyConfigCreatedTime:
-			response = &CreatedTime{}
+			ct := CreatedTime{}
+			err = json.Unmarshal(b, &ct)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, ct)
 		case PropertyConfigCreatedBy:
-			response = &CreatedBy{}
+			cb := CreatedBy{}
+			err = json.Unmarshal(b, &cb)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, cb)
 		case PropertyConfigLastEditedTime:
-			response = &LastEditedTime{}
+			lt := LastEditedTime{}
+			err = json.Unmarshal(b, &lt)
+			if err != nil { 
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, lt)
 		case PropertyConfigLastEditedBy:
-			response = &LastEditedBy{}
+			le := LastEditedBy{}
+			err = json.Unmarshal(b, &le)
+			if err != nil {
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, le)
+		case PropertyConfigStatus:
+			sp := StatusProperty{}
+			err = json.Unmarshal(b, &sp)
+			if err != nil {
+				continue
+			}
+			paginatedResponse = append(paginatedResponse, sp)
 		default:
 			return nil, fmt.Errorf("unsupported property type: %s", propertyType)
 		}
-
-		err = json.Unmarshal(b, &response)
-
-		if err != nil {
-			return nil, err
-		}
-		if propertyType == PropertyConfigTypeTitle {
-			title := response.(TitleResponse)
-			if title.HasMore {
-				for _, t := range title.Results {
-					paginatedResponse = append(paginatedResponse, t)
-				}
-				startCursor = title.NextCursor
-				continue
-			}
-		}
-		if propertyType == PropertyConfigTypeRichText {
-			richText := response.(RichTextResponse)
-			if richText.HasMore {
-				for _, rt := range richText.Results {
-					paginatedResponse = append(paginatedResponse, rt)
-				}
-				startCursor = richText.NextCursor
-				continue
-			}
-		}
-		if propertyType == PropertyConfigTypePeople {
-			people := response.(PeopleResponse)
-			if people.HasMore {
-				for _, people := range people.Results {
-					paginatedResponse = append(paginatedResponse, people)
-				}
-				startCursor = people.NextCursor
-				continue
-			}
-		}
-		if propertyType == PropertyConfigTypeRelation {
-			relations := response.(RelationResponse)
-			if relations.HasMore {
-				for _, relations := range relations.Results {
-					paginatedResponse = append(paginatedResponse, relations)
-				}
-				startCursor = relations.NextCursor
-				continue
-			}
-		}
-		paginatedResponse = append(paginatedResponse, response)
 		hasMore = false
 	}
 	return paginatedResponse, nil
-}
-
-func (s *Service) SetDetailValue(key string, propertyType PropertyConfigType, property []interface{}, details map[string]*types.Value) error {
-	switch propertyType {
-	case PropertyConfigTypeTitle:
-		for _, v := range property {
-			title := v.(Title)
-			title.SetDetail(key, details)
-		}
-	case PropertyConfigTypeRichText:
-		for _, v := range property {
-			rt := v.(RichText)
-			rt.SetDetail(key, details)
-		}
-	case PropertyConfigTypeNumber:
-		number := property[0].(NumberProperty)
-		number.SetDetail(key, details)
-	case PropertyConfigTypeSelect:
-		selectProperty := property[0].(SelectProperty)
-		selectProperty.SetDetail(key, details)
-	case PropertyConfigTypeMultiSelect:
-		multiSelect := property[0].(MultiSelect)
-		multiSelect.SetDetail(key, details)
-	case PropertyConfigTypeDate:
-	case PropertyConfigTypePeople:
-		p := property[0].(People)
-		p.SetDetail(key, details)
-	case PropertyConfigTypeFiles:
-		f := property[0].(File)
-		f.SetDetail(key, details)
-	case PropertyConfigTypeCheckbox:
-		c := property[0].(Checkbox)
-		c.SetDetail(key, details)
-	case PropertyConfigTypeURL:
-		url := property[0].(Url)
-		url.SetDetail(key, details)
-	case PropertyConfigTypeEmail:
-		email := property[0].(Email)
-		email.SetDetail(key, details)
-	case PropertyConfigTypePhoneNumber:
-		phone := property[0].(Phone)
-		phone.SetDetail(key, details)
-	case PropertyConfigTypeFormula:
-		formula := property[0].(Formula)
-		formula.SetDetail(key, details)
-	case PropertyConfigTypeRelation:
-		relation := property[0].(RelationProperty)
-		relation.SetDetail(key, details)
-	case PropertyConfigTypeRollup:
-	case PropertyConfigCreatedTime:
-		ct := property[0].(CreatedTime)
-		ct.SetDetail(key, details)
-	case PropertyConfigCreatedBy:
-		cb := property[0].(CreatedBy)
-		cb.SetDetail(key, details)
-	case PropertyConfigLastEditedTime:
-		lt := property[0].(LastEditedTime)
-		lt.SetDetail(key, details)
-	case PropertyConfigLastEditedBy:
-		lb := property[0].(LastEditedBy)
-		lb.SetDetail(key, details)
-	default:
-		return fmt.Errorf("unsupported property type: %s", propertyType)
-	}
-	return nil
 }

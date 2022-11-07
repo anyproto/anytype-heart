@@ -32,7 +32,7 @@ func (ce ConvertError) Error() error {
 		return nil
 	}
 	for name, err := range ce {
-		errorString.WriteString(fmt.Sprintf(pattern, name, err))
+		errorString.WriteString(fmt.Sprintf(pattern, name, err.Error()))
 	}
 	return fmt.Errorf(errorString.String())
 }

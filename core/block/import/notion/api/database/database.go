@@ -43,12 +43,12 @@ type Database struct {
 	Cover          *block.Image   `json:"cover,omitempty"`
 }
 
-func (p Database) GetObjectType() string {
+func (p *Database) GetObjectType() string {
 	return ObjectType
 }
 
 func (ds *Service) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database) *converter.Response {
-	var convereterError converter.ConvertError
+	convereterError := converter.ConvertError{}
 	return ds.mapDatabasesToSnaphots(ctx, mode, databases, convereterError)
 }
 

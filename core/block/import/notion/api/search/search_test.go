@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 )
@@ -36,7 +37,86 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	assert.Nil(t, databases.Error)
 }
 
-func Test_GetDatabaseFailedRequest(t *testing.T) {
+func Test_GetPagesSuccess(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte(`
+		{
+			"object": "list",
+			"results": [
+				{
+					"object": "page",
+					"id": "43b4db4f-23b8-46f9-9909-c783b033fb7d",
+					"created_time": "2022-10-25T11:44:00.000Z",
+					"last_edited_time": "2022-11-04T12:00:00.000Z",
+					"created_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"cover": {
+						"type": "external",
+						"external": {
+							"url": "https://www.notion.so/images/page-cover/nasa_eagle_in_lunar_orbit.jpg"
+						}
+					},
+					"icon": {
+						"type": "emoji",
+						"emoji": "📣"
+					},
+					"parent": {
+						"type": "database_id",
+						"database_id": "072a11cb-684f-4f2b-9490-79592700c67e"
+					},
+					"archived": false,
+					"properties": {
+						"✔️ Task List": {
+							"id": "_OI%5E",
+							"type": "relation",
+							"relation": [],
+							"has_more": true
+						}
+					},
+					"url": "https://www.notion.so/dd-43b4db4f23b846f99909c783b033fb7d"
+				}
+			],
+			"next_cursor": null,
+			"has_more": false,
+			"type": "page_or_database",
+			"page_or_database": {}
+		}
+		`))
+    }))
+
+	defer s.Close()
+	pageSize := int64(100)
+	c := client.NewClient()
+	c.BasePath = s.URL
+
+	searchService := New(c)
+	_, p, err := searchService.Search(context.TODO(), "key", pageSize)
+	assert.NotNil(t, p)
+	assert.Len(t, p, 1)
+	assert.Nil(t, err)
+
+	s = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"object":"list","results":[{"object":"property_item","type":"relation","id":"cm~~","relation":{"id":"18e660df-d7f4-4d4b-b30c-eeb88ffee645"}}],"next_cursor":null,"has_more":false,"type":"property_item","property_item":{"id":"cm~~","next_url":null,"type":"relation","relation":{}}}`))
+	}))
+
+	c = client.NewClient()
+	c.BasePath = s.URL
+	ps := page.New(c)
+	pages := ps.GetPages(context.Background(), "key", pb.RpcObjectImportRequest_ALL_OR_NOTHING, p)
+
+	assert.NotNil(t, pages)
+	assert.Len(t, pages.Snapshots, 1)
+	assert.Nil(t, pages.Error)
+}
+
+
+func Test_SearcheFailedRequest(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
         w.Write([]byte(`{"object":"error","status":400,"code":"validation_error","message":"path failed validation: path.database_id should be a valid uuid"}`))
@@ -47,16 +127,9 @@ func Test_GetDatabaseFailedRequest(t *testing.T) {
 	c.BasePath = s.URL
 
 	searchService := New(c)
-	db, _, err := searchService.Search(context.TODO(), "key", pageSize)
-	assert.NotNil(t, db)
-	assert.Len(t, db, 1)
-	assert.Nil(t, err)
-
-	ds := database.New()
-	databases := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db)
-
-	assert.NotNil(t, databases)
-	assert.Nil(t, databases.Snapshots)
-	assert.NotNil(t, databases.Error)
-	assert.Contains(t, databases.Error.Error().Error(), "path failed validation: path.database_id should be a valid uuid")
+	db, p, err := searchService.Search(context.TODO(), "key", pageSize)
+	assert.Nil(t, db)
+	assert.Nil(t, p)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "path failed validation: path.database_id should be a valid uuid")
 }

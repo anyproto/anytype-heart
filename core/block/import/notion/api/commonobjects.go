@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"time"
 )
 
@@ -15,12 +16,11 @@ const (
 
 type RichText struct {
 	Type        richTextType `json:"type,omitempty"`
-	Text        *TextObject   `json:"text,omitempty"`
+	Text        *TextObject  `json:"text,omitempty"`
 	Annotations *Annotations `json:"annotations,omitempty"`
 	PlainText   string       `json:"plain_text,omitempty"`
 	Href        string       `json:"href,omitempty"`
 }
-
 type TextObject struct {
 	Content string `json:"content"`
 	Link    *Link  `json:"link,omitempty"`
@@ -64,13 +64,27 @@ const (
 type FileObject struct {
 	Name     string      `json:"name"`
 	Type     FileType    `json:"type"`
-	File     *FileProperty `json:"file,omitempty"`
-	External *FileProperty `json:"external,omitempty"`
+	File     FileProperty `json:"file,omitempty"`
+	External FileProperty `json:"external,omitempty"`
 }
 
 type FileProperty struct {
 	URL        string     `json:"url,omitempty"`
 	ExpiryTime *time.Time `json:"expiry_time,omitempty"`
+}
+
+func (o *FileProperty) UnmarshalJSON(data []byte) error {
+	fp := make(map[string]interface{},0)
+    if err := json.Unmarshal(data, &fp); err != nil {
+        return err
+    }
+	if url, ok := fp["url"].(string); ok {
+		o.URL = url
+	}
+	if t, ok := fp["expiry_time"].(*time.Time); ok {
+		o.ExpiryTime = t
+	}
+    return nil
 }
 
 type Icon struct {
@@ -99,6 +113,7 @@ type Person struct {
 type Parent struct {
 	Type   string `json:"type,omitempty"`
 	PageID string `json:"page_id"`
+	DatabaseID string `json:"database_id"`
 }
 
 type Object interface {

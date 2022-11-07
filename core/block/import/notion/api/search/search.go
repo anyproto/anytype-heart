@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
@@ -23,7 +22,7 @@ type Service struct {
 }
 
 type SearchResponse struct {
-	Results    []api.Object `json:"results"`
+	Results    []interface{} `json:"results"`
 	HasMore    bool         `json:"has_more"`
 	NextCursor *string      `json:"next_cursor"`
 }
@@ -86,11 +85,29 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 			return nil, nil, err
 		}
 		for _, o := range objects.Results {
-			if o.GetObjectType() == database.ObjectType {
-				resultDatabases = append(resultDatabases, o.(database.Database))
+			if o.(map[string]interface{})["object"] == database.ObjectType {
+				db, err := json.Marshal(o)
+				if err != nil {
+					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+				}
+				d := database.Database{}
+				err = json.Unmarshal(db, &d)
+				if err != nil {
+					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+				}
+				resultDatabases = append(resultDatabases, d)
 			}
-			if o.GetObjectType() == page.ObjectType {
-				resultPages = append(resultPages, o.(page.Page))
+			if o.(map[string]interface{})["object"] == page.ObjectType{
+				pg, err := json.Marshal(o)
+				if err != nil {
+					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+				}
+				p := page.Page{}
+				err = json.Unmarshal(pg, &p)
+				if err != nil {
+					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+				}
+				resultPages = append(resultPages, p)
 			}
 		}
 
