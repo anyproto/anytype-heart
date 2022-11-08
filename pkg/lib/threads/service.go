@@ -99,10 +99,6 @@ type service struct {
 }
 
 func New() Service {
-	/* adjust ThreadsDB parameters */
-
-	// thread pulling cycle
-	threadsNet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
 	threadsNet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
@@ -209,11 +205,15 @@ func (s *service) Run(context.Context) (err error) {
 	}
 
 	s.t, err = threadsNet.NewNetwork(s.ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
-		Debug:        s.Debug,
-		PubSub:       s.PubSub,
-		SyncTracking: s.SyncTracking,
-		SyncBook:     syncBook,
-		Metrics:      metrics.NewThreadsMetrics(),
+		NetPullingStartAfter:      5 * time.Second,
+		NetPullingLimit:           10000,
+		NetPullingInitialInterval: 20 * time.Second,
+		NetPullingInterval:        time.Minute,
+		Debug:                     s.Debug,
+		PubSub:                    s.PubSub,
+		SyncTracking:              s.SyncTracking,
+		SyncBook:                  syncBook,
+		Metrics:                   metrics.NewThreadsMetrics(),
 	}, s.GRPCServerOptions, s.GRPCDialOptions)
 	if err != nil {
 		return err

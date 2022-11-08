@@ -58,7 +58,6 @@ github.com/RoaringBitmap/roaring v0.9.4 h1:ckvZSX5gwCRaJYBNe7syNawCU5oruY9gQmjXl
 github.com/RoaringBitmap/roaring v0.9.4/go.mod h1:icnadbWcNyfEHlYdr+tDlOTih1Bf/h+rzPpv4sbomAA=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
-github.com/Stebalien/go-bitfield v0.0.1 h1:X3kbSSPUaJK60wV2hjOPZwmpljr6VGCqdq4cBLhbQBo=
 github.com/Stebalien/go-bitfield v0.0.1/go.mod h1:GNjFpasyUVkHMsfEOk8EFLJ9syQ6SI+XWrX9Wf2XH0s=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
 github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBAUSII=
@@ -95,8 +94,8 @@ github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW5
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51/go.mod h1:SoKy+W8Mf6v7XBV30xFWkIFMs7UnXwsNGrGV12yVkEs=
-github.com/anytypeio/go-threads v1.1.6-0.20221103175536-0de05bb5afce h1:F4flKXLsq1M2rkz8St60fgkRCYNpZtlsYTxTtm+m184=
-github.com/anytypeio/go-threads v1.1.6-0.20221103175536-0de05bb5afce/go.mod h1:W/h5gIaS4/IodcAloM1lRc4n+Bt7frhR+ItqY2xqbA8=
+github.com/anytypeio/go-threads v1.1.6-0.20221108085934-8f187ee3ac8b h1:QnAmhGqAZeDCIq/eRVtTcSOtS8Zj2HyOML/cC0Plaig=
+github.com/anytypeio/go-threads v1.1.6-0.20221108085934-8f187ee3ac8b/go.mod h1:W/h5gIaS4/IodcAloM1lRc4n+Bt7frhR+ItqY2xqbA8=
 github.com/anytypeio/gosigar v0.0.0-20220811145612-92bd3366198a h1:fmHHy6KEPr4t5PjTzvZUGwVkXOHBCOaQCyrivdtscwI=
 github.com/anytypeio/gosigar v0.0.0-20220811145612-92bd3366198a/go.mod h1:iXRIGg2tLnu7LBdpqzyQfGDEidKCfWcCMS0WKyPWoMs=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1 h1:g/LEIEQ0ACBOKX9MhORhlmluUKvuxvrIDbGMI0cqF5A=
@@ -767,7 +766,6 @@ github.com/ipfs/go-unixfs v0.2.4/go.mod h1:SUdisfUjNoSDzzhGVxvCL9QO/nKdwXdr+gbMU
 github.com/ipfs/go-unixfs v0.3.1/go.mod h1:h4qfQYzghiIc8ZNFKiLMFWOTzrWIAtzYQ59W/pCFf1o=
 github.com/ipfs/go-unixfs v0.4.0 h1:qSyyxfB/OiDdWHYiSbyaqKC7zfSE/TFL0QdwkRjBm20=
 github.com/ipfs/go-unixfs v0.4.0/go.mod h1:I7Nqtm06HgOOd+setAoCU6rf/HgVFHE+peeNuOv/5+g=
-github.com/ipfs/go-unixfsnode v1.1.2 h1:aTsCdhwU0F4dMShMwYGroAj4v4EzSONLdoENebvTRb0=
 github.com/ipfs/go-unixfsnode v1.1.2/go.mod h1:5dcE2x03pyjHk4JjamXmunTMzz+VUtqvPwZjIEkfV6s=
 github.com/ipfs/go-verifcid v0.0.1/go.mod h1:5Hrva5KBeIog4A+UpqlaIU+DEstipcJYQQZc0g37pY0=
 github.com/ipfs/go-verifcid v0.0.2 h1:XPnUv0XmdH+ZIhLGKg6U2vaPaRDXb9urMyNVCE7uvTs=
