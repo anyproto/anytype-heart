@@ -228,4 +228,5 @@ func (ctx *opCtx) reset() {
 	ctx.counters = ctx.counters[:0]
 	ctx.keysBuf = ctx.keysBuf[:0]
 	ctx.entries = ctx.entries[:0]
+	ctx.groups = ctx.groups[:0]
 }
