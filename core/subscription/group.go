@@ -46,10 +46,13 @@ func (s *groupSub) counters() (prev, next int) {
 func (s *groupSub) onChange(ctx *opCtx) {
 	checkGroups := false
 	for _, e := range ctx.entries {
-		if _, inSet := s.set[e.id]; inSet && !checkGroups {
-			oldList := pbtypes.GetStringList(s.cache.Get(e.id).data, s.relKey)
-			newList := pbtypes.GetStringList(e.data, s.relKey)
-			checkGroups = !slice.UnsortedEquals(oldList, newList)
+		if _, inSet := s.set[e.id]; inSet {
+			if !checkGroups {
+				oldList := pbtypes.GetStringList(s.cache.Get(e.id).data, s.relKey)
+				newList := pbtypes.GetStringList(e.data, s.relKey)
+				checkGroups = !slice.UnsortedEquals(oldList, newList)
+			}
+			s.cache.Set(e)
 		} else if len(pbtypes.GetStringList(e.data, s.relKey)) > 0 { // new added tags
 			s.cache.Set(e)
 			s.set[e.id] = struct{}{}
@@ -78,9 +81,8 @@ func (s *groupSub) onChange(ctx *opCtx) {
 		removedIds, addedIds := slice.DifferenceRemovedAdded(oldIds, newIds)
 
 		if len(removedIds) > 0 || len(addedIds) > 0 {
-			s.groups = newGroups
 			for _, removedGroup := range removedIds {
-				for _, g := range newGroups {
+				for _, g := range s.groups {
 					if removedGroup == g.Id {
 						ctx.groups = append(ctx.groups, opGroup{subId: s.id,  group: g, remove: true})
 					}
@@ -94,6 +96,7 @@ func (s *groupSub) onChange(ctx *opCtx) {
 					}
 				}
 			}
+			s.groups = newGroups
 		}
 	}
 
