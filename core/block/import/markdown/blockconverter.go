@@ -129,6 +129,7 @@ func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors c
 				if err != nil {
 					return fmt.Errorf("failed to open file: %s", err)
 				}
+				files[shortPath] = &FileInfo{}
 				m.createBlocksFromFile(shortPath, anymarkConv, f, files)
 				files[shortPath].Source = ce.GetSourceDetail(shortPath, importPath)
 			}

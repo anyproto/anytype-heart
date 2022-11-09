@@ -1684,7 +1684,7 @@ message Rpc {
             message Request {
                 oneof params {
                     NotionParams notionParams = 1;
-                    BookmarksParams bookmarksParams = 2;
+                    BookmarksParams bookmarksParams = 2; //for internal use
                 }
                 repeated Snapshot snapshots = 3; // optional, for external developers usage
                 bool updateExistingObjects = 4;

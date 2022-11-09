@@ -53,6 +53,9 @@ func (i *Import) Init(a *app.App) (err error) {
 func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
+	if i.s != nil {
+		i.s.ProcessAdd(progress)
+	}
 	allErrors := converter.NewError()
 	if c, ok := i.converters[req.Type.String()]; ok {
 		progress.SetProgressMessage("import snapshots")
@@ -66,8 +69,8 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 				return allErrors.Error()
 			}
 		}
-		if res.Snapshots == nil {
-			return fmt.Errorf("empty response from converter")
+		if len(res.Snapshots) == 0 {
+			return fmt.Errorf("no files to import")
 		}
 		progress.SetProgressMessage("create blocks")
 		i.createObjects(ctx, res, progress, req, allErrors)
@@ -91,7 +94,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		}
 		return fmt.Errorf("snapshots are empty")
 	}
-	return nil
+	return fmt.Errorf("unknown import type %s", req.Type)
 }
 
 func (s *Import) Name() string {

@@ -3,6 +3,8 @@ package importer
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -14,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 type ObjectUpdater struct {
@@ -79,25 +80,38 @@ func (ou *ObjectUpdater) update(ctx *session.Context,
 	simpleBlocks := make([]simple.Block, 0)
 	id := details.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	if details.Details != nil {
-		err := ou.service.Do(id, func(b sb.SmartBlock) error {
-			bs := basic.NewBasic(b)
+		allBlocksIds := make([]string, 0)
+		if err := ou.service.Do(id, func(b sb.SmartBlock) error {
+			s := b.NewStateCtx(ctx)
 			if err := b.Iterate(func(b simple.Block) (isContinue bool) {
-				err := bs.Unlink(ctx, b.Model().Id)
-				return err == nil
+				if b.Model().GetLink() == nil && id != b.Model().Id {
+					allBlocksIds = append(allBlocksIds, b.Model().Id)
+				}
+				return true
 			}); err != nil {
 				return err
 			}
+			for _, v := range allBlocksIds {
+				s.Unlink(v)
+			}
 			for _, block := range snapshot.Blocks {
+				if block.GetLink() != nil {
+					// we don't add link to non-existing object,so checking existence of the object with TargetBlockId in Do
+					if err := ou.service.Do(block.GetLink().TargetBlockId, func(b sb.SmartBlock) error {
+						return nil
+					}); err != nil {
+						continue
+					}
+				}
 				if block.Id != pageID {
 					simpleBlocks = append(simpleBlocks, simple.New(block))
 				}
 			}
-			if err := bs.PasteBlocks(simpleBlocks, model.Block_Bottom); err != nil {
+			if err := basic.PasteBlocks(s, simpleBlocks, "", model.Block_Bottom); err != nil {
 				return err
 			}
-			return nil
-		})
-		if err != nil {
+			return b.Apply(s)
+		}); err != nil {
 			return err
 		}
 		for _, b := range simpleBlocks {

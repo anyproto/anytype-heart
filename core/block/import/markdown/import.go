@@ -77,6 +77,11 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		}
 	}
 
+	if len(files) == 0 {
+		allErrors.Add(path, fmt.Errorf("couldn't found md files"))
+		return &converter.Response{Error: allErrors}
+	}
+	
 	for name, file := range files {
 		// index links in the root csv file
 		if !file.IsRootFile || !strings.EqualFold(filepath.Ext(name), ".csv") {
@@ -191,6 +196,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 
 	for name, file := range files {
 		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
+			details[name].Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true) 
 			file.ParsedBlocks = m.convertCsvToLinks(name, files)
 		}
 
