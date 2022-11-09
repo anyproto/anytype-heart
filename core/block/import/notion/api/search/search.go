@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
+
+var logger = logging.Logger("notion-search")
 
 const (
 	endpoint = "/search"
@@ -23,14 +27,36 @@ type Service struct {
 
 type SearchResponse struct {
 	Results    []interface{} `json:"results"`
-	HasMore    bool         `json:"has_more"`
-	NextCursor *string      `json:"next_cursor"`
+	HasMore    bool          `json:"has_more"`
+	NextCursor *string       `json:"next_cursor"`
 }
 
 // New is a constructor for Service
 func New(client *client.Client) *Service {
 	return &Service{
 		client: client,
+	}
+}
+
+type Effector func(ctx context.Context, apiKey string, pageSize int64) ([]database.Database, []page.Page, error)
+
+// Retry is an implementation for retry pattern
+func Retry(effector Effector, retries int, delay time.Duration) Effector {
+	return func(ctx context.Context, apiKey string, pageSize int64) ([]database.Database, []page.Page, error) {
+		for r := 0; ; r++ {
+			database, pages, err := effector(ctx, apiKey, pageSize)
+			if err == nil || r >= retries {
+				return database, pages, err
+			}
+
+			logger.Infof("Attempt %d failed; retrying in %v", r+1, delay)
+
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			}
+		}
 	}
 }
 
@@ -44,19 +70,19 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 		startCursor     string
 	)
 	type Option struct {
-		PageSize    int64 `json:"page_size,omitempty"`
+		PageSize    int64  `json:"page_size,omitempty"`
 		StartCursor string `json:"start_cursor,omitempty"`
 	}
-	
+
 	for hasMore {
 		err := json.NewEncoder(body).Encode(&Option{PageSize: pageSize, StartCursor: startCursor})
-	
+
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
 		}
-	
+
 		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodPost, endpoint, body)
-	
+
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
 		}
@@ -99,7 +125,7 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 				}
 				resultDatabases = append(resultDatabases, d)
 			}
-			if o.(map[string]interface{})["object"] == page.ObjectType{
+			if o.(map[string]interface{})["object"] == page.ObjectType {
 				pg, err := json.Marshal(o)
 				if err != nil {
 					return nil, nil, fmt.Errorf("ListDatabases: %s", err)

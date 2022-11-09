@@ -3,6 +3,7 @@ package notion
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
@@ -14,8 +15,10 @@ import (
 )
 
 const (
-	name = "Notion"
-	pageSize = 100
+	name        = "Notion"
+	pageSize    = 100
+	retryDelay  = time.Second
+	retryAmount = 5
 )
 
 func init() {
@@ -23,17 +26,17 @@ func init() {
 }
 
 type Notion struct {
-	search *search.Service
+	search          *search.Service
 	databaseService *database.Service
-	pageService *page.Service
+	pageService     *page.Service
 }
 
 func New(core.Service) converter.Converter {
 	cl := client.NewClient()
 	return &Notion{
-		search: search.New(cl),
+		search:          search.New(cl),
 		databaseService: database.New(),
-		pageService: page.New(cl),
+		pageService:     page.New(cl),
 	}
 }
 
@@ -46,7 +49,8 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 			Error: ce,
 		}
 	}
-	databases, pages, err := n.search.Search(context.TODO(), apiKey, pageSize)
+	databases, pages, err := search.Retry(n.search.Search, retryAmount, retryDelay)(context.TODO(), apiKey, pageSize)
+
 	if err != nil {
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
 		return &converter.Response{
@@ -69,7 +73,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 		}
 	}
 
-	allSnaphots := make([]*converter.Snapshot, 0, len(pagesSnapshots.Snapshots) + len(databasesSnapshots.Snapshots))
+	allSnaphots := make([]*converter.Snapshot, 0, len(pagesSnapshots.Snapshots)+len(databasesSnapshots.Snapshots))
 	allSnaphots = append(allSnaphots, pagesSnapshots.Snapshots...)
 	allSnaphots = append(allSnaphots, databasesSnapshots.Snapshots...)
 	if pagesSnapshots.Error != nil {
@@ -81,12 +85,12 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 	if !ce.IsEmpty() {
 		return &converter.Response{
 			Snapshots: allSnaphots,
-			Error: ce,
+			Error:     ce,
 		}
 	}
 	return &converter.Response{
 		Snapshots: allSnaphots,
-		Error: nil,
+		Error:     nil,
 	}
 }
 
@@ -100,4 +104,3 @@ func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {
 func (n *Notion) Name() string {
 	return name
 }
-
