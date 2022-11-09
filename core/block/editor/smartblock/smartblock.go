@@ -1505,11 +1505,6 @@ func (sb *smartBlock) reportChange(s *state.State) {
 	}
 	docInfo := sb.getDocInfo(s)
 	sb.doc.ReportChange(context.TODO(), docInfo)
-
-	if strings.HasPrefix(s.RootId(), "rel-") {
-		fmt.Println()
-	}
-
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
