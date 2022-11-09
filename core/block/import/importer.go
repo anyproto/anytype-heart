@@ -66,7 +66,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 				return allErrors.Error()
 			}
 		}
-		if res.Snapshots == nil {
+		if len(res.Snapshots) == 0 {
 			return fmt.Errorf("empty response from converter")
 		}
 		progress.SetProgressMessage("create blocks")
@@ -91,7 +91,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		}
 		return fmt.Errorf("snapshots are empty")
 	}
-	return nil
+	return fmt.Errorf("unknown import type %s", req.Type)
 }
 
 func (s *Import) Name() string {

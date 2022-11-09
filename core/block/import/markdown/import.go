@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -42,7 +41,7 @@ type Markdown struct {
 	blockConverter MarkdownToBlocksConverter
 }
 
-const Name = "Notion"
+const Name = "Markdown"
 
 func New(s core.Service) converter.Converter {
 	return &Markdown{blockConverter: NewMarkdownToBlocks(s)}
@@ -52,11 +51,11 @@ func (m *Markdown) Name() string {
 	return Name
 }
 
-func (m *Markdown) GetParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
-	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfNotionParams); ok {
-		return p.NotionParams.GetPath(), nil
-	}
-	return "", errors.Wrap(errors.New("wrong parameters format"), "Markdown: GetParams")
+func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) string {
+    if p := req.GetMarkdownParams(); p != nil {
+        return p.Path
+    }
+    return ""
 }
 
 func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
@@ -64,12 +63,7 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
-	path, err := m.GetParams(req.Params)
-	allErrors := converter.NewError()
-	if err != nil {
-		allErrors.Add(path, err)
-		return &converter.Response{Error: allErrors}
-	}
+	path := m.GetParams(req)
 	files, allErrors := m.blockConverter.MarkdownToBlocks(path, req.GetMode().String())
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING{
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -192,6 +186,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 	for name, file := range files {
 		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
 			file.ParsedBlocks = m.convertCsvToLinks(name, files)
+			details[name].Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true) 
 		}
 
 		if file.PageID == "" {
