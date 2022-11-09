@@ -21,10 +21,11 @@ const ObjectType = "database"
 
 type Service struct {}
 
+// New is a constructor for Service
 func New() *Service {
 	return &Service{}
 }
-
+// Database represent Database object from Notion https://developers.notion.com/reference/database
 type Database struct {
 	Object         string         `json:"object"`
 	ID             string         `json:"id"`
@@ -47,6 +48,7 @@ func (p *Database) GetObjectType() string {
 	return ObjectType
 }
 
+// GetDatabase makes snaphots from notion Database objects
 func (ds *Service) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database) *converter.Response {
 	convereterError := converter.ConvertError{}
 	return ds.mapDatabasesToSnaphots(ctx, mode, databases, convereterError)

@@ -1,5 +1,6 @@
 package property
 
+// This file represent property configuration from Notion https://developers.notion.com/reference/property-object
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -28,7 +29,6 @@ const (
 	PropertyConfigLastEditedBy    PropertyConfigType = "last_edited_by"
 	PropertyConfigStatus          PropertyConfigType = "status"
 )
-
 type PropertyObject interface {
 	GetPropertyType() PropertyConfigType
 	GetID() string

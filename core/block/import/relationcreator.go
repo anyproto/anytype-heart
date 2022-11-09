@@ -18,12 +18,15 @@ type RelationService struct {
 	service block.Service
 }
 
+// NewRelationCreator constructor for RelationService
 func NewRelationCreator(service block.Service) RelationCreator {
 	return &RelationService{
 		service: service,
 	}
 }
 
+// Create read relations link from snaphot and create according relations in anytype, also set details for according relation in object
+// for files it loads them in ipfs
 func (rc *RelationService) Create(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string) ([]string, error) {
 	var (
 		object *types.Struct

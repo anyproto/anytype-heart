@@ -27,12 +27,14 @@ type SearchResponse struct {
 	NextCursor *string      `json:"next_cursor"`
 }
 
+// New is a constructor for Service
 func New(client *client.Client) *Service {
 	return &Service{
 		client: client,
 	}
 }
 
+// Search calls /search endoint from Notion, which return all databases and pages from user integration
 func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]database.Database, []page.Page, error) {
 	var (
 		hasMore         = true

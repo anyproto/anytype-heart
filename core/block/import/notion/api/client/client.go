@@ -18,6 +18,7 @@ type Client struct {
 	BasePath string 
 }
 
+// NewClient is a constructor for Client
 func NewClient() *Client {
 	c := &Client{
 		HttpClient:&http.Client{Timeout: time.Minute},
@@ -26,6 +27,7 @@ func NewClient() *Client {
 	return c
 }
 
+// PrepareRequest create http.Request based on given method, url and body
 func (c *Client) PrepareRequest(ctx context.Context, apiKey, method, url string, body *bytes.Buffer) (*http.Request, error) {
 	resultUrl := c.BasePath + url
 	req, err := http.NewRequestWithContext(ctx, method, resultUrl, body)

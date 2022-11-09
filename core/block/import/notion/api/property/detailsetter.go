@@ -8,10 +8,12 @@ import (
 
 type DetailSetter struct{}
 
+// New is a constructor for DetailSetter
 func NewDetailSetter() *DetailSetter {
 	return &DetailSetter{}
 }
 
+// SetDetailValue creates Detail based on property type and value
 func (*DetailSetter) SetDetailValue(key string, propertyType PropertyConfigType, property []interface{}, details map[string]*types.Value) error {
 	if len(property) == 0 {
 		return nil

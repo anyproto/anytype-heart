@@ -119,6 +119,7 @@ type PropertyPaginatedRespone struct{
 	NextCursor   string     `json:"next_cursor"`
 }
 
+// GetPropertyObject get from Notion properties values based on type and id and marshal it to according structure from propertyitem.go
 func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, apiKey string, propertyType PropertyConfigType) ([]interface{}, error) {
 	var (
 		hasMore           = true

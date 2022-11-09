@@ -13,6 +13,7 @@ type NotionErrorResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
+//TransformHttpCodeToError reads error response and transofrm it to NotionErrorResponse and creates error based on NotionErrorResponse
 func TransformHttpCodeToError(response []byte) error {
 	var notionErr NotionErrorResponse
 	if err := json.Unmarshal(response, &notionErr); err != nil {

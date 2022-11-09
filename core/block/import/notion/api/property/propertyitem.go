@@ -1,5 +1,7 @@
 package property
 
+// This file represent property item from Notion https://developers.notion.com/reference/property-item-object
+
 import (
 	"strconv"
 	"time"

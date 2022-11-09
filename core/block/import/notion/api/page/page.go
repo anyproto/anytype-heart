@@ -25,13 +25,14 @@ type Service struct {
 	detailSetter *property.DetailSetter
 }
 
+// New is a constructor for Service
 func New(client *client.Client) *Service {
 	return &Service{
 		propertyService: property.New(client),
 		detailSetter: property.NewDetailSetter(),
 	}
 }
-
+// Page represents Page object from notion https://developers.notion.com/reference/page
 type Page struct {
 	Object         string              `json:"object"`
 	ID             string              `json:"id"`
@@ -51,6 +52,7 @@ func (p *Page) GetObjectType() string {
 	return ObjectType
 }
 
+// GetPages transform Page objects from Notion to snaphots
 func (ds *Service) GetPages(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, pages []Page) *converter.Response {
 	convereterError := converter.ConvertError{}
 	return ds.mapPagesToSnaphots(ctx, apiKey, mode, pages, convereterError)
@@ -115,6 +117,7 @@ func (ds *Service) transformPages(apiKey string, d Page, mode pb.RpcObjectImport
 	return snapshot, nil
 }
 
+// handlePageProperties gets properties values by their ids from notion api and transforms them to Details and RelationLinks
 func (ds *Service) handlePageProperties(apiKey, pageID string, p property.Properties, d map[string]*types.Value, mode pb.RpcObjectImportRequestMode) ([]*model.RelationLink, *converter.ConvertError) {
 	ce := converter.ConvertError{}
 	relations := make([]*model.RelationLink, 0)

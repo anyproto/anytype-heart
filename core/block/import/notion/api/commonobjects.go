@@ -14,6 +14,7 @@ const (
 	Equation richTextType = "equation"
 )
 
+// RichText represent RichText object from Notion https://developers.notion.com/reference/rich-text
 type RichText struct {
 	Type        richTextType `json:"type,omitempty"`
 	Text        *TextObject  `json:"text,omitempty"`
@@ -61,6 +62,7 @@ const (
 	File     FileType = "file"
 )
 
+// FileObject represent File Object object from Notion https://developers.notion.com/reference/file-object
 type FileObject struct {
 	Name     string      `json:"name"`
 	Type     FileType    `json:"type"`
@@ -96,6 +98,7 @@ type Icon struct {
 
 type userType string
 
+// User represent User Object object from Notion https://developers.notion.com/reference/user
 type User struct {
 	Object    string     `json:"object,omitempty"`
 	ID        string     `json:"id"`
@@ -114,10 +117,6 @@ type Parent struct {
 	Type   string `json:"type,omitempty"`
 	PageID string `json:"page_id"`
 	DatabaseID string `json:"database_id"`
-}
-
-type Object interface {
-	GetObjectType() string
 }
 
 func RichTextToDescription(rt []RichText) string {
