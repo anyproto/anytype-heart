@@ -22,7 +22,6 @@ func (s *service) newGroupSub(id string, relKey string, groups []*model.BlockCon
 type groupSub struct {
 	id     string
 	relKey string
-	set    map[string]struct{}
 
 	cache *cache
 
@@ -30,10 +29,8 @@ type groupSub struct {
 }
 
 func (s *groupSub) init(entries []*entry) (err error) {
-	s.set = make(map[string]struct{})
 	for _, e := range entries {
 		e = s.cache.GetOrSet(e)
-		s.set[e.id] = struct{}{}
 		e.SetSub(s.id, true)
 	}
 	return
@@ -45,27 +42,28 @@ func (s *groupSub) counters() (prev, next int) {
 
 func (s *groupSub) onChange(ctx *opCtx) {
 	checkGroups := false
-	for _, e := range ctx.entries {
-		if _, inSet := s.set[e.id]; inSet {
+	for _, ctxEntry := range ctx.entries {
+		if cacheEntry := s.cache.Get(ctxEntry.id); cacheEntry != nil {
 			if !checkGroups {
-				oldList := pbtypes.GetStringList(s.cache.Get(e.id).data, s.relKey)
-				newList := pbtypes.GetStringList(e.data, s.relKey)
+				oldList := pbtypes.GetStringList(cacheEntry.data, s.relKey)
+				newList := pbtypes.GetStringList(ctxEntry.data, s.relKey)
 				checkGroups = !slice.UnsortedEquals(oldList, newList)
 			}
-			s.cache.Set(e)
-		} else if len(pbtypes.GetStringList(e.data, s.relKey)) > 0 { // new added tags
-			s.cache.Set(e)
-			s.set[e.id] = struct{}{}
+			if len(pbtypes.GetStringList(ctxEntry.data, s.relKey)) == 0 {
+				s.cache.Remove(ctxEntry.id)
+			} else {
+				s.cache.Set(ctxEntry)
+			}
+		} else if len(pbtypes.GetStringList(ctxEntry.data, s.relKey)) > 0 { // new added tags
+			s.cache.Set(ctxEntry)
 			checkGroups = true
 		}
 	}
 
 	if checkGroups {
 		var records []database.Record
-		for id := range s.set {
-			if s.cache.Get(id).data != nil {
-				records = append(records, database.Record{Details: s.cache.Get(id).data})
-			}
+		for _, cacheEntry := range s.cache.entries {
+			records = append(records, database.Record{Details: cacheEntry.data})
 		}
 
 		tag := kanban.GroupTag{Records: records}
@@ -99,7 +97,6 @@ func (s *groupSub) onChange(ctx *opCtx) {
 			s.groups = newGroups
 		}
 	}
-
 }
 
 func (s *groupSub) getActiveRecords() (res []*types.Struct) {
@@ -111,8 +108,8 @@ func (s *groupSub) hasDep() bool {
 }
 
 func (s *groupSub) close() {
-	for id := range s.set {
-		s.cache.RemoveSubId(id, s.id)
+	for _, e := range s.cache.entries {
+		s.cache.RemoveSubId(e.id, s.id)
 	}
 	return
 }
