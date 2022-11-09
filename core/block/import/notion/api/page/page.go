@@ -39,7 +39,6 @@ type Page struct {
 	LastEditedTime string              `json:"last_edited_time"`
 	CreatedBy      api.User            `json:"created_by,omitempty"`
 	LastEditedBy   api.User            `json:"last_edited_by,omitempty"`
-	Title          []api.RichText      `json:"title"`
 	Parent         api.Parent          `json:"parent"`
 	Properties     property.Properties `json:"properties"`
 	Archived       bool                `json:"archived"`
@@ -86,7 +85,7 @@ func (ds *Service) mapPagesToSnaphots(ctx context.Context, apiKey string, mode p
 		})
 	}
 	if convereterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Error: nil}
+ 		return &converter.Response{Snapshots: allSnapshots, Error: nil}
 	}
 	return &converter.Response{Snapshots: allSnapshots, Error: convereterError}
 }
@@ -94,45 +93,50 @@ func (ds *Service) mapPagesToSnaphots(ctx context.Context, apiKey string, mode p
 func (ds *Service) transformPages(apiKey string, d Page, mode pb.RpcObjectImportRequestMode) (*model.SmartBlockSnapshotBase, *converter.ConvertError) {
 	details := make(map[string]*types.Value, 0)
 	details[bundle.RelationKeySource.String()] = pbtypes.String(d.URL)
-	if len(d.Title) > 0 {
-		details[bundle.RelationKeyName.String()] = pbtypes.String(d.Title[0].PlainText)
-	}
 	if d.Icon != nil && d.Icon.Emoji != nil {
 		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*d.Icon.Emoji)
 	}
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
 
-	ce := ds.handlePageProperties(apiKey, d.ID, d.Properties, details, mode)
+	relations, ce := ds.handlePageProperties(apiKey, d.ID, d.Properties, details, mode)
 	if ce != nil {
-		return nil, ce
+		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, ce
+		}
 	}
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:      []*model.Block{},
 		Details:     &types.Struct{Fields: details},
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 		Collections: nil,
+		RelationLinks: relations,
 	}
 
 	return snapshot, nil
 }
 
-func (ds *Service) handlePageProperties(apiKey, pageID string, p property.Properties, d map[string]*types.Value, mode pb.RpcObjectImportRequestMode) *converter.ConvertError {
+func (ds *Service) handlePageProperties(apiKey, pageID string, p property.Properties, d map[string]*types.Value, mode pb.RpcObjectImportRequestMode) ([]*model.RelationLink, *converter.ConvertError) {
 	ce := converter.ConvertError{}
+	relations := make([]*model.RelationLink, 0)
 	for k, v := range p {
 		object, err := ds.propertyService.GetPropertyObject(context.TODO(), pageID, v.GetID(), apiKey, v.GetPropertyType())
 		if err != nil {
 			ce.Add("property: " + v.GetID(), err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &ce
+				return relations, &ce
 			}
 		}
 		err = ds.detailSetter.SetDetailValue(k, v.GetPropertyType(), object, d)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			ce.Add("property: " + v.GetID(), err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &ce
+				return relations, &ce
 			}
 		}
+		relations = append(relations, &model.RelationLink{
+			Key:    k,
+			Format: v.GetFormat(),
+		})
 	}
-	return nil
+	return relations, nil
 }

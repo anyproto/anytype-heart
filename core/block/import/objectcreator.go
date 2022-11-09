@@ -27,11 +27,12 @@ type ObjectCreator struct {
 	service block.Service
 	core    core.Service
 	updater Updater
+	relationCreator RelationCreator
 	syncFactory *syncer.Factory
 }
 
-func NewCreator(service block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory) Creator {
-	return &ObjectCreator{service: service, core: core, updater: updater, syncFactory: syncFactory}
+func NewCreator(service block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory, relationCreator RelationCreator) Creator {
+	return &ObjectCreator{service: service, core: core, updater: updater, syncFactory: syncFactory, relationCreator: relationCreator}
 }
 
 // Create creates smart blocks from given snapshots
@@ -71,22 +72,29 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		return nil, fmt.Errorf("new id not found for '%s'", st.RootId())
 	} 
 
+	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		if err != nil {
 			for _, bl := range st.Blocks() {
 				if f := bl.GetFile(); f != nil {
-					oc.deleteFile(f)
+					oc.deleteFile(f.Hash)
+				}
+				for _, hash := range filesToDelete {
+					oc.deleteFile(hash)
 				}
 			}
 		}
 	}()
 
 	newId, details, err := oc.createSmartBlock(sbType, st)
-
-	st.SetDetails(snapshot.Details)
 	if err != nil {
-		return nil, fmt.Errorf("crear object '%s'", st.RootId())
+		return nil, fmt.Errorf("create object '%s'", st.RootId())
+	}
+
+	filesToDelete, err = oc.relationCreator.Create(ctx, snapshot, newId)
+	if err != nil {
+		return nil, fmt.Errorf("relation create '%s'", err)
 	}
 
 	if isFavorite {
@@ -165,24 +173,24 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 	}		
 }
 
-func (oc *ObjectCreator) deleteFile(f *model.BlockContentFile) {
-	inboundLinks, err := oc.core.ObjectStore().GetOutboundLinksById(f.Hash)
+func (oc *ObjectCreator) deleteFile(hash string) {
+	inboundLinks, err := oc.core.ObjectStore().GetOutboundLinksById(hash)
 	if err != nil {
-		log.With("file", f.Hash).Errorf("failed to get inbound links for file: %s", err.Error())
+		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err.Error())
 		return
 	}
 	if len(inboundLinks) == 0 {
-		if err = oc.core.ObjectStore().DeleteObject(f.Hash); err != nil {
-			log.With("file", f.Hash).Errorf("failed to delete file from objectstore: %s", err.Error())
+		if err = oc.core.ObjectStore().DeleteObject(hash); err != nil {
+			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteByHash(f.Hash); err != nil {
-			log.With("file", f.Hash).Errorf("failed to delete file from filestore: %s", err.Error())
+		if err = oc.core.FileStore().DeleteByHash(hash); err != nil {
+			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
 		}
-		if _, err = oc.core.FileOffload(f.Hash); err != nil {
-			log.With("file", f.Hash).Errorf("failed to offload file: %s", err.Error())
+		if _, err = oc.core.FileOffload(hash); err != nil {
+			log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteFileKeys(f.Hash); err != nil {
-			log.With("file", f.Hash).Errorf("failed to delete file keys: %s", err.Error())
+		if err = oc.core.FileStore().DeleteFileKeys(hash); err != nil {
+			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
 		}
 	}
 }

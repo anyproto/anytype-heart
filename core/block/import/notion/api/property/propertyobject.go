@@ -9,7 +9,10 @@ import (
 	"net/http"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
+
+var logger = logging.Logger("notion-property-retriever")
 
 const endpoint = "/pages/%s/properties/%s"
 type Service struct {
@@ -133,19 +136,19 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 		err := json.NewEncoder(body).Encode(&Request{StartCursor: startCursor})
 
 		if err != nil {
-			return nil, fmt.Errorf("ListDatabases: %s", err)
+			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
 
 		request := fmt.Sprintf(endpoint, pageID, propertyID)
 		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, body)
 
 		if err != nil {
-			return nil, fmt.Errorf("ListDatabases: %s", err)
+			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
 		res, err := s.client.HttpClient.Do(req)
 
 		if err != nil {
-			return nil, fmt.Errorf("ListDatabases: %s", err)
+			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
 		defer res.Body.Close()
 
@@ -158,7 +161,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 		if res.StatusCode != http.StatusOK {
 			notionErr := client.TransformHttpCodeToError(b)
 			if notionErr == nil {
-				return nil, fmt.Errorf("failed http request, %d code", res.StatusCode)
+				return nil, fmt.Errorf("GetPropertyObject: failed http request, %d code", res.StatusCode)
 			}
 			return nil, notionErr
 		}
@@ -173,36 +176,41 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 			for _, v := range res {
 				buffer, err := json.Marshal(v)
 				if err != nil {
+					logger.Errorf("GetPropertyObject: failed to marshal: %s", err)
 					continue
 				}
 				if propertyType == PropertyConfigTypeTitle {
-					p := Title{}
+					p := TitleItem{}
 					err = json.Unmarshal(buffer, &p)
 					if err != nil { 
+						logger.Errorf("GetPropertyObject: failed to marshal TitleItem: %s", err)
 						continue
 					}
 					paginatedResponse = append(paginatedResponse, p)
 				}
 				if propertyType == PropertyConfigTypeRichText {
-					p := RichText{}
+					p := RichTextItem{}
 					err = json.Unmarshal(buffer, &p)
 					if err != nil { 
+						logger.Errorf("GetPropertyObject: failed to marshal RichTextItem: %s", err)
 						continue
 					}
 					paginatedResponse = append(paginatedResponse, p)
 				}
 				if propertyType == PropertyConfigTypeRelation {
-					p := Relation{}
+					p := RelationItem{}
 					err = json.Unmarshal(buffer, &p)
 					if err != nil { 
+						logger.Errorf("GetPropertyObject: failed to marshal RelationItem: %s", err)
 						continue
 					}
 					paginatedResponse = append(paginatedResponse, p)
 				}
 				if propertyType == PropertyConfigTypePeople {
-					p := People{}
+					p := PeopleItem{}
 					err = json.Unmarshal(buffer, &p)
 					if err != nil { 
+						logger.Errorf("GetPropertyObject: failed to marshal PeopleItem: %s", err)
 						continue
 					}
 					paginatedResponse = append(paginatedResponse, p)
@@ -213,72 +221,82 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				continue
 			}
 		case PropertyConfigTypeNumber:
-			p := NumberProperty{}
+			p := NumberItem{}
 			err = json.Unmarshal(b, &p)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal NumberItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, p)
 		case PropertyConfigTypeSelect:
-			p := SelectProperty{}
+			p := SelectItem{}
 			err = json.Unmarshal(b, &p)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal SelectItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, p)
 		case PropertyConfigTypeMultiSelect:
-			p := MultiSelect{}
+			p := MultiSelectItem{}
 			err = json.Unmarshal(b, &p)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal MultiSelectItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, p)
 		case PropertyConfigTypeDate:
-			date := DateProperty{}
+			date := DateItem{}
 			err = json.Unmarshal(b, &date)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal DateItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, date)
 		case PropertyConfigTypeFiles:
-			file := File{}
+			file := FileItem{}
 			err = json.Unmarshal(b, &file)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal FileItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, file)
 		case PropertyConfigTypeCheckbox:
-			checkbox := Checkbox{}
+			checkbox := CheckboxItem{}
 			err = json.Unmarshal(b, &checkbox)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal CheckboxItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, checkbox)
 		case PropertyConfigTypeURL:
-			url := Url{}
+			url := UrlItem{}
 			err = json.Unmarshal(b, &url)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal UrlItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, url)
 		case PropertyConfigTypeEmail:
-			email := Email{}
+			email := EmailItem{}
 			err = json.Unmarshal(b, &email)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal EmailItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, email)
 		case PropertyConfigTypePhoneNumber:
-			phone := Phone{}
+			phone := PhoneItem{}
 			err = json.Unmarshal(b, &phone)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal PhoneItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, phone)
 		case PropertyConfigTypeFormula:
-			formula := Formula{}
+			formula := FormulaItem{}
 			err = json.Unmarshal(b, &formula)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal FormulaItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, formula)
@@ -286,46 +304,52 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 			rollup := Rollup{}
 			err = json.Unmarshal(b, &rollup)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal Rollup: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, rollup)
 		case PropertyConfigCreatedTime:
-			ct := CreatedTime{}
+			ct := CreatedTimeItem{}
 			err = json.Unmarshal(b, &ct)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal CreatedTimeItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, ct)
 		case PropertyConfigCreatedBy:
-			cb := CreatedBy{}
+			cb := CreatedByItem{}
 			err = json.Unmarshal(b, &cb)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal CreatedByItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, cb)
 		case PropertyConfigLastEditedTime:
-			lt := LastEditedTime{}
+			lt := LastEditedTimeItem{}
 			err = json.Unmarshal(b, &lt)
 			if err != nil { 
+				logger.Errorf("GetPropertyObject: failed to marshal LastEditedTimeItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, lt)
 		case PropertyConfigLastEditedBy:
-			le := LastEditedBy{}
+			le := LastEditedByItem{}
 			err = json.Unmarshal(b, &le)
 			if err != nil {
+				logger.Errorf("GetPropertyObject: failed to marshal LastEditedByItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, le)
 		case PropertyConfigStatus:
-			sp := StatusProperty{}
+			sp := StatusItem{}
 			err = json.Unmarshal(b, &sp)
 			if err != nil {
+				logger.Errorf("GetPropertyObject: failed to marshal StatusItem: %s", err)
 				continue
 			}
 			paginatedResponse = append(paginatedResponse, sp)
 		default:
-			return nil, fmt.Errorf("unsupported property type: %s", propertyType)
+			return nil, fmt.Errorf("GetPropertyObject: unsupported property type: %s", propertyType)
 		}
 		hasMore = false
 	}

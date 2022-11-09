@@ -19,67 +19,67 @@ func (*DetailSetter) SetDetailValue(key string, propertyType PropertyConfigType,
 	switch propertyType {
 	case PropertyConfigTypeTitle:
 		for _, v := range property {
-			title := v.(Title)
+			title := v.(TitleItem)
 			title.SetDetail(key, details)
 		}
 	case PropertyConfigTypeRichText:
 		for _, v := range property {
-			rt := v.(RichText)
+			rt := v.(RichTextItem)
 			rt.SetDetail(key, details)
 		}
 	case PropertyConfigTypePeople:
 		for _, v := range property {
-			p := v.(People)
+			p := v.(PeopleItem)
 			p.SetDetail(key, details)
 		}
 	case PropertyConfigTypeRelation:
 		for _, v := range property {
-			r := v.(Relation)
+			r := v.(RelationItem)
 			r.SetDetail(key, details)
 		}
 	case PropertyConfigTypeNumber:
-		number := property[0].(NumberProperty)
+		number := property[0].(NumberItem)
 		number.SetDetail(key, details)
 	case PropertyConfigTypeSelect:
-		selectProperty := property[0].(SelectProperty)
+		selectProperty := property[0].(SelectItem)
 		selectProperty.SetDetail(key, details)
 	case PropertyConfigTypeMultiSelect:
-		multiSelect := property[0].(MultiSelect)
+		multiSelect := property[0].(MultiSelectItem)
 		multiSelect.SetDetail(key, details)
 	case PropertyConfigTypeDate:
 	case PropertyConfigTypeFiles:
-		f := property[0].(File)
+		f := property[0].(FileItem)
 		f.SetDetail(key, details)
 	case PropertyConfigTypeCheckbox:
-		c := property[0].(Checkbox)
+		c := property[0].(CheckboxItem)
 		c.SetDetail(key, details)
 	case PropertyConfigTypeURL:
-		url := property[0].(Url)
+		url := property[0].(UrlItem)
 		url.SetDetail(key, details)
 	case PropertyConfigTypeEmail:
-		email := property[0].(Email)
+		email := property[0].(EmailItem)
 		email.SetDetail(key, details)
 	case PropertyConfigTypePhoneNumber:
-		phone := property[0].(Phone)
+		phone := property[0].(PhoneItem)
 		phone.SetDetail(key, details)
 	case PropertyConfigTypeFormula:
-		formula := property[0].(Formula)
+		formula := property[0].(FormulaItem)
 		formula.SetDetail(key, details)
 	case PropertyConfigTypeRollup:
 	case PropertyConfigCreatedTime:
-		ct := property[0].(CreatedTime)
+		ct := property[0].(CreatedTimeItem)
 		ct.SetDetail(key, details)
 	case PropertyConfigCreatedBy:
-		cb := property[0].(CreatedBy)
+		cb := property[0].(CreatedByItem)
 		cb.SetDetail(key, details)
 	case PropertyConfigLastEditedTime:
-		lt := property[0].(LastEditedTime)
+		lt := property[0].(LastEditedTimeItem)
 		lt.SetDetail(key, details)
 	case PropertyConfigLastEditedBy:
-		lb := property[0].(LastEditedBy)
+		lb := property[0].(LastEditedByItem)
 		lb.SetDetail(key, details)
 	case PropertyConfigStatus:
-		lb := property[0].(StatusProperty)
+		lb := property[0].(StatusItem)
 		lb.SetDetail(key, details)
 	default:
 		return fmt.Errorf("unsupported property type: %s", propertyType)

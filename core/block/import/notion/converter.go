@@ -68,7 +68,26 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 			Error: ce,
 		}
 	}
-	return nil
+
+	allSnaphots := make([]*converter.Snapshot, 0, len(pagesSnapshots.Snapshots) + len(databasesSnapshots.Snapshots))
+	allSnaphots = append(allSnaphots, pagesSnapshots.Snapshots...)
+	allSnaphots = append(allSnaphots, databasesSnapshots.Snapshots...)
+	if pagesSnapshots.Error != nil {
+		ce.Merge(pagesSnapshots.Error)
+	}
+	if databasesSnapshots.Error != nil {
+		ce.Merge(databasesSnapshots.Error)
+	}
+	if !ce.IsEmpty() {
+		return &converter.Response{
+			Snapshots: allSnaphots,
+			Error: ce,
+		}
+	}
+	return &converter.Response{
+		Snapshots: allSnaphots,
+		Error: nil,
+	}
 }
 
 func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {
