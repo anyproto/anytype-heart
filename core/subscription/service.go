@@ -238,31 +238,31 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		return nil, err
 	}
 
-	if tagGrouper, ok := grouper.(*kanban.GroupTag); ok {
-		groups, err := tagGrouper.MakeDataViewGroups()
-		if err != nil {
-			return nil, err
-		}
-
-		subId = req.SubId
-		if subId == "" {
-			subId = bson.NewObjectId().Hex()
-		}
-		sub := s.newGroupSub(subId, req.RelationKey, groups)
-
-		entries := make([]*entry, 0, len(tagGrouper.Records))
-		for _, r := range tagGrouper.Records {
-			entries = append(entries, &entry{
-				id:   pbtypes.GetString(r.Details, "id"),
-				data: r.Details,
-			})
-		}
-
-		if err := sub.init(entries); err != nil {
-			return nil, err
-		}
-		s.subscriptions[sub.id] = sub
-	}
+	//if tagGrouper, ok := grouper.(*kanban.GroupTag); ok {
+	//	groups, err := tagGrouper.MakeDataViewGroups()
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//
+	//	subId = req.SubId
+	//	if subId == "" {
+	//		subId = bson.NewObjectId().Hex()
+	//	}
+	//	sub := s.newGroupSub(subId, req.RelationKey, groups)
+	//
+	//	entries := make([]*entry, 0, len(tagGrouper.Records))
+	//	for _, r := range tagGrouper.Records {
+	//		entries = append(entries, &entry{
+	//			id:   pbtypes.GetString(r.Details, "id"),
+	//			data: r.Details,
+	//		})
+	//	}
+	//
+	//	if err := sub.init(entries); err != nil {
+	//		return nil, err
+	//	}
+	//	s.subscriptions[sub.id] = sub
+	//}
 
 	return &pb.RpcObjectGroupsSubscribeResponse{
 		Error: &pb.RpcObjectGroupsSubscribeResponseError{},
