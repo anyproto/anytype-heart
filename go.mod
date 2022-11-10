@@ -55,7 +55,7 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/libp2p/go-libp2p v0.23.2
+	github.com/libp2p/go-libp2p v0.23.4
 	github.com/libp2p/go-libp2p-kad-dht v0.18.0
 	github.com/libp2p/go-libp2p-record v0.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
