@@ -7,7 +7,7 @@ import (
 	"time"
 
 	format "github.com/ipfs/go-ipld-format"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	threadsNet "github.com/textileio/go-threads/core/net"
 
 	"github.com/ipfs/go-cid"

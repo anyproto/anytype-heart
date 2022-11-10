@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 )
 
 var ErrRepoExists = fmt.Errorf("repo not empty, reinitializing would overwrite your account")

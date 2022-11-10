@@ -3,7 +3,7 @@ package util
 import (
 	"fmt"
 	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"strings"
 	"unicode"
 	"unicode/utf8"

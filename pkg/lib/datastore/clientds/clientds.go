@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	dsbadgerv3 "github.com/anytypeio/go-ds-badger3"
 	dgraphbadgerv1 "github.com/dgraph-io/badger"
 	dgraphbadgerv1pb "github.com/dgraph-io/badger/pb"
 	"github.com/hashicorp/go-multierror"
@@ -18,6 +17,7 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	dsbadgerv1 "github.com/ipfs/go-ds-badger"
 	textileBadger "github.com/textileio/go-ds-badger"
+	dsbadgerv3 "github.com/textileio/go-ds-badger3"
 	"github.com/textileio/go-threads/db/keytransform"
 
 	"github.com/anytypeio/go-anytype-middleware/app"

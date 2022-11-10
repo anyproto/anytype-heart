@@ -8,7 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/thread"
 )

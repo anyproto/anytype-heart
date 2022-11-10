@@ -576,7 +576,9 @@ func (w *Workspaces) CreateRelations(details []*types.Struct) (ids []string, obj
 	for _, rel := range details {
 		id, object, err2 := w.createRelation(st, rel)
 		if err2 != nil {
-			log.Errorf("failed to createRelation: %s", err2.Error())
+			if err2 != ErrSubObjectAlreadyExists {
+				log.Errorf("failed to createRelation: %s", err2.Error())
+			}
 			continue
 		}
 		ids = append(ids, id)

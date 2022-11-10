@@ -14,17 +14,17 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	threadsNet "github.com/textileio/go-threads/net"
 	threadsQueue "github.com/textileio/go-threads/net/queue"
 
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/crypto/symmetric"
 	threadsApp "github.com/textileio/go-threads/core/app"
 	tlcore "github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/go-threads/crypto/symmetric"
 	threadsDb "github.com/textileio/go-threads/db"
 	"github.com/textileio/go-threads/db/keytransform"
 	"google.golang.org/grpc"
@@ -99,12 +99,6 @@ type service struct {
 }
 
 func New() Service {
-	/* adjust ThreadsDB parameters */
-
-	// thread pulling cycle
-	threadsNet.PullStartAfter = 5 * time.Second
-	threadsNet.InitialPullInterval = 20 * time.Second
-	threadsNet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
 	threadsNet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
@@ -211,11 +205,15 @@ func (s *service) Run(context.Context) (err error) {
 	}
 
 	s.t, err = threadsNet.NewNetwork(s.ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
-		Debug:        s.Debug,
-		PubSub:       s.PubSub,
-		SyncTracking: s.SyncTracking,
-		SyncBook:     syncBook,
-		Metrics:      metrics.NewThreadsMetrics(),
+		NetPullingStartAfter:      5 * time.Second,
+		NetPullingLimit:           10000,
+		NetPullingInitialInterval: 20 * time.Second,
+		NetPullingInterval:        time.Minute,
+		Debug:                     s.Debug,
+		PubSub:                    s.PubSub,
+		SyncTracking:              s.SyncTracking,
+		SyncBook:                  syncBook,
+		Metrics:                   metrics.NewThreadsMetrics(),
 	}, s.GRPCServerOptions, s.GRPCDialOptions)
 	if err != nil {
 		return err

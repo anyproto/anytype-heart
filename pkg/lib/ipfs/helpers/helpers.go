@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers/resolver"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	"io"
@@ -21,7 +22,6 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
-	"github.com/ipfs/go-path/resolver"
 	uio "github.com/ipfs/go-unixfs/io"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/path"
@@ -106,7 +106,6 @@ func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Re
 	ipath := ipfspath.Path(p.String())
 
 	var resolveOnce resolver.ResolveOnce
-
 	switch ipath.Segments()[0] {
 	case "ipfs":
 		resolveOnce = uio.ResolveUnixfsOnce
@@ -115,7 +114,6 @@ func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Re
 	default:
 		return nil, fmt.Errorf("unsupported path namespace: %s", p.Namespace())
 	}
-
 	r := &resolver.Resolver{
 		DAG:         dag,
 		ResolveOnce: resolveOnce,
@@ -133,31 +131,6 @@ func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Re
 
 	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
 }
-
-/*
-func LsFiles(ctx context.Context, node *ipfslite.Peer, p path.Path) {
-	ses := node.Session(ctx)
-node.DAGService.
-
-}
-// LinksAtCid return ipld links under a path
-func LinksAtCid(node *ipfslite.Peer, pth string) ([]*ipld.Link, error) {
-	res, err := node.Ls(ctx, path.New(pth))
-	if err != nil {
-		return nil, err
-	}
-
-	links := make([]*ipld.Link, 0)
-	for link := range res {
-		links = append(links, &ipld.Link{
-			Name: link.Name,
-			Size: link.Size,
-			Cid:  link.Cid,
-		})
-	}
-
-	return links, nil
-}*/
 
 // AddDataToDirectory adds reader bytes to a virtual dir
 func AddDataToDirectory(ctx context.Context, node ipfs.IPFS, dir uio.Directory, fname string, reader io.Reader) (*cid.Cid, error) {
@@ -227,20 +200,6 @@ func NodeAtCid(ctx context.Context, dag ipld.DAGService, id cid.Cid) (ipld.Node,
 	return dag.Get(ctx, id)
 }
 
-/*
-// NodeAtPath returns the last node under path
-func NodeAtPath(node *ipfslite.Peer, pth string, timeout time.Duration) (ipld.Node, error) {
-	api, err := coreapi.NewCoreAPI(node)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(node.Context(), timeout)
-	defer cancel()
-
-	return api.ResolveNode(ctx, path.New(pth))
-}*/
-
 type Node struct {
 	Links []Link
 	Data  string
@@ -251,148 +210,6 @@ type Link struct {
 	Size       uint64
 }
 
-/*
-// ObjectAtPath returns the DAG object at the given path
-func ObjectAtPath(node *ipfslite.Peer, pth string) ([]byte, error) {
-	api, err := coreapi.NewCoreAPI(node)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(node.Context(), CatTimeout)
-	defer cancel()
-
-	ipth := path.New(pth)
-	nd, err := api.Object().Get(ctx, ipth)
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := api.Object().Data(ctx, ipth)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	out := &Node{
-		Links: make([]Link, len(nd.Links())),
-		Data:  string(data),
-	}
-
-	for i, link := range nd.Links() {
-		out.Links[i] = Link{
-			Hash: link.Cid.String(),
-			Name: link.Name,
-			Size: link.Size,
-		}
-	}
-
-	return json.Marshal(out)
-}
-
-// StatObjectAtPath returns info about an object
-func StatObjectAtPath(node *ipfslite.Peer, pth string) (*iface.ObjectStat, error) {
-	api, err := coreapi.NewCoreAPI(node)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(node.Context(), CatTimeout)
-	defer cancel()
-
-	return api.Object().Stat(ctx, path.New(pth))
-}
-
-// PinNode pins an ipld node
-func PinNode(node *ipfslite.Peer, nd ipld.Node, recursive bool) error {
-	ctx, cancel := context.WithTimeout(node.Context(), PinTimeout)
-	defer cancel()
-
-	defer node.Blockstore.PinLock().Unlock()
-
-	err := node.Pinning.Pin(ctx, nd, recursive)
-	if err != nil {
-		if strings.Contains(err.Error(), "already pinned recursively") {
-			return nil
-		}
-		return err
-	}
-
-	return node.Pinning.Flush()
-}
-
-// UnpinNode unpins an ipld node
-func UnpinNode(node *ipfslite.Peer, nd ipld.Node, recursive bool) error {
-	return UnpinCid(node, nd.Cid(), recursive)
-}
-
-// UnpinCid unpins a cid
-func UnpinCid(node *ipfslite.Peer, id icid.Cid, recursive bool) error {
-	ctx, cancel := context.WithTimeout(node.Context(), PinTimeout)
-	defer cancel()
-
-	err := node.Pinning.Unpin(ctx, id, recursive)
-	if err != nil && err != pin.ErrNotPinned {
-		return err
-	}
-
-	return node.Pinning.Flush()
-}
-
-// Pinned returns the subset of given cids that are pinned
-func Pinned(node *ipfslite.Peer, cids []string) ([]icid.Cid, error) {
-	var decoded []icid.Cid
-	for _, id := range cids {
-		dec, err := icid.Decode(id)
-		if err != nil {
-			return nil, err
-		}
-		decoded = append(decoded, dec)
-	}
-	list, err := node.Pinning.CheckIfPinned(decoded...)
-	if err != nil {
-		return nil, err
-	}
-
-	var pinned []icid.Cid
-	for _, p := range list {
-		if p.Mode != pin.NotPinned {
-			pinned = append(pinned, p.Key)
-		}
-	}
-
-	return pinned, nil
-}
-
-// NotPinned returns the subset of given cids that are not pinned
-func NotPinned(node *ipfslite.Peer, cids []string) ([]icid.Cid, error) {
-	var decoded []icid.Cid
-	for _, id := range cids {
-		dec, err := icid.Decode(id)
-		if err != nil {
-			return nil, err
-		}
-		decoded = append(decoded, dec)
-	}
-	list, err := node.Pinning.CheckIfPinned(decoded...)
-	if err != nil {
-		return nil, err
-	}
-
-	var notPinned []icid.Cid
-	for _, p := range list {
-		if p.Mode == pin.NotPinned {
-			notPinned = append(notPinned, p.Key)
-		}
-	}
-
-	return notPinned, nil
-}
-*/
 // ResolveLinkByNames resolves a link in a node from a list of valid names
 // Note: This exists for b/c w/ the "f" -> "meta" and "d" -> content migration
 func ResolveLinkByNames(nd ipld.Node, names []string) (*ipld.Link, error) {
