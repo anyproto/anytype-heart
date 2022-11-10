@@ -247,18 +247,22 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 			return
 		}
 	case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
-		if err = apply(o.BlockDataViewObjectOrderUpdate.Id, func(b simple.Block) error {
-			if f, ok := b.(dataview.Block); ok {
-
-				for _, order := range b.Model().GetDataview().ObjectOrders {
-					if order.ViewId == o.BlockDataViewObjectOrderUpdate.ViewId && order.GroupId == o.BlockDataViewObjectOrderUpdate.GroupId {
-						changes := o.BlockDataViewObjectOrderUpdate.GetSliceChanges()
-						changedIds := slice.ApplyChanges(order.ObjectIds, pbtypes.EventsToSliceChange(changes))
-						order.ObjectIds = changedIds
+		event := o.BlockDataViewObjectOrderUpdate
+		if err = apply(event.Id, func(b simple.Block) error {
+			if dvBlock, ok := b.(dataview.Block); ok {
+				var existOrder []string
+				for _, order := range dvBlock.Model().GetDataview().ObjectOrders {
+					if order.ViewId == event.ViewId && order.GroupId == event.GroupId {
+						existOrder = order.ObjectIds
 					}
 				}
 
-				f.SetViewObjectOrder(b.Model().GetDataview().ObjectOrders)
+				changes := o.BlockDataViewObjectOrderUpdate.GetSliceChanges()
+				changedIds := slice.ApplyChanges(existOrder, pbtypes.EventsToSliceChange(changes))
+
+				dvBlock.SetViewObjectOrder([]*model.BlockContentDataviewObjectOrder{
+					{ViewId: event.ViewId, GroupId: event.GroupId, ObjectIds: changedIds},
+				})
 
 				return nil
 			}
