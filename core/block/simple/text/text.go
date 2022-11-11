@@ -186,7 +186,7 @@ func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
 	}
 	filteredMarks := t.content.Marks.Marks[:0]
 	for _, m := range t.content.Marks.Marks {
-		if m.Type != mark.Type {
+		if m.Type != mark.Type && !isIncompatibleType(m.Type, mark.Type) {
 			filteredMarks = append(filteredMarks, m)
 		}
 	}
@@ -695,6 +695,14 @@ func (t *Text) IsEmpty() bool {
 		t.Model().BackgroundColor == "" &&
 		t.Model().Align == 0 &&
 		t.Model().VerticalAlign == 0 {
+		return true
+	}
+	return false
+}
+
+func isIncompatibleType(firstType, secondType model.BlockContentTextMarkType ) bool {
+	if (firstType == model.BlockContentTextMark_Link && secondType == model.BlockContentTextMark_Object) || 
+	(secondType == model.BlockContentTextMark_Link && firstType == model.BlockContentTextMark_Object) {
 		return true
 	}
 	return false

@@ -355,6 +355,68 @@ func TestText_SetMarkForAllText(t *testing.T) {
 	assert.Len(t, tb.Model().GetText().Marks.Marks, 2)
 }
 
+func TestText_IncompatibleTypes(t *testing.T) {
+	b := NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "1234567890",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						&model.BlockContentTextMark{
+							Range: &model.Range{
+								From: 0,
+								To:   10,
+							},
+							Type:  model.BlockContentTextMark_Link,
+							Param: "https://www.youtube.com/",
+						},
+					},
+				},
+			},
+		},
+	})
+	tb := b.(Block)
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Object,
+		Range: &model.Range{
+			From: 0,
+			To:   10,
+		},
+		Param: "bafyba2frjwd6jnmisz7ejfld2yg3qe7z6g2f5r5dkwkfknkvs2xyuatc",
+	})
+	assert.Len(t, tb.Model().GetText().Marks.Marks, 1)
+
+	b = NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "1234567890",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						&model.BlockContentTextMark{
+							Range: &model.Range{
+								From: 0,
+								To:   10,
+							},
+							Type:  model.BlockContentTextMark_Object,
+							Param: "bafyba2frjwd6jnmisz7ejfld2yg3qe7z6g2f5r5dkwkfknkvs2xyuatc",
+						},
+					},
+				},
+			},
+		},
+	})
+	tb = b.(Block)
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Object,
+		Range: &model.Range{
+			From: 0,
+			To:   10,
+		},
+		Param: "https://www.youtube.com/",
+	})
+	assert.Len(t, tb.Model().GetText().Marks.Marks, 1)
+}
+
 func TestText_RemoveMarkType(t *testing.T) {
 	b := NewText(&model.Block{
 		Content: &model.BlockContentOfText{
