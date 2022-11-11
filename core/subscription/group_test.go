@@ -45,6 +45,7 @@ func TestGroupTag(t *testing.T) {
 	groups := tagEntriesToGroups(entries)
 
 	t.Run("change existing groups", func(t *testing.T) {
+		entries := genTagEntries()
 		sub := groupSub{relKey: bundle.RelationKeyTag.String(), groups: groups, cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
@@ -60,6 +61,7 @@ func TestGroupTag(t *testing.T) {
 	})
 
 	t.Run("add new group", func(t *testing.T) {
+		entries := genTagEntries()
 		sub := groupSub{relKey: bundle.RelationKeyTag.String(), groups: groups, cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
@@ -75,6 +77,7 @@ func TestGroupTag(t *testing.T) {
 	})
 
 	t.Run("remove existing group", func(t *testing.T) {
+		entries := genTagEntries()
 		sub := groupSub{relKey: bundle.RelationKeyTag.String(), groups: groups, cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
