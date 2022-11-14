@@ -1,7 +1,7 @@
 ## Anytype Middleware Library
 
 ### Build from Source
-1. Install Golang 1.17.* [from here](http://golang.org/dl/) or using preferred package manager
+1. Install Golang 1.18.* [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
 #### Build and install for the [desktop client](https://github.com/anytypeio/js-anytype)
