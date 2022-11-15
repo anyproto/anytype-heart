@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"

@@ -52,3 +52,14 @@ func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
 	}
 	return w.Apply(st)
 }
+
+func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
+	st := w.NewStateCtx(ctx)
+	for _, id := range ids {
+		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {
+			st.Unlink(p.Model().Id)
+		}
+		st.Unlink(id)
+	}
+	return w.Apply(st)
+}

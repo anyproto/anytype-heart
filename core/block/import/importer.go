@@ -3,6 +3,7 @@ package importer
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
