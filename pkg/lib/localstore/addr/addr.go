@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	VirtualObjectSeparator = "-"
-	RelationKeyToIdPrefix  = "rel-" //
+	SubObjectCollectionIdSeparator = "-"
+	RelationKeyToIdPrefix          = "rel-" //
+	ObjectTypeKeyToIdPrefix        = "ot-"  //
 
 	BundledRelationURLPrefix   = "_br"
 	BundledObjectTypeURLPrefix = "_ot"
@@ -40,5 +41,5 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 
 // returns the
 func GetVirtualCollectionObjectId(collectionName, key string) string {
-	return collectionName + VirtualObjectSeparator + key
+	return collectionName + SubObjectCollectionIdSeparator + key
 }

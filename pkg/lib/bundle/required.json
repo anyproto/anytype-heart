@@ -1,0 +1,7 @@
+{
+  "relations": [
+  "page",
+  "note",
+  "task"
+]
+}

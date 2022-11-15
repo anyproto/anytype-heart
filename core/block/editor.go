@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 
@@ -556,7 +554,7 @@ func (s *service) UploadFileBlockWithHash(ctx *session.Context, contextId string
 		hash = res.Hash
 		return nil
 	})
-	
+
 	return hash, err
 }
 
@@ -745,7 +743,8 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 			return fmt.Errorf("incorrect object with workspace id")
 		}
 
-		if bson.IsObjectIdHex(objectId) {
+		st, _ := coresb.SmartBlockTypeFromID(objectId)
+		if st == coresb.SmartBlockTypeSubObject {
 			return workspace.DeleteSubObject(objectId)
 		}
 

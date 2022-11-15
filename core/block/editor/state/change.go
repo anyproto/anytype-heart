@@ -54,8 +54,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		store:          snapshot.Data.Collections,
 	}
 
-	// migrate old relations from dataview block
-	// do not consider other possible dataview blocks
+	s.objectTypes, s.objectTypesToMigrate = relationutils.MigrateObjectTypeIds(s.objectTypes)
+
 	s.InjectDerivedDetails()
 	return s
 }
@@ -309,6 +309,12 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 			return nil
 		}
 	}
+	// in-place migration for bundled object types moved into workspace
+	url, migrated := relationutils.MigrateObjectTypeId(add.Url)
+	if migrated {
+		s.SetObjectTypesToMigrate(append(s.ObjectTypesToMigrate(), add.Url))
+		add.Url = url
+	}
 	objectTypes := append(s.ObjectTypes(), add.Url)
 	s.SetObjectTypes(objectTypes)
 	// Set only the first(0) object type to the detail
@@ -319,6 +325,20 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
 	var found bool
+	// in-place migration for bundled object types moved into workspace
+	url, migrated := relationutils.MigrateObjectTypeId(remove.Url)
+	if migrated {
+		// todo: should we also migrate all the object types from the history of object?
+		s.objectTypesToMigrate = slice.Filter(s.ObjectTypesToMigrate(), func(s string) bool {
+			if s == remove.Url {
+				found = true
+				return false
+			}
+			return true
+		})
+		remove.Url = url
+	}
+
 	s.objectTypes = slice.Filter(s.ObjectTypes(), func(s string) bool {
 		if s == remove.Url {
 			found = true

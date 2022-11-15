@@ -44,17 +44,21 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return SmartBlockTypeBundledRelation, nil
 	}
-	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-		return SmartBlockTypeSubObject, nil
-	}
-	// workaround for options that have no prefix
-	if bson.IsObjectIdHex(id) {
-		return SmartBlockTypeSubObject, nil
-	}
 
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		return SmartBlockTypeBundledObjectType, nil
 	}
+
+	if len(strings.Split(id, addr.SubObjectCollectionIdSeparator)) == 2 {
+		return SmartBlockTypeSubObject, nil
+	}
+
+	// workaround for options that have no prefix
+	// todo: remove this after migration to the new records format
+	if bson.IsObjectIdHex(id) {
+		return SmartBlockTypeSubObject, nil
+	}
+
 	if strings.HasPrefix(id, addr.AnytypeProfileId) {
 		return SmartBlockTypeProfilePage, nil
 	}

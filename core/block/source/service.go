@@ -25,6 +25,8 @@ type Service interface {
 	NewSource(id string, listenToOwnChanges bool) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	RemoveStaticSource(id string)
+
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
@@ -103,4 +105,10 @@ func (s *service) RegisterStaticSource(id string, new func() Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[id] = new
+}
+
+func (s *service) RemoveStaticSource(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.staticIds, id)
 }

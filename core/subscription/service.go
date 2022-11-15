@@ -3,6 +3,8 @@ package subscription
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"strings"
 	"sync"
 	"time"
 
@@ -313,6 +315,10 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 		if sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType {
 			objTypeIds = append(objTypeIds, source)
 		} else {
+			if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
+				objTypeIds = append(objTypeIds, source)
+				continue
+			}
 			relKey, err := pbtypes.RelationIdToKey(source)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get relation key from id %s: %s", relKey, err.Error())

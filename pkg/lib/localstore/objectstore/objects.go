@@ -2458,6 +2458,9 @@ func objTypeCompactEncode(objType string) (string, error) {
 	if strings.HasPrefix(objType, addr.BundledObjectTypeURLPrefix) {
 		return objType, nil
 	}
+	if strings.HasPrefix(objType, addr.ObjectTypeKeyToIdPrefix) {
+		return objType, nil
+	}
 	if strings.HasPrefix(objType, "ba") {
 		return objType, nil
 	}
@@ -2476,8 +2479,6 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 			return nil, err
 		}
 		return objectType, nil
-	} else if !strings.HasPrefix(url, "b") {
-		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 
 	ois, err := store.GetByIDs(url)

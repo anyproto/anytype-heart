@@ -131,7 +131,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 
 func (b *builtinTemplate) validate(st *state.State) (err error) {
 	cd := st.CombinedDetails()
-	if st.ObjectType() != bundle.TypeKeyTemplate.URL() {
+	if st.ObjectType() != addr.ObjectTypeKeyToIdPrefix+bundle.TypeKeyTemplate.String() {
 		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectType())
 	}
 	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {

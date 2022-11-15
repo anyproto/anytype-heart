@@ -45,7 +45,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 7  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 18 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 22 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFilestoreKeysReindexCounter  int32 = 1
 )
@@ -636,12 +636,45 @@ func (i *indexer) migrateRelations(rels []*model.Relation) {
 	if i.relationBulkMigration != nil {
 		i.relationBulkMigration.AddRelations(rels)
 	} else {
-		err := i.relationService.Migrate(rels)
+		err := i.relationService.MigrateRelations(rels)
 		if err != nil {
 			log.Errorf("migrateRelations got error: %s", err.Error())
 		}
 	}
 }
+
+func (i *indexer) migrateObjectTypes(ots []string) {
+	if len(ots) == 0 {
+		return
+	}
+
+	var typesModels []*model.ObjectType // do not make
+	for _, ot := range ots {
+		t, err := bundle.GetTypeByUrl(ot)
+		if err != nil {
+			continue
+		}
+
+		typesModels = append(typesModels, t)
+	}
+
+	if len(typesModels) == 0 {
+		return
+	}
+
+	i.relationMigratorMu.Lock()
+	defer i.relationMigratorMu.Unlock()
+
+	if i.relationBulkMigration != nil {
+		i.relationBulkMigration.AddObjectTypes(typesModels)
+	} else {
+		err := i.relationService.MigrateObjectTypes(typesModels)
+		if err != nil {
+			log.Errorf("migrateObjectTypes got error: %s", err.Error())
+		}
+	}
+}
+
 func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved bool) error {
 	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
@@ -747,6 +780,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
 		// avoid recursions
 		i.migrateRelations(extractRelationsFromState(info.State))
+		i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
 	}
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()

@@ -1186,7 +1186,7 @@
   {
     "description": "Relation that stores the object's type",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "type",
     "maxCount": 1,
     "name": "Object type",

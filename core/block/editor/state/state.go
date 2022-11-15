@@ -89,8 +89,9 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
-	store       *types.Struct
-	objectTypes []string
+	store                *types.Struct
+	objectTypes          []string
+	objectTypesToMigrate []string
 
 	changesStructureIgnoreIds []string
 
@@ -669,6 +670,9 @@ func (s *State) intermediateApply() {
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
 	}
+	if s.objectTypesToMigrate != nil {
+		s.parent.objectTypesToMigrate = s.objectTypesToMigrate
+	}
 	if s.store != nil {
 		s.parent.store = s.store
 	}
@@ -847,6 +851,11 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 	return s
 }
 
+func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
+	s.objectTypesToMigrate = objectTypes
+	return s
+}
+
 func (s *State) InjectDerivedDetails() {
 
 	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
@@ -888,7 +897,7 @@ func ListSmartblockTypes(objectId string) ([]int, error) {
 			res = append(res, int(t))
 		}
 		return res, nil
-	} else if !strings.HasPrefix(objectId, "b") {
+	} else if strings.HasPrefix(objectId, addr.ObjectTypeKeyToIdPrefix) && !strings.HasPrefix(objectId, "b") {
 		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 
@@ -957,6 +966,13 @@ func (s *State) ObjectTypes() []string {
 		return s.parent.ObjectTypes()
 	}
 	return s.objectTypes
+}
+
+func (s *State) ObjectTypesToMigrate() []string {
+	if s.objectTypes == nil && s.parent != nil {
+		return s.parent.ObjectTypesToMigrate()
+	}
+	return s.objectTypesToMigrate
 }
 
 // ObjectType returns only the first objectType and produce warning in case the state has more than 1 object type
@@ -1150,6 +1166,9 @@ func (s *State) Copy() *State {
 	objTypes := make([]string, len(s.ObjectTypes()))
 	copy(objTypes, s.ObjectTypes())
 
+	objTypesToMigrate := make([]string, len(s.ObjectTypesToMigrate()))
+	copy(objTypesToMigrate, s.ObjectTypesToMigrate())
+
 	agOptsCopy := make(map[string][]*model.RelationOption, len(s.AggregatedOptionsByRelation()))
 	for k, v := range s.AggregatedOptionsByRelation() {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
@@ -1171,6 +1190,7 @@ func (s *State) Copy() *State {
 		extraRelations:              pbtypes.CopyRelations(s.OldExtraRelations()),
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,
+		objectTypesToMigrate:        objTypesToMigrate,
 		noObjectType:                s.noObjectType,
 		store:                       pbtypes.CopyStruct(s.Store()),
 	}

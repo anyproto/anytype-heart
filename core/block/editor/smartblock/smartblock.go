@@ -81,7 +81,9 @@ const (
 type key int
 
 const (
-	collectionRelations       = "rel"
+	collectionRelations  = "rel"
+	collectionObjectType = "ot"
+
 	collectionRelationOptions = "opt"
 )
 const CallerKey key = 0
@@ -1400,7 +1402,7 @@ func SubState(st *state.State, collection string, fullId string) (*state.State, 
 	if collection == source.WorkspaceCollection {
 		return nil, fmt.Errorf("substate not supported")
 	}
-	subId := strings.TrimPrefix(fullId, collection+addr.VirtualObjectSeparator)
+	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
 	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
 	if data == nil || data.Fields == nil {
 		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
@@ -1439,6 +1441,39 @@ func SubState(st *state.State, collection string, fullId string) (*state.State, 
 		template.WithAllBlocksEditsRestricted(subst)
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation)))(subst)
 		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))(subst)
+		template.WithTitle(subst)
+		template.WithDescription(subst)
+		template.WithDefaultFeaturedRelations(subst)
+		template.WithDataview(dataview, false)(subst)
+
+	} else if collection == collectionObjectType {
+		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
+		dataview := model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Source: []string{fullId},
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   uuid.New().String(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All",
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: relKey,
+								Type:        model.BlockContentDataviewSort_Asc,
+							},
+						},
+						Relations: []*model.BlockContentDataviewRelation{{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+						},
+						Filters: nil,
+					},
+				},
+			},
+		}
+		template.WithAllBlocksEditsRestricted(subst)
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_objectType)))(subst)
 		template.WithTitle(subst)
 		template.WithDescription(subst)
 		template.WithDefaultFeaturedRelations(subst)
