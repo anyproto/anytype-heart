@@ -109,8 +109,8 @@
     "hidden": false,
     "layout": "bookmark",
     "relations": [
-      "source",
       "tag",
+      "source",
       "picture",
       "notes",
       "quote"
@@ -221,12 +221,10 @@
     "hidden": true,
     "layout": "relation",
     "relations": [
-      "relationKey",
       "relationFormat",
-      "relationFormatObjectTypes",
       "relationMaxCount",
       "relationDefaultValue",
-      "relationReadonlyValue"
+      "relationFormatObjectTypes"
     ],
     "description": "Meaningful connection between objects"
   },
@@ -407,9 +405,7 @@
     "emoji": "🥚",
     "hidden": true,
     "layout": "relationOption",
-    "relations": [
-      "relationOptionColor"
-    ],
+    "relations": [],
     "description": "Object that contains a relation option"
   },
   {

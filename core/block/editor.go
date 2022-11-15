@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -29,10 +28,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -739,39 +736,6 @@ func (s *Service) SetObjectTypes(ctx *session.Context, objectId string, objectTy
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
 		return b.SetObjectTypes(ctx, objectTypes)
 	})
-}
-
-// todo: rewrite with options
-// withId may me empty
-func (s *Service) CreateObjectInWorkspace(
-	ctx context.Context,
-	workspaceId string,
-	withId thread.ID,
-	sbType coresb.SmartBlockType,
-) (csm core.SmartBlock, err error) {
-	startTime := time.Now()
-	ev, exists := ctx.Value(ObjectCreateEvent).(*metrics.CreateObjectEvent)
-	err = s.DoWithContext(ctx, workspaceId, func(b smartblock.SmartBlock) error {
-		if exists {
-			ev.GetWorkspaceBlockWaitMs = time.Now().Sub(startTime).Milliseconds()
-		}
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		csm, err = workspace.CreateObject(withId, sbType)
-		if exists {
-			ev.WorkspaceCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.GetWorkspaceBlockWaitMs
-		}
-		if err != nil {
-			return fmt.Errorf("anytype.CreateBlock error: %v", err)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return csm, nil
 }
 
 func (s *Service) DeleteObjectFromWorkspace(workspaceId string, objectId string) error {

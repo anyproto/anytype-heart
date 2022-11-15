@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "72401ce7a32e68fb86954db26e09378deffb5823f50fa92043204f0e63c6d850"
+const TypeChecksum = "9d3e4ff8bff0beff290400235834ceea0b4a86f29e8618f15c28ca288008421b"
 
 type TypeKey string
 
@@ -121,7 +121,7 @@ var (
 			Layout:        model.ObjectType_bookmark,
 			Name:          "Bookmark",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPicture), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyQuote)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyQuote)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
 		},
@@ -407,21 +407,20 @@ var (
 			Layout:        model.ObjectType_relation,
 			Name:          "Relation",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationKey), MustGetRelationLink(RelationKeyRelationFormat), MustGetRelationLink(RelationKeyRelationFormatObjectTypes), MustGetRelationLink(RelationKeyRelationMaxCount), MustGetRelationLink(RelationKeyRelationDefaultValue), MustGetRelationLink(RelationKeyRelationReadonlyValue)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationFormat), MustGetRelationLink(RelationKeyRelationMaxCount), MustGetRelationLink(RelationKeyRelationDefaultValue), MustGetRelationLink(RelationKeyRelationFormatObjectTypes)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_SubObject, model.SmartBlockType_BundledRelation},
 			Url:           TypePrefix + "relation",
 		},
 		TypeKeyRelationOption: {
 
-			Description:   "Object that contains a relation option",
-			Hidden:        true,
-			IconEmoji:     "🥚",
-			Layout:        model.ObjectType_relationOption,
-			Name:          "Relation option",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationOptionColor)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_SubObject},
-			Url:           TypePrefix + "relationOption",
+			Description: "Object that contains a relation option",
+			Hidden:      true,
+			IconEmoji:   "🥚",
+			Layout:      model.ObjectType_relationOption,
+			Name:        "Relation option",
+			Readonly:    true,
+			Types:       []model.SmartBlockType{model.SmartBlockType_SubObject},
+			Url:         TypePrefix + "relationOption",
 		},
 		TypeKeyResume: {
 
