@@ -19507,6 +19507,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Database | 64 |  |
 | Set | 65 | only have dataview simpleblock |
 | STObjectType | 96 | have relations list |
+| Widget | 112 |  |
 | File | 256 |  |
 | Template | 288 |  |
 | BundledTemplate | 289 |  |

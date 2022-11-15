@@ -3,15 +3,17 @@ package widget
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
-	// TODO Check that context object has smartblock type Widget
-
+func CreateBlock(sb smartblock.SmartBlock, s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
+	if sb.Type() != model.SmartBlockType_Widget {
+		return "", fmt.Errorf("you can create widgets only in widget objects")
+	}
 	if req.Block.Content == nil {
 		return "", fmt.Errorf("block has no content")
 	}

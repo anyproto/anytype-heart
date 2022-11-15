@@ -25,7 +25,7 @@ func (mw *Middleware) BlockCreateWidget(cctx context.Context, req *pb.RpcBlockCr
 		return bs.DoWithContext(cctx, req.ContextId, func(sb smartblock.SmartBlock) error {
 			s := sb.NewStateCtx(ctx)
 			var err error
-			id, err = widget.CreateBlock(s, req)
+			id, err = widget.CreateBlock(sb, s, req)
 			if err != nil {
 				return err
 			}

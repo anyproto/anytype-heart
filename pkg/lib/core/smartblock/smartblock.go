@@ -2,8 +2,9 @@ package smartblock
 
 import (
 	"fmt"
-	"github.com/globalsign/mgo/bson"
 	"strings"
+
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -38,6 +39,7 @@ const (
 	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
 	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
 	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
+	SmartBlockTypeWidget              = SmartBlockType(model.SmartBlockType_Widget)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {

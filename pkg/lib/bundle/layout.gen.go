@@ -81,11 +81,5 @@ var (
 			Name:              "to-do",
 			RequiredRelations: []*model.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
 		},
-		model.ObjectType_relationOption: {
-
-			Id:                model.ObjectType_relationOption,
-			Name:              "Relation Option",
-			RequiredRelations: []*model.Relation{relations[RelationKeyRelationOptionColor], relations[RelationKeyName]},
-		},
 	}
 )

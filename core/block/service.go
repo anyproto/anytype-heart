@@ -1305,6 +1305,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewWorkspace(s)
 	case model.SmartBlockType_AccountOld:
 		sb = editor.NewThreadDB(s)
+	case model.SmartBlockType_Widget:
+		sb = editor.NewWidgetObject()
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "24e27e6039484e8c7d61e3dd4c432532f83d035fedd34bc57965f6bbd6107a62"
+const RelationChecksum = "ffe24ce6bd57220fb80e1b7734f8839d83f22729030fd54221a9e8909ef88151"
 
 type RelationKey string
 
@@ -16,7 +16,6 @@ func (rk RelationKey) String() string {
 
 const (
 	RelationKeyMeditation                RelationKey = "meditation"
-	RelationKeyRelationOptionsDict       RelationKey = "relationOptionsDict"
 	RelationKeyTag                       RelationKey = "tag"
 	RelationKeyCamera                    RelationKey = "camera"
 	RelationKeyHeightInPixels            RelationKey = "heightInPixels"
@@ -1820,19 +1819,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyRelationOptionsDict: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Strict dictionary to select relation values from",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brrelationOptionsDict",
-			Key:              "relationOptionsDict",
-			Name:             "Dictionary",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyRelationReadonlyValue: {
 
 			DataSource:       model.Relation_details,
@@ -1967,7 +1953,7 @@ var (
 		RelationKeySetOf: {
 
 			DataSource:       model.Relation_derived,
-			Description:      "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
+			Description:      "Point to the object types or realtions used to aggregate the set. Empty means object of all types will be aggregated ",
 			Format:           model.RelationFormat_object,
 			Id:               "_brsetOf",
 			Key:              "setOf",
