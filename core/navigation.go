@@ -157,6 +157,8 @@ func (mw *Middleware) objectCreate(req *pb.RpcObjectCreateRequest) (id string, d
 		})
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
+	case bundle.TypeKeyWidget:
+		sbType = coresb.SmartBlockTypeWidget
 	}
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
 		id, details, err = bs.CreateSmartBlockFromTemplate(context.TODO(), sbType, req.Details, nil, req.TemplateId)

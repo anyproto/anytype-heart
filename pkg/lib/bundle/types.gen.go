@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "72401ce7a32e68fb86954db26e09378deffb5823f50fa92043204f0e63c6d850"
+const TypeChecksum = "af1302cc61ed9b8f886f783c3b2d7af400438757dd9d00e3e7ea442addf3fcc9"
 
 type TypeKey string
 
@@ -66,6 +66,7 @@ const (
 	TypeKeyDocument        TypeKey = "document"
 	TypeKeyFile            TypeKey = "file"
 	TypeKeyProject         TypeKey = "project"
+	TypeKeyWidget          TypeKey = "widget"
 )
 
 var (
@@ -500,6 +501,16 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyEvents), MustGetRelationLink(RelationKeyTasks)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "weeklyPlan",
+		},
+		TypeKeyWidget: {
+
+			Description: "An object with widgets",
+			IconEmoji:   "📝",
+			Layout:      model.ObjectType_note,
+			Name:        "Widget",
+			Readonly:    true,
+			Types:       []model.SmartBlockType{model.SmartBlockType_Widget},
+			Url:         TypePrefix + "widget",
 		},
 	}
 )

@@ -722,5 +722,17 @@
       "tasks"
     ],
     "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"
+  },
+  {
+    "id": "widget",
+    "name": "Widget",
+    "types": [
+      "Widget"
+    ],
+    "emoji": "📝",
+    "hidden": false,
+    "layout": "note",
+    "relations": [],
+    "description": "An object with widgets"
   }
 ]
