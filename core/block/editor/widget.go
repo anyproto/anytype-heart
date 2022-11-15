@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -9,11 +10,19 @@ import (
 
 type WidgetObject struct {
 	smartblock.SmartBlock
+	basic.IHistory
+	basic.Movable
+	basic.Unlinkable
 }
 
 func NewWidgetObject() *WidgetObject {
+	sb := smartblock.New()
+	bs := basic.NewBasic(sb)
 	return &WidgetObject{
-		SmartBlock: smartblock.New(),
+		SmartBlock: sb,
+		Movable:    bs,
+		Unlinkable: bs,
+		IHistory:   basic.NewHistory(sb),
 	}
 }
 

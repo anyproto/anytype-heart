@@ -1521,6 +1521,23 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	return apply(sb)
 }
 
+func Do[t any](s *service, id string, apply func(sb t) error) error {
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	bb, ok := sb.(t)
+	if !ok {
+		return fmt.Errorf("this kind of interface is not implemented in %T", sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
+}
+
 func (s *service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
 	sb, release, err := s.pickBlock(ctx, id)
 	if err != nil {

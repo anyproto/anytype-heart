@@ -21,9 +21,10 @@ import (
 )
 
 type Basic interface {
+	Movable
+	Unlinkable
+
 	Create(ctx *session.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
-	Unlink(ctx *session.Context, id ...string) (err error)
-	Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
 	Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error)
 	SetFields(ctx *session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
@@ -38,6 +39,14 @@ type Basic interface {
 	ReplaceLink(oldId, newId string) error
 
 	ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+}
+
+type Movable interface {
+	Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
+}
+
+type Unlinkable interface {
+	Unlink(ctx *session.Context, id ...string) (err error)
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")

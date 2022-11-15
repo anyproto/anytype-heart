@@ -111,7 +111,7 @@ func (s *service) DuplicateBlocks(ctx *session.Context, req pb.RpcBlockListDupli
 }
 
 func (s *service) UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	return Do(s, req.ContextId, func(b basic.Unlinkable) error {
 		return b.Unlink(ctx, req.BlockIds...)
 	})
 }
@@ -939,7 +939,7 @@ func (s *service) MoveBlocksToNewPage(ctx *session.Context, req pb.RpcBlockListM
 
 func (s *service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
 	if req.ContextId == req.TargetContextId {
-		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return Do(s, req.ContextId, func(b basic.Movable) error {
 			return b.Move(ctx, req)
 		})
 	}
