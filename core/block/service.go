@@ -30,8 +30,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
@@ -54,10 +58,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
-
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 )
 
 const (

@@ -72,6 +72,7 @@ message Block {
         Content.Table table = 26;
         Content.TableColumn tableColumn = 27;
         Content.TableRow tableRow = 28;
+        Content.Widget widget = 29;
     }
 
     message Restrictions {
@@ -489,6 +490,8 @@ message Block {
 		    message TableRow {
             bool isHeader = 1;
         }
+
+        message Widget {}
     }
 }
 

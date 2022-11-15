@@ -1179,6 +1179,7 @@
     - [Block.Content.Text](#anytype-model-Block-Content-Text)
     - [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark)
     - [Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks)
+    - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [InternalFlag](#anytype-model-InternalFlag)
@@ -18062,6 +18063,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
 | tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
 | tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
+| widget | [Block.Content.Widget](#anytype-model-Block-Content-Widget) |  |  |
 
 
 
@@ -18562,6 +18564,16 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | marks | [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Widget"></a>
+
+### Block.Content.Widget
+
 
 
 
