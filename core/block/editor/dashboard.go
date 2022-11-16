@@ -21,7 +21,7 @@ func NewDashboard(importServices _import.Services, dmservice DetailsModifier) *D
 	sb := smartblock.New()
 	return &Dashboard{
 		SmartBlock:      sb,
-		Basic:           basic.NewBasic(sb), // deprecated
+		AllOperations:   basic.NewBasic(sb), // deprecated
 		Import:          _import.NewImport(sb, importServices),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: dmservice,
@@ -30,7 +30,7 @@ func NewDashboard(importServices _import.Services, dmservice DetailsModifier) *D
 
 type Dashboard struct {
 	smartblock.SmartBlock
-	basic.Basic
+	basic.AllOperations
 	_import.Import
 	collection.Collection
 	DetailsModifier DetailsModifier

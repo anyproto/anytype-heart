@@ -577,6 +577,7 @@ func (sb *smartBlock) Locked() bool {
 func (sb *smartBlock) IsLocked() bool {
 	return sb.sendEvent != nil
 }
+
 func (sb *smartBlock) DisableLayouts() {
 	sb.disableLayouts = true
 }
