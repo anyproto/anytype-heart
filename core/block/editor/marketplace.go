@@ -56,6 +56,10 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 						RelationKey: bundle.RelationKeyIsHidden.String(),
 						Condition:   model.BlockContentDataviewFilter_NotEqual,
 						Value:       pbtypes.Bool(true),
+					}, {
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 				{
@@ -73,6 +77,10 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 						RelationKey: bundle.RelationKeyIsHidden.String(),
 						Condition:   model.BlockContentDataviewFilter_NotEqual,
 						Value:       pbtypes.Bool(true),
+					}, {
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 					}},
 				},
 			},
