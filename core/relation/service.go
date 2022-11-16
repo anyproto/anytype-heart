@@ -106,7 +106,9 @@ func (b *bulkMigration) Commit() error {
 
 	if len(b.relations) > 0 {
 		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.relations)
-		log.Errorf("relations migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
+			log.Errorf("relations migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		}
 
 		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
 			return err1
@@ -114,7 +116,9 @@ func (b *bulkMigration) Commit() error {
 	}
 	if len(b.options) > 0 {
 		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.options)
-		log.Errorf("options migration done %d/%d: %v", len(ids), len(b.options), err1)
+		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
+			log.Errorf("options migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		}
 
 		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
 			return err1
@@ -122,8 +126,9 @@ func (b *bulkMigration) Commit() error {
 	}
 	if len(b.types) > 0 {
 		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.types)
-		log.Errorf("objectTypes migration done %d/%d: %v", len(ids), len(b.types), err1)
-
+		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
+			log.Errorf("types migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		}
 		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
 			return err1
 		}
