@@ -780,7 +780,9 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
 		// avoid recursions
 		i.migrateRelations(extractRelationsFromState(info.State))
-		i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
+		if pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
+			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
+		}
 	}
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
