@@ -558,11 +558,15 @@ func (s *service) AddSubObjectsToWorkspace(sourceObjectIds []string, workspaceId
 
 	for _, sourceObjectId := range sourceObjectIds {
 		err = s.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
-			d := b.Details()
-
+			d := pbtypes.CopyStruct(b.Details())
 			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceId {
 				return errors.New("object already in collection")
 			}
+			d.Fields[bundle.RelationKeySource.String()] = pbtypes.String(sourceObjectId)
+			d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(b.ObjectType())
+			d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+			d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
+
 			details = append(details, d)
 			return nil
 		})

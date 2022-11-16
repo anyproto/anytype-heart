@@ -644,7 +644,8 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		}
 		recommendedRelationKeys = append(recommendedRelationKeys, relId)
 	}
-
+	id = addr.ObjectTypeKeyToIdPrefix + key
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationKeys)
@@ -653,7 +654,6 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
 		return
 	}
-	id = addr.ObjectTypeKeyToIdPrefix + key
 
 	return
 }
@@ -666,6 +666,8 @@ func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id st
 	if pbtypes.GetString(details, bundle.RelationKeyType.String()) == "" {
 		return "", nil, fmt.Errorf("type is empty")
 	}
+
+	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(w.Id())
 
 	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.URL():
@@ -686,6 +688,7 @@ func (w *Workspaces) removeObject(st *state.State, objectId string) (err error) 
 		delete(v, key)
 	}
 
+	w.ObjectStore().DeleteObject(objectId)
 	w.sourceService.RemoveStaticSource(objectId)
 	return nil
 }
