@@ -22,7 +22,7 @@ const ObjectType = "page"
 
 type Service struct {
 	propertyService *property.Service
-	detailSetter *property.DetailSetter
+	detailSetter *property.DetailValueSetter
 }
 
 // New is a constructor for Service

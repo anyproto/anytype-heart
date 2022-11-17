@@ -14,6 +14,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
+type DetailSetter interface {
+	SetDetail(key string, details map[string]*types.Value) 
+}
+
 type TitleItem struct {
 	Object string       `json:"object"`
 	ID     string       `json:"id"`
@@ -315,3 +319,7 @@ type Status struct {
 func (sp *StatusItem) SetDetail(key string, details map[string]*types.Value) {
 	details[key] = pbtypes.StringList([]string{sp.Status.Name})
 }
+
+type RollupItem struct {}
+
+func (sp *RollupItem) SetDetail(key string, details map[string]*types.Value) {}

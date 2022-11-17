@@ -7,6 +7,10 @@ import (
 
 type PropertyConfigType string
 
+func IsVector (p PropertyConfigType) bool {
+	return p == PropertyConfigTypeTitle || p == PropertyConfigTypeRichText || p == PropertyConfigTypePeople || p == PropertyConfigTypeRelation
+}
+
 const (
 	PropertyConfigTypeTitle       PropertyConfigType = "title"
 	PropertyConfigTypeRichText    PropertyConfigType = "rich_text"

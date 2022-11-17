@@ -120,13 +120,13 @@ type PropertyPaginatedRespone struct{
 }
 
 // GetPropertyObject get from Notion properties values based on type and id and marshal it to according structure from propertyitem.go
-func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, apiKey string, propertyType PropertyConfigType) ([]interface{}, error) {
+func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, apiKey string, propertyType PropertyConfigType) ([]DetailSetter, error) {
 	var (
 		hasMore           = true
 		body              = &bytes.Buffer{}
 		startCursor       string
 		response          PropertyPaginatedRespone
-		paginatedResponse = make([]interface{}, 0)
+		paginatedResponse = make([]DetailSetter, 0)
 	)
 
 	type Request struct {
@@ -187,7 +187,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 						logger.Errorf("GetPropertyObject: failed to marshal TitleItem: %s", err)
 						continue
 					}
-					paginatedResponse = append(paginatedResponse, p)
+					paginatedResponse = append(paginatedResponse, &p)
 				}
 				if propertyType == PropertyConfigTypeRichText {
 					p := RichTextItem{}
@@ -196,7 +196,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 						logger.Errorf("GetPropertyObject: failed to marshal RichTextItem: %s", err)
 						continue
 					}
-					paginatedResponse = append(paginatedResponse, p)
+					paginatedResponse = append(paginatedResponse, &p)
 				}
 				if propertyType == PropertyConfigTypeRelation {
 					p := RelationItem{}
@@ -205,7 +205,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 						logger.Errorf("GetPropertyObject: failed to marshal RelationItem: %s", err)
 						continue
 					}
-					paginatedResponse = append(paginatedResponse, p)
+					paginatedResponse = append(paginatedResponse, &p)
 				}
 				if propertyType == PropertyConfigTypePeople {
 					p := PeopleItem{}
@@ -214,7 +214,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 						logger.Errorf("GetPropertyObject: failed to marshal PeopleItem: %s", err)
 						continue
 					}
-					paginatedResponse = append(paginatedResponse, p)
+					paginatedResponse = append(paginatedResponse, &p)
 				}
 			}
 			if response.HasMore {
@@ -228,7 +228,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal NumberItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, p)
+			paginatedResponse = append(paginatedResponse, &p)
 		case PropertyConfigTypeSelect:
 			p := SelectItem{}
 			err = json.Unmarshal(b, &p)
@@ -236,7 +236,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal SelectItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, p)
+			paginatedResponse = append(paginatedResponse, &p)
 		case PropertyConfigTypeMultiSelect:
 			p := MultiSelectItem{}
 			err = json.Unmarshal(b, &p)
@@ -244,7 +244,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal MultiSelectItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, p)
+			paginatedResponse = append(paginatedResponse, &p)
 		case PropertyConfigTypeDate:
 			date := DateItem{}
 			err = json.Unmarshal(b, &date)
@@ -252,7 +252,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal DateItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, date)
+			paginatedResponse = append(paginatedResponse, &date)
 		case PropertyConfigTypeFiles:
 			file := FileItem{}
 			err = json.Unmarshal(b, &file)
@@ -260,7 +260,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal FileItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, file)
+			paginatedResponse = append(paginatedResponse, &file)
 		case PropertyConfigTypeCheckbox:
 			checkbox := CheckboxItem{}
 			err = json.Unmarshal(b, &checkbox)
@@ -268,7 +268,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal CheckboxItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, checkbox)
+			paginatedResponse = append(paginatedResponse, &checkbox)
 		case PropertyConfigTypeURL:
 			url := UrlItem{}
 			err = json.Unmarshal(b, &url)
@@ -276,7 +276,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal UrlItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, url)
+			paginatedResponse = append(paginatedResponse, &url)
 		case PropertyConfigTypeEmail:
 			email := EmailItem{}
 			err = json.Unmarshal(b, &email)
@@ -284,7 +284,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal EmailItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, email)
+			paginatedResponse = append(paginatedResponse, &email)
 		case PropertyConfigTypePhoneNumber:
 			phone := PhoneItem{}
 			err = json.Unmarshal(b, &phone)
@@ -292,7 +292,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal PhoneItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, phone)
+			paginatedResponse = append(paginatedResponse, &phone)
 		case PropertyConfigTypeFormula:
 			formula := FormulaItem{}
 			err = json.Unmarshal(b, &formula)
@@ -300,15 +300,15 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal FormulaItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, formula)
+			paginatedResponse = append(paginatedResponse, &formula)
 		case PropertyConfigTypeRollup:
-			rollup := Rollup{}
+			rollup := RollupItem{}
 			err = json.Unmarshal(b, &rollup)
 			if err != nil { 
 				logger.Errorf("GetPropertyObject: failed to marshal Rollup: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, rollup)
+			paginatedResponse = append(paginatedResponse, &rollup)
 		case PropertyConfigCreatedTime:
 			ct := CreatedTimeItem{}
 			err = json.Unmarshal(b, &ct)
@@ -316,7 +316,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal CreatedTimeItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, ct)
+			paginatedResponse = append(paginatedResponse, &ct)
 		case PropertyConfigCreatedBy:
 			cb := CreatedByItem{}
 			err = json.Unmarshal(b, &cb)
@@ -324,7 +324,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal CreatedByItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, cb)
+			paginatedResponse = append(paginatedResponse, &cb)
 		case PropertyConfigLastEditedTime:
 			lt := LastEditedTimeItem{}
 			err = json.Unmarshal(b, &lt)
@@ -332,7 +332,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal LastEditedTimeItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, lt)
+			paginatedResponse = append(paginatedResponse, &lt)
 		case PropertyConfigLastEditedBy:
 			le := LastEditedByItem{}
 			err = json.Unmarshal(b, &le)
@@ -340,7 +340,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal LastEditedByItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, le)
+			paginatedResponse = append(paginatedResponse, &le)
 		case PropertyConfigStatus:
 			sp := StatusItem{}
 			err = json.Unmarshal(b, &sp)
@@ -348,7 +348,7 @@ func (s *Service) GetPropertyObject(ctx context.Context, pageID, propertyID, api
 				logger.Errorf("GetPropertyObject: failed to marshal StatusItem: %s", err)
 				continue
 			}
-			paginatedResponse = append(paginatedResponse, sp)
+			paginatedResponse = append(paginatedResponse, &sp)
 		default:
 			return nil, fmt.Errorf("GetPropertyObject: unsupported property type: %s", propertyType)
 		}
