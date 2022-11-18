@@ -29,3 +29,8 @@ type Creator interface {
 type Updater interface {
 	Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string) (*types.Struct, error)
 }
+
+// RelationCreator incapsulates logic for creation of relations
+type RelationCreator interface {
+	Create(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string) ([]string, error)
+}

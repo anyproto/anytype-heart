@@ -45,7 +45,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	}
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s))
 	ou := NewObjectUpdater(i.s, core, factory)
-	i.oc = NewCreator(i.s, core, ou, factory)
+	relationCreator := NewRelationCreator(i.s)
+	i.oc = NewCreator(i.s, core, ou, factory, relationCreator)
 	return nil
 }
 
