@@ -18,6 +18,10 @@ func (ot *ObjectType) ToStruct() *types.Struct {
 		relationKeys = append(relationKeys, addr.RelationKeyToIdPrefix+ot.RelationLinks[i].Key)
 	}
 
+	var sbTypes = make([]int, 0, len(ot.Types))
+	for _, t := range ot.Types {
+		sbTypes = append(sbTypes, int(t))
+	}
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
 		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
@@ -31,6 +35,7 @@ func (ot *ObjectType) ToStruct() *types.Struct {
 		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
 		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
 		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
+		bundle.RelationKeySmartblockTypes.String():      pbtypes.IntList(sbTypes...),
 		bundle.RelationKeyWorkspaceId.String():          pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 	}}
 }
