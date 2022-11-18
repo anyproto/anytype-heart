@@ -604,13 +604,14 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		return "", nil, fmt.Errorf("name is empty")
 	}
 
-	var recommendedRelationIds = []string{}
+	var recommendedRelationIds []string
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
 		relKey := strings.TrimPrefix(relId, addr.BundledRelationURLPrefix)
+		relKey = strings.TrimPrefix(relId, addr.RelationKeyToIdPrefix)
 		rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
 		if rel != nil {
 			_, _, err2 := w.createRelation(st, (&relationutils.Relation{rel}).ToStruct())
-			if err2 != ErrSubObjectAlreadyExists {
+			if err2 != nil && err2 != ErrSubObjectAlreadyExists {
 				err = fmt.Errorf("failed to create relation for objectType: %s", err2.Error())
 				return
 			}
