@@ -941,7 +941,9 @@ func (s *service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExis
 			if err != nil {
 				return fmt.Errorf("paste: %w", err)
 			}
-			basic.CutBlocks(srcState, req.BlockIds)
+			for _, id := range req.BlockIds {
+				srcState.Unlink(id)
+			}
 			return nil
 		})
 	})

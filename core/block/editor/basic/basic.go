@@ -137,6 +137,7 @@ func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id s
 }
 
 func (bs *basic) Duplicate(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (newIds []string, err error) {
+	blockIds = srcState.SelectRoots(blockIds)
 	for _, id := range blockIds {
 		copyId, e := copyBlocks(srcState, destState, id)
 		if e != nil {
