@@ -681,18 +681,6 @@ func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id st
 	}
 }
 
-func (w *Workspaces) removeObject(st *state.State, objectId string) (err error) {
-	collection, key := w.getCollectionAndKeyFromId(objectId)
-	st.RemoveFromStore([]string{collection, key})
-	if v, exists := w.collections[collection]; exists {
-		delete(v, key)
-	}
-
-	w.ObjectStore().DeleteObject(objectId)
-	w.sourceService.RemoveStaticSource(objectId)
-	return nil
-}
-
 func (w *Workspaces) CreateSubObject(details *types.Struct) (id string, object *types.Struct, err error) {
 	st := w.NewState()
 	id, object, err = w.createObjectType(st, details)

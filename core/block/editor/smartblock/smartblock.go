@@ -288,8 +288,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sbt, _ := smartblock.SmartBlockTypeFromID(sb.Id())
 	if indexableDetails, _ := sbt.Indexable(); indexableDetails {
+		ld := ctx.State.LocalDetails()
 		has, _ := sb.objectStore.HasIDs(sb.Id())
-		if len(has) == 0 {
+		// in case we have this object deleted report the change to recover it
+		if len(has) == 0 || pbtypes.GetBool(ld, bundle.RelationKeyIsDeleted.String()) {
 			// in case we have not yet indexed this object report the change so the indexer will start
 			// todo: do it in a more clean way
 			sb.reportChange(sb.Doc.NewState())

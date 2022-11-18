@@ -76,8 +76,28 @@ func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
 		log.Errorf("error deleting subobject from store %s %s %v", objectId, c.Id(), err.Error())
 	}
 	st.RemoveFromStore([]string{collection, key})
-
 	return c.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (err error) {
+	collection, key := c.getCollectionAndKeyFromId(objectId)
+	// todo: check inbound links
+	links, err := c.ObjectStore().GetInboundLinksById(objectId)
+	if err != nil {
+		return err
+	}
+	if len(links) > 0 {
+		// todo: return the error to user?
+		log.Errorf("workspace removeObject: found inbound links: %v", links)
+	}
+	st.RemoveFromStore([]string{collection, key})
+	if v, exists := c.collections[collection]; exists {
+		delete(v, key)
+	}
+
+	c.ObjectStore().DeleteObject(objectId)
+	c.sourceService.RemoveStaticSource(objectId)
+	return nil
 }
 
 func (c *SubObjectCollection) Locked() bool {
@@ -173,5 +193,6 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	}); err != nil {
 		return
 	}
+
 	return
 }
