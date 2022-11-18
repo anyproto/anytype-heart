@@ -3,6 +3,7 @@ package importer
 import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -27,4 +28,9 @@ type Creator interface {
 // Updater is interface for updating existing objects
 type Updater interface {
 	Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string) (*types.Struct, error)
+}
+
+// RelationCreator incapsulates logic for creation of relations
+type RelationCreator interface {
+	Create(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string) ([]string, error)
 }

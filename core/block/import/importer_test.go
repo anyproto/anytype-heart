@@ -42,7 +42,7 @@ func Test_ImportSuccess(t *testing.T) {
 	i.oc = creator
 
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
+		Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -67,7 +67,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	i.oc = creator
 
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -103,7 +103,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -141,7 +141,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -179,7 +179,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -226,7 +226,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		Params:                nil,
 		Snapshots:             snapshots,
 		UpdateExistingObjects: false,
-		Type:                  1,
+		Type:                  2,
 		Mode:                  2,
 	})
 	assert.Nil(t, res)
@@ -246,7 +246,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Params:                nil,
 		Snapshots:             nil,
 		UpdateExistingObjects: false,
-		Type:                  1,
+		Type:                  2,
 		Mode:                  2,
 	})
 	assert.NotNil(t, res)

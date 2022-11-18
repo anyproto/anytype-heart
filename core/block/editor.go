@@ -524,7 +524,12 @@ func (s *service) UploadFile(req pb.RpcFileUploadRequest) (hash string, err erro
 	} else {
 		upl.AutoType(true)
 	}
-	res := upl.SetFile(req.LocalPath).Upload(context.TODO())
+	if req.LocalPath != "" {
+		upl.SetFile(req.LocalPath)
+	} else if req.Url != "" {
+		upl.SetUrl(req.Url)
+	}
+	res := upl.Upload(context.TODO())
 	if res.Err != nil {
 		return "", res.Err
 	}
