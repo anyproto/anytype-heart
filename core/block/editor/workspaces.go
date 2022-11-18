@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"time"
@@ -603,8 +604,19 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		return "", nil, fmt.Errorf("name is empty")
 	}
 
-	var recommendedRelationKeys = pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
-
+	var recommendedRelationIds = []string{}
+	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		relKey := strings.TrimPrefix(relId, addr.BundledRelationURLPrefix)
+		rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
+		if rel != nil {
+			_, _, err2 := w.createRelation(st, (&relationutils.Relation{rel}).ToStruct())
+			if err2 != ErrSubObjectAlreadyExists {
+				err = fmt.Errorf("failed to create relation for objectType: %s", err2.Error())
+				return
+			}
+		}
+		recommendedRelationIds = append(recommendedRelationIds, addr.RelationKeyToIdPrefix+relKey)
+	}
 	object = pbtypes.CopyStruct(details)
 	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
 	if key == "" {
@@ -631,24 +643,24 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 			continue
 		}
 		relId := addr.RelationKeyToIdPrefix + rel.String()
-		if slice.FindPos(recommendedRelationKeys, relId) != -1 {
+		if slice.FindPos(recommendedRelationIds, relId) != -1 {
 			continue
 		}
-		recommendedRelationKeys = append(recommendedRelationKeys, relId)
+		recommendedRelationIds = append(recommendedRelationIds, relId)
 	}
 
 	for _, rel := range layout.RequiredRelations {
 		relId := addr.RelationKeyToIdPrefix + rel.Key
-		if slice.FindPos(recommendedRelationKeys, relId) != -1 {
+		if slice.FindPos(recommendedRelationIds, relId) != -1 {
 			continue
 		}
-		recommendedRelationKeys = append(recommendedRelationKeys, relId)
+		recommendedRelationIds = append(recommendedRelationIds, relId)
 	}
 	id = addr.ObjectTypeKeyToIdPrefix + key
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationKeys)
+	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
 
 	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(object))
 	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
