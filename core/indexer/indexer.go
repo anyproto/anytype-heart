@@ -616,14 +616,14 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	return i.saveLatestChecksums()
 }
 
-func extractRelationsFromState(s *state.State) []*model.Relation {
+func extractOldRelationsFromState(s *state.State) []*model.Relation {
 	var rels []*model.Relation
 	if objRels := s.OldExtraRelations(); len(objRels) > 0 {
 		rels = append(rels, s.OldExtraRelations()...)
 	}
 
 	if dvBlock := s.Pick(template.DataviewBlockId); dvBlock != nil {
-		rels = append(rels, dvBlock.Model().GetDataview().Relations...)
+		rels = append(rels, dvBlock.Model().GetDataview().GetRelations()...)
 	}
 
 	return rels
@@ -779,7 +779,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	indexDetails, indexLinks := sbType.Indexable()
 	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
 		// avoid recursions
-		i.migrateRelations(extractRelationsFromState(info.State))
+		i.migrateRelations(extractOldRelationsFromState(info.State))
 		if pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
 			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
 		}
