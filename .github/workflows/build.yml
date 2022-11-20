@@ -139,7 +139,7 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile android lib
         run: |
-          gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
+          gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
           mv android_lib_${VERSION}.tar.gz .release/
