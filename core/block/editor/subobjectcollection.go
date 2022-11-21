@@ -94,9 +94,12 @@ func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (er
 	if v, exists := c.collections[collection]; exists {
 		delete(v, key)
 	}
-
-	c.ObjectStore().DeleteObject(objectId)
 	c.sourceService.RemoveStaticSource(objectId)
+
+	err = c.ObjectStore().DeleteObject(objectId)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
