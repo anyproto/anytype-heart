@@ -59,8 +59,12 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithCreatorRemovedFromFeaturedRelations,
 	}
 	if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
-		setOf := dvBlock.Model().GetDataview().Source
-		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(setOf)))
+		setOf := dvBlock.Model().GetDataview().GetSource()
+		if len(setOf) == 0 {
+			log.With("thread", p.Id()).With("sbType", p.SmartBlock.Type().String()).Errorf("dataview has an empty source")
+		} else {
+			templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(setOf)))
+		}
 		// add missing done relation
 		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))
 	}
