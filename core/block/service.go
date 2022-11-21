@@ -252,6 +252,7 @@ type Service interface {
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
 
 	AddCreatorInfoIfNeeded(workspaceId string) error
+	CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreateWidgetRequest) (string, error)
 
 	app.ComponentRunnable
 }

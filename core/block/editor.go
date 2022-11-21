@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 
@@ -1047,4 +1048,14 @@ func (s *service) TableColumnListFill(ctx *session.Context, req pb.RpcBlockTable
 		return t.ColumnListFill(st, req)
 	})
 	return err
+}
+
+func (s *service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
+	var id string
+	err := DoStateCtx(s, ctx, req.ContextId, func(st *state.State, w widget.Widget) error {
+		var err error
+		id, err = w.CreateBlock(st, req)
+		return err
+	})
+	return id, err
 }

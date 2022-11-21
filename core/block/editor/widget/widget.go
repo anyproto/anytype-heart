@@ -10,10 +10,21 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func CreateBlock(sb smartblock.SmartBlock, s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
-	if sb.Type() != model.SmartBlockType_Widget {
-		return "", fmt.Errorf("you can create widgets only in widget objects")
+type Widget interface {
+	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
+}
+
+type widget struct {
+	smartblock.SmartBlock
+}
+
+func NewWidget(sb smartblock.SmartBlock) Widget {
+	return &widget{
+		SmartBlock: sb,
 	}
+}
+
+func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
 	if req.Block.Content == nil {
 		return "", fmt.Errorf("block has no content")
 	}

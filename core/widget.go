@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -22,15 +20,8 @@ func (mw *Middleware) BlockCreateWidget(cctx context.Context, req *pb.RpcBlockCr
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DoWithContext(cctx, req.ContextId, func(sb smartblock.SmartBlock) error {
-			s := sb.NewStateCtx(ctx)
-			var err error
-			id, err = widget.CreateBlock(sb, s, req)
-			if err != nil {
-				return err
-			}
-			return sb.Apply(s)
-		})
+		id, err = bs.CreateWidgetBlock(ctx, req)
+		return err
 	})
 	if err != nil {
 		return response(pb.RpcBlockCreateWidgetResponseError_UNKNOWN_ERROR, "", err)

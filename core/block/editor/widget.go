@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -13,6 +14,7 @@ type WidgetObject struct {
 	basic.IHistory
 	basic.Movable
 	basic.Unlinkable
+	widget.Widget
 }
 
 func NewWidgetObject() *WidgetObject {
@@ -23,6 +25,7 @@ func NewWidgetObject() *WidgetObject {
 		Movable:    bs,
 		Unlinkable: bs,
 		IHistory:   basic.NewHistory(sb),
+		Widget:     widget.NewWidget(sb),
 	}
 }
 
