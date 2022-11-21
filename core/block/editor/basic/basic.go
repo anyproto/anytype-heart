@@ -27,13 +27,12 @@ type AllOperations interface {
 	Unlinkable
 	Creatable
 	Replaceable
+	Updatable
 
 	CommonOperations
 }
 
 type CommonOperations interface {
-	Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
-
 	SetFields(ctx *session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	SetDivStyle(ctx *session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
@@ -68,6 +67,10 @@ type Creatable interface {
 
 type Replaceable interface {
 	Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error)
+}
+
+type Updatable interface {
+	Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")

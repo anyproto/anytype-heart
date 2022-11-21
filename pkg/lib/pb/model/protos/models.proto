@@ -492,7 +492,14 @@ message Block {
             bool isHeader = 1;
         }
 
-        message Widget {}
+        message Widget {
+            Layout layout = 1;
+
+            enum Layout {
+                Link = 0;
+                Tree = 1;
+            }
+        }
     }
 }
 

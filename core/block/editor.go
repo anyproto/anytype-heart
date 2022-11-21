@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -420,7 +420,7 @@ func (s *service) SetTextIcon(ctx *session.Context, contextId, image, emoji stri
 }
 
 func (s *service) SetBackgroundColor(ctx *session.Context, contextId string, color string, blockIds ...string) (err error) {
-	return Do(s, contextId, func(b basic.CommonOperations) error {
+	return Do(s, contextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			b.Model().BackgroundColor = color
 			return nil
@@ -429,7 +429,7 @@ func (s *service) SetBackgroundColor(ctx *session.Context, contextId string, col
 }
 
 func (s *service) SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error) {
-	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
+	return Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if linkBlock, ok := b.(link.Block); ok {
 				return linkBlock.SetAppearance(&model.BlockContentLink{

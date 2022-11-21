@@ -1085,6 +1085,8 @@
     - [Event.Block.Set.Text.Style](#anytype-Event-Block-Set-Text-Style)
     - [Event.Block.Set.Text.Text](#anytype-Event-Block-Set-Text-Text)
     - [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign)
+    - [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget)
+    - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.Details](#anytype-Event-Object-Details)
@@ -1225,6 +1227,7 @@
     - [Block.Content.Link.Style](#anytype-model-Block-Content-Link-Style)
     - [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type)
     - [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style)
+    - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
@@ -2674,6 +2677,7 @@ common simple block command
 | targetId | [string](#string) |  | id of the closest block |
 | block | [model.Block](#anytype-model-Block) |  |  |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+| widgetLayout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
 
 
 
@@ -17036,6 +17040,37 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-Widget"></a>
+
+### Event.Block.Set.Widget
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| layout | [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Widget-Layout"></a>
+
+### Event.Block.Set.Widget.Layout
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -17077,6 +17112,7 @@ Precondition: user A opened a block
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
 | blockSetTableRow | [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow) |  |  |
+| blockSetWidget | [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
@@ -18577,6 +18613,11 @@ Link: block to link some content from an external sources.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| layout | [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
 
 
 
@@ -19319,6 +19360,18 @@ stored |
 | Toggle | 11 |  |
 | Description | 12 | currently only one block of this style can exists on a page |
 | Callout | 13 |  |
+
+
+
+<a name="anytype-model-Block-Content-Widget-Layout"></a>
+
+### Block.Content.Widget.Layout
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Link | 0 |  |
+| Tree | 1 |  |
 
 
 

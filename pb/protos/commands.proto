@@ -2819,6 +2819,7 @@ message Rpc {
                 string targetId = 2; // id of the closest block
                 anytype.model.Block block = 3;
                 anytype.model.Block.Position position = 4;
+                anytype.model.Block.Content.Widget.Layout widgetLayout = 5;
             }
 
             message Response {

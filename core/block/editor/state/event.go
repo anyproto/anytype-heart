@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -271,6 +272,15 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				return nil
 			}
 			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockSetWidget:
+		if err = apply(o.BlockSetWidget.Id, func(b simple.Block) error {
+			if tr, ok := b.(widget.Block); ok {
+				return tr.ApplyEvent(o.BlockSetWidget)
+			}
+			return fmt.Errorf("not a widget block")
 		}); err != nil {
 			return
 		}

@@ -1520,7 +1520,8 @@ func Do[t any](s *service, id string, apply func(sb t) error) error {
 
 	bb, ok := sb.(t)
 	if !ok {
-		return fmt.Errorf("this kind of interface is not implemented in %T", sb)
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
 	}
 
 	sb.Lock()
@@ -1541,7 +1542,8 @@ func DoStateCtx[t any](s *service, ctx *session.Context, id string, apply func(s
 
 	bb, ok := sb.(t)
 	if !ok {
-		return fmt.Errorf("this kind of interface is not implemented in %T", sb)
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
 	}
 
 	sb.Lock()
