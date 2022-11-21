@@ -29,7 +29,7 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("block has no content")
 	}
 	switch req.Block.Content.(type) {
-	case *model.BlockContentOfLink, *model.BlockContentOfDataview:
+	case *model.BlockContentOfLink:
 	default:
 		return "", fmt.Errorf("unsupported widget content: %T", req.Block.Content)
 	}
