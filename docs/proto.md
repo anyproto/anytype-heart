@@ -18007,6 +18007,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  | marketplace template id |
+| widgetsId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |

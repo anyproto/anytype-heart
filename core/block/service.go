@@ -335,6 +335,7 @@ func (s *service) initPredefinedBlocks(ctx context.Context) {
 		s.anytype.PredefinedBlocks().MarketplaceType,
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
+		s.anytype.PredefinedBlocks().Widgets,
 	}
 	startTime := time.Now()
 	for _, id := range ids {

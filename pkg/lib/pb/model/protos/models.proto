@@ -562,6 +562,7 @@ message Account {
         string marketplaceTemplateObjectId = 7; // marketplace template id
         string deviceId = 8;
         string accountSpaceId = 9; // marketplace template id
+        string widgetsId = 10;
 
         string gatewayUrl = 101; // gateway url for fetching static files
         string localStoragePath = 103; // path to local storage
