@@ -43,7 +43,7 @@ func (i *Import) Init(a *app.App) (err error) {
 		converter := f(core)
 		i.converters[converter.Name()] = converter
 	}
-	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s))
+	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	ou := NewObjectUpdater(i.s, core, factory)
 	relationCreator := NewRelationCreator(i.s)
 	i.oc = NewCreator(i.s, core, ou, factory, relationCreator)

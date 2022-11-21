@@ -44,9 +44,9 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	if err != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return &converter.Response{Error: err}
 	}
+	allErrors.Merge(err)
 
 	allSnapshots := make([]*converter.Snapshot, 0)
-	allErrors.Merge(err)
 	for name, file := range pbFiles {
 		id := strings.TrimSuffix(file.Name, filepath.Ext(file.Name))
 		var (

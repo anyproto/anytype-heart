@@ -25,7 +25,7 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 
 	p := property.SelectProperty{ID:"id", Type: string(property.PropertyConfigTypeSelect)}
 	pr := property.Properties{"Select": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["Select"])
@@ -44,7 +44,7 @@ func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 
 	p := property.LastEditedTime{ID: "id", Type: string(property.PropertyConfigLastEditedTime)}
 	pr := property.Properties{"LastEditedTime": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["LastEditedTime"])
@@ -63,7 +63,7 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 
 	p := property.RichText{ID: "id", Type: string(property.PropertyConfigLastEditedTime)}
 	pr := property.Properties{"RichText": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["RichText"])
@@ -82,7 +82,7 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 
 	p := property.StatusProperty{ID: "id", Type: property.PropertyConfigStatus}
 	pr := property.Properties{"Status": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["Status"])
@@ -101,7 +101,7 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 
 	p := property.NumberProperty{ID: "id", Type: string(property.PropertyConfigTypeNumber)}
 	pr := property.Properties{"Number": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["Number"])
@@ -120,7 +120,7 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 
 	p := property.NumberProperty{ID: "id", Type: string(property.PropertyConfigTypeMultiSelect)}
 	pr := property.Properties{"MultiSelect": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["MultiSelect"])
@@ -139,7 +139,7 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 
 	p := property.Checkbox{ID: "id", Type: string(property.PropertyConfigTypeCheckbox)}
 	pr := property.Properties{"Checkbox": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["Checkbox"])
@@ -158,7 +158,7 @@ func Test_handlePagePropertiesEmail(t *testing.T) {
 
 	p := property.Email{ID: "id", Type: string(property.PropertyConfigTypeEmail)}
 	pr := property.Properties{"Email": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["Email"])
@@ -177,7 +177,7 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 
 	p := property.RelationProperty{ID: "id", Type: string(property.PropertyConfigTypeRelation)}
 	pr := property.Properties{"Relation": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["Relation"])
@@ -196,7 +196,7 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 
 	p := property.People{ID: "id", Type: string(property.PropertyConfigTypePeople)}
 	pr := property.Properties{"People": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["People"])
@@ -215,7 +215,7 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 
 	p := property.Formula{ID: "id", Type: string(property.PropertyConfigTypeFormula)}
 	pr := property.Properties{"Formula": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["Formula"])
@@ -234,7 +234,7 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 
 	p := property.Title{ID: "id", Type: string(property.PropertyConfigTypeTitle)}
 	pr := property.Properties{"Title": &p}
-	_, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	_, _, ce := ps.handlePageProperties("key", "id", pr, details, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 	assert.Nil(t, ce)
 	assert.NotEmpty(t, details["name"])

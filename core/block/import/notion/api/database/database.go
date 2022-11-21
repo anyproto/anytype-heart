@@ -41,7 +41,7 @@ type Database struct {
 	IsInline       bool           `json:"is_inline"`
 	Archived       bool           `json:"archived"`
 	Icon           *api.Icon      `json:"icon,omitempty"`
-	Cover          *block.Image   `json:"cover,omitempty"`
+	Cover          *block.ImageBlock   `json:"cover,omitempty"`
 }
 
 func (p *Database) GetObjectType() string {
@@ -49,19 +49,23 @@ func (p *Database) GetObjectType() string {
 }
 
 // GetDatabase makes snaphots from notion Database objects
-func (ds *Service) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database) *converter.Response {
+func (ds *Service) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database) (*converter.Response, map[string]string, map[string]string)  {
 	convereterError := converter.ConvertError{}
 	return ds.mapDatabasesToSnaphots(ctx, mode, databases, convereterError)
 }
 
-func (ds *Service) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, convereterError converter.ConvertError) *converter.Response {
-	var allSnapshots = make([]*converter.Snapshot, 0)
+func (ds *Service) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, convereterError converter.ConvertError) (*converter.Response, map[string]string, map[string]string) {
+	var (
+		allSnapshots = make([]*converter.Snapshot, 0)
+		notionIdsToAnytype = make(map[string]string, 0)
+		databaseNameToID = make(map[string]string, 0)
+	)
 	for _, d := range databases {
 		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 		if err != nil {
 			convereterError.Add(d.ID, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &converter.Response{Error: convereterError}
+				return &converter.Response{Error: convereterError}, nil, nil
 			} else {
 				continue
 			}
@@ -73,11 +77,13 @@ func (ds *Service) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObject
 			FileName: d.URL,
 			Snapshot: snapshot,
 		})
+		notionIdsToAnytype[d.ID] = tid.String()
+		databaseNameToID[d.ID] = pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())
 	}
 	if convereterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Error: nil} 
+		return &converter.Response{Snapshots: allSnapshots, Error: nil}, notionIdsToAnytype, databaseNameToID
 	}
-	return &converter.Response{Snapshots: allSnapshots, Error: convereterError} 
+	return &converter.Response{Snapshots: allSnapshots, Error: convereterError}, notionIdsToAnytype, databaseNameToID
 }
 
 func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {

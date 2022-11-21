@@ -73,7 +73,7 @@ type SelectItem struct {
 type SelectOption struct {
 	ID    string    `json:"id,omitempty"`
 	Name  string    `json:"name"`
-	Color api.Color `json:"color"`
+	Color string `json:"color"`
 }
 
 func (sp *SelectItem) SetDetail(key string, details map[string]*types.Value) {
@@ -97,19 +97,13 @@ func (ms *MultiSelectItem) SetDetail(key string, details map[string]*types.Value
 
 //can't support it yet
 type DateItem struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	Date   Date   `json:"date"`
+	Object string         `json:"object"`
+	ID     string         `json:"id"`
+	Type   string         `json:"type"`
+	Date   api.DateObject `json:"date"`
 }
 
 func (dp *DateItem) SetDetail(key string, details map[string]*types.Value) {}
-
-type Date struct {
-	Start    string `json:"start"`
-	End      string `json:"end"`
-	TimeZone string `json:"time_zone"`
-}
 
 const (
 	NumberFormula  string = "number"
@@ -133,7 +127,7 @@ func (f *FormulaItem) SetDetail(key string, details map[string]*types.Value) {
 		}
 	case NumberFormula:
 		if f.Formula["number"] != nil {
-			stringNumber := strconv.FormatFloat(f.Formula["number"].(float64),'f', 6, 64)
+			stringNumber := strconv.FormatFloat(f.Formula["number"].(float64), 'f', 6, 64)
 			details[key] = pbtypes.String(stringNumber)
 		}
 	case BooleanFormula:
@@ -147,11 +141,11 @@ func (f *FormulaItem) SetDetail(key string, details map[string]*types.Value) {
 }
 
 type RelationItem struct {
-	Object   string     `json:"object"`
-	ID       string     `json:"id"`
-	Type     string     `json:"type"`
+	Object   string   `json:"object"`
+	ID       string   `json:"id"`
+	Type     string   `json:"type"`
 	Relation Relation `json:"relation"`
-	HasMore  bool       `json:"has_more"`
+	HasMore  bool     `json:"has_more"`
 }
 
 type Relation struct {

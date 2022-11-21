@@ -3,48 +3,214 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/globalsign/mgo/bson"
 )
 
 type richTextType string
 
 const (
-	Text     richTextType = "text"
-	Mention  richTextType = "mention"
-	Equation richTextType = "equation"
+	Text                        richTextType = "text"
+	Mention                     richTextType = "mention"
+	Equation                    richTextType = "equation"
+	NotionBackgroundColorPrefix              = "background"
 )
 
 // RichText represent RichText object from Notion https://developers.notion.com/reference/rich-text
 type RichText struct {
-	Type        richTextType `json:"type,omitempty"`
-	Text        *TextObject  `json:"text,omitempty"`
-	Annotations *Annotations `json:"annotations,omitempty"`
-	PlainText   string       `json:"plain_text,omitempty"`
-	Href        string       `json:"href,omitempty"`
+	Type        richTextType    `json:"type,omitempty"`
+	Text        *TextObject     `json:"text,omitempty"`
+	Mention     *MentionObject  `json:"mention,omitempty"`
+	Equation    *EquationObject `json:"equation,omitempty"`
+	Annotations *Annotations    `json:"annotations,omitempty"`
+	PlainText   string          `json:"plain_text,omitempty"`
+	Href        string          `json:"href,omitempty"`
 }
 type TextObject struct {
 	Content string `json:"content"`
 	Link    *Link  `json:"link,omitempty"`
+}
+type EquationObject struct {
+	Expression string `json:"expression"`
+}
+
+func (e *EquationObject) HandleEquation() *model.Block {
+	id := bson.NewObjectId().Hex()
+	return &model.Block{
+		Id:          id,
+		ChildrenIds: []string{},
+		Content: &model.BlockContentOfLatex{
+			Latex: &model.BlockContentLatex{
+				Text: e.Expression,
+			},
+		},
+	}
 }
 
 type Link struct {
 	Url string `json:"url,omitempty"`
 }
 
-type Color string
+func (rt *RichText) BuildMarkdownFromAnnotations(from, to int32) []*model.BlockContentTextMark {
+	marks := []*model.BlockContentTextMark{}
+	if rt.Annotations == nil {
+		return marks
+	}
+	if rt.Annotations.Bold {
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: from,
+				To:   to,
+			},
+			Type: model.BlockContentTextMark_Bold,
+		})
+	}
+	if rt.Annotations.Italic {
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: from,
+				To:   to,
+			},
+			Type: model.BlockContentTextMark_Italic,
+		})
+	}
+	if rt.Annotations.Strikethrough {
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: from,
+				To:   to,
+			},
+			Type: model.BlockContentTextMark_Strikethrough,
+		})
+	}
+	if rt.Annotations.Underline {
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: from,
+				To:   to,
+			},
+			Type: model.BlockContentTextMark_Underscored,
+		})
+	}
+	if rt.Annotations.Color != "" {
+		markType := model.BlockContentTextMark_TextColor
+		if strings.Contains(rt.Annotations.Color, NotionBackgroundColorPrefix) {
+			markType = model.BlockContentTextMark_BackgroundColor
+		}
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: from,
+				To:   to,
+			},
+			Type:  markType,
+			Param: NotionColorToAnytype[rt.Annotations.Color],
+		})
+	}
+
+	if rt.Annotations.Code {
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: from,
+				To:   to,
+			},
+			Type: model.BlockContentTextMark_Keyboard,
+		})
+	}
+
+	return marks
+}
+
+type mentionType string
 
 const (
-	DefaultColor Color = "default"
-	Gray         Color = "gray"
-	Brown        Color = "brown"
-	Orange       Color = "orange"
-	Yellow       Color = "yellow"
-	Green        Color = "green"
-	Blue         Color = "blue"
-	Purple       Color = "purple"
-	Pink         Color = "pink"
-	Red          Color = "red"
+	UserMention mentionType = "user"
+	Page        mentionType = "page"
+	Database    mentionType = "database"
+	Date        mentionType = "date"
+	LinkPreview mentionType = "link_preview"
 )
+
+type MentionObject struct {
+	Type        mentionType      `json:"type,omitempty"`
+	User        *User            `json:"user,omitempty"`
+	Page        *PageMention     `json:"page,omitempty"`
+	Database    *DatabaseMention `json:"database,omitempty"`
+	Date        *DateObject      `json:"date,omitempty"`
+	LinkPreview *Link            `json:"link_preview,omitempty"`
+}
+
+type PageMention struct {
+	ID string `json:"id"`
+}
+
+type DatabaseMention struct {
+	ID string `json:"id"`
+}
+
+type DateObject struct {
+	Start    string `json:"start"`
+	End      string `json:"end"`
+	TimeZone string `json:"time_zone"`
+}
+
+const (
+	DefaultColor string = "default"
+	Gray         string = "gray"
+	Brown        string = "brown"
+	Orange       string = "orange"
+	Yellow       string = "yellow"
+	Green        string = "green"
+	Blue         string = "blue"
+	Purple       string = "purple"
+	Pink         string = "pink"
+	Red          string = "red"
+
+	GrayBackGround   string = "gray_background"
+	BrownBackGround  string = "brown_background"
+	OrangeBackGround string = "orange_background"
+	YellowBackGround string = "yellow_background"
+	GreenBackGround  string = "green_background"
+	BlueBackGround   string = "blue_background"
+	PurpleBackGround string = "purple_background"
+	PinkBackGround   string = "pink_background"
+	RedBackGround    string = "red_background"
+
+	AnytypeGray    string = "gray"
+	AnytypeOrange  string = "orange"
+	AnytypeYellow  string = "yellow"
+	AnytypeGreen   string = "lime"
+	AnytypeBlue    string = "blue"
+	AnytypePurple  string = "purple"
+	AnytypePink    string = "pink"
+	AnytypeRed     string = "red"
+	AnytypeDefault string = "default"
+)
+
+var NotionColorToAnytype = map[string]string{
+	DefaultColor: AnytypeDefault,
+	Gray:         AnytypeGray,
+	Brown:        "",
+	Orange:       AnytypeOrange,
+	Yellow:       AnytypeYellow,
+	Green:        AnytypeGreen,
+	Blue:         AnytypeBlue,
+	Purple:       AnytypePurple,
+	Pink:         AnytypePink,
+	Red:          AnytypeRed,
+
+	GrayBackGround:   AnytypeGray,
+	BrownBackGround:  "",
+	OrangeBackGround: AnytypeOrange,
+	YellowBackGround: AnytypeYellow,
+	GreenBackGround:  AnytypeGreen,
+	BlueBackGround:   AnytypeBlue,
+	PurpleBackGround: AnytypePurple,
+	PinkBackGround:   AnytypePink,
+	RedBackGround:    AnytypeRed,
+}
 
 type Annotations struct {
 	Bold          bool   `json:"bold"`
@@ -64,8 +230,8 @@ const (
 
 // FileObject represent File Object object from Notion https://developers.notion.com/reference/file-object
 type FileObject struct {
-	Name     string      `json:"name"`
-	Type     FileType    `json:"type"`
+	Name     string       `json:"name"`
+	Type     FileType     `json:"type"`
 	File     FileProperty `json:"file,omitempty"`
 	External FileProperty `json:"external,omitempty"`
 }
@@ -76,37 +242,37 @@ type FileProperty struct {
 }
 
 func (o *FileProperty) UnmarshalJSON(data []byte) error {
-	fp := make(map[string]interface{},0)
-    if err := json.Unmarshal(data, &fp); err != nil {
-        return err
-    }
+	fp := make(map[string]interface{}, 0)
+	if err := json.Unmarshal(data, &fp); err != nil {
+		return err
+	}
 	if url, ok := fp["url"].(string); ok {
 		o.URL = url
 	}
 	if t, ok := fp["expiry_time"].(*time.Time); ok {
 		o.ExpiryTime = t
 	}
-    return nil
+	return nil
 }
 
 type Icon struct {
-	Type     FileType    `json:"type"`
-	Emoji    *string     `json:"emoji,omitempty"`
-	File     *FileObject `json:"file,omitempty"`
-	External *FileObject `json:"external,omitempty"`
+	Type     FileType      `json:"type"`
+	Emoji    *string       `json:"emoji,omitempty"`
+	File     *FileProperty `json:"file,omitempty"`
+	External *FileProperty `json:"external,omitempty"`
 }
 
 type userType string
 
 // User represent User Object object from Notion https://developers.notion.com/reference/user
 type User struct {
-	Object    string     `json:"object,omitempty"`
-	ID        string     `json:"id"`
-	Type      userType   `json:"type,omitempty"`
-	Name      string     `json:"name,omitempty"`
-	AvatarURL string     `json:"avatar_url,omitempty"`
-	Person    *Person    `json:"person,omitempty"`
-	Bot       *struct{}  `json:"bot,omitempty"`
+	Object    string    `json:"object,omitempty"`
+	ID        string    `json:"id"`
+	Type      userType  `json:"type,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	AvatarURL string    `json:"avatar_url,omitempty"`
+	Person    *Person   `json:"person,omitempty"`
+	Bot       *struct{} `json:"bot,omitempty"`
 }
 
 type Person struct {
@@ -114,8 +280,8 @@ type Person struct {
 }
 
 type Parent struct {
-	Type   string `json:"type,omitempty"`
-	PageID string `json:"page_id"`
+	Type       string `json:"type,omitempty"`
+	PageID     string `json:"page_id"`
 	DatabaseID string `json:"database_id"`
 }
 

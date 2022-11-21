@@ -57,7 +57,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 			Error: ce,
 		}
 	}
-	databasesSnapshots := n.databaseService.GetDatabase(context.TODO(), req.Mode, databases)
+	databasesSnapshots, notionIdsToAnytype, databaseNameToID := n.databaseService.GetDatabase(context.TODO(), req.Mode, databases)
 	if databasesSnapshots.Error != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(databasesSnapshots.Error)
 		return &converter.Response{
@@ -65,7 +65,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 		}
 	}
 
-	pagesSnapshots := n.pageService.GetPages(context.TODO(), apiKey, req.Mode, pages)
+	pagesSnapshots := n.pageService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionIdsToAnytype, databaseNameToID)
 	if pagesSnapshots.Error != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(pagesSnapshots.Error)
 		return &converter.Response{

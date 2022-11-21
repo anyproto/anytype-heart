@@ -1,7 +1,6 @@
 package importer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -75,7 +74,8 @@ func (rc *RelationService) Create(ctx *session.Context, snapshot *model.SmartBlo
 				Details: details,
 			})
 			if err != nil {
-				return filesToDelete, fmt.Errorf("set details '%s'", err.Error())
+				log.Errorf("set details %s", err)
+				continue
 			}
 		}
 	}

@@ -30,7 +30,7 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	ds := database.New()
-	databases := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db)
+	databases, _, _ := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db)
 
 	assert.NotNil(t, databases)
 	assert.Len(t, databases.Snapshots, 1)
@@ -108,7 +108,7 @@ func Test_GetPagesSuccess(t *testing.T) {
 	c = client.NewClient()
 	c.BasePath = s.URL
 	ps := page.New(c)
-	pages := ps.GetPages(context.Background(), "key", pb.RpcObjectImportRequest_ALL_OR_NOTHING, p)
+	pages := ps.GetPages(context.Background(), "key", pb.RpcObjectImportRequest_ALL_OR_NOTHING, p, map[string]string{}, map[string]string{})
 
 	assert.NotNil(t, pages)
 	assert.Len(t, pages.Snapshots, 1)

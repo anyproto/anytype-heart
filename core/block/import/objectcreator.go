@@ -112,6 +112,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		}
 		return true
 	})
+	
 	return details, nil
 }
 
@@ -162,8 +163,16 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 		}
 	}
 	if err != nil {
+		notRootBlockChild := make(map[string]bool, 0)
 		for _, b := range snapshot.Blocks {
-			childrenIds = append(childrenIds, b.Id)
+			if len(b.ChildrenIds) != 0 {
+				for _, id := range b.ChildrenIds {
+					notRootBlockChild[id] = true
+				}
+			}
+			if _, ok := notRootBlockChild[b.Id]; !ok {
+				childrenIds = append(childrenIds, b.Id)
+			}
 	   }
 	   snapshot.Blocks = append(snapshot.Blocks,  &model.Block{
 			Id:          pageID,
