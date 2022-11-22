@@ -9079,7 +9079,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams) |  |  |
-| bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  |  |
+| bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  | for internal use |
 | snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot) | repeated | optional, for external developers usage |
 | updateExistingObjects | [bool](#bool) |  |  |
 | type | [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type) |  |  |
