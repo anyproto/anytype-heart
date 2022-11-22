@@ -6,6 +6,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -34,7 +37,7 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return smartblock.ObjectApplyTemplate(o, ctx.State)
+	return smartblock.ObjectApplyTemplate(o, ctx.State, template.WithForcedDetail(bundle.RelationKeyIsDeleted, pbtypes.Bool(false)))
 }
 
 func (o *SubObject) SetStruct(st *types.Struct) error {
