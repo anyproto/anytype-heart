@@ -962,49 +962,37 @@ func (s *Service) MoveBlocksToNewPage(
 	ctx *session.Context, req pb.RpcBlockListMoveToNewObjectRequest,
 ) (linkId string, err error) {
 	// 1. Create new page, link
-	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
+	linkId, objectId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
 		Details:   req.Details,
 	})
-
 	if err != nil {
-		return linkId, err
+		return
 	}
 
 	// 2. Move blocks to new page
-	err = s.MoveBlocks(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-		ContextId:       req.ContextId,
-		BlockIds:        req.BlockIds,
-		TargetContextId: pageId,
-		DropTargetId:    "",
-		Position:        0,
+	err = DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
+		return DoState(s, objectId, func(destState *state.State, tb basic.Movable) error {
+			return sb.Move(srcState, destState, "", model.Block_Inner, req.BlockIds)
+		})
 	})
-
 	if err != nil {
-		return linkId, err
+		return
 	}
-
 	return linkId, err
 }
 
 func (s *Service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
 	if req.ContextId == req.TargetContextId {
-		return Do(s, req.ContextId, func(b basic.Movable) error {
-			return b.Move(ctx, req)
+		return DoState(s, req.ContextId, func(st *state.State, b basic.Movable) error {
+			return b.Move(st, st, req.DropTargetId, req.Position, req.BlockIds)
 		})
 	}
-	return DoState(s, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
-		return DoState(s, req.TargetContextId, func(destState *state.State, tb basic.Duplicatable) error {
-			_, err := sb.Duplicate(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
-			if err != nil {
-				return fmt.Errorf("paste: %w", err)
-			}
-			for _, id := range req.BlockIds {
-				srcState.Unlink(id)
-			}
-			return nil
+	return DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
+		return DoState(s, req.TargetContextId, func(destState *state.State, tb basic.Movable) error {
+			return sb.Move(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
 		})
 	})
 }
