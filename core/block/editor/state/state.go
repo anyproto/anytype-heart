@@ -597,6 +597,13 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			s.parent.objectTypes = s.objectTypes
 		}
 	}
+
+	if s.parent != nil && s.objectTypesToMigrate != nil {
+		prev := s.parent.ObjectTypesToMigrate()
+		if !slice.UnsortedEquals(prev, s.objectTypesToMigrate) {
+			s.parent.objectTypesToMigrate = s.objectTypesToMigrate
+		}
+	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
