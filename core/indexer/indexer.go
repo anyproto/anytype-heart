@@ -351,21 +351,6 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	if reindex != 0 {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v, reindexFileKeys=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0, reindex&reindexFileKeys != 0)
 	}
-	defer func() {
-		i.relationMigratorMu.Lock()
-		defer i.relationMigratorMu.Unlock()
-		if i.relationBulkMigration == nil {
-			return
-		}
-		err2 := i.relationBulkMigration.Commit()
-		i.relationBulkMigration = nil
-		if err2 != nil {
-			log.Errorf("reindex relation migration error: %s", err2.Error())
-		}
-	}()
-	i.relationMigratorMu.Lock()
-	i.relationBulkMigration = i.relationService.CreateBulkMigration()
-	i.relationMigratorMu.Unlock()
 
 	if reindex&reindexFileKeys != 0 {
 		err = i.anytype.FileStore().RemoveEmpty()
@@ -387,6 +372,22 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
 			}
 		}
+
+		defer func() {
+			i.relationMigratorMu.Lock()
+			defer i.relationMigratorMu.Unlock()
+			if i.relationBulkMigration == nil {
+				return
+			}
+			err2 := i.relationBulkMigration.Commit()
+			i.relationBulkMigration = nil
+			if err2 != nil {
+				log.Errorf("reindex relation migration error: %s", err2.Error())
+			}
+		}()
+		i.relationMigratorMu.Lock()
+		i.relationBulkMigration = i.relationService.CreateBulkMigration()
+		i.relationMigratorMu.Unlock()
 	}
 	var indexesWereRemoved bool
 	if reindex&eraseIndexes != 0 {
@@ -540,6 +541,12 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		} else {
 			log.Info(msg)
 		}
+
+		var ots = make([]string, 0, len(bundle.RequiredTypes))
+		for _, ot := range bundle.RequiredTypes {
+			ots = append(ots, ot.URL())
+		}
+		i.migrateObjectTypes(ots)
 	}
 	if reindex&reindexBundledObjects != 0 {
 		// hardcoded for now
@@ -779,8 +786,9 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	indexDetails, indexLinks := sbType.Indexable()
 	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
 		// avoid recursions
-		i.migrateRelations(extractOldRelationsFromState(info.State))
+
 		if pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
+			i.migrateRelations(extractOldRelationsFromState(info.State))
 			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
 		}
 	}

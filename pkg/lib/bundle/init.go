@@ -43,6 +43,21 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyInternalFlags,
 }
 
+// todo: generate from types.json
+var RequiredTypes = []TypeKey{
+	TypeKeyPage,
+	TypeKeyNote,
+	TypeKeyTask,
+	TypeKeyObjectType,
+	TypeKeyRelation,
+	TypeKeyRelationOption,
+	TypeKeyFile,
+	TypeKeyImage,
+	TypeKeyVideo,
+	TypeKeySet,
+	TypeKeyProfile,
+}
+
 var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyFile.URL(),
 	TypeKeyImage.URL(),

@@ -18494,6 +18494,7 @@ Used to decode block meta only, without the content itself
 | readonly | [bool](#bool) |  |  |
 | types | [SmartBlockType](#anytype.model.SmartBlockType) | repeated |  |
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
+| installedByDefault | [bool](#bool) |  |  |
 
 
 
