@@ -561,7 +561,7 @@ func (s *service) UploadFileBlockWithHash(ctx *session.Context, contextId string
 		hash = res.Hash
 		return nil
 	})
-	
+
 	return hash, err
 }
 

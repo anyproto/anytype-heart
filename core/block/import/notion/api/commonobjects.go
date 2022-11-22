@@ -236,6 +236,24 @@ type FileObject struct {
 	External FileProperty `json:"external,omitempty"`
 }
 
+func (f *FileObject) GetFileBlock(fileType model.BlockContentFileType) (*model.Block, string) {
+	id := bson.NewObjectId().Hex()
+	name := f.External.URL
+	if name == "" {
+		name = f.File.URL
+	}
+	return &model.Block{
+		Id: id,
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Name:    name,
+				AddedAt: time.Now().Unix(),
+				Type:    fileType,
+			},
+		},
+	}, id
+}
+
 type FileProperty struct {
 	URL        string     `json:"url,omitempty"`
 	ExpiryTime *time.Time `json:"expiry_time,omitempty"`

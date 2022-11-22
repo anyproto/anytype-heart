@@ -53,7 +53,7 @@ type Page struct {
 	Properties     property.Properties `json:"properties"`
 	Archived       bool                `json:"archived"`
 	Icon           *api.Icon           `json:"icon,omitempty"`
-	Cover          *block.ImageBlock   `json:"cover,omitempty"`
+	Cover          *api.FileObject     `json:"cover,omitempty"`
 	URL            string              `json:"url,omitempty"`
 }
 
@@ -92,7 +92,7 @@ func (ds *Service) mapPagesToSnaphots(ctx context.Context, apiKey string, mode p
 				continue
 			}
 		}
-	
+
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       notionPagesIdsToAnytype[p.ID],
 			FileName: p.URL,
@@ -152,14 +152,14 @@ func (ds *Service) handlePageProperties(apiKey, pageID string, p property.Proper
 	for k, v := range p {
 		object, err := ds.propertyService.GetPropertyObject(context.TODO(), pageID, v.GetID(), apiKey, v.GetPropertyType())
 		if err != nil {
-			ce.Add("property: " + v.GetID(), err)
+			ce.Add("property: "+v.GetID(), err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return relations, pageNameToID, &ce
 			}
 		}
 		err = ds.detailSetter.SetDetailValue(k, v.GetPropertyType(), object, d)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			ce.Add("property: " + v.GetID(), err)
+			ce.Add("property: "+v.GetID(), err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return relations, pageNameToID, &ce
 			}

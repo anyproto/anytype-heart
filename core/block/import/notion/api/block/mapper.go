@@ -101,6 +101,22 @@ func (m *Mapper) MapBlocks(blocks []interface{}, notionPageIdsToAnytype, notionD
 			anytypeBlocks = append(anytypeBlocks, allBlocks...)
 			anytypeBlocks = append(anytypeBlocks, childBlocks...)
 			ids = append(ids, blockIDs...)
+		case *FileBlock:
+			fileBlock, id := block.File.GetFileBlock(model.BlockContentFile_File)
+			anytypeBlocks = append(anytypeBlocks, fileBlock)
+			ids = append(ids, id)
+		case *ImageBlock:
+			fileBlock, id := block.File.GetFileBlock(model.BlockContentFile_Image)
+			anytypeBlocks = append(anytypeBlocks, fileBlock)
+			ids = append(ids, id)
+		case *VideoBlock:
+			fileBlock, id := block.File.GetFileBlock(model.BlockContentFile_Video)
+			anytypeBlocks = append(anytypeBlocks, fileBlock)
+			ids = append(ids, id)
+		case *PdfBlock:
+			fileBlock, id := block.File.GetFileBlock(model.BlockContentFile_PDF)
+			anytypeBlocks = append(anytypeBlocks, fileBlock)
+			ids = append(ids, id)
 		}
 	}
 	return anytypeBlocks, ids

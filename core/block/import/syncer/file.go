@@ -27,7 +27,7 @@ func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	if strings.HasPrefix(b.Model().GetFile().Name, "http://") || strings.HasPrefix(b.Model().GetFile().Name, "https://") {
 		params = pb.RpcBlockUploadRequest{
 			Url:     b.Model().GetFile().Name,
-			BlockId: b.Model().Id,
+ 			BlockId: b.Model().Id,
 		}
 	}
 	hash, err := fs.service.UploadFileBlockWithHash(ctx, id, params)

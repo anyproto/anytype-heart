@@ -52,10 +52,3 @@ type Block struct {
 	HasChildren    bool       `json:"has_children"`
 	Type           BlockType  `json:"type"`
 }
-
-type ImageBlock struct {
-	Caption  []api.RichText   `json:"caption,omitempty"`
-	Type     api.FileType     `json:"type"`
-	File     api.FileProperty `json:"file,omitempty"`
-	External api.FileProperty `json:"external,omitempty"`
-}
