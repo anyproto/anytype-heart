@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/google/uuid"
 	"sort"
@@ -286,17 +285,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-	sbt, _ := smartblock.SmartBlockTypeFromID(sb.Id())
-	if indexableDetails, _ := sbt.Indexable(); indexableDetails {
-		ld := ctx.State.LocalDetails()
-		has, _ := sb.objectStore.HasIDs(sb.Id())
-		// in case we have this object deleted report the change to recover it
-		if len(has) == 0 || pbtypes.GetBool(ld, bundle.RelationKeyIsDeleted.String()) {
-			// in case we have not yet indexed this object report the change so the indexer will start
-			// todo: do it in a more clean way
-			sb.reportChange(sb.Doc.NewState())
-		}
-	}
+
 	return
 }
 

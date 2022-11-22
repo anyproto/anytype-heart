@@ -214,7 +214,10 @@ func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
-	p.SubObjectCollection.Init(ctx)
+	err = p.SubObjectCollection.Init(ctx)
+	if err != nil {
+		return err
+	}
 
 	p.app = ctx.App
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)

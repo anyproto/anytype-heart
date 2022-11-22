@@ -168,7 +168,7 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	c.app = ctx.App
 	c.sourceService = c.app.MustComponent(source.CName).(source.Service)
 
-	return c.SmartBlock.Init(ctx)
+	return c.Set.Init(ctx)
 }
 
 func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string) (err error) {

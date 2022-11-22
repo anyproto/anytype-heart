@@ -34,7 +34,7 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return nil
+	return smartblock.ObjectApplyTemplate(o, ctx.State)
 }
 
 func (o *SubObject) SetStruct(st *types.Struct) error {
