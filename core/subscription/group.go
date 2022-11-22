@@ -58,7 +58,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 			}
 			if cacheEntry == nil || len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) == 0 { // if tags became nil
 				gs.cache.RemoveSubId(ctxEntry.id, gs.id)
-				delete(gs.set, gs.id)
+				delete(gs.set, ctxEntry.id)
 			}
 		} else if len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) > 0 { // if not in cache but has been added new tags
 			gs.cache.Set(ctxEntry)
@@ -110,17 +110,17 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 	}
 }
 
-func (s *groupSub) getActiveRecords() (res []*types.Struct) {
+func (gs *groupSub) getActiveRecords() (res []*types.Struct) {
 	return
 }
 
-func (s *groupSub) hasDep() bool {
+func (gs *groupSub) hasDep() bool {
 	return false
 }
 
-func (s *groupSub) close() {
-	for _, e := range s.cache.entries {
-		s.cache.RemoveSubId(e.id, s.id)
+func (gs *groupSub) close() {
+	for _, e := range gs.cache.entries {
+		gs.cache.RemoveSubId(e.id, gs.id)
 	}
 	return
 }
