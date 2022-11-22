@@ -2,6 +2,7 @@ package anytype
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/core/account"
@@ -21,7 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -119,8 +119,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(builtintemplate.New()).
 		Register(pin.New()).
 		Register(status.New()).
-		Register(indexer.New()).
 		Register(block.New()).
+		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
