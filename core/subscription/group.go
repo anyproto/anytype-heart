@@ -14,6 +14,7 @@ func (s *service) newGroupSub(id string, relKey string, groups []*model.BlockCon
 		id:    id,
 		relKey: relKey,
 		cache: s.cache,
+		set: make(map[string]struct{}),
 		groups: groups,
 	}
 	return sub
@@ -25,6 +26,8 @@ type groupSub struct {
 
 	cache *cache
 
+	set map[string]struct{}
+
 	groups []*model.BlockContentDataviewGroup
 }
 
@@ -32,6 +35,7 @@ func (gs *groupSub) init(entries []*entry) (err error) {
 	for _, e := range entries {
 		e = gs.cache.GetOrSet(e)
 		e.SetSub(gs.id, true)
+		gs.set[e.id] = struct{}{}
 	}
 	return
 }
@@ -42,23 +46,35 @@ func (gs *groupSub) counters() (prev, next int) {
 
 func (gs *groupSub) onChange(ctx *opCtx) {
 	checkGroups := false
+	updatedData := map[string]*types.Struct{}
 	for _, ctxEntry := range ctx.entries {
-		if cacheEntry := gs.cache.Get(ctxEntry.id); cacheEntry != nil {
-			if !checkGroups {
-				oldList := pbtypes.GetStringList(cacheEntry.data, gs.relKey)
-				newList := pbtypes.GetStringList(ctxEntry.data, gs.relKey)
-				checkGroups = !slice.UnsortedEquals(oldList, newList)
+		if _, inSet := gs.set[ctxEntry.id]; inSet {
+			updatedData[ctxEntry.id] = ctxEntry.data
+			cacheEntry := gs.cache.Get(ctxEntry.id)
+			if !checkGroups && cacheEntry != nil {
+					oldList := pbtypes.GetStringList(cacheEntry.data, gs.relKey)
+					newList := pbtypes.GetStringList(ctxEntry.data, gs.relKey)
+					checkGroups = !slice.UnsortedEquals(oldList, newList)
 			}
-		} else if len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) > 0 { // new added tags
+			if cacheEntry == nil || len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) == 0 { // if tags became nil
+				gs.cache.RemoveSubId(ctxEntry.id, gs.id)
+				delete(gs.set, gs.id)
+			}
+		} else if len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) > 0 { // if not in cache but has been added new tags
 			gs.cache.Set(ctxEntry)
+			gs.set[ctxEntry.id] = struct{}{}
 			checkGroups = true
 		}
 	}
 
 	if checkGroups {
 		var records []database.Record
-		for _, cacheEntry := range gs.cache.entries {
-			records = append(records, database.Record{Details: cacheEntry.data})
+		for id := range gs.set {
+			if newData, ok := updatedData[id]; ok {
+				records = append(records, database.Record{Details: newData})
+			}else {
+				records = append(records, database.Record{Details: gs.cache.Get(id).data})
+			}
 		}
 
 		tag := kanban.GroupTag{Records: records}

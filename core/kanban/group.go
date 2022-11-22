@@ -8,7 +8,7 @@ func(gs GroupSlice) Len() int {
 }
 
 func (gs GroupSlice) Less(i, j int) bool {
-	return len(gs[i].Id) < len(gs[j].Id)
+	return len(gs[i].Id) > len(gs[j].Id)
 }
 
 func (gs GroupSlice) Swap(i, j int) {
