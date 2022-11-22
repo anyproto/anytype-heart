@@ -11,7 +11,7 @@ func (gCh *GroupCheckBox) InitGroups(reqFilters []*model.BlockContentDataviewFil
 	return nil
 }
 
-func (gCh *GroupCheckBox) MakeGroups() ([]Group, error) {
+func (gCh *GroupCheckBox) MakeGroups() (GroupSlice, error) {
 	return []Group{{Id: "true"}, {Id: "false"}}, nil
 }
 

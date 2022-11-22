@@ -49,7 +49,6 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 				newList := pbtypes.GetStringList(ctxEntry.data, gs.relKey)
 				checkGroups = !slice.UnsortedEquals(oldList, newList)
 			}
-			cacheEntry.data = ctxEntry.data
 		} else if len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) > 0 { // new added tags
 			gs.cache.Set(ctxEntry)
 			checkGroups = true

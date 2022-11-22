@@ -23,8 +23,8 @@ func (gs *GroupStatus) InitGroups(reqFilters []*model.BlockContentDataviewFilter
 	return nil
 }
 
-func (gs *GroupStatus) MakeGroups() ([]Group, error) {
-	var groups []Group
+func (gs *GroupStatus) MakeGroups() (GroupSlice, error) {
+	var groups GroupSlice
 
 	uniqMap := make(map[string]bool)
 

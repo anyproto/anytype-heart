@@ -43,8 +43,8 @@ func (t *GroupTag) InitGroups(reqFilters []*model.BlockContentDataviewFilter) er
 	return nil
 }
 
-func (t *GroupTag) MakeGroups() ([]Group, error) {
-	var groups []Group
+func (t *GroupTag) MakeGroups() (GroupSlice, error) {
+	var groups GroupSlice
 
 	uniqMap := make(map[string]bool)
 
@@ -73,9 +73,7 @@ func (t *GroupTag) MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, err
 		return nil, err
 	}
 
-	sort.Slice(groups[:], func(i, j int) bool {
-		return len(groups[i].Id) > len(groups[j].Id)
-	})
+	sort.Sort(groups)
 
 	for _, g := range groups {
 		result = append(result, &model.BlockContentDataviewGroup{

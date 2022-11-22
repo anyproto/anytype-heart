@@ -17,7 +17,7 @@ func New() Service{
 
 type Grouper interface {
 	InitGroups(reqFilters []*model.BlockContentDataviewFilter) error
-	MakeGroups() ([]Group, error)
+	MakeGroups() (GroupSlice, error)
 	MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error)
 }
 
