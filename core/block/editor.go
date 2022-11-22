@@ -80,26 +80,16 @@ func (s *Service) DuplicateBlocks(
 	if req.ContextId == req.TargetContextId || req.TargetContextId == "" {
 		err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, sb basic.Duplicatable) error {
 			newIds, err = sb.Duplicate(st, st, req.TargetId, req.Position, req.BlockIds)
-			if err != nil {
-				return fmt.Errorf("duplicate: %w", err)
-			}
-			return nil
+			return err
 		})
 		return
 	}
 
 	err = DoStateCtx(s, ctx, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
-		err = DoState(s, req.TargetContextId, func(targetState *state.State, tb smartblock.SmartBlock) error {
-			if tb.Type() == model.SmartBlockType_Set {
-				return basic.ErrNotSupported
-			}
+		return DoState(s, req.TargetContextId, func(targetState *state.State, tb basic.Creatable) error {
 			newIds, err = sb.Duplicate(srcState, targetState, req.TargetId, req.Position, req.BlockIds)
-			if err != nil {
-				return fmt.Errorf("duplicate: %w", err)
-			}
-			return nil
+			return err
 		})
-		return nil
 	})
 
 	return
