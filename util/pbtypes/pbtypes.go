@@ -491,9 +491,11 @@ func RelationIdToKey(id string) (string, error) {
 	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
 	}
-
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return strings.TrimPrefix(id, addr.BundledRelationURLPrefix), nil
+	}
+	if strings.HasPrefix(id, addr.OldIndexedRelationURLPrefix) {
+		return strings.TrimPrefix(id, addr.OldIndexedRelationURLPrefix), nil
 	}
 	return "", fmt.Errorf("incorrect id format")
 }

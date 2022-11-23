@@ -11,7 +11,9 @@ const (
 	RelationKeyToIdPrefix          = "rel-" //
 	ObjectTypeKeyToIdPrefix        = "ot-"  //
 
-	BundledRelationURLPrefix   = "_br"
+	BundledRelationURLPrefix    = "_br"
+	OldIndexedRelationURLPrefix = "_ir"
+
 	BundledObjectTypeURLPrefix = "_ot"
 
 	AnytypeProfileId            = "_anytype_profile"
