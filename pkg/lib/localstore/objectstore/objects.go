@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 
 	"github.com/gogo/protobuf/proto"
@@ -1013,17 +1012,6 @@ func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) 
 	} else {
 		pb.StructDeleteEmptyFields(details.Details)
 	}
-
-	// Inject smartblockTypes
-	if _, ok := details.Details.Fields[bundle.RelationKeySmartblockTypes.String()]; !ok {
-		sbTypes, err := state.ListSmartblockTypes(id)
-		if err == nil {
-			details.Details.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbTypes...)
-		} else {
-			log.Debugf("unmarshalDetails: ListSmartblockTypes %s: %s", id, err)
-		}
-	}
-
 	details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
 	return &details, nil
 }

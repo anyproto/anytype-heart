@@ -875,13 +875,6 @@ func (s *State) InjectDerivedDetails() {
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 
-	sbTypes, err := ListSmartblockTypes(s.RootId())
-	if err == nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
-	} else {
-		log.Debugf("ListSmartblockTypes: %s", err)
-	}
-
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
 	}
