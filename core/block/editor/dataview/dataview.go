@@ -368,6 +368,13 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 			}
 			hasRelations = true
 		}
+
+		if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
+			if hasRelations {
+				return nil, fmt.Errorf("dataview source contains both type and relation")
+			}
+			hasType = true
+		}
 	}
 	if hasType {
 		objectType, err := objectstore.GetObjectType(store, sources[0])
