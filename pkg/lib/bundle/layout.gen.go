@@ -12,9 +12,9 @@ var (
 	Layouts = map[model.ObjectTypeLayout]model.Layout{
 		model.ObjectType_basic: {
 
-			Id:                 model.ObjectType_basic,
-			InstalledRelations: []*model.Relation{relations[RelationKeyName]},
-			Name:               "Basic",
+			Id:                model.ObjectType_basic,
+			Name:              "Basic",
+			RequiredRelations: []*model.Relation{relations[RelationKeyName]},
 		},
 		model.ObjectType_bookmark: {
 
@@ -38,9 +38,9 @@ var (
 		},
 		model.ObjectType_image: {
 
-			Id:                 model.ObjectType_image,
-			InstalledRelations: []*model.Relation{relations[RelationKeyIconImage]},
-			Name:               "Image",
+			Id:                model.ObjectType_image,
+			Name:              "Image",
+			RequiredRelations: []*model.Relation{relations[RelationKeyIconImage]},
 		},
 		model.ObjectType_note: {
 
@@ -49,15 +49,15 @@ var (
 		},
 		model.ObjectType_objectType: {
 
-			Id:                 model.ObjectType_objectType,
-			InstalledRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
-			Name:               "Object Type",
+			Id:                model.ObjectType_objectType,
+			Name:              "Object Type",
+			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
 		},
 		model.ObjectType_profile: {
 
-			Id:                 model.ObjectType_profile,
-			InstalledRelations: []*model.Relation{relations[RelationKeyName]},
-			Name:               "Profile",
+			Id:                model.ObjectType_profile,
+			Name:              "Profile",
+			RequiredRelations: []*model.Relation{relations[RelationKeyName]},
 		},
 		model.ObjectType_relation: {
 
@@ -66,9 +66,9 @@ var (
 		},
 		model.ObjectType_set: {
 
-			Id:                 model.ObjectType_set,
-			InstalledRelations: []*model.Relation{relations[RelationKeySetOf], relations[RelationKeyName]},
-			Name:               "Set",
+			Id:                model.ObjectType_set,
+			Name:              "Set",
+			RequiredRelations: []*model.Relation{relations[RelationKeySetOf], relations[RelationKeyName]},
 		},
 		model.ObjectType_space: {
 
@@ -77,9 +77,9 @@ var (
 		},
 		model.ObjectType_todo: {
 
-			Id:                 model.ObjectType_todo,
-			InstalledRelations: []*model.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
-			Name:               "to-do",
+			Id:                model.ObjectType_todo,
+			Name:              "to-do",
+			RequiredRelations: []*model.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
 		},
 	}
 )

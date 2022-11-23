@@ -304,7 +304,7 @@ func generateLayouts() error {
 				for _, rel := range lt.RequiredRelations {
 					t = append(t, Id("relations").Index(Id(relConst(rel))))
 				}
-				map[Code]Code(dictS)[Id("InstalledRelations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
+				map[Code]Code(dictS)[Id("RequiredRelations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
 			}
 
 			dict[Qual(relPbPkg, "ObjectType_"+lt.ID)] = Block(dictS)
