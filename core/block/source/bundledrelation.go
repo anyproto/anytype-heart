@@ -61,6 +61,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	details := bundle.GetDetailsForRelation(true, rel)
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
 
 	return details, nil
 }
@@ -75,7 +76,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	for k, v := range d.Fields {
 		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
-	s.SetObjectType(bundle.TypeKeyRelation.URL())
+	s.SetObjectType(bundle.TypeKeyRelation.BundledURL())
 	return s, nil
 }
 

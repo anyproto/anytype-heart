@@ -70,7 +70,7 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyObjectType.URL())
+	s.SetObjectType(bundle.TypeKeyObjectType.BundledURL())
 	return s, nil
 }
 
@@ -89,7 +89,7 @@ func (v *bundledObjectType) FindFirstChange(ctx context.Context) (c *change.Chan
 func (v *bundledObjectType) ListIds() ([]string, error) {
 	var ids []string
 	for _, tk := range bundle.ListTypesKeys() {
-		ids = append(ids, tk.URL())
+		ids = append(ids, tk.BundledURL())
 	}
 	return ids, nil
 }

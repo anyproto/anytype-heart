@@ -4,9 +4,12 @@ source: pkg/lib/bundle/types.json
 */
 package bundle
 
-import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+)
 
-const TypeChecksum = "beffb54845886c177f4cf308a5e9672fae5c464652c9a711635dfa07c79aba5e"
+const TypeChecksum = "4ce50d261a1a03293bdf8def0e87825af2350acc5fca130eec9b4d63f7ad293b"
 
 type TypeKey string
 
@@ -14,6 +17,9 @@ func (tk TypeKey) String() string {
 	return string(tk)
 }
 func (tk TypeKey) URL() string {
+	return string(addr.ObjectTypeKeyToIdPrefix + tk)
+}
+func (tk TypeKey) BundledURL() string {
 	return string(TypePrefix + tk)
 }
 

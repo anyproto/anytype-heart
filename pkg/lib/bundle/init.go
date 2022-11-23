@@ -44,7 +44,7 @@ var RequiredInternalRelations = []RelationKey{
 }
 
 // todo: generate from types.json
-var RequiredTypes = []TypeKey{
+var InstalledTypes = []TypeKey{
 	TypeKeyPage,
 	TypeKeyNote,
 	TypeKeyTask,
@@ -56,6 +56,7 @@ var RequiredTypes = []TypeKey{
 	TypeKeyVideo,
 	TypeKeySet,
 	TypeKeyProfile,
+	TypeKeyTemplate,
 }
 
 var FormatFilePossibleTargetObjectTypes = []string{
