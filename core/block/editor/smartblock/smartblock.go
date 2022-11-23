@@ -935,6 +935,10 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+	wsId, _ := sb.Anytype().GetWorkspaceIdForObject(sb.Id())
+	if wsId != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+	}
 	return nil
 }
 
