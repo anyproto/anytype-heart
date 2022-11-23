@@ -48,6 +48,12 @@ var WithObjectTypes = func(otypes []string) StateTransformer {
 	}
 }
 
+var WithForcedObjectTypes = func(otypes []string) StateTransformer {
+	return func(s *state.State) {
+		s.SetObjectTypes(otypes)
+	}
+}
+
 // WithNoObjectTypes is a special case used only for Archive
 var WithNoObjectTypes = func() StateTransformer {
 	return func(s *state.State) {

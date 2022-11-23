@@ -1512,7 +1512,7 @@ func SubState(st *state.State, collection string, fullId string) (*state.State, 
 
 func structToState(id string, data *types.Struct) *state.State {
 	blocks := map[string]simple.Block{
-		"root": simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
+		id: simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
 	}
 	subState := state.NewDoc(id, blocks).(*state.State)
 

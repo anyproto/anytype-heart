@@ -45,7 +45,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 7  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 22 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 27 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFilestoreKeysReindexCounter  int32 = 1
 )
@@ -542,11 +542,17 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			log.Info(msg)
 		}
 
-		var ots = make([]string, 0, len(bundle.RequiredTypes))
-		for _, ot := range bundle.RequiredTypes {
-			ots = append(ots, ot.URL())
+		var ots = make([]string, 0, len(bundle.InstalledTypes))
+		for _, ot := range bundle.InstalledTypes {
+			ots = append(ots, ot.BundledURL())
+		}
+
+		var rels = make([]*model.Relation, 0, len(bundle.RequiredInternalRelations))
+		for _, rel := range bundle.RequiredInternalRelations {
+			rels = append(rels, bundle.MustGetRelation(rel))
 		}
 		i.migrateObjectTypes(ots)
+		i.migrateRelations(rels)
 	}
 	if reindex&reindexBundledObjects != 0 {
 		// hardcoded for now

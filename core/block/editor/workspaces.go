@@ -627,10 +627,6 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		key = bson.NewObjectId().Hex()
 	} else {
 		key = strings.TrimPrefix(key, addr.BundledObjectTypeURLPrefix)
-		// no need to check for the generated bson's
-		if st.HasInStore([]string{collectionKeyObjectTypes, key}) {
-			return id, object, ErrSubObjectAlreadyExists
-		}
 		if bundle.HasObjectType(key) {
 			object.Fields[bundle.RelationKeySource.String()] = pbtypes.String(addr.BundledObjectTypeURLPrefix + key)
 		}
@@ -665,6 +661,12 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+
+	// no need to check for the generated bson's
+	if st.HasInStore([]string{collectionKeyObjectTypes, key}) {
+		// todo: optimize this
+		return id, object, ErrSubObjectAlreadyExists
+	}
 
 	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(object))
 	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
