@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -116,7 +117,7 @@ func (mw *Middleware) WorkspaceGetCurrent(cctx context.Context, req *pb.RpcWorks
 
 func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWorkspaceObjectListAddRequest) *pb.RpcWorkspaceObjectListAddResponse {
 	response := func(ids []string, code pb.RpcWorkspaceObjectListAddResponseErrorCode, err error) *pb.RpcWorkspaceObjectListAddResponse {
-		m := &pb.RpcWorkspaceObjectListAddResponse{Ids: ids, Error: &pb.RpcWorkspaceObjectListAddResponseError{Code: code}}
+		m := &pb.RpcWorkspaceObjectListAddResponse{ObjectIds: ids, Error: &pb.RpcWorkspaceObjectListAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -138,6 +139,33 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 	}
 
 	return response(ids, pb.RpcWorkspaceObjectListAddResponseError_NULL, nil)
+}
+
+func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorkspaceObjectAddRequest) *pb.RpcWorkspaceObjectAddResponse {
+	response := func(id string, details *types.Struct, code pb.RpcWorkspaceObjectAddResponseErrorCode, err error) *pb.RpcWorkspaceObjectAddResponse {
+		m := &pb.RpcWorkspaceObjectAddResponse{ObjectId: id, Error: &pb.RpcWorkspaceObjectAddResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	var (
+		id      string
+		details *types.Struct
+	)
+
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, details, err = bs.AddSubObjectToWorkspace(req.ObjectId, mw.GetAnytype().PredefinedBlocks().Account)
+		return
+	})
+
+	if err != nil {
+		return response(id, details, pb.RpcWorkspaceObjectAddResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(id, details, pb.RpcWorkspaceObjectAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.RpcWorkspaceObjectListRemoveRequest) *pb.RpcWorkspaceObjectListRemoveResponse {
