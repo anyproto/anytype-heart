@@ -22,6 +22,7 @@ import (
 )
 
 func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
+	var typesToMigrate []string
 	blocks := make(map[string]simple.Block)
 	for _, b := range snapshot.Data.Blocks {
 		// migrate old dataview blocks with relations
@@ -29,6 +30,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 			if len(dvBlock.RelationLinks) == 0 {
 				dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
 			}
+
+			dvBlock.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dvBlock.Source)
 		}
 		blocks[b.Id] = simple.New(b)
 	}
@@ -56,6 +59,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 
 	s.objectTypes, s.objectTypesToMigrate = relationutils.MigrateObjectTypeIds(s.objectTypes)
 
+	s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
 	s.InjectDerivedDetails()
 	return s
 }
@@ -365,6 +369,9 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 			if len(dv.RelationLinks) == 0 {
 				dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
 			}
+			var typesToMigrate []string
+			dv.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dv.Source)
+			s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
 		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
