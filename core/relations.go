@@ -244,6 +244,9 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, *types.Struct, error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
 	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
 	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 	var id string
@@ -257,7 +260,11 @@ func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelation
 }
 
 func (mw *Middleware) objectCreateObjectType(req *pb.RpcObjectCreateObjectTypeRequest) (id string, object *types.Struct, err error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
 	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 	err = mw.doBlockService(func(rs block.Service) error {
 		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
 		return err
@@ -266,7 +273,11 @@ func (mw *Middleware) objectCreateObjectType(req *pb.RpcObjectCreateObjectTypeRe
 }
 
 func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
 	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	err = mw.doBlockService(func(rs block.Service) error {
 		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
 		return err
