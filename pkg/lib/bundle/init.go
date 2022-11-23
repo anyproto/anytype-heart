@@ -53,6 +53,7 @@ var InstalledTypes = []TypeKey{
 	TypeKeyRelationOption,
 	TypeKeyFile,
 	TypeKeyImage,
+	TypeKeyAudio,
 	TypeKeyVideo,
 	TypeKeySet,
 	TypeKeyProfile,
