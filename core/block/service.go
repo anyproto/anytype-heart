@@ -539,6 +539,16 @@ func (s *service) AddSubObjectToWorkspace(sourceObjectId, workspaceId string) (i
 		if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceId {
 			return errors.New("object already in collection")
 		}
+
+		d.Fields[bundle.RelationKeySource.String()] = pbtypes.String(sourceObjectId)
+		u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
+		if err != nil {
+			u = b.ObjectType()
+		}
+		d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(u)
+		d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+		d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
+
 		err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 			ws, ok := b.(*editor.Workspaces)
 			if !ok {
