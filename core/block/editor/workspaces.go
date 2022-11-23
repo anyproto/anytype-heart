@@ -603,10 +603,6 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
 
-	if pbtypes.GetString(details, bundle.RelationKeyName.String()) == "" {
-		return "", nil, fmt.Errorf("name is empty")
-	}
-
 	var recommendedRelationIds []string
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
 		relKey := strings.TrimPrefix(relId, addr.BundledRelationURLPrefix)
