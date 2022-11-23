@@ -532,35 +532,15 @@ func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceI
 }
 
 func (s *service) AddSubObjectToWorkspace(sourceObjectId, workspaceId string) (id string, object *types.Struct, err error) {
-	// todo: we should add route to object via workspace
-	err = s.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
-		d := b.Details()
+	ids, details, err := s.AddSubObjectsToWorkspace([]string{sourceObjectId}, workspaceId)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(ids) == 0 {
+		return "", nil, fmt.Errorf("failed to add object")
+	}
 
-		if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceId {
-			return errors.New("object already in collection")
-		}
-
-		d.Fields[bundle.RelationKeySource.String()] = pbtypes.String(sourceObjectId)
-		u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
-		if err != nil {
-			u = b.ObjectType()
-		}
-		d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(u)
-		d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
-		d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
-
-		err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
-			ws, ok := b.(*editor.Workspaces)
-			if !ok {
-				return fmt.Errorf("incorrect workspace id")
-			}
-			id, object, err = ws.CreateSubObject(d)
-			return err
-		})
-		return err
-	})
-
-	return
+	return ids[0], details[0], nil
 }
 
 func (s *service) AddSubObjectsToWorkspace(sourceObjectIds []string, workspaceId string) (ids []string, objects []*types.Struct, err error) {
