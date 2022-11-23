@@ -20,10 +20,11 @@ type GroupTag struct {
 }
 
 func (t *GroupTag) InitGroups(f *database.Filters) error {
+	filterTag := filter.Not{Filter: filter.Empty{Key: string(bundle.RelationKeyTag)}}
 	if f == nil {
-		f = &database.Filters{FilterObj: filter.Eq{Key: string(bundle.RelationKeyTag), Cond: model.BlockContentDataviewFilter_NotEmpty}}
+		f = &database.Filters{FilterObj: filterTag}
 	} else {
-		f.FilterObj = filter.AndFilters{f.FilterObj, filter.Eq{Key: string(bundle.RelationKeyTag), Cond: model.BlockContentDataviewFilter_NotEmpty}}
+		f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}
 	}
 
 	records, err := t.store.QueryRaw(query.Query{
