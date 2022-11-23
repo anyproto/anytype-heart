@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"net/url"
 	"strings"
 	"time"
@@ -563,7 +564,11 @@ func (s *service) AddSubObjectsToWorkspace(sourceObjectIds []string, workspaceId
 				return errors.New("object already in collection")
 			}
 			d.Fields[bundle.RelationKeySource.String()] = pbtypes.String(sourceObjectId)
-			d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(b.ObjectType())
+			u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
+			if err != nil {
+				u = b.ObjectType()
+			}
+			d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(u)
 			d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 			d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
 
