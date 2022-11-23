@@ -47,7 +47,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 	state.CleanupLayouts(s)
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	if err = smartblock.ObjectApplyTemplate(p, s,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_dashboard),
 		template.WithEmpty,
 		template.WithDetailName("Home"),
 		template.WithDetailIconEmoji("🏠"),

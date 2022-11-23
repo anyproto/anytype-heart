@@ -30,7 +30,7 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 
 	ot := bundle.TypeKeyObjectType.URL()
 	templates := []template.StateTransformer{
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}, model.ObjectType_set),
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
 		template.WithDescription,
@@ -114,7 +114,7 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 	templates := []template.StateTransformer{
 		template.WithTitle,
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot})),
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}, model.ObjectType_set)}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:        []string{ot},
@@ -178,7 +178,7 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 	templates := []template.StateTransformer{
 		template.WithTitle,
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot})),
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}, model.ObjectType_set)}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:        []string{ot},

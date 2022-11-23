@@ -109,7 +109,7 @@ var WithRequiredRelations = func() StateTransformer {
 	return WithRelations(bundle.RequiredInternalRelations)
 }
 
-var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
+var WithObjectTypesAndLayout = func(otypes []string, layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {
 			s.SetObjectTypes(otypes)
@@ -117,15 +117,8 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 			otypes = s.ObjectTypes()
 		}
 
-		d := s.Details()
-		if d == nil || d.Fields == nil || d.Fields[bundle.RelationKeyLayout.String()] == nil {
-			for _, ot := range otypes {
-				t, err := bundle.GetTypeByUrl(ot)
-				if err != nil {
-					continue
-				}
-				s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(t.Layout)))
-			}
+		if !pbtypes.HasField(s.Details(), bundle.RelationKeyLayout.String()) {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(layout)))
 		}
 	}
 }
