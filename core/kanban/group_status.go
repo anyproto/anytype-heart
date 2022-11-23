@@ -2,6 +2,7 @@ package kanban
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"sort"
@@ -12,7 +13,7 @@ type GroupStatus struct {
 	Options []*model.RelationOption
 }
 
-func (gs *GroupStatus) InitGroups(reqFilters []*model.BlockContentDataviewFilter) error {
+func (gs *GroupStatus) InitGroups(f *database.Filters) error {
 	options, err := gs.store.GetAggregatedOptions(bundle.RelationKeyStatus.String())
 	if err != nil {
 		return err

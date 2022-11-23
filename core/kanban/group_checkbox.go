@@ -1,13 +1,14 @@
 package kanban
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type GroupCheckBox struct {
 }
 
-func (gCh *GroupCheckBox) InitGroups(reqFilters []*model.BlockContentDataviewFilter) error {
+func (gCh *GroupCheckBox) InitGroups(f *database.Filters) error {
 	return nil
 }
 

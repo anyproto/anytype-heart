@@ -6,11 +6,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -77,7 +78,8 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, groups, 3)
 
-	err = grouper.InitGroups([]*model.BlockContentDataviewFilter{{RelationKey: "name", Condition: 1, Value: pbtypes.String("three")}})
+	f := &database.Filters{FilterObj: filter.Eq{Key: "name", Cond: 1, Value:  pbtypes.String("three")}}
+	err = grouper.InitGroups(f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
 	require.NoError(t, err)

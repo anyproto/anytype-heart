@@ -2,6 +2,7 @@ package kanban
 
 import (
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -16,7 +17,7 @@ func New() Service{
 }
 
 type Grouper interface {
-	InitGroups(reqFilters []*model.BlockContentDataviewFilter) error
+	InitGroups(f *database.Filters) error
 	MakeGroups() (GroupSlice, error)
 	MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error)
 }

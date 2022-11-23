@@ -224,12 +224,29 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 	s.m.Lock()
 	defer s.m.Unlock()
 
+	q := database.Query{
+		Filters: req.Filters,
+	}
+
+	f, err := database.NewFilters(q, nil, time.Now().Location())
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.Source) > 0 {
+		sourceFilter, err := s.filtersFromSource(req.Source)
+		if err != nil {
+			return nil, fmt.Errorf("can't make filter from source: %v", err)
+		}
+		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
+	}
+
 	grouper, err := s.kanban.Grouper(req.RelationKey)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := grouper.InitGroups(req.Filters); err != nil {
+	if err := grouper.InitGroups(f); err != nil {
 		return nil, err
 	}
 

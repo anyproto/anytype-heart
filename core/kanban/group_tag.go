@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/ipfs/go-datastore/query"
 	"sort"
 	"strings"
 )
@@ -17,25 +19,18 @@ type GroupTag struct {
 	Records []database.Record
 }
 
-func (t *GroupTag) InitGroups(reqFilters []*model.BlockContentDataviewFilter) error {
-	filters := []*model.BlockContentDataviewFilter{
-		{RelationKey: string(bundle.RelationKeyIsDeleted), Condition: model.BlockContentDataviewFilter_Equal},
-		{RelationKey: string(bundle.RelationKeyIsArchived), Condition: model.BlockContentDataviewFilter_Equal},
-		{RelationKey: string(bundle.RelationKeyType), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{
-			bundle.TypeKeyFile.URL(),
-			bundle.TypeKeyImage.URL(),
-			bundle.TypeKeyVideo.URL(),
-			bundle.TypeKeyAudio.URL(),
-		})},
-		{RelationKey: string(bundle.RelationKeyTag), Condition: model.BlockContentDataviewFilter_NotEmpty},
+func (t *GroupTag) InitGroups(f *database.Filters) error {
+	if f == nil {
+		f = &database.Filters{FilterObj: filter.Eq{Key: string(bundle.RelationKeyTag), Cond: model.BlockContentDataviewFilter_NotEmpty}}
+	} else {
+		f.FilterObj = filter.AndFilters{f.FilterObj, filter.Eq{Key: string(bundle.RelationKeyTag), Cond: model.BlockContentDataviewFilter_NotEmpty}}
 	}
 
-	filters = append(filters, reqFilters...)
-	records, _, err := t.store.Query(nil, database.Query{
-		Filters: filters,
+	records, err := t.store.QueryRaw(query.Query{
+		Filters: []query.Filter{f},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("init kanban by tag, objectStore query error: %v", err)
 	}
 
 	t.Records = records
