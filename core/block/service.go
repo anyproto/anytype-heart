@@ -91,10 +91,6 @@ func init() {
 	}
 }
 
-type EventKey int
-
-const ObjectCreateEvent EventKey = 0
-
 type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
@@ -121,6 +117,14 @@ func New() *Service {
 	return &Service{}
 }
 
+type objectCreator interface {
+	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateObjectInWorkspace(ctx context.Context, workspaceId string, withId thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error)
+	InjectWorkspaceId(details *types.Struct, objectId string)
+}
+
 type Service struct {
 	anytype         core.Service
 	status          status.Service
@@ -136,6 +140,8 @@ type Service struct {
 	restriction     restriction.Service
 	bookmark        bookmarksvc.Service
 	relationService relation.Service
+
+	objectCreator objectCreator
 }
 
 func (s *Service) Name() string {
@@ -154,6 +160,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
+	s.objectCreator = a.MustComponent("object-creator").(objectCreator)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -189,7 +196,7 @@ func (s *Service) initPredefinedBlocks(ctx context.Context) {
 			ctx = nil
 		}
 		initTime := time.Now()
-		sb, err := s.newSmartBlock(id, ctx)
+		sb, err := s.NewSmartBlock(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
 				if id == s.anytype.PredefinedBlocks().Account {
@@ -823,6 +830,7 @@ func (s *Service) CreateLinkToTheNewObject(
 
 	var creator func(ctx context.Context) (string, error)
 
+	// TODO: this is deprecated mechanism, because we potentially can create object with any other type
 	if pbtypes.GetString(req.Details, bundle.RelationKeyType.String()) == bundle.TypeKeySet.URL() {
 		creator = func(ctx context.Context) (string, error) {
 			objectId, _, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
@@ -835,7 +843,7 @@ func (s *Service) CreateLinkToTheNewObject(
 		}
 	} else {
 		creator = func(ctx context.Context) (string, error) {
-			objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+			objectId, _, err = s.objectCreator.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 			if err != nil {
 				return objectId, fmt.Errorf("create smartblock error: %v", err)
 			}
@@ -843,16 +851,37 @@ func (s *Service) CreateLinkToTheNewObject(
 		}
 	}
 
-	if req.ContextId != "" {
-		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
-
-			linkId, objectId, err = s.createObject(ctx, sb, groupId, req, true, creator)
-			return err
-		})
+	s.objectCreator.InjectWorkspaceId(req.Details, req.ContextId)
+	objectId, err = creator(context.TODO())
+	if err != nil {
 		return
 	}
 
-	return s.createObject(ctx, nil, groupId, req, true, creator)
+	if req.ContextId == "" {
+		return
+	}
+
+	err = DoState(s, req.ContextId, func(st *state.State, sb basic.Creatable) error {
+		// TODO move to component
+		linkId, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
+			TargetId: req.TargetId,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: objectId,
+						Style:         model.BlockContentLink_Page,
+					},
+				},
+				Fields: req.Fields,
+			},
+			Position: req.Position,
+		})
+		if err != nil {
+			return fmt.Errorf("link create error: %v", err)
+		}
+		return nil
+	})
+	return
 }
 
 func (s *Service) CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error) {
@@ -947,8 +976,8 @@ func (s *Service) Close() error {
 	return s.cache.Close()
 }
 
-// pickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *Service) pickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+// PickBlock returns opened smartBlock or opens smartBlock in silent mode
+func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
 	ob, err := s.getSmartblock(ctx, id)
 	if err != nil {
 		return
@@ -973,7 +1002,7 @@ func (s *Service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 	return ob, nil
 }
 
-func (s *Service) stateFromTemplate(templateId, name string) (st *state.State, err error) {
+func (s *Service) StateFromTemplate(templateId, name string) (st *state.State, err error) {
 	if err = s.Do(templateId, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
@@ -1004,7 +1033,7 @@ func (s *Service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 }
 
 func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.State, b table.Editor) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
+	sb, release, err := s.PickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -1023,7 +1052,7 @@ func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.
 }
 
 func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
 		return err
 	}
@@ -1037,7 +1066,7 @@ func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations)
 }
 
 func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
 	if err != nil {
 		return err
 	}
@@ -1051,7 +1080,7 @@ func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 }
 
 func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
 	if err != nil {
 		return err
 	}
@@ -1065,7 +1094,7 @@ func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
 }
 
 func (s *Service) DoFile(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
 	if err != nil {
 		return err
 	}
@@ -1079,7 +1108,7 @@ func (s *Service) DoFile(id string, apply func(b file.File) error) error {
 }
 
 func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
 	if err != nil {
 		return err
 	}
@@ -1093,7 +1122,7 @@ func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 }
 
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
 	if err != nil {
 		return err
 	}
@@ -1105,7 +1134,7 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
 	if err != nil {
 		return err
 	}
@@ -1119,7 +1148,7 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 }
 
 func (s *Service) DoImport(id string, apply func(b _import.Import) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
 	if err != nil {
 		return err
 	}
@@ -1134,7 +1163,7 @@ func (s *Service) DoImport(id string, apply func(b _import.Import) error) error 
 }
 
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
 	if err != nil {
 		return err
 	}
@@ -1148,7 +1177,7 @@ func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 }
 
 func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
@@ -1158,8 +1187,12 @@ func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	return apply(sb)
 }
 
-func Do[t any](s *Service, id string, apply func(sb t) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+type BlockPicker interface {
+	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error)
+}
+
+func Do[t any](p BlockPicker, id string, apply func(sb t) error) error {
+	sb, release, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
@@ -1176,16 +1209,32 @@ func Do[t any](s *Service, id string, apply func(sb t) error) error {
 	return apply(bb)
 }
 
-func DoState[t any](
-	s *Service, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
-) error {
-	return DoStateCtx(s, nil, id, apply, flags...)
+func DoWithContext[t any](p BlockPicker, ctx context.Context, id string, apply func(sb t) error) error {
+	sb, release, err := p.PickBlock(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	callerId, _ := ctx.Value(smartblock.CallerKey).(string)
+	if callerId != id {
+		sb.Lock()
+		defer sb.Unlock()
+	}
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+	return apply(bb)
 }
 
-func DoStateCtx[t any](
-	s *Service, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
-) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+func DoState[t any](p BlockPicker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	return DoStateCtx(p, nil, id, apply, flags...)
+}
+
+func DoStateCtx[t any](p BlockPicker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	sb, release, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
@@ -1210,7 +1259,7 @@ func DoStateCtx[t any](
 }
 
 func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, release, err := s.pickBlock(ctx, id)
+	sb, release, err := s.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -1235,7 +1284,7 @@ func (s *Service) TemplateCreateFromObject(id string) (templateId string, err er
 		return
 	}
 
-	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1249,7 +1298,7 @@ func (s *Service) TemplateCreateFromObjectByObjectType(otId string) (templateId 
 	var st = state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otId})
-	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1274,7 +1323,7 @@ func (s *Service) TemplateClone(id string) (templateId string, err error) {
 	}); err != nil {
 		return
 	}
-	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1299,7 +1348,7 @@ func (s *Service) ObjectDuplicate(id string) (objectId string, err error) {
 		return
 	}
 
-	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
+	objectId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1309,7 +1358,7 @@ func (s *Service) ObjectDuplicate(id string) (objectId string, err error) {
 func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 	return s.Do(contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		ts, err := s.stateFromTemplate(templateId, pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String()))
+		ts, err := s.StateFromTemplate(templateId, pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String()))
 		if err != nil {
 			return err
 		}
@@ -1328,7 +1377,7 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 
 		ts.BlocksInit(orig)
 		objType := ts.ObjectType()
-		// stateFromTemplate returns state without the localdetails, so they will be taken from the orig state
+		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectType(objType)
 
 		flags := internalflag.NewFromState(ts)
@@ -1453,7 +1502,7 @@ func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		return newOpenedBlock(sb), nil
 	}
 
-	sb, err := s.newSmartBlock(id, &smartblock.InitContext{
+	sb, err := s.NewSmartBlock(id, &smartblock.InitContext{
 		Ctx: ctx,
 	})
 	if err != nil {

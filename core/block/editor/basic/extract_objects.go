@@ -1,15 +1,16 @@
 package basic
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
@@ -17,7 +18,8 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateObjectFromState(ctx *session.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	InjectWorkspaceId(details *types.Struct, objectId string)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -66,12 +68,9 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
-		_, objectId, err := s.CreateObjectFromState(nil, bs, "", pb.RpcBlockLinkCreateWithObjectRequest{
-			ContextId: req.ContextId,
-			Details: &types.Struct{
-				Fields: fields,
-			},
-		}, objState)
+		det := &types.Struct{Fields: fields}
+		s.InjectWorkspaceId(det, req.ContextId)
+		objectId, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, det, nil, objState)
 		if err != nil {
 			return nil, fmt.Errorf("create child object: %w", err)
 		}

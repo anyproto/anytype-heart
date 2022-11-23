@@ -781,7 +781,7 @@ func (s *Service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, new
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
+	csm, err := s.objectCreator.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
 	if err != nil {
 		return "", nil, err
 	}
@@ -822,7 +822,7 @@ func (s *Service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, new
 	}
 
 	state.InjectDerivedDetails()
-	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
+	sb, err := s.NewSmartBlock(setId, &smartblock.InitContext{
 		State: state,
 	})
 	if err != nil {
@@ -906,7 +906,7 @@ func (s *Service) ListConvertToObjects(
 	ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest,
 ) (linkIds []string, err error) {
 	err = Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		linkIds, err = b.ExtractBlocksToObjects(ctx, s, req)
+		linkIds, err = b.ExtractBlocksToObjects(ctx, s.objectCreator, req)
 		return err
 	})
 	return
