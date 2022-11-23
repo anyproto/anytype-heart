@@ -1638,7 +1638,7 @@
     "maxCount": 0,
     "name": "Smartblock types",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "url",

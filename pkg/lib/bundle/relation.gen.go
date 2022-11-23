@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "eaa11fe5ca522636918109cc4afd1a945c5cad5667ba8dfeb1045837a42084c5"
+const RelationChecksum = "dce54b35326218935efe6a90e6db28a771958a0cf7890c9f24539907c906066c"
 
 type RelationKey string
 
@@ -2017,7 +2017,7 @@ var (
 		},
 		RelationKeySmartblockTypes: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "List of smartblock types",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
