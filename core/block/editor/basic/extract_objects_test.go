@@ -1,16 +1,18 @@
 package basic
 
 import (
+	"context"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,16 +25,18 @@ func (t testExtractObjects) Add(object *smarttest.SmartTest) {
 	t.objects[object.Id()] = object
 }
 
-func (t testExtractObjects) CreateObjectFromState(ctx *session.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
-	id := bson.NewObjectId().Hex()
+func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
+	id = bson.NewObjectId().Hex()
 	object := smarttest.New(id)
 	t.objects[id] = object
 
-	state.SetRootId(id)
-	object.Doc = state
+	createState.SetRootId(id)
+	object.Doc = createState
 
-	return "", id, nil
+	return id, nil, nil
 }
+
+func (t testExtractObjects) InjectWorkspaceId(details *types.Struct, objectId string) {}
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
 	got := slice.Difference(a, b)
