@@ -18,20 +18,26 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type ObjectCreator struct {
-	service     *block.Service
-	core        core.Service
-	updater     Updater
-	syncFactory *syncer.Factory
+	service       *block.Service
+	objectCreator objectCreator
+	core          core.Service
+	updater       Updater
+	syncFactory   *syncer.Factory
 }
 
-func NewCreator(service *block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory) Creator {
-	return &ObjectCreator{service: service, core: core, updater: updater, syncFactory: syncFactory}
+type objectCreator interface {
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+}
+
+func NewCreator(service *block.Service, objCreator objectCreator, core core.Service, updater Updater, syncFactory *syncer.Factory) Creator {
+	return &ObjectCreator{service: service, objectCreator: objCreator, core: core, updater: updater, syncFactory: syncFactory}
 }
 
 // Create creates smart blocks from given snapshots
@@ -82,8 +88,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		}
 	}()
 
-	newId, details, err := oc.createSmartBlock(sbType, st)
-
+	newId, details, err := oc.objectCreator.CreateSmartBlockFromState(context.TODO(), sbType, nil, nil, st)
 	if err != nil {
 		return nil, fmt.Errorf("crear object '%s'", st.RootId())
 	}
@@ -125,14 +130,6 @@ func (oc *ObjectCreator) validate(st *state.State) (err error) {
 		}
 	}
 	return nil
-}
-
-func (oc *ObjectCreator) createSmartBlock(sbType smartblock.SmartBlockType, st *state.State) (string, *types.Struct, error) {
-	newId, details, err := oc.service.CreateSmartBlockFromState(context.TODO(), sbType, nil, nil, st)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed create smartblock %s", err)
-	}
-	return newId, details, nil
 }
 
 func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {

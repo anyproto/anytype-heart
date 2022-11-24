@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -29,6 +30,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -57,12 +59,17 @@ type BuiltinObjects interface {
 	app.ComponentRunnable
 }
 
+type objectCreator interface {
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+}
+
 type builtinObjects struct {
-	cancel     func()
-	l          sync.Mutex
-	source     source.Service
-	service    *block.Service
-	relService relation2.Service
+	cancel        func()
+	l             sync.Mutex
+	source        source.Service
+	objectCreator objectCreator
+	service       *block.Service
+	relService    relation2.Service
 
 	newAccount bool
 	idsMap     map[string]string
@@ -73,6 +80,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
+	b.objectCreator = a.MustComponent(object.CName).(objectCreator)
 	b.cancel = func() {}
 	return
 }
@@ -244,7 +252,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 		return err
 	}
 
-	_, _, err = b.service.CreateSmartBlockFromState(ctx, sbt, nil, nil, st)
+	_, _, err = b.objectCreator.CreateSmartBlockFromState(ctx, sbt, nil, nil, st)
 	if isFavorite {
 		err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
 		if err != nil {

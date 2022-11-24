@@ -47,8 +47,10 @@ func (c *Creator) Init(a *app.App) (err error) {
 	return nil
 }
 
+const CName = "object-creator"
+
 func (c *Creator) Name() (name string) {
-	return "object-creator"
+	return CName
 }
 
 // TODO Temporarily
