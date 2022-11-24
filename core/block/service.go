@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"net/url"
 	"strings"
@@ -1574,6 +1575,11 @@ func (s *service) TemplateClone(id string) (templateId string, err error) {
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
+		t := st.ObjectTypes()
+		t, _ = relationutils.MigrateObjectTypeIds(t)
+		st.SetObjectTypes(t)
+		targetObjectType, _ := relationutils.MigrateObjectTypeId(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectType))
 		return nil
 	}); err != nil {
 		return

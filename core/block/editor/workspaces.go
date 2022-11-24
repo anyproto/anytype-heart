@@ -60,14 +60,18 @@ func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 	}
 }
 
+type templateCloner interface {
+	TemplateClone(id string) (templateId string, err error)
+}
+
 type Workspaces struct {
 	*SubObjectCollection
 	DetailsModifier DetailsModifier
 	threadService   threads.Service
 	threadQueue     threads.ThreadQueue
-
-	sourceService source.Service
-	app           *app.App
+	templateCloner  templateCloner
+	sourceService   source.Service
+	app             *app.App
 }
 
 type WorkspaceParameters struct {
@@ -221,6 +225,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	p.app = ctx.App
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
+	p.templateCloner = p.app.MustComponent("blockService").(templateCloner)
 
 	if ctx.Source.Type() != model.SmartBlockType_Workspace && ctx.Source.Type() != model.SmartBlockType_AccountOld {
 		return fmt.Errorf("source type should be a workspace or an old account")
@@ -678,6 +683,34 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		return
 	}
 
+	records, _, err := w.ObjectStore().Query(nil, database2.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix + key),
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+
+	go func() {
+		// todo: remove this dirty hack to avoid lock
+		for _, record := range records {
+			id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+			_, err := w.templateCloner.TemplateClone(id)
+			if err != nil {
+				log.Errorf("failed to clone template %s: %s", id, err.Error())
+			}
+		}
+	}()
 	return
 }
 
