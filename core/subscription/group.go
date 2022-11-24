@@ -46,10 +46,8 @@ func (gs *groupSub) counters() (prev, next int) {
 
 func (gs *groupSub) onChange(ctx *opCtx) {
 	checkGroups := false
-	updatedData := map[string]*types.Struct{}
 	for _, ctxEntry := range ctx.entries {
 		if _, inSet := gs.set[ctxEntry.id]; inSet {
-			updatedData[ctxEntry.id] = ctxEntry.data
 			cacheEntry := gs.cache.Get(ctxEntry.id)
 			if !checkGroups && cacheEntry != nil {
 					oldList := pbtypes.GetStringList(cacheEntry.data, gs.relKey)
@@ -70,8 +68,15 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 	if checkGroups {
 		var records []database.Record
 		for id := range gs.set {
-			if newData, ok := updatedData[id]; ok {
-				records = append(records, database.Record{Details: newData})
+			var updated *types.Struct
+			for _, e := range ctx.entries {
+				if id == e.id {
+					updated = e.data
+				}
+			}
+
+			if updated != nil {
+				records = append(records, database.Record{Details: updated})
 			}else {
 				records = append(records, database.Record{Details: gs.cache.Get(id).data})
 			}
@@ -119,8 +124,8 @@ func (gs *groupSub) hasDep() bool {
 }
 
 func (gs *groupSub) close() {
-	for _, e := range gs.cache.entries {
-		gs.cache.RemoveSubId(e.id, gs.id)
+	for id := range gs.set {
+		gs.cache.RemoveSubId(id, gs.id)
 	}
 	return
 }

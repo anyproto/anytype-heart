@@ -2,6 +2,7 @@ package kanban
 
 import (
 	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -72,8 +73,11 @@ func (t *GroupTag) MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, err
 	sort.Sort(groups)
 
 	for _, g := range groups {
+		hash := md5.Sum([]byte(g.Id))
+		idHash := make([]byte, len(hash))
+		copy(idHash, hash[:])
 		result = append(result, &model.BlockContentDataviewGroup{
-			Id:  fmt.Sprintf("%x", md5.Sum([]byte(g.Id))),
+			Id:  hex.EncodeToString(idHash),
 			Value: &model.BlockContentDataviewGroupValueOfTag{
 				Tag: &model.BlockContentDataviewTag{
 					Ids: g.Data.Ids,
