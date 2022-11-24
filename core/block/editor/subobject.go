@@ -5,8 +5,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -49,7 +51,20 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 		ot = addr.RelationKeyToIdPrefix + strings.TrimPrefix(ot, addr.BundledRelationURLPrefix)
 	}
 
-	return smartblock.ObjectApplyTemplate(o, ctx.State, template.WithForcedDetail(bundle.RelationKeyIsDeleted, pbtypes.Bool(false)), template.WithForcedObjectTypes([]string{ot}))
+	// temp fix for our internal accounts with inconsistent types (should be removed later)
+	// todo: remove after release
+	fixTypes := func(s *state.State) {
+		if list := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationFormatObjectTypes.String()); list != nil {
+			list, _ = relationutils.MigrateObjectTypeIds(list)
+			s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList(list))
+		}
+	}
+
+	return smartblock.ObjectApplyTemplate(o, ctx.State,
+		template.WithForcedDetail(bundle.RelationKeyIsDeleted, pbtypes.Bool(false)),
+		template.WithForcedObjectTypes([]string{ot}),
+		fixTypes,
+	)
 }
 
 func (o *SubObject) SetStruct(st *types.Struct) error {
