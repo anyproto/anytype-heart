@@ -3,6 +3,7 @@ package editor
 import (
 	"errors"
 	"fmt"
+	"github.com/gogo/protobuf/types"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -22,11 +23,16 @@ var (
 	ErrSubObjectAlreadyExists = fmt.Errorf("subobject already exists in the collection")
 )
 
+type SubObjectImpl interface {
+	smartblock.SmartBlock
+	SetStruct(*types.Struct) error
+}
+
 type SubObjectCollection struct {
 	*Set
 	defaultCollectionName string
 
-	collections map[string]map[string]*SubObject
+	collections map[string]map[string]SubObjectImpl
 
 	sourceService source.Service
 	app           *app.App
@@ -36,7 +42,7 @@ func NewSubObjectCollection(defaultCollectionName string) *SubObjectCollection {
 	return &SubObjectCollection{
 		Set:                   NewSet(),
 		defaultCollectionName: defaultCollectionName,
-		collections:           map[string]map[string]*SubObject{},
+		collections:           map[string]map[string]SubObjectImpl{},
 	}
 }
 
@@ -172,7 +178,14 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 }
 
 func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string) (err error) {
-	subObj := NewSubObject()
+	var subObj SubObjectImpl
+	switch collection {
+	case collectionKeyObjectTypes:
+		subObj = NewObjectType()
+	default:
+		subObj = NewSubObject()
+	}
+
 	var fullId string
 	if collection == "" || collection == c.defaultCollectionName {
 		fullId = subId
@@ -187,7 +200,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	template.WithForcedDetail(bundle.RelationKeyWorkspaceId, pbtypes.String(c.Id()))(subState)
 
 	if _, exists := c.collections[collection]; !exists {
-		c.collections[collection] = map[string]*SubObject{}
+		c.collections[collection] = map[string]SubObjectImpl{}
 	}
 	c.collections[collection][subId] = subObj
 	if err = subObj.Init(&smartblock.InitContext{

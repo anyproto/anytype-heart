@@ -4,7 +4,6 @@ import (
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -22,6 +21,14 @@ func NewObjectType() *ObjectType {
 	return &ObjectType{
 		Set: NewSet(),
 	}
+}
+
+func (o *ObjectType) SetStruct(st *types.Struct) error {
+	o.Lock()
+	defer o.Unlock()
+	s := o.NewState()
+	s.SetDetails(st)
+	return o.Apply(s)
 }
 
 func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
@@ -82,13 +89,11 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			},
 		},
 	}
-
-	rels := p.Relations(ctx.State)
 	var recommendedRelationsKeys []string
 	for _, relId := range pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String()) {
 		relKey, err := pbtypes.RelationIdToKey(relId)
 		if err != nil {
-			log.Errorf("recommendedRelations has incorrect id: %s", relId)
+			log.Errorf("recommendedRelations of %s has incorrect id: %s", p.Id(), relId)
 			continue
 		}
 		if slice.FindPos(recommendedRelationsKeys, relKey) == -1 {
@@ -96,11 +101,13 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	for _, rel := range bundle.RequiredInternalRelations {
-		if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
-			recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
-		}
-	}
+	// todo: remove this
+	/*
+		for _, rel := range bundle.RequiredInternalRelations {
+			if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
+				recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
+			}
+		}*/
 
 	recommendedLayout := pbtypes.GetString(p.Details(), bundle.RelationKeyRecommendedLayout.String())
 	if recommendedLayout == "" {
@@ -116,24 +123,23 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	var recommendedRelations []*model.Relation
-	for _, rk := range recommendedRelationsKeys {
-		rel := rels.GetModelByKey(rk)
-		if rel == nil {
-			rel, _ = bundle.GetRelation(bundle.RelationKey(rk))
-			if rel == nil {
-				continue
-			}
-		}
+	rels, err := p.RelationService().FetchKeys(recommendedRelationsKeys...)
+	if err != nil {
+		return err
+	}
 
-		relCopy := pbtypes.CopyRelation(rel)
-
-		recommendedRelations = append(recommendedRelations, relCopy)
-		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, (&relationutils.Relation{rel}).RelationLink())
+	var relIds []string
+	for _, rel := range rels {
+		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, rel.RelationLink())
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
 			Key:       rel.Key,
 			IsVisible: !rel.Hidden,
 		})
+		if strings.HasPrefix(p.Id(), addr.BundledObjectTypeURLPrefix) {
+			relIds = append(relIds, addr.BundledObjectTypeURLPrefix+rel.Key)
+		} else {
+			relIds = append(relIds, addr.RelationKeyToIdPrefix+rel.Key)
+		}
 	}
 
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
@@ -147,6 +153,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithDataviewID("templates", templatesDataview, true),
 		template.WithDataview(dataview, true),
+		template.WithForcedDetail(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds)),
 		template.WithChildrenSorter(p.RootId(), func(blockIds []string) {
 			i := slice.FindPos(blockIds, "templates")
 			j := slice.FindPos(blockIds, template.DataviewBlockId)
@@ -155,7 +162,6 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
 			}
 		}),
-		//template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
