@@ -15,18 +15,18 @@ type ObjectType struct {
 
 func (ot *ObjectType) ToStruct() *types.Struct {
 	var (
-		relationKeys []string
-		prefix       string
+		relationKeys   []string
+		relationPrefix string
 	)
 
 	if strings.HasPrefix(ot.Url, addr.BundledObjectTypeURLPrefix) {
-		prefix = addr.BundledObjectTypeURLPrefix
+		relationPrefix = addr.BundledRelationURLPrefix
 	} else {
-		prefix = addr.ObjectTypeKeyToIdPrefix
+		relationPrefix = addr.RelationKeyToIdPrefix
 	}
 
 	for i := range ot.RelationLinks {
-		relationKeys = append(relationKeys, prefix+ot.RelationLinks[i].Key)
+		relationKeys = append(relationKeys, relationPrefix+ot.RelationLinks[i].Key)
 	}
 
 	var sbTypes = make([]int, 0, len(ot.Types))
