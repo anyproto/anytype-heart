@@ -216,7 +216,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	defer mw.m.Unlock()
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		var clientConfig *pb.RpcAccountConfig
-		if account != nil {
+		if account != nil && err == nil {
 			cafeAccount := mw.getCafeAccount()
 
 			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
