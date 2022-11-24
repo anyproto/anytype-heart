@@ -21,8 +21,22 @@ import (
 	"github.com/mb0/diff"
 )
 
-func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
+type snapshotOptions struct {
+	doNotMigrateTypes bool
+}
+
+type SnapshotOption func(*snapshotOptions)
+
+func DoNotMigrateTypes(o *snapshotOptions) {
+	o.doNotMigrateTypes = true
+}
+
+func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) Doc {
 	var typesToMigrate []string
+	sOpts := snapshotOptions{}
+	for _, opt := range opts {
+		opt(&sOpts)
+	}
 	blocks := make(map[string]simple.Block)
 	for _, b := range snapshot.Data.Blocks {
 		// migrate old dataview blocks with relations
@@ -30,8 +44,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 			if len(dvBlock.RelationLinks) == 0 {
 				dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
 			}
-
-			dvBlock.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dvBlock.Source)
+			if !sOpts.doNotMigrateTypes {
+				dvBlock.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dvBlock.Source)
+			}
 		}
 		blocks[b.Id] = simple.New(b)
 	}
@@ -57,9 +72,10 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		store:          snapshot.Data.Collections,
 	}
 
-	s.objectTypes, s.objectTypesToMigrate = relationutils.MigrateObjectTypeIds(s.objectTypes)
-
-	s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
+	if !sOpts.doNotMigrateTypes {
+		s.objectTypes, s.objectTypesToMigrate = relationutils.MigrateObjectTypeIds(s.objectTypes)
+		s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
+	}
 	s.InjectDerivedDetails()
 	return s
 }

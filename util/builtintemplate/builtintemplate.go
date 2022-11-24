@@ -93,7 +93,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	if err = snapshot.Unmarshal(data); err != nil {
 		return
 	}
-	st := state.NewDocFromSnapshot("", snapshot).(*state.State)
+	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)
 	id, err := threads.PatchSmartBlockType(st.RootId(), smartblock.SmartBlockTypeBundledTemplate)
 	if err != nil {
 		return
@@ -104,9 +104,9 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
-	if ots := st.ObjectTypes(); len(ots) != 2 {
-		st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
-	}
+	st.SetLocalDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.BundledURL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
+
 	st.InjectDerivedDetails()
 
 	// fix divergence between extra relations and simple block relations
@@ -131,7 +131,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 
 func (b *builtinTemplate) validate(st *state.State) (err error) {
 	cd := st.CombinedDetails()
-	if st.ObjectType() != addr.ObjectTypeKeyToIdPrefix+bundle.TypeKeyTemplate.String() {
+	if st.ObjectType() != bundle.TypeKeyTemplate.BundledURL() {
 		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectType())
 	}
 	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {

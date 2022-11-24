@@ -6,10 +6,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+	"strings"
 )
 
 type ObjectType struct {
@@ -47,10 +49,16 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			},
 		},
 	}
+	var templatesSource string
+	if strings.HasPrefix(p.Id(), addr.BundledObjectTypeURLPrefix) {
+		templatesSource = bundle.TypeKeyTemplate.BundledURL()
+	} else {
+		templatesSource = bundle.TypeKeyTemplate.URL()
+	}
 
 	templatesDataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source: []string{bundle.TypeKeyTemplate.URL()},
+			Source: []string{templatesSource},
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   "_view2_1",
