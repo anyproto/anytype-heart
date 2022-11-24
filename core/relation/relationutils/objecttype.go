@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+	"strings"
 )
 
 type ObjectType struct {
@@ -13,9 +14,19 @@ type ObjectType struct {
 }
 
 func (ot *ObjectType) ToStruct() *types.Struct {
-	var relationKeys []string
+	var (
+		relationKeys []string
+		prefix       string
+	)
+
+	if strings.HasPrefix(ot.Url, addr.BundledObjectTypeURLPrefix) {
+		prefix = addr.BundledObjectTypeURLPrefix
+	} else {
+		prefix = addr.ObjectTypeKeyToIdPrefix
+	}
+
 	for i := range ot.RelationLinks {
-		relationKeys = append(relationKeys, addr.RelationKeyToIdPrefix+ot.RelationLinks[i].Key)
+		relationKeys = append(relationKeys, prefix+ot.RelationLinks[i].Key)
 	}
 
 	var sbTypes = make([]int, 0, len(ot.Types))
