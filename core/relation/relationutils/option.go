@@ -30,6 +30,7 @@ func (o *Option) ToStruct() *types.Struct {
 			bundle.RelationKeyName.String():                pbtypes.String(o.Text),
 			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(o.Color),
 			bundle.RelationKeyRelationKey.String():         pbtypes.String(o.RelationKey),
+			bundle.RelationKeyLayout.String():              pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}
 }
