@@ -59,10 +59,6 @@ type BlockService interface {
 	StateFromTemplate(templateId, name string) (st *state.State, err error)
 }
 
-func (c *Creator) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error) {
-	return c.CreateSmartBlockFromState(ctx, sbType, details, relationIds, state.NewDoc("", nil).NewState())
-}
-
 func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateId != "" {
@@ -76,6 +72,9 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 }
 
 func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
+	if createState == nil {
+		createState = state.NewDoc("", nil).(*state.State)
+	}
 	startTime := time.Now()
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {

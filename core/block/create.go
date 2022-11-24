@@ -24,7 +24,7 @@ import (
 
 // TODO temporarily. Remove this and just use CreateSmartBlockFromState
 func (s *Service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error) {
-	return s.objectCreator.CreateSmartBlock(ctx, sbType, details, relationIds)
+	return s.objectCreator.CreateSmartBlockFromState(ctx, sbType, details, relationIds, nil)
 }
 
 func (s *Service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {

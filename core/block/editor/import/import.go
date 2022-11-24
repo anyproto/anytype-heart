@@ -13,8 +13,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -24,8 +28,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -63,7 +65,7 @@ type fileInfo struct {
 }
 
 type Services interface {
-	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploadRequest) error
@@ -134,7 +136,7 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			continue
 		}
 
-		pageID, _, err := imp.ctrl.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, nil, nil)
+		pageID, _, err := imp.ctrl.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 		if err != nil {
 			log.Errorf("failed to create smartblock: %s", err.Error())
 			continue
@@ -268,7 +270,7 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 		// wrap root-level csv files with page
 		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
 			// fixme: move initial details into CreateSmartBlock
-			pageID, _, err := imp.ctrl.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, nil, nil)
+			pageID, _, err := imp.ctrl.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 			if err != nil {
 				log.Errorf("failed to create smartblock: %s", err.Error())
 				continue
