@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "dce54b35326218935efe6a90e6db28a771958a0cf7890c9f24539907c906066c"
+const RelationChecksum = "dce54b35326218935efe6a90e6db28a771958a0cf7890c9f24539907c906066ca"
 
 type RelationKey string
 
