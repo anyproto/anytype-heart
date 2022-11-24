@@ -551,6 +551,15 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	id = addr.RelationKeyToIdPrefix + key
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+
+	objectTypes := pbtypes.GetStringList(object, bundle.RelationKeyRelationFormatObjectTypes.String())
+	if len(objectTypes) > 0 {
+		var objectTypesToMigrate []string
+		objectTypes, objectTypesToMigrate = relationutils.MigrateObjectTypeIds(objectTypes)
+		if len(objectTypesToMigrate) > 0 {
+			st.SetObjectTypesToMigrate(append(st.ObjectTypesToMigrate(), objectTypesToMigrate...))
+		}
+	}
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(object))
