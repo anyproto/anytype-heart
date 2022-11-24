@@ -35,7 +35,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -370,17 +369,6 @@ func (s *Service) CloseBlocks() {
 		s.cache.Reset(ob.Id())
 		return true
 	})
-}
-
-func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
-	id, _, err := s.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypeWorkspace,
-		&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
-			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
-			bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
-			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
-		}}, nil)
-	return id, err
 }
 
 func (s *Service) AddSubObjectToWorkspace(
@@ -816,74 +804,6 @@ func (s *Service) sendOnRemoveEvent(ids ...string) {
 	}
 }
 
-// CreateLinkToTheNewObject creates an object and stores the link to it in the context block
-func (s *Service) CreateLinkToTheNewObject(
-	ctx *session.Context,
-	groupId string,
-	req pb.RpcBlockLinkCreateWithObjectRequest,
-) (linkId string, objectId string, err error) {
-	if req.ContextId == req.TemplateId && req.ContextId != "" {
-		err = fmt.Errorf("unable to create link to template from this template")
-		return
-	}
-	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
-
-	var creator func(ctx context.Context) (string, error)
-
-	// TODO: this is deprecated mechanism, because we potentially can create object with any other type
-	if pbtypes.GetString(req.Details, bundle.RelationKeyType.String()) == bundle.TypeKeySet.URL() {
-		creator = func(ctx context.Context) (string, error) {
-			objectId, _, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
-				Details: req.Details,
-			})
-			if err != nil {
-				return objectId, fmt.Errorf("create smartblock error: %v", err)
-			}
-			return objectId, nil
-		}
-	} else {
-		creator = func(ctx context.Context) (string, error) {
-			objectId, _, err = s.objectCreator.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
-			if err != nil {
-				return objectId, fmt.Errorf("create smartblock error: %v", err)
-			}
-			return objectId, nil
-		}
-	}
-
-	s.objectCreator.InjectWorkspaceId(req.Details, req.ContextId)
-	objectId, err = creator(context.TODO())
-	if err != nil {
-		return
-	}
-
-	if req.ContextId == "" {
-		return
-	}
-
-	err = DoState(s, req.ContextId, func(st *state.State, sb basic.Creatable) error {
-		// TODO move to component
-		linkId, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
-			TargetId: req.TargetId,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: objectId,
-						Style:         model.BlockContentLink_Page,
-					},
-				},
-				Fields: req.Fields,
-			},
-			Position: req.Position,
-		})
-		if err != nil {
-			return fmt.Errorf("link create error: %v", err)
-		}
-		return nil
-	})
-	return
-}
-
 func (s *Service) CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
@@ -1270,89 +1190,6 @@ func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b sma
 		defer sb.Unlock()
 	}
 	return apply(sb)
-}
-
-func (s *Service) TemplateCreateFromObject(id string) (templateId string, err error) {
-	var st *state.State
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		if b.Type() != model.SmartBlockType_Page {
-			return fmt.Errorf("can't make template from this obect type")
-		}
-		st, err = b.TemplateCreateFromObjectState()
-		return err
-	}); err != nil {
-		return
-	}
-
-	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (s *Service) TemplateCreateFromObjectByObjectType(otId string) (templateId string, err error) {
-	if err = s.Do(otId, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
-		return "", fmt.Errorf("can't open objectType: %v", err)
-	}
-	var st = state.NewDoc("", nil).(*state.State)
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otId})
-	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (s *Service) TemplateClone(id string) (templateId string, err error) {
-	var st *state.State
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		if b.Type() != model.SmartBlockType_BundledTemplate {
-			return fmt.Errorf("can clone bundled templates only")
-		}
-		st = b.NewState().Copy()
-		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
-		st.SetLocalDetails(nil)
-		t := st.ObjectTypes()
-		t, _ = relationutils.MigrateObjectTypeIds(t)
-		st.SetObjectTypes(t)
-		targetObjectType, _ := relationutils.MigrateObjectTypeId(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
-		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectType))
-		return nil
-	}); err != nil {
-		return
-	}
-	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (s *Service) ObjectDuplicate(id string) (objectId string, err error) {
-	var st *state.State
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
-			return err
-		}
-		st = b.NewState().Copy()
-		st.SetLocalDetails(nil)
-		return nil
-	}); err != nil {
-		return
-	}
-
-	sbt, err := coresb.SmartBlockTypeFromID(id)
-	if err != nil {
-		return
-	}
-
-	objectId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
-	if err != nil {
-		return
-	}
-	return
 }
 
 func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {

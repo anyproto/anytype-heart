@@ -125,7 +125,6 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 			log.Errorf("failed to decode thread id from the state: %s", err.Error())
 		}
 	}
-
 	csm, err := c.CreateObjectInWorkspace(ctx, workspaceId, tid, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -157,6 +156,13 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 func (c *Creator) CreateObjectInWorkspace(ctx context.Context, workspaceId string, withId thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
 	startTime := time.Now()
 	ev, exists := ctx.Value(eventCreate).(*metrics.CreateObjectEvent)
+	// TODO: looks like I can move all araound code into some component and use it under DoWithContext:
+	/*
+		Do(func(c editor.Creator) {
+		   c.CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State)
+		}
+
+	*/
 	err = block.DoWithContext(c.blockPicker, ctx, workspaceId, func(workspace *editor.Workspaces) error {
 		if exists {
 			ev.GetWorkspaceBlockWaitMs = time.Now().Sub(startTime).Milliseconds()

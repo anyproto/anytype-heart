@@ -2,12 +2,10 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -21,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -29,12 +26,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -755,137 +748,6 @@ func (s *Service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 
 		return workspace.DeleteObject(objectId)
 	})
-}
-
-func (s *Service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
-	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
-
-	var dvContent model.BlockContentOfDataview
-	var dvSchema schema.Schema
-	if len(req.Source) != 0 {
-		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(s.anytype.ObjectStore(), req.Source); err != nil {
-			return
-		}
-	}
-	var workspaceId string
-	if req.GetDetails().GetFields() != nil {
-		detailsWorkspaceId := req.GetDetails().Fields[bundle.RelationKeyWorkspaceId.String()]
-		if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
-			workspaceId = detailsWorkspaceId.GetStringValue()
-		}
-	}
-
-	// if we don't have anything in details then check the object store
-	if workspaceId == "" {
-		workspaceId = s.anytype.PredefinedBlocks().Account
-	}
-
-	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	csm, err := s.objectCreator.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
-	if err != nil {
-		return "", nil, err
-	}
-
-	setId = csm.ID()
-
-	state := state.NewDoc(csm.ID(), nil).NewState()
-	if workspaceId != "" {
-		state.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
-	}
-
-	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
-	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
-
-	tmpls := []template.StateTransformer{
-		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
-		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
-		template.WithRequiredRelations(),
-	}
-	var blockContent *model.BlockContentOfDataview
-	if dvSchema != nil {
-		blockContent = &dvContent
-	}
-	if blockContent != nil {
-		for i, view := range blockContent.Dataview.Views {
-			if view.Relations == nil {
-				blockContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(blockContent.Dataview.Relations)
-			}
-		}
-		tmpls = append(tmpls,
-			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
-			template.WithDataview(*blockContent, false),
-		)
-	}
-
-	if err = template.InitTemplate(state, tmpls...); err != nil {
-		return "", nil, err
-	}
-
-	state.InjectDerivedDetails()
-	sb, err := s.NewSmartBlock(setId, &smartblock.InitContext{
-		State: state,
-	})
-	if err != nil {
-		return "", nil, err
-	}
-	_, ok := sb.(*editor.Set)
-	if !ok {
-		return setId, nil, fmt.Errorf("unexpected set block type: %T", sb)
-	}
-	return setId, sb.CombinedDetails(), err
-}
-
-func (s *Service) ObjectToSet(id string, source []string) (newId string, err error) {
-	if s.app == nil {
-		err = errors.New("app can't be nil")
-		return
-	}
-	var details *types.Struct
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		details = pbtypes.CopyStruct(b.Details())
-
-		s := b.NewState()
-		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
-			textBlock, err := s.GetFirstTextBlock()
-			if err != nil {
-				return err
-			}
-			if textBlock != nil {
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
-			}
-		}
-
-		return nil
-	}); err != nil {
-		return
-	}
-
-	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
-	newId, _, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
-		Source:  source,
-		Details: details,
-	})
-	if err != nil {
-		return
-	}
-
-	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	res, err := oStore.GetWithLinksInfoByID(id)
-	if err != nil {
-		return
-	}
-	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, newId); err != nil {
-			return
-		}
-	}
-	err = s.DeleteObject(id)
-	if err != nil {
-		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
-	}
-
-	return
 }
 
 func (s *Service) RemoveExtraRelations(ctx *session.Context, objectTypeId string, relationKeys []string) (err error) {
