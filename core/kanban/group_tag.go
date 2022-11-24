@@ -74,10 +74,8 @@ func (t *GroupTag) MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, err
 
 	for _, g := range groups {
 		hash := md5.Sum([]byte(g.Id))
-		idHash := make([]byte, len(hash))
-		copy(idHash, hash[:])
 		result = append(result, &model.BlockContentDataviewGroup{
-			Id:  hex.EncodeToString(idHash),
+			Id:  hex.EncodeToString(hash[:]),
 			Value: &model.BlockContentDataviewGroupValueOfTag{
 				Tag: &model.BlockContentDataviewTag{
 					Ids: g.Data.Ids,

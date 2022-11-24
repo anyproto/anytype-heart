@@ -68,15 +68,8 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 	if checkGroups {
 		var records []database.Record
 		for id := range gs.set {
-			var updated *types.Struct
-			for _, e := range ctx.entries {
-				if id == e.id {
-					updated = e.data
-				}
-			}
-
-			if updated != nil {
-				records = append(records, database.Record{Details: updated})
+			if e := ctx.getEntry(id); e != nil {
+				records = append(records, database.Record{Details: e.data})
 			}else {
 				records = append(records, database.Record{Details: gs.cache.Get(id).data})
 			}
