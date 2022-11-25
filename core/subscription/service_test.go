@@ -305,6 +305,7 @@ func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := testapp.New()
 	testMock.RegisterMockObjectStore(ctrl, a)
+	testMock.RegisterMockKanban(ctrl, a)
 	fx := &fixture{
 		Service: New(),
 		a:       a,
@@ -316,6 +317,7 @@ func newFixture(t *testing.T) *fixture {
 	}}
 	a.Register(fx.Service)
 	a.Register(fx.sender)
+
 	fx.store.EXPECT().SubscribeForAll(gomock.Any())
 	require.NoError(t, a.Start(context.Background()))
 	return fx

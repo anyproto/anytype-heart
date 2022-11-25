@@ -2,6 +2,7 @@ package clipboard
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
@@ -14,7 +15,7 @@ import (
 var pasteTargetCreator []func(b simple.Block) PasteTarget
 
 type PasteTarget interface {
-	PasteInside(targetState, clipboardState *state.State) error
+	PasteInside(targetState, clipboardState *state.State, secondBlock simple.Block) error
 }
 
 func resolvePasteTarget(b simple.Block) PasteTarget {
@@ -47,7 +48,7 @@ type cellTarget struct {
 	*model.Block
 }
 
-func (c *cellTarget) PasteInside(targetState, clipboardState *state.State) error {
+func (c *cellTarget) PasteInside(targetState, clipboardState *state.State, secondBlock simple.Block) error {
 	b := targetState.Get(c.Id).(text.Block)
 
 	var nonTextBlocks []simple.Block
@@ -55,18 +56,24 @@ func (c *cellTarget) PasteInside(targetState, clipboardState *state.State) error
 
 	textBlockIds := map[string]struct{}{}
 
-	clipboardState.Iterate(func(b simple.Block) (isContinue bool) {
-		if b.Model().Id != clipboardState.RootId() {
-			tb, ok := b.(text.Block)
-			if ok {
-				textBlocks = append(textBlocks, tb)
-				textBlockIds[b.Model().Id] = struct{}{}
-			} else {
-				nonTextBlocks = append(nonTextBlocks, b)
-			}
+	resolveBlockType := func(b simple.Block) {
+		if b.Model().Id == clipboardState.RootId() {
+			return
 		}
+		tb, ok := b.(text.Block)
+		if ok {
+			textBlocks = append(textBlocks, tb)
+			textBlockIds[b.Model().Id] = struct{}{}
+		} else {
+			nonTextBlocks = append(nonTextBlocks, b)
+		}
+	}
+
+	_ = clipboardState.Iterate(func(b simple.Block) (isContinue bool) {
+		resolveBlockType(b)
 		return true
 	})
+	resolveBlockType(secondBlock)
 
 	for _, b := range nonTextBlocks {
 		b.Model().ChildrenIds = slice.Filter(b.Model().ChildrenIds, func(id string) bool {
@@ -75,10 +82,13 @@ func (c *cellTarget) PasteInside(targetState, clipboardState *state.State) error
 		})
 	}
 
-	sep := ""
+	var sep string
+	if b.GetText() != "" {
+		sep = "\n"
+	}
 	for _, tb := range textBlocks {
 		marks := tb.Model().GetText().Marks
-		txt := tb.GetText()
+		txt := strings.TrimSpace(tb.GetText())
 
 		if err := tb.SetText(sep+txt, marks); err != nil {
 			return fmt.Errorf("set text in block %s: %w", tb.Model().Id, err)

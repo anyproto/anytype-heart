@@ -3,6 +3,7 @@ package anytype
 import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/core/account"
@@ -134,6 +135,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(bookmark.New()).
 		Register(session.New()).
 		Register(importer.New()).
-		Register(decorator.New())
+		Register(decorator.New()).
+		Register(kanban.New())
 	return
 }

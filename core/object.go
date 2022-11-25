@@ -280,11 +280,11 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	return resp
 }
 
-func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse {
-	errResponse := func(err error) *pb.RpcObjectRelationSearchDistinctResponse {
-		r := &pb.RpcObjectRelationSearchDistinctResponse{
-			Error: &pb.RpcObjectRelationSearchDistinctResponseError{
-				Code: pb.RpcObjectRelationSearchDistinctResponseError_UNKNOWN_ERROR,
+func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
+	errResponse := func(err error) *pb.RpcObjectGroupsSubscribeResponse {
+		r := &pb.RpcObjectGroupsSubscribeResponse{
+			Error: &pb.RpcObjectGroupsSubscribeResponseError{
+				Code: pb.RpcObjectGroupsSubscribeResponseError_UNKNOWN_ERROR,
 			},
 		}
 		if err != nil {
@@ -300,15 +300,14 @@ func (mw *Middleware) ObjectRelationSearchDistinct(_ context.Context, req *pb.Rp
 		return errResponse(errors.New("app must be started"))
 	}
 
-	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	groups, err := store.RelationSearchDistinct(req.RelationKey, req.Filters)
+	subService := mw.app.MustComponent(subscription.CName).(subscription.Service)
+
+	resp, err := subService.SubscribeGroups(*req)
 	if err != nil {
 		return errResponse(err)
 	}
 
-	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
-		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
-	}, Groups: groups}
+	return resp
 }
 
 func (mw *Middleware) ObjectSubscribeIds(_ context.Context, req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {

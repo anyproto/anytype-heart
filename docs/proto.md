@@ -528,6 +528,10 @@
     - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
     - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
     - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
+    - [Rpc.Object.GroupsSubscribe](#anytype.Rpc.Object.GroupsSubscribe)
+    - [Rpc.Object.GroupsSubscribe.Request](#anytype.Rpc.Object.GroupsSubscribe.Request)
+    - [Rpc.Object.GroupsSubscribe.Response](#anytype.Rpc.Object.GroupsSubscribe.Response)
+    - [Rpc.Object.GroupsSubscribe.Response.Error](#anytype.Rpc.Object.GroupsSubscribe.Response.Error)
     - [Rpc.Object.Import](#anytype.Rpc.Object.Import)
     - [Rpc.Object.Import.Request](#anytype.Rpc.Object.Import.Request)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype.Rpc.Object.Import.Request.BookmarksParams)
@@ -576,10 +580,6 @@
     - [Rpc.Object.Redo.Request](#anytype.Rpc.Object.Redo.Request)
     - [Rpc.Object.Redo.Response](#anytype.Rpc.Object.Redo.Response)
     - [Rpc.Object.Redo.Response.Error](#anytype.Rpc.Object.Redo.Response.Error)
-    - [Rpc.Object.RelationSearchDistinct](#anytype.Rpc.Object.RelationSearchDistinct)
-    - [Rpc.Object.RelationSearchDistinct.Request](#anytype.Rpc.Object.RelationSearchDistinct.Request)
-    - [Rpc.Object.RelationSearchDistinct.Response](#anytype.Rpc.Object.RelationSearchDistinct.Response)
-    - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error)
     - [Rpc.Object.Search](#anytype.Rpc.Object.Search)
     - [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request)
     - [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response)
@@ -903,6 +903,7 @@
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype.Rpc.Object.Duplicate.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code)
+    - [Rpc.Object.GroupsSubscribe.Response.Error.Code](#anytype.Rpc.Object.GroupsSubscribe.Response.Error.Code)
     - [Rpc.Object.Import.Request.Mode](#anytype.Rpc.Object.Import.Request.Mode)
     - [Rpc.Object.Import.Request.Type](#anytype.Rpc.Object.Import.Request.Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype.Rpc.Object.Import.Response.Error.Code)
@@ -918,7 +919,6 @@
     - [Rpc.Object.Open.Response.Error.Code](#anytype.Rpc.Object.Open.Response.Error.Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype.Rpc.Object.OpenBreadcrumbs.Response.Error.Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype.Rpc.Object.Redo.Response.Error.Code)
-    - [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error.Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchSubscribe.Response.Error.Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchUnsubscribe.Response.Error.Code)
@@ -1095,6 +1095,7 @@
     - [Event.Object.Subscription](#anytype.Event.Object.Subscription)
     - [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add)
     - [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters)
+    - [Event.Object.Subscription.Groups](#anytype.Event.Object.Subscription.Groups)
     - [Event.Object.Subscription.Position](#anytype.Event.Object.Subscription.Position)
     - [Event.Object.Subscription.Remove](#anytype.Event.Object.Subscription.Remove)
     - [Event.Ping](#anytype.Event.Ping)
@@ -1287,8 +1288,8 @@
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request) | [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype.Rpc.Object.SearchSubscribe.Request) | [Rpc.Object.SearchSubscribe.Response](#anytype.Rpc.Object.SearchSubscribe.Response) |  |
-| ObjectRelationSearchDistinct | [Rpc.Object.RelationSearchDistinct.Request](#anytype.Rpc.Object.RelationSearchDistinct.Request) | [Rpc.Object.RelationSearchDistinct.Response](#anytype.Rpc.Object.RelationSearchDistinct.Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype.Rpc.Object.SubscribeIds.Request) | [Rpc.Object.SubscribeIds.Response](#anytype.Rpc.Object.SubscribeIds.Response) |  |
+| ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype.Rpc.Object.GroupsSubscribe.Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype.Rpc.Object.GroupsSubscribe.Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype.Rpc.Object.SearchUnsubscribe.Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype.Rpc.Object.SearchUnsubscribe.Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype.Rpc.Object.SetDetails.Request) | [Rpc.Object.SetDetails.Response](#anytype.Rpc.Object.SetDetails.Response) |  |
 | ObjectDuplicate | [Rpc.Object.Duplicate.Request](#anytype.Rpc.Object.Duplicate.Request) | [Rpc.Object.Duplicate.Response](#anytype.Rpc.Object.Duplicate.Response) |  |
@@ -9079,6 +9080,67 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object.GroupsSubscribe"></a>
+
+### Rpc.Object.GroupsSubscribe
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.GroupsSubscribe.Request"></a>
+
+### Rpc.Object.GroupsSubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+| relationKey | [string](#string) |  |  |
+| filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+| source | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.GroupsSubscribe.Response"></a>
+
+### Rpc.Object.GroupsSubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.GroupsSubscribe.Response.Error](#anytype.Rpc.Object.GroupsSubscribe.Response.Error) |  |  |
+| groups | [model.Block.Content.Dataview.Group](#anytype.model.Block.Content.Dataview.Group) | repeated |  |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.GroupsSubscribe.Response.Error"></a>
+
+### Rpc.Object.GroupsSubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.GroupsSubscribe.Response.Error.Code](#anytype.Rpc.Object.GroupsSubscribe.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.Import"></a>
 
 ### Rpc.Object.Import
@@ -9775,64 +9837,6 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Redo.Response.Error.Code](#anytype.Rpc.Object.Redo.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.RelationSearchDistinct"></a>
-
-### Rpc.Object.RelationSearchDistinct
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.RelationSearchDistinct.Request"></a>
-
-### Rpc.Object.RelationSearchDistinct.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relationKey | [string](#string) |  |  |
-| filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.RelationSearchDistinct.Response"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error) |  |  |
-| groups | [model.Block.Content.Dataview.Group](#anytype.model.Block.Content.Dataview.Group) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.RelationSearchDistinct.Response.Error"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype.Rpc.Object.RelationSearchDistinct.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14366,6 +14370,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Object.GroupsSubscribe.Response.Error.Code"></a>
+
+### Rpc.Object.GroupsSubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Object.Import.Request.Mode"></a>
 
 ### Rpc.Object.Import.Request.Mode
@@ -14562,19 +14579,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_MOVE | 3 | ... |
-
-
-
-<a name="anytype.Rpc.Object.RelationSearchDistinct.Response.Error.Code"></a>
-
-### Rpc.Object.RelationSearchDistinct.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
 
 
 
@@ -16973,6 +16977,7 @@ Precondition: user A opened a block
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype.Event.Object.Subscription.Remove) |  |  |
 | subscriptionPosition | [Event.Object.Subscription.Position](#anytype.Event.Object.Subscription.Position) |  |  |
 | subscriptionCounters | [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters) |  |  |
+| subscriptionGroups | [Event.Object.Subscription.Groups](#anytype.Event.Object.Subscription.Groups) |  |  |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
@@ -17215,6 +17220,23 @@ Adds new document to subscriptions
 | nextCount | [int64](#int64) |  | how many records available after |
 | prevCount | [int64](#int64) |  | how many records available before |
 | subId | [string](#string) |  | subscription id |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Subscription.Groups"></a>
+
+### Event.Object.Subscription.Groups
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+| group | [model.Block.Content.Dataview.Group](#anytype.model.Block.Content.Dataview.Group) |  |  |
+| remove | [bool](#bool) |  |  |
 
 
 

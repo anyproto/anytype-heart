@@ -177,16 +177,17 @@ func (p *pasteCtrl) singleRange() (err error) {
 	if selText == nil {
 		return
 	}
+
+	targetId := selText.Model().Id
 	if secondBlock, err = selText.RangeSplit(p.selRange.From, p.selRange.To, false); err != nil {
 		return
 	}
 	p.s.Add(secondBlock)
-	targetId := selText.Model().Id
 
 	if target := resolvePasteTarget(p.s.Get(targetId)); target != nil {
-		return target.PasteInside(p.s, p.ps)
+		return target.PasteInside(p.s, p.ps, secondBlock)
 	}
-
+	
 	isPasteToHeader := targetId == template.TitleBlockId || targetId == template.DescriptionBlockId
 	pos := model.Block_Bottom
 	if isPasteToHeader {
