@@ -4,6 +4,7 @@ import (
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -57,7 +58,12 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 	var templatesSource string
+	var isBundled bool
 	if strings.HasPrefix(p.Id(), addr.BundledObjectTypeURLPrefix) {
+		isBundled = true
+	}
+
+	if isBundled {
 		templatesSource = bundle.TypeKeyTemplate.BundledURL()
 	} else {
 		templatesSource = bundle.TypeKeyTemplate.URL()
@@ -90,7 +96,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 	var recommendedRelationsKeys []string
-	for _, relId := range pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String()) {
+	for _, relId := range pbtypes.GetStringList(ctx.State.Details(), bundle.RelationKeyRecommendedRelations.String()) {
 		relKey, err := pbtypes.RelationIdToKey(relId)
 		if err != nil {
 			log.Errorf("recommendedRelations of %s has incorrect id: %s", p.Id(), relId)
@@ -123,9 +129,20 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	rels, err := p.RelationService().FetchKeys(recommendedRelationsKeys...)
-	if err != nil {
-		return err
+	var rels relationutils.Relations
+	if isBundled {
+		for _, relKey := range recommendedRelationsKeys {
+			rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
+			if rel == nil {
+				continue
+			}
+			rels = append(rels, &relationutils.Relation{Relation: rel})
+		}
+	} else {
+		rels, err = p.RelationService().FetchKeys(recommendedRelationsKeys...)
+		if err != nil {
+			return err
+		}
 	}
 
 	var relIds []string
@@ -135,7 +152,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			Key:       rel.Key,
 			IsVisible: !rel.Hidden,
 		})
-		if strings.HasPrefix(p.Id(), addr.BundledObjectTypeURLPrefix) {
+		if isBundled {
 			relIds = append(relIds, addr.BundledRelationURLPrefix+rel.Key)
 		} else {
 			relIds = append(relIds, addr.RelationKeyToIdPrefix+rel.Key)
