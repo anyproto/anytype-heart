@@ -136,7 +136,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			IsVisible: !rel.Hidden,
 		})
 		if strings.HasPrefix(p.Id(), addr.BundledObjectTypeURLPrefix) {
-			relIds = append(relIds, addr.BundledObjectTypeURLPrefix+rel.Key)
+			relIds = append(relIds, addr.BundledRelationURLPrefix+rel.Key)
 		} else {
 			relIds = append(relIds, addr.RelationKeyToIdPrefix+rel.Key)
 		}
