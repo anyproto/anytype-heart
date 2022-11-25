@@ -619,8 +619,11 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 
 	var recommendedRelationIds []string
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
-		relKey := strings.TrimPrefix(relId, addr.BundledRelationURLPrefix)
-		relKey = strings.TrimPrefix(relId, addr.RelationKeyToIdPrefix)
+		relKey, err2 := pbtypes.RelationIdToKey(relId)
+		if err2 != nil {
+			log.Errorf("create object type: invalid recommended relation id: %s", relId)
+			continue
+		}
 		rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
 		if rel != nil {
 			_, _, err2 := w.createRelation(st, (&relationutils.Relation{rel}).ToStruct())
