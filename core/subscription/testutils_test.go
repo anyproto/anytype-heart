@@ -100,3 +100,21 @@ func assertCtxEmpty(t *testing.T, ctx *opCtx) {
 	assert.Len(t, ctx.change, 0, "change not empty")
 	assert.Len(t, ctx.position, 0, "position not empty")
 }
+
+func assertCtxGroup(t *testing.T, ctx *opCtx, added, removed int) {
+	foundAdded := 0
+	for _, g := range ctx.groups {
+		if !g.remove {
+			foundAdded++
+		}
+	}
+	assert.Equal(t, foundAdded, added)
+
+	foundRemoved := 0
+	for _, g := range ctx.groups {
+		if g.remove {
+			foundRemoved++
+		}
+	}
+	assert.Equal(t, foundRemoved, removed)
+}

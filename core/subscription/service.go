@@ -3,6 +3,7 @@ package subscription
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"sync"
 	"time"
 
@@ -38,6 +39,7 @@ type Service interface {
 	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
+	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
 
@@ -60,6 +62,7 @@ type service struct {
 	recBatch      *mb.MB
 
 	objectStore objectstore.ObjectStore
+	kanban 		kanban.Service
 	sendEvent   func(e *pb.Event)
 
 	m      sync.Mutex
@@ -71,6 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.ctxBuf = &opCtx{c: s.cache}
@@ -211,6 +215,76 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 		Records:      subRecords,
 		Dependencies: depRecords,
 		SubId:        req.SubId,
+	}, nil
+}
+
+func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+	subId := ""
+
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	q := database.Query{
+		Filters: req.Filters,
+	}
+
+	f, err := database.NewFilters(q, nil, time.Now().Location())
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.Source) > 0 {
+		sourceFilter, err := s.filtersFromSource(req.Source)
+		if err != nil {
+			return nil, fmt.Errorf("can't make filter from source: %v", err)
+		}
+		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
+	}
+
+	grouper, err := s.kanban.Grouper(req.RelationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := grouper.InitGroups(f); err != nil {
+		return nil, err
+	}
+
+	dataViewGroups, err := grouper.MakeDataViewGroups()
+	if err != nil {
+		return nil, err
+	}
+
+	if tagGrouper, ok := grouper.(*kanban.GroupTag); ok {
+		groups, err := tagGrouper.MakeDataViewGroups()
+		if err != nil {
+			return nil, err
+		}
+
+		subId = req.SubId
+		if subId == "" {
+			subId = bson.NewObjectId().Hex()
+		}
+		sub := s.newGroupSub(subId, req.RelationKey, groups)
+
+		entries := make([]*entry, 0, len(tagGrouper.Records))
+		for _, r := range tagGrouper.Records {
+			entries = append(entries, &entry{
+				id:   pbtypes.GetString(r.Details, "id"),
+				data: r.Details,
+			})
+		}
+
+		if err := sub.init(entries); err != nil {
+			return nil, err
+		}
+		s.subscriptions[sub.id] = sub
+	}
+
+	return &pb.RpcObjectGroupsSubscribeResponse{
+		Error: &pb.RpcObjectGroupsSubscribeResponseError{},
+		Groups:      dataViewGroups,
+		SubId:        subId,
 	}, nil
 }
 

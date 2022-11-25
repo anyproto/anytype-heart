@@ -3,6 +3,7 @@ package subscription
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -34,6 +35,12 @@ type opCounter struct {
 	nextCount int
 }
 
+type opGroup struct {
+	subId string
+	group *model.BlockContentDataviewGroup
+	remove bool
+}
+
 type opCtx struct {
 	// subIds for remove
 	remove   []opRemove
@@ -41,6 +48,7 @@ type opCtx struct {
 	position []opPosition
 	counters []opCounter
 	entries  []*entry
+	groups   []opGroup
 
 	keysBuf []struct {
 		id     string
@@ -121,6 +129,18 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 		} else {
 			ctx.c.Remove(e.id)
 		}
+	}
+
+	for _, opGroup := range ctx.groups {
+		subMsgs = append(subMsgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfSubscriptionGroups{
+				SubscriptionGroups: &pb.EventObjectSubscriptionGroups{
+					SubId: opGroup.subId,
+					Group: opGroup.group,
+					Remove:  opGroup.remove,
+				},
+			},
+		})
 	}
 
 	return &pb.Event{
@@ -208,4 +228,5 @@ func (ctx *opCtx) reset() {
 	ctx.counters = ctx.counters[:0]
 	ctx.keysBuf = ctx.keysBuf[:0]
 	ctx.entries = ctx.entries[:0]
+	ctx.groups = ctx.groups[:0]
 }
