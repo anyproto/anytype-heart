@@ -265,7 +265,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		if subId == "" {
 			subId = bson.NewObjectId().Hex()
 		}
-		sub := s.newGroupSub(subId, req.RelationKey, groups)
+		sub := s.newGroupSub(subId, req.RelationKey, f, groups)
 
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {

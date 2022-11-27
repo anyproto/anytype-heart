@@ -9,12 +9,13 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-func (s *service) newGroupSub(id string, relKey string, groups []*model.BlockContentDataviewGroup) *groupSub {
+func (s *service) newGroupSub(id string, relKey string, f *database.Filters,  groups []*model.BlockContentDataviewGroup) *groupSub {
 	sub := &groupSub{
 		id:    id,
 		relKey: relKey,
 		cache: s.cache,
 		set: make(map[string]struct{}),
+		f: f,
 		groups: groups,
 	}
 	return sub
@@ -27,6 +28,8 @@ type groupSub struct {
 	cache *cache
 
 	set map[string]struct{}
+
+	f *database.Filters
 
 	groups []*model.BlockContentDataviewGroup
 }
@@ -47,6 +50,7 @@ func (gs *groupSub) counters() (prev, next int) {
 func (gs *groupSub) onChange(ctx *opCtx) {
 	checkGroups := false
 	for _, ctxEntry := range ctx.entries {
+		inFilter := gs.f.FilterObj.FilterObject(ctxEntry)
 		if _, inSet := gs.set[ctxEntry.id]; inSet {
 			cacheEntry := gs.cache.Get(ctxEntry.id)
 			if !checkGroups && cacheEntry != nil {
@@ -54,11 +58,11 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 					newList := pbtypes.GetStringList(ctxEntry.data, gs.relKey)
 					checkGroups = !slice.UnsortedEquals(oldList, newList)
 			}
-			if cacheEntry == nil || len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) == 0 { // if tags became nil
+			if !inFilter {
 				gs.cache.RemoveSubId(ctxEntry.id, gs.id)
 				delete(gs.set, ctxEntry.id)
 			}
-		} else if len(pbtypes.GetStringList(ctxEntry.data, gs.relKey)) > 0 { // if not in cache but has been added new tags
+		} else if inFilter { // if not in cache but has been added new tags
 			gs.cache.Set(ctxEntry)
 			gs.set[ctxEntry.id] = struct{}{}
 			checkGroups = true
