@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -44,9 +45,15 @@ func TestGroupTag(t *testing.T) {
 	entries := genTagEntries()
 	groups := tagEntriesToGroups(entries)
 
+	q := database.Query{
+	}
+
+	f, err := database.NewFilters(q, nil, time.Now().Location())
+	require.NoError(t, err)
+
 	t.Run("change existing groups", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -62,7 +69,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("add new group", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -76,9 +83,9 @@ func TestGroupTag(t *testing.T) {
 		assertCtxGroup(t, ctx, 1, 0)
 	})
 
-	t.Run("remove existing group", func(t *testing.T) {
+	t.Run("remove existing group by setting tag null", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -86,6 +93,22 @@ func TestGroupTag(t *testing.T) {
 		ctx.entries = append(ctx.entries, &entry{
 			id: "id_one", data: &types.Struct{Fields: map[string]*types.Value{
 				bundle.RelationKeyTag.String(): pbtypes.StringList([]string{}),
+			}}})
+		sub.onChange(ctx)
+
+		assertCtxGroup(t, ctx, 0, 1)
+	})
+
+	t.Run("remove existing group by removing", func(t *testing.T) {
+		entries := genTagEntries()
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+
+		require.NoError(t, sub.init(entries))
+
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, &entry{
+			id: "id_one", data: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyIsArchived.String(): pbtypes.Bool(true),
 			}}})
 		sub.onChange(ctx)
 
