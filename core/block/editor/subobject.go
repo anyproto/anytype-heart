@@ -61,7 +61,6 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	return smartblock.ObjectApplyTemplate(o, ctx.State,
-		template.WithForcedDetail(bundle.RelationKeyIsDeleted, pbtypes.Bool(false)),
 		template.WithForcedObjectTypes([]string{ot}),
 		fixTypes,
 	)
