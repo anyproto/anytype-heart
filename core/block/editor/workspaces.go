@@ -550,7 +550,7 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 			return id, object, ErrSubObjectAlreadyExists
 		}
 		if bundle.HasRelation(key) {
-			object.Fields[bundle.RelationKeySource.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
+			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
 		}
 	}
 	id = addr.RelationKeyToIdPrefix + key
@@ -643,7 +643,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	} else {
 		key = strings.TrimPrefix(key, addr.BundledObjectTypeURLPrefix)
 		if bundle.HasObjectType(key) {
-			object.Fields[bundle.RelationKeySource.String()] = pbtypes.String(addr.BundledObjectTypeURLPrefix + key)
+			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledObjectTypeURLPrefix + key)
 		}
 	}
 

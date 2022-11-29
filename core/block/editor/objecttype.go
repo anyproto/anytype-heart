@@ -171,6 +171,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDataviewID("templates", templatesDataview, true),
 		template.WithDataview(dataview, true),
 		template.WithForcedDetail(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds)),
+		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject),
 		template.WithChildrenSorter(p.RootId(), func(blockIds []string) {
 			i := slice.FindPos(blockIds, "templates")
 			j := slice.FindPos(blockIds, template.DataviewBlockId)
@@ -179,6 +180,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
 			}
 		}),
+		template.WithCondition(!isBundled, template.WithAddedFeaturedRelations(bundle.RelationKeySourceObject)),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),

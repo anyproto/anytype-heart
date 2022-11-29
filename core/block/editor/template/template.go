@@ -155,6 +155,24 @@ var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTra
 	}
 }
 
+// MigrateRelationValue moves a relation value from the old key to the new key.
+// In case new key already exists, it does nothing
+// In case old key does not exist, it does nothing
+var MigrateRelationValue = func(from bundle.RelationKey, to bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		if s.Details().GetFields() == nil {
+			return
+		}
+		if s.Details().GetFields()[to.String()] == nil {
+			if val := s.Details().GetFields()[from.String()]; val != nil {
+				s.SetDetailAndBundledRelation(to, val)
+				s.RemoveDetail(from.String())
+				s.RemoveRelation(from.String())
+			}
+		}
+	}
+}
+
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
 	return WithDetail(bundle.RelationKeyIconEmoji, pbtypes.String(iconEmoji))
 }
@@ -258,6 +276,16 @@ var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
 })
+
+var WithAddedFeaturedRelations = func(key bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		if l := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String()); slice.FindPos(l, key.String()) > -1 {
+			return
+		} else {
+			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(append(l, key.String())))
+		}
+	}
+}
 
 var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
