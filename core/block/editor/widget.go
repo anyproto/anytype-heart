@@ -35,7 +35,10 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = w.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return smartblock.ObjectApplyTemplate(w, ctx.State, template.WithObjectTypesAndLayout([]string{bundle.TypeKeyWidget.URL()}, model.ObjectType_basic))
+	return smartblock.ObjectApplyTemplate(w, ctx.State,
+		template.WithEmpty,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyWidget.URL()}, model.ObjectType_basic),
+	)
 }
 
 func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
