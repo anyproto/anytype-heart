@@ -2,8 +2,9 @@ package test
 
 import (
 	"context"
-	"encoding/json"
-	"os"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -12,12 +13,49 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
+
+func getError(i interface{}) (int, string) {
+	v := reflect.ValueOf(i).Elem()
+
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.Kind() != reflect.Pointer {
+			continue
+		}
+		el := f.Elem()
+		if !el.IsValid() {
+			continue
+		}
+		if strings.Contains(el.Type().Name(), "ResponseError") {
+			code := el.FieldByName("Code").Int()
+			desc := el.FieldByName("Description").String()
+			return int(code), desc
+		}
+	}
+	return 0, ""
+}
+
+func call[reqT, respT any](t *testing.T, ctx context.Context,
+	method func(context.Context, reqT, ...grpc.CallOption) (respT, error),
+	req reqT,
+) respT {
+	name := runtime.FuncForPC(reflect.ValueOf(method).Pointer()).Name()
+	name = name[strings.LastIndex(name, ".")+1:]
+	name = name[:strings.LastIndex(name, "-")]
+	t.Logf("calling %s", name)
+
+	resp, err := method(ctx, req)
+	require.NoError(t, err)
+	code, desc := getError(resp)
+	require.Zero(t, code, desc)
+	require.NotNil(t, resp)
+	return resp
+}
 
 func TestBasic(t *testing.T) {
 	conn, err := grpc.Dial("127.0.0.1:31007", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -29,105 +67,72 @@ func TestBasic(t *testing.T) {
 	const rootPath = "/var/anytype"
 	ctx := context.Background()
 
-	t.Run("WalletRecover", func(t *testing.T) {
-		resp, err := c.WalletRecover(ctx, &pb.RpcWalletRecoverRequest{
+	var er *eventReceiver
+	t.Run("login", func(t *testing.T) {
+		_ = call(t, ctx, c.WalletRecover, &pb.RpcWalletRecoverRequest{
 			Mnemonic: mnemonic,
 			RootPath: rootPath,
 		})
-		assert.NoError(t, json.NewEncoder(os.Stdout).Encode(resp))
-		require.NoError(t, err)
-	})
 
-	var tok string
-	t.Run("WalletCreateSession", func(t *testing.T) {
-		resp, err := c.WalletCreateSession(ctx, &pb.RpcWalletCreateSessionRequest{
+		tok := call(t, ctx, c.WalletCreateSession, &pb.RpcWalletCreateSessionRequest{
 			Mnemonic: mnemonic,
-		})
-		require.NoError(t, err)
-		tok = resp.Token
-	})
+		}).Token
 
-	ctx = metadata.AppendToOutgoingContext(ctx, "token", tok)
+		ctx = metadata.AppendToOutgoingContext(ctx, "token", tok)
 
-	stream, err := c.ListenSessionEvents(ctx, &pb.StreamRequest{Token: tok})
-	require.NoError(t, err)
-
-	er := startEventReceiver(ctx, stream)
-
-	t.Run("AccountRecover", func(t *testing.T) {
-		resp, err := c.AccountRecover(ctx, &pb.RpcAccountRecoverRequest{})
+		stream, err := c.ListenSessionEvents(ctx, &pb.StreamRequest{Token: tok})
 		require.NoError(t, err)
 
-		assert.NoError(t, json.NewEncoder(os.Stdout).Encode(resp))
-	})
+		er = startEventReceiver(ctx, stream)
 
-	t.Run("AccountSelect", func(t *testing.T) {
+		call(t, ctx, c.AccountRecover, &pb.RpcAccountRecoverRequest{})
 		var id string
-		// TODO: log waiting for event?
 		waitEvent(er, func(a *pb.EventMessageValueOfAccountShow) {
 			id = a.AccountShow.Account.Id
 		})
-
-		resp, err := c.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
+		call(t, ctx, c.AccountSelect, &pb.RpcAccountSelectRequest{
 			Id: id,
 		})
-		require.NoError(t, err)
-
-		assert.NoError(t, json.NewEncoder(os.Stdout).Encode(resp))
 	})
 
-	t.Run("ObjectSearch", func(t *testing.T) {
-		resp, err := c.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+	{
+		resp := call(t, ctx, c.ObjectSearch, &pb.RpcObjectSearchRequest{
 			Keys: []string{"id", "type", "name"},
 		})
-		require.NoError(t, err)
 		require.NotEmpty(t, resp.Records)
+	}
+
+	call(t, ctx, c.ObjectSearchSubscribe, &pb.RpcObjectSearchSubscribeRequest{
+		SubId: "recent",
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLastOpenedDate.String(),
+				Condition:   model.BlockContentDataviewFilter_Greater,
+			},
+		},
+		Keys: []string{"id", "lastOpenedDate"},
 	})
 
-	t.Run("ObjectSearchSubscribe", func(t *testing.T) {
-		resp, err := c.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
-			SubId: "recent",
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyLastOpenedDate.String(),
-					Condition:   model.BlockContentDataviewFilter_Greater,
-				},
+	objId := call(t, ctx, c.BlockLinkCreateWithObject, &pb.RpcBlockLinkCreateWithObjectRequest{
+		InternalFlags: []*model.InternalFlag{
+			{
+				Value: model.InternalFlag_editorDeleteEmpty,
 			},
-			Keys: []string{"id", "lastOpenedDate"},
-		})
-		require.NoError(t, err)
-		require.NotEmpty(t, resp.Records)
-	})
-
-	var objId string
-	t.Run("BlockLinkCreateWithObject", func(t *testing.T) {
-		resp, err := c.BlockLinkCreateWithObject(ctx, &pb.RpcBlockLinkCreateWithObjectRequest{
-			InternalFlags: []*model.InternalFlag{
-				{
-					Value: model.InternalFlag_editorDeleteEmpty,
-				},
-				{
-					Value: model.InternalFlag_editorSelectType,
-				},
+			{
+				Value: model.InternalFlag_editorSelectType,
 			},
-			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyNote.URL()),
-				},
+		},
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyNote.URL()),
 			},
-		})
+		},
+	}).TargetId
 
-		require.NoError(t, err)
-		require.NotEmpty(t, resp.TargetId)
-		objId = resp.TargetId
-	})
-
-	t.Run("ObjectOpen", func(t *testing.T) {
-		resp, err := c.ObjectOpen(ctx, &pb.RpcObjectOpenRequest{
+	t.Run("open an object", func(t *testing.T) {
+		resp := call(t, ctx, c.ObjectOpen, &pb.RpcObjectOpenRequest{
 			ObjectId: objId,
 		})
-
-		require.NoError(t, err)
 		require.NotNil(t, resp.ObjectView)
 
 		waitEvent(er, func(sa *pb.EventMessageValueOfSubscriptionAdd) {
