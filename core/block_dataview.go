@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func (mw *Middleware) BlockDataviewRelationListAvailable(cctx context.Context, req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
@@ -69,6 +71,43 @@ func (mw *Middleware) BlockDataviewObjectOrderUpdate(cctx context.Context, req *
 		return response(pb.RpcBlockDataviewObjectOrderUpdateResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockDataviewObjectOrderUpdateResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context, req *pb.RpcBlockDataviewCreateWithObjectRequest) *pb.RpcBlockDataviewCreateWithObjectResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockDataviewCreateWithObjectResponseErrorCode, id string, err error) *pb.RpcBlockDataviewCreateWithObjectResponse {
+		m := &pb.RpcBlockDataviewCreateWithObjectResponse{Error: &pb.RpcBlockDataviewCreateWithObjectResponseError{Code: code}, BlockId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+
+	setId, _, err := mw.objectCreateSet(&pb.RpcObjectCreateSetRequest{
+		Details:       req.Details,
+		InternalFlags: req.InternalFlags,
+		Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
+	})
+
+	req.Block.Content = &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{TargetObjectId: setId}}
+
+	var blockId string
+	err = mw.doBlockService(func(bs block.Service) (err error) {
+		blockId, err = bs.CreateBlock(ctx, pb.RpcBlockCreateRequest{
+			ContextId: req.ContextId,
+			TargetId:  req.TargetId,
+			Block:     req.Block,
+			Position:  req.Position,
+		})
+		return
+	})
+
+	if err != nil {
+		return response(pb.RpcBlockDataviewCreateWithObjectResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockDataviewCreateWithObjectResponseError_NULL, blockId,nil)
 }
 
 func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {

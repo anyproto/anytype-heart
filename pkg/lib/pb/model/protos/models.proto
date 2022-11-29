@@ -313,6 +313,7 @@ message Block {
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
+            string TargetObjectId = 6;
 
             message View {
                 string id = 1;
