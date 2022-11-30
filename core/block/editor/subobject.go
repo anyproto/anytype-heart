@@ -62,6 +62,7 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 
 	return smartblock.ObjectApplyTemplate(o, ctx.State,
 		template.WithForcedObjectTypes([]string{ot}),
+		template.WithCondition(ot == addr.ObjectTypeKeyToIdPrefix+bundle.TypeKeyRelation.String(), template.WithAddedFeaturedRelations(bundle.RelationKeySourceObject)),
 		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject), // todo: remove after release. internal accounts migration
 		fixTypes,
 	)
