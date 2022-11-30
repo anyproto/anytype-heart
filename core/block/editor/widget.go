@@ -22,6 +22,7 @@ type WidgetObject struct {
 func NewWidgetObject() *WidgetObject {
 	sb := smartblock.New()
 	bs := basic.NewBasic(sb)
+
 	return &WidgetObject{
 		SmartBlock: sb,
 		Movable:    bs,
@@ -39,17 +40,6 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithEmpty,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
 	)
-}
-
-func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
-	st := w.NewStateCtx(ctx)
-	for _, id := range ids {
-		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {
-			st.Unlink(p.Model().Id)
-		}
-		st.Unlink(id)
-	}
-	return w.Apply(st)
 }
 
 func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
