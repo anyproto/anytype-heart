@@ -58,6 +58,11 @@ var InstalledTypes = []TypeKey{
 	TypeKeySet,
 	TypeKeyProfile,
 	TypeKeyTemplate,
+	TypeKeyDate,
+	TypeKeyBookmark,
+	TypeKeyDashboard,
+	TypeKeySpace,
+	TypeKeyWeeklyPlan,
 }
 
 var FormatFilePossibleTargetObjectTypes = []string{
