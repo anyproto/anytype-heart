@@ -117,6 +117,10 @@ func (m *Mapper) MapBlocks(blocks []interface{}, notionPageIdsToAnytype, notionD
 			fileBlock, id := block.File.GetFileBlock(model.BlockContentFile_PDF)
 			anytypeBlocks = append(anytypeBlocks, fileBlock)
 			ids = append(ids, id)
+		case *DividerBlock:
+			db, id := block.GetDivBlock()
+			anytypeBlocks = append(anytypeBlocks, db)
+			ids = append(ids, id)
 		}
 	}
 	return anytypeBlocks, ids
