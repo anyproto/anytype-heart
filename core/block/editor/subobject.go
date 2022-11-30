@@ -63,7 +63,7 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	var system bool
-	for _, rel := range bundle.RequiredInternalRelations {
+	for _, rel := range bundle.SystemRelations {
 		if addr.RelationKeyToIdPrefix+rel.String() == o.RootId() {
 			system = true
 			break

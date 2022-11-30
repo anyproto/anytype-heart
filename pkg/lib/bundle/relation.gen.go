@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "1839d763aa53b8aedd5ed2ef31f716db6393d1815f34ec44c76c0e63b0f37631"
+const RelationChecksum = "6a98173ca53949b4018395ef976872c41f5e8bd8c11f555427e8694a2e9a9b0b"
 
 type RelationKey string
 
@@ -1769,12 +1769,12 @@ var (
 		RelationKeyRelationFormatObjectTypes: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Types that used for such relation",
+			Description:      "Prioritized target types for the relation's value",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Id:               "_brrelationFormatObjectTypes",
 			Key:              "relationFormatObjectTypes",
-			Name:             "Object type",
+			Name:             "Relation's target object types",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

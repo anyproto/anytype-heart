@@ -12,8 +12,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-// RequiredInternalRelations contains internal relations will be added to any new object type.
-// Missing ones will be added to object on opening or during reindex
+// RequiredInternalRelations contains internal relations that will be added to EVERY new or existing object
+// if this relation only needs SPECIFIC objects(e.g. of some type) add it to the SystemRelations
 var RequiredInternalRelations = []RelationKey{
 	RelationKeyId,
 	RelationKeyName,
@@ -41,10 +41,21 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyWorkspaceId,
 	RelationKeyLinks,
 	RelationKeyInternalFlags,
+}
+
+// SystemRelations contains relations that have some special biz logic depends on them in some objects
+// in case EVERY object depend on the relation please add it to RequiredInternalRelations
+var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeySource,
 	RelationKeySourceObject,
+	RelationKeyRelationFormat,
+	RelationKeyRelationKey,
+	RelationKeyRelationReadonlyValue,
+	RelationKeyRelationDefaultValue,
+	RelationKeyRelationMaxCount,
+	RelationKeyRelationOptionColor,
 	RelationKeyRelationFormatObjectTypes,
-}
+}...)
 
 // todo: generate from types.json
 var SystemTypes = []TypeKey{
