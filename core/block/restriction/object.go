@@ -48,7 +48,6 @@ var (
 		model.SmartBlockType_BundledRelation:     objRestrictAll,
 		model.SmartBlockType_SubObject: {
 			model.Restrictions_Blocks,
-			model.Restrictions_Relations,
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,

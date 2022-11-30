@@ -77,12 +77,12 @@
     "source": "account"
   },
   {
-    "description": "Types that used for such relation",
+    "description": "Prioritized target types for the relation's value",
     "format": "object",
     "hidden": true,
     "key": "relationFormatObjectTypes",
     "maxCount": 0,
-    "name": "Object type",
+    "name": "Relation's target object types",
     "readonly": true,
     "source": "details"
   },

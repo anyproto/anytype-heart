@@ -41,10 +41,13 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyWorkspaceId,
 	RelationKeyLinks,
 	RelationKeyInternalFlags,
+	RelationKeySource,
+	RelationKeySourceObject,
+	RelationKeyRelationFormatObjectTypes,
 }
 
 // todo: generate from types.json
-var InstalledTypes = []TypeKey{
+var SystemTypes = []TypeKey{
 	TypeKeyPage,
 	TypeKeyNote,
 	TypeKeyTask,

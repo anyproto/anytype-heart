@@ -8,9 +8,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"strings"
@@ -58,6 +60,19 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 			list, _ = relationutils.MigrateObjectTypeIds(list)
 			s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList(list))
 		}
+	}
+
+	var system bool
+	for _, rel := range bundle.RequiredInternalRelations {
+		if addr.RelationKeyToIdPrefix+rel.String() == o.RootId() {
+			system = true
+			break
+		}
+	}
+	if system {
+		rest := o.Restrictions()
+		obj := append(rest.Object.Copy(), model.Restrictions_Delete)
+		o.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
 	}
 
 	return smartblock.ObjectApplyTemplate(o, ctx.State,

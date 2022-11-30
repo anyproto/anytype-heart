@@ -542,8 +542,8 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			log.Info(msg)
 		}
 
-		var ots = make([]string, 0, len(bundle.InstalledTypes))
-		for _, ot := range bundle.InstalledTypes {
+		var ots = make([]string, 0, len(bundle.SystemTypes))
+		for _, ot := range bundle.SystemTypes {
 			ots = append(ots, ot.BundledURL())
 		}
 

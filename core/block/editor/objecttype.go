@@ -4,6 +4,7 @@ import (
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -161,6 +162,20 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
 
+	if !isBundled {
+		var system bool
+		for _, o := range bundle.SystemTypes {
+			if addr.ObjectTypeKeyToIdPrefix+o.String() == p.RootId() {
+				system = true
+				break
+			}
+		}
+		if system {
+			rest := p.Restrictions()
+			obj := append(rest.Object.Copy(), model.Restrictions_Delete)
+			p.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
+		}
+	}
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}, model.ObjectType_objectType),
 		template.WithEmpty,
