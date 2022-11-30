@@ -322,7 +322,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
 		for collName, coll := range data.Fields {
-			if collName == source.WorkspaceCollection || collName == source.AccountMigration {
+			if collName == source.WorkspaceCollection || collName == source.AccountMigration || collName == source.CreatorCollection || collName == source.HighlightedCollection {
 				continue
 			}
 			if coll != nil && coll.GetStructValue() != nil {
