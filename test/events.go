@@ -2,7 +2,9 @@ package test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -13,12 +15,18 @@ import (
 type eventReceiver struct {
 	lock   *sync.Mutex
 	events []*pb.EventMessage
-	// events chan<- *pb.EventMessage
+	token  string
 }
 
-func startEventReceiver(ctx context.Context, c service.ClientCommands_ListenSessionEventsClient) *eventReceiver {
+func startEventReceiver(ctx context.Context, c service.ClientCommandsClient, tok string) (*eventReceiver, error) {
+	stream, err := c.ListenSessionEvents(ctx, &pb.StreamRequest{Token: tok})
+	if err != nil {
+		return nil, err
+	}
+
 	er := &eventReceiver{
-		lock: &sync.Mutex{},
+		lock:  &sync.Mutex{},
+		token: tok,
 	}
 	go func() {
 		for {
@@ -26,7 +34,10 @@ func startEventReceiver(ctx context.Context, c service.ClientCommands_ListenSess
 			case <-ctx.Done():
 				return
 			default:
-				ev, err := c.Recv()
+				ev, err := stream.Recv()
+				if errors.Is(err, io.EOF) {
+					return
+				}
 				if err != nil {
 					fmt.Println("receive error:", err)
 					continue
@@ -39,7 +50,7 @@ func startEventReceiver(ctx context.Context, c service.ClientCommands_ListenSess
 			}
 		}
 	}()
-	return er
+	return er, nil
 }
 
 func waitEvent[t pb.IsEventMessageValue](er *eventReceiver, fn func(x t)) {

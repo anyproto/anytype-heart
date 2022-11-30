@@ -4,5 +4,4 @@ services:
   test:
     build: .
     ports:
-      - "31007:31007"
-      - "31008:31008"
+      - "${ANYTYPE_TEST_GRPC_PORT:-31077}:31007"
