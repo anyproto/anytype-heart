@@ -71,7 +71,7 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	if system {
 		rest := o.Restrictions()
-		obj := append(rest.Object.Copy(), model.Restrictions_Delete)
+		obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Delete, model.Restrictions_Relations}...)
 		o.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
 	}
 
