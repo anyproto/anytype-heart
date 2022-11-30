@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "6d768a2a4549cf7a1d33e0dd4fcea059aad089c2b4cc26341d5b3bca219a53a6"
+const TypeChecksum = "3ac38fcb8c6c8b66995333951e139e86535d8b772163d16839663c16e0c771b7"
 
 type TypeKey string
 
@@ -407,7 +407,7 @@ var (
 			Layout:        model.ObjectType_relation,
 			Name:          "Relation",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationKey), MustGetRelationLink(RelationKeyRelationFormat), MustGetRelationLink(RelationKeyRelationFormatObjectTypes), MustGetRelationLink(RelationKeyRelationMaxCount), MustGetRelationLink(RelationKeyRelationDefaultValue), MustGetRelationLink(RelationKeyRelationKeyRelationReadonlyValue)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationKey), MustGetRelationLink(RelationKeyRelationFormat), MustGetRelationLink(RelationKeyRelationFormatObjectTypes), MustGetRelationLink(RelationKeyRelationMaxCount), MustGetRelationLink(RelationKeyRelationDefaultValue), MustGetRelationLink(RelationKeyRelationReadonlyValue)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_SubObject, model.SmartBlockType_BundledRelation},
 			Url:           TypePrefix + "relation",
 		},

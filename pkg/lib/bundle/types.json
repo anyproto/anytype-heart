@@ -226,7 +226,7 @@
       "relationFormatObjectTypes",
       "relationMaxCount",
       "relationDefaultValue",
-      "RelationKeyRelationReadonlyValue"
+      "relationReadonlyValue"
     ],
     "description": "Meaningful connection between objects"
   },
