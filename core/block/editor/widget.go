@@ -37,7 +37,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	return smartblock.ObjectApplyTemplate(w, ctx.State,
 		template.WithEmpty,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyWidget.URL()}, model.ObjectType_basic),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
 	)
 }
 
