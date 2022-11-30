@@ -1903,6 +1903,7 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | timeZone | [string](#string) |  |  |
+| IPFSStorageAddr | [string](#string) |  |  |
 
 
 
