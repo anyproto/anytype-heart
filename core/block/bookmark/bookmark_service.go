@@ -12,7 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -26,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 const CName = "bookmark"
@@ -44,7 +46,7 @@ type Service interface {
 }
 
 type ObjectManager interface {
-	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, s *state.State) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 }
 
@@ -111,7 +113,7 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
-		objectId, newDetails, err = s.objectManager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+		objectId, newDetails, err = s.objectManager.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil, nil)
 		if err != nil {
 			return "", nil, fmt.Errorf("create bookmark object: %w", err)
 		}

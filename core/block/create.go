@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -21,11 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
-
-// TODO temporarily. Remove this and just use CreateSmartBlockFromState
-func (s *Service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error) {
-	return s.objectCreator.CreateSmartBlockFromState(ctx, sbType, details, relationIds, nil)
-}
 
 func (s *Service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	return s.objectCreator.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
@@ -63,6 +59,11 @@ func (s *Service) TemplateClone(id string) (templateId string, err error) {
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
+		t := st.ObjectTypes()
+		t, _ = relationutils.MigrateObjectTypeIds(t)
+		st.SetObjectTypes(t)
+		targetObjectType, _ := relationutils.MigrateObjectTypeId(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectType))
 		return nil
 	}); err != nil {
 		return
@@ -114,13 +115,13 @@ func (s *Service) TemplateCreateFromObjectByObjectType(otId string) (templateId 
 }
 
 func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
-	id, _, err := s.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypeWorkspace,
+	id, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeWorkspace,
 		&types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
 			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
 			bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
 			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
-		}}, nil)
+		}}, nil, nil)
 	return id, err
 }
 
