@@ -45,6 +45,10 @@ test:
 	@echo 'Running tests...'
 	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anytypeio/go-anytype-middleware/...
 
+test-integration:
+	@echo 'Running integration tests...'
+	@go test -tags=integration -v -count 1 ./test
+
 test-race:
 	@echo 'Running tests with race-detector...'
 	@ANYTYPE_LOG_NOGELF=1 go test -race github.com/anytypeio/go-anytype-middleware/...

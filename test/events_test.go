@@ -1,3 +1,5 @@
+//go:build integration
+
 package test
 
 import (
@@ -53,7 +55,11 @@ func startEventReceiver(ctx context.Context, c service.ClientCommandsClient, tok
 	return er, nil
 }
 
-func waitEvent[t pb.IsEventMessageValue](er *eventReceiver, fn func(x t)) {
+func waitEvent[t pb.IsEventMessageValue](s *testSuite, fn func(x t)) {
+	er := s.events
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	timeout := time.NewTimer(2 * time.Second)
 	for {
 		er.lock.Lock()
 		for i := len(er.events) - 1; i >= 0; i-- {
@@ -70,6 +76,10 @@ func waitEvent[t pb.IsEventMessageValue](er *eventReceiver, fn func(x t)) {
 		}
 		er.lock.Unlock()
 
-		time.Sleep(10 * time.Millisecond)
+		select {
+		case <-ticker.C:
+		case <-timeout.C:
+			s.FailNow("wait event timeout")
+		}
 	}
 }
