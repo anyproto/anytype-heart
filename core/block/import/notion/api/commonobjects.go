@@ -16,7 +16,7 @@ const (
 	Text                        richTextType = "text"
 	Mention                     richTextType = "mention"
 	Equation                    richTextType = "equation"
-	NotionBackgroundColorPrefix              = "background"
+	NotionBackgroundColorSuffix              = "background"
 )
 
 // RichText represent RichText object from Notion https://developers.notion.com/reference/rich-text
@@ -97,7 +97,7 @@ func (rt *RichText) BuildMarkdownFromAnnotations(from, to int32) []*model.BlockC
 	}
 	if rt.Annotations.Color != "" {
 		markType := model.BlockContentTextMark_TextColor
-		if strings.Contains(rt.Annotations.Color, NotionBackgroundColorPrefix) {
+		if strings.Contains(rt.Annotations.Color, NotionBackgroundColorSuffix) {
 			markType = model.BlockContentTextMark_BackgroundColor
 		}
 		marks = append(marks, &model.BlockContentTextMark{

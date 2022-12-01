@@ -129,7 +129,7 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 		}
 	}
 	var backgroundColor string
-	if strings.Contains(t.Color, api.NotionBackgroundColorPrefix) {
+	if strings.Contains(t.Color, api.NotionBackgroundColorSuffix) {
 		backgroundColor = api.NotionColorToAnytype[t.Color]
 	}
 

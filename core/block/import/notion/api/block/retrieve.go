@@ -57,7 +57,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context, pageID, apiKey strin
 
 	for _, b := range blocks {
 		switch bl := b.(type) {
-		case *Heading1Block, *Heading2Block, *Heading3Block, *CodeBlock, *EquationBlock, *FileBlock, *ImageBlock, *VideoBlock, *PdfBlock, *DividerBlock:
+		case *Heading1Block, *Heading2Block, *Heading3Block, *CodeBlock, *EquationBlock, *FileBlock, *ImageBlock, *VideoBlock, *PdfBlock, *DividerBlock, *TableOfContentsBlock:
 			allBlocks = append(allBlocks, bl)
 		case *ParagraphBlock:
 			if bl.HasChildren {
@@ -333,6 +333,13 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 					continue
 				}
 				blocks = append(blocks, &d)
+			case TableOfContents:
+				t := TableOfContentsBlock{}
+				err = json.Unmarshal(buffer, &t)
+				if err != nil {
+					continue
+				}
+				blocks = append(blocks, &t)
 			}
 		}
 
