@@ -8,10 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pb/service"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/anytypeio/go-anytype-middleware/pb/service"
 )
 
 func getError(i interface{}) (int, string) {
@@ -35,16 +36,28 @@ func getError(i interface{}) (int, string) {
 	return 0, ""
 }
 
-func call[reqT, respT any](t *testing.T, ctx context.Context,
+type testingT interface {
+	require.TestingT
+	Logf(string, ...any)
+}
+
+type callCtx interface {
+	T() *testing.T
+	Context() context.Context
+}
+
+func call[reqT, respT any](
+	cctx callCtx,
 	method func(context.Context, reqT, ...grpc.CallOption) (respT, error),
 	req reqT,
 ) respT {
 	name := runtime.FuncForPC(reflect.ValueOf(method).Pointer()).Name()
 	name = name[strings.LastIndex(name, ".")+1:]
 	name = name[:strings.LastIndex(name, "-")]
+	t := cctx.T()
 	t.Logf("calling %s", name)
 
-	resp, err := method(ctx, req)
+	resp, err := method(cctx.Context(), req)
 	require.NoError(t, err)
 	code, desc := getError(resp)
 	require.Zero(t, code, desc)

@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -19,42 +20,106 @@ import (
 
 const rootPath = "/var/anytype"
 
-func createSessionCtx(t *testing.T, c service.ClientCommandsClient, ctx context.Context, mnemonic string) (context.Context, *eventReceiver) {
-	tok := call(t, ctx, c.WalletCreateSession, &pb.RpcWalletCreateSessionRequest{
+type testSuite struct {
+	suite.Suite
+
+	service.ClientCommandsClient
+
+	ctx    context.Context
+	acc    *model.Account
+	events *eventReceiver
+}
+
+func (s *testSuite) Context() context.Context {
+	return s.ctx
+}
+
+func (s *testSuite) SetupTest() {
+	s.ctx = context.Background()
+
+	c, err := newClient()
+	s.Require().NoError(err)
+	s.ClientCommandsClient = c
+
+	raw, err := os.ReadFile(mnemonicFile)
+	mnemonic := string(raw)
+	if os.IsNotExist(err) || mnemonic == "" {
+		s.T().Log("creating new test account")
+		mnemonic = s.accountCreate()
+		err := os.WriteFile(mnemonicFile, []byte(mnemonic), 0600)
+		s.Require().NoError(err)
+		s.T().Log("your mnemonic:", mnemonic)
+	} else {
+		s.T().Log("use existing mnemonic:", mnemonic)
+	}
+
+	_ = call(s, c.WalletRecover, &pb.RpcWalletRecoverRequest{
+		Mnemonic: mnemonic,
+		RootPath: rootPath,
+	})
+
+	s.events = s.createSessionCtx(mnemonic)
+
+	call(s, c.AccountRecover, &pb.RpcAccountRecoverRequest{})
+	var id string
+	waitEvent(s.events, func(a *pb.EventMessageValueOfAccountShow) {
+		id = a.AccountShow.Account.Id
+	})
+	acc := call(s, c.AccountSelect, &pb.RpcAccountSelectRequest{
+		Id: id,
+	}).Account
+
+	s.acc = acc
+}
+
+func (s *testSuite) TearDownTest() {
+	call(s, s.AccountStop, &pb.RpcAccountStopRequest{
+		RemoveData: true,
+	})
+
+	call(s, s.WalletCloseSession, &pb.RpcWalletCloseSessionRequest{
+		Token: s.events.token,
+	})
+}
+
+// TODO rename to setSessionCtx
+func (s *testSuite) createSessionCtx(mnemonic string) *eventReceiver {
+	tok := call(s, s.WalletCreateSession, &pb.RpcWalletCreateSessionRequest{
 		Mnemonic: mnemonic,
 	}).Token
 
-	ctx = metadata.AppendToOutgoingContext(ctx, "token", tok)
+	s.ctx = metadata.AppendToOutgoingContext(s.ctx, "token", tok)
 
-	events, err := startEventReceiver(ctx, c, tok)
-	require.NoError(t, err)
+	events, err := startEventReceiver(s.ctx, s, tok)
+	s.Require().NoError(err)
 
-	return ctx, events
+	return events
 }
 
-func accountCreate(t *testing.T, c service.ClientCommandsClient) string {
-	ctx := context.Background()
+func (s *testSuite) accountCreate() string {
+	s.ctx = context.Background()
 
-	mnemonic := call(t, ctx, c.WalletCreate, &pb.RpcWalletCreateRequest{
+	mnemonic := call(s, s.WalletCreate, &pb.RpcWalletCreateRequest{
 		RootPath: rootPath,
 	}).Mnemonic
 
-	ctx, events := createSessionCtx(t, c, ctx, mnemonic)
+	events := s.createSessionCtx(mnemonic)
 
-	acc := call(t, ctx, c.AccountCreate, &pb.RpcAccountCreateRequest{
+	acc := call(s, s.AccountCreate, &pb.RpcAccountCreateRequest{
 		Name:            "John Doe",
 		AlphaInviteCode: "elbrus",
 		StorePath:       rootPath,
 	})
 
+	t := s.T()
 	require.NotNil(t, acc.Account)
 	require.NotNil(t, acc.Account.Info)
 	assert.NotEmpty(t, acc.Account.Id)
 
-	call(t, ctx, c.AccountStop, &pb.RpcAccountStopRequest{
+	call(s, s.AccountStop, &pb.RpcAccountStopRequest{
 		RemoveData: true,
 	})
-	call(t, ctx, c.WalletCloseSession, &pb.RpcWalletCloseSessionRequest{
+	call(s, s.WalletCloseSession, &pb.RpcWalletCloseSessionRequest{
 		Token: events.token,
 	})
 
@@ -63,78 +128,10 @@ func accountCreate(t *testing.T, c service.ClientCommandsClient) string {
 
 const mnemonicFile = "mnemonic.txt"
 
-type testSession struct {
-	service.ClientCommandsClient
-
-	ctx    context.Context
-	acc    *model.Account
-	events *eventReceiver
-}
-
-func createTestSession(t *testing.T) (context.Context, *testSession) {
-	c, err := newClient()
-	require.NoError(t, err)
-
-	raw, err := os.ReadFile(mnemonicFile)
-	mnemonic := string(raw)
-	if os.IsNotExist(err) || mnemonic == "" {
-		t.Log("creating new test account")
-		mnemonic = accountCreate(t, c)
-		err := os.WriteFile(mnemonicFile, []byte(mnemonic), 0600)
-		require.NoError(t, err)
-		t.Log("your mnemonic:", mnemonic)
-	} else {
-		t.Log("use existing mnemonic:", mnemonic)
-	}
-
-	ctx := context.Background()
-
-	var events *eventReceiver
-	var acc *model.Account
-	t.Run("login", func(t *testing.T) {
-		_ = call(t, ctx, c.WalletRecover, &pb.RpcWalletRecoverRequest{
-			Mnemonic: mnemonic,
-			RootPath: rootPath,
-		})
-
-		ctx, events = createSessionCtx(t, c, ctx, mnemonic)
-
-		call(t, ctx, c.AccountRecover, &pb.RpcAccountRecoverRequest{})
-		var id string
-		waitEvent(events, func(a *pb.EventMessageValueOfAccountShow) {
-			id = a.AccountShow.Account.Id
-		})
-		acc = call(t, ctx, c.AccountSelect, &pb.RpcAccountSelectRequest{
-			Id: id,
-		}).Account
-	})
-
-	return ctx, &testSession{
-		ctx:                  ctx,
-		ClientCommandsClient: c,
-		events:               events,
-		acc:                  acc,
-	}
-}
-
-func (s *testSession) close(t *testing.T) {
-	t.Run("log out", func(t *testing.T) {
-		call(t, s.ctx, s.AccountStop, &pb.RpcAccountStopRequest{
-			RemoveData: true,
-		})
-
-		call(t, s.ctx, s.WalletCloseSession, &pb.RpcWalletCloseSessionRequest{
-			Token: s.events.token,
-		})
-	})
-}
-
-func TestBasic(t *testing.T) {
-	ctx, s := createTestSession(t)
-	defer s.close(t)
-
-	t.Run("open dashboard", func(t *testing.T) {
-		resp := call(t, ctx, s.ObjectOpen, &pb.RpcObjectOpenRequest{
+func (s *testSuite) TestBasic() {
+	s.Run("open dashboard", func() {
+		t := s.T()
+		resp := call(s, s.ObjectOpen, &pb.RpcObjectOpenRequest{
 			ObjectId: s.acc.Info.HomeObjectId,
 		})
 
@@ -146,14 +143,15 @@ func TestBasic(t *testing.T) {
 		assert.NotZero(t, resp.ObjectView.Type)
 	})
 
+	t := s.T()
 	{
-		resp := call(t, ctx, s.ObjectSearch, &pb.RpcObjectSearchRequest{
+		resp := call(s, s.ObjectSearch, &pb.RpcObjectSearchRequest{
 			Keys: []string{"id", "type", "name"},
 		})
 		require.NotEmpty(t, resp.Records)
 	}
 
-	call(t, ctx, s.ObjectSearchSubscribe, &pb.RpcObjectSearchSubscribeRequest{
+	call(s, s.ObjectSearchSubscribe, &pb.RpcObjectSearchSubscribeRequest{
 		SubId: "recent",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -164,7 +162,7 @@ func TestBasic(t *testing.T) {
 		Keys: []string{"id", "lastOpenedDate"},
 	})
 
-	objId := call(t, ctx, s.BlockLinkCreateWithObject, &pb.RpcBlockLinkCreateWithObjectRequest{
+	objId := call(s, s.BlockLinkCreateWithObject, &pb.RpcBlockLinkCreateWithObjectRequest{
 		InternalFlags: []*model.InternalFlag{
 			{
 				Value: model.InternalFlag_editorDeleteEmpty,
@@ -181,7 +179,9 @@ func TestBasic(t *testing.T) {
 	}).TargetId
 
 	t.Run("open an object", func(t *testing.T) {
-		resp := call(t, ctx, s.ObjectOpen, &pb.RpcObjectOpenRequest{
+		t = s.T()
+
+		resp := call(s, s.ObjectOpen, &pb.RpcObjectOpenRequest{
 			ObjectId: objId,
 		})
 		require.NotNil(t, resp.ObjectView)
@@ -195,4 +195,8 @@ func TestBasic(t *testing.T) {
 		})
 	})
 
+}
+
+func TestBasic(t *testing.T) {
+	suite.Run(t, &testSuite{})
 }
