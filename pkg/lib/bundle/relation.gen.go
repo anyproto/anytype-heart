@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "6a98173ca53949b4018395ef976872c41f5e8bd8c11f555427e8694a2e9a9b0b"
+const RelationChecksum = "24e27e6039484e8c7d61e3dd4c432532f83d035fedd34bc57965f6bbd6107a62"
 
 type RelationKey string
 
@@ -1201,7 +1201,7 @@ var (
 		},
 		RelationKeyIsReadonly: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Indicates whether the object is read-only. Means it can't be edited and archived",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
@@ -2019,7 +2019,7 @@ var (
 		RelationKeySmartblockTypes: {
 
 			DataSource:       model.Relation_details,
-			Description:      "List of smartblock types",
+			Description:      "Stored for object type. Contains tge list of smartblock types used to create the object",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
 			Id:               "_brsmartblockTypes",
@@ -2084,7 +2084,7 @@ var (
 		},
 		RelationKeySourceObject: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_object,
 			Id:               "_brsourceObject",

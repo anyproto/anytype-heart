@@ -3,18 +3,19 @@ package editor
 import (
 	"errors"
 	"fmt"
-	"github.com/gogo/protobuf/types"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -28,11 +29,16 @@ type SubObjectImpl interface {
 	SetStruct(*types.Struct) error
 }
 
+var localDetailsAllowedToBeStored = []string{
+	bundle.RelationKeyType.String(),
+	bundle.RelationKeyLastModifiedDate.String(),
+	bundle.RelationKeyLastModifiedBy.String(),
+}
+
 type SubObjectCollection struct {
 	*Set
 	defaultCollectionName string
-
-	collections map[string]map[string]SubObjectImpl
+	collections           map[string]map[string]SubObjectImpl
 
 	sourceService source.Service
 	app           *app.App
@@ -150,6 +156,20 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 	return
 }
 
+func cleanSubObjectDetails(details *types.Struct) *types.Struct {
+	dataToSave := &types.Struct{Fields: map[string]*types.Value{}}
+	for k, v := range details.GetFields() {
+		r, _ := bundle.GetRelation(bundle.RelationKey(k))
+		if r == nil {
+			continue
+		}
+		if r.DataSource == model.Relation_details || slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
+			dataToSave.Fields[k] = v
+		}
+	}
+	return dataToSave
+}
+
 func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p source.PushChangeParams) (string, error) {
 	return func(p source.PushChangeParams) (string, error) {
 		st := c.NewState()
@@ -162,7 +182,15 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 		if _, ok := coll[subId]; !ok {
 			return "", fmt.Errorf("onSubObjectChange: subObject '%s' not exists in collection '%s'", subId, collection)
 		}
-		changed := st.SetInStore([]string{collection, subId}, pbtypes.Struct(p.State.CombinedDetails()))
+
+		dataToSave := p.State.Details()
+		l := p.State.LocalDetails()
+		for _, d := range localDetailsAllowedToBeStored {
+			if v, ok := l.Fields[d]; ok {
+				dataToSave.Fields[d] = v
+			}
+		}
+		changed := st.SetInStore([]string{collection, subId}, pbtypes.Struct(dataToSave))
 		if !changed {
 			return "", nil
 		}
@@ -193,11 +221,15 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	} else {
 		fullId = collection + addr.SubObjectCollectionIdSeparator + subId
 	}
-	subState, err := smartblock.SubState(st, collection, fullId)
+
+	ws := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
+	if ws == "" && c.Anytype().PredefinedBlocks().Account == st.RootId() {
+		ws = st.RootId()
+	}
+	subState, err := SubState(st, collection, fullId, ws)
 	if err != nil {
 		return
 	}
-	template.WithForcedDetail(bundle.RelationKeyWorkspaceId, pbtypes.String(c.Id()))(subState)
 
 	if _, exists := c.collections[collection]; !exists {
 		c.collections[collection] = map[string]SubObjectImpl{}
@@ -211,4 +243,39 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	}
 
 	return
+}
+
+func SubState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
+	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
+	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
+	if data == nil || data.Fields == nil {
+		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
+	}
+	subst := structToState(fullId, data)
+
+	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator}
+	for _, rk := range relationsToCopy {
+		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
+	}
+	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate)
+	subst.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	return subst, nil
+}
+
+func structToState(id string, data *types.Struct) *state.State {
+	blocks := map[string]simple.Block{
+		id: simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
+	}
+	subState := state.NewDoc(id, blocks).(*state.State)
+
+	for k, v := range data.Fields {
+		if rel, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
+			if rel.DataSource == model.Relation_details || slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
+				subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
+			}
+		}
+	}
+	subState.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
+	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
+	return subState
 }

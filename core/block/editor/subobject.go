@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -53,15 +54,6 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 		ot = addr.RelationKeyToIdPrefix + strings.TrimPrefix(ot, addr.BundledRelationURLPrefix)
 	}
 
-	// temp fix for our internal accounts with inconsistent types (should be removed later)
-	// todo: remove after release
-	fixTypes := func(s *state.State) {
-		if list := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationFormatObjectTypes.String()); list != nil {
-			list, _ = relationutils.MigrateObjectTypeIds(list)
-			s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList(list))
-		}
-	}
-
 	var system bool
 	for _, rel := range bundle.SystemRelations {
 		if addr.RelationKeyToIdPrefix+rel.String() == o.RootId() {
@@ -75,12 +67,17 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 		o.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
 	}
 
-	return smartblock.ObjectApplyTemplate(o, ctx.State,
-		template.WithForcedObjectTypes([]string{ot}),
-		template.WithCondition(ot == addr.ObjectTypeKeyToIdPrefix+bundle.TypeKeyRelation.String(), template.WithAddedFeaturedRelations(bundle.RelationKeySourceObject)),
-		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject), // todo: remove after release. internal accounts migration
-		fixTypes,
-	)
+	switch ot {
+	case addr.ObjectTypeKeyToIdPrefix + bundle.TypeKeyRelation.String():
+		return o.initRelation(ctx.State)
+	case addr.RelationKeyToIdPrefix + bundle.TypeKeyObjectType.String():
+		panic("not implemented") // should never happen because objectType case proceed by ObjectType implementation
+	case addr.RelationKeyToIdPrefix + bundle.TypeKeyRelationOption.String():
+		return o.initRelationOption(ctx.State)
+	default:
+		return fmt.Errorf("unknown subobject type %s", ot)
+	}
+
 }
 
 func (o *SubObject) SetStruct(st *types.Struct) error {
@@ -89,4 +86,103 @@ func (o *SubObject) SetStruct(st *types.Struct) error {
 	s := o.NewState()
 	s.SetDetails(st)
 	return o.Apply(s)
+}
+
+func (o *SubObject) initRelation(st *state.State) error {
+	// temp fix for our internal accounts with inconsistent types (should be removed later)
+	// todo: remove after release
+	fixTypes := func(s *state.State) {
+		if list := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationFormatObjectTypes.String()); list != nil {
+			list, _ = relationutils.MigrateObjectTypeIds(list)
+			s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList(list))
+		}
+	}
+
+	relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+	dataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source: []string{st.RootId()},
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   "1",
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: relKey,
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{{
+						Key:       bundle.RelationKeyName.String(),
+						IsVisible: true,
+					},
+						{
+							Key:       relKey,
+							IsVisible: true,
+						},
+					},
+					Filters: nil,
+				},
+			},
+		},
+	}
+
+	return smartblock.ObjectApplyTemplate(o, st,
+		template.WithAllBlocksEditsRestricted,
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation))),
+		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(false)),
+		template.WithAddedFeaturedRelations(bundle.RelationKeySourceObject),
+		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject),
+		template.WithTitle,
+		template.WithDescription,
+		fixTypes,
+		template.WithDefaultFeaturedRelations,
+		template.WithDataview(dataview, false))
+}
+
+func (o *SubObject) initRelationOption(st *state.State) error {
+	// temp fix for our internal accounts with inconsistent types (should be removed later)
+	// todo: remove after release
+	fixTypes := func(s *state.State) {
+		if list := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationFormatObjectTypes.String()); list != nil {
+			list, _ = relationutils.MigrateObjectTypeIds(list)
+			s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList(list))
+		}
+	}
+
+	relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+	dataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source: []string{relKey},
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   "1",
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{},
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: relKey,
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       pbtypes.String(st.RootId()),
+					}},
+				},
+			},
+		},
+	}
+
+	return smartblock.ObjectApplyTemplate(o, st,
+		template.WithAllBlocksEditsRestricted,
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relationOption))),
+		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(false)),
+		template.WithTitle,
+		fixTypes,
+		template.WithDefaultFeaturedRelations,
+		template.WithDataview(dataview, false))
 }

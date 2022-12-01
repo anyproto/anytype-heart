@@ -914,7 +914,7 @@
     "maxCount": 1,
     "name": "Readonly",
     "readonly": true,
-    "source": "details"
+    "source": "derived"
   },
   {
     "description": "Date when the file were added into the anytype",
@@ -1531,7 +1531,7 @@
     "source": "details"
   },
   {
-    "description": "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
+    "description": "Point to the object types or realtions used to aggregate the set. Empty means object of all types will be aggregated ",
     "format": "object",
     "hidden": false,
     "key": "setOf",
@@ -1631,7 +1631,7 @@
     "source": "details"
   },
   {
-    "description": "List of smartblock types",
+    "description": "Stored for object type. Contains tge list of smartblock types used to create the object",
     "format": "number",
     "hidden": true,
     "key": "smartblockTypes",
@@ -1656,6 +1656,6 @@
     "maxCount": 1,
     "name": "Source object",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   }
 ]
