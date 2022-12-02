@@ -27,10 +27,6 @@ func (s *Service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	return s.objectCreator.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
 }
 
-func (s *Service) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error) {
-	return s.objectCreator.CreateSmartBlockFromTemplate(ctx, sbType, details, relationIds, templateId)
-}
-
 func (s *Service) TemplateCreateFromObject(id string) (templateId string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
@@ -138,7 +134,7 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 	// TODO: this is deprecated mechanism, because we potentially can create object with any other type
 	if pbtypes.GetString(req.Details, bundle.RelationKeyType.String()) == bundle.TypeKeySet.URL() {
 		creator = func(ctx context.Context) (string, error) {
-			objectId, _, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
+			objectId, _, err = s.CreateSet(&pb.RpcObjectCreateSetRequest{
 				Details: req.Details,
 			})
 			if err != nil {
@@ -189,7 +185,7 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 	return
 }
 
-func (s *Service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSet(req *pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	var dvContent model.BlockContentOfDataview
@@ -256,7 +252,7 @@ func (s *Service) ObjectToSet(id string, source []string) (newId string, err err
 	}
 
 	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
-	newId, _, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
+	newId, _, err = s.CreateSet(&pb.RpcObjectCreateSetRequest{
 		Source:  source,
 		Details: details,
 	})
@@ -353,6 +349,9 @@ type TemplateIdGetter interface {
 
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
 	details = req.GetDetails()
+	if details.GetFields() == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
 
 	var internalFlags []*model.InternalFlag
 	if v, ok := req.(InternalFlagsGetter); ok {
@@ -363,35 +362,33 @@ func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id
 	objectType, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	if forcedType != "" {
 		objectType = forcedType
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.BundledURL())
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
 	}
 	var sbType = coresb.SmartBlockTypePage
 
 	switch objectType {
 	case bundle.TypeKeyBookmark:
-		return s.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
+		return s.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
 	case bundle.TypeKeySet:
-		return s.objectCreateSet(&pb.RpcObjectCreateSetRequest{
+		return s.CreateSet(&pb.RpcObjectCreateSetRequest{
 			Details:       details,
 			InternalFlags: internalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 		})
 	case bundle.TypeKeyObjectType:
-		return s.objectCreateObjectType(&pb.RpcObjectCreateObjectTypeRequest{
-			Details:       details,
-			InternalFlags: internalFlags,
-		})
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+		return s.CreateSubObjectInWorkspace(details, s.anytype.PredefinedBlocks().Account)
+
 	case bundle.TypeKeyRelation:
-		return s.objectCreateRelation(&pb.RpcObjectCreateRelationRequest{
-			Details: details,
-		})
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+		return s.CreateSubObjectInWorkspace(details, s.anytype.PredefinedBlocks().Account)
 
 	case bundle.TypeKeyRelationOption:
-		return s.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
-			Details: details,
-		})
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
+		return s.CreateSubObjectInWorkspace(details, s.anytype.PredefinedBlocks().Account)
+
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
 	}
@@ -400,45 +397,5 @@ func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id
 	if v, ok := req.(TemplateIdGetter); ok {
 		templateId = v.GetTemplateId()
 	}
-	return s.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateId)
-}
-
-func (s *Service) objectCreateObjectType(req *pb.RpcObjectCreateObjectTypeRequest) (id string, object *types.Struct, err error) {
-	if req.GetDetails().GetFields() == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
-	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-	return s.CreateSubObjectInWorkspace(req.Details, s.anytype.PredefinedBlocks().Account)
-}
-
-func (s *Service) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, *types.Struct, error) {
-	if req.GetDetails().GetFields() == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
-	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-
-	return s.CreateSubObjectInWorkspace(req.Details, s.anytype.PredefinedBlocks().Account)
-}
-
-func (s *Service) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
-	if req.GetDetails().GetFields() == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
-	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-	return s.CreateSubObjectInWorkspace(req.Details, s.anytype.PredefinedBlocks().Account)
-}
-
-func (s *Service) objectCreateSet(req *pb.RpcObjectCreateSetRequest) (string, *types.Struct, error) {
-	if req.GetDetails().GetFields() == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-	return s.CreateSet(*req)
-}
-
-func (s *Service) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, *types.Struct, error) {
-	return s.ObjectCreateBookmark(*req)
+	return s.objectCreator.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateId)
 }

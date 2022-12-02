@@ -1256,7 +1256,7 @@ func (s *Service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
 func (s *Service) ObjectCreateBookmark(
-	req pb.RpcObjectCreateBookmarkRequest,
+	req *pb.RpcObjectCreateBookmarkRequest,
 ) (objectId string, newDetails *types.Struct, err error) {
 	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
@@ -1281,7 +1281,7 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 }
 
 func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err error) {
-	objectId, _, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
+	objectId, _, err = s.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeySource.String(): pbtypes.String(url),
