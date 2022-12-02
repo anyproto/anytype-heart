@@ -41,6 +41,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyWorkspaceId,
 	RelationKeyLinks,
 	RelationKeyInternalFlags,
+	RelationKeyRestrictions,
 }
 
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
