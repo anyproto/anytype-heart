@@ -1,10 +1,14 @@
 package relationutils
 
 import (
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 func RelationFromStruct(st *types.Struct) *Relation {
@@ -97,7 +101,7 @@ func (rs Relations) GetModelByKey(key string) *model.Relation {
 	return nil
 }
 
-func MigrateRelationsModels(rels []*model.Relation) (relLinks []*model.RelationLink) {
+func MigrateRelationModels(rels []*model.Relation) (relLinks []*model.RelationLink) {
 	relLinks = make([]*model.RelationLink, 0, len(rels))
 	for _, rel := range rels {
 		relLinks = append(relLinks, &model.RelationLink{
@@ -106,4 +110,33 @@ func MigrateRelationsModels(rels []*model.Relation) (relLinks []*model.RelationL
 		})
 	}
 	return
+}
+
+func MigrateRelationIds(ids []string) []string {
+	// shortcut if there is nothing to migrate
+	hasIdsToMigrate := false
+	for _, id := range ids {
+		if strings.HasPrefix(id, addr.BundledRelationURLPrefix) || strings.HasPrefix(id, addr.OldIndexedRelationURLPrefix) {
+			hasIdsToMigrate = true
+			break
+		}
+	}
+	if !hasIdsToMigrate {
+		return ids
+	}
+
+	normalized := make([]string, len(ids))
+	var (
+		key string
+		err error
+	)
+	for i, id := range ids {
+		key, err = pbtypes.RelationIdToKey(id)
+		if err != nil {
+			normalized[i] = id
+		} else {
+			normalized[i] = addr.RelationKeyToIdPrefix + key
+		}
+	}
+	return normalized
 }

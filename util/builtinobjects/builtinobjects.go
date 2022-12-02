@@ -160,7 +160,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	f["analyticsOriginalId"] = pbtypes.String(oldId)
 
 	st.Set(simple.New(m))
-	rels := relationutils.MigrateRelationsModels(st.OldExtraRelations())
+	rels := relationutils.MigrateRelationModels(st.OldExtraRelations())
 	st.AddRelationLinks(rels...)
 
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())

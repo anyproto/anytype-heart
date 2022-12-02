@@ -42,11 +42,12 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		// migrate old dataview blocks with relations
 		if dvBlock := b.GetDataview(); dvBlock != nil {
 			if len(dvBlock.RelationLinks) == 0 {
-				dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
+				dvBlock.RelationLinks = relationutils.MigrateRelationModels(dvBlock.Relations)
 			}
 			if !sOpts.doNotMigrateTypes {
 				dvBlock.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dvBlock.Source)
 			}
+			dvBlock.Source = relationutils.MigrateRelationIds(dvBlock.Source) // can also contain relation ids
 		}
 		blocks[b.Id] = simple.New(b)
 	}
@@ -56,7 +57,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	}
 
 	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
-		snapshot.Data.RelationLinks = relationutils.MigrateRelationsModels(snapshot.Data.ExtraRelations)
+		snapshot.Data.RelationLinks = relationutils.MigrateRelationModels(snapshot.Data.ExtraRelations)
 	}
 	// clear nil values
 	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
@@ -383,11 +384,12 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		s.Set(b)
 		if dv := b.Model().GetDataview(); dv != nil {
 			if len(dv.RelationLinks) == 0 {
-				dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
+				dv.RelationLinks = relationutils.MigrateRelationModels(dv.Relations)
 			}
 			var typesToMigrate []string
 			dv.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dv.Source)
 			s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
+			dv.Source = relationutils.MigrateRelationIds(dv.Source) // can also contain relation ids
 		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
