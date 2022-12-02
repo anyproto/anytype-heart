@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/google/uuid"
 	"sort"
 	"strings"
 	"sync"
@@ -79,12 +78,6 @@ const (
 
 type key int
 
-const (
-	collectionRelations  = "rel"
-	collectionObjectType = "ot"
-
-	collectionRelationOptions = "opt"
-)
 const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -588,7 +581,6 @@ func (sb *smartBlock) Locked() bool {
 func (sb *smartBlock) IsLocked() bool {
 	return sb.sendEvent != nil
 }
-
 func (sb *smartBlock) DisableLayouts() {
 	sb.disableLayouts = true
 }
@@ -1379,155 +1371,6 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 		Creator:    creator,
 		State:      st.Copy(),
 	}
-}
-
-func SubStates(st *state.State, collection string) (map[string]*state.State, error) {
-	coll := st.GetCollection(collection)
-	if coll == nil {
-		return nil, fmt.Errorf("collection not found")
-	}
-
-	m := make(map[string]*state.State, len(coll.Fields))
-	for k, v := range coll.GetFields() {
-		m[k] = structToState(k, v.GetStructValue())
-	}
-	return m, nil
-}
-
-func SubState(st *state.State, collection string, fullId string) (*state.State, error) {
-	if collection == source.WorkspaceCollection {
-		return nil, fmt.Errorf("substate not supported")
-	}
-	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
-	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
-	if data == nil || data.Fields == nil {
-		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
-	}
-	subst := structToState(fullId, data)
-	if collection == collectionRelations {
-		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
-		dataview := model.BlockContentOfDataview{
-			Dataview: &model.BlockContentDataview{
-				Source: []string{fullId},
-				Views: []*model.BlockContentDataviewView{
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Table,
-						Name: "All",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationKey: relKey,
-								Type:        model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{{
-							Key:       bundle.RelationKeyName.String(),
-							IsVisible: true,
-						},
-							{
-								Key:       relKey,
-								IsVisible: true,
-							},
-						},
-						Filters: nil,
-					},
-				},
-			},
-		}
-		template.WithAllBlocksEditsRestricted(subst)
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation)))(subst)
-		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))(subst)
-		template.WithTitle(subst)
-		template.WithDescription(subst)
-		template.WithDefaultFeaturedRelations(subst)
-		template.WithDataview(dataview, false)(subst)
-
-	} else if collection == collectionObjectType {
-		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
-		dataview := model.BlockContentOfDataview{
-			Dataview: &model.BlockContentDataview{
-				Source: []string{fullId},
-				Views: []*model.BlockContentDataviewView{
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Table,
-						Name: "All",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationKey: relKey,
-								Type:        model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{{
-							Key:       bundle.RelationKeyName.String(),
-							IsVisible: true,
-						},
-						},
-						Filters: nil,
-					},
-				},
-			},
-		}
-		template.WithAllBlocksEditsRestricted(subst)
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_objectType)))(subst)
-		template.WithTitle(subst)
-		template.WithDescription(subst)
-		template.WithDefaultFeaturedRelations(subst)
-		template.WithDataview(dataview, false)(subst)
-
-	} else if collection == collectionRelationOptions {
-		dataview := model.BlockContentOfDataview{
-			Dataview: &model.BlockContentDataview{
-				Source: []string{pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())},
-				Views: []*model.BlockContentDataviewView{
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Table,
-						Name: "All",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationKey: "name",
-								Type:        model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{},
-						Filters: []*model.BlockContentDataviewFilter{{
-							RelationKey: pbtypes.GetString(data, bundle.RelationKeyRelationKey.String()),
-							Condition:   model.BlockContentDataviewFilter_In,
-							Value:       pbtypes.String(fullId),
-						}},
-					},
-				},
-			},
-		}
-
-		template.WithTitle(subst)
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relationOption)))(subst)
-		template.WithDefaultFeaturedRelations(subst)
-		template.WithDataview(dataview, false)(subst)
-	}
-
-	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy}
-	for _, rk := range relationsToCopy {
-		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
-	}
-	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate)
-	return subst, nil
-}
-
-func structToState(id string, data *types.Struct) *state.State {
-	blocks := map[string]simple.Block{
-		id: simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
-	}
-	subState := state.NewDoc(id, blocks).(*state.State)
-
-	for k, v := range data.Fields {
-		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
-			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
-		}
-	}
-	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
-	return subState
 }
 
 func (sb *smartBlock) reportChange(s *state.State) {

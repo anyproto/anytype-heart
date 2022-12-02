@@ -554,7 +554,7 @@ func (s *service) AddSubObjectsToWorkspace(sourceObjectIds []string, workspaceId
 			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceId {
 				return errors.New("object already in collection")
 			}
-			d.Fields[bundle.RelationKeySource.String()] = pbtypes.String(sourceObjectId)
+			d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
 			u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
 			if err != nil {
 				u = b.ObjectType()

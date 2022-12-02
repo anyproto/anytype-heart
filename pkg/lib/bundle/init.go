@@ -48,6 +48,7 @@ var RequiredInternalRelations = []RelationKey{
 var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeySource,
 	RelationKeySourceObject,
+	RelationKeySetOf,
 	RelationKeyRelationFormat,
 	RelationKeyRelationKey,
 	RelationKeyRelationReadonlyValue,
