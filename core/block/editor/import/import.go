@@ -45,13 +45,14 @@ type Import interface {
 	ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error)
 }
 
-func NewImport(sb smartblock.SmartBlock, ctrl Services) Import {
-	return &importImpl{SmartBlock: sb, ctrl: ctrl}
+func NewImport(sb smartblock.SmartBlock, ctrl Services, creator ObjectCreator) Import {
+	return &importImpl{SmartBlock: sb, ctrl: ctrl, creator: creator}
 }
 
 type importImpl struct {
 	smartblock.SmartBlock
-	ctrl Services
+	ctrl    Services
+	creator ObjectCreator
 }
 
 type fileInfo struct {
@@ -64,8 +65,11 @@ type fileInfo struct {
 	parsedBlocks    []*model.Block
 }
 
-type Services interface {
+type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+}
+
+type Services interface {
 	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploadRequest) error
@@ -136,7 +140,7 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			continue
 		}
 
-		pageID, _, err := imp.ctrl.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
+		pageID, _, err := imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 		if err != nil {
 			log.Errorf("failed to create smartblock: %s", err.Error())
 			continue
@@ -270,7 +274,7 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 		// wrap root-level csv files with page
 		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
 			// fixme: move initial details into CreateSmartBlock
-			pageID, _, err := imp.ctrl.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
+			pageID, _, err := imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 			if err != nil {
 				log.Errorf("failed to create smartblock: %s", err.Error())
 				continue

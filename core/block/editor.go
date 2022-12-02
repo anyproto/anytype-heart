@@ -309,7 +309,7 @@ func (s *Service) ImportMarkdown(
 			return rootLinkIds, err
 		}
 	} else {
-		_, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
+		_, pageId, err := s.CreateLinkToTheNewObject(ctx, "", &pb.RpcBlockLinkCreateWithObjectRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{Fields: map[string]*types.Value{
 				"name":      pbtypes.String("Import from Notion"),
@@ -778,7 +778,7 @@ func (s *Service) MoveBlocksToNewPage(
 	ctx *session.Context, req pb.RpcBlockListMoveToNewObjectRequest,
 ) (linkID string, err error) {
 	// 1. Create new page, link
-	linkID, objectID, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
+	linkID, objectID, err := s.CreateLinkToTheNewObject(ctx, "", &pb.RpcBlockLinkCreateWithObjectRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,

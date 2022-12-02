@@ -17,12 +17,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func NewDashboard(importServices _import.Services, dmservice DetailsModifier) *Dashboard {
+func NewDashboard(importServices _import.Services, creator _import.ObjectCreator, dmservice DetailsModifier) *Dashboard {
 	sb := smartblock.New()
 	return &Dashboard{
 		SmartBlock:      sb,
 		AllOperations:   basic.NewBasic(sb), // deprecated
-		Import:          _import.NewImport(sb, importServices),
+		Import:          _import.NewImport(sb, importServices, creator),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: dmservice,
 	}

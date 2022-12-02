@@ -117,10 +117,20 @@ func New() *Service {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateObjectInWorkspace(ctx context.Context, workspaceId string, withId thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error)
 	InjectWorkspaceId(details *types.Struct, objectId string)
+
+	CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+}
+
+type DetailsGetter interface {
+	GetDetails() *types.Struct
+}
+type InternalFlagsGetter interface {
+	GetInternalFlags() []*model.InternalFlag
+}
+type TemplateIdGetter interface {
+	GetTemplateId() string
 }
 
 type Service struct {
@@ -158,7 +168,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
-	s.objectCreator = a.MustComponent("object-creator").(objectCreator)
+	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -803,35 +813,6 @@ func (s *Service) sendOnRemoveEvent(ids ...string) {
 	}
 }
 
-func (s *Service) CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("object is not a workspace")
-		}
-
-		id, newDetails, err = workspace.CreateSubObject(details)
-		return err
-	})
-	return
-}
-
-func (s *Service) CreateSubObjectsInWorkspace(
-	details []*types.Struct,
-) (ids []string, objects []*types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		ids, objects, err = workspace.CreateSubObjects(details)
-		return err
-	})
-	return
-}
-
 func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
 	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
@@ -1231,47 +1212,12 @@ func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
 	})
 }
 
-func (s *Service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
-	contentCh := make(chan *model.BlockContentBookmark, 1)
-	go func() {
-		defer close(contentCh)
-
-		content := &model.BlockContentBookmark{
-			Url: url,
-		}
-		updaters, err := s.bookmark.ContentUpdaters(url)
-		if err != nil {
-			log.Error("fetch bookmark content %s: %s", url, err)
-		}
-		for upd := range updaters {
-			upd(content)
-		}
-		contentCh <- content
-	}()
-
-	return func() *model.BlockContentBookmark {
-		return <-contentCh
-	}
-}
-
-// ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (s *Service) ObjectCreateBookmark(
-	req *pb.RpcObjectCreateBookmarkRequest,
-) (objectId string, newDetails *types.Struct, err error) {
-	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
-	if err != nil {
-		return "", nil, fmt.Errorf("process uri: %w", err)
-	}
-	res := s.fetchBookmarkContent(u)
-	return s.bookmark.CreateBookmarkObject(req.Details, res)
-}
-
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
 	url, err := uri.ProcessURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
-	res := s.fetchBookmarkContent(url)
+	res := s.bookmark.FetchBookmarkContent(url)
 	go func() {
 		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
 			log.Errorf("update bookmark object %s: %s", req.ContextId, err)
@@ -1281,13 +1227,13 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 }
 
 func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err error) {
-	objectId, _, err = s.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
+	objectId, _, err = s.objectCreator.CreateObject(&pb.RpcObjectCreateBookmarkRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeySource.String(): pbtypes.String(url),
 			},
 		},
-	})
+	}, bundle.TypeKeyBookmark)
 	if err != nil {
 		return
 	}

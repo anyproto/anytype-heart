@@ -39,19 +39,25 @@ type ContentFuture func() *model.BlockContentBookmark
 type Service interface {
 	CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
+	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
 	Fetch(id string, params bookmark.FetchParams) (err error)
+	FetchBookmarkContent(url string) ContentFuture
 	ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
 
 	app.Component
 }
 
-type ObjectManager interface {
+type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, s *state.State) (id string, newDetails *types.Struct, err error)
+}
+
+type DetailsSetter interface {
 	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 }
 
 type service struct {
-	objectManager ObjectManager
+	detailsSetter DetailsSetter
+	creator       ObjectCreator
 	store         objectstore.ObjectStore
 	linkPreview   linkpreview.LinkPreview
 	svc           core.Service
@@ -62,7 +68,8 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.objectManager = a.MustComponent("blockService").(ObjectManager)
+	s.detailsSetter = a.MustComponent("blockService").(DetailsSetter)
+	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.svc = a.MustComponent(core.CName).(core.Service)
@@ -113,7 +120,7 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
-		objectId, newDetails, err = s.objectManager.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil, nil)
+		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil, nil)
 		if err != nil {
 			return "", nil, fmt.Errorf("create bookmark object: %w", err)
 		}
@@ -151,7 +158,7 @@ func (s *service) UpdateBookmarkObject(objectId string, getContent ContentFuture
 		})
 	}
 
-	return s.objectManager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+	return s.detailsSetter.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: objectId,
 		Details:   details,
 	})
@@ -168,6 +175,29 @@ func (s *service) Fetch(id string, params bookmark.FetchParams) (err error) {
 	}
 
 	return s.fetcher(id, params)
+}
+
+func (s *service) FetchBookmarkContent(url string) ContentFuture {
+	contentCh := make(chan *model.BlockContentBookmark, 1)
+	go func() {
+		defer close(contentCh)
+
+		content := &model.BlockContentBookmark{
+			Url: url,
+		}
+		updaters, err := s.ContentUpdaters(url)
+		if err != nil {
+			log.Error("fetch bookmark content %s: %s", url, err)
+		}
+		for upd := range updaters {
+			upd(content)
+		}
+		contentCh <- content
+	}()
+
+	return func() *model.BlockContentBookmark {
+		return <-contentCh
+	}
 }
 
 func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {

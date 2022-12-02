@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -13,8 +16,6 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 )
 
 type ObjectCreator interface {
@@ -69,6 +70,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
 		det := &types.Struct{Fields: fields}
+
 		s.InjectWorkspaceId(det, req.ContextId)
 		objectId, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, det, nil, objState)
 		if err != nil {

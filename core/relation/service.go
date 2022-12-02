@@ -161,7 +161,7 @@ func (s *service) MigrateObjectTypes(types []*model.ObjectType) error {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.relationCreator = a.MustComponent(blockServiceCName).(subObjectCreator)
+	s.relationCreator = a.MustComponent("objectCreator").(subObjectCreator)
 
 	return
 }
@@ -379,9 +379,9 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 			return fmt.Errorf("failed to parse URL: %s", err.Error())
 		}
 		// todo: should we allow schemas other than http/https?
-		//if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
+		// if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
 		//	return fmt.Errorf("url scheme %s not supported", u.Scheme)
-		//}
+		// }
 		return nil
 	case model.RelationFormat_email:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
@@ -417,7 +417,7 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 }
 
 func (s *service) validateOptions(rel *relationutils.Relation, v []string) error {
-	//TODO:
+	// TODO:
 	return nil
 }
 

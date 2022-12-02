@@ -22,6 +22,7 @@ func NewPage(
 	fileSource file.BlockService,
 	pageManager bookmark.BlockService,
 	importServices _import.Services,
+	creator _import.ObjectCreator,
 	bookmarkSvc bookmark.BookmarkService,
 ) *Page {
 	sb := smartblock.New()
@@ -34,7 +35,7 @@ func NewPage(
 		File:          f,
 		Clipboard:     clipboard.NewClipboard(sb, f),
 		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		Import:        _import.NewImport(sb, importServices),
+		Import:        _import.NewImport(sb, importServices, creator),
 		Dataview:      dataview.NewDataview(sb),
 		Editor:        table.NewEditor(sb),
 	}

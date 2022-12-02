@@ -10,16 +10,25 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 var log = logging.Logger("object-service")
@@ -31,6 +40,8 @@ const eventCreate eventKey = 0
 type Creator struct {
 	blockService BlockService
 	blockPicker  block.BlockPicker
+	objectStore  objectstore.ObjectStore
+	bookmark     bookmark.Service
 
 	// TODO: remove it?
 	anytype core.Service
@@ -44,10 +55,12 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.anytype = a.MustComponent(core.CName).(core.Service)
 	c.blockService = a.MustComponent(block.CName).(BlockService)
 	c.blockPicker = a.MustComponent(block.CName).(block.BlockPicker)
+	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	return nil
 }
 
-const CName = "object-creator"
+const CName = "objectCreator"
 
 func (c *Creator) Name() (name string) {
 	return CName
@@ -157,13 +170,6 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 func (c *Creator) CreateObjectInWorkspace(ctx context.Context, workspaceId string, withId thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
 	startTime := time.Now()
 	ev, exists := ctx.Value(eventCreate).(*metrics.CreateObjectEvent)
-	// TODO: looks like I can move all araound code into some component and use it under DoWithContext:
-	/*
-		Do(func(c editor.Creator) {
-		   c.CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State)
-		}
-
-	*/
 	err = block.DoWithContext(c.blockPicker, ctx, workspaceId, func(workspace *editor.Workspaces) error {
 		if exists {
 			ev.GetWorkspaceBlockWaitMs = time.Now().Sub(startTime).Milliseconds()
@@ -198,4 +204,136 @@ func (c *Creator) InjectWorkspaceId(details *types.Struct, objectId string) {
 		details.Fields = make(map[string]*types.Value)
 	}
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
+}
+
+func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
+	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
+
+	var dvContent model.BlockContentOfDataview
+	var dvSchema schema.Schema
+	if len(req.Source) != 0 {
+		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
+			return
+		}
+	}
+
+	newState := state.NewDoc("", nil).NewState()
+
+	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
+	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
+
+	tmpls := []template.StateTransformer{
+		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
+		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
+		template.WithRequiredRelations(),
+	}
+	var blockContent *model.BlockContentOfDataview
+	if dvSchema != nil {
+		blockContent = &dvContent
+	}
+	if blockContent != nil {
+		for i, view := range blockContent.Dataview.Views {
+			if view.Relations == nil {
+				blockContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(blockContent.Dataview.Relations)
+			}
+		}
+		tmpls = append(tmpls,
+			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
+			template.WithDataview(*blockContent, false),
+		)
+	}
+
+	if err = template.InitTemplate(newState, tmpls...); err != nil {
+		return "", nil, err
+	}
+
+	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, nil, newState)
+}
+
+// TODO: it must be in another component
+func (c *Creator) CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error) {
+	// todo: rewrite to the current workspace id
+	err = block.Do(c.blockPicker, workspaceId, func(ws *editor.Workspaces) error {
+		id, newDetails, err = ws.CreateSubObject(details)
+		return err
+	})
+	return
+}
+
+// TODO: it must be in another component
+func (c *Creator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	// todo: rewrite to the current workspace id
+	err = block.Do(c.blockPicker, c.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		ids, objects, err = workspace.CreateSubObjects(details)
+		return err
+	})
+	return
+}
+
+// ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
+func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectId string, newDetails *types.Struct, err error) {
+	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
+	if err != nil {
+		return "", nil, fmt.Errorf("process uri: %w", err)
+	}
+	res := c.bookmark.FetchBookmarkContent(u)
+	return c.bookmark.CreateBookmarkObject(req.Details, res)
+}
+
+func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
+	details = req.GetDetails()
+	if details.GetFields() == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+
+	var internalFlags []*model.InternalFlag
+	if v, ok := req.(block.InternalFlagsGetter); ok {
+		internalFlags = v.GetInternalFlags()
+		details = internalflag.PutToDetails(details, internalFlags)
+	}
+
+	objectType, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	if forcedType != "" {
+		objectType = forcedType
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
+	}
+	var sbType = coresb.SmartBlockTypePage
+
+	switch objectType {
+	case bundle.TypeKeyBookmark:
+		return c.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
+			Details: details,
+		})
+	case bundle.TypeKeySet:
+		return c.CreateSet(&pb.RpcObjectCreateSetRequest{
+			Details:       details,
+			InternalFlags: internalFlags,
+			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
+		})
+	case bundle.TypeKeyObjectType:
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
+
+	case bundle.TypeKeyRelation:
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
+
+	case bundle.TypeKeyRelationOption:
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
+		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
+
+	case bundle.TypeKeyTemplate:
+		sbType = coresb.SmartBlockTypeTemplate
+	}
+
+	var templateId string
+	if v, ok := req.(block.TemplateIdGetter); ok {
+		templateId = v.GetTemplateId()
+	}
+	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateId)
 }

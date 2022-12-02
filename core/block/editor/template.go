@@ -18,9 +18,10 @@ func NewTemplate(
 	fileSource file.BlockService,
 	pageManager bookmark.BlockService,
 	importServices _import.Services,
+	creator _import.ObjectCreator,
 	bookmarkSvc bookmark.BookmarkService,
 ) *Template {
-	page := NewPage(fileSource, pageManager, importServices, bookmarkSvc)
+	page := NewPage(fileSource, pageManager, importServices, creator, bookmarkSvc)
 	return &Template{Page: page}
 }
 

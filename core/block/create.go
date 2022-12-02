@@ -8,24 +8,16 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
-
-func (s *Service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
-	return s.objectCreator.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
-}
 
 func (s *Service) TemplateCreateFromObject(id string) (templateId string, err error) {
 	var st *state.State
@@ -111,7 +103,7 @@ func (s *Service) TemplateCreateFromObjectByObjectType(otId string) (templateId 
 }
 
 func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
-	id, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeWorkspace,
+	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeWorkspace,
 		&types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
 			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
@@ -122,48 +114,20 @@ func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceI
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
-func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
 	}
-	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
-
-	var creator func(ctx context.Context) (string, error)
-
-	// TODO: this is deprecated mechanism, because we potentially can create object with any other type
-	if pbtypes.GetString(req.Details, bundle.RelationKeyType.String()) == bundle.TypeKeySet.URL() {
-		creator = func(ctx context.Context) (string, error) {
-			objectId, _, err = s.CreateSet(&pb.RpcObjectCreateSetRequest{
-				Details: req.Details,
-			})
-			if err != nil {
-				return objectId, fmt.Errorf("create smartblock error: %v", err)
-			}
-			return objectId, nil
-		}
-	} else {
-		creator = func(ctx context.Context) (string, error) {
-			objectId, _, err = s.objectCreator.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
-			if err != nil {
-				return objectId, fmt.Errorf("create smartblock error: %v", err)
-			}
-			return objectId, nil
-		}
-	}
 
 	s.objectCreator.InjectWorkspaceId(req.Details, req.ContextId)
-	objectId, err = creator(context.TODO())
-	if err != nil {
-		return
-	}
+	objectId, _, err = s.CreateObject(req, "")
 
 	if req.ContextId == "" {
 		return
 	}
 
 	err = DoState(s, req.ContextId, func(st *state.State, sb basic.Creatable) error {
-		// TODO move to component
 		linkId, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
@@ -183,51 +147,6 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 		return nil
 	})
 	return
-}
-
-func (s *Service) CreateSet(req *pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
-	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
-
-	var dvContent model.BlockContentOfDataview
-	var dvSchema schema.Schema
-	if len(req.Source) != 0 {
-		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(s.anytype.ObjectStore(), req.Source); err != nil {
-			return
-		}
-	}
-
-	newState := state.NewDoc("", nil).NewState()
-
-	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
-	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
-
-	tmpls := []template.StateTransformer{
-		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
-		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
-		template.WithRequiredRelations(),
-	}
-	var blockContent *model.BlockContentOfDataview
-	if dvSchema != nil {
-		blockContent = &dvContent
-	}
-	if blockContent != nil {
-		for i, view := range blockContent.Dataview.Views {
-			if view.Relations == nil {
-				blockContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(blockContent.Dataview.Relations)
-			}
-		}
-		tmpls = append(tmpls,
-			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
-			template.WithDataview(*blockContent, false),
-		)
-	}
-
-	if err = template.InitTemplate(newState, tmpls...); err != nil {
-		return "", nil, err
-	}
-
-	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, nil, newState)
 }
 
 func (s *Service) ObjectToSet(id string, source []string) (newId string, err error) {
@@ -252,10 +171,10 @@ func (s *Service) ObjectToSet(id string, source []string) (newId string, err err
 	}
 
 	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
-	newId, _, err = s.CreateSet(&pb.RpcObjectCreateSetRequest{
+	newId, _, err = s.objectCreator.CreateObject(&pb.RpcObjectCreateSetRequest{
 		Source:  source,
 		Details: details,
-	})
+	}, bundle.TypeKeySet)
 	if err != nil {
 		return
 	}
@@ -278,7 +197,6 @@ func (s *Service) ObjectToSet(id string, source []string) (newId string, err err
 	return
 }
 
-// TODO move it to smarblock package? But first figure out how to pass necessary dependencies
 func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
 	sc, err := s.source.NewSource(id, false)
 	if err != nil {
@@ -286,11 +204,11 @@ func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.bookmark)
+		sb = editor.NewPage(s, s, s, s.objectCreator, s.bookmark)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard(s, s)
+		sb = editor.NewDashboard(s, s.objectCreator, s)
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet()
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
@@ -311,9 +229,9 @@ func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate()
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.bookmark)
+		sb = editor.NewTemplate(s, s, s, s.objectCreator, s.bookmark)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.bookmark)
+		sb = editor.NewTemplate(s, s, s, s.objectCreator, s.bookmark)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
@@ -337,65 +255,6 @@ func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	return
 }
 
-type DetailsGetter interface {
-	GetDetails() *types.Struct
-}
-type InternalFlagsGetter interface {
-	GetInternalFlags() []*model.InternalFlag
-}
-type TemplateIdGetter interface {
-	GetTemplateId() string
-}
-
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
-	details = req.GetDetails()
-	if details.GetFields() == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-
-	var internalFlags []*model.InternalFlag
-	if v, ok := req.(InternalFlagsGetter); ok {
-		internalFlags = v.GetInternalFlags()
-		details = internalflag.PutToDetails(details, internalFlags)
-	}
-
-	objectType, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	if forcedType != "" {
-		objectType = forcedType
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
-	}
-	var sbType = coresb.SmartBlockTypePage
-
-	switch objectType {
-	case bundle.TypeKeyBookmark:
-		return s.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
-			Details: details,
-		})
-	case bundle.TypeKeySet:
-		return s.CreateSet(&pb.RpcObjectCreateSetRequest{
-			Details:       details,
-			InternalFlags: internalFlags,
-			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
-		})
-	case bundle.TypeKeyObjectType:
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-		return s.CreateSubObjectInWorkspace(details, s.anytype.PredefinedBlocks().Account)
-
-	case bundle.TypeKeyRelation:
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-		return s.CreateSubObjectInWorkspace(details, s.anytype.PredefinedBlocks().Account)
-
-	case bundle.TypeKeyRelationOption:
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-		return s.CreateSubObjectInWorkspace(details, s.anytype.PredefinedBlocks().Account)
-
-	case bundle.TypeKeyTemplate:
-		sbType = coresb.SmartBlockTypeTemplate
-	}
-
-	var templateId string
-	if v, ok := req.(TemplateIdGetter); ok {
-		templateId = v.GetTemplateId()
-	}
-	return s.objectCreator.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateId)
+	return s.objectCreator.CreateObject(req, forcedType)
 }
