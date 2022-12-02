@@ -91,7 +91,11 @@ func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context, req *p
 		Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
 	})
 
-	req.Block.Content = &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{TargetObjectId: setId}}
+	if req.Block != nil && req.Block.Content != nil {
+		if dvContent, ok := req.Block.Content.(*model.BlockContentOfDataview); ok {
+			dvContent.Dataview.TargetObjectId = setId
+		}
+	}
 
 	var blockId string
 	err = mw.doBlockService(func(bs block.Service) (err error) {
