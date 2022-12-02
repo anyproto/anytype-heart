@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"fmt"
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -130,34 +131,42 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	var rels relationutils.Relations
-	if isBundled {
-		for _, relKey := range recommendedRelationsKeys {
-			rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
-			if rel == nil {
-				continue
+	// filter out internal relations from the recommended
+	recommendedRelationsKeys = slice.Filter(recommendedRelationsKeys, func(relKey string) bool {
+		for _, k := range bundle.RequiredInternalRelations {
+			if k.String() == relKey {
+				return false
 			}
-			rels = append(rels, &relationutils.Relation{Relation: rel})
 		}
-	} else {
-		rels, err = p.RelationService().FetchKeys(recommendedRelationsKeys...)
-		if err != nil {
-			return err
-		}
-	}
+		return true
+	})
 
 	var relIds []string
-	for _, rel := range rels {
-		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, rel.RelationLink())
-		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
-			Key:       rel.Key,
-			IsVisible: !rel.Hidden,
-		})
+	var r *relationutils.Relation
+	for _, rel := range recommendedRelationsKeys {
 		if isBundled {
-			relIds = append(relIds, addr.BundledRelationURLPrefix+rel.Key)
+			relIds = append(relIds, addr.BundledRelationURLPrefix+rel)
 		} else {
-			relIds = append(relIds, addr.RelationKeyToIdPrefix+rel.Key)
+			relIds = append(relIds, addr.RelationKeyToIdPrefix+rel)
 		}
+
+		if r2, _ := bundle.GetRelation(bundle.RelationKey(rel)); r2 != nil {
+			if r2.Hidden {
+				continue
+			}
+			r = &relationutils.Relation{Relation: r2}
+		} else {
+			r, _ = p.RelationService().FetchKey(rel)
+			if r == nil {
+				continue
+			}
+		}
+		// add recommended relation to the dataview
+		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())
+		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
+			Key:       r.Key,
+			IsVisible: true,
+		})
 	}
 
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
