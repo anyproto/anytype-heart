@@ -368,6 +368,9 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	sort.Strings(sb.depIds)
 	var records []database.Record
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
+		// datastore unavailable, cancel the subscription
+		sb.recordsSub.Close()
+		sb.closeRecordsSub = nil
 		return
 	}
 

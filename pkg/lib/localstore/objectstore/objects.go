@@ -774,6 +774,11 @@ func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub databa
 	}
 	sub.Subscribe(ids)
 	records, err = m.QueryById(ids)
+	if err != nil {
+		// can mean only the datastore is already closed, so we can resign and return
+		log.Errorf("QueryByIdAndSubscribeForChanges failed to query ids: %v", err)
+		return nil, nil, err
+	}
 
 	close = func() {
 		m.closeAndRemoveSubscription(sub)
