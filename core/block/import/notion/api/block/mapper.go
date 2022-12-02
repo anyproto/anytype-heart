@@ -121,6 +121,10 @@ func (m *Mapper) MapBlocks(blocks []interface{}, notionPageIdsToAnytype, notionD
 			db, id := block.GetDivBlock()
 			anytypeBlocks = append(anytypeBlocks, db)
 			ids = append(ids, id)
+		case *TableOfContentsBlock:
+			db, id := block.GetTableOfContentsBlock()
+			anytypeBlocks = append(anytypeBlocks, db)
+			ids = append(ids, id)
 		}
 	}
 	return anytypeBlocks, ids

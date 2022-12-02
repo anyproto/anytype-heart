@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"go.uber.org/zap"
+	
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -57,7 +59,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context, pageID, apiKey strin
 
 	for _, b := range blocks {
 		switch bl := b.(type) {
-		case *Heading1Block, *Heading2Block, *Heading3Block, *CodeBlock, *EquationBlock, *FileBlock, *ImageBlock, *VideoBlock, *PdfBlock, *DividerBlock:
+		case *Heading1Block, *Heading2Block, *Heading3Block, *CodeBlock, *EquationBlock, *FileBlock, *ImageBlock, *VideoBlock, *PdfBlock, *DividerBlock, *TableOfContentsBlock:
 			allBlocks = append(allBlocks, bl)
 		case *ParagraphBlock:
 			if bl.HasChildren {
@@ -215,124 +217,149 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 			blockMap := b.(map[string]interface{})
 			switch BlockType(blockMap["type"].(string)) {
 			case Paragraph:
-				p := ParagraphBlock{}
+				var p ParagraphBlock
 				err = json.Unmarshal(buffer, &p)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &p)
 			case Heading1:
-				h := Heading1Block{}
+				var h Heading1Block
 				err = json.Unmarshal(buffer, &h)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &h)
 			case Heading2:
-				h := Heading2Block{}
+				var h Heading2Block
 				err = json.Unmarshal(buffer, &h)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &h)
 			case Heading3:
-				h := Heading3Block{}
+				var h Heading3Block
 				err = json.Unmarshal(buffer, &h)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &h)
 			case Callout:
-				c := CalloutBlock{}
+				var c CalloutBlock
 				err = json.Unmarshal(buffer, &c)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &c)
 			case Quote:
-				q := QuoteBlock{}
+				var q QuoteBlock
 				err = json.Unmarshal(buffer, &q)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &q)
 			case BulletList:
-				list := BulletedListBlock{}
+				var list BulletedListBlock
 				err = json.Unmarshal(buffer, &list)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &list)
 			case NumberList:
-				nl := NumberedListBlock{}
+				var nl NumberedListBlock
 				err = json.Unmarshal(buffer, &nl)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &nl)
 			case Toggle:
-				t := ToggleBlock{}
+				var t ToggleBlock
 				err = json.Unmarshal(buffer, &t)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &t)
 			case Code:
-				c := CodeBlock{}
+				var c CodeBlock
 				err = json.Unmarshal(buffer, &c)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &c)
 			case Equation:
-				e := EquationBlock{}
+				var e EquationBlock
 				err = json.Unmarshal(buffer, &e)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &e)
 			case ToDo:
-				t := ToDoBlock{}
+				var t ToDoBlock
 				err = json.Unmarshal(buffer, &t)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &t)
 			case File:
-				f := FileBlock{}
+				var f FileBlock
 				err = json.Unmarshal(buffer, &f)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &f)
 			case Image:
-				i := ImageBlock{}
+				var i ImageBlock
 				err = json.Unmarshal(buffer, &i)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &i)
 			case Video:
-				v := VideoBlock{}
+				var v VideoBlock
 				err = json.Unmarshal(buffer, &v)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &v)
 			case Pdf:
-				p := PdfBlock{}
+				var p PdfBlock
 				err = json.Unmarshal(buffer, &p)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &p)
 			case Divider:
-				d := DividerBlock{}
+				var d DividerBlock
 				err = json.Unmarshal(buffer, &d)
 				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &d)
+			case TableOfContents:
+				var t TableOfContentsBlock
+				err = json.Unmarshal(buffer, &t)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &t)
 			}
 		}
 
