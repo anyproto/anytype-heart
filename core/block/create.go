@@ -340,3 +340,105 @@ func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	err = sb.Init(initCtx)
 	return
 }
+
+type DetailsGetter interface {
+	GetDetails() *types.Struct
+}
+type InternalFlagsGetter interface {
+	GetInternalFlags() []*model.InternalFlag
+}
+type TemplateIdGetter interface {
+	GetTemplateId() string
+}
+
+func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
+	details = req.GetDetails()
+
+	var internalFlags []*model.InternalFlag
+	if v, ok := req.(InternalFlagsGetter); ok {
+		internalFlags = v.GetInternalFlags()
+		details = internalflag.PutToDetails(details, internalFlags)
+	}
+
+	objectType, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	if forcedType != "" {
+		objectType = forcedType
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.BundledURL())
+	}
+	var sbType = coresb.SmartBlockTypePage
+
+	switch objectType {
+	case bundle.TypeKeyBookmark:
+		return s.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
+			Details: details,
+		})
+	case bundle.TypeKeySet:
+		return s.objectCreateSet(&pb.RpcObjectCreateSetRequest{
+			Details:       details,
+			InternalFlags: internalFlags,
+			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
+		})
+	case bundle.TypeKeyObjectType:
+		return s.objectCreateObjectType(&pb.RpcObjectCreateObjectTypeRequest{
+			Details:       details,
+			InternalFlags: internalFlags,
+		})
+	case bundle.TypeKeyRelation:
+		return s.objectCreateRelation(&pb.RpcObjectCreateRelationRequest{
+			Details: details,
+		})
+
+	case bundle.TypeKeyRelationOption:
+		return s.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
+			Details: details,
+		})
+	case bundle.TypeKeyTemplate:
+		sbType = coresb.SmartBlockTypeTemplate
+	}
+
+	var templateId string
+	if v, ok := req.(TemplateIdGetter); ok {
+		templateId = v.GetTemplateId()
+	}
+	return s.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateId)
+}
+
+func (s *Service) objectCreateObjectType(req *pb.RpcObjectCreateObjectTypeRequest) (id string, object *types.Struct, err error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	return s.CreateSubObjectInWorkspace(req.Details, s.anytype.PredefinedBlocks().Account)
+}
+
+func (s *Service) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, *types.Struct, error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
+
+	return s.CreateSubObjectInWorkspace(req.Details, s.anytype.PredefinedBlocks().Account)
+}
+
+func (s *Service) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+	return s.CreateSubObjectInWorkspace(req.Details, s.anytype.PredefinedBlocks().Account)
+}
+
+func (s *Service) objectCreateSet(req *pb.RpcObjectCreateSetRequest) (string, *types.Struct, error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
+	return s.CreateSet(*req)
+}
+
+func (s *Service) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, *types.Struct, error) {
+	return s.ObjectCreateBookmark(*req)
+}
