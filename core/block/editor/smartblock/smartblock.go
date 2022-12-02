@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -20,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -27,16 +29,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/mutex"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 )
 
 type ApplyFlag int
@@ -83,7 +85,8 @@ const CallerKey key = 0
 var log = logging.Logger("anytype-mw-smartblock")
 
 func New() SmartBlock {
-	return &smartBlock{hooks: map[Hook][]HookCallback{}}
+	s := &smartBlock{hooks: map[Hook][]HookCallback{}, Locker: mutex.NewLocker()}
+	return s
 }
 
 type SmartObjectOpenListner interface {
@@ -154,7 +157,7 @@ type linkSource interface {
 
 type smartBlock struct {
 	state.Doc
-	sync.Mutex
+	sync.Locker
 	depIds              []string // slice must be sorted
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
@@ -359,12 +362,15 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
 	}
-	recordsCh := make(chan *types.Struct, 10)
+	recordsCh := make(chan *types.Struct, 0) // todo: remove; temporarly set to 0 to catch the deadlock
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 	sb.depIds = sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
 	sort.Strings(sb.depIds)
 	var records []database.Record
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
+		// datastore unavailable, cancel the subscription
+		sb.recordsSub.Close()
+		sb.closeRecordsSub = nil
 		return
 	}
 

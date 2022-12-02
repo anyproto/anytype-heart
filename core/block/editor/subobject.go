@@ -54,25 +54,12 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 		ot = addr.RelationKeyToIdPrefix + strings.TrimPrefix(ot, addr.BundledRelationURLPrefix)
 	}
 
-	var system bool
-	for _, rel := range bundle.SystemRelations {
-		if addr.RelationKeyToIdPrefix+rel.String() == o.RootId() {
-			system = true
-			break
-		}
-	}
-	if system {
-		rest := o.Restrictions()
-		obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Delete, model.Restrictions_Relations, model.Restrictions_Details}...)
-		o.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
-	}
-
 	switch ot {
 	case addr.ObjectTypeKeyToIdPrefix + bundle.TypeKeyRelation.String():
 		return o.initRelation(ctx.State)
-	case addr.RelationKeyToIdPrefix + bundle.TypeKeyObjectType.String():
+	case addr.ObjectTypeKeyToIdPrefix + bundle.TypeKeyObjectType.String():
 		panic("not implemented") // should never happen because objectType case proceed by ObjectType implementation
-	case addr.RelationKeyToIdPrefix + bundle.TypeKeyRelationOption.String():
+	case addr.ObjectTypeKeyToIdPrefix + bundle.TypeKeyRelationOption.String():
 		return o.initRelationOption(ctx.State)
 	default:
 		return fmt.Errorf("unknown subobject type %s", ot)
@@ -89,6 +76,19 @@ func (o *SubObject) SetStruct(st *types.Struct) error {
 }
 
 func (o *SubObject) initRelation(st *state.State) error {
+	var system bool
+	for _, rel := range bundle.SystemRelations {
+		if addr.RelationKeyToIdPrefix+rel.String() == o.RootId() {
+			system = true
+			break
+		}
+	}
+	if system {
+		rest := o.Restrictions()
+		obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Delete, model.Restrictions_Relations, model.Restrictions_Details}...)
+		o.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
+	}
+
 	// temp fix for our internal accounts with inconsistent types (should be removed later)
 	// todo: remove after release
 	fixTypes := func(s *state.State) {
