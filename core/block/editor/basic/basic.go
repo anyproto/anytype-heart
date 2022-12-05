@@ -183,7 +183,8 @@ func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObj
 	}
 
 	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
-		if targetContent.Text.Style == model.BlockContentText_Paragraph && targetContent.Text.Text == "" {
+		if targetContent.Text.Style == model.BlockContentText_Paragraph &&
+			targetContent.Text.Text == "" && req.Position == model.Block_InnerFirst {
 
 			req.Position = model.Block_Replace
 
