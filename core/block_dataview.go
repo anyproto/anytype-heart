@@ -75,7 +75,7 @@ func (mw *Middleware) BlockDataviewObjectOrderUpdate(cctx context.Context, req *
 
 func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context, req *pb.RpcBlockDataviewCreateWithObjectRequest) *pb.RpcBlockDataviewCreateWithObjectResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcBlockDataviewCreateWithObjectResponseErrorCode, id string, err error) *pb.RpcBlockDataviewCreateWithObjectResponse {
+	response := func(code pb.RpcBlockDataviewCreateWithObjectResponseErrorCode, id, targetObjectId string, err error) *pb.RpcBlockDataviewCreateWithObjectResponse {
 		m := &pb.RpcBlockDataviewCreateWithObjectResponse{Error: &pb.RpcBlockDataviewCreateWithObjectResponseError{Code: code}, BlockId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -109,9 +109,9 @@ func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context, req *p
 	})
 
 	if err != nil {
-		return response(pb.RpcBlockDataviewCreateWithObjectResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcBlockDataviewCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", err)
 	}
-	return response(pb.RpcBlockDataviewCreateWithObjectResponseError_NULL, blockId,nil)
+	return response(pb.RpcBlockDataviewCreateWithObjectResponseError_NULL, blockId, setId, nil)
 }
 
 func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {

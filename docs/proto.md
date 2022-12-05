@@ -4099,6 +4099,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockDataview.CreateWithObject.Response.Error](#anytype-Rpc-BlockDataview-CreateWithObject-Response-Error) |  |  |
 | blockId | [string](#string) |  |  |
+| targetObjectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
