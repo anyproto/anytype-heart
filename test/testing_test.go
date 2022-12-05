@@ -4,6 +4,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"runtime"
@@ -188,7 +189,7 @@ func call[reqT, respT any](
 func newClient() (service.ClientCommandsClient, error) {
 	port := os.Getenv("ANYTYPE_TEST_GRPC_PORT")
 	if port == "" {
-		port = "31077"
+		return nil, fmt.Errorf("you must specify ANYTYPE_TEST_GRPC_PORT env variable")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
