@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -48,6 +49,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	// Add missing required featured relations
 	featuredRelations = slice.Union(featuredRelations, []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()})
+	featuredRelations = slice.Remove(featuredRelations, bundle.RelationKeyCreator.String())
 
 	templates := []template.StateTransformer{
 		template.WithDataviewRelationMigrationRelation(template.DataviewBlockId, bundle.TypeKeyBookmark.URL(), bundle.RelationKeyUrl, bundle.RelationKeySource),
@@ -55,16 +57,40 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(featuredRelations)),
 		template.WithRelations([]bundle.RelationKey{bundle.RelationKeySetOf}),
 		template.WithDescription,
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(featuredRelations)),
 		template.WithFeaturedRelations,
 		template.WithBlockEditRestricted(p.Id()),
-		template.WithCreatorRemovedFromFeaturedRelations,
 	}
 	if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
 		setOf := dvBlock.Model().GetDataview().GetSource()
 		if len(setOf) == 0 {
 			log.With("thread", p.Id()).With("sbType", p.SmartBlock.Type().String()).Errorf("dataview has an empty source")
 		} else {
+			// add missing restrictions for dataview block in case we have set of internalType
 			templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(setOf)))
+			var hasInternalType bool
+			for _, t := range bundle.InternalTypes {
+				if setOf[0] == t.URL() {
+					hasInternalType = true
+					break
+				}
+			}
+
+			if hasInternalType {
+				rest := p.Restrictions()
+				dv := rest.Dataview.Copy()
+				var exists bool
+				for _, r := range dv {
+					if r.BlockId == template.DataviewBlockId {
+						r.Restrictions = append(r.Restrictions, model.Restrictions_DVCreateObject)
+						break
+					}
+				}
+				if !exists {
+					dv = append(dv, model.RestrictionsDataviewRestrictions{BlockId: template.DataviewBlockId, Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject}})
+				}
+				p.SetRestrictions(restriction.Restrictions{Object: rest.Object, Dataview: dv})
+			}
 		}
 		// add missing done relation
 		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))

@@ -132,7 +132,7 @@ func (o *SubObject) initRelation(st *state.State) error {
 		template.WithAllBlocksEditsRestricted,
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation))),
 		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(false)),
-		template.WithAddedFeaturedRelations(bundle.RelationKeySourceObject),
+		template.WithAddedFeaturedRelation(bundle.RelationKeySourceObject),
 		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject),
 		template.WithTitle,
 		template.WithDescription,

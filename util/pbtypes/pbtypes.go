@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -589,4 +590,25 @@ func Sprint(p proto.Message) string {
 	m := jsonpb.Marshaler{Indent: " "}
 	result, _ := m.MarshalToString(p)
 	return result
+}
+
+func StructCompareIgnoreKeys(st1 *types.Struct, st2 *types.Struct, ignoreKeys []string) bool {
+	if (st1 == nil) != (st2 == nil) {
+		return false
+	}
+	if (st1.Fields == nil) != (st2.Fields == nil) {
+		return false
+	}
+	if len(st1.Fields) != len(st2.Fields) {
+		return false
+	}
+	for k, v := range st1.Fields {
+		if slice.FindPos(ignoreKeys, k) > -1 {
+			continue
+		}
+		if v2, ok := st2.Fields[k]; !ok || !v.Equal(v2) {
+			return false
+		}
+	}
+	return true
 }

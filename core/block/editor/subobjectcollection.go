@@ -3,11 +3,12 @@ package editor
 import (
 	"errors"
 	"fmt"
-	"strings"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -16,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+	"strings"
 )
 
 var (
@@ -33,10 +35,16 @@ var localDetailsAllowedToBeStored = []string{
 	bundle.RelationKeyType.String(),
 	bundle.RelationKeyLastModifiedDate.String(),
 	bundle.RelationKeyLastModifiedBy.String(),
+	bundle.RelationKeyLastOpenedDate.String(),
 }
 
 type SubObjectCollection struct {
-	*Set
+	smartblock.SmartBlock
+	basic.Basic
+	basic.IHistory
+	dataview.Dataview
+	stext.Text
+
 	defaultCollectionName string
 	collections           map[string]map[string]SubObjectImpl
 
@@ -45,11 +53,17 @@ type SubObjectCollection struct {
 }
 
 func NewSubObjectCollection(defaultCollectionName string) *SubObjectCollection {
-	return &SubObjectCollection{
-		Set:                   NewSet(),
+	sc := &SubObjectCollection{
+		SmartBlock:            smartblock.New(),
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
 	}
+
+	sc.Basic = basic.NewBasic(sc.SmartBlock)
+	sc.IHistory = basic.NewHistory(sc.SmartBlock)
+	sc.Dataview = dataview.NewDataview(sc.SmartBlock)
+	sc.Text = stext.NewText(sc.SmartBlock)
+	return sc
 }
 
 func (c *SubObjectCollection) getCollectionAndKeyFromId(id string) (collection, key string) {
@@ -190,6 +204,32 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 				dataToSave.Fields[d] = v
 			}
 		}
+
+		var notOnlyLocalDetailsChanged bool
+		for k, _ := range dataToSave.Fields {
+			if slice.FindPos(localDetailsAllowedToBeStored, k) == -1 {
+				notOnlyLocalDetailsChanged = true
+				break
+			}
+		}
+
+		if !notOnlyLocalDetailsChanged {
+			// todo: it shouldn't be done here, we have a place for it in the state, but it's not possible to set the virtual changes there
+			// revert lastModifiedDate details
+			prev := p.State.ParentState().LocalDetails().GetFields()[bundle.RelationKeyLastModifiedDate.String()]
+			if prev != nil {
+				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prev
+			}
+		}
+
+		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), []string{bundle.RelationKeyLastModifiedDate.String()}) {
+			return "", nil
+		}
+
+		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), localDetailsAllowedToBeStored) {
+			return "", nil
+		}
+
 		changed := st.SetInStore([]string{collection, subId}, pbtypes.Struct(dataToSave))
 		if !changed {
 			return "", nil
@@ -202,7 +242,7 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	c.app = ctx.App
 	c.sourceService = c.app.MustComponent(source.CName).(source.Service)
 
-	return c.Set.Init(ctx)
+	return c.SmartBlock.Init(ctx)
 }
 
 func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string) (err error) {

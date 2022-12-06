@@ -321,3 +321,13 @@ func TypeKeyFromUrl(url string) (TypeKey, error) {
 	}
 	return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
 }
+
+func FilterRelationKeys(keys []RelationKey, cond func(RelationKey) bool) []RelationKey {
+	var res = make([]RelationKey, 0, len(keys))
+	for _, key := range keys {
+		if cond(key) {
+			res = append(res, key)
+		}
+	}
+	return res
+}
