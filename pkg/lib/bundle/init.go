@@ -59,7 +59,18 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeyRelationFormatObjectTypes,
 }...)
 
-// todo: generate from types.json
+// InternalTypes contains the list of types that are not possible to create as a general object because they have specific logic
+var InternalTypes = []TypeKey{
+	TypeKeyFile,
+	TypeKeyImage,
+	TypeKeyAudio,
+	TypeKeyVideo,
+	TypeKeyDate,
+	TypeKeySpace,
+	TypeKeyRelation,
+	TypeKeyRelationOption,
+}
+
 var SystemTypes = []TypeKey{
 	TypeKeyPage,
 	TypeKeyNote,
