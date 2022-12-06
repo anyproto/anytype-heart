@@ -178,11 +178,27 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 				break
 			}
 		}
+
+		var internal bool
+		for _, o := range bundle.InternalTypes {
+			if addr.ObjectTypeKeyToIdPrefix+o.String() == p.RootId() {
+				internal = true
+				break
+			}
+		}
+
 		if system {
 			rest := p.Restrictions()
-			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Delete, model.Restrictions_Blocks, model.Restrictions_Details}...)
-			p.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
+			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Blocks, model.Restrictions_Details}...)
+			dv := rest.Dataview.Copy()
+			if internal {
+				// internal mean not possible to create the object using the standard ObjectCreate flow
+				dv = append(dv, model.RestrictionsDataviewRestrictions{BlockId: template.DataviewBlockId, Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject}})
+			}
+			p.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: dv})
+
 		}
+
 	}
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}, model.ObjectType_objectType),
