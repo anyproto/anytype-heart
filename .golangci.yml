@@ -1,0 +1,58 @@
+un:
+  deadline: 15m
+  timeout:  15m
+  # didn't run linter on tests
+  tests: false
+  # don't check generated protobuf files
+  skip-dirs:
+    - pb/external_libs
+    - pkg/lib/pb
+  go: '1.18'
+
+linters-settings:
+  errcheck:
+    check-blank: true
+  errchkjson:
+    report-no-exported: true
+  gci:
+    sections:
+      - standard                       
+      - default                       
+      - prefix(github.com/anytypeio/go-anytype-middleware)
+      - blank                          
+      - dot                           
+    skip-generated: false
+    custom-order: true
+  goimports:
+    local-prefixes: github.com/anytypeio/go-anytype-middleware
+  govet:
+    check-shadowing: true
+
+linters:
+  disable-all: true
+  enable:
+    - dupl
+    - gci
+    - gocritic
+    - gofmt
+    - goimports
+    - gosec
+    - interfacebloat
+    - importas
+    - lll
+    - misspell
+    - nestif
+    - prealloc
+    - revive
+    - wsl
+    - unused
+    - errcheck
+    - funlen
+    - gosimple
+    - govet
+    - typecheck
+    - stylecheck
+    - unconvert
+
+  max-issues-per-linter: 0
+  max-same-issues: 0

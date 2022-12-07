@@ -213,6 +213,22 @@ func TestBasic_Move(t *testing.T) {
 		assert.Equal(t, sb.NewState().Pick("2").Model().BackgroundColor, "first_block_background_color")
 		assert.Equal(t, sb.NewState().Pick("2").Model().GetText().Color, "second_block_text_color")
 	})
+	t.Run("do not replace empty on top insert", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "", nil)).
+			AddBlock(newTextBlock("2", "one", nil))
+
+		b := NewBasic(sb)
+
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
+			BlockIds:     []string{"2"},
+			DropTargetId: "1",
+			Position:     model.Block_Top,
+		})
+		require.NoError(t, err)
+		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 2)
+	})
 }
 
 func TestBasic_Replace(t *testing.T) {
