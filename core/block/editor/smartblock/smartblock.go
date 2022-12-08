@@ -329,16 +329,6 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 		ot.RelationLinks = nil
 	}
 
-	for _, det := range details {
-		for k, v := range det.Details.GetFields() {
-			// todo: remove null cleanup(should be done when receiving from client)
-			if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-				log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
-				delete(det.Details.Fields, k)
-			}
-		}
-	}
-
 	undo, redo := sb.History().Counters()
 
 	// todo: sb.Relations() makes extra query to read objectType which we already have here
