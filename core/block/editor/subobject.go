@@ -21,20 +21,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewSubObject() *SubObject {
-	sb := smartblock.New()
-	return &SubObject{
-		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb),
-		IHistory:      basic.NewHistory(sb),
-		Text:          stext.NewText(sb),
-		Clipboard:     clipboard.NewClipboard(sb, nil),
-		Dataview:      dataview.NewDataview(sb),
-	}
-}
-
 type SubObject struct {
 	smartblock.SmartBlock
+
 	basic.AllOperations
 	basic.IHistory
 	stext.Text
@@ -42,7 +31,17 @@ type SubObject struct {
 	dataview.Dataview
 }
 
+func NewSubObject() *SubObject {
+	return &SubObject{SmartBlock: smartblock.New()}
+}
+
 func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
+	o.AllOperations = basic.NewBasic(o.SmartBlock)
+	o.IHistory = basic.NewHistory(o.SmartBlock)
+	o.Text = stext.NewText(ctx.App, o.SmartBlock)
+	o.Clipboard = clipboard.NewClipboard(ctx.App, o.SmartBlock)
+	o.Dataview = dataview.NewDataview(ctx.App, o.SmartBlock)
+
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -39,7 +40,7 @@ type CommonOperations interface {
 	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
 
 	SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error
-	AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error
+	AddRelationAndSet(ctx *session.Context, service relation2.Service, req pb.RpcBlockRelationAddRequest) error
 	FeaturedRelationAdd(ctx *session.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *session.Context, relations ...string) error
 
@@ -74,36 +75,10 @@ type Updatable interface {
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-func (bs *basic) PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error) {
-	childIdsRewrite := make(map[string]string)
-	for _, b := range blocks {
-		for i, cId := range b.Model().ChildrenIds {
-			newId := bson.NewObjectId().Hex()
-			childIdsRewrite[cId] = newId
-			b.Model().ChildrenIds[i] = newId
-		}
-	}
-	for _, b := range blocks {
-		var child bool
-		if newId, ok := childIdsRewrite[b.Model().Id]; ok {
-			b.Model().Id = newId
-			child = true
-		} else {
-			b.Model().Id = bson.NewObjectId().Hex()
-		}
-		s.Add(b)
-		if !child {
-			err := s.InsertTo(targetBlockId, position, b.Model().Id)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func NewBasic(sb smartblock.SmartBlock) AllOperations {
-	return &basic{sb}
+	return &basic{
+		SmartBlock: sb,
+	}
 }
 
 type basic struct {
@@ -360,14 +335,14 @@ func (bs *basic) SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextR
 	return bs.Apply(s, smartblock.NoEvent)
 }
 
-func (bs *basic) AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelationAddRequest) (err error) {
+func (bs *basic) AddRelationAndSet(ctx *session.Context, relationService relation2.Service, req pb.RpcBlockRelationAddRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := bs.RelationService().FetchKey(req.RelationKey)
+	rel, err := relationService.FetchKey(req.RelationKey)
 	if err != nil {
 		return
 	}
@@ -444,4 +419,32 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		}
 	}
 	return bs.Apply(s)
+}
+
+func (bs *basic) PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error) {
+	childIdsRewrite := make(map[string]string)
+	for _, b := range blocks {
+		for i, cId := range b.Model().ChildrenIds {
+			newId := bson.NewObjectId().Hex()
+			childIdsRewrite[cId] = newId
+			b.Model().ChildrenIds[i] = newId
+		}
+	}
+	for _, b := range blocks {
+		var child bool
+		if newId, ok := childIdsRewrite[b.Model().Id]; ok {
+			b.Model().Id = newId
+			child = true
+		} else {
+			b.Model().Id = bson.NewObjectId().Hex()
+		}
+		s.Add(b)
+		if !child {
+			err := s.InsertTo(targetBlockId, position, b.Model().Id)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

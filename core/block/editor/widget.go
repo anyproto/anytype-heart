@@ -21,18 +21,17 @@ type WidgetObject struct {
 
 func NewWidgetObject() *WidgetObject {
 	sb := smartblock.New()
-	bs := basic.NewBasic(sb)
 
-	return &WidgetObject{
-		SmartBlock: sb,
-		Movable:    bs,
-		Updatable:  bs,
-		IHistory:   basic.NewHistory(sb),
-		Widget:     widget.NewWidget(sb),
-	}
+	return &WidgetObject{SmartBlock: sb}
 }
 
 func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
+	bs := basic.NewBasic(w.SmartBlock)
+	w.Movable = bs
+	w.Updatable = bs
+	w.IHistory = basic.NewHistory(w.SmartBlock)
+	w.Widget = widget.NewWidget(w.SmartBlock)
+
 	if err = w.SmartBlock.Init(ctx); err != nil {
 		return
 	}
@@ -40,17 +39,6 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithEmpty,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
 	)
-}
-
-func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
-	st := w.NewStateCtx(ctx)
-	for _, id := range ids {
-		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {
-			st.Unlink(p.Model().Id)
-		}
-		st.Unlink(id)
-	}
-	return w.Apply(st)
 }
 
 func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {

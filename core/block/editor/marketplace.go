@@ -1,7 +1,10 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -14,15 +17,24 @@ const (
 	viewIdMarketplace = "marketplace"
 )
 
-func NewMarketplaceType() *MarketplaceType {
-	return &MarketplaceType{Set: NewSet()}
+type MarketplaceType struct {
+	smartblock.SmartBlock
+	basic.CommonOperations
+	basic.IHistory
+	dataview.Dataview
+	stext.Text
 }
 
-type MarketplaceType struct {
-	*Set
+func NewMarketplaceType() *MarketplaceType {
+	return &MarketplaceType{SmartBlock: smartblock.New()}
 }
 
 func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
+	p.CommonOperations = basic.NewBasic(p.SmartBlock)
+	p.IHistory = basic.NewHistory(p.SmartBlock)
+	p.Dataview = dataview.NewDataview(ctx.App, p.SmartBlock)
+	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -97,14 +109,23 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 type MarketplaceRelation struct {
-	*Set
+	smartblock.SmartBlock
+	basic.CommonOperations
+	basic.IHistory
+	dataview.Dataview
+	stext.Text
 }
 
 func NewMarketplaceRelation() *MarketplaceRelation {
-	return &MarketplaceRelation{Set: NewSet()}
+	return &MarketplaceRelation{SmartBlock: smartblock.New()}
 }
 
 func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
+	p.CommonOperations = basic.NewBasic(p.SmartBlock)
+	p.IHistory = basic.NewHistory(p.SmartBlock)
+	p.Dataview = dataview.NewDataview(ctx.App, p.SmartBlock)
+	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -161,14 +182,23 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 type MarketplaceTemplate struct {
-	*Set
+	smartblock.SmartBlock
+	basic.CommonOperations
+	basic.IHistory
+	dataview.Dataview
+	stext.Text
 }
 
 func NewMarketplaceTemplate() *MarketplaceTemplate {
-	return &MarketplaceTemplate{Set: NewSet()}
+	return &MarketplaceTemplate{SmartBlock: smartblock.New()}
 }
 
 func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
+	p.CommonOperations = basic.NewBasic(p.SmartBlock)
+	p.IHistory = basic.NewHistory(p.SmartBlock)
+	p.Dataview = dataview.NewDataview(ctx.App, p.SmartBlock)
+	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err

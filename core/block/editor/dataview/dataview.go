@@ -2,9 +2,13 @@ package dataview
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -12,6 +16,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -23,9 +31,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 )
 
 const DefaultDetailsFieldName = "_defaultRecordFields"
@@ -63,14 +68,22 @@ type Dataview interface {
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 }
 
-func NewDataview(sb smartblock.SmartBlock) Dataview {
-	dv := &sdataview{SmartBlock: sb}
+func NewDataview(a *app.App, sb smartblock.SmartBlock) Dataview {
+	dv := &sdataview{
+		SmartBlock:      sb,
+		anytype:         app.MustComponent[core.Service](a),
+		objectStore:     app.MustComponent[objectstore.ObjectStore](a),
+		relationService: app.MustComponent[relation2.Service](a),
+	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv
 }
 
 type sdataview struct {
 	smartblock.SmartBlock
+	anytype         core.Service
+	objectStore     objectstore.ObjectStore
+	relationService relation2.Service
 }
 
 func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []string) (err error) {
@@ -93,7 +106,7 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := DataviewBlockBySource(d.Anytype().ObjectStore(), source)
+	dvContent, _, err := DataviewBlockBySource(d.objectStore, source)
 	if err != nil {
 		return
 	}
@@ -118,7 +131,7 @@ func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationK
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.RelationService().FetchKey(key)
+		relation, err2 := d.relationService.FetchKey(key)
 		if err2 != nil {
 			return err2
 		}
@@ -304,7 +317,7 @@ func (d *sdataview) CreateView(ctx *session.Context, id string, view model.Block
 	if err != nil {
 		return nil, err
 	}
-	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.Anytype().PredefinedBlocks().Account {
+	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.anytype.PredefinedBlocks().Account {
 		view.Filters = []*model.BlockContentDataviewFilter{{
 			RelationKey: bundle.RelationKeyWorkspaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -419,7 +432,7 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 }
 
 func (d *sdataview) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
-	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.Anytype().ObjectStore(), dvBlock.Model().GetDataview().RelationLinks)
+	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {

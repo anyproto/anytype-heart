@@ -5,7 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -14,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/globalsign/mgo/bson"
 )
 
 var log = logging.Logger("anytype-simple-tables")
@@ -63,18 +63,17 @@ func (t *editor) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) 
 	}
 
 	// TODO: just create block without Basic operation, it's easy
-	id, err = basic.NewBasic(t.SmartBlock).CreateBlock(s, pb.RpcBlockCreateRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.TargetId,
-		Position:  req.Position,
-		Block: &model.Block{
-			Content: &model.BlockContentOfTable{
-				Table: &model.BlockContentTable{},
-			},
+	b := simple.New(&model.Block{
+		Content: &model.BlockContentOfTable{
+			Table: &model.BlockContentTable{},
 		},
 	})
-	if err != nil {
-		return "", fmt.Errorf("create block: %w", err)
+
+	if !s.Add(b) {
+		return "", fmt.Errorf("add table block")
+	}
+	if err := s.InsertTo(req.TargetId, req.Position, b.Model().Id); err != nil {
+		return "", fmt.Errorf("insert table block: %w", err)
 	}
 
 	columnIds := make([]string, 0, req.Columns)

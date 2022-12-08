@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -12,18 +16,22 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("bookmark")
 
-func NewBookmark(sb smartblock.SmartBlock, blockService BlockService, bookmarkSvc BookmarkService) Bookmark {
-	return &sbookmark{SmartBlock: sb, blockService: blockService, bookmarkSvc: bookmarkSvc}
+func NewBookmark(a *app.App, sb smartblock.SmartBlock) Bookmark {
+	return &sbookmark{
+		SmartBlock:   sb,
+		blockService: app.MustComponent[BlockService](a),
+		bookmarkSvc:  app.MustComponent[BookmarkService](a),
+		objectStore:  app.MustComponent[objectstore.ObjectStore](a),
+	}
 }
 
 type Bookmark interface {
@@ -42,6 +50,7 @@ type sbookmark struct {
 	smartblock.SmartBlock
 	blockService BlockService
 	bookmarkSvc  BookmarkService
+	objectStore  objectstore.ObjectStore
 }
 
 type BlockService interface {
@@ -156,7 +165,7 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 	// we had a bug that migrated empty bookmarks blocks into bookmark objects. Now we need to reset them
 	// todo: remove this after we stop to populate bookmark block fields
 	if content.Url == "" && content.State == model.BlockContentBookmark_Done && content.Title == "" && content.FaviconHash == "" && content.TargetObjectId != "" {
-		det, _ := b.Anytype().ObjectStore().GetDetails(content.TargetObjectId)
+		det, _ := b.objectStore.GetDetails(content.TargetObjectId)
 		if det != nil && pbtypes.GetString(det.Details, bundle.RelationKeyUrl.String()) == "" && pbtypes.GetString(det.Details, bundle.RelationKeySource.String()) == "" {
 			bm.UpdateContent(func(content *model.BlockContentBookmark) {
 				content.State = model.BlockContentBookmark_Empty

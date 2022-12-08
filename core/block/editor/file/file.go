@@ -13,6 +13,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -32,8 +33,12 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, source BlockService) File {
-	return &sfile{SmartBlock: sb, fileSource: source}
+func NewFile(a *app.App, sb smartblock.SmartBlock) File {
+	return &sfile{
+		SmartBlock: sb,
+		fileSource: app.MustComponent[BlockService](a),
+		anytype:    app.MustComponent[core.Service](a),
+	}
 }
 
 type BlockService interface {
@@ -65,6 +70,7 @@ type FileSource struct {
 type sfile struct {
 	smartblock.SmartBlock
 	fileSource BlockService
+	anytype    core.Service
 }
 
 func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -155,7 +161,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 func (sf *sfile) newUploader() Uploader {
 	return &uploader{
 		service: sf.fileSource,
-		anytype: sf.Anytype(),
+		anytype: sf.anytype,
 	}
 }
 

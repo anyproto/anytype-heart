@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/app"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -18,29 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewPage(
-	fileSource file.BlockService,
-	pageManager bookmark.BlockService,
-	importServices _import.Services,
-	creator _import.ObjectCreator,
-	bookmarkSvc bookmark.BookmarkService,
-) *Page {
-	sb := smartblock.New()
-	f := file.NewFile(sb, fileSource)
-	return &Page{
-		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb),
-		IHistory:      basic.NewHistory(sb),
-		Text:          stext.NewText(sb),
-		File:          f,
-		Clipboard:     clipboard.NewClipboard(sb, f),
-		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		Import:        _import.NewImport(sb, importServices, creator),
-		Dataview:      dataview.NewDataview(sb),
-		Editor:        table.NewEditor(sb),
-	}
-}
-
 type Page struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -52,9 +30,27 @@ type Page struct {
 	_import.Import
 	dataview.Dataview
 	table.Editor
+
+	objectStore objectstore.ObjectStore
+}
+
+func NewPage() *Page {
+	sb := smartblock.New()
+	return &Page{SmartBlock: sb}
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
+	p.AllOperations = basic.NewBasic(p.SmartBlock)
+	p.IHistory = basic.NewHistory(p.SmartBlock)
+	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+	p.File = file.NewFile(ctx.App, p.SmartBlock)
+	p.Clipboard = clipboard.NewClipboard(ctx.App, p.SmartBlock)
+	p.Bookmark = bookmark.NewBookmark(ctx.App, p.SmartBlock)
+	p.Import = _import.NewImport(ctx.App, p.SmartBlock)
+	p.Dataview = dataview.NewDataview(ctx.App, p.SmartBlock)
+	p.Editor = table.NewEditor(p.SmartBlock)
+	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
+
 	if ctx.ObjectTypeUrls == nil {
 		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
@@ -64,7 +60,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	layout, ok := ctx.State.Layout()
 	if !ok {
-		otypes, _ := objectstore.GetObjectTypes(p.ObjectStore(), ctx.ObjectTypeUrls)
+		otypes, _ := objectstore.GetObjectTypes(p.objectStore, ctx.ObjectTypeUrls)
 		for _, ot := range otypes {
 			layout = ot.Layout
 		}

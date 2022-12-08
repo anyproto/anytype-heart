@@ -5,10 +5,18 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -19,24 +27,27 @@ import (
 )
 
 type ObjectType struct {
-	*Set
+	smartblock.SmartBlock
+	basic.CommonOperations
+	basic.IHistory
+	dataview2.Dataview
+	stext.Text
+
+	relationService relation2.Service
 }
 
 func NewObjectType() *ObjectType {
-	return &ObjectType{
-		Set: NewSet(),
-	}
-}
-
-func (o *ObjectType) SetStruct(st *types.Struct) error {
-	o.Lock()
-	defer o.Unlock()
-	s := o.NewState()
-	s.SetDetails(st)
-	return o.Apply(s)
+	return &ObjectType{SmartBlock: smartblock.New()}
 }
 
 func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
+	p.CommonOperations = basic.NewBasic(p.SmartBlock)
+	p.IHistory = basic.NewHistory(p.SmartBlock)
+	p.Dataview = dataview2.NewDataview(ctx.App, p.SmartBlock)
+	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+
+	p.relationService = app.MustComponent[relation2.Service](ctx.App)
+
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}

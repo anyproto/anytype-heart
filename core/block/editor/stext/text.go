@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -14,10 +17,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
 )
 
 var setTextApplyInterval = time.Second * 3
@@ -32,8 +35,12 @@ type Text interface {
 	TurnInto(ctx *session.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
-func NewText(sb smartblock.SmartBlock) Text {
-	t := &textImpl{SmartBlock: sb, setTextFlushed: make(chan struct{})}
+func NewText(a *app.App, sb smartblock.SmartBlock) Text {
+	t := &textImpl{
+		SmartBlock:     sb,
+		objectStore:    app.MustComponent[objectstore.ObjectStore](a),
+		setTextFlushed: make(chan struct{}),
+	}
 
 	t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose, smartblock.HookOnBlockClose)
 	return t
@@ -43,6 +50,8 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 type textImpl struct {
 	smartblock.SmartBlock
+	objectStore objectstore.ObjectStore
+
 	lastSetTextId    string
 	lastSetTextState *state.State
 	setTextFlushed   chan struct{}
@@ -420,7 +429,7 @@ func (t *textImpl) TurnInto(ctx *session.Context, style model.BlockContentTextSt
 			if linkBlock, ok := b.(link.Block); ok {
 				var targetDetails *types.Struct
 				if targetId := linkBlock.Model().GetLink().TargetBlockId; targetId != "" {
-					result, _ := t.ObjectStore().QueryById([]string{targetId})
+					result, _ := t.objectStore.QueryById([]string{targetId})
 					if len(result) > 0 {
 						targetDetails = result[0].Details
 					}

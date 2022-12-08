@@ -12,6 +12,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/anymark/spaceReplace"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -21,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -41,13 +43,18 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(sb smartblock.SmartBlock, file file.File) Clipboard {
-	return &clipboard{SmartBlock: sb, file: file}
+func NewClipboard(a *app.App, sb smartblock.SmartBlock) Clipboard {
+	return &clipboard{
+		SmartBlock: sb,
+		file:       file.NewFile(a, sb),
+		anytype:    app.MustComponent[core.Service](a),
+	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file file.File
+	file    file.File
+	anytype core.Service
 }
 
 func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -127,14 +134,14 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
+		htmlSlot = html.NewHTMLConverter(cb.anytype, s).Convert()
 		textSlot = cutBlock.GetText().Text
 		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
-	htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.anytype, s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
@@ -193,7 +200,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
 		cbs.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.Anytype(), cbs).Convert()
+		htmlSlot = html.NewHTMLConverter(cb.anytype, cbs).Convert()
 
 		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
@@ -208,7 +215,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 		ids = append(ids, b.Id)
 	}
 
-	htmlSlot = html.NewHTMLConverter(cb.Anytype(), cb.blocksToState(req.Blocks)).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.anytype, cb.blocksToState(req.Blocks)).Convert()
 	anySlot = req.Blocks
 
 	var someUnlinked bool
@@ -230,7 +237,7 @@ func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[strin
 	for _, b := range blocks {
 		if file := b.GetFile(); file != nil {
 			if file.Type == model.BlockContentFile_Image {
-				fh, err := cb.Anytype().FileByHash(context.TODO(), file.Hash)
+				fh, err := cb.anytype.FileByHash(context.TODO(), file.Hash)
 				if err != nil {
 					return images, err
 				}
@@ -250,9 +257,9 @@ func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[strin
 
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	s := cb.blocksToState(req.Blocks)
-	htmlData := html.NewHTMLConverter(cb.Anytype(), s).Export()
+	htmlData := html.NewHTMLConverter(cb.anytype, s).Export()
 
-	dir := cb.Anytype().TempDir()
+	dir := cb.anytype.TempDir()
 	fileName := "export-" + cb.Id() + ".html"
 	filePath := filepath.Join(dir, fileName)
 	err = ioutil.WriteFile(filePath, []byte(htmlData), 0644)

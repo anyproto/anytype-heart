@@ -17,18 +17,6 @@ import (
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
-func NewSet() *Set {
-	sb := &Set{
-		SmartBlock: smartblock.New(),
-	}
-
-	sb.CommonOperations = basic.NewBasic(sb)
-	sb.IHistory = basic.NewHistory(sb)
-	sb.Dataview = dataview.NewDataview(sb)
-	sb.Text = stext.NewText(sb)
-	return sb
-}
-
 type Set struct {
 	smartblock.SmartBlock
 	basic.CommonOperations
@@ -37,7 +25,17 @@ type Set struct {
 	stext.Text
 }
 
+func NewSet() *Set {
+	sb := smartblock.New()
+	return &Set{SmartBlock: sb}
+}
+
 func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
+	p.CommonOperations = basic.NewBasic(p.SmartBlock)
+	p.IHistory = basic.NewHistory(p.SmartBlock)
+	p.Dataview = dataview.NewDataview(ctx.App, p.SmartBlock)
+	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err

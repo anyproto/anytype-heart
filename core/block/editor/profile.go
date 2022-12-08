@@ -15,21 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewProfile(fileSource file.BlockService, pageManager bookmark.BlockService, bookmarkSvc bookmark.BookmarkService, sendEvent func(e *pb.Event)) *Profile {
-	sb := smartblock.New()
-	f := file.NewFile(sb, fileSource)
-	return &Profile{
-		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb),
-		IHistory:      basic.NewHistory(sb),
-		Text:          stext.NewText(sb),
-		File:          f,
-		Clipboard:     clipboard.NewClipboard(sb, f),
-		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		sendEvent:     sendEvent,
-	}
-}
-
 type Profile struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -42,7 +27,22 @@ type Profile struct {
 	sendEvent func(e *pb.Event)
 }
 
+func NewProfile(sendEvent func(e *pb.Event)) *Profile {
+	sb := smartblock.New()
+	return &Profile{
+		SmartBlock: sb,
+		sendEvent:  sendEvent,
+	}
+}
+
 func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
+	p.AllOperations = basic.NewBasic(p.SmartBlock)
+	p.IHistory = basic.NewHistory(p.SmartBlock)
+	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+	p.File = file.NewFile(ctx.App, p.SmartBlock)
+	p.Clipboard = clipboard.NewClipboard(ctx.App, p.SmartBlock)
+	p.Bookmark = bookmark.NewBookmark(ctx.App, p.SmartBlock)
+
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}

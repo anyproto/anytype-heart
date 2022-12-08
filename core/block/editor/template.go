@@ -3,9 +3,6 @@ package editor
 import (
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -14,19 +11,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewTemplate(
-	fileSource file.BlockService,
-	pageManager bookmark.BlockService,
-	importServices _import.Services,
-	creator _import.ObjectCreator,
-	bookmarkSvc bookmark.BookmarkService,
-) *Template {
-	page := NewPage(fileSource, pageManager, importServices, creator, bookmarkSvc)
-	return &Template{Page: page}
-}
-
 type Template struct {
 	*Page
+}
+
+func NewTemplate() *Template {
+	return &Template{Page: NewPage()}
 }
 
 func (t *Template) Init(ctx *smartblock.InitContext) (err error) {

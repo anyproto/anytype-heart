@@ -51,21 +51,28 @@ type SubObjectCollection struct {
 	collections           map[string]map[string]SubObjectImpl
 
 	sourceService source.Service
+	objectStore   objectstore.ObjectStore
 	app           *app.App
 }
 
 func NewSubObjectCollection(defaultCollectionName string) *SubObjectCollection {
-	sc := &SubObjectCollection{
+	return &SubObjectCollection{
 		SmartBlock:            smartblock.New(),
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
 	}
+}
 
-	sc.AllOperations = basic.NewBasic(sc.SmartBlock)
-	sc.IHistory = basic.NewHistory(sc.SmartBlock)
-	sc.Dataview = dataview.NewDataview(sc.SmartBlock)
-	sc.Text = stext.NewText(sc.SmartBlock)
-	return sc
+func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
+	c.app = ctx.App
+	c.AllOperations = basic.NewBasic(c.SmartBlock)
+	c.IHistory = basic.NewHistory(c.SmartBlock)
+	c.Dataview = dataview.NewDataview(ctx.App, c.SmartBlock)
+	c.Text = stext.NewText(ctx.App, c.SmartBlock)
+	c.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
+	c.sourceService = c.app.MustComponent(source.CName).(source.Service)
+
+	return c.SmartBlock.Init(ctx)
 }
 
 func (c *SubObjectCollection) getCollectionAndKeyFromId(id string) (collection, key string) {
@@ -99,7 +106,7 @@ func (c *SubObjectCollection) Open(subId string) (sb smartblock.SmartBlock, err 
 func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
 	st := c.NewState()
 	collection, key := c.getCollectionAndKeyFromId(objectId)
-	err := c.ObjectStore().DeleteObject(objectId)
+	err := c.objectStore.DeleteObject(objectId)
 	if err != nil {
 		log.Errorf("error deleting subobject from store %s %s %v", objectId, c.Id(), err.Error())
 	}
@@ -110,7 +117,7 @@ func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
 func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (err error) {
 	collection, key := c.getCollectionAndKeyFromId(objectId)
 	// todo: check inbound links
-	links, err := c.ObjectStore().GetInboundLinksById(objectId)
+	links, err := c.objectStore.GetInboundLinksById(objectId)
 	if err != nil {
 		return err
 	}
@@ -124,7 +131,7 @@ func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (er
 	}
 	c.sourceService.RemoveStaticSource(objectId)
 
-	err = c.ObjectStore().DeleteObject(objectId)
+	err = c.objectStore.DeleteObject(objectId)
 	if err != nil {
 		return err
 	}
@@ -233,13 +240,6 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 		}
 		return "", c.Apply(st, smartblock.NoHooks)
 	}
-}
-
-func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
-	c.app = ctx.App
-	c.sourceService = c.app.MustComponent(source.CName).(source.Service)
-
-	return c.SmartBlock.Init(ctx)
 }
 
 func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string) (err error) {

@@ -204,15 +204,15 @@ func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.objectCreator, s.bookmark)
+		sb = editor.NewPage()
 	case model.SmartBlockType_Archive:
-		sb = editor.NewArchive(s)
+		sb = editor.NewArchive()
 	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard(s, s.objectCreator, s)
+		sb = editor.NewDashboard()
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet()
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s, s, s.bookmark, s.sendEvent)
+		sb = editor.NewProfile(s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType()
@@ -229,15 +229,15 @@ func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate()
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.objectCreator, s.bookmark)
+		sb = editor.NewTemplate()
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.objectCreator, s.bookmark)
+		sb = editor.NewTemplate()
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspace(s)
+		sb = editor.NewWorkspace()
 	case model.SmartBlockType_AccountOld:
-		sb = editor.NewThreadDB(s)
+		sb = editor.NewThreadDB()
 	case model.SmartBlockType_Widget:
 		sb = editor.NewWidgetObject()
 	default:

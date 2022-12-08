@@ -3,6 +3,7 @@ package editor
 import (
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
@@ -10,23 +11,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
-
-func NewDashboard(importServices _import.Services, creator _import.ObjectCreator, dmservice DetailsModifier) *Dashboard {
-	sb := smartblock.New()
-	return &Dashboard{
-		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb), // deprecated
-		Import:          _import.NewImport(sb, importServices, creator),
-		Collection:      collection.NewCollection(sb),
-		DetailsModifier: dmservice,
-	}
-}
 
 type Dashboard struct {
 	smartblock.SmartBlock
@@ -34,9 +26,23 @@ type Dashboard struct {
 	_import.Import
 	collection.Collection
 	DetailsModifier DetailsModifier
+	objectStore     objectstore.ObjectStore
+	anytype         core.Service
+}
+
+func NewDashboard() *Dashboard {
+	sb := smartblock.New()
+	return &Dashboard{SmartBlock: sb}
 }
 
 func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
+	p.AllOperations = basic.NewBasic(p.SmartBlock)
+	p.Import = _import.NewImport(ctx.App, p.SmartBlock)
+	p.Collection = collection.NewCollection(p.SmartBlock)
+	p.DetailsModifier = app.MustComponent[DetailsModifier](ctx.App)
+	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
+	p.anytype = app.MustComponent[core.Service](ctx.App)
+
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
@@ -52,7 +58,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 		template.WithEmpty,
 		template.WithDetailName("Home"),
 		template.WithDetailIconEmoji("🏠"),
-		template.WithNoRootLink(p.Anytype().PredefinedBlocks().Archive),
+		template.WithNoRootLink(p.anytype.PredefinedBlocks().Archive),
 		template.WithRequiredRelations(),
 		template.WithNoDuplicateLinks(),
 	); err != nil {
@@ -69,9 +75,9 @@ func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	p.Anytype().ThreadsService().ThreadQueue().UpdatePriority(favoritedIds, threads.HighPriority)
+	p.anytype.ThreadsService().ThreadQueue().UpdatePriority(favoritedIds, threads.HighPriority)
 
-	records, _, err := p.ObjectStore().Query(nil, database.Query{
+	records, _, err := p.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsFavorite.String(),
