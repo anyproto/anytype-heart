@@ -279,7 +279,8 @@ var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
 
 var WithAddedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		if l := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String()); slice.FindPos(l, key.String()) > -1 {
+		var featRels = pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+		if slice.FindPos(featRels, key.String()) > -1 {
 			return
 		} else {
 			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(append(l, key.String())))

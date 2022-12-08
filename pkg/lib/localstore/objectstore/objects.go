@@ -1102,9 +1102,6 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
 			},
 		},
-		Sorts: []*model.BlockContentDataviewSort{
-			{RelationKey: bundle.RelationKeyWorkspaceId.String(), Type: model.BlockContentDataviewSort_Desc}, // dirty hack to have marketplace types at the end
-		},
 	}
 
 	f, err := database.NewFilters(q, nil, nil)
@@ -1894,7 +1891,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		log.Errorf("updateDetails: trying to index non-indexable sb %s(%d): %s", id, t, string(debug.Stack()))
 		return fmt.Errorf("updateDetails: trying to index non-indexable sb %s(%d)", id, t)
 	}
-	log.Errorf("indexing updateDetails %s: %s", id, pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, newDetails.Details)))
 
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)

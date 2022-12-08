@@ -743,7 +743,10 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 			return fmt.Errorf("incorrect object with workspace id")
 		}
 
-		st, _ := coresb.SmartBlockTypeFromID(objectId)
+		st, err := coresb.SmartBlockTypeFromID(objectId)
+		if err != nil {
+			return err
+		}
 		if st == coresb.SmartBlockTypeSubObject {
 			return workspace.DeleteSubObject(objectId)
 		}

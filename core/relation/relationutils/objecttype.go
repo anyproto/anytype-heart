@@ -1,12 +1,14 @@
 package relationutils
 
 import (
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"strings"
 )
 
 type ObjectType struct {
@@ -52,8 +54,10 @@ func (ot *ObjectType) ToStruct() *types.Struct {
 }
 
 // MigrateObjectTypeIds returns 2 slices:
-// normalized – contains the slice of normalized ids. it contains original slice if there is nothing to normalize(no bundled object type IDs exist in the object)
-// idsToMigrate - contains the slice of ids that are converted during the first step, nil if no ids were converted
+// normalized – contains the slice of normalized ids.
+// it contains original slice if there is nothing to normalize(no bundled object type IDs exist in the object)
+//
+// idsToMigrate - contains the slice of ids converted during the first step, nil if no ids were converted
 func MigrateObjectTypeIds(ids []string) (normalized []string, idsToMigrate []string) {
 	// shortcut if there is nothing to migrate
 	hasIdsToMigrate := false

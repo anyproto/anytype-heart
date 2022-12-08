@@ -41,13 +41,21 @@ import (
 const (
 	CName = "indexer"
 
-	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 7  // reindex thread-based objects
-	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
-	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 34 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
-	ForceFilestoreKeysReindexCounter  int32 = 1
+	// ### Increasing counters below will trigger existing account to reindex their
+
+	// ForceThreadsObjectsReindexCounter reindex thread-based objects
+	ForceThreadsObjectsReindexCounter int32 = 7
+	// ForceFilesReindexCounter reindex ipfs-file-based objects
+	ForceFilesReindexCounter int32 = 6 //
+	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
+	ForceBundledObjectsReindexCounter int32 = 4 // reindex objects like anytypeProfile
+	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
+	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter int32 = 34
+	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
+	ForceFulltextIndexCounter int32 = 3
+	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
+	ForceFilestoreKeysReindexCounter int32 = 1
 )
 
 var log = logging.Logger("anytype-doc-indexer")

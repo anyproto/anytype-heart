@@ -64,7 +64,8 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeyTag,
 }...)
 
-// InternalTypes contains the list of types that are not possible to create as a general object because they have specific logic
+// InternalTypes contains the list of types that are not possible
+// to create as a general object because they have specific logic
 var InternalTypes = []TypeKey{
 	TypeKeyFile,
 	TypeKeyImage,

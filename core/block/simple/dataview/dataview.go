@@ -63,7 +63,7 @@ type Block interface {
 
 	// AddRelationOld DEPRECATED
 	AddRelationOld(relation model.Relation)
-	// UpdateRelation DEPRECATED
+	// UpdateRelationOld DEPRECATED
 	UpdateRelationOld(relationKey string, relation model.Relation) error
 	// DeleteRelationOld DEPRECATED
 	DeleteRelationOld(relationKey string) error
