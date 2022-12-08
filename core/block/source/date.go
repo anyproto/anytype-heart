@@ -56,14 +56,15 @@ func (v *date) Virtual() bool {
 
 func (v *date) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeyDate.URL()),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_basic)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
+		bundle.RelationKeyName.String():        pbtypes.String(v.t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyId.String():          pbtypes.String(v.id),
+		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
+		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
+		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
+		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_basic)),
+		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
+		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.a.PredefinedBlocks().Account),
 	}}
 }
 
