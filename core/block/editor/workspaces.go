@@ -647,10 +647,10 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		}
 	}
 
-	rawLayout := pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())
-	layout, err := bundle.GetLayout(model.ObjectTypeLayout(rawLayout))
+	rawLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
+	layout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawLayout)))
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid layout %.0f: %w", rawLayout, err)
+		return "", nil, fmt.Errorf("invalid layout %d: %w", rawLayout, err)
 	}
 
 	for _, rel := range layout.RequiredRelations {
