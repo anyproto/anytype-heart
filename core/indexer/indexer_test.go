@@ -66,16 +66,16 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.docService.EXPECT().GetDocInfo(gomock.Any(), gomock.Any()).Return(doc.DocInfo{State: state.NewDoc("", nil).(*state.State)}, nil).AnyTimes()
 	fx.docService.EXPECT().OnWholeChange(gomock.Any())
-	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
-	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
+	//fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
+	//fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
 	for _, rk := range bundle.ListRelationsKeys() {
 		fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
 		fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
 	}
 	for _, ok := range bundle.ListTypesKeys() {
-		fx.objectStore.EXPECT().GetDetails(ok.URL())
-		fx.objectStore.EXPECT().AddToIndexQueue(ok.URL())
+		fx.objectStore.EXPECT().GetDetails(ok.BundledURL())
+		fx.objectStore.EXPECT().AddToIndexQueue(ok.BundledURL())
 	}
 	fx.anytype.EXPECT().ProfileID().AnyTimes()
 	fx.objectStore.EXPECT().GetDetails("_anytype_profile")
