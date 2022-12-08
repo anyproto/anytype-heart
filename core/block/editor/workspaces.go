@@ -650,7 +650,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	rawLayout := pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())
 	layout, err := bundle.GetLayout(model.ObjectTypeLayout(rawLayout))
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid layout: %w", err)
+		return "", nil, fmt.Errorf("invalid layout %.0f: %w", rawLayout, err)
 	}
 
 	for _, rel := range bundle.RequiredInternalRelations {
@@ -676,6 +676,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+	object.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(int(model.SmartBlockType_Page))
 
 	// no need to check for the generated bson's
 	if st.HasInStore([]string{collectionKeyObjectTypes, key}) {
