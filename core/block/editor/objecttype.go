@@ -3,6 +3,7 @@ package editor
 import (
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
@@ -198,8 +199,15 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			p.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: dv})
 
 		}
-
 	}
+
+	fixMissingSmartblockTypes := func(s *state.State) {
+		// we have a bug in internal release that was not adding smartblocktype to newly created custom types
+		if len(pbtypes.GetIntList(s.Details(), bundle.RelationKeySmartblockTypes.String())) == 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(int(model.SmartBlockType_Page)))
+		}
+	}
+
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}, model.ObjectType_objectType),
 		template.WithEmpty,
@@ -223,5 +231,6 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
+		fixMissingSmartblockTypes,
 	)
 }
