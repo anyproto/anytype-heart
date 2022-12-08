@@ -1070,15 +1070,61 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	return
 }
 
-func (m *dsObjectStore) GetRelation(relationKey string) (*model.Relation, error) {
-	// todo: should pass workspace
+func (m *dsObjectStore) GetRelationById(id string) (*model.Relation, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	return getRelation(txn, relationKey)
+	s, err := m.GetDetails(id)
+	if err != nil {
+		return nil, err
+	}
+
+	rel := relationutils.RelationFromStruct(s.GetDetails())
+	return rel.Relation, nil
+}
+
+// GetRelationByKey is deprecated, should be used from relationService
+func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
+	// todo: should pass workspace
+	q := database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Value:       pbtypes.String(key),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyType.String(),
+				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{RelationKey: bundle.RelationKeyWorkspaceId.String(), Type: model.BlockContentDataviewSort_Desc}, // dirty hack to have marketplace types at the end
+		},
+	}
+
+	f, err := database.NewFilters(q, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	records, err := m.QueryRaw(query.Query{
+		Filters: []query.Filter{f},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, ds.ErrNotFound
+	}
+
+	rel := relationutils.RelationFromStruct(records[0].Details)
+
+	return rel.Relation, nil
 }
 
 // ListRelations retrieves all available relations and sort them in this order:
@@ -1848,6 +1894,7 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		log.Errorf("updateDetails: trying to index non-indexable sb %s(%d): %s", id, t, string(debug.Stack()))
 		return fmt.Errorf("updateDetails: trying to index non-indexable sb %s(%d)", id, t)
 	}
+	log.Errorf("indexing updateDetails %s: %s", id, pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, newDetails.Details)))
 
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
@@ -2375,7 +2422,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 			continue
 		}
 
-		rel, err := store.GetRelation(rk)
+		rel, err := store.GetRelationByKey(rk)
 		if err != nil {
 			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relId)
 			continue

@@ -432,7 +432,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 				continue
 			} else {
 
-				rel, err := at.ObjectStore().GetRelation(k)
+				rel, err := at.ObjectStore().GetRelationByKey(k)
 				if err != nil {
 					log.Errorf("ObjectGraph failed to get relation %s: %s", k, err.Error())
 					continue
@@ -776,7 +776,6 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
 	ctx := mw.newContext(cctx)
-
 
 	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
 		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}}
