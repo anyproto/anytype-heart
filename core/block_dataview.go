@@ -73,15 +73,23 @@ func (mw *Middleware) BlockDataviewObjectOrderUpdate(cctx context.Context, req *
 	return response(pb.RpcBlockDataviewObjectOrderUpdateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context, req *pb.RpcBlockDataviewCreateWithObjectRequest) *pb.RpcBlockDataviewCreateWithObjectResponse {
+func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context,
+	req *pb.RpcBlockDataviewCreateWithObjectRequest) *pb.RpcBlockDataviewCreateWithObjectResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcBlockDataviewCreateWithObjectResponseErrorCode, id, targetObjectId string, err error) *pb.RpcBlockDataviewCreateWithObjectResponse {
-		m := &pb.RpcBlockDataviewCreateWithObjectResponse{Error: &pb.RpcBlockDataviewCreateWithObjectResponseError{Code: code}, BlockId: id, TargetObjectId: targetObjectId}
+	response := func(code pb.RpcBlockDataviewCreateWithObjectResponseErrorCode,
+		id, targetObjectId string,
+		err error) *pb.RpcBlockDataviewCreateWithObjectResponse {
+		m := &pb.RpcBlockDataviewCreateWithObjectResponse{
+			Error: &pb.RpcBlockDataviewCreateWithObjectResponseError{Code: code},
+			BlockId: id,
+			TargetObjectId: targetObjectId,
+		}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
 			m.Event = ctx.GetResponseEvent()
 		}
+
 		return m
 	}
 
@@ -98,6 +106,7 @@ func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context, req *p
 	}
 
 	var blockId string
+	
 	err = mw.doBlockService(func(bs block.Service) (err error) {
 		blockId, err = bs.CreateBlock(ctx, pb.RpcBlockCreateRequest{
 			ContextId: req.ContextId,
@@ -105,12 +114,14 @@ func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context, req *p
 			Block:     req.Block,
 			Position:  req.Position,
 		})
+
 		return
 	})
 
 	if err != nil {
 		return response(pb.RpcBlockDataviewCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", err)
 	}
+
 	return response(pb.RpcBlockDataviewCreateWithObjectResponseError_NULL, blockId, setId, nil)
 }
 

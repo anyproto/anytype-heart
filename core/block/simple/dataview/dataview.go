@@ -324,6 +324,7 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	for _, rl := range l.content.RelationLinks {
 		ids = append(ids, addr.RelationKeyToIdPrefix+rl.Key)
 	}
+
 	if l.content.TargetObjectId != "" {
 		ids = append(ids, l.content.TargetObjectId)
 	}
