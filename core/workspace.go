@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"

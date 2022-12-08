@@ -2,8 +2,10 @@ package source
 
 import (
 	"fmt"
-	"github.com/gogo/protobuf/types"
 	"sync"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -12,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 const CName = "source"

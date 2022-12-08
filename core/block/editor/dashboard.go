@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
@@ -13,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewDashboard(importServices _import.Services, dmservice DetailsModifier) *Dashboard {
