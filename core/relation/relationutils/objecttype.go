@@ -75,13 +75,11 @@ func MigrateObjectTypeIds(ids []string) (normalized []string, idsToMigrate []str
 	// in-place migration for bundled object types moved into workspace
 	normalized = make([]string, len(ids))
 	idsToMigrate = make([]string, 0, len(ids))
+	var migrated bool
 	for i := range ids {
-		t, err := bundle.TypeKeyFromUrl(ids[i])
-		if err == nil {
+		normalized[i], migrated = MigrateObjectTypeId(ids[i])
+		if migrated {
 			idsToMigrate = append(idsToMigrate, ids[i])
-			normalized[i] = addr.ObjectTypeKeyToIdPrefix + t.String()
-		} else {
-			normalized[i] = ids[i]
 		}
 	}
 
