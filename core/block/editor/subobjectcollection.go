@@ -170,6 +170,7 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 	return
 }
 
+// cleanSubObjectDetails returns the new type.Struct but the values of fields are passed by reference
 func cleanSubObjectDetails(details *types.Struct) *types.Struct {
 	dataToSave := &types.Struct{Fields: map[string]*types.Value{}}
 	for k, v := range details.GetFields() {
@@ -197,13 +198,7 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 			return "", fmt.Errorf("onSubObjectChange: subObject '%s' not exists in collection '%s'", subId, collection)
 		}
 
-		dataToSave := p.State.Details()
-		l := p.State.LocalDetails()
-		for _, d := range localDetailsAllowedToBeStored {
-			if v, ok := l.Fields[d]; ok {
-				dataToSave.Fields[d] = v
-			}
-		}
+		dataToSave := cleanSubObjectDetails(p.State.CombinedDetails())
 
 		var notOnlyLocalDetailsChanged bool
 		for k, _ := range dataToSave.Fields {
