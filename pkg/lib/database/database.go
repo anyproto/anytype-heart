@@ -33,7 +33,8 @@ type Reader interface {
 	QueryById(ids []string) (records []Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
-	GetRelation(key string) (relation *model.Relation, err error)
+	GetRelationByKey(key string) (relation *model.Relation, err error)
+	GetRelationById(id string) (relation *model.Relation, err error)
 
 	// ListRelations returns both indexed and bundled relations
 	ListRelations(objType string) (relations []*model.Relation, err error)

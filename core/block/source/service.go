@@ -2,8 +2,10 @@ package source
 
 import (
 	"fmt"
-	"github.com/gogo/protobuf/types"
 	"sync"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -12,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 const CName = "source"
@@ -25,6 +26,8 @@ type Service interface {
 	NewSource(id string, listenToOwnChanges bool) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	RemoveStaticSource(id string)
+
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
@@ -103,4 +106,10 @@ func (s *service) RegisterStaticSource(id string, new func() Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[id] = new
+}
+
+func (s *service) RemoveStaticSource(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.staticIds, id)
 }

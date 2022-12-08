@@ -2,17 +2,16 @@ package indexer_test
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
-	"github.com/gogo/protobuf/types"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -20,6 +19,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -27,12 +28,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockBuiltinTemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockStatus"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewIndexer(t *testing.T) {
@@ -74,8 +75,8 @@ func newFixture(t *testing.T) *fixture {
 		fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
 	}
 	for _, ok := range bundle.ListTypesKeys() {
-		fx.objectStore.EXPECT().GetDetails(ok.URL())
-		fx.objectStore.EXPECT().AddToIndexQueue(ok.URL())
+		fx.objectStore.EXPECT().GetDetails(ok.BundledURL())
+		fx.objectStore.EXPECT().AddToIndexQueue(ok.BundledURL())
 	}
 	fx.anytype.EXPECT().ProfileID().AnyTimes()
 	fx.objectStore.EXPECT().GetDetails("_anytype_profile")
@@ -114,7 +115,9 @@ func newFixture(t *testing.T) *fixture {
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
 	rs := mockRelation.RegisterMockRelation(fx.ctrl, ta)
-	rs.EXPECT().CreateBulkMigration().Times(1)
+	rs.EXPECT().MigrateObjectTypes(gomock.Any()).Times(1)
+	rs.EXPECT().MigrateRelations(gomock.Any()).Times(1)
+
 	require.NoError(t, ta.Start(context.Background()))
 	return fx
 }

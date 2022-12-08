@@ -168,7 +168,14 @@ func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearch
 	}
 
 	var rec database.Record
-	rec = makeSuggestedDateRecord(dt)
+	var workspaceId string
+	for _, f := range req.Filters {
+		if f.RelationKey == bundle.RelationKeyWorkspaceId.String() && f.Condition == model.BlockContentDataviewFilter_Equal {
+			workspaceId = f.Value.GetStringValue()
+			break
+		}
+	}
+	rec = makeSuggestedDateRecord(dt, workspaceId)
 	f, _ := filter.MakeAndFilter(req.Filters)
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
@@ -235,14 +242,15 @@ func deriveDateId(t time.Time) string {
 	return "_date_" + t.Format("2006-01-02")
 }
 
-func makeSuggestedDateRecord(t time.Time) database.Record {
+func makeSuggestedDateRecord(t time.Time, workspaceId string) database.Record {
 	id := deriveDateId(t)
 
 	d := &types.Struct{Fields: map[string]*types.Value{
-		"id":        pbtypes.String(id),
-		"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-		"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
-		"iconEmoji": pbtypes.String("📅"),
+		bundle.RelationKeyId.String():          pbtypes.String(id),
+		bundle.RelationKeyName.String():        pbtypes.String(t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
+		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
+		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(workspaceId),
 	}}
 
 	return database.Record{
@@ -432,7 +440,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 				continue
 			} else {
 
-				rel, err := at.ObjectStore().GetRelation(k)
+				rel, err := at.ObjectStore().GetRelationByKey(k)
 				if err != nil {
 					log.Errorf("ObjectGraph failed to get relation %s: %s", k, err.Error())
 					continue
@@ -776,7 +784,6 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
 	ctx := mw.newContext(cctx)
-
 
 	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
 		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}}

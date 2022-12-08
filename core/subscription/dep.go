@@ -104,7 +104,7 @@ func (ds *dependencyService) isRelationObject(key string) bool {
 	if isObj, ok := ds.isRelationObjMap[key]; ok {
 		return isObj
 	}
-	rel, err := ds.s.objectStore.GetRelation(key)
+	rel, err := ds.s.objectStore.GetRelationByKey(key)
 	if err != nil {
 		log.Errorf("can't get relation: %v", err)
 		return false

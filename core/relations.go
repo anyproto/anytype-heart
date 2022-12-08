@@ -6,19 +6,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
@@ -145,62 +143,12 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 
-	id, newDetails, err := mw.objectTypeCreate(req)
+	id, newDetails, err := mw.objectCreateObjectType(req)
 	if err != nil {
 		return response(pb.RpcObjectCreateObjectTypeResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 
 	return response(pb.RpcObjectCreateObjectTypeResponseError_NULL, id, newDetails, nil)
-}
-
-func (mw *Middleware) objectTypeCreate(req *pb.RpcObjectCreateObjectTypeRequest) (id string, newDetails *types.Struct, err error) {
-	if req.Details == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
-
-	var sbId string
-	var recommendedRelationKeys []string
-
-	rawLayout := pbtypes.GetFloat64(req.Details, bundle.RelationKeyRecommendedLayout.String())
-	layout, err := bundle.GetLayout(model.ObjectTypeLayout(rawLayout))
-	if err != nil {
-		return "", nil, fmt.Errorf("invalid layout: %w", err)
-	}
-
-	for _, rel := range bundle.RequiredInternalRelations {
-		recommendedRelationKeys = append(recommendedRelationKeys, addr.RelationKeyToIdPrefix+rel.String())
-	}
-
-	for _, rel := range layout.RequiredRelations {
-		// todo: check if relation is installed?
-		k := addr.RelationKeyToIdPrefix + rel.Key
-		if slice.FindPos(recommendedRelationKeys, k) != -1 {
-			continue
-		}
-		recommendedRelationKeys = append(recommendedRelationKeys, k)
-	}
-
-	details := req.Details
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-	details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationKeys)
-
-	err = mw.doBlockService(func(bs block.Service) (err error) {
-		sbId, _, err = bs.CreateSmartBlock(context.TODO(), smartblock.SmartBlockTypeObjectType, details, nil) // TODO: add relationIds
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-	if err != nil {
-		return
-	}
-
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(sbId)
-
-	return sbId, details, nil
 }
 
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
@@ -296,23 +244,43 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, *types.Struct, error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
 	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
 	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 	var id string
-	var newDetails *types.Struct
+	var object *types.Struct
 	err := mw.doBlockService(func(rs block.Service) error {
 		var err error
-		id, newDetails, err = rs.CreateRelationOption(req.Details)
+		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
 		return err
 	})
-	return id, newDetails, err
+	return id, object, err
+}
+
+func (mw *Middleware) objectCreateObjectType(req *pb.RpcObjectCreateObjectTypeRequest) (id string, object *types.Struct, err error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	err = mw.doBlockService(func(rs block.Service) error {
+		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
+		return err
+	})
+	return
 }
 
 func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
+	if req.GetDetails().GetFields() == nil {
+		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
+	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	err = mw.doBlockService(func(rs block.Service) error {
-		var err2 error
-		id, object, err2 = rs.CreateRelation(req.Details)
-		return err2
+		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
+		return err
 	})
 	return
 }

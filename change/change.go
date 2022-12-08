@@ -3,9 +3,10 @@ package change
 import (
 	"encoding/json"
 
+	"github.com/gogo/protobuf/jsonpb"
+
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/gogo/protobuf/jsonpb"
 )
 
 func NewChangeFromRecord(record core.SmartblockRecordEnvelope) (*Change, error) {

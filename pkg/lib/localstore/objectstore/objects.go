@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 
 	"github.com/gogo/protobuf/proto"
@@ -704,7 +703,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 	return
 }
 
- func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
+func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
 	var filter filterSmartblockTypes
 	for _, otUrl := range ots {
 		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
@@ -775,6 +774,11 @@ func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub databa
 	}
 	sub.Subscribe(ids)
 	records, err = m.QueryById(ids)
+	if err != nil {
+		// can mean only the datastore is already closed, so we can resign and return
+		log.Errorf("QueryByIdAndSubscribeForChanges failed to query ids: %v", err)
+		return nil, nil, err
+	}
 
 	close = func() {
 		m.closeAndRemoveSubscription(sub)
@@ -897,17 +901,6 @@ func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) 
 	} else {
 		pb.StructDeleteEmptyFields(details.Details)
 	}
-
-	// Inject smartblockTypes
-	if _, ok := details.Details.Fields[bundle.RelationKeySmartblockTypes.String()]; !ok {
-		sbTypes, err := state.ListSmartblockTypes(id)
-		if err == nil {
-			details.Details.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbTypes...)
-		} else {
-			log.Debugf("unmarshalDetails: ListSmartblockTypes %s: %s", id, err)
-		}
-	}
-
 	details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
 	return &details, nil
 }
@@ -1077,15 +1070,58 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	return
 }
 
-func (m *dsObjectStore) GetRelation(relationKey string) (*model.Relation, error) {
-	// todo: should pass workspace
+func (m *dsObjectStore) GetRelationById(id string) (*model.Relation, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	return getRelation(txn, relationKey)
+	s, err := m.GetDetails(id)
+	if err != nil {
+		return nil, err
+	}
+
+	rel := relationutils.RelationFromStruct(s.GetDetails())
+	return rel.Relation, nil
+}
+
+// GetRelationByKey is deprecated, should be used from relationService
+func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
+	// todo: should pass workspace
+	q := database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Value:       pbtypes.String(key),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyType.String(),
+				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
+			},
+		},
+	}
+
+	f, err := database.NewFilters(q, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	records, err := m.QueryRaw(query.Query{
+		Filters: []query.Filter{f},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, ds.ErrNotFound
+	}
+
+	rel := relationutils.RelationFromStruct(records[0].Details)
+
+	return rel.Relation, nil
 }
 
 // ListRelations retrieves all available relations and sort them in this order:
@@ -1883,7 +1919,7 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
 				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
 			} else {
-				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
+				log.Warnf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
 			}
 		}
 	}
@@ -2342,6 +2378,9 @@ func objTypeCompactEncode(objType string) (string, error) {
 	if strings.HasPrefix(objType, addr.BundledObjectTypeURLPrefix) {
 		return objType, nil
 	}
+	if strings.HasPrefix(objType, addr.ObjectTypeKeyToIdPrefix) {
+		return objType, nil
+	}
 	if strings.HasPrefix(objType, "ba") {
 		return objType, nil
 	}
@@ -2360,8 +2399,6 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 			return nil, err
 		}
 		return objectType, nil
-	} else if !strings.HasPrefix(url, "b") {
-		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 
 	ois, err := store.GetByIDs(url)
@@ -2381,7 +2418,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 			continue
 		}
 
-		rel, err := store.GetRelation(rk)
+		rel, err := store.GetRelationByKey(rk)
 		if err != nil {
 			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relId)
 			continue
