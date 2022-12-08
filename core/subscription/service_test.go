@@ -31,11 +31,11 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelation(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelation(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
 		}, nil).AnyTimes()
@@ -134,11 +134,11 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelation(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelation(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
 		}, nil).AnyTimes()
@@ -193,7 +193,7 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelation(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
@@ -260,7 +260,7 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelation(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()

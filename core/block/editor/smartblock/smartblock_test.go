@@ -148,7 +148,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
-	fx.store.EXPECT().HasIDs(id).Return([]string{}, nil)
 
 	fx.md.EXPECT().ReportChange(gomock.Any(), gomock.Any()).AnyTimes()
 	fx.store.EXPECT().GetPendingLocalDetails(id).Return(&model.ObjectDetails{

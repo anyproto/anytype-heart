@@ -66,8 +66,8 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.docService.EXPECT().GetDocInfo(gomock.Any(), gomock.Any()).Return(doc.DocInfo{State: state.NewDoc("", nil).(*state.State)}, nil).AnyTimes()
 	fx.docService.EXPECT().OnWholeChange(gomock.Any())
-	//fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
-	//fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
+	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
+	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
 	for _, rk := range bundle.ListRelationsKeys() {
 		fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
@@ -114,7 +114,9 @@ func newFixture(t *testing.T) *fixture {
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
 	rs := mockRelation.RegisterMockRelation(fx.ctrl, ta)
-	rs.EXPECT().CreateBulkMigration().Times(1)
+	rs.EXPECT().MigrateObjectTypes(gomock.Any()).Times(1)
+	rs.EXPECT().MigrateRelations(gomock.Any()).Times(1)
+
 	require.NoError(t, ta.Start(context.Background()))
 	return fx
 }
