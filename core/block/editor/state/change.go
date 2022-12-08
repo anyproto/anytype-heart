@@ -333,7 +333,7 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 	// in-place migration for bundled object types moved into workspace
 	url, migrated := relationutils.MigrateObjectTypeId(add.Url)
 	if migrated {
-		s.SetObjectTypesToMigrate(append(s.ObjectTypesToMigrate(), add.Url))
+		s.SetObjectTypesToMigrate(append(s.ObjectTypesToMigrate(), url))
 		add.Url = url
 	}
 	objectTypes := append(s.ObjectTypes(), add.Url)
