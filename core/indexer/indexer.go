@@ -547,8 +547,12 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			ots = append(ots, ot.BundledURL())
 		}
 
+		for _, ot := range bundle.InternalTypes {
+			ots = append(ots, ot.BundledURL())
+		}
+
 		var rels = make([]*model.Relation, 0, len(bundle.RequiredInternalRelations))
-		for _, rel := range bundle.RequiredInternalRelations {
+		for _, rel := range bundle.SystemRelations {
 			rels = append(rels, bundle.MustGetRelation(rel))
 		}
 		i.migrateObjectTypes(ots)
