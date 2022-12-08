@@ -35,8 +35,6 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyLastModifiedBy,
 	RelationKeyLastOpenedDate,
 	RelationKeyFeaturedRelations,
-	RelationKeyIsHidden,
-	RelationKeyIsArchived,
 	RelationKeyIsFavorite,
 	RelationKeyWorkspaceId,
 	RelationKeyLinks,
@@ -47,6 +45,7 @@ var RequiredInternalRelations = []RelationKey{
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
 // in case EVERY object depend on the relation please add it to RequiredInternalRelations
 var SystemRelations = append(RequiredInternalRelations, []RelationKey{
+	RelationKeyAddedDate,
 	RelationKeySource,
 	RelationKeySourceObject,
 	RelationKeySetOf,
@@ -57,6 +56,11 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeyRelationMaxCount,
 	RelationKeyRelationOptionColor,
 	RelationKeyRelationFormatObjectTypes,
+	RelationKeyIsReadonly,
+	RelationKeyIsDeleted,
+	RelationKeyIsHidden,
+	RelationKeyIsArchived,
+	RelationKeyTemplateIsBundled,
 }...)
 
 // InternalTypes contains the list of types that are not possible to create as a general object because they have specific logic
