@@ -316,10 +316,15 @@ func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
 }
 
 func TypeKeyFromUrl(url string) (TypeKey, error) {
-	if !strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
-		return "", fmt.Errorf("invalid type url: no prefix found")
+	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
+		return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
 	}
-	return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
+
+	if strings.HasPrefix(url, addr.ObjectTypeKeyToIdPrefix) {
+		return TypeKey(strings.TrimPrefix(url, addr.ObjectTypeKeyToIdPrefix)), nil
+	}
+
+	return "", fmt.Errorf("invalid type url: no prefix found")
 }
 
 func FilterRelationKeys(keys []RelationKey, cond func(RelationKey) bool) []RelationKey {
