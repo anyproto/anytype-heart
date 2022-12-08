@@ -83,6 +83,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 				for _, r := range dv {
 					if r.BlockId == template.DataviewBlockId {
 						r.Restrictions = append(r.Restrictions, model.Restrictions_DVCreateObject)
+						exists = true
 						break
 					}
 				}

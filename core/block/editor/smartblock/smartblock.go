@@ -362,7 +362,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
 	}
-	recordsCh := make(chan *types.Struct, 0) // todo: remove; temporarly set to 0 to catch the deadlock
+	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 	sb.depIds = sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
 	sort.Strings(sb.depIds)
