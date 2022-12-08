@@ -653,17 +653,6 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		return "", nil, fmt.Errorf("invalid layout %.0f: %w", rawLayout, err)
 	}
 
-	for _, rel := range bundle.RequiredInternalRelations {
-		if bundle.MustGetRelation(rel).Hidden {
-			continue
-		}
-		relId := addr.RelationKeyToIdPrefix + rel.String()
-		if slice.FindPos(recommendedRelationIds, relId) != -1 {
-			continue
-		}
-		recommendedRelationIds = append(recommendedRelationIds, relId)
-	}
-
 	for _, rel := range layout.RequiredRelations {
 		relId := addr.RelationKeyToIdPrefix + rel.Key
 		if slice.FindPos(recommendedRelationIds, relId) != -1 {
