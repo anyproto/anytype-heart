@@ -61,6 +61,7 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeyIsHidden,
 	RelationKeyIsArchived,
 	RelationKeyTemplateIsBundled,
+	RelationKeyTag,
 }...)
 
 // InternalTypes contains the list of types that are not possible to create as a general object because they have specific logic
@@ -93,7 +94,6 @@ var SystemTypes = []TypeKey{
 	TypeKeyBookmark,
 	TypeKeyDashboard,
 	TypeKeySpace,
-	TypeKeyWeeklyPlan,
 }
 
 var FormatFilePossibleTargetObjectTypes = []string{
