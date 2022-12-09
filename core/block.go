@@ -9,11 +9,10 @@ import (
 	"github.com/miolini/datacounter"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
