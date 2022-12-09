@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -18,6 +16,7 @@ import (
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"

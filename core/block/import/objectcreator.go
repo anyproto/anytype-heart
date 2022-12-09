@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
