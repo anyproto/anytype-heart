@@ -64,6 +64,7 @@ message Event {
             Block.Dataview.ObjectOrderUpdate blockDataViewObjectOrderUpdate = 39;
             Block.Dataview.RelationDelete blockDataviewRelationDelete = 124;
             Block.Dataview.RelationSet blockDataviewRelationSet = 123;
+            Block.Dataview.TargetObjectIdSet blockDataviewTargetObjectId = 125;
 
             // deprecated
             Block.Dataview.OldRelationDelete blockDataviewOldRelationDelete = 24;
@@ -735,6 +736,11 @@ message Event {
                 SliceOperationMove = 2;
                 SliceOperationRemove = 3;
                 SliceOperationReplace = 4;
+            }
+
+            message TargetObjectIdSet {
+                string id = 1; // dataview block's id
+                string targetObjectId = 2;
             }
         }
     }

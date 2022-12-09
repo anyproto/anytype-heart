@@ -977,6 +977,7 @@
     - [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet)
     - [Event.Block.Dataview.SliceChange](#anytype-Event-Block-Dataview-SliceChange)
     - [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet)
+    - [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet)
     - [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete)
     - [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder)
     - [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet)
@@ -15353,6 +15354,22 @@ sent when the dataview relation has been changed or added
 
 
 
+<a name="anytype-Event-Block-Dataview-TargetObjectIdSet"></a>
+
+### Event.Block.Dataview.TargetObjectIdSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| targetObjectId | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Dataview-ViewDelete"></a>
 
 ### Event.Block.Dataview.ViewDelete
@@ -16849,6 +16866,7 @@ Precondition: user A opened a block
 | blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
+| blockDataviewTargetObjectId | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
 | blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |

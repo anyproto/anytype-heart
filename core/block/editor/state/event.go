@@ -270,6 +270,17 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+	case *pb.EventMessageValueOfBlockDataviewTargetObjectId:
+		if err = apply(o.BlockDataviewTargetObjectId.Id, func(b simple.Block) error {
+			if dvBlock, ok := b.(dataview.Block); ok {
+				dvBlock.SetTargetObjectId(o.BlockDataviewTargetObjectId.TargetObjectId)
+
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
 	}
 
 	return nil

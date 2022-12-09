@@ -12,7 +12,7 @@ const (
 	CName = "kanban"
 )
 
-func New() Service{
+func New() Service {
 	return &service{groupColumns: make(map[model.RelationFormat]Grouper)}
 }
 
@@ -29,7 +29,7 @@ type Service interface {
 }
 
 type service struct {
-	objectStore objectstore.ObjectStore
+	objectStore  objectstore.ObjectStore
 	groupColumns map[model.RelationFormat]Grouper
 }
 
@@ -60,7 +60,6 @@ func (s *service) Grouper(key string) (Grouper, error) {
 
 	return grouper, nil
 }
-
 
 func GroupsToStrSlice(groups []*model.BlockContentDataviewGroup) []string {
 	res := make([]string, len(groups))
