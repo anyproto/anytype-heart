@@ -3,7 +3,6 @@ package state
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -16,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"

@@ -1416,11 +1416,15 @@ func Do[t any](s *Service, id string, apply func(sb t) error) error {
 	return apply(bb)
 }
 
-func DoState[t any](s *Service, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoState[t any](
+	s *Service, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
+) error {
 	return DoStateCtx(s, nil, id, apply, flags...)
 }
 
-func DoStateCtx[t any](s *Service, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoStateCtx[t any](
+	s *Service, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
+) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err

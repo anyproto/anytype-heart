@@ -6,18 +6,17 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/anytypeio/go-slip21"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/textileio/crypto/symmetric"
+	corenet "github.com/textileio/go-threads/core/net"
+	"github.com/textileio/go-threads/core/thread"
 	threadsDb "github.com/textileio/go-threads/db"
 	threadsUtil "github.com/textileio/go-threads/util"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/anytypeio/go-slip21"
-	"github.com/libp2p/go-libp2p/core/crypto"
-
-	"github.com/textileio/crypto/symmetric"
-	corenet "github.com/textileio/go-threads/core/net"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 type threadDerivedIndex uint32

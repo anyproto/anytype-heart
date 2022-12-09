@@ -111,7 +111,9 @@ func (s *Service) UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteReq
 	})
 }
 
-func (s *Service) SetDivStyle(ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
+func (s *Service) SetDivStyle(
+	ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string,
+) (err error) {
 	return Do(s, contextId, func(b basic.CommonOperations) error {
 		return b.SetDivStyle(ctx, style, ids...)
 	})
@@ -442,7 +444,9 @@ func (s *Service) SetTextIcon(ctx *session.Context, contextId, image, emoji stri
 	})
 }
 
-func (s *Service) SetBackgroundColor(ctx *session.Context, contextId string, color string, blockIds ...string) (err error) {
+func (s *Service) SetBackgroundColor(
+	ctx *session.Context, contextId string, color string, blockIds ...string,
+) (err error) {
 	return Do(s, contextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			b.Model().BackgroundColor = color
@@ -944,7 +948,9 @@ func (s *Service) ListAvailableRelations(objectId string) (aggregatedRelations [
 	return
 }
 
-func (s *Service) ListConvertToObjects(ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (s *Service) ListConvertToObjects(
+	ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest,
+) (linkIds []string, err error) {
 	err = Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		linkIds, err = b.ExtractBlocksToObjects(ctx, s, req)
 		return err
