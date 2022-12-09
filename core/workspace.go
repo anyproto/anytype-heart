@@ -20,7 +20,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 	}
 
 	var workspaceId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		workspaceId, err = bs.CreateWorkspace(req)
 		return
 	})
@@ -41,7 +41,7 @@ func (mw *Middleware) WorkspaceSetIsHighlighted(cctx context.Context, req *pb.Rp
 		return m
 	}
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.SetIsHighlighted(req)
 		return
 	})
@@ -62,7 +62,7 @@ func (mw *Middleware) WorkspaceSelect(cctx context.Context, req *pb.RpcWorkspace
 		return m
 	}
 
-	err := mw.doBlockService(func(bs block.Service) error {
+	err := mw.doBlockService(func(bs *block.Service) error {
 		return bs.SelectWorkspace(req)
 	})
 	if err != nil {
@@ -83,7 +83,7 @@ func (mw *Middleware) WorkspaceGetAll(cctx context.Context, req *pb.RpcWorkspace
 	}
 
 	var workspaceIds []string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		workspaceIds, err = bs.GetAllWorkspaces(req)
 		return
 	})
@@ -105,7 +105,7 @@ func (mw *Middleware) WorkspaceGetCurrent(cctx context.Context, req *pb.RpcWorks
 	}
 
 	var workspaceId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		workspaceId, err = bs.GetCurrentWorkspace(req)
 		return
 	})
@@ -130,7 +130,7 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 		ids []string
 	)
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		ids, _, err = bs.AddSubObjectsToWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account)
 		return
 	})
@@ -157,7 +157,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 		details *types.Struct
 	)
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, details, err = bs.AddSubObjectToWorkspace(req.ObjectId, mw.GetAnytype().PredefinedBlocks().Account)
 		return
 	})
@@ -183,7 +183,7 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 		ids []string
 	)
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.RemoveSubObjectsInWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account)
 		return
 	})

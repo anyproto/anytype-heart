@@ -15,7 +15,7 @@ func (mw *Middleware) ProcessCancel(cctx context.Context, req *pb.RpcProcessCanc
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) error {
+	err := mw.doBlockService(func(bs *block.Service) error {
 		return bs.ProcessCancel(req.Id)
 	})
 	if err != nil {

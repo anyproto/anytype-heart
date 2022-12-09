@@ -19,12 +19,12 @@ import (
 )
 
 type ObjectUpdater struct {
-	service     block.Service
+	service     *block.Service
 	core        core.Service
 	syncFactory *syncer.Factory
 }
 
-func NewObjectUpdater(service block.Service, core core.Service, syncFactory *syncer.Factory) Updater {
+func NewObjectUpdater(service *block.Service, core core.Service, syncFactory *syncer.Factory) Updater {
 	return &ObjectUpdater{
 		service:     service,
 		core:        core,
