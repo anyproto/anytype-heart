@@ -45,7 +45,7 @@ linters:
   disable-all: true
   enable:
     - dupl
-    - gci
+#    - gci
     - gocritic
     - gofmt
     - goimports
@@ -57,7 +57,7 @@ linters:
     - nestif
     - prealloc
     - revive
-    - wsl
+#    - wsl
     - unused
     - errcheck
     - funlen
