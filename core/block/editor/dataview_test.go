@@ -3,10 +3,11 @@ package editor
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDataview_SetDetails(t *testing.T) {

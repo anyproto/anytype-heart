@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,7 +64,7 @@ type service struct {
 	recBatch      *mb.MB
 
 	objectStore objectstore.ObjectStore
-	kanban 		kanban.Service
+	kanban      kanban.Service
 	sendEvent   func(e *pb.Event)
 
 	m      sync.Mutex
@@ -282,9 +284,9 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 	}
 
 	return &pb.RpcObjectGroupsSubscribeResponse{
-		Error: &pb.RpcObjectGroupsSubscribeResponseError{},
-		Groups:      dataViewGroups,
-		SubId:        subId,
+		Error:  &pb.RpcObjectGroupsSubscribeResponseError{},
+		Groups: dataViewGroups,
+		SubId:  subId,
 	}, nil
 }
 
@@ -387,6 +389,10 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 		if sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType {
 			objTypeIds = append(objTypeIds, source)
 		} else {
+			if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
+				objTypeIds = append(objTypeIds, source)
+				continue
+			}
 			relKey, err := pbtypes.RelationIdToKey(source)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get relation key from id %s: %s", relKey, err.Error())

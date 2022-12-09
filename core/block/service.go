@@ -9,15 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/ipfs/go-datastore/query"
-
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-datastore/query"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -35,27 +30,34 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 )
 
 const (
@@ -164,7 +166,7 @@ type Service interface {
 
 	SetFileStyle(ctx *session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string) error
 	UploadFile(req pb.RpcFileUploadRequest) (hash string, err error)
-	UploadFileBlockWithHash(ctx *session.Context, contextId string, req pb.RpcBlockUploadRequest) (hash string, err error) 
+	UploadFileBlockWithHash(ctx *session.Context, contextId string, req pb.RpcBlockUploadRequest) (hash string, err error)
 	UploadBlockFile(ctx *session.Context, req pb.RpcBlockUploadRequest, groupId string) error
 	UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploadRequest) (err error)
 	CreateAndUploadFile(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
@@ -191,10 +193,6 @@ type Service interface {
 	DeleteDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
 	UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
 	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
-
-	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
-	CreateRelationOption(details *types.Struct) (id string, newDetails *types.Struct, err error)
-	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error
 
 	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
@@ -242,6 +240,13 @@ type Service interface {
 	GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error)
 	GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error)
 	SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error
+
+	AddSubObjectToWorkspace(sourceObjectId, workspaceId string) (id string, object *types.Struct, err error)
+	AddSubObjectsToWorkspace(sourceObjectIds []string, workspaceId string) (ids []string, objects []*types.Struct, err error)
+	CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error)
+	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+	RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string) (err error)
+	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error // deprecated, need to use RemoveSubObjectsInWorkspace
 
 	ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
@@ -525,6 +530,70 @@ func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceI
 			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
 		}}, nil)
 	return id, err
+}
+
+func (s *service) AddSubObjectToWorkspace(sourceObjectId, workspaceId string) (id string, object *types.Struct, err error) {
+	ids, details, err := s.AddSubObjectsToWorkspace([]string{sourceObjectId}, workspaceId)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(ids) == 0 {
+		return "", nil, fmt.Errorf("failed to add object")
+	}
+
+	return ids[0], details[0], nil
+}
+
+func (s *service) AddSubObjectsToWorkspace(sourceObjectIds []string, workspaceId string) (ids []string, objects []*types.Struct, err error) {
+	// todo: we should add route to object via workspace
+	var details = make([]*types.Struct, 0, len(sourceObjectIds))
+
+	for _, sourceObjectId := range sourceObjectIds {
+		err = s.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
+			d := pbtypes.CopyStruct(b.Details())
+			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceId {
+				return errors.New("object already in collection")
+			}
+			d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
+			u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
+			if err != nil {
+				u = b.ObjectType()
+			}
+			d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(u)
+			d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+			d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
+
+			details = append(details, d)
+			return nil
+		})
+		if err != nil {
+			return
+		}
+	}
+
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		ws, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect workspace id")
+		}
+		ids, objects, err = ws.CreateSubObjects(details)
+		return err
+	})
+
+	return
+}
+
+func (s *service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string) (err error) {
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		ws, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect workspace id")
+		}
+		err = ws.RemoveSubObjects(objectIds)
+		return err
+	})
+
+	return
 }
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
@@ -1094,53 +1163,28 @@ func (s *service) createObject(ctx *session.Context, contextBlock smartblock.Sma
 	return
 }
 
-func (s *service) CreateRelationOption(opt *types.Struct) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
+			return fmt.Errorf("object is not a workspace")
 		}
-		id, newDetails, err = workspace.CreateRelationOption(opt)
+
+		id, newDetails, err = workspace.CreateSubObject(details)
 		return err
 	})
 	return
 }
 
-func (s *service) CreateRelation(rel *types.Struct) (id string, object *types.Struct, err error) {
+func (s *service) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		id, object, err = workspace.CreateRelation(rel)
-		return err
-	})
-	return
-}
-
-func (s *service) CreateRelations(rel []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		ids, objects, err = workspace.CreateRelations(rel)
-		return err
-	})
-	return
-}
-
-func (s *service) CreateRelationOptions(rel []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		ids, objects, err = workspace.CreateRelationOptions(rel)
+		ids, objects, err = workspace.CreateSubObjects(details)
 		return err
 	})
 	return
@@ -1531,6 +1575,11 @@ func (s *service) TemplateClone(id string) (templateId string, err error) {
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
+		t := st.ObjectTypes()
+		t, _ = relationutils.MigrateObjectTypeIds(t)
+		st.SetObjectTypes(t)
+		targetObjectType, _ := relationutils.MigrateObjectTypeId(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectType))
 		return nil
 	}); err != nil {
 		return

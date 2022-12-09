@@ -1,7 +1,9 @@
 package database
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 )
@@ -65,11 +67,18 @@ func (sub *subscription) Publish(id string, msg *types.Struct) bool {
 	for _, idE := range sub.ids {
 		if idE == id {
 			log.Debugf("objStore subscription send %s %p", id, sub)
-			select {
-			case <-sub.quit:
-				return false
-			case sub.ch <- msg:
-				return true
+			var total time.Duration
+			for {
+				select {
+				case <-sub.quit:
+					return false
+				case sub.ch <- msg:
+					return true
+				case <-time.After(time.Second * 3):
+					total += time.Second * 3
+					log.Errorf(fmt.Sprintf("subscription %p is blocked for %.0f seconds, failed to send %s", sub, total.Seconds(), id))
+					continue
+				}
 			}
 		}
 	}

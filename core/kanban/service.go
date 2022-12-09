@@ -48,7 +48,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Grouper(key string) (Grouper, error) {
-	rel, err := s.objectStore.GetRelation(key)
+	rel, err := s.objectStore.GetRelationByKey(key)
 	if err != nil {
 		return nil, err
 	}

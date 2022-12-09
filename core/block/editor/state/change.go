@@ -5,30 +5,48 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/mb0/diff"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
-	"github.com/mb0/diff"
 )
 
-func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
+type snapshotOptions struct {
+	doNotMigrateTypes bool
+}
+
+type SnapshotOption func(*snapshotOptions)
+
+func DoNotMigrateTypes(o *snapshotOptions) {
+	o.doNotMigrateTypes = true
+}
+
+func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) Doc {
+	var typesToMigrate []string
+	sOpts := snapshotOptions{}
+	for _, opt := range opts {
+		opt(&sOpts)
+	}
 	blocks := make(map[string]simple.Block)
 	for _, b := range snapshot.Data.Blocks {
 		// migrate old dataview blocks with relations
 		if dvBlock := b.GetDataview(); dvBlock != nil {
 			if len(dvBlock.RelationLinks) == 0 {
-				dvBlock.RelationLinks = relationutils.MigrateRelationsModels(dvBlock.Relations)
+				dvBlock.RelationLinks = relationutils.MigrateRelationModels(dvBlock.Relations)
 			}
+			if !sOpts.doNotMigrateTypes {
+				dvBlock.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dvBlock.Source)
+			}
+			dvBlock.Source = relationutils.MigrateRelationIds(dvBlock.Source) // can also contain relation ids
 		}
 		blocks[b.Id] = simple.New(b)
 	}
@@ -38,7 +56,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	}
 
 	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
-		snapshot.Data.RelationLinks = relationutils.MigrateRelationsModels(snapshot.Data.ExtraRelations)
+		snapshot.Data.RelationLinks = relationutils.MigrateRelationModels(snapshot.Data.ExtraRelations)
 	}
 	// clear nil values
 	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
@@ -54,8 +72,10 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		store:          snapshot.Data.Collections,
 	}
 
-	// migrate old relations from dataview block
-	// do not consider other possible dataview blocks
+	if !sOpts.doNotMigrateTypes {
+		s.objectTypes, s.objectTypesToMigrate = relationutils.MigrateObjectTypeIds(s.objectTypes)
+		s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
+	}
 	s.InjectDerivedDetails()
 	return s
 }
@@ -309,6 +329,12 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 			return nil
 		}
 	}
+	// in-place migration for bundled object types moved into workspace
+	url, migrated := relationutils.MigrateObjectTypeId(add.Url)
+	if migrated {
+		s.SetObjectTypesToMigrate(append(s.ObjectTypesToMigrate(), url))
+		add.Url = url
+	}
 	objectTypes := append(s.ObjectTypes(), add.Url)
 	s.SetObjectTypes(objectTypes)
 	// Set only the first(0) object type to the detail
@@ -319,6 +345,20 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
 	var found bool
+	// in-place migration for bundled object types moved into workspace
+	url, migrated := relationutils.MigrateObjectTypeId(remove.Url)
+	if migrated {
+		// todo: should we also migrate all the object types from the history of object?
+		s.objectTypesToMigrate = slice.Filter(s.ObjectTypesToMigrate(), func(s string) bool {
+			if s == remove.Url {
+				found = true
+				return false
+			}
+			return true
+		})
+		remove.Url = url
+	}
+
 	s.objectTypes = slice.Filter(s.ObjectTypes(), func(s string) bool {
 		if s == remove.Url {
 			found = true
@@ -343,8 +383,12 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		s.Set(b)
 		if dv := b.Model().GetDataview(); dv != nil {
 			if len(dv.RelationLinks) == 0 {
-				dv.RelationLinks = relationutils.MigrateRelationsModels(dv.Relations)
+				dv.RelationLinks = relationutils.MigrateRelationModels(dv.Relations)
 			}
+			var typesToMigrate []string
+			dv.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dv.Source)
+			s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
+			dv.Source = relationutils.MigrateRelationIds(dv.Source) // can also contain relation ids
 		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)

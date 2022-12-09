@@ -141,7 +141,7 @@ func (mw *Middleware) objectCreate(req *pb.RpcObjectCreateRequest) (id string, d
 			Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
 		})
 	case bundle.TypeKeyObjectType:
-		return mw.objectTypeCreate(&pb.RpcObjectCreateObjectTypeRequest{
+		return mw.objectCreateObjectType(&pb.RpcObjectCreateObjectTypeRequest{
 			Details:       req.Details,
 			InternalFlags: req.InternalFlags,
 		})

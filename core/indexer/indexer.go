@@ -4,50 +4,57 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"math"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
 )
 
 const (
 	CName = "indexer"
 
-	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 7  // reindex thread-based objects
-	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
-	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 18 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
-	ForceFilestoreKeysReindexCounter  int32 = 1
+	// ### Increasing counters below will trigger existing account to reindex their
+
+	// ForceThreadsObjectsReindexCounter reindex thread-based objects
+	ForceThreadsObjectsReindexCounter int32 = 7
+	// ForceFilesReindexCounter reindex ipfs-file-based objects
+	ForceFilesReindexCounter int32 = 6 //
+	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
+	ForceBundledObjectsReindexCounter int32 = 4 // reindex objects like anytypeProfile
+	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
+	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter int32 = 34
+	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
+	ForceFulltextIndexCounter int32 = 3
+	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
+	ForceFilestoreKeysReindexCounter int32 = 1
 )
 
 var log = logging.Logger("anytype-doc-indexer")
@@ -351,21 +358,6 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	if reindex != 0 {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v, reindexFileKeys=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0, reindex&reindexFileKeys != 0)
 	}
-	defer func() {
-		i.relationMigratorMu.Lock()
-		defer i.relationMigratorMu.Unlock()
-		if i.relationBulkMigration == nil {
-			return
-		}
-		err2 := i.relationBulkMigration.Commit()
-		i.relationBulkMigration = nil
-		if err2 != nil {
-			log.Errorf("reindex relation migration error: %s", err2.Error())
-		}
-	}()
-	i.relationMigratorMu.Lock()
-	i.relationBulkMigration = i.relationService.CreateBulkMigration()
-	i.relationMigratorMu.Unlock()
 
 	if reindex&reindexFileKeys != 0 {
 		err = i.anytype.FileStore().RemoveEmpty()
@@ -387,6 +379,22 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
 			}
 		}
+
+		defer func() {
+			i.relationMigratorMu.Lock()
+			defer i.relationMigratorMu.Unlock()
+			if i.relationBulkMigration == nil {
+				return
+			}
+			err2 := i.relationBulkMigration.Commit()
+			i.relationBulkMigration = nil
+			if err2 != nil {
+				log.Errorf("reindex relation migration error: %s", err2.Error())
+			}
+		}()
+		i.relationMigratorMu.Lock()
+		i.relationBulkMigration = i.relationService.CreateBulkMigration()
+		i.relationMigratorMu.Unlock()
 	}
 	var indexesWereRemoved bool
 	if reindex&eraseIndexes != 0 {
@@ -540,6 +548,22 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		} else {
 			log.Info(msg)
 		}
+
+		var ots = make([]string, 0, len(bundle.SystemTypes))
+		for _, ot := range bundle.SystemTypes {
+			ots = append(ots, ot.BundledURL())
+		}
+
+		for _, ot := range bundle.InternalTypes {
+			ots = append(ots, ot.BundledURL())
+		}
+
+		var rels = make([]*model.Relation, 0, len(bundle.RequiredInternalRelations))
+		for _, rel := range bundle.SystemRelations {
+			rels = append(rels, bundle.MustGetRelation(rel))
+		}
+		i.migrateObjectTypes(ots)
+		i.migrateRelations(rels)
 	}
 	if reindex&reindexBundledObjects != 0 {
 		// hardcoded for now
@@ -616,14 +640,14 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	return i.saveLatestChecksums()
 }
 
-func extractRelationsFromState(s *state.State) []*model.Relation {
+func extractOldRelationsFromState(s *state.State) []*model.Relation {
 	var rels []*model.Relation
 	if objRels := s.OldExtraRelations(); len(objRels) > 0 {
 		rels = append(rels, s.OldExtraRelations()...)
 	}
 
 	if dvBlock := s.Pick(template.DataviewBlockId); dvBlock != nil {
-		rels = append(rels, dvBlock.Model().GetDataview().Relations...)
+		rels = append(rels, dvBlock.Model().GetDataview().GetRelations()...)
 	}
 
 	return rels
@@ -636,12 +660,45 @@ func (i *indexer) migrateRelations(rels []*model.Relation) {
 	if i.relationBulkMigration != nil {
 		i.relationBulkMigration.AddRelations(rels)
 	} else {
-		err := i.relationService.Migrate(rels)
+		err := i.relationService.MigrateRelations(rels)
 		if err != nil {
 			log.Errorf("migrateRelations got error: %s", err.Error())
 		}
 	}
 }
+
+func (i *indexer) migrateObjectTypes(ots []string) {
+	if len(ots) == 0 {
+		return
+	}
+
+	var typesModels []*model.ObjectType // do not make
+	for _, ot := range ots {
+		t, err := bundle.GetTypeByUrl(ot)
+		if err != nil {
+			continue
+		}
+
+		typesModels = append(typesModels, t)
+	}
+
+	if len(typesModels) == 0 {
+		return
+	}
+
+	i.relationMigratorMu.Lock()
+	defer i.relationMigratorMu.Unlock()
+
+	if i.relationBulkMigration != nil {
+		i.relationBulkMigration.AddObjectTypes(typesModels)
+	} else {
+		err := i.relationService.MigrateObjectTypes(typesModels)
+		if err != nil {
+			log.Errorf("migrateObjectTypes got error: %s", err.Error())
+		}
+	}
+}
+
 func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved bool) error {
 	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
@@ -746,7 +803,11 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	indexDetails, indexLinks := sbType.Indexable()
 	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
 		// avoid recursions
-		i.migrateRelations(extractRelationsFromState(info.State))
+
+		if pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
+			i.migrateRelations(extractOldRelationsFromState(info.State))
+			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
+		}
 	}
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
