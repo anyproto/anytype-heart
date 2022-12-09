@@ -72,7 +72,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	}
 	defer os.Remove(imagePath)
 
-	err = mw.doBlockService(func(bs block.Service) (err error) {
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hash, err = bs.UploadFile(pb.RpcFileUploadRequest{
 			LocalPath: imagePath,
 			Type:      model.BlockContentFile_Image,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -19,25 +21,23 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 type ObjectCreator struct {
-	service block.Service
-	core    core.Service
-	updater Updater
+	service     *block.Service
+	core        core.Service
+	updater     Updater
 	syncFactory *syncer.Factory
 }
 
-func NewCreator(service block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory) Creator {
+func NewCreator(service *block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory) Creator {
 	return &ObjectCreator{service: service, core: core, updater: updater, syncFactory: syncFactory}
 }
 
 // Create creates smart blocks from given snapshots
 func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, sbType smartblock.SmartBlockType, updateExisting bool) (*types.Struct, error) {
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
-	
+
 	var err error
 
 	if updateExisting {
@@ -55,21 +55,21 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		}
 	}
 	if !found {
-		oc.addRootBlock(snapshot, pageID)	
+		oc.addRootBlock(snapshot, pageID)
 	}
 
 	st := state.NewDocFromSnapshot(pageID, &pb.ChangeSnapshot{Data: snapshot}).(*state.State)
 
 	st.SetRootId(pageID)
-	
+
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
-	
+
 	if err = oc.validate(st); err != nil {
 		return nil, fmt.Errorf("new id not found for '%s'", st.RootId())
-	} 
+	}
 
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -138,13 +138,13 @@ func (oc *ObjectCreator) createSmartBlock(sbType smartblock.SmartBlockType, st *
 func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
 	var (
 		childrenIds = make([]string, 0, len(snapshot.Blocks))
-		err error
+		err         error
 	)
 	for i, b := range snapshot.Blocks {
-		_, err = thread.Decode(b.Id) 
+		_, err = thread.Decode(b.Id)
 		if err == nil {
 			childrenIds = append(childrenIds, b.ChildrenIds...)
-			snapshot.Blocks[i] =  &model.Block{
+			snapshot.Blocks[i] = &model.Block{
 				Id:          pageID,
 				Content:     &model.BlockContentOfSmartblock{},
 				ChildrenIds: childrenIds,
@@ -155,13 +155,13 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 	if err != nil {
 		for _, b := range snapshot.Blocks {
 			childrenIds = append(childrenIds, b.Id)
-	   }
-	   snapshot.Blocks = append(snapshot.Blocks,  &model.Block{
+		}
+		snapshot.Blocks = append(snapshot.Blocks, &model.Block{
 			Id:          pageID,
 			Content:     &model.BlockContentOfSmartblock{},
 			ChildrenIds: childrenIds,
 		})
-	}		
+	}
 }
 
 func (oc *ObjectCreator) deleteFile(f *model.BlockContentFile) {

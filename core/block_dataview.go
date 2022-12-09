@@ -21,7 +21,7 @@ func (mw *Middleware) BlockDataviewRelationListAvailable(cctx context.Context, r
 		relations []*model.Relation
 	)
 
-	err = mw.doBlockService(func(bs block.Service) (err error) {
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
 		relations, err = bs.GetAggregatedRelations(*req)
 		return
 	})
@@ -43,7 +43,7 @@ func (mw *Middleware) BlockDataviewGroupOrderUpdate(cctx context.Context, req *p
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.UpdateDataviewGroupOrder(ctx, *req)
 	})
 	if err != nil {
@@ -63,7 +63,7 @@ func (mw *Middleware) BlockDataviewObjectOrderUpdate(cctx context.Context, req *
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.UpdateDataviewObjectOrder(ctx, *req)
 	})
 	if err != nil {
@@ -83,7 +83,7 @@ func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcB
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.UpdateDataviewView(ctx, *req)
 	})
 	if err != nil {
@@ -104,7 +104,7 @@ func (mw *Middleware) BlockDataviewViewCreate(cctx context.Context, req *pb.RpcB
 		return m
 	}
 	var viewId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		viewId, err = bs.CreateDataviewView(ctx, *req)
 		return err
 	})
@@ -125,7 +125,7 @@ func (mw *Middleware) BlockDataviewViewDelete(cctx context.Context, req *pb.RpcB
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.DeleteDataviewView(ctx, *req)
 	})
 	if err != nil {
@@ -145,7 +145,7 @@ func (mw *Middleware) BlockDataviewViewSetActive(cctx context.Context, req *pb.R
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetDataviewActiveView(ctx, *req)
 	})
 	if err != nil {
@@ -165,7 +165,7 @@ func (mw *Middleware) BlockDataviewViewSetPosition(cctx context.Context, req *pb
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetDataviewViewPosition(ctx, *req)
 	})
 	if err != nil {
@@ -186,7 +186,7 @@ func (mw *Middleware) BlockDataviewRelationAdd(cctx context.Context, req *pb.Rpc
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.AddDataviewRelation(ctx, *req)
 	})
 	if err != nil {
@@ -207,7 +207,7 @@ func (mw *Middleware) BlockDataviewRelationDelete(cctx context.Context, req *pb.
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.DeleteDataviewRelation(ctx, *req)
 	})
 	if err != nil {
@@ -233,7 +233,7 @@ func (mw *Middleware) BlockDataviewSetSource(cctx context.Context, req *pb.RpcBl
 		return r
 	}
 
-	err := mw.doBlockService(func(bs block.Service) error {
+	err := mw.doBlockService(func(bs *block.Service) error {
 		return bs.SetDataviewSource(ctx, req.ContextId, req.BlockId, req.Source)
 	})
 
