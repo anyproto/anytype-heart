@@ -23,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -64,7 +65,7 @@ func (s *Service) SetBreadcrumbs(ctx *session.Context, req pb.RpcObjectSetBreadc
 	})
 }
 
-func (s *service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
+func (s *Service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
 	err = DoState(s, req.ContextId, func(st *state.State, b basic.Creatable) error {
 		id, err = b.CreateBlock(st, req)
 		return err
@@ -104,13 +105,13 @@ func (s *Service) DuplicateBlocks(
 	return
 }
 
-func (s *service) UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteRequest) (err error) {
+func (s *Service) UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteRequest) (err error) {
 	return Do(s, req.ContextId, func(b basic.Unlinkable) error {
 		return b.Unlink(ctx, req.BlockIds...)
 	})
 }
 
-func (s *service) SetDivStyle(ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
+func (s *Service) SetDivStyle(ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
 	return Do(s, contextId, func(b basic.CommonOperations) error {
 		return b.SetDivStyle(ctx, style, ids...)
 	})
@@ -150,7 +151,7 @@ func (s *Service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 	})
 }
 
-func (s *service) ReplaceBlock(ctx *session.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
+func (s *Service) ReplaceBlock(ctx *session.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	err = Do(s, req.ContextId, func(b basic.Replaceable) error {
 		newId, err = b.Replace(ctx, req.BlockId, req.Block)
 		return err
@@ -158,7 +159,7 @@ func (s *service) ReplaceBlock(ctx *session.Context, req pb.RpcBlockReplaceReque
 	return
 }
 
-func (s *service) SetFields(ctx *session.Context, req pb.RpcBlockSetFieldsRequest) (err error) {
+func (s *Service) SetFields(ctx *session.Context, req pb.RpcBlockSetFieldsRequest) (err error) {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetFields(ctx, &pb.RpcBlockListSetFieldsRequestBlockField{
 			BlockId: req.BlockId,
@@ -173,7 +174,7 @@ func (s *Service) SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsReq
 	})
 }
 
-func (s *service) SetFieldsList(ctx *session.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
+func (s *Service) SetFieldsList(ctx *session.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetFields(ctx, req.BlockFields...)
 	})
@@ -354,7 +355,7 @@ func (s *Service) SetTextText(ctx *session.Context, req pb.RpcBlockTextSetTextRe
 	})
 }
 
-func (s *service) SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error {
+func (s *Service) SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetLatexText(ctx, req)
 	})
@@ -441,7 +442,7 @@ func (s *Service) SetTextIcon(ctx *session.Context, contextId, image, emoji stri
 	})
 }
 
-func (s *service) SetBackgroundColor(ctx *session.Context, contextId string, color string, blockIds ...string) (err error) {
+func (s *Service) SetBackgroundColor(ctx *session.Context, contextId string, color string, blockIds ...string) (err error) {
 	return Do(s, contextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			b.Model().BackgroundColor = color
@@ -450,7 +451,7 @@ func (s *service) SetBackgroundColor(ctx *session.Context, contextId string, col
 	})
 }
 
-func (s *service) SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error) {
+func (s *Service) SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error) {
 	return Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if linkBlock, ok := b.(link.Block); ok {
@@ -488,13 +489,13 @@ func (s *Service) SetLayout(ctx *session.Context, contextId string, layout model
 	})
 }
 
-func (s *service) FeaturedRelationAdd(ctx *session.Context, contextId string, relations ...string) error {
+func (s *Service) FeaturedRelationAdd(ctx *session.Context, contextId string, relations ...string) error {
 	return Do(s, contextId, func(b basic.CommonOperations) error {
 		return b.FeaturedRelationAdd(ctx, relations...)
 	})
 }
 
-func (s *service) FeaturedRelationRemove(ctx *session.Context, contextId string, relations ...string) error {
+func (s *Service) FeaturedRelationRemove(ctx *session.Context, contextId string, relations ...string) error {
 	return Do(s, contextId, func(b basic.CommonOperations) error {
 		return b.FeaturedRelationRemove(ctx, relations...)
 	})
@@ -625,7 +626,7 @@ func (s *Service) BookmarkCreateAndFetch(
 	return
 }
 
-func (s *service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error {
+func (s *Service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		rel, err := s.relationService.FetchKey(req.Key)
 		if err != nil {
@@ -637,7 +638,7 @@ func (s *service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSe
 	})
 }
 
-func (s *service) AddRelationBlock(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error {
+func (s *Service) AddRelationBlock(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.AddRelationAndSet(ctx, req)
 	})
@@ -943,7 +944,7 @@ func (s *Service) ListAvailableRelations(objectId string) (aggregatedRelations [
 	return
 }
 
-func (s *service) ListConvertToObjects(ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (s *Service) ListConvertToObjects(ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
 	err = Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		linkIds, err = b.ExtractBlocksToObjects(ctx, s, req)
 		return err
@@ -1104,7 +1105,7 @@ func (s *Service) TableColumnListFill(ctx *session.Context, req pb.RpcBlockTable
 	return err
 }
 
-func (s *service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
+func (s *Service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
 	var id string
 	err := DoStateCtx(s, ctx, req.ContextId, func(st *state.State, w widget.Widget) error {
 		var err error

@@ -30,12 +30,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
@@ -58,6 +54,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 )
 
 const (
@@ -1242,20 +1243,6 @@ func (s *Service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 	return
 }
 
-func (s *Service) DoBasic(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_basic"), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(basic.Basic); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("basic operation not available for this block type: %T", sb)
-}
-
 func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.State, b table.Editor) error) error {
 	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
@@ -1275,7 +1262,7 @@ func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.
 	return fmt.Errorf("table operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
+func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
 		return err
@@ -1411,7 +1398,7 @@ func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	return apply(sb)
 }
 
-func Do[t any](s *service, id string, apply func(sb t) error) error {
+func Do[t any](s *Service, id string, apply func(sb t) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
@@ -1429,11 +1416,11 @@ func Do[t any](s *service, id string, apply func(sb t) error) error {
 	return apply(bb)
 }
 
-func DoState[t any](s *service, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoState[t any](s *Service, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	return DoStateCtx(s, nil, id, apply, flags...)
 }
 
-func DoStateCtx[t any](s *service, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoStateCtx[t any](s *Service, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
@@ -1458,7 +1445,7 @@ func DoStateCtx[t any](s *service, ctx *session.Context, id string, apply func(s
 	return sb.Apply(st, flags...)
 }
 
-func (s *service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
+func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
 	sb, release, err := s.pickBlock(ctx, id)
 	if err != nil {
 		return err
@@ -1727,7 +1714,7 @@ func (s *Service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 	return ob, nil
 }
 
-func (s *service) replaceLink(id, oldId, newId string) error {
+func (s *Service) replaceLink(id, oldId, newId string) error {
 	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
 	})
