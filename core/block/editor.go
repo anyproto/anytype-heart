@@ -6,21 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-
+	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
-
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -33,14 +21,23 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -75,7 +72,10 @@ func (s *Service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest
 	return
 }
 
-func (s *Service) DuplicateBlocks(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+func (s *Service) DuplicateBlocks(
+	ctx *session.Context,
+	req pb.RpcBlockListDuplicateRequest,
+) (newIds []string, err error) {
 	if req.ContextId == req.TargetContextId || req.TargetContextId == "" {
 		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
 			if sb.Type() == model.SmartBlockType_Set {
@@ -118,7 +118,9 @@ func (s *Service) UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteReq
 	})
 }
 
-func (s *Service) SetDivStyle(ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
+func (s *Service) SetDivStyle(
+	ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string,
+) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
 		return b.SetDivStyle(ctx, style, ids...)
 	})
@@ -138,7 +140,9 @@ func (s *Service) MergeBlock(ctx *session.Context, req pb.RpcBlockMergeRequest) 
 	})
 }
 
-func (s *Service) TurnInto(ctx *session.Context, contextId string, style model.BlockContentTextStyle, ids ...string) error {
+func (s *Service) TurnInto(
+	ctx *session.Context, contextId string, style model.BlockContentTextStyle, ids ...string,
+) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.TurnInto(ctx, style, ids...)
 	})
@@ -185,7 +189,9 @@ func (s *Service) SetFieldsList(ctx *session.Context, req pb.RpcBlockListSetFiel
 	})
 }
 
-func (s *Service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error) {
+func (s *Service) GetAggregatedRelations(
+	req pb.RpcBlockDataviewRelationListAvailableRequest,
+) (relations []*model.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		// todo: remove or replace
 		// relations, err = b.GetAggregatedRelations(req.BlockId)
@@ -207,7 +213,9 @@ func (s *Service) UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlock
 	})
 }
 
-func (s *Service) UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error {
+func (s *Service) UpdateDataviewObjectOrder(
+	ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest,
+) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.UpdateViewObjectOrder(ctx, req.BlockId, req.ObjectOrders)
 	})
@@ -231,7 +239,9 @@ func (s *Service) SetDataviewViewPosition(ctx *session.Context, req pb.RpcBlockD
 	})
 }
 
-func (s *Service) CreateDataviewView(ctx *session.Context, req pb.RpcBlockDataviewViewCreateRequest) (id string, err error) {
+func (s *Service) CreateDataviewView(
+	ctx *session.Context, req pb.RpcBlockDataviewViewCreateRequest,
+) (id string, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		if req.View == nil {
 			req.View = &model.BlockContentDataviewView{}
@@ -266,7 +276,9 @@ func (s *Service) SetDataviewSource(ctx *session.Context, contextId, blockId str
 	})
 }
 
-func (s *Service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *Service) Copy(
+	req pb.RpcBlockCopyRequest,
+) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		textSlot, htmlSlot, anySlot, err = cb.Copy(req)
 		return err
@@ -275,7 +287,9 @@ func (s *Service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot st
 	return textSlot, htmlSlot, anySlot, err
 }
 
-func (s *Service) Paste(ctx *session.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (s *Service) Paste(
+	ctx *session.Context, req pb.RpcBlockPasteRequest, groupId string,
+) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.Paste(ctx, &req, groupId)
 		return err
@@ -284,7 +298,9 @@ func (s *Service) Paste(ctx *session.Context, req pb.RpcBlockPasteRequest, group
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 }
 
-func (s *Service) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *Service) Cut(
+	ctx *session.Context, req pb.RpcBlockCutRequest,
+) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		textSlot, htmlSlot, anySlot, err = cb.Cut(ctx, req)
 		return err
@@ -300,7 +316,10 @@ func (s *Service) Export(req pb.RpcBlockExportRequest) (path string, err error) 
 	return path, err
 }
 
-func (s *Service) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinkIds []string, err error) {
+func (s *Service) ImportMarkdown(
+	ctx *session.Context,
+	req pb.RpcObjectImportMarkdownRequest,
+) (rootLinkIds []string, err error) {
 	var rootLinks []*model.Block
 	err = s.DoImport(req.ContextId, func(imp _import.Import) error {
 		rootLinks, err = imp.ImportMarkdown(ctx, req)
@@ -351,7 +370,9 @@ func (s *Service) SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetText
 	})
 }
 
-func (s *Service) SetTextStyle(ctx *session.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
+func (s *Service) SetTextStyle(
+	ctx *session.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string,
+) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.SetStyle(style)
@@ -416,7 +437,9 @@ func (s *Service) ClearTextContent(ctx *session.Context, contextId string, block
 	})
 }
 
-func (s *Service) SetTextMark(ctx *session.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string) error {
+func (s *Service) SetTextMark(
+	ctx *session.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string,
+) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.SetMark(ctx, mark, blockIds...)
 	})
@@ -428,7 +451,9 @@ func (s *Service) SetTextIcon(ctx *session.Context, contextId, image, emoji stri
 	})
 }
 
-func (s *Service) SetBackgroundColor(ctx *session.Context, contextId string, color string, blockIds ...string) (err error) {
+func (s *Service) SetBackgroundColor(
+	ctx *session.Context, contextId string, color string, blockIds ...string,
+) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			b.Model().BackgroundColor = color
@@ -453,13 +478,17 @@ func (s *Service) SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkLis
 	})
 }
 
-func (s *Service) SetAlign(ctx *session.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error) {
+func (s *Service) SetAlign(
+	ctx *session.Context, contextId string, align model.BlockAlign, blockIds ...string,
+) (err error) {
 	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
 		return sb.SetAlign(ctx, align, blockIds...)
 	})
 }
 
-func (s *Service) SetVerticalAlign(ctx *session.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error) {
+func (s *Service) SetVerticalAlign(
+	ctx *session.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string,
+) (err error) {
 	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
 		return sb.SetVerticalAlign(ctx, align, blockIds...)
 	})
@@ -504,7 +533,9 @@ func (s *Service) UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploa
 	})
 }
 
-func (s *Service) CreateAndUploadFile(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error) {
+func (s *Service) CreateAndUploadFile(
+	ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest,
+) (id string, err error) {
 	err = s.DoFile(req.ContextId, func(b file.File) error {
 		id, err = b.CreateAndUpload(ctx, req)
 		return err
@@ -537,13 +568,17 @@ func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	})
 }
 
-func (s *Service) SetFileStyle(ctx *session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string) error {
+func (s *Service) SetFileStyle(
+	ctx *session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string,
+) error {
 	return s.DoFile(contextId, func(b file.File) error {
 		return b.SetFileStyle(ctx, style, blockIds...)
 	})
 }
 
-func (s *Service) UploadFileBlockWithHash(ctx *session.Context, contextId string, req pb.RpcBlockUploadRequest) (hash string, err error) {
+func (s *Service) UploadFileBlockWithHash(
+	ctx *session.Context, contextId string, req pb.RpcBlockUploadRequest,
+) (hash string, err error) {
 	err = s.DoFile(contextId, func(b file.File) error {
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
 			Path:    req.FilePath,
@@ -560,7 +595,9 @@ func (s *Service) UploadFileBlockWithHash(ctx *session.Context, contextId string
 	return hash, err
 }
 
-func (s *Service) Undo(ctx *session.Context, req pb.RpcObjectUndoRequest) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (s *Service) Undo(
+	ctx *session.Context, req pb.RpcObjectUndoRequest,
+) (counters pb.RpcObjectUndoRedoCounter, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
 		counters, err = b.Undo(ctx)
 		return err
@@ -568,7 +605,9 @@ func (s *Service) Undo(ctx *session.Context, req pb.RpcObjectUndoRequest) (count
 	return
 }
 
-func (s *Service) Redo(ctx *session.Context, req pb.RpcObjectRedoRequest) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (s *Service) Redo(
+	ctx *session.Context, req pb.RpcObjectRedoRequest,
+) (counters pb.RpcObjectUndoRedoCounter, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
 		counters, err = b.Redo(ctx)
 		return err
@@ -588,7 +627,9 @@ func (s *Service) BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmar
 	})
 }
 
-func (s *Service) BookmarkCreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error) {
+func (s *Service) BookmarkCreateAndFetch(
+	ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest,
+) (id string, err error) {
 	err = s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
 		id, err = b.CreateAndFetch(ctx, req)
 		return err
@@ -602,7 +643,9 @@ func (s *Service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSe
 		if err != nil {
 			return err
 		}
-		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId})
+		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{
+			RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId,
+		})
 	})
 }
 
@@ -637,7 +680,9 @@ func (s *Service) GetRelations(objectId string) (relations []*model.Relation, er
 }
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
-func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
+func (s *Service) ModifyDetails(
+	objectId string, modifier func(current *types.Struct) (*types.Struct, error),
+) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
@@ -651,8 +696,11 @@ func (s *Service) ModifyDetails(objectId string, modifier func(current *types.St
 	})
 }
 
-// ModifyLocalDetails modifies local details of the object in cache, and if it is not found, sets pending details in object store
-func (s *Service) ModifyLocalDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
+// ModifyLocalDetails modifies local details of the object in cache,
+// and if it is not found, sets pending details in object store
+func (s *Service) ModifyLocalDetails(
+	objectId string, modifier func(current *types.Struct) (*types.Struct, error),
+) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
@@ -712,7 +760,12 @@ func (s *Service) SetObjectTypes(ctx *session.Context, objectId string, objectTy
 
 // todo: rewrite with options
 // withId may me empty
-func (s *Service) CreateObjectInWorkspace(ctx context.Context, workspaceId string, withId thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
+func (s *Service) CreateObjectInWorkspace(
+	ctx context.Context,
+	workspaceId string,
+	withId thread.ID,
+	sbType coresb.SmartBlockType,
+) (csm core.SmartBlock, err error) {
 	startTime := time.Now()
 	ev, exists := ctx.Value(ObjectCreateEvent).(*metrics.CreateObjectEvent)
 	err = s.DoWithContext(ctx, workspaceId, func(b smartblock.SmartBlock) error {
@@ -902,7 +955,9 @@ func (s *Service) ListAvailableRelations(objectId string) (aggregatedRelations [
 	return
 }
 
-func (s *Service) ListConvertToObjects(ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (s *Service) ListConvertToObjects(
+	ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest,
+) (linkIds []string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		linkIds, err = b.ExtractBlocksToObjects(ctx, s, req)
 		return err
@@ -910,7 +965,9 @@ func (s *Service) ListConvertToObjects(ctx *session.Context, req pb.RpcBlockList
 	return
 }
 
-func (s *Service) MoveBlocksToNewPage(ctx *session.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error) {
+func (s *Service) MoveBlocksToNewPage(
+	ctx *session.Context, req pb.RpcBlockListMoveToNewObjectRequest,
+) (linkId string, err error) {
 	// 1. Create new page, link
 	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
 		ContextId: req.ContextId,
@@ -1019,7 +1076,9 @@ func (s *Service) TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRo
 	return
 }
 
-func (s *Service) TableColumnDuplicate(ctx *session.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
+func (s *Service) TableColumnDuplicate(
+	ctx *session.Context, req pb.RpcBlockTableColumnDuplicateRequest,
+) (id string, err error) {
 	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		id, err = t.ColumnDuplicate(st, req)
 		return err

@@ -220,7 +220,9 @@ func (s *Service) Anytype() core.Service {
 	return s.anytype
 }
 
-func (s *Service) OpenBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
+func (s *Service) OpenBlock(
+	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
+) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
 	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
 	if err != nil {
@@ -280,7 +282,9 @@ func (s *Service) OpenBlock(ctx *session.Context, id string, includeRelationsAsD
 	return obj, nil
 }
 
-func (s *Service) ShowBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
+func (s *Service) ShowBlock(
+	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
+) (obj *model.ObjectView, err error) {
 	cctx := context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_show")
 	err2 := s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
@@ -370,7 +374,9 @@ func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceI
 	return id, err
 }
 
-func (s *Service) AddSubObjectToWorkspace(sourceObjectId, workspaceId string) (id string, object *types.Struct, err error) {
+func (s *Service) AddSubObjectToWorkspace(
+	sourceObjectId, workspaceId string,
+) (id string, object *types.Struct, err error) {
 	ids, details, err := s.AddSubObjectsToWorkspace([]string{sourceObjectId}, workspaceId)
 	if err != nil {
 		return "", nil, err
@@ -382,7 +388,9 @@ func (s *Service) AddSubObjectToWorkspace(sourceObjectId, workspaceId string) (i
 	return ids[0], details[0], nil
 }
 
-func (s *Service) AddSubObjectsToWorkspace(sourceObjectIds []string, workspaceId string) (ids []string, objects []*types.Struct, err error) {
+func (s *Service) AddSubObjectsToWorkspace(
+	sourceObjectIds []string, workspaceId string,
+) (ids []string, objects []*types.Struct, err error) {
 	// todo: we should add route to object via workspace
 	var details = make([]*types.Struct, 0, len(sourceObjectIds))
 
@@ -799,14 +807,28 @@ func (s *Service) sendOnRemoveEvent(ids ...string) {
 	}
 }
 
-func (s *Service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSmartBlock(
+	ctx context.Context,
+	sbType coresb.SmartBlockType,
+	details *types.Struct,
+	relationIds []string,
+) (id string, newDetails *types.Struct, err error) {
 	return s.CreateSmartBlockFromState(ctx, sbType, details, relationIds, state.NewDoc("", nil).NewState())
 }
 
-func (s *Service) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSmartBlockFromTemplate(
+	ctx context.Context,
+	sbType coresb.SmartBlockType,
+	details *types.Struct,
+	relationIds []string,
+	templateId string,
+) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateId != "" {
-		if createState, err = s.stateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+		if createState, err = s.stateFromTemplate(
+			templateId,
+			pbtypes.GetString(details, bundle.RelationKeyName.String()),
+		); err != nil {
 			return
 		}
 	} else {
@@ -815,7 +837,13 @@ func (s *Service) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 	return s.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
 }
 
-func (s *Service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSmartBlockFromState(
+	ctx context.Context,
+	sbType coresb.SmartBlockType,
+	details *types.Struct,
+	relationIds []string,
+	createState *state.State,
+) (id string, newDetails *types.Struct, err error) {
 	startTime := time.Now()
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {
@@ -896,7 +924,11 @@ func (s *Service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
-func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+func (s *Service) CreateLinkToTheNewObject(
+	ctx *session.Context,
+	groupId string,
+	req pb.RpcBlockLinkCreateWithObjectRequest,
+) (linkId string, objectId string, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
@@ -937,7 +969,13 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 	return s.createObject(ctx, nil, groupId, req, true, creator)
 }
 
-func (s *Service) CreateObjectFromState(ctx *session.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
+func (s *Service) CreateObjectFromState(
+	ctx *session.Context,
+	contextBlock smartblock.SmartBlock,
+	groupId string,
+	req pb.RpcBlockLinkCreateWithObjectRequest,
+	state *state.State,
+) (linkId string, objectId string, err error) {
 	return s.createObject(ctx, contextBlock, groupId, req, false, func(ctx context.Context) (string, error) {
 		objectId, _, err = s.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, nil, state)
 		if err != nil {
@@ -947,7 +985,14 @@ func (s *Service) CreateObjectFromState(ctx *session.Context, contextBlock smart
 	})
 }
 
-func (s *Service) createObject(ctx *session.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, storeLink bool, create func(context.Context) (objectId string, err error)) (linkId string, objectId string, err error) {
+func (s *Service) createObject(
+	ctx *session.Context,
+	contextBlock smartblock.SmartBlock,
+	groupId string,
+	req pb.RpcBlockLinkCreateWithObjectRequest,
+	storeLink bool,
+	create func(context.Context) (objectId string, err error),
+) (linkId string, objectId string, err error) {
 	if contextBlock != nil {
 		if contextBlock.Type() == model.SmartBlockType_Set {
 			return "", "", basic.ErrNotSupported
@@ -1001,7 +1046,9 @@ func (s *Service) createObject(ctx *session.Context, contextBlock smartblock.Sma
 	return
 }
 
-func (s *Service) CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSubObjectInWorkspace(
+	details *types.Struct, workspaceId string,
+) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
@@ -1015,7 +1062,9 @@ func (s *Service) CreateSubObjectInWorkspace(details *types.Struct, workspaceId 
 	return
 }
 
-func (s *Service) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+func (s *Service) CreateSubObjectsInWorkspace(
+	details []*types.Struct,
+) (ids []string, objects []*types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
@@ -1518,7 +1567,9 @@ func (s *Service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (s *Service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (objectId string, newDetails *types.Struct, err error) {
+func (s *Service) ObjectCreateBookmark(
+	req pb.RpcObjectCreateBookmarkRequest,
+) (objectId string, newDetails *types.Struct, err error) {
 	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("process uri: %w", err)
