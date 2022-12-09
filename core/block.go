@@ -5,10 +5,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/globalsign/mgo/bson"
 	"github.com/miolini/datacounter"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -31,7 +32,7 @@ func (mw *Middleware) BlockCreate(cctx context.Context, req *pb.RpcBlockCreateRe
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, err = bs.CreateBlock(ctx, *req)
 		return
 	})
@@ -53,7 +54,7 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 		return m
 	}
 	var id, targetId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, targetId, err = bs.CreateLinkToTheNewObject(ctx, "", *req)
 		return
 	})
@@ -76,7 +77,7 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 		return m
 	}
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		obj, err = bs.OpenBlock(ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
@@ -105,7 +106,7 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 		return m
 	}
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		obj, err = bs.ShowBlock(ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
@@ -135,7 +136,7 @@ func (mw *Middleware) ObjectOpenBreadcrumbs(cctx context.Context, req *pb.RpcObj
 	}
 	var id string
 	var obj *model.ObjectView
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		obj, id, err = bs.OpenBreadcrumbsBlock(ctx)
 		return
 	})
@@ -157,7 +158,7 @@ func (mw *Middleware) ObjectSetBreadcrumbs(cctx context.Context, req *pb.RpcObje
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetBreadcrumbs(ctx, *req)
 	})
 	if err != nil {
@@ -175,7 +176,7 @@ func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRe
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.CloseBlock(req.ObjectId)
 	})
 	if err != nil {
@@ -198,7 +199,7 @@ func (mw *Middleware) BlockCopy(cctx context.Context, req *pb.RpcBlockCopyReques
 	}
 	var textSlot, htmlSlot string
 	var anySlot []*model.Block
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		textSlot, htmlSlot, anySlot, err = bs.Copy(*req)
 		return
 	})
@@ -226,7 +227,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		isSameBlockCaret bool
 		groupId          = bson.NewObjectId().Hex()
 	)
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		var uploadArr []pb.RpcBlockUploadRequest
 		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = bs.Paste(ctx, *req, groupId)
 		if err != nil {
@@ -268,7 +269,7 @@ func (mw *Middleware) BlockCut(cctx context.Context, req *pb.RpcBlockCutRequest)
 		textSlot, htmlSlot string
 		anySlot            []*model.Block
 	)
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		textSlot, htmlSlot, anySlot, err = bs.Cut(ctx, *req)
 		return
 	})
@@ -296,7 +297,7 @@ func (mw *Middleware) ObjectImportMarkdown(cctx context.Context, req *pb.RpcObje
 	}
 
 	var rootLinkIds []string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		rootLinkIds, err = bs.ImportMarkdown(ctx, *req)
 		return err
 	})
@@ -323,7 +324,7 @@ func (mw *Middleware) BlockExport(cctx context.Context, req *pb.RpcBlockExportRe
 		return m
 	}
 	var path string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		path, err = bs.Export(*req)
 		return
 	})
@@ -345,7 +346,7 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.UploadBlockFile(nil, *req, "")
 	})
 	if err != nil {
@@ -365,7 +366,7 @@ func (mw *Middleware) BlockListDelete(cctx context.Context, req *pb.RpcBlockList
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.UnlinkBlock(ctx, *req)
 	})
 	if err != nil {
@@ -386,7 +387,7 @@ func (mw *Middleware) BlockListDuplicate(cctx context.Context, req *pb.RpcBlockL
 		return m
 	}
 	var ids []string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		ids, err = bs.DuplicateBlocks(ctx, *req)
 		return
 	})
@@ -407,7 +408,7 @@ func (mw *Middleware) BlockSetFields(cctx context.Context, req *pb.RpcBlockSetFi
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetFields(ctx, *req)
 	})
 	if err != nil {
@@ -427,7 +428,7 @@ func (mw *Middleware) BlockListSetFields(cctx context.Context, req *pb.RpcBlockL
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetFieldsList(ctx, *req)
 	})
 	if err != nil {
@@ -444,7 +445,7 @@ func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectLi
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.DeleteArchivedObjects(*req)
 	})
 	if err != nil {
@@ -461,7 +462,7 @@ func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcO
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetPagesIsArchived(*req)
 	})
 	if err != nil {
@@ -477,7 +478,7 @@ func (mw *Middleware) ObjectListSetIsFavorite(cctx context.Context, req *pb.RpcO
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetPagesIsFavorite(*req)
 	})
 	if err != nil {
@@ -498,7 +499,7 @@ func (mw *Middleware) BlockReplace(cctx context.Context, req *pb.RpcBlockReplace
 		return m
 	}
 	var blockId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		blockId, err = bs.ReplaceBlock(ctx, *req)
 		return
 	})
@@ -519,7 +520,7 @@ func (mw *Middleware) BlockTextSetColor(cctx context.Context, req *pb.RpcBlockTe
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextColor(nil, req.ContextId, req.Color, req.BlockId)
 	})
 	if err != nil {
@@ -539,7 +540,7 @@ func (mw *Middleware) BlockListSetBackgroundColor(cctx context.Context, req *pb.
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetBackgroundColor(ctx, req.ContextId, req.Color, req.BlockIds...)
 	})
 	if err != nil {
@@ -559,7 +560,7 @@ func (mw *Middleware) BlockLinkListSetAppearance(cctx context.Context, req *pb.R
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetLinkAppearance(ctx, *req)
 	})
 	if err != nil {
@@ -579,7 +580,7 @@ func (mw *Middleware) BlockListSetAlign(cctx context.Context, req *pb.RpcBlockLi
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetAlign(ctx, req.ContextId, req.Align, req.BlockIds...)
 	})
 	if err != nil {
@@ -599,7 +600,7 @@ func (mw *Middleware) BlockListSetVerticalAlign(cctx context.Context, req *pb.Rp
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetVerticalAlign(ctx, req.ContextId, req.VerticalAlign, req.BlockIds...)
 	})
 	if err != nil {
@@ -619,7 +620,7 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.DropFiles(*req)
 	})
 	if err != nil {
@@ -639,7 +640,7 @@ func (mw *Middleware) BlockListMoveToExistingObject(cctx context.Context, req *p
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.MoveBlocks(ctx, *req)
 	})
 	if err != nil {
@@ -661,7 +662,7 @@ func (mw *Middleware) BlockListMoveToNewObject(cctx context.Context, req *pb.Rpc
 	}
 
 	var linkId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		linkId, err = bs.MoveBlocksToNewPage(ctx, *req)
 		return
 	})
@@ -684,7 +685,7 @@ func (mw *Middleware) BlockListConvertToObjects(cctx context.Context, req *pb.Rp
 		return m
 	}
 	var linkIds []string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		linkIds, err = bs.ListConvertToObjects(ctx, *req)
 		return
 	})
@@ -705,7 +706,7 @@ func (mw *Middleware) BlockTextListSetStyle(cctx context.Context, req *pb.RpcBlo
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextStyle(ctx, req.ContextId, req.Style, req.BlockIds...)
 	})
 	if err != nil {
@@ -725,7 +726,7 @@ func (mw *Middleware) BlockDivListSetStyle(cctx context.Context, req *pb.RpcBloc
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetDivStyle(ctx, req.ContextId, req.Style, req.BlockIds...)
 	})
 	if err != nil {
@@ -745,7 +746,7 @@ func (mw *Middleware) BlockTextListSetColor(cctx context.Context, req *pb.RpcBlo
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextColor(ctx, req.ContextId, req.Color, req.BlockIds...)
 	})
 	if err != nil {
@@ -765,7 +766,7 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextMark(ctx, req.ContextId, req.Mark, req.BlockIds...)
 	})
 	if err != nil {
@@ -809,7 +810,7 @@ func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcB
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ClearTextStyle(ctx, req.ContextId, req.BlockIds...)
 	})
 	if err != nil {
@@ -829,7 +830,7 @@ func (mw *Middleware) BlockTextListClearContent(cctx context.Context, req *pb.Rp
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ClearTextContent(ctx, req.ContextId, req.BlockIds...)
 	})
 	if err != nil {
@@ -850,7 +851,7 @@ func (mw *Middleware) BlockTextSetText(cctx context.Context, req *pb.RpcBlockTex
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextText(ctx, *req)
 	})
 	if err != nil {
@@ -870,7 +871,7 @@ func (mw *Middleware) BlockLatexSetText(cctx context.Context, req *pb.RpcBlockLa
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetLatexText(ctx, *req)
 	})
 	if err != nil {
@@ -890,7 +891,7 @@ func (mw *Middleware) BlockTextSetStyle(cctx context.Context, req *pb.RpcBlockTe
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextStyle(ctx, req.ContextId, req.Style, req.BlockId)
 	})
 	if err != nil {
@@ -910,7 +911,7 @@ func (mw *Middleware) BlockTextSetIcon(cctx context.Context, req *pb.RpcBlockTex
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextIcon(ctx, req.ContextId, req.IconImage, req.IconEmoji, req.BlockId)
 	})
 	if err != nil {
@@ -930,7 +931,7 @@ func (mw *Middleware) BlockTextSetChecked(cctx context.Context, req *pb.RpcBlock
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetTextChecked(ctx, *req)
 	})
 	if err != nil {
@@ -964,7 +965,7 @@ func (mw *Middleware) BlockFileListSetStyle(cctx context.Context, req *pb.RpcBlo
 
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetFileStyle(ctx, req.ContextId, req.Style, req.BlockIds...)
 	})
 	if err != nil {
@@ -1012,7 +1013,7 @@ func (mw *Middleware) BlockSplit(cctx context.Context, req *pb.RpcBlockSplitRequ
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, err = bs.SplitBlock(ctx, *req)
 		return
 	})
@@ -1033,7 +1034,7 @@ func (mw *Middleware) BlockMerge(cctx context.Context, req *pb.RpcBlockMergeRequ
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.MergeBlock(ctx, *req)
 	})
 	if err != nil {
@@ -1053,7 +1054,7 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.BookmarkFetch(ctx, *req)
 	})
 	if err != nil {
@@ -1071,7 +1072,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 		return m
 	}
 	var hash string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		hash, err = bs.UploadFile(*req)
 		return
 	})
@@ -1101,7 +1102,7 @@ func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownload
 	progress := process.NewProgress(pb.ModelProcess_SaveFile)
 	defer progress.Finish()
 
-	err = mw.doBlockService(func(bs block.Service) (err error) {
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ProcessAdd(progress)
 	})
 	if err != nil {
@@ -1180,7 +1181,7 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, err = bs.BookmarkCreateAndFetch(ctx, *req)
 		return
 	})
@@ -1202,7 +1203,7 @@ func (mw *Middleware) BlockFileCreateAndUpload(cctx context.Context, req *pb.Rpc
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, err = bs.CreateAndUploadFile(ctx, *req)
 		return
 	})
@@ -1224,7 +1225,7 @@ func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUrl})
 	}); err != nil {
 		return response(pb.RpcObjectSetObjectTypeResponseError_UNKNOWN_ERROR, err)
@@ -1245,7 +1246,7 @@ func (mw *Middleware) BlockRelationSetKey(cctx context.Context, req *pb.RpcBlock
 		return m
 	}
 
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetRelationKey(ctx, *req)
 	}); err != nil {
 		return response(pb.RpcBlockRelationSetKeyResponseError_UNKNOWN_ERROR, err)
@@ -1266,7 +1267,7 @@ func (mw *Middleware) BlockRelationAdd(cctx context.Context, req *pb.RpcBlockRel
 		return m
 	}
 
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.AddRelationBlock(ctx, *req)
 	}); err != nil {
 		return response(pb.RpcBlockRelationAddResponseError_UNKNOWN_ERROR, err)
@@ -1286,7 +1287,7 @@ func (mw *Middleware) BlockListTurnInto(cctx context.Context, req *pb.RpcBlockLi
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.TurnInto(ctx, req.ContextId, req.Style, req.BlockIds...)
 	})
 	if err != nil {

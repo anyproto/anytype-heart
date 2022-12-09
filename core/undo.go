@@ -24,7 +24,7 @@ func (mw *Middleware) ObjectUndo(cctx context.Context, req *pb.RpcObjectUndoRequ
 		}
 		return m
 	}
-	err = mw.doBlockService(func(bs block.Service) error {
+	err = mw.doBlockService(func(bs *block.Service) error {
 		counters, err = bs.Undo(ctx, *req)
 		return err
 	})
@@ -54,7 +54,7 @@ func (mw *Middleware) ObjectRedo(cctx context.Context, req *pb.RpcObjectRedoRequ
 		return m
 	}
 
-	err = mw.doBlockService(func(bs block.Service) error {
+	err = mw.doBlockService(func(bs *block.Service) error {
 		counters, err = bs.Redo(ctx, *req)
 		return err
 	})

@@ -8,6 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-naturaldate/v2"
+	"github.com/araddon/dateparse"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -22,9 +26,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-naturaldate/v2"
-	"github.com/araddon/dateparse"
-	"github.com/gogo/protobuf/types"
 )
 
 // To be renamed to ObjectSetDetails
@@ -39,7 +40,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetDetails(ctx, *req)
 	})
 	if err != nil {
@@ -61,7 +62,7 @@ func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDup
 		return m
 	}
 	var objectIds []string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		objectIds, err = bs.ObjectsDuplicate([]string{req.ContextId})
 		return
 	})
@@ -84,7 +85,7 @@ func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	var objectIds []string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		objectIds, err = bs.ObjectsDuplicate(req.ObjectIds)
 		return
 	})
@@ -513,7 +514,7 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
 	}
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.AddExtraRelations(ctx, req.ContextId, req.RelationKeys)
 	})
 	if err != nil {
@@ -534,7 +535,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.RemoveExtraRelations(ctx, req.ContextId, req.RelationKeys)
 	})
 	if err != nil {
@@ -552,7 +553,7 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 		return m
 	}
 	var rels []*model.Relation
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		rels, err = bs.ListAvailableRelations(req.ContextId)
 		return
 	})
@@ -575,7 +576,7 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetLayout(ctx, req.ContextId, req.Layout)
 	})
 	if err != nil {
@@ -595,7 +596,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetPageIsArchived(*req)
 	})
 	if err != nil {
@@ -615,7 +616,7 @@ func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.SetPageIsFavorite(*req)
 	})
 	if err != nil {
@@ -635,7 +636,7 @@ func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.Rp
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.FeaturedRelationAdd(ctx, req.ContextId, req.Relations...)
 	})
 	if err != nil {
@@ -655,7 +656,7 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.FeaturedRelationRemove(ctx, req.ContextId, req.Relations...)
 	})
 	if err != nil {
@@ -682,7 +683,7 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		setId string
 		err   error
 	)
-	err = mw.doBlockService(func(bs block.Service) error {
+	err = mw.doBlockService(func(bs *block.Service) error {
 		if setId, err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
 			return err
 		}
@@ -710,7 +711,7 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 func (mw *Middleware) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, *types.Struct, error) {
 	var id string
 	var details *types.Struct
-	err := mw.doBlockService(func(bs block.Service) error {
+	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
 		id, details, err = bs.ObjectCreateBookmark(*req)
 		return err
@@ -727,7 +728,7 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 
-	err := mw.doBlockService(func(bs block.Service) error {
+	err := mw.doBlockService(func(bs *block.Service) error {
 		return bs.ObjectBookmarkFetch(*req)
 	})
 
@@ -747,7 +748,7 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 	}
 
 	var id string
-	err := mw.doBlockService(func(bs block.Service) error {
+	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
 		id, err = bs.ObjectToBookmark(req.ContextId, req.Url)
 		return err
@@ -770,7 +771,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
 			d := pbtypes.CopyStruct(current)
 			return internalflag.PutToDetails(d, req.InternalFlags), nil

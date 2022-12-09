@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,8 +35,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -61,7 +60,7 @@ type builtinObjects struct {
 	cancel     func()
 	l          sync.Mutex
 	source     source.Service
-	service    block.Service
+	service    *block.Service
 	relService relation2.Service
 
 	newAccount bool
@@ -70,7 +69,7 @@ type builtinObjects struct {
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
-	b.service = a.MustComponent(block.CName).(block.Service)
+	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
 	b.cancel = func() {}
@@ -260,7 +259,7 @@ func (b *builtinObjects) validate(st *state.State) (err error) {
 		if !bundle.HasRelation(rel.Key) {
 			// todo: temporarily, make this as error
 			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Key, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
-			//return fmt.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+			// return fmt.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
 		}
 	}
 	st.Iterate(func(b simple.Block) (isContinue bool) {
