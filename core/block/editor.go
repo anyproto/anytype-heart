@@ -7,16 +7,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
 
