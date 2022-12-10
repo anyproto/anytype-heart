@@ -277,7 +277,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewTargetObjectId:
 		if err = apply(o.BlockDataviewTargetObjectId.Id, func(b simple.Block) error {
 			if dvBlock, ok := b.(dataview.Block); ok {
-				dvBlock.SetTargetObjectId(o.BlockDataviewTargetObjectId.TargetObjectId)
+				dvBlock.SetTargetObjectID(o.BlockDataviewTargetObjectId.TargetObjectId)
 
 				return nil
 			}

@@ -56,7 +56,7 @@ type Block interface {
 	GetSource() []string
 	SetSource(source []string) error
 	SetActiveView(activeView string)
-	SetTargetObjectId(targetObjectId string)
+	SetTargetObjectID(targetObjectID string)
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -246,10 +246,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	if dv.content.TargetObjectId != d.content.TargetObjectId {
 		msgs = append(msgs,
 			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewTargetObjectId{
-				&pb.EventBlockDataviewTargetObjectIdSet{
-					Id:      dv.Id,
+				BlockDataviewTargetObjectId: &pb.EventBlockDataviewTargetObjectIdSet{
+					Id:             dv.Id,
 					TargetObjectId: dv.content.TargetObjectId,
-				}}}})
+				}},
+			}})
 	}
 
 	return
@@ -445,8 +446,8 @@ func (d *Dataview) SetActiveView(activeView string) {
 	d.content.ActiveView = activeView
 }
 
-func (d *Dataview) SetTargetObjectId(targetObjectId string) {
-	d.content.TargetObjectId = targetObjectId
+func (d *Dataview) SetTargetObjectID(targetObjectID string) {
+	d.content.TargetObjectId = targetObjectID
 }
 
 func (d *Dataview) SetViewOrder(viewIds []string) {
