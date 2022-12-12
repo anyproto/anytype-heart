@@ -1,21 +1,27 @@
-FROM golang:1.16-buster AS builder
+FROM golang:1.18 AS builder
 MAINTAINER Anytype <dev@anytype.io>
 
 # This is (in large part) copied (with love) from
 # https://hub.docker.com/r/ipfs/go-ipfs/dockerfile
 
-ENV SRC_DIR /anytype
-ENV BUILD_DIR /tmp
+WORKDIR /anytype
 
 # Download packages first so they can be cached.
-COPY go.mod go.sum $SRC_DIR/
-RUN cd $SRC_DIR \
-  && go mod download
+COPY go.mod go.sum /
+RUN go mod download
 
-COPY . $SRC_DIR
+COPY . .
 
 # Install the binary
-RUN cd $SRC_DIR \
-  && go build -v -o $BUILD_DIR/server ./cmd/grpcserver/grpc.go
+RUN go build -o server ./cmd/grpcserver/grpc.go
 
-ENTRYPOINT ["/tmp/server"]
+FROM ubuntu
+
+# TODO: more fine-grained dependencies
+RUN apt update && apt install -y curl
+COPY --from=builder /anytype/server .
+EXPOSE 31007
+EXPOSE 31008
+ENV ANYTYPE_GRPC_ADDR=:31007
+ENV ANYTYPE_GRPCWEB_ADDR=:31008
+CMD ["./server"]
