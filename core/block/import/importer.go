@@ -26,7 +26,7 @@ const CName = "importer"
 
 type Import struct {
 	converters map[string]converter.Converter
-	s          block.Service
+	s          *block.Service
 	oc         Creator
 }
 
@@ -37,7 +37,7 @@ func New() Importer {
 }
 
 func (i *Import) Init(a *app.App) (err error) {
-	i.s = a.MustComponent(block.CName).(block.Service)
+	i.s = a.MustComponent(block.CName).(*block.Service)
 	core := a.MustComponent(core.CName).(core.Service)
 	for _, f := range converter.GetConverters() {
 		converter := f(core)

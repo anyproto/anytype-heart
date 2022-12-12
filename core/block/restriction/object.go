@@ -48,7 +48,6 @@ var (
 		model.SmartBlockType_BundledRelation:     objRestrictAll,
 		model.SmartBlockType_SubObject: {
 			model.Restrictions_Blocks,
-			model.Restrictions_Relations,
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
@@ -57,6 +56,16 @@ var (
 		model.SmartBlockType_STObjectType:      objRestrictEdit,
 		model.SmartBlockType_BundledTemplate:   objRestrictAll,
 		model.SmartBlockType_Template:          {},
+		// TODO: Check with Razor
+		model.SmartBlockType_Widget: {
+			model.Restrictions_Relations,
+			model.Restrictions_Details,
+			model.Restrictions_Delete,
+			model.Restrictions_LayoutChange,
+			model.Restrictions_TypeChange,
+			model.Restrictions_Template,
+			model.Restrictions_Duplicate,
+		},
 	}
 )
 

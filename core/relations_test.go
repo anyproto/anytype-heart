@@ -2,17 +2,19 @@ package core
 
 import (
 	"context"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"testing"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"testing"
 )
 
 func start(t *testing.T, eventSender event.Sender) (setId string, rootPath string, mw *Middleware, close func() error) {

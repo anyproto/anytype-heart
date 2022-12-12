@@ -76,7 +76,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
-		linkId, err := CreateBlock(st, "", pb.RpcBlockCreateRequest{
+		linkId, err := bs.CreateBlock(st, pb.RpcBlockCreateRequest{
 			TargetId: root.Model().Id,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{

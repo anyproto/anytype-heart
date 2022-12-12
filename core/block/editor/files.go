@@ -159,7 +159,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyFile.URL()}),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyFile.URL()}, model.ObjectType_file),
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,

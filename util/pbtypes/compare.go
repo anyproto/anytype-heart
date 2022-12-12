@@ -3,9 +3,10 @@ package pbtypes
 import (
 	"sort"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
 )
 
 func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []string) (equal bool) {

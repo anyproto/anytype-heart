@@ -7,20 +7,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("anytype-mw-state")
@@ -89,8 +89,9 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
-	store       *types.Struct
-	objectTypes []string
+	store                *types.Struct
+	objectTypes          []string
+	objectTypesToMigrate []string
 
 	changesStructureIgnoreIds []string
 
@@ -596,6 +597,13 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			s.parent.objectTypes = s.objectTypes
 		}
 	}
+
+	if s.parent != nil && s.objectTypesToMigrate != nil {
+		prev := s.parent.ObjectTypesToMigrate()
+		if !slice.UnsortedEquals(prev, s.objectTypesToMigrate) {
+			s.parent.objectTypesToMigrate = s.objectTypesToMigrate
+		}
+	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -668,6 +676,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
+	}
+	if s.objectTypesToMigrate != nil {
+		s.parent.objectTypesToMigrate = s.objectTypesToMigrate
 	}
 	if s.store != nil {
 		s.parent.store = s.store
@@ -843,12 +854,17 @@ func (s *State) SetObjectType(objectType string) *State {
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
+	// todo: we lost the second type here, so it becomes inconsistent with the objectTypes in the state
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
 	return s
 }
 
-func (s *State) InjectDerivedDetails() {
+func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
+	s.objectTypesToMigrate = objectTypes
+	return s
+}
 
+func (s *State) InjectDerivedDetails() {
 	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
 		if b := s.Get("dataview"); b != nil {
 			source := b.Model().GetDataview().GetSource()
@@ -858,13 +874,6 @@ func (s *State) InjectDerivedDetails() {
 		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
-
-	sbTypes, err := ListSmartblockTypes(s.RootId())
-	if err == nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
-	} else {
-		log.Debugf("ListSmartblockTypes: %s", err)
-	}
 
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
@@ -888,7 +897,7 @@ func ListSmartblockTypes(objectId string) ([]int, error) {
 			res = append(res, int(t))
 		}
 		return res, nil
-	} else if !strings.HasPrefix(objectId, "b") {
+	} else if strings.HasPrefix(objectId, addr.ObjectTypeKeyToIdPrefix) && !strings.HasPrefix(objectId, "b") {
 		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 
@@ -957,6 +966,13 @@ func (s *State) ObjectTypes() []string {
 		return s.parent.ObjectTypes()
 	}
 	return s.objectTypes
+}
+
+func (s *State) ObjectTypesToMigrate() []string {
+	if s.objectTypes == nil && s.parent != nil {
+		return s.parent.ObjectTypesToMigrate()
+	}
+	return s.objectTypesToMigrate
 }
 
 // ObjectType returns only the first objectType and produce warning in case the state has more than 1 object type
@@ -1150,6 +1166,9 @@ func (s *State) Copy() *State {
 	objTypes := make([]string, len(s.ObjectTypes()))
 	copy(objTypes, s.ObjectTypes())
 
+	objTypesToMigrate := make([]string, len(s.ObjectTypesToMigrate()))
+	copy(objTypesToMigrate, s.ObjectTypesToMigrate())
+
 	agOptsCopy := make(map[string][]*model.RelationOption, len(s.AggregatedOptionsByRelation()))
 	for k, v := range s.AggregatedOptionsByRelation() {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
@@ -1171,6 +1190,7 @@ func (s *State) Copy() *State {
 		extraRelations:              pbtypes.CopyRelations(s.OldExtraRelations()),
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,
+		objectTypesToMigrate:        objTypesToMigrate,
 		noObjectType:                s.noObjectType,
 		store:                       pbtypes.CopyStruct(s.Store()),
 	}

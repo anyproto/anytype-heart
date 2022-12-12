@@ -27,6 +27,11 @@ linters-settings:
     local-prefixes: github.com/anytypeio/go-anytype-middleware
   govet:
     check-shadowing: true
+  funlen:
+    lines: 120
+    statements: 100
+  lll:
+    line-length: 120
 
 linters:
   disable-all: true
@@ -44,15 +49,19 @@ linters:
     - nestif
     - prealloc
     - revive
-    - wsl
     - unused
     - errcheck
     - funlen
     - gosimple
     - govet
     - typecheck
-    - stylecheck
     - unconvert
-
   max-issues-per-linter: 0
   max-same-issues: 0
+
+severity:
+  default-severity: error
+  rules:
+      - severity: warning
+        linters:
+          - lll

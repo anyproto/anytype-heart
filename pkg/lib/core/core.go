@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -29,6 +30,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -211,6 +213,9 @@ func (a *Anytype) ThreadsService() threads.Service {
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
+	if strings.HasPrefix(objectId, "_") {
+		return addr.AnytypeMarketplaceWorkspace, nil
+	}
 	if a.predefinedBlockIds.IsAccount(objectId) {
 		return "", ErrObjectDoesNotBelongToWorkspace
 	}

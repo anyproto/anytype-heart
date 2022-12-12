@@ -19,7 +19,7 @@ func (mw *Middleware) BlockTableCreate(cctx context.Context, req *pb.RpcBlockTab
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, err = bs.CreateTableBlock(ctx, *req)
 		return
 	})
@@ -41,7 +41,7 @@ func (mw *Middleware) BlockTableRowCreate(cctx context.Context, req *pb.RpcBlock
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableRowCreate(ctx, *req)
 		return
 	})
@@ -63,7 +63,7 @@ func (mw *Middleware) BlockTableColumnCreate(cctx context.Context, req *pb.RpcBl
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableColumnCreate(ctx, *req)
 		return
 	})
@@ -85,7 +85,7 @@ func (mw *Middleware) BlockTableRowDelete(cctx context.Context, req *pb.RpcBlock
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableRowDelete(ctx, *req)
 		return
 	})
@@ -107,7 +107,7 @@ func (mw *Middleware) BlockTableColumnDelete(cctx context.Context, req *pb.RpcBl
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableColumnDelete(ctx, *req)
 		return
 	})
@@ -129,7 +129,7 @@ func (mw *Middleware) BlockTableColumnMove(cctx context.Context, req *pb.RpcBloc
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableColumnMove(ctx, *req)
 		return
 	})
@@ -151,7 +151,7 @@ func (mw *Middleware) BlockTableRowDuplicate(cctx context.Context, req *pb.RpcBl
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableRowDuplicate(ctx, *req)
 		return
 	})
@@ -173,7 +173,7 @@ func (mw *Middleware) BlockTableColumnDuplicate(cctx context.Context, req *pb.Rp
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, err = bs.TableColumnDuplicate(ctx, *req)
 		return
 	})
@@ -195,7 +195,7 @@ func (mw *Middleware) BlockTableExpand(cctx context.Context, req *pb.RpcBlockTab
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableExpand(ctx, *req)
 		return
 	})
@@ -217,7 +217,7 @@ func (mw *Middleware) BlockTableRowListFill(cctx context.Context, req *pb.RpcBlo
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableRowListFill(ctx, *req)
 		return
 	})
@@ -239,7 +239,7 @@ func (mw *Middleware) BlockTableRowListClean(cctx context.Context, req *pb.RpcBl
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableRowListClean(ctx, *req)
 		return
 	})
@@ -261,7 +261,7 @@ func (mw *Middleware) BlockTableSort(cctx context.Context, req *pb.RpcBlockTable
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableSort(ctx, *req)
 		return
 	})
@@ -283,7 +283,7 @@ func (mw *Middleware) BlockTableColumnListFill(cctx context.Context, req *pb.Rpc
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableColumnListFill(ctx, *req)
 		return
 	})
@@ -305,7 +305,7 @@ func (mw *Middleware) BlockTableRowSetHeader(cctx context.Context, req *pb.RpcBl
 		return m
 	}
 	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		err = bs.TableRowSetHeader(ctx, *req)
 		return
 	})

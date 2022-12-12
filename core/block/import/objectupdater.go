@@ -19,12 +19,12 @@ import (
 )
 
 type ObjectUpdater struct {
-	service     block.Service
+	service     *block.Service
 	core        core.Service
 	syncFactory *syncer.Factory
 }
 
-func NewObjectUpdater(service block.Service, core core.Service, syncFactory *syncer.Factory) Updater {
+func NewObjectUpdater(service *block.Service, core core.Service, syncFactory *syncer.Factory) Updater {
 	return &ObjectUpdater{
 		service:     service,
 		core:        core,
@@ -107,7 +107,7 @@ func (ou *ObjectUpdater) update(ctx *session.Context,
 					simpleBlocks = append(simpleBlocks, simple.New(block))
 				}
 			}
-			if err := basic.PasteBlocks(s, simpleBlocks, "", model.Block_Bottom); err != nil {
+			if err := basic.NewBasic(b).PasteBlocks(s, "", model.Block_Bottom, simpleBlocks); err != nil {
 				return err
 			}
 			return b.Apply(s)

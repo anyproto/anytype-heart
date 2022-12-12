@@ -3,14 +3,14 @@ package editor
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewThreadDB(migrator AccountMigrator) *ThreadDB {
@@ -39,10 +39,7 @@ func (p *ThreadDB) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	return smartblock.ObjectApplyTemplate(p, ctx.State,
-		template.WithEmpty,
-		template.WithTitle,
-	)
+	return nil
 }
 
 func (p *ThreadDB) updateObjects(info smartblock.ApplyInfo) error {

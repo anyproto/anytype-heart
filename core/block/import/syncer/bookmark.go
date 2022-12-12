@@ -10,10 +10,10 @@ import (
 )
 
 type BookmarkSyncer struct {
-	service block.Service
+	service *block.Service
 }
 
-func NewBookmarkSyncer(service block.Service) *BookmarkSyncer {
+func NewBookmarkSyncer(service *block.Service) *BookmarkSyncer {
 	return &BookmarkSyncer{service: service}
 }
 

@@ -2,16 +2,16 @@ package source
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/pb"
+
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewBundledObjectType(a core.Service, id string) (s Source) {
@@ -53,29 +53,11 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 	}
 	extraRels = []*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelationLink(bundle.RelationKeyRecommendedLayout)}
 
-	var relationKeys []string
 	for i := range ot.RelationLinks {
 		extraRels = append(extraRels, ot.RelationLinks[i])
-		relationKeys = append(relationKeys, addr.RelationKeyToIdPrefix+ot.RelationLinks[i].Key)
 	}
 
-	det := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
-		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
-		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
-		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
-		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
-		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),
-		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),
-		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),
-		bundle.RelationKeyId.String():                   pbtypes.String(id),
-		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
-		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
-		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
-		bundle.RelationKeyWorkspaceId.String():          pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-	}}
-
-	return extraRels, det, nil
+	return extraRels, (&relationutils.ObjectType{ot}).ToStruct(), nil
 }
 
 func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -89,7 +71,7 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyObjectType.URL())
+	s.SetObjectType(bundle.TypeKeyObjectType.BundledURL())
 	return s, nil
 }
 
@@ -108,7 +90,7 @@ func (v *bundledObjectType) FindFirstChange(ctx context.Context) (c *change.Chan
 func (v *bundledObjectType) ListIds() ([]string, error) {
 	var ids []string
 	for _, tk := range bundle.ListTypesKeys() {
-		ids = append(ids, tk.URL())
+		ids = append(ids, tk.BundledURL())
 	}
 	return ids, nil
 }

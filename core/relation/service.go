@@ -6,19 +6,19 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore/query"
 )
 
 const CName = "relation"
@@ -40,30 +40,31 @@ type Service interface {
 	FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
 	FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	CreateBulkMigration() BulkMigration
-	Migrate(relations []*model.Relation) error
+	MigrateRelations(relations []*model.Relation) error
+	MigrateObjectTypes(relations []*model.ObjectType) error
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
 }
 
 type BulkMigration interface {
 	AddRelations(relations []*model.Relation)
+	AddObjectTypes(objectType []*model.ObjectType)
 	Commit() error
 }
 
-type relationCreator interface {
-	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
-	CreateRelationOption(details *types.Struct) (id string, newDetails *types.Struct, err error)
-	CreateRelations(details []*types.Struct) (id []string, object []*types.Struct, err error)
-	CreateRelationOptions(details []*types.Struct) (id []string, newDetails []*types.Struct, err error)
+type subObjectCreator interface {
+	CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error)
+	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
 
 var errSubobjectAlreadyExists = fmt.Errorf("subobject already exists in the collection")
 
 type bulkMigration struct {
 	cache     map[string]struct{}
-	s         relationCreator
+	s         subObjectCreator
 	relations []*types.Struct
 	options   []*types.Struct
+	types     []*types.Struct
 	mu        sync.Mutex
 }
 
@@ -87,51 +88,80 @@ func (b *bulkMigration) AddRelations(relations []*model.Relation) {
 	}
 }
 
+func (b *bulkMigration) AddObjectTypes(objectTypes []*model.ObjectType) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, ot := range objectTypes {
+		if _, exists := b.cache["type"+ot.Url]; exists {
+			continue
+		}
+		b.types = append(b.types, (&relationutils.ObjectType{ObjectType: ot}).ToStruct())
+		b.cache["type"+ot.Url] = struct{}{}
+	}
+}
+
 func (b *bulkMigration) Commit() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if len(b.options) == 0 && len(b.relations) == 0 {
-		return nil
-	}
 
 	if len(b.relations) > 0 {
-		ids, _, err1 := b.s.CreateRelations(b.relations)
-		log.Errorf("relations migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.relations)
+		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
+			log.Errorf("relations migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		}
 
 		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
 			return err1
 		}
 	}
 	if len(b.options) > 0 {
-		ids, _, err1 := b.s.CreateRelationOptions(b.options)
-		log.Errorf("options migration done %d/%d: %v", len(ids), len(b.options), err1)
+		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.options)
+		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
+			log.Errorf("options migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		}
 
+		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
+			return err1
+		}
+	}
+	if len(b.types) > 0 {
+		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.types)
+		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
+			log.Errorf("types migration done %d/%d: %v", len(ids), len(b.relations), err1)
+		}
 		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
 			return err1
 		}
 	}
 	b.options = nil
 	b.relations = nil
+	b.types = nil
 
 	return nil
 }
 
 type service struct {
 	objectStore     objectstore.ObjectStore
-	relationCreator relationCreator
+	relationCreator subObjectCreator
 
 	mu sync.RWMutex
 }
 
-func (s *service) Migrate(relations []*model.Relation) error {
+func (s *service) MigrateRelations(relations []*model.Relation) error {
 	b := s.CreateBulkMigration()
 	b.AddRelations(relations)
 	return b.Commit()
 }
 
+func (s *service) MigrateObjectTypes(types []*model.ObjectType) error {
+	b := s.CreateBulkMigration()
+	b.AddObjectTypes(types)
+	return b.Commit()
+}
+
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.relationCreator = a.MustComponent(blockServiceCName).(relationCreator)
+	s.relationCreator = a.MustComponent(blockServiceCName).(subObjectCreator)
 
 	return
 }

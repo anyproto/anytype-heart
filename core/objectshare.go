@@ -17,7 +17,7 @@ func (mw *Middleware) ObjectAddWithObjectId(cctx context.Context, req *pb.RpcObj
 		return m
 	}
 
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ObjectAddWithObjectId(req)
 	})
 	if err != nil {
@@ -38,7 +38,7 @@ func (mw *Middleware) ObjectShareByLink(cctx context.Context, req *pb.RpcObjectS
 	}
 
 	var link string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		link, err = bs.ObjectShareByLink(req)
 		return
 	})

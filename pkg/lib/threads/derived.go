@@ -5,18 +5,18 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+
+	"github.com/anytypeio/go-slip21"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/textileio/crypto/symmetric"
+	corenet "github.com/textileio/go-threads/core/net"
+	"github.com/textileio/go-threads/core/thread"
 	threadsDb "github.com/textileio/go-threads/db"
 	threadsUtil "github.com/textileio/go-threads/util"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/anytypeio/go-slip21"
-	"github.com/libp2p/go-libp2p/core/crypto"
-
-	"github.com/textileio/crypto/symmetric"
-	corenet "github.com/textileio/go-threads/core/net"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 type threadDerivedIndex uint32
@@ -28,6 +28,7 @@ const (
 	threadDerivedIndexArchive     threadDerivedIndex = 2
 	threadDerivedIndexAccountOld  threadDerivedIndex = 3
 	threadDerivedIndexAccount     threadDerivedIndex = 4
+	threadDerivedIndexWidgets     threadDerivedIndex = 5
 
 	threadDerivedIndexSetPages threadDerivedIndex = 20 // deprecated
 
@@ -55,6 +56,7 @@ type DerivedSmartblockIds struct {
 	MarketplaceType     string
 	MarketplaceRelation string
 	MarketplaceTemplate string
+	Widgets             string
 }
 
 func (d DerivedSmartblockIds) IsAccount(id string) bool {
@@ -66,6 +68,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 	threadDerivedIndexAccountOld:          smartblock.SmartBlockTypeAccountOld,
 	threadDerivedIndexProfilePage:         smartblock.SmartBlockTypeProfilePage,
 	threadDerivedIndexHome:                smartblock.SmartBlockTypeHome,
+	threadDerivedIndexWidgets:             smartblock.SmartBlockTypeWidget,
 	threadDerivedIndexArchive:             smartblock.SmartBlockTypeArchive,
 	threadDerivedIndexSetPages:            smartblock.SmartBlockTypeSet,
 	threadDerivedIndexMarketplaceType:     smartblock.SmartblockTypeMarketplaceType,
@@ -88,6 +91,10 @@ func (s *service) DerivePredefinedThreadIds() (DerivedSmartblockIds, error) {
 		return DerivedSmartblockIds{}, err
 	}
 	home, err := s.derivedThreadIdByIndex(threadDerivedIndexHome)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	widgets, err := s.derivedThreadIdByIndex(threadDerivedIndexWidgets)
 	if err != nil {
 		return DerivedSmartblockIds{}, err
 	}
@@ -117,6 +124,7 @@ func (s *service) DerivePredefinedThreadIds() (DerivedSmartblockIds, error) {
 		MarketplaceType:     mpType.String(),
 		MarketplaceRelation: mpRelation.String(),
 		MarketplaceTemplate: mpTemplate.String(),
+		Widgets:             widgets.String(),
 	}, nil
 }
 
@@ -185,6 +193,13 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return accountIds, err
 	}
 	accountIds.Home = home.ID.String()
+
+	// widgets
+	widgets, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexWidgets, newAccount, true)
+	if err != nil {
+		return accountIds, err
+	}
+	accountIds.Widgets = widgets.ID.String()
 
 	// archive
 	archive, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexArchive, newAccount, true)

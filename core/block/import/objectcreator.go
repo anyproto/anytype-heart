@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -19,19 +21,17 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 type ObjectCreator struct {
-	service         block.Service
-	core            core.Service
-	updater         Updater
+	service             *block.Service
+	core                core.Service
+	updater             Updater
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
 }
 
-func NewCreator(service block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory, relationCreator RelationCreator) Creator {
+func NewCreator(service *block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory, relationCreator RelationCreator) Creator {
 	return &ObjectCreator{service: service, core: core, updater: updater, syncFactory: syncFactory, relationCreator: relationCreator}
 }
 

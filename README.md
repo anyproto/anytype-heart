@@ -32,7 +32,7 @@ Then you can easily regenerate proto files:
 make protos
 ```
 
-#### Run tests
+### Run tests
 Generate mocks:
 ```
 make test-deps
@@ -47,6 +47,18 @@ NodeJS addon test:
 ```
 cd jsaddon
 npm run test
+```
+
+#### Integration tests (WIP)
+
+First you need to start a docker container via docker-compose:
+```
+docker-compose up -d
+```
+
+Then 
+```
+make test-integration
 ```
 
 ### Run local gRPC server to debug

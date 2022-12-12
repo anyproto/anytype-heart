@@ -6,10 +6,11 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/types"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func Int64(v int64) *types.Value {
@@ -491,9 +492,11 @@ func RelationIdToKey(id string) (string, error) {
 	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
 	}
-
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return strings.TrimPrefix(id, addr.BundledRelationURLPrefix), nil
+	}
+	if strings.HasPrefix(id, addr.OldIndexedRelationURLPrefix) {
+		return strings.TrimPrefix(id, addr.OldIndexedRelationURLPrefix), nil
 	}
 	return "", fmt.Errorf("incorrect id format")
 }
@@ -587,4 +590,25 @@ func Sprint(p proto.Message) string {
 	m := jsonpb.Marshaler{Indent: " "}
 	result, _ := m.MarshalToString(p)
 	return result
+}
+
+func StructCompareIgnoreKeys(st1 *types.Struct, st2 *types.Struct, ignoreKeys []string) bool {
+	if (st1 == nil) != (st2 == nil) {
+		return false
+	}
+	if (st1.Fields == nil) != (st2.Fields == nil) {
+		return false
+	}
+	if len(st1.Fields) != len(st2.Fields) {
+		return false
+	}
+	for k, v := range st1.Fields {
+		if slice.FindPos(ignoreKeys, k) > -1 {
+			continue
+		}
+		if v2, ok := st2.Fields[k]; !ok || !v.Equal(v2) {
+			return false
+		}
+	}
+	return true
 }

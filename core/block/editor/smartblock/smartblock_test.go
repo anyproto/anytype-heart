@@ -2,29 +2,31 @@ package smartblock
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
-	"github.com/gogo/protobuf/types"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
+	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
+
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 )
 
 func TestSmartBlock_Init(t *testing.T) {
@@ -148,7 +150,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
-	fx.store.EXPECT().HasIDs(id).Return([]string{}, nil)
 
 	fx.md.EXPECT().ReportChange(gomock.Any(), gomock.Any()).AnyTimes()
 	fx.store.EXPECT().GetPendingLocalDetails(id).Return(&model.ObjectDetails{
