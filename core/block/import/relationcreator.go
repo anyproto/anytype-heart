@@ -12,18 +12,21 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type RelationService struct {
+	core    core.Service
 	service *block.Service
 }
 
 // NewRelationCreator constructor for RelationService
-func NewRelationCreator(service *block.Service) RelationCreator {
+func NewRelationCreator(service *block.Service, core core.Service) RelationCreator {
 	return &RelationService{
 		service: service,
+		core:    core,
 	}
 }
 
@@ -46,9 +49,12 @@ func (rc *RelationService) Create(ctx *session.Context,
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyName.String():           pbtypes.String(r.Name),
 				bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(r.Format)),
+				bundle.RelationKeyType.String():           pbtypes.String(bundle.TypeKeyRelation.URL()),
+				bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(model.ObjectType_relation)),
 			},
 		}
-		if _, object, err = rc.service.CreateRelation(detail); err != nil && err != editor.ErrSubObjectAlreadyExists {
+
+		if _, object, err = rc.service.CreateSubObjectInWorkspace(detail, rc.core.PredefinedBlocks().Account); err != nil && err != editor.ErrSubObjectAlreadyExists {
 			log.Errorf("create relation %s", err)
 			continue
 		}
@@ -104,14 +110,14 @@ func (rc *RelationService) handleListValue(ctx *session.Context, snapshot *model
 	)
 	for _, v := range snapshot.Details.Fields[r.Name].GetListValue().Values {
 		if r.Format == model.RelationFormat_tag || r.Format == model.RelationFormat_status {
-			if id, _, err = rc.service.CreateRelationOption(&types.Struct{
+			if id, _, err = rc.service.CreateSubObjectInWorkspace(&types.Struct{
 				Fields: map[string]*types.Value{
 					bundle.RelationKeyName.String():        pbtypes.String(v.GetStringValue()),
 					bundle.RelationKeyRelationKey.String(): pbtypes.String(relationID),
 					bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 					bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_relationOption)),
 				},
-			}); err != nil {
+			}, rc.core.PredefinedBlocks().Account); err != nil {
 				log.Errorf("add extra relation %s", err)
 			}
 		} else {

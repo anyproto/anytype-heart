@@ -784,7 +784,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	ctx := mw.newContext(cctx)      
+	ctx := mw.newContext(cctx)
 
 	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
 		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}}

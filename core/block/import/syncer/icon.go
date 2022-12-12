@@ -31,7 +31,7 @@ func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	if err != nil {
 		return fmt.Errorf("failed uploading icon image file: %s", err)
 	}
-	
+
 	err = is.service.Do(id, func(sb smartblock.SmartBlock) error {
 		bs := basic.NewBasic(sb)
 		err := bs.Update(ctx, func(simpleBlock simple.Block) error {

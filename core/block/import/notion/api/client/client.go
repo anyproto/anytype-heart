@@ -9,20 +9,20 @@ import (
 )
 
 const (
-	notionUrl     = "https://api.notion.com/v1"
-	apiVersion    = "2022-06-28"
+	notionUrl  = "https://api.notion.com/v1"
+	apiVersion = "2022-06-28"
 )
 
 type Client struct {
 	HttpClient *http.Client
-	BasePath string 
+	BasePath   string
 }
 
 // NewClient is a constructor for Client
 func NewClient() *Client {
 	c := &Client{
-		HttpClient:&http.Client{Timeout: time.Minute},
-		BasePath: notionUrl,
+		HttpClient: &http.Client{Timeout: time.Minute},
+		BasePath:   notionUrl,
 	}
 	return c
 }

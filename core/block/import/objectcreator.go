@@ -25,9 +25,9 @@ import (
 )
 
 type ObjectCreator struct {
-	service             *block.Service
-	core                core.Service
-	updater             Updater
+	service         *block.Service
+	core            core.Service
+	updater         Updater
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
 }

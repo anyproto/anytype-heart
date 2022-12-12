@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type richTextType string

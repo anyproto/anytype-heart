@@ -191,7 +191,6 @@ func (ms *MultiSelectItem) GetFormat() model.RelationFormat {
 	return model.RelationFormat_tag
 }
 
-//can't support it yet
 type DateItem struct {
 	Object string          `json:"object"`
 	ID     string          `json:"id"`
