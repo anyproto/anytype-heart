@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const LayoutChecksum = "269fc340b6753cd55ed1eaa13150b1cc8cec716d3e1daa5265fabde753652b29"
+const LayoutChecksum = "bf12de04f3ba63de16539f0dba7b6061bf1e9d16cd79567db4720618d71f9fbd"
 
 var (
 	Layouts = map[model.ObjectTypeLayout]model.Layout{
@@ -63,6 +63,12 @@ var (
 
 			Id:   model.ObjectType_relation,
 			Name: "Relation",
+		},
+		model.ObjectType_relationOption: {
+
+			Id:                model.ObjectType_relationOption,
+			Name:              "Relation Option",
+			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRelationOptionColor]},
 		},
 		model.ObjectType_set: {
 
