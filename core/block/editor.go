@@ -950,9 +950,9 @@ func (s *Service) ListConvertToObjects(
 
 func (s *Service) MoveBlocksToNewPage(
 	ctx *session.Context, req pb.RpcBlockListMoveToNewObjectRequest,
-) (linkId string, err error) {
+) (linkID string, err error) {
 	// 1. Create new page, link
-	linkId, objectId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
+	linkID, objectID, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
@@ -964,14 +964,14 @@ func (s *Service) MoveBlocksToNewPage(
 
 	// 2. Move blocks to new page
 	err = DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
-		return DoState(s, objectId, func(destState *state.State, tb basic.Movable) error {
+		return DoState(s, objectID, func(destState *state.State, tb basic.Movable) error {
 			return sb.Move(srcState, destState, "", model.Block_Inner, req.BlockIds)
 		})
 	})
 	if err != nil {
 		return
 	}
-	return linkId, err
+	return linkID, err
 }
 
 func (s *Service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
