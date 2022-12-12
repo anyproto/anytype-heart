@@ -3,20 +3,22 @@ package basic
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 )
 
 func newTextBlock(id, contentText string, childrenIds []string) simple.Block {
@@ -212,13 +214,10 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(newTextBlock("2", "one", nil))
 
 		b := NewBasic(sb)
-
-		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-			BlockIds:     []string{"2"},
-			DropTargetId: "1",
-			Position:     model.Block_Top,
-		})
+		st := sb.NewState()
+		err := b.Move(st, nil, "1", model.Block_Top, []string{"2"})
 		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
 		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 2)
 	})
 }
