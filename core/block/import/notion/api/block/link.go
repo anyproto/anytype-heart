@@ -155,3 +155,28 @@ func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 		BlockIDs: []string{id},
 	}
 }
+
+type BookmarkBlock struct {
+	Block
+	Bookmark BookmarkObject `json:"bookmark"`
+}
+
+type BookmarkObject struct {
+	URL     string          `json:"url"`
+	Caption []*api.RichText `json:"caption"`
+}
+
+func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
+	id := bson.NewObjectId().Hex()
+	title := api.RichTextToDescription(b.Caption)
+
+	return &model.Block{
+		Id:          id,
+		ChildrenIds: []string{},
+		Content: &model.BlockContentOfBookmark{
+			Bookmark: &model.BlockContentBookmark{
+				Url:   b.URL,
+				Title: title,
+			},
+		}}, id
+}

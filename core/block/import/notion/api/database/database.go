@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -50,23 +51,29 @@ func (p *Database) GetObjectType() string {
 }
 
 // GetDatabase makes snaphots from notion Database objects
-func (ds *Service) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database) (*converter.Response, map[string]string, map[string]string) {
-	convereterError := converter.ConvertError{}
-	return ds.mapDatabasesToSnaphots(ctx, mode, databases, convereterError)
-}
-
-func (ds *Service) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, convereterError converter.ConvertError) (*converter.Response, map[string]string, map[string]string) {
+func (ds *Service) GetDatabase(ctx context.Context,
+	mode pb.RpcObjectImportRequestMode,
+	databases []Database,
+	progress *process.Progress) (*converter.Response, map[string]string, map[string]string, converter.ConvertError) {
 	var (
 		allSnapshots       = make([]*converter.Snapshot, 0)
 		notionIdsToAnytype = make(map[string]string, 0)
 		databaseNameToID   = make(map[string]string, 0)
+		convereterError    = converter.ConvertError{}
 	)
+
+	progress.SetProgressMessage("Start creating pages from notion databases")
 	for _, d := range databases {
+		if err := progress.TryStep(1); err != nil {
+			ce := converter.NewFromError(d.ID, err)
+			return nil, nil, nil, ce
+		}
+
 		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 		if err != nil {
 			convereterError.Add(d.ID, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &converter.Response{Error: convereterError}, nil, nil
+				return nil, nil, nil, convereterError
 			} else {
 				continue
 			}
@@ -82,9 +89,10 @@ func (ds *Service) mapDatabasesToSnaphots(ctx context.Context, mode pb.RpcObject
 		databaseNameToID[d.ID] = pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())
 	}
 	if convereterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Error: nil}, notionIdsToAnytype, databaseNameToID
+		return &converter.Response{Snapshots: allSnapshots}, notionIdsToAnytype, databaseNameToID, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots, Error: convereterError}, notionIdsToAnytype, databaseNameToID
+
+	return &converter.Response{Snapshots: allSnapshots}, notionIdsToAnytype, databaseNameToID, convereterError
 }
 
 func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {

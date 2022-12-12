@@ -11,15 +11,18 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/search"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 const (
-	name        = "Notion"
-	pageSize    = 100
-	retryDelay  = time.Second
-	retryAmount = 5
+	name                      = "Notion"
+	pageSize                  = 100
+	retryDelay                = time.Second
+	retryAmount               = 5
+	numberOfStepsForPages     = 3 // 2 cycles to get snapshots and 1 cycle to create objects
+	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
 )
 
 func init() {
@@ -41,41 +44,36 @@ func New(core.Service) converter.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	ce := converter.NewError()
 	apiKey := n.getParams(req)
 	if apiKey == "" {
 		ce.Add("apiKey", fmt.Errorf("failed to extract apikey"))
-		return &converter.Response{
-			Error: ce,
-		}
+		return nil, ce
 	}
 	databases, pages, err := search.Retry(n.search.Search, retryAmount, retryDelay)(context.TODO(), apiKey, pageSize)
 
 	if err != nil {
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
-		return &converter.Response{
-			Error: ce,
-		}
+		return nil, ce
 	}
-	databasesSnapshots, notionIdsToAnytype, databaseNameToID := n.databaseService.GetDatabase(context.TODO(), req.Mode, databases)
-	if databasesSnapshots.Error != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-		ce.Merge(databasesSnapshots.Error)
-		return &converter.Response{
-			Error: ce,
-		}
+
+	progress.SetTotal(int64(len(databases)*numberOfStepsForDatabases + len(pages)*numberOfStepsForPages))
+	databasesSnapshots, notionIdsToAnytype, databaseNameToID, dbErr := n.databaseService.GetDatabase(context.TODO(), req.Mode, databases, progress)
+
+	if dbErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		ce.Merge(dbErr)
+		return nil, ce
 	}
 
 	request := &block.MapRequest{
 		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
 		DatabaseNameToID:           databaseNameToID,
 	}
-	pagesSnapshots, notionPageIdsToAnytype := n.pageService.GetPages(context.TODO(), apiKey, req.Mode, pages, request)
-	if pagesSnapshots.Error != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-		ce.Merge(pagesSnapshots.Error)
-		return &converter.Response{
-			Error: ce,
-		}
+	pagesSnapshots, notionPageIdsToAnytype, pageErr := n.pageService.GetPages(context.TODO(), apiKey, req.Mode, pages, request, progress)
+	if pageErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		ce.Merge(pageErr)
+		return nil, ce
 	}
 
 	page.SetPageLinksInDatabase(databasesSnapshots, pages, databases, notionPageIdsToAnytype, notionIdsToAnytype)
@@ -84,24 +82,19 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 	allSnaphots = append(allSnaphots, pagesSnapshots.Snapshots...)
 	allSnaphots = append(allSnaphots, databasesSnapshots.Snapshots...)
 	relations := mergeMaps(databasesSnapshots.Relations, pagesSnapshots.Relations)
-	if pagesSnapshots.Error != nil {
-		ce.Merge(pagesSnapshots.Error)
+
+	if pageErr != nil {
+		ce.Merge(pageErr)
 	}
-	if databasesSnapshots.Error != nil {
-		ce.Merge(databasesSnapshots.Error)
+
+	if dbErr != nil {
+		ce.Merge(dbErr)
 	}
 	if !ce.IsEmpty() {
-		return &converter.Response{
-			Snapshots: allSnaphots,
-			Relations: relations,
-			Error:     ce,
-		}
+		return &converter.Response{Snapshots: allSnaphots, Relations: relations}, ce
 	}
-	return &converter.Response{
-		Snapshots: allSnaphots,
-		Relations: relations,
-		Error:     nil,
-	}
+
+	return &converter.Response{Snapshots: allSnaphots, Relations: relations}, nil
 }
 
 func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {

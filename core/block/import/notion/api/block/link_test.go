@@ -5,8 +5,42 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
+
+func Test_GetBookmarkBlock(t *testing.T) {
+	bo := &BookmarkObject{
+		URL:     "",
+		Caption: []*api.RichText{},
+	}
+	bb, _ := bo.GetBookmarkBlock()
+	assert.NotNil(t, bb)
+	assert.Equal(t, bb.GetBookmark().GetUrl(), bo.URL)
+	assert.Equal(t, bb.GetBookmark().GetTitle(), "")
+
+	bo = &BookmarkObject{
+		URL:     "http://example.com",
+		Caption: []*api.RichText{},
+	}
+	bb, _ = bo.GetBookmarkBlock()
+	assert.NotNil(t, bb)
+	assert.Equal(t, bb.GetBookmark().GetUrl(), bo.URL)
+	assert.Equal(t, bb.GetBookmark().GetTitle(), "")
+
+	bo = &BookmarkObject{
+		URL: "",
+		Caption: []*api.RichText{{
+			Type:      api.Text,
+			PlainText: "Text",
+		}},
+	}
+	bb, _ = bo.GetBookmarkBlock()
+	assert.NotNil(t, bb)
+	assert.Equal(t, bb.GetBookmark().GetUrl(), bo.URL)
+	assert.Equal(t, bb.GetBookmark().GetTitle(), "Text")
+}
+
 
 func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
 	c := &Child{Title: "title"}

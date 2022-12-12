@@ -3,6 +3,7 @@ package converter
 import (
 	"io"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -21,7 +22,7 @@ func RegisterFunc(c ConverterCreator) {
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(req *pb.RpcObjectImportRequest) *Response
+	GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*Response, ConvertError)
 	Name() string
 }
 

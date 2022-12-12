@@ -9,6 +9,7 @@ import (
 
 	app "github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	session "github.com/anytypeio/go-anytype-middleware/core/session"
 	pb "github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -120,17 +121,18 @@ func (m *MockConverter) EXPECT() *MockConverterMockRecorder {
 }
 
 // GetSnapshots mocks base method.
-func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSnapshots", req)
+	ret := m.ctrl.Call(m, "GetSnapshots", req, progress)
 	ret0, _ := ret[0].(*converter.Response)
-	return ret0
+	ret1, _ := ret[1].(converter.ConvertError)
+	return ret0, ret1
 }
 
 // GetSnapshots indicates an expected call of GetSnapshots.
-func (mr *MockConverterMockRecorder) GetSnapshots(req interface{}) *gomock.Call {
+func (mr *MockConverterMockRecorder) GetSnapshots(req interface{}, progress interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnapshots", reflect.TypeOf((*MockConverter)(nil).GetSnapshots), req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnapshots", reflect.TypeOf((*MockConverter)(nil).GetSnapshots), req, progress)
 }
 
 // Name mocks base method.

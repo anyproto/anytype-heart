@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/property"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -65,31 +66,35 @@ func (ds *Service) GetPages(ctx context.Context,
 	apiKey string,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
-	request *block.MapRequest) (*converter.Response, map[string]string) {
-	convereterError := converter.ConvertError{}
-	return ds.mapPagesToSnaphots(ctx, apiKey, mode, pages, convereterError, request)
-}
+	request *block.MapRequest,
+	progress *process.Progress) (*converter.Response, map[string]string, converter.ConvertError) {
+	var (
+		allSnapshots            = make([]*converter.Snapshot, 0)
+		convereterError         converter.ConvertError
+		notionPagesIdsToAnytype = make(map[string]string, 0)
+	)
 
-func (ds *Service) mapPagesToSnaphots(ctx context.Context,
-	apiKey string,
-	mode pb.RpcObjectImportRequestMode,
-	pages []Page,
-	convereterError converter.ConvertError,
-	request *block.MapRequest) (*converter.Response, map[string]string) {
-	var allSnapshots = make([]*converter.Snapshot, 0)
-	var notionPagesIdsToAnytype = make(map[string]string, 0)
+	progress.SetProgressMessage("Start creating pages from notion")
+
 	for _, p := range pages {
+		if err := progress.TryStep(1); err != nil {
+			ce := converter.NewFromError(p.ID, err)
+			return nil, nil, ce
+		}
+
 		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 		if err != nil {
 			convereterError.Add(p.ID, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &converter.Response{Error: convereterError}, nil
+				return nil, nil, convereterError
 			} else {
 				continue
 			}
 		}
 		notionPagesIdsToAnytype[p.ID] = tid.String()
 	}
+
+	progress.SetProgressMessage("Start creating blocks")
 	relationsToPageID := make(map[string][]*converter.Relation)
 	// Need to collect pages title and notion ids mapping for such blocks as ChildPage and ChildDatabase,
 	// because we only get title in those blocks from API
@@ -106,11 +111,15 @@ func (ds *Service) mapPagesToSnaphots(ctx context.Context,
 	request.NotionPageIdsToAnytype = notionPagesIdsToAnytype
 	request.PageNameToID = pageNameToID
 	for _, p := range pages {
+		if err := progress.TryStep(1); err != nil {
+			ce := converter.NewFromError(p.ID, err)
+			return nil, nil, ce
+		}
 		snapshot, relations, ce := ds.transformPages(ctx, apiKey, p, mode, request)
 		if ce != nil {
-			convereterError.Merge(*ce)
+			convereterError.Merge(ce)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &converter.Response{Error: convereterError}, nil
+				return nil, nil, convereterError
 			} else {
 				continue
 			}
@@ -124,16 +133,17 @@ func (ds *Service) mapPagesToSnaphots(ctx context.Context,
 		relationsToPageID[pageID] = relations
 	}
 	if convereterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Relations: relationsToPageID, Error: nil}, notionPagesIdsToAnytype
+		return &converter.Response{Snapshots: allSnapshots, Relations: relationsToPageID}, notionPagesIdsToAnytype, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots, Relations: relationsToPageID, Error: convereterError}, notionPagesIdsToAnytype
+
+	return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, convereterError
 }
 
 func (ds *Service) transformPages(ctx context.Context,
 	apiKey string,
 	p Page,
 	mode pb.RpcObjectImportRequestMode,
-	request *block.MapRequest) (*model.SmartBlockSnapshotBase, []*converter.Relation, *converter.ConvertError) {
+	request *block.MapRequest) (*model.SmartBlockSnapshotBase, []*converter.Relation, converter.ConvertError) {
 	details := make(map[string]*types.Value, 0)
 	details[bundle.RelationKeySource.String()] = pbtypes.String(p.URL)
 	if p.Icon != nil && p.Icon.Emoji != nil {
@@ -142,15 +152,12 @@ func (ds *Service) transformPages(ctx context.Context,
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 
-	var (
-		allErrors = &converter.ConvertError{}
-		relations []*converter.Relation
-	)
-	relations = ds.handlePageProperties(apiKey, p.ID, p.Properties, details, request.NotionPageIdsToAnytype, request.NotionDatabaseIdsToAnytype)
+	allErrors := converter.ConvertError{}
+	relations := ds.handlePageProperties(apiKey, p.ID, p.Properties, details, request.NotionPageIdsToAnytype, request.NotionDatabaseIdsToAnytype)
 
 	notionBlocks, blocksAndChildrenErr := ds.blockService.GetBlocksAndChildren(ctx, p.ID, apiKey, pageSize, mode)
 	if blocksAndChildrenErr != nil {
-		allErrors.Merge(*blocksAndChildrenErr)
+		allErrors.Merge(blocksAndChildrenErr)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, allErrors
 		}

@@ -11,6 +11,14 @@ func NewError() ConvertError {
 	return ConvertError{}
 }
 
+func NewFromError(name string, initialError error) ConvertError {
+	ce := ConvertError{}
+
+	ce.Add(name, initialError)
+
+	return ce
+}
+
 func (ce ConvertError) Add(objectName string, err error) {
 	ce[objectName] = err
 }
