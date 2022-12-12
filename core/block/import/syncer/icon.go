@@ -14,10 +14,10 @@ import (
 )
 
 type IconSyncer struct {
-	service block.Service
+	service *block.Service
 }
 
-func NewIconSyncer(service block.Service) *IconSyncer {
+func NewIconSyncer(service *block.Service) *IconSyncer {
 	return &IconSyncer{service: service}
 }
 

@@ -17,11 +17,11 @@ import (
 )
 
 type RelationService struct {
-	service block.Service
+	service *block.Service
 }
 
 // NewRelationCreator constructor for RelationService
-func NewRelationCreator(service block.Service) RelationCreator {
+func NewRelationCreator(service *block.Service) RelationCreator {
 	return &RelationService{
 		service: service,
 	}
