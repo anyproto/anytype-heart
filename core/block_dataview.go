@@ -108,7 +108,7 @@ func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context,
 
 	var blockID string
 
-	err = mw.doBlockService(func(bs block.Service) error {
+	err = mw.doBlockService(func(bs block.Service) (err error) {
 		blockID, err = bs.CreateBlock(ctx, pb.RpcBlockCreateRequest{
 			ContextId: req.ContextId,
 			TargetId:  req.TargetId,
@@ -116,7 +116,7 @@ func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context,
 			Position:  req.Position,
 		})
 
-		return err
+		return
 	})
 
 	if err != nil {
