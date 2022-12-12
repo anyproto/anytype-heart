@@ -1,6 +1,7 @@
 package process
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -105,4 +106,16 @@ func (p *Progress) Info() pb.ModelProcess {
 
 func (p *Progress) Done() chan struct{} {
 	return p.done
+}
+
+func (p *Progress) TryStep(delta int64) error {
+	select {
+	case <-p.Canceled():
+		return fmt.Errorf("cancelled import")
+	default:
+	}
+
+	p.AddDone(delta)
+
+	return nil
 }

@@ -3,6 +3,7 @@ package converter
 import (
 	"io"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -21,7 +22,7 @@ func RegisterFunc(c ConverterCreator) {
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(req *pb.RpcObjectImportRequest) *Response
+	GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*Response, ConvertError)
 	Name() string
 }
 
@@ -41,9 +42,18 @@ type Snapshot struct {
 	Snapshot *model.SmartBlockSnapshotBase
 }
 
+// Relation incapsulate name and relations format. We need this structure, so we don't create relations in Anytype
+// during GetSnapshots step in converter and create them in RelationCreator
+type Relation struct {
+	BlockID string // if relations is used as a block
+	Name    string
+	Format  model.RelationFormat
+}
+
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors
 type Response struct {
 	Snapshots []*Snapshot
+	Relations map[string][]*Relation // object id to its relations
 	Error     ConvertError
 }
 

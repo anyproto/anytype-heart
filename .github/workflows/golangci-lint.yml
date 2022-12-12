@@ -19,4 +19,4 @@ jobs:
         with:
           version: latest
           only-new-issues: true
-          args: --timeout 15m
+          args: --timeout 15m --skip-files ".*_test.go"

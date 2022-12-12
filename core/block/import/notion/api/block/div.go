@@ -1,8 +1,9 @@
 package block
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type DividerBlock struct {
@@ -10,14 +11,18 @@ type DividerBlock struct {
 	Divider struct{} `json:"divider"`
 }
 
-func (*DividerBlock) GetDivBlock() (*model.Block, string) {
+func (*DividerBlock) GetBlocks(*MapRequest) *MapResponse {
 	id := bson.NewObjectId().Hex()
-	return &model.Block{
+	block := &model.Block{
 		Id: id,
 		Content: &model.BlockContentOfDiv{
 			Div: &model.BlockContentDiv{
 				Style: 0,
 			},
 		},
-	}, id
+	}
+	return &MapResponse{
+		Blocks:   []*model.Block{block},
+		BlockIDs: []string{id},
+	}
 }

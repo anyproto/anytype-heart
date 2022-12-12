@@ -1,8 +1,6 @@
 package block
 
 import (
-	"strings"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -17,9 +15,36 @@ type ParagraphBlock struct {
 	Paragraph TextObjectWithChildren `json:"paragraph"`
 }
 
+func (p *ParagraphBlock) GetBlocks(req *MapRequest) *MapResponse {
+	childResp := &MapResponse{}
+	if p.HasChildren {
+		mapper := ChildrenMapper(&p.Paragraph)
+		childResp = mapper.MapChildren(req)
+	}
+	resp := p.Paragraph.GetTextBlocks(model.BlockContentText_Paragraph, childResp.BlockIDs, req)
+	resp.Merge(childResp)
+	return resp
+}
+
+func (p *ParagraphBlock) HasChild() bool {
+	return p.HasChildren
+}
+
+func (p *ParagraphBlock) SetChildren(children []interface{}) {
+	p.Paragraph.Children = children
+}
+
+func (p *ParagraphBlock) GetID() string {
+	return p.ID
+}
+
 type Heading1Block struct {
 	Block
 	Heading1 HeadingObject `json:"heading_1"`
+}
+
+func (h *Heading1Block) GetBlocks(req *MapRequest) *MapResponse {
+	return h.Heading1.GetTextBlocks(model.BlockContentText_Header1, nil, req)
 }
 
 type Heading2Block struct {
@@ -27,9 +52,17 @@ type Heading2Block struct {
 	Heading2 HeadingObject `json:"heading_2"`
 }
 
+func (h *Heading2Block) GetBlocks(req *MapRequest) *MapResponse {
+	return h.Heading2.GetTextBlocks(model.BlockContentText_Header2, nil, req)
+}
+
 type Heading3Block struct {
 	Block
 	Heading3 HeadingObject `json:"heading_3"`
+}
+
+func (p *Heading3Block) GetBlocks(req *MapRequest) *MapResponse {
+	return p.Heading3.GetTextBlocks(model.BlockContentText_Header3, nil, req)
 }
 
 type HeadingObject struct {
@@ -47,9 +80,71 @@ type CalloutObject struct {
 	Icon *api.Icon `json:"icon"`
 }
 
+func (c *CalloutBlock) GetBlocks(req *MapRequest) *MapResponse {
+	calloutResp := c.Callout.GetTextBlocks(model.BlockContentText_Callout, nil, req)
+	extendedBlocks := make([]*model.Block, 0, len(calloutResp.Blocks))
+	for _, cb := range calloutResp.Blocks {
+		text, ok := cb.Content.(*model.BlockContentOfText)
+		if !ok {
+			extendedBlocks = append(extendedBlocks, cb)
+			continue
+		}
+		if c.Callout.Icon != nil {
+			if c.Callout.Icon.Emoji != nil {
+				text.Text.IconEmoji = *c.Callout.Icon.Emoji
+			}
+			if c.Callout.Icon.Type == api.External && c.Callout.Icon.External != nil {
+				text.Text.IconImage = c.Callout.Icon.External.URL
+			}
+			if c.Callout.Icon.Type == api.File && c.Callout.Icon.File != nil {
+				text.Text.IconImage = c.Callout.Icon.File.URL
+			}
+		}
+		cb.Content = text
+		extendedBlocks = append(extendedBlocks, cb)
+	}
+	calloutResp.Blocks = extendedBlocks
+	return calloutResp
+}
+
+func (c *CalloutBlock) HasChild() bool {
+	return c.HasChildren
+}
+
+func (c *CalloutBlock) SetChildren(children []interface{}) {
+	c.Callout.Children = children
+}
+
+func (c *CalloutBlock) GetID() string {
+	return c.ID
+}
+
 type QuoteBlock struct {
 	Block
 	Quote TextObjectWithChildren `json:"quote"`
+}
+
+func (q *QuoteBlock) GetBlocks(req *MapRequest) *MapResponse {
+	childResp := &MapResponse{}
+	if q.HasChildren {
+		mapper := ChildrenMapper(&q.Quote)
+		childResp = mapper.MapChildren(req)
+	}
+	resp := q.Quote.GetTextBlocks(model.BlockContentText_Quote, childResp.BlockIDs, req)
+	resp.Merge(childResp)
+	return resp
+}
+
+func (q *QuoteBlock) HasChild() bool {
+	return q.HasChildren
+}
+
+func (q *QuoteBlock) SetChildren(children []interface{}) {
+	q.Quote.Children = children
+}
+
+func (q *QuoteBlock) GetID() string {
+	return q.ID
 }
 
 type NumberedListBlock struct {
@@ -57,9 +152,55 @@ type NumberedListBlock struct {
 	NumberedList TextObjectWithChildren `json:"bulleted_list_item"`
 }
 
+func (n *NumberedListBlock) GetBlocks(req *MapRequest) *MapResponse {
+	childResp := &MapResponse{}
+	if n.HasChildren {
+		mapper := ChildrenMapper(&n.NumberedList)
+		childResp = mapper.MapChildren(req)
+	}
+	resp := n.NumberedList.GetTextBlocks(model.BlockContentText_Numbered, childResp.BlockIDs, req)
+	resp.Merge(childResp)
+	return resp
+}
+
+func (n *NumberedListBlock) HasChild() bool {
+	return n.HasChildren
+}
+
+func (n *NumberedListBlock) SetChildren(children []interface{}) {
+	n.NumberedList.Children = children
+}
+
+func (n *NumberedListBlock) GetID() string {
+	return n.ID
+}
+
 type ToDoBlock struct {
 	Block
 	ToDo ToDoObject `json:"to_do"`
+}
+
+func (t *ToDoBlock) GetBlocks(req *MapRequest) *MapResponse {
+	childResp := &MapResponse{}
+	if t.HasChildren {
+		mapper := ChildrenMapper(&t.ToDo)
+		childResp = mapper.MapChildren(req)
+	}
+	resp := t.ToDo.GetTextBlocks(model.BlockContentText_Checkbox, childResp.BlockIDs, req)
+	resp.Merge(childResp)
+	return resp
+}
+
+func (t *ToDoBlock) HasChild() bool {
+	return t.HasChildren
+}
+
+func (t *ToDoBlock) SetChildren(children []interface{}) {
+	t.ToDo.Children = children
+}
+
+func (t *ToDoBlock) GetID() string {
+	return t.ID
 }
 
 type ToDoObject struct {
@@ -72,212 +213,55 @@ type BulletedListBlock struct {
 	BulletedList TextObjectWithChildren `json:"bulleted_list_item"`
 }
 
+func (b *BulletedListBlock) GetBlocks(req *MapRequest) *MapResponse {
+	childResp := &MapResponse{}
+	if b.HasChildren {
+		mapper := ChildrenMapper(&b.BulletedList)
+		childResp = mapper.MapChildren(req)
+	}
+	resp := b.BulletedList.GetTextBlocks(model.BlockContentText_Marked, childResp.BlockIDs, req)
+	resp.Merge(childResp)
+	return resp
+}
+
+func (b *BulletedListBlock) HasChild() bool {
+	return b.HasChildren
+}
+
+func (b *BulletedListBlock) SetChildren(children []interface{}) {
+	b.BulletedList.Children = children
+}
+
+func (b *BulletedListBlock) GetID() string {
+	return b.ID
+}
+
 type ToggleBlock struct {
 	Block
 	Toggle TextObjectWithChildren `json:"toggle"`
 }
 
-type TextObjectWithChildren struct {
-	TextObject
-	Children []interface{} `json:"children"`
+func (t *ToggleBlock) GetBlocks(req *MapRequest) *MapResponse {
+	childResp := &MapResponse{}
+	if t.HasChildren {
+		mapper := ChildrenMapper(&t.Toggle)
+		childResp = mapper.MapChildren(req)
+	}
+	resp := t.Toggle.GetTextBlocks(model.BlockContentText_Toggle, childResp.BlockIDs, req)
+	resp.Merge(childResp)
+	return resp
 }
 
-type TextObject struct {
-	RichText []api.RichText `json:"rich_text"`
-	Color    string         `json:"color"`
+func (t *ToggleBlock) HasChild() bool {
+	return t.HasChildren
 }
 
-func (c *CalloutObject) GetCalloutBlocks(childIds []string) ([]*model.Block, []string) {
-	calloutBlocks, blockIDs := c.GetTextBlocks(model.BlockContentText_Callout, childIds, nil, nil, nil, nil)
-	for _, cb := range calloutBlocks {
-		text, ok := cb.Content.(*model.BlockContentOfText)
-		if ok {
-			if c.Icon != nil {
-				if c.Icon.Emoji != nil {
-					text.Text.IconEmoji = *c.Icon.Emoji
-				}
-				if c.Icon.Type == api.External && c.Icon.External != nil {
-					text.Text.IconImage = c.Icon.External.URL
-				}
-				if c.Icon.Type == api.File && c.Icon.File != nil {
-					text.Text.IconImage = c.Icon.File.URL
-				}
-			}
-			cb.Content = text
-		}
-	}
-	return calloutBlocks, blockIDs
+func (t *ToggleBlock) SetChildren(children []interface{}) {
+	t.Toggle.Children = children
 }
 
-func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds []string, notionPageIdsToAnytype, notionDatabaseIdsToAnytype, pageNameToID, databaseNameToID map[string]string) ([]*model.Block, []string) {
-	marks := []*model.BlockContentTextMark{}
-	id := bson.NewObjectId().Hex()
-	allBlocks := make([]*model.Block, 0)
-	allIds := make([]string, 0)
-	var text strings.Builder
-	for _, rt := range t.RichText {
-		if rt.Type == api.Text {
-			marks = append(marks, t.handleTextType(rt, &text, notionPageIdsToAnytype, notionDatabaseIdsToAnytype)...)
-		}
-		if rt.Type == api.Mention {
-			marks = append(marks, t.handleMentionType(rt, &text, notionPageIdsToAnytype, notionDatabaseIdsToAnytype, pageNameToID, databaseNameToID)...)
-		}
-		if rt.Type == api.Equation {
-			eqBlock := rt.Equation.HandleEquation()
-			allBlocks = append(allBlocks, eqBlock)
-			allIds = append(allIds, eqBlock.Id)
-		}
-	}
-	var backgroundColor string
-	if strings.HasSuffix(t.Color, api.NotionBackgroundColorSuffix) {
-		backgroundColor = api.NotionColorToAnytype[t.Color]
-	}
-
-	if len(t.RichText) == 1 && t.RichText[0].Type == api.Equation {
-		return allBlocks, allIds
-	}
-	allBlocks = append(allBlocks, &model.Block{
-		Id:              id,
-		ChildrenIds:     childIds,
-		BackgroundColor: backgroundColor,
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:    text.String(),
-				Style:   style,
-				Marks:   &model.BlockContentTextMarks{Marks: marks},
-				Checked: false,
-				Color:   api.NotionColorToAnytype[t.Color],
-			},
-		},
-	})
-	for _, b := range allBlocks {
-		allIds = append(allIds, b.Id)
-	}
-	return allBlocks, allIds
-}
-
-func (t *TextObject) handleTextType(rt api.RichText, text *strings.Builder, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) []*model.BlockContentTextMark {
-	marks := []*model.BlockContentTextMark{}
-	from := textUtil.UTF16RuneCountString(text.String())
-	if rt.Text != nil && rt.Text.Link != nil && rt.Text.Link.Url != "" {
-		text.WriteString(rt.Text.Content)
-	} else {
-		text.WriteString(rt.PlainText)
-	}
-	to := textUtil.UTF16RuneCountString(text.String())
-	if rt.Text != nil && rt.Text.Link != nil && rt.Text.Link.Url != "" {
-		url := strings.Trim(rt.Text.Link.Url, "/")
-		if databaseID, ok := notionDatabaseIdsToAnytype[url]; ok {
-			url = databaseID
-		}
-		if pageID, ok := notionPageIdsToAnytype[url]; ok {
-			url = pageID
-		}
-		marks = append(marks, &model.BlockContentTextMark{
-			Range: &model.Range{
-				From: int32(from),
-				To:   int32(to),
-			},
-			Type:  model.BlockContentTextMark_Link,
-			Param: url,
-		})
-	}
-	marks = append(marks, rt.BuildMarkdownFromAnnotations(int32(from), int32(to))...)
-	return marks
-}
-
-func (t *TextObject) handleMentionType(rt api.RichText, text *strings.Builder, notionPageIdsToAnytype, notionDatabaseIdsToAnytype, pageNameToID, databaseNameToID map[string]string) []*model.BlockContentTextMark {
-	if rt.Mention.Type == api.UserMention {
-		return t.handleUserMention(rt, text)
-	}
-	if rt.Mention.Type == api.Database {
-		return t.handleDatabaseMention(rt, text, notionDatabaseIdsToAnytype, databaseNameToID)
-	}
-	if rt.Mention.Type == api.Page {
-		return t.handlePageMention(rt, text, notionPageIdsToAnytype, pageNameToID)
-	}
-	if rt.Mention.Type == api.Date {
-		return t.handleDateMention(rt, text)
-	}
-	if rt.Mention.Type == api.LinkPreview {
-		return t.handleLinkPreviewMention(rt, text)
-	}
-	return nil
-}
-
-func (t *TextObject) handleUserMention(rt api.RichText, text *strings.Builder) []*model.BlockContentTextMark {
-	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(rt.Mention.User.Name)
-	to := textUtil.UTF16RuneCountString(text.String())
-	return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
-}
-
-func (t *TextObject) handleDatabaseMention(rt api.RichText, text *strings.Builder, notionDatabaseIdsToAnytype, databaseNameToID map[string]string) []*model.BlockContentTextMark {
-	if notionDatabaseIdsToAnytype == nil {
-		return nil
-	}
-	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(databaseNameToID[rt.Mention.Database.ID])
-	to := textUtil.UTF16RuneCountString(text.String())
-	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
-	marks = append(marks, &model.BlockContentTextMark{
-		Range: &model.Range{
-			From: int32(from),
-			To:   int32(to),
-		},
-		Type:  model.BlockContentTextMark_Mention,
-		Param: notionDatabaseIdsToAnytype[rt.Mention.Database.ID],
-	})
-	return marks
-}
-
-func (t *TextObject) handlePageMention(rt api.RichText, text *strings.Builder, notionPageIdsToAnytype, pageNameToID map[string]string) []*model.BlockContentTextMark {
-	if notionPageIdsToAnytype == nil {
-		return nil
-	}
-	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(pageNameToID[rt.Mention.Page.ID])
-	to := textUtil.UTF16RuneCountString(text.String())
-	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
-	marks = append(marks, &model.BlockContentTextMark{
-		Range: &model.Range{
-			From: int32(from),
-			To:   int32(to),
-		},
-		Type:  model.BlockContentTextMark_Mention,
-		Param: notionPageIdsToAnytype[rt.Mention.Page.ID],
-	})
-	return marks
-}
-
-func (t *TextObject) handleDateMention(rt api.RichText, text *strings.Builder) []*model.BlockContentTextMark {
-	var textDate string
-	if rt.Mention.Date.Start != "" {
-		textDate = rt.Mention.Date.Start
-	}
-	if rt.Mention.Date.End != "" {
-		textDate += " " + rt.Mention.Date.End
-	}
-	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(textDate)
-	to := textUtil.UTF16RuneCountString(text.String())
-	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
-	return marks
-}
-
-func (t *TextObject) handleLinkPreviewMention(rt api.RichText, text *strings.Builder) []*model.BlockContentTextMark {
-	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(rt.Mention.LinkPreview.Url)
-	to := textUtil.UTF16RuneCountString(text.String())
-	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
-	marks = append(marks, &model.BlockContentTextMark{
-		Range: &model.Range{
-			From: int32(from),
-			To:   int32(to),
-		},
-		Type: model.BlockContentTextMark_Link,
-	})
-	return marks
+func (t *ToggleBlock) GetID() string {
+	return t.ID
 }
 
 type CodeBlock struct {
@@ -291,17 +275,17 @@ type CodeObject struct {
 	Language string         `json:"language"`
 }
 
-func (c *CodeObject) GetCodeBlock() *model.Block {
+func (c *CodeBlock) GetBlocks(req *MapRequest) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id: id,
 		Fields: &types.Struct{
-			Fields: map[string]*types.Value{"lang": pbtypes.String(c.Language)},
+			Fields: map[string]*types.Value{"lang": pbtypes.String(c.Code.Language)},
 		},
 	}
 	marks := []*model.BlockContentTextMark{}
 	var code string
-	for _, rt := range c.RichText {
+	for _, rt := range c.Code.RichText {
 		from := textUtil.UTF16RuneCountString(code)
 		code += rt.PlainText
 		to := textUtil.UTF16RuneCountString(code)
@@ -316,7 +300,10 @@ func (c *CodeObject) GetCodeBlock() *model.Block {
 			},
 		},
 	}
-	return bl
+	return &MapResponse{
+		Blocks:   []*model.Block{bl},
+		BlockIDs: []string{id},
+	}
 }
 
 type EquationBlock struct {

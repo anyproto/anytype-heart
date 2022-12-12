@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"strings"
 	"time"
@@ -304,12 +303,13 @@ type Parent struct {
 	DatabaseID string `json:"database_id"`
 }
 
-func RichTextToDescription(rt []RichText) string {
-	var description bytes.Buffer
-
-	for _, text := range rt {
-		description.WriteString(text.PlainText)
-		description.WriteRune('\n')
+func RichTextToDescription(rt []*RichText) string {
+	var richText strings.Builder
+	for i, title := range rt {
+		richText.WriteString(title.PlainText)
+		if i != len(rt)-1 {
+			richText.WriteString("\n")
+		}
 	}
-	return description.String()
+	return richText.String()
 }

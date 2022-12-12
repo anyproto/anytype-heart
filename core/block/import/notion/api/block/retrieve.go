@@ -10,12 +10,11 @@ import (
 	"strconv"
 
 	"go.uber.org/zap"
-	
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var logger = logging.Logger("notion-get-blocks")
@@ -29,13 +28,11 @@ const (
 
 type Service struct {
 	client *client.Client
-	mapper *Mapper
 }
 
 func New(client *client.Client) *Service {
 	return &Service{
 		client: client,
-		mapper: &Mapper{},
 	}
 }
 
@@ -46,8 +43,11 @@ type Response struct {
 	Block      Block         `json:"block"`
 }
 
-func (s *Service) GetBlocksAndChildren(ctx context.Context, pageID, apiKey string, pageSize int64, mode pb.RpcObjectImportRequestMode) ([]interface{}, *converter.ConvertError) {
-	ce := &converter.ConvertError{}
+func (s *Service) GetBlocksAndChildren(ctx context.Context,
+	pageID, apiKey string,
+	pageSize int64,
+	mode pb.RpcObjectImportRequestMode) ([]interface{}, converter.ConvertError) {
+	ce := converter.ConvertError{}
 	allBlocks := make([]interface{}, 0)
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
@@ -56,103 +56,29 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context, pageID, apiKey strin
 			return nil, ce
 		}
 	}
-
 	for _, b := range blocks {
-		switch bl := b.(type) {
-		case *Heading1Block, *Heading2Block, *Heading3Block, *CodeBlock, *EquationBlock, *FileBlock, *ImageBlock, *VideoBlock, *PdfBlock, *DividerBlock, *TableOfContentsBlock:
-			allBlocks = append(allBlocks, bl)
-		case *ParagraphBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Paragraph.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *CalloutBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Callout.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *QuoteBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Quote.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *BulletedListBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.BulletedList.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *NumberedListBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.NumberedList.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *ToggleBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Toggle.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *ToDoBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.ToDo.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
+		cs, ok := b.(ChildSetter)
+		if !ok {
+			allBlocks = append(allBlocks, b)
+			continue
 		}
+		if cs.HasChild() {
+			children, err := s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
+			if err != nil {
+				ce.Merge(err)
+			}
+			if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, ce
+			}
+			cs.SetChildren(children)
+		}
+		allBlocks = append(allBlocks, b)
 	}
 	return allBlocks, nil
 }
 
-func (s *Service) MapNotionBlocksToAnytype(blocks []interface{}, notionPagesIdsToAnytype, notionDatabaseIdsToAnytype, pageNameToID, databaseNameToID map[string]string) []*model.Block {
-	allBlocks, _ := s.mapper.MapBlocks(blocks, notionPagesIdsToAnytype, notionDatabaseIdsToAnytype, pageNameToID, databaseNameToID)
-	return allBlocks
+func (s *Service) MapNotionBlocksToAnytype(req *MapRequest) *MapResponse {
+	return MapBlocks(req)
 }
 
 func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, pagination int64) ([]interface{}, error) {
@@ -219,147 +145,241 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 			case Paragraph:
 				var p ParagraphBlock
 				err = json.Unmarshal(buffer, &p)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &p)
 			case Heading1:
 				var h Heading1Block
 				err = json.Unmarshal(buffer, &h)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &h)
 			case Heading2:
 				var h Heading2Block
 				err = json.Unmarshal(buffer, &h)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &h)
 			case Heading3:
 				var h Heading3Block
 				err = json.Unmarshal(buffer, &h)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &h)
 			case Callout:
 				var c CalloutBlock
 				err = json.Unmarshal(buffer, &c)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &c)
 			case Quote:
 				var q QuoteBlock
 				err = json.Unmarshal(buffer, &q)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &q)
 			case BulletList:
 				var list BulletedListBlock
 				err = json.Unmarshal(buffer, &list)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &list)
 			case NumberList:
 				var nl NumberedListBlock
 				err = json.Unmarshal(buffer, &nl)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &nl)
 			case Toggle:
 				var t ToggleBlock
 				err = json.Unmarshal(buffer, &t)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &t)
 			case Code:
 				var c CodeBlock
 				err = json.Unmarshal(buffer, &c)
+
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
+
 				blocks = append(blocks, &c)
 			case Equation:
 				var e EquationBlock
+				err = json.Unmarshal(buffer, &e)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &e)
+			case ToDo:
+				var t ToDoBlock
+				err = json.Unmarshal(buffer, &t)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &t)
+			case File:
+				var f FileBlock
+				err = json.Unmarshal(buffer, &f)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &f)
+			case Image:
+				var i ImageBlock
+				err = json.Unmarshal(buffer, &i)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &i)
+			case Video:
+				var v VideoBlock
+				err = json.Unmarshal(buffer, &v)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &v)
+			case Pdf:
+				var p PdfBlock
+				err = json.Unmarshal(buffer, &p)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &p)
+			case Bookmark:
+				var b BookmarkBlock
+				err = json.Unmarshal(buffer, &b)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &b)
+			case Divider:
+				var d DividerBlock
+				err = json.Unmarshal(buffer, &d)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &d)
+			case TableOfContents:
+				var t TableOfContentsBlock
+				err = json.Unmarshal(buffer, &t)
+
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+
+				blocks = append(blocks, &t)
+			case Embed:
+				var e EmbedBlock
 				err = json.Unmarshal(buffer, &e)
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
 				blocks = append(blocks, &e)
-			case ToDo:
-				var t ToDoBlock
-				err = json.Unmarshal(buffer, &t)
+			case LinkPreview:
+				var lp LinkPreviewBlock
+				err = json.Unmarshal(buffer, &lp)
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
-				blocks = append(blocks, &t)
-			case File:
-				var f FileBlock
-				err = json.Unmarshal(buffer, &f)
+				blocks = append(blocks, &lp)
+			case ChildDatabase:
+				var c ChildDatabaseBlock
+				err = json.Unmarshal(buffer, &c)
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
-				blocks = append(blocks, &f)
-			case Image:
-				var i ImageBlock
-				err = json.Unmarshal(buffer, &i)
+				blocks = append(blocks, &c)
+			case ChildPage:
+				var c ChildPageBlock
+				err = json.Unmarshal(buffer, &c)
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
-				blocks = append(blocks, &i)
-			case Video:
-				var v VideoBlock
-				err = json.Unmarshal(buffer, &v)
+				blocks = append(blocks, &c)
+			case LinkToPage:
+				var l LinkToPageBlock
+				err = json.Unmarshal(buffer, &l)
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
-				blocks = append(blocks, &v)
-			case Pdf:
-				var p PdfBlock
-				err = json.Unmarshal(buffer, &p)
+				blocks = append(blocks, &l)
+			case Unsupported:
+				var u UnsupportedBlock
+				err = json.Unmarshal(buffer, &u)
 				if err != nil {
 					logger.With(zap.String("method", "getBlocks")).Error(err)
 					continue
 				}
-				blocks = append(blocks, &p)
-			case Divider:
-				var d DividerBlock
-				err = json.Unmarshal(buffer, &d)
-				if err != nil {
-					logger.With(zap.String("method", "getBlocks")).Error(err)
-					continue
-				}
-				blocks = append(blocks, &d)
-			case TableOfContents:
-				var t TableOfContentsBlock
-				err = json.Unmarshal(buffer, &t)
-				if err != nil {
-					logger.With(zap.String("method", "getBlocks")).Error(err)
-					continue
-				}
-				blocks = append(blocks, &t)
+				blocks = append(blocks, &u)
 			}
 		}
 

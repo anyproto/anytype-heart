@@ -9,10 +9,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	editor "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -36,7 +37,12 @@ func NewCreator(service *block.Service, core core.Service, updater Updater, sync
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, sbType smartblock.SmartBlockType, updateExisting bool) (*types.Struct, error) {
+func (oc *ObjectCreator) Create(ctx *session.Context,
+	snapshot *model.SmartBlockSnapshotBase,
+	relations []*converter.Relation,
+	pageID string,
+	sbType smartblock.SmartBlockType,
+	updateExisting bool) (*types.Struct, error) {
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 
 	var err error
@@ -68,10 +74,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
 
-	if err = oc.validate(st); err != nil {
-		return nil, fmt.Errorf("new id not found for '%s'", st.RootId())
-	}
-
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -92,7 +94,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		return nil, fmt.Errorf("create object '%s'", st.RootId())
 	}
 
-	filesToDelete, err = oc.relationCreator.Create(ctx, snapshot, newId)
+	var oldRelationBlocksToNew map[string]*model.Block
+	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.Create(ctx, snapshot, relations, pageID)
+
 	if err != nil {
 		return nil, fmt.Errorf("relation create '%s'", err)
 	}
@@ -105,6 +109,8 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		}
 	}
 
+	oc.replaceRelationBlock(ctx, st, oldRelationBlocksToNew, pageID)
+
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
@@ -114,27 +120,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 	})
 
 	return details, nil
-}
-
-func (oc *ObjectCreator) validate(st *state.State) (err error) {
-	var relKeys []string
-	for _, rel := range st.OldExtraRelations() {
-		if !bundle.HasRelation(rel.Key) {
-			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
-		}
-	}
-	st.Iterate(func(b simple.Block) (isContinue bool) {
-		if rb, ok := b.(relation.Block); ok {
-			relKeys = append(relKeys, rb.Model().GetRelation().Key)
-		}
-		return true
-	})
-	for _, rk := range relKeys {
-		if !st.HasRelation(rk) {
-			return fmt.Errorf("bundled template validation: relation '%v' exists in block but not in extra relations", rk)
-		}
-	}
-	return nil
 }
 
 func (oc *ObjectCreator) createSmartBlock(sbType smartblock.SmartBlockType, st *state.State) (string, *types.Struct, error) {
@@ -201,5 +186,38 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 		if err = oc.core.FileStore().DeleteFileKeys(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
 		}
+	}
+}
+
+func (oc *ObjectCreator) replaceRelationBlock(ctx *session.Context,
+	st *state.State,
+	oldRelationBlocksToNew map[string]*model.Block,
+	pageID string) {
+	if err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		if b.Model().GetRelation() == nil {
+			return true
+		}
+		bl, ok := oldRelationBlocksToNew[b.Model().GetId()]
+		if !ok {
+			return true
+		}
+		if sbErr := oc.service.Do(pageID, func(sb editor.SmartBlock) error {
+			s := sb.NewStateCtx(ctx)
+			simpleBlock := simple.New(bl)
+			s.Add(simpleBlock)
+			if err := s.InsertTo(b.Model().GetId(), model.Block_Replace, simpleBlock.Model().GetId()); err != nil {
+				return err
+			}
+			if err := sb.Apply(s); err != nil {
+				return err
+			}
+			return nil
+		}); sbErr != nil {
+			log.With(zap.String("object id", pageID)).Errorf("failed to replace relation block: %w", sbErr)
+		}
+
+		return true
+	}); err != nil {
+		log.With(zap.String("object id", pageID)).Errorf("failed to replace relation block: %w", err)
 	}
 }

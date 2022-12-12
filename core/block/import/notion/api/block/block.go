@@ -1,7 +1,10 @@
 package block
 
 import (
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type BlockType string
@@ -51,4 +54,38 @@ type Block struct {
 	Archived       bool       `json:"archived"`
 	HasChildren    bool       `json:"has_children"`
 	Type           BlockType  `json:"type"`
+}
+
+type Identifiable interface {
+	GetID() string
+}
+
+type ChildSetter interface {
+	Identifiable
+	HasChild() bool
+	SetChildren(children []interface{})
+}
+
+type Getter interface {
+	GetBlocks(req *MapRequest) *MapResponse
+}
+
+const unsupportedBlockMessage = "Unsupported block"
+
+type UnsupportedBlock struct{}
+
+func (*UnsupportedBlock) GetBlocks(req *MapRequest) *MapResponse {
+	id := bson.NewObjectId().Hex()
+	bl := &model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: unsupportedBlockMessage,
+			},
+		},
+	}
+	return &MapResponse{
+		Blocks:   []*model.Block{bl},
+		BlockIDs: []string{id},
+	}
 }
