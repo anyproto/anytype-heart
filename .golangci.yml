@@ -32,14 +32,6 @@ linters-settings:
     statements: 100
   lll:
     line-length: 120
-  revive:
-    rules:
-      - name: var-naming
-        severity: warning
-        disabled: false
-        arguments:
-          - [ "ID" ] # AllowList
-          - [ ] # DenyList
 
 linters:
   disable-all: true
@@ -57,14 +49,12 @@ linters:
     - nestif
     - prealloc
     - revive
-#    - wsl
     - unused
     - errcheck
     - funlen
     - gosimple
     - govet
     - typecheck
-#    - stylecheck
     - unconvert
 
   max-issues-per-linter: 0
