@@ -30,7 +30,7 @@ func (mw *Middleware) ObjectListExport(cctx context.Context, req *pb.RpcObjectLi
 		succeed int
 		err     error
 	)
-	err = mw.doBlockService(func(_ block.Service) error {
+	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		path, succeed, err = es.Export(*req)
 		return err

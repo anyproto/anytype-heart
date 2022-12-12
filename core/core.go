@@ -72,11 +72,11 @@ func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetD
 	}
 }
 
-func (mw *Middleware) getBlockService() (bs block.Service, err error) {
+func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	if mw.app != nil {
-		return mw.app.MustComponent(block.CName).(block.Service), nil
+		return mw.app.MustComponent(block.CName).(*block.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -99,7 +99,7 @@ func (mw *Middleware) getAccountService() (a account.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
-func (mw *Middleware) doBlockService(f func(bs block.Service) error) (err error) {
+func (mw *Middleware) doBlockService(f func(bs *block.Service) error) (err error) {
 	bs, err := mw.getBlockService()
 	if err != nil {
 		return

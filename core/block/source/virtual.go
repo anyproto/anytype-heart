@@ -2,13 +2,15 @@ package source
 
 import (
 	"context"
+
+	"github.com/google/uuid"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/google/uuid"
 )
 
 func NewVirtual(a core.Service, t model.SmartBlockType) (s Source) {

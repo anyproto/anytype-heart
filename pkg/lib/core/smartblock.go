@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -20,6 +15,11 @@ import (
 	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 )
 
 const (
@@ -189,7 +189,7 @@ func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnaps
 		return nil, err
 	}
 
-	service, err := event.GetBody(context.TODO(), block.service.t, block.thread.ReadKey)
+	service, err := event.GetBody(context.TODO(), *block.Service.t, block.thread.ReadKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record body: %w", err)
 	}
@@ -333,17 +333,17 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 func (block *smartBlock) SubscribeForChanges(since vclock.VClock, ch chan SmartBlockChange) (cancel func(), err error) {
 	chCloseFn := func() { close(ch) }
 
-	//todo: to be implemented
+	// todo: to be implemented
 	return chCloseFn, nil
 }
 
 func (block *smartBlock) SubscribeClientEvents(events chan<- proto.Message) (cancelFunc func(), err error) {
-	//todo: to be implemented
+	// todo: to be implemented
 	return func() { close(events) }, nil
 }
 
 func (block *smartBlock) PublishClientEvent(event proto.Message) error {
-	//todo: to be implemented
+	// todo: to be implemented
 	return fmt.Errorf("not implemented")
 }
 

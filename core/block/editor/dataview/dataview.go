@@ -368,6 +368,13 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 			}
 			hasRelations = true
 		}
+
+		if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
+			if hasRelations {
+				return nil, fmt.Errorf("dataview source contains both type and relation")
+			}
+			hasType = true
+		}
 	}
 	if hasType {
 		objectType, err := objectstore.GetObjectType(store, sources[0])
@@ -397,14 +404,9 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 
 		var relations []*model.RelationLink
 		for _, relId := range sources {
-			relKey, err := pbtypes.RelationIdToKey(relId)
+			rel, err := store.GetRelationById(relId)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get relation key from id %s: %s", relId, err.Error())
-			}
-
-			rel, err := store.GetRelation(relKey)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get relation %s: %s", relKey, err.Error())
+				return nil, fmt.Errorf("failed to get relation %s: %s", relId, err.Error())
 			}
 
 			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())

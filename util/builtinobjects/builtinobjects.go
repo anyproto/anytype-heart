@@ -4,28 +4,28 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -34,6 +34,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+
+	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -59,7 +61,7 @@ type builtinObjects struct {
 	cancel     func()
 	l          sync.Mutex
 	source     source.Service
-	service    block.Service
+	service    *block.Service
 	relService relation2.Service
 
 	newAccount bool
@@ -68,7 +70,7 @@ type builtinObjects struct {
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
-	b.service = a.MustComponent(block.CName).(block.Service)
+	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
 	b.cancel = func() {}
@@ -160,7 +162,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	f["analyticsOriginalId"] = pbtypes.String(oldId)
 
 	st.Set(simple.New(m))
-	rels := relationutils.MigrateRelationsModels(st.OldExtraRelations())
+	rels := relationutils.MigrateRelationModels(st.OldExtraRelations())
 	st.AddRelationLinks(rels...)
 
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
@@ -258,9 +260,9 @@ func (b *builtinObjects) validate(st *state.State) (err error) {
 		if !bundle.HasRelation(rel.Key) {
 			// todo: temporarily, make this as error
 			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Key, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
-			//return fmt.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
 		}
 	}
+
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if rb, ok := b.(relation.Block); ok {
 			relKeys = append(relKeys, rb.Model().GetRelation().Key)

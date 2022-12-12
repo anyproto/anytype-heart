@@ -2,10 +2,10 @@ package source
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -13,11 +13,11 @@ import (
 
 func (s *service) NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
 	return &static{
-		id:     id,
-		sbType: sbType,
-		doc:    doc,
-		a:      s.anytype,
-		s:      s,
+		id:         id,
+		sbType:     sbType,
+		doc:        doc,
+		a:          s.anytype,
+		s:          s,
 		pushChange: pushChange,
 	}
 }

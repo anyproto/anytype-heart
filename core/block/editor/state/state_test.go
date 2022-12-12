@@ -4,15 +4,16 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestState_Add(t *testing.T) {

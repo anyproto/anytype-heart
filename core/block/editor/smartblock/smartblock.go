@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/google/uuid"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -22,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -29,16 +29,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/anytypeio/go-anytype-middleware/util/mutex"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 )
 
 type ApplyFlag int
@@ -80,16 +80,13 @@ const (
 
 type key int
 
-const (
-	collectionRelations       = "rel"
-	collectionRelationOptions = "opt"
-)
 const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
 
 func New() SmartBlock {
-	return &smartBlock{hooks: map[Hook][]HookCallback{}}
+	s := &smartBlock{hooks: map[Hook][]HookCallback{}, Locker: mutex.NewLocker()}
+	return s
 }
 
 type SmartObjectOpenListner interface {
@@ -160,7 +157,7 @@ type linkSource interface {
 
 type smartBlock struct {
 	state.Doc
-	sync.Mutex
+	sync.Locker
 	depIds              []string // slice must be sorted
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
@@ -284,15 +281,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-	sbt, _ := smartblock.SmartBlockTypeFromID(sb.Id())
-	if indexableDetails, _ := sbt.Indexable(); indexableDetails {
-		has, _ := sb.objectStore.HasIDs(sb.Id())
-		if len(has) == 0 {
-			// in case we have not yet indexed this object report the change so the indexer will start
-			// todo: do it in a more clean way
-			sb.reportChange(sb.Doc.NewState())
-		}
-	}
+
 	return
 }
 
@@ -340,16 +329,6 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 		ot.RelationLinks = nil
 	}
 
-	for _, det := range details {
-		for k, v := range det.Details.GetFields() {
-			// todo: remove null cleanup(should be done when receiving from client)
-			if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-				log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
-				delete(det.Details.Fields, k)
-			}
-		}
-	}
-
 	undo, redo := sb.History().Counters()
 
 	// todo: sb.Relations() makes extra query to read objectType which we already have here
@@ -379,6 +358,9 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	sort.Strings(sb.depIds)
 	var records []database.Record
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
+		// datastore unavailable, cancel the subscription
+		sb.recordsSub.Close()
+		sb.closeRecordsSub = nil
 		return
 	}
 
@@ -595,7 +577,6 @@ func (sb *smartBlock) Locked() bool {
 func (sb *smartBlock) IsLocked() bool {
 	return sb.sendEvent != nil
 }
-
 func (sb *smartBlock) DisableLayouts() {
 	sb.disableLayouts = true
 }
@@ -687,6 +668,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			sb.undo.Add(act)
 		}
 	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
+		//log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		pushChange()
 	}
 	afterPushChangeTime := time.Now()
@@ -942,6 +924,10 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+	wsId, _ := sb.Anytype().GetWorkspaceIdForObject(sb.Id())
+	if wsId != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+	}
 	return nil
 }
 
@@ -1381,122 +1367,6 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 		Creator:    creator,
 		State:      st.Copy(),
 	}
-}
-
-func SubStates(st *state.State, collection string) (map[string]*state.State, error) {
-	coll := st.GetCollection(collection)
-	if coll == nil {
-		return nil, fmt.Errorf("collection not found")
-	}
-
-	m := make(map[string]*state.State, len(coll.Fields))
-	for k, v := range coll.GetFields() {
-		m[k] = structToState(k, v.GetStructValue())
-	}
-	return m, nil
-}
-
-func SubState(st *state.State, collection string, fullId string) (*state.State, error) {
-	if collection == source.WorkspaceCollection {
-		return nil, fmt.Errorf("substate not supported")
-	}
-	subId := strings.TrimPrefix(fullId, collection+addr.VirtualObjectSeparator)
-	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
-	if data == nil || data.Fields == nil {
-		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
-	}
-	subst := structToState(fullId, data)
-	if collection == collectionRelations {
-		relKey := pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())
-		dataview := model.BlockContentOfDataview{
-			Dataview: &model.BlockContentDataview{
-				Source: []string{fullId},
-				Views: []*model.BlockContentDataviewView{
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Table,
-						Name: "All",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationKey: relKey,
-								Type:        model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{{
-							Key:       bundle.RelationKeyName.String(),
-							IsVisible: true,
-						},
-							{
-								Key:       relKey,
-								IsVisible: true,
-							},
-						},
-						Filters: nil,
-					},
-				},
-			},
-		}
-		template.WithAllBlocksEditsRestricted(subst)
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation)))(subst)
-		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))(subst)
-		template.WithTitle(subst)
-		template.WithDescription(subst)
-		template.WithDefaultFeaturedRelations(subst)
-		template.WithDataview(dataview, false)(subst)
-
-	} else if collection == collectionRelationOptions {
-		dataview := model.BlockContentOfDataview{
-			Dataview: &model.BlockContentDataview{
-				Source: []string{pbtypes.GetString(data, bundle.RelationKeyRelationKey.String())},
-				Views: []*model.BlockContentDataviewView{
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Table,
-						Name: "All",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationKey: "name",
-								Type:        model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{},
-						Filters: []*model.BlockContentDataviewFilter{{
-							RelationKey: pbtypes.GetString(data, bundle.RelationKeyRelationKey.String()),
-							Condition:   model.BlockContentDataviewFilter_In,
-							Value:       pbtypes.String(fullId),
-						}},
-					},
-				},
-			},
-		}
-
-		template.WithTitle(subst)
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relationOption)))(subst)
-		template.WithDefaultFeaturedRelations(subst)
-		template.WithDataview(dataview, false)(subst)
-	}
-
-	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy}
-	for _, rk := range relationsToCopy {
-		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
-	}
-	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate)
-	return subst, nil
-}
-
-func structToState(id string, data *types.Struct) *state.State {
-	blocks := map[string]simple.Block{
-		"root": simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
-	}
-	subState := state.NewDoc(id, blocks).(*state.State)
-
-	for k, v := range data.Fields {
-		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
-			subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
-		}
-	}
-	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
-	return subState
 }
 
 func (sb *smartBlock) reportChange(s *state.State) {

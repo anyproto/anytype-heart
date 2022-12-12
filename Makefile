@@ -1,4 +1,5 @@
 export GOPRIVATE=github.com/anytypeio
+export GOLANGCI_LINT_VERSION=v1.49.0
 
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
@@ -99,7 +100,7 @@ build-android: setup-go
 	@go get golang.org/x/mobile/bind
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$(FLAGS)" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 	@go mod tidy
 
@@ -241,3 +242,20 @@ endif
 
 build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build&install into ../js-anytype"
+
+install-linter:
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+run-linter:
+ifdef GOLANGCI_LINT_BRANCH
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m
+else 
+	@golangci-lint run -v ./... --new-from-rev=master --timeout 15m
+endif
+
+run-linter-fix:
+ifdef GOLANGCI_LINT_BRANCH
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --fix
+else 
+	@golangci-lint run -v ./... --new-from-rev=master --timeout 15m --fix
+endif

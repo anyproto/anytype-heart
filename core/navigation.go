@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -13,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -141,7 +142,7 @@ func (mw *Middleware) objectCreate(req *pb.RpcObjectCreateRequest) (id string, d
 			Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
 		})
 	case bundle.TypeKeyObjectType:
-		return mw.objectTypeCreate(&pb.RpcObjectCreateObjectTypeRequest{
+		return mw.objectCreateObjectType(&pb.RpcObjectCreateObjectTypeRequest{
 			Details:       req.Details,
 			InternalFlags: req.InternalFlags,
 		})
@@ -157,7 +158,7 @@ func (mw *Middleware) objectCreate(req *pb.RpcObjectCreateRequest) (id string, d
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
 	}
-	err = mw.doBlockService(func(bs block.Service) (err error) {
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
 		id, details, err = bs.CreateSmartBlockFromTemplate(context.TODO(), sbType, req.Details, nil, req.TemplateId)
 		return
 	})

@@ -70,7 +70,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	tmpls := []template.StateTransformer{
-		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
+		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls, layout),
 		bookmarksvc.WithFixedBookmarks(p.Bookmark),
 	}
 

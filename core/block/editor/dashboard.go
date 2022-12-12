@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
@@ -13,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewDashboard(importServices _import.Services, dmservice DetailsModifier) *Dashboard {
@@ -47,7 +48,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 	state.CleanupLayouts(s)
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	if err = smartblock.ObjectApplyTemplate(p, s,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_dashboard),
 		template.WithEmpty,
 		template.WithDetailName("Home"),
 		template.WithDetailIconEmoji("🏠"),

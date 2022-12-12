@@ -1,13 +1,13 @@
 package pbtypes
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var bytesPool = &sync.Pool{

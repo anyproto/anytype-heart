@@ -8,8 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/logstore"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -22,8 +24,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/cheggaaa/mb"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 var log = logging.Logger("anytype-mw-source")

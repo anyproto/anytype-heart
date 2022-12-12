@@ -18,13 +18,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gogo/status"
+	cp "github.com/otiai10/copy"
+
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
-	"github.com/gogo/status"
-	cp "github.com/otiai10/copy"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -216,7 +217,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	defer mw.m.Unlock()
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		var clientConfig *pb.RpcAccountConfig
-		if account != nil {
+		if account != nil && err == nil {
 			cafeAccount := mw.getCafeAccount()
 
 			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
@@ -296,7 +297,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	newAcc.Name = req.Name
-	bs := mw.app.MustComponent(block.CName).(block.Service)
+	bs := mw.app.MustComponent(block.CName).(*block.Service)
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 	if req.GetAvatarLocalPath() != "" {
 		hash, err := bs.UploadFile(pb.RpcFileUploadRequest{
@@ -524,7 +525,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
-		mw.app.MustComponent("blockService").(block.Service).CloseBlocks()
+		mw.app.MustComponent("blockService").(*block.Service).CloseBlocks()
 		acc := &model.Account{Id: req.Id}
 		acc.Info = mw.getInfo()
 		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)

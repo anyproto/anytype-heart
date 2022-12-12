@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "7fbd46473909c01de3b49e01682e922a02946dd49695034725a55584c0e49631"
+const RelationChecksum = "24e27e6039484e8c7d61e3dd4c432532f83d035fedd34bc57965f6bbd6107a62"
 
 type RelationKey string
 
@@ -185,6 +185,7 @@ const (
 	RelationKeyImdbRating                RelationKey = "imdbRating"
 	RelationKeySmartblockTypes           RelationKey = "smartblockTypes"
 	RelationKeySource                    RelationKey = "source"
+	RelationKeySourceObject              RelationKey = "sourceObject"
 )
 
 var (
@@ -1200,7 +1201,7 @@ var (
 		},
 		RelationKeyIsReadonly: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Indicates whether the object is read-only. Means it can't be edited and archived",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
@@ -1768,12 +1769,12 @@ var (
 		RelationKeyRelationFormatObjectTypes: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Types that used for such relation",
+			Description:      "Prioritized target types for the relation's value",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Id:               "_brrelationFormatObjectTypes",
 			Key:              "relationFormatObjectTypes",
-			Name:             "Object type",
+			Name:             "Relation's target object types",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2017,8 +2018,8 @@ var (
 		},
 		RelationKeySmartblockTypes: {
 
-			DataSource:       model.Relation_derived,
-			Description:      "List of smartblock types",
+			DataSource:       model.Relation_details,
+			Description:      "Stored for object type. Contains tge list of smartblock types used to create the object",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
 			Id:               "_brsmartblockTypes",
@@ -2078,6 +2079,19 @@ var (
 			MaxCount:         1,
 			Name:             "Source",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySourceObject: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_object,
+			Id:               "_brsourceObject",
+			Key:              "sourceObject",
+			MaxCount:         1,
+			Name:             "Source object",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -2333,7 +2347,6 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Relation that stores the object's type",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brtype",
 			Key:              "type",
 			MaxCount:         1,
