@@ -12,10 +12,10 @@ import (
 )
 
 type FileSyncer struct {
-	service block.Service
+	service *block.Service
 }
 
-func NewFileSyncer(service block.Service) *FileSyncer {
+func NewFileSyncer(service *block.Service) *FileSyncer {
 	return &FileSyncer{service: service}
 }
 

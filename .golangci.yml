@@ -27,32 +27,45 @@ linters-settings:
     local-prefixes: github.com/anytypeio/go-anytype-middleware
   govet:
     check-shadowing: true
+  funlen:
+    lines: 120
+    statements: 100
+  lll:
+    line-length: 120
+  revive:
+    rules:
+      - name: var-naming
+        severity: warning
+        disabled: false
+        arguments:
+          - [ "ID" ] # AllowList
+          - [ ] # DenyList
 
 linters:
   disable-all: true
-#  enable:
-#    - dupl
-#    - gci
-#    - gocritic
-#    - gofmt
-#    - goimports
-#    - gosec
-#    - interfacebloat
-#    - importas
-#    - lll
-#    - misspell
-#    - nestif
-#    - prealloc
-#    - revive
+  enable:
+    - dupl
+    - gci
+    - gocritic
+    - gofmt
+    - goimports
+    - gosec
+    - interfacebloat
+    - importas
+    - lll
+    - misspell
+    - nestif
+    - prealloc
+    - revive
 #    - wsl
-#    - unused
-#    - errcheck
-#    - funlen
-#    - gosimple
-#    - govet
+    - unused
+    - errcheck
+    - funlen
+    - gosimple
+    - govet
 #    - typecheck
 #    - stylecheck
-#    - unconvert
+    - unconvert
 
   max-issues-per-linter: 0
   max-same-issues: 0
