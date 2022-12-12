@@ -48,7 +48,7 @@ test:
 
 test-integration:
 	@echo 'Running integration tests...'
-	@go test -tags=integration -v -count 1 ./test
+	@go test -tags=integration -v -count 1 ./tests
 
 test-race:
 	@echo 'Running tests with race-detector...'

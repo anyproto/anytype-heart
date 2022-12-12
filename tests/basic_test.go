@@ -1,6 +1,6 @@
 //go:build integration
 
-package test
+package tests
 
 import (
 	"github.com/gogo/protobuf/types"
@@ -54,7 +54,7 @@ func (s *testSuite) TestBasic() {
 			},
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
-					bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyNote.URL()),
+					bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyNote.BundledURL()),
 				},
 			},
 		}).TargetId
