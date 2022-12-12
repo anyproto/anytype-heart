@@ -43,29 +43,29 @@ linters-settings:
 
 linters:
   disable-all: true
-  enable:
-    - dupl
-    - gci
-    - gocritic
-    - gofmt
-    - goimports
-    - gosec
-    - interfacebloat
-    - importas
-    - lll
-    - misspell
-    - nestif
-    - prealloc
-    - revive
+#  enable:
+#    - dupl
+#    - gci
+#    - gocritic
+#    - gofmt
+#    - goimports
+#    - gosec
+#    - interfacebloat
+#    - importas
+#    - lll
+#    - misspell
+#    - nestif
+#    - prealloc
+#    - revive
 #    - wsl
-    - unused
-    - errcheck
-    - funlen
-    - gosimple
-    - govet
+#    - unused
+#    - errcheck
+#    - funlen
+#    - gosimple
+#    - govet
 #    - typecheck
 #    - stylecheck
-    - unconvert
+#    - unconvert
 
   max-issues-per-linter: 0
   max-same-issues: 0
