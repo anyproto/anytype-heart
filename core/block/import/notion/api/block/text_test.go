@@ -24,11 +24,11 @@ func Test_GetTextBlocksTextSuccess(t *testing.T) {
 		Color:    api.RedBackGround,
 	}
 
-	bl, _ := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, nil, nil, nil, nil)
-	assert.Len(t, bl, 1)
-	assert.Equal(t, bl[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Equal(t, bl[0].BackgroundColor, api.AnytypeRed)
-	assert.Equal(t, bl[0].GetText().Text, "testtest2")
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.Equal(t, bl.Blocks[0].BackgroundColor, api.AnytypeRed)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, "testtest2")
 }
 
 func Test_GetTextBlocksTextUserMention(t *testing.T) {
@@ -47,11 +47,11 @@ func Test_GetTextBlocksTextUserMention(t *testing.T) {
 		},
 	}
 
-	bl, _ := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, nil, nil, nil, nil)
-	assert.Len(t, bl, 1)
-	assert.Equal(t, bl[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Len(t, bl[0].GetText().Marks.Marks, 0)
-	assert.Equal(t, bl[0].GetText().Text, "Nastya")
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 0)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, "Nastya")
 }
 
 func Test_GetTextBlocksTextPageMention(t *testing.T) {
@@ -69,12 +69,15 @@ func Test_GetTextBlocksTextPageMention(t *testing.T) {
 		},
 	}
 
-	bl, _ := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, map[string]string{"notionID": "anytypeID"}, nil, map[string]string{"notionID": "Page"}, nil)
-	assert.Len(t, bl, 1)
-	assert.Equal(t, bl[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Len(t, bl[0].GetText().Marks.Marks, 1)
-	assert.Equal(t, bl[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Mention)
-	assert.Equal(t, bl[0].GetText().Text, "Page")
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+		NotionPageIdsToAnytype: map[string]string{"notionID": "anytypeID"},
+		PageNameToID:           map[string]string{"notionID": "Page"},
+	})
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Mention)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, "Page")
 }
 
 func Test_GetTextBlocksDatabaseMention(t *testing.T) {
@@ -92,12 +95,15 @@ func Test_GetTextBlocksDatabaseMention(t *testing.T) {
 		},
 	}
 
-	bl, _ := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, nil, map[string]string{"notionID": "anytypeID"}, nil, map[string]string{"notionID": "Database"})
-	assert.Len(t, bl, 1)
-	assert.Equal(t, bl[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Len(t, bl[0].GetText().Marks.Marks, 1)
-	assert.Equal(t, bl[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Mention)
-	assert.Equal(t, bl[0].GetText().Text, "Database")
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+		NotionDatabaseIdsToAnytype: map[string]string{"notionID": "anytypeID"},
+		DatabaseNameToID:           map[string]string{"notionID": "Database"},
+	})
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Mention)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, "Database")
 }
 
 func Test_GetTextBlocksDateMention(t *testing.T) {
@@ -115,11 +121,10 @@ func Test_GetTextBlocksDateMention(t *testing.T) {
 		},
 	}
 
-	bl, _ := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, nil, nil, nil, nil)
-	assert.Len(t, bl, 1)
-	assert.Equal(t, bl[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Len(t, bl[0].GetText().Marks.Marks, 0)
-	assert.Equal(t, bl[0].GetText().Text, "2022-11-14")
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	assert.Len(t, bl.Blocks, 1)
+	assert.NotNil(t, bl.Blocks[0].GetRelation())
+	assert.Len(t, bl.Relations, 1)
 }
 
 func Test_GetTextBlocksLinkPreview(t *testing.T) {
@@ -137,13 +142,13 @@ func Test_GetTextBlocksLinkPreview(t *testing.T) {
 		},
 	}
 
-	bl, _ := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, nil, nil, nil, nil)
-	assert.Len(t, bl, 1)
-	assert.Equal(t, bl[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.NotNil(t, bl[0].GetText().Marks)
-	assert.Len(t, bl[0].GetText().Marks.Marks, 1)
-	assert.Equal(t, bl[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Link)
-	assert.Equal(t, bl[0].GetText().Text, "ref")
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.NotNil(t, bl.Blocks[0].GetText().Marks)
+	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Link)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, "ref")
 }
 
 func Test_GetTextBlocksEquation(t *testing.T) {
@@ -158,10 +163,10 @@ func Test_GetTextBlocksEquation(t *testing.T) {
 		},
 	}
 
-	bl, _ := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, nil, nil, nil, nil)
-	assert.Len(t, bl, 1)
-	assert.NotNil(t, bl[0].GetLatex())
-	assert.Equal(t, bl[0].GetLatex().Text, "Equation")
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	assert.Len(t, bl.Blocks, 1)
+	assert.NotNil(t, bl.Blocks[0].GetLatex())
+	assert.Equal(t, bl.Blocks[0].GetLatex().Text, "Equation")
 }
 
 func Test_GetCodeBlocksSuccess(t *testing.T) {
@@ -176,7 +181,8 @@ func Test_GetCodeBlocksSuccess(t *testing.T) {
 			Language: "Go",
 		},
 	}
-	bl := co.Code.GetCodeBlock()
+	bl := co.GetBlocks(&MapRequest{})
 	assert.NotNil(t, bl)
-	assert.Equal(t, bl.GetText().Text, "Code")
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, "Code")
 }

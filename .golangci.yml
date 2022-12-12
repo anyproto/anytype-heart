@@ -10,6 +10,11 @@ un:
   go: '1.18'
 
 linters-settings:
+  lll:
+    line-length: 150
+  funlen:
+    lines: 100
+    statements: 50
   errcheck:
     check-blank: true
   errchkjson:
@@ -44,14 +49,12 @@ linters:
     - nestif
     - prealloc
     - revive
-    - wsl
     - unused
     - errcheck
     - funlen
     - gosimple
     - govet
     - typecheck
-    - stylecheck
     - unconvert
 
   max-issues-per-linter: 0

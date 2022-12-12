@@ -6,11 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
+	// "github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetDatabaseSuccess(t *testing.T) {
@@ -41,52 +42,273 @@ func Test_GetPagesSuccess(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         w.Write([]byte(`
 		{
-			"object": "list",
-			"results": [
-				{
-					"object": "page",
-					"id": "43b4db4f-23b8-46f9-9909-c783b033fb7d",
-					"created_time": "2022-10-25T11:44:00.000Z",
-					"last_edited_time": "2022-11-04T12:00:00.000Z",
-					"created_by": {
-						"object": "user",
-						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
-					},
-					"last_edited_by": {
-						"object": "user",
-						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
-					},
-					"cover": {
-						"type": "external",
-						"external": {
-							"url": "https://www.notion.so/images/page-cover/nasa_eagle_in_lunar_orbit.jpg"
-						}
-					},
-					"icon": {
-						"type": "emoji",
-						"emoji": "📣"
-					},
-					"parent": {
-						"type": "database_id",
-						"database_id": "072a11cb-684f-4f2b-9490-79592700c67e"
-					},
-					"archived": false,
-					"properties": {
-						"✔️ Task List": {
-							"id": "_OI%5E",
-							"type": "relation",
-							"relation": [],
-							"has_more": true
-						}
-					},
-					"url": "https://www.notion.so/dd-43b4db4f23b846f99909c783b033fb7d"
-				}
-			],
-			"next_cursor": null,
-			"has_more": false,
-			"type": "page_or_database",
-			"page_or_database": {}
-		}
+    "object": "list",
+    "results": [
+        {
+            "object": "page",
+            "id": "48cfec01-2e79-4af1-aaec-c1a3a8a95855",
+            "created_time": "2022-12-06T11:19:00.000Z",
+            "last_edited_time": "2022-12-07T08:34:00.000Z",
+            "created_by": {
+                "object": "user",
+                "id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+            },
+            "last_edited_by": {
+                "object": "user",
+                "id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+            },
+            "cover": null,
+            "icon": null,
+            "parent": {
+                "type": "database_id",
+                "database_id": "48f51ca6-f1e3-40ee-97a5-953c2e5d8dda"
+            },
+            "archived": false,
+            "properties": {
+                "Tags": {
+                    "id": "!'(w",
+                    "type": "multi_select",
+                    "multi_select": [
+                        {
+                            "id": "00a58cba-c800-40cd-a8f1-6e42527b0a29",
+                            "name": "Special Event",
+                            "color": "yellow"
+                        },
+                        {
+                            "id": "4322f3ac-635f-4d2f-808f-22d639bc393b",
+                            "name": "Daily",
+                            "color": "purple"
+                        }
+                    ]
+                },
+                "Rollup": {
+                    "id": "%3Df%3E%7B",
+                    "type": "rollup",
+                    "rollup": {
+                        "type": "number",
+                        "number": 2,
+                        "function": "count"
+                    }
+                },
+                "Related Journal 1": {
+                    "id": "%3D%7CO%7B",
+                    "type": "relation",
+                    "relation": [
+                        {
+                            "id": "088b08d5-b692-4805-8338-1b147a3bff4a"
+                        }
+                    ],
+                    "has_more": false
+                },
+                "Files & media": {
+                    "id": "%3FmtK",
+                    "type": "files",
+                    "files": [
+                        {
+                            "name": "2022-11-28 11.54.58.jpg",
+                            "type": "file",
+                            "file": {
+                                "url": "",
+                                "expiry_time": "2022-12-07T09:35:05.952Z"
+                            }
+                        }
+                    ]
+                },
+                "Last edited time": {
+                    "id": "%40x%3DJ",
+                    "type": "last_edited_time",
+                    "last_edited_time": "2022-12-07T08:34:00.000Z"
+                },
+                "Number": {
+                    "id": "I%60O%7D",
+                    "type": "number",
+                    "number": null
+                },
+                "Multi-select": {
+                    "id": "M%5Btn",
+                    "type": "multi_select",
+                    "multi_select": [
+                        {
+                            "id": "49d921f8-44b4-4175-8ae9-c0dc7dd70d76",
+                            "name": "q",
+                            "color": "blue"
+                        },
+                        {
+                            "id": "55b166d6-7713-4628-b412-560013f6e0ad",
+                            "name": "w",
+                            "color": "brown"
+                        },
+                        {
+                            "id": "fd5b1266-7c51-4208-83d4-ff3c01efc3b8",
+                            "name": "r",
+                            "color": "pink"
+                        }
+                    ]
+                },
+                "Checkbox": {
+                    "id": "O%5DNd",
+                    "type": "checkbox",
+                    "checkbox": false
+                },
+                "Status": {
+                    "id": "OdD%3A",
+                    "type": "status",
+                    "status": {
+                        "id": "01648775-b1d6-4c21-b093-dab131155840",
+                        "name": "In progress",
+                        "color": "blue"
+                    }
+                },
+                "Created by": {
+                    "id": "WCk%3B",
+                    "type": "created_by",
+                    "created_by": {
+                        "object": "user",
+                        "id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d",
+                        "name": "Anastasia Shemyakinskaya",
+                        "avatar_url": "",
+                        "type": "person",
+                        "person": {}
+                    }
+                },
+                "https://developers.notion.com/": {
+                    "id": "%5BaNB",
+                    "type": "url",
+                    "url": "https://developers.notion.com/"
+                },
+                "Created time": {
+                    "id": "%5C%3B_p",
+                    "type": "created_time",
+                    "created_time": "2022-12-06T11:19:00.000Z"
+                },
+                "Date": {
+                    "id": "%5DIZz",
+                    "type": "date",
+                    "date": {
+                        "start": "2022-12-16",
+                        "end": "2022-12-16",
+                        "time_zone": null
+                    }
+                },
+                "Text": {
+                    "id": "%5DS%3AW",
+                    "type": "rich_text",
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "sdfsdfsdf",
+                                "link": null
+                            },
+                            "annotations": {
+                                "bold": false,
+                                "italic": false,
+                                "strikethrough": false,
+                                "underline": false,
+                                "code": false,
+                                "color": "default"
+                            },
+                            "plain_text": "sdfsdfsdf",
+                            "href": null
+                        }
+                    ]
+                },
+                "Related Journal": {
+                    "id": "d%5DpH",
+                    "type": "relation",
+                    "relation": [
+                        {
+                            "id": "f90772d0-0155-4ba1-8086-5a9daa750308"
+                        },
+                        {
+                            "id": "088b08d5-b692-4805-8338-1b147a3bff4a"
+                        }
+                    ],
+                    "has_more": false
+                },
+                "email": {
+                    "id": "ijvk",
+                    "type": "email",
+                    "email": null
+                },
+                "👜 Page": {
+                    "id": "kZi%3D",
+                    "type": "relation",
+                    "relation": [],
+                    "has_more": true
+                },
+                "Checkbox 1": {
+                    "id": "n_gn",
+                    "type": "checkbox",
+                    "checkbox": true
+                },
+                "Last edited by": {
+                    "id": "n%7Biq",
+                    "type": "last_edited_by",
+                    "last_edited_by": {
+                        "object": "user",
+                        "id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d",
+                        "name": "Anastasia Shemyakinskaya",
+                        "avatar_url": "",
+                        "type": "person",
+                        "person": {}
+                    }
+                },
+                "URL": {
+                    "id": "vj%5Dv",
+                    "type": "url",
+                    "url": null
+                },
+                "Phone": {
+                    "id": "wtAo",
+                    "type": "phone_number",
+                    "phone_number": "phone_number"
+                },
+                "Created": {
+                    "id": "%7D%25j%7B",
+                    "type": "created_time",
+                    "created_time": "2022-12-06T11:19:00.000Z"
+                },
+                "Formula": {
+                    "id": "%7DdGa",
+                    "type": "formula",
+                    "formula": {
+                        "type": "string",
+                        "string": "Page"
+                    }
+                },
+                "Name": {
+                    "id": "title",
+                    "type": "title",
+                    "title": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Test",
+                                "link": null
+                            },
+                            "annotations": {
+                                "bold": false,
+                                "italic": false,
+                                "strikethrough": false,
+                                "underline": false,
+                                "code": false,
+                                "color": "default"
+                            },
+                            "plain_text": "Test",
+                            "href": null
+                        }
+                    ]
+                }
+            },
+            "url": "https://www.notion.so/"
+        }
+    ],
+    "next_cursor": null,
+    "has_more": false,
+    "type": "page_or_database",
+    "page_or_database": {}
+}
 		`))
     }))
 
@@ -100,19 +322,6 @@ func Test_GetPagesSuccess(t *testing.T) {
 	assert.NotNil(t, p)
 	assert.Len(t, p, 1)
 	assert.Nil(t, err)
-
-	s = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"object":"list","results":[{"object":"property_item","type":"relation","id":"cm~~","relation":{"id":"18e660df-d7f4-4d4b-b30c-eeb88ffee645"}}],"next_cursor":null,"has_more":false,"type":"property_item","property_item":{"id":"cm~~","next_url":null,"type":"relation","relation":{}}}`))
-	}))
-
-	c = client.NewClient()
-	c.BasePath = s.URL
-	ps := page.New(c)
-	pages := ps.GetPages(context.Background(), "key", pb.RpcObjectImportRequest_ALL_OR_NOTHING, p, map[string]string{}, map[string]string{})
-
-	assert.NotNil(t, pages)
-	assert.Len(t, pages.Snapshots, 1)
-	assert.Nil(t, pages.Error)
 }
 
 

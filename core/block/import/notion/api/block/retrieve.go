@@ -15,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var logger = logging.Logger("notion-get-blocks")
@@ -29,13 +28,11 @@ const (
 
 type Service struct {
 	client *client.Client
-	mapper *Mapper
 }
 
 func New(client *client.Client) *Service {
 	return &Service{
 		client: client,
-		mapper: &Mapper{},
 	}
 }
 
@@ -56,103 +53,29 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context, pageID, apiKey strin
 			return nil, ce
 		}
 	}
-
 	for _, b := range blocks {
-		switch bl := b.(type) {
-		case *Heading1Block, *Heading2Block, *Heading3Block, *CodeBlock, *EquationBlock, *FileBlock, *ImageBlock, *VideoBlock, *PdfBlock, *DividerBlock, *TableOfContentsBlock:
-			allBlocks = append(allBlocks, bl)
-		case *ParagraphBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Paragraph.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *CalloutBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Callout.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *QuoteBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Quote.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *BulletedListBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.BulletedList.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *NumberedListBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.NumberedList.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *ToggleBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.Toggle.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
-		case *ToDoBlock:
-			if bl.HasChildren {
-				children, err := s.GetBlocksAndChildren(ctx, bl.ID, apiKey, pageSize, mode)
-				if err != nil {
-					ce.Merge(*err)
-					if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-						return nil, ce
-					}
-				}
-				bl.ToDo.Children = children
-			}
-			allBlocks = append(allBlocks, bl)
+		cs, ok := b.(ChildSetter)
+		if !ok {
+			allBlocks = append(allBlocks, b)
+			continue
 		}
+		if cs.HasChild() {
+			children, err := s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
+			if err != nil {
+				ce.Merge(*err)
+			}
+			if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, ce
+			}
+			cs.SetChildren(children)
+		}
+		allBlocks = append(allBlocks, b)
 	}
 	return allBlocks, nil
 }
 
-func (s *Service) MapNotionBlocksToAnytype(blocks []interface{}, notionPagesIdsToAnytype, notionDatabaseIdsToAnytype, pageNameToID, databaseNameToID map[string]string) []*model.Block {
-	allBlocks, _ := s.mapper.MapBlocks(blocks, notionPagesIdsToAnytype, notionDatabaseIdsToAnytype, pageNameToID, databaseNameToID)
-	return allBlocks
+func (s *Service) MapNotionBlocksToAnytype(req *MapRequest) *MapResponse {
+	return MapBlocks(req)
 }
 
 func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, pagination int64) ([]interface{}, error) {
@@ -360,6 +283,54 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 					continue
 				}
 				blocks = append(blocks, &t)
+			case Embed:
+				var e EmbedBlock
+				err = json.Unmarshal(buffer, &e)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &e)
+			case LinkPreview:
+				var lp LinkPreviewBlock
+				err = json.Unmarshal(buffer, &lp)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &lp)
+			case ChildDatabase:
+				var c ChildDatabaseBlock
+				err = json.Unmarshal(buffer, &c)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &c)
+			case ChildPage:
+				var c ChildPageBlock
+				err = json.Unmarshal(buffer, &c)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &c)
+			case LinkToPage:
+				var l LinkToPageBlock
+				err = json.Unmarshal(buffer, &l)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &l)
+			case Unsupported:
+				var u UnsupportedBlock
+				err = json.Unmarshal(buffer, &u)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &u)
 			}
 		}
 

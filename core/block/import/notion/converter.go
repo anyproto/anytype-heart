@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
@@ -65,7 +66,11 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 		}
 	}
 
-	pagesSnapshots := n.pageService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionIdsToAnytype, databaseNameToID)
+	request := &block.MapRequest{
+		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
+		DatabaseNameToID:           databaseNameToID,
+	}
+	pagesSnapshots, notionPageIdsToAnytype := n.pageService.GetPages(context.TODO(), apiKey, req.Mode, pages, request)
 	if pagesSnapshots.Error != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(pagesSnapshots.Error)
 		return &converter.Response{
@@ -73,9 +78,12 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 		}
 	}
 
+	page.SetPageLinksInDatabase(databasesSnapshots, pages, databases, notionPageIdsToAnytype, notionIdsToAnytype)
+
 	allSnaphots := make([]*converter.Snapshot, 0, len(pagesSnapshots.Snapshots)+len(databasesSnapshots.Snapshots))
 	allSnaphots = append(allSnaphots, pagesSnapshots.Snapshots...)
 	allSnaphots = append(allSnaphots, databasesSnapshots.Snapshots...)
+	relations := mergeMaps(databasesSnapshots.Relations, pagesSnapshots.Relations)
 	if pagesSnapshots.Error != nil {
 		ce.Merge(pagesSnapshots.Error)
 	}
@@ -85,11 +93,13 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respons
 	if !ce.IsEmpty() {
 		return &converter.Response{
 			Snapshots: allSnaphots,
+			Relations: relations,
 			Error:     ce,
 		}
 	}
 	return &converter.Response{
 		Snapshots: allSnaphots,
+		Relations: relations,
 		Error:     nil,
 	}
 }
@@ -103,4 +113,18 @@ func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {
 
 func (n *Notion) Name() string {
 	return name
+}
+
+func mergeMaps(first, second map[string][]*converter.Relation) map[string][]*converter.Relation {
+	res := make(map[string][]*converter.Relation, 0)
+
+	for pageID, rel := range first {
+		res[pageID] = rel
+	}
+
+	for pageID, rel := range second {
+		res[pageID] = rel
+	}
+
+	return res
 }

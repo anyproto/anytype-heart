@@ -177,7 +177,11 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 		default:
 		}
 		progress.AddDone(1)
-		detail, err := i.oc.Create(ctx, snapshot.Snapshot, snapshot.Id, sbType, req.UpdateExistingObjects)
+		var relations []*converter.Relation
+		if res.Relations != nil {
+			relations = res.Relations[snapshot.Id]
+		}
+		detail, err := i.oc.Create(ctx, snapshot.Snapshot, relations, snapshot.Id, sbType, req.UpdateExistingObjects)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {

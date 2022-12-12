@@ -38,7 +38,7 @@ type Database struct {
 	Parent         api.Parent      `json:"parent"`
 	URL            string          `json:"url"`
 	Properties     interface{}     `json:"properties"` // can't support it for databases yet
-	Description    []api.RichText  `json:"description"`
+	Description    []*api.RichText `json:"description"`
 	IsInline       bool            `json:"is_inline"`
 	Archived       bool            `json:"archived"`
 	Icon           *api.Icon       `json:"icon,omitempty"`

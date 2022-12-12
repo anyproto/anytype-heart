@@ -18,18 +18,23 @@ type TableOfContentsObject struct {
 	Color string `json:"color"`
 }
 
-func (t *TableOfContentsBlock) GetTableOfContentsBlock() (*model.Block, string) {
+func (t *TableOfContentsBlock) GetBlocks(req *MapRequest) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	var color string
 	// Anytype Table Of Content doesn't support different colors of text, only background
 	if strings.HasSuffix(t.TableOfContent.Color, api.NotionBackgroundColorSuffix) {
 		color = api.NotionColorToAnytype[t.TableOfContent.Color]
 	}
-	return &model.Block{
+
+	block := &model.Block{
 		Id:              id,
 		BackgroundColor: color,
 		Content: &model.BlockContentOfTableOfContents{
 			TableOfContents: &model.BlockContentTableOfContents{},
 		},
-	}, id
+	}
+	return &MapResponse{
+		Blocks:   []*model.Block{block},
+		BlockIDs: []string{id},
+	}
 }
