@@ -12,4 +12,4 @@ lib-server/service.pb.go
 dist/cli
 grpc-web
 .gradle
-test/mnemonic.txt
+tests/mnemonic.txt
