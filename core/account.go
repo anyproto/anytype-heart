@@ -203,6 +203,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceRelationObjectId: pBlocks.MarketplaceRelation,
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
 		AccountSpaceId:              pBlocks.Account,
+		WidgetsId:                   pBlocks.Widgets,
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
 		LocalStoragePath:            cfg.IPFSStorageAddr,

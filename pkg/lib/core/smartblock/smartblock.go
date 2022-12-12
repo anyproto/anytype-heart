@@ -2,14 +2,15 @@ package smartblock
 
 import (
 	"fmt"
-	"github.com/globalsign/mgo/bson"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/core/thread"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type SmartBlockType uint64
@@ -38,6 +39,7 @@ const (
 	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
 	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
 	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
+	SmartBlockTypeWidget              = SmartBlockType(model.SmartBlockType_Widget)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -148,10 +150,9 @@ func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 // number of characters read (> 0). If an error occurred, the value is 0
 // and the number of bytes n is <= 0 meaning:
 //
-// 	n == 0: buf too small
-// 	n  < 0: value larger than 64 bits (overflow)
-// 	        and -n is the number of bytes read
-//
+//	n == 0: buf too small
+//	n  < 0: value larger than 64 bits (overflow)
+//	        and -n is the number of bytes read
 func uvarint(buf string) (uint64, int) {
 	var x uint64
 	var s uint

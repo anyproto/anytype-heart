@@ -19,20 +19,20 @@ func NewProfile(fileSource file.BlockService, pageManager bookmark.BlockService,
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
-		SmartBlock: sb,
-		Basic:      basic.NewBasic(sb),
-		IHistory:   basic.NewHistory(sb),
-		Text:       stext.NewText(sb),
-		File:       f,
-		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		sendEvent:  sendEvent,
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text:          stext.NewText(sb),
+		File:          f,
+		Clipboard:     clipboard.NewClipboard(sb, f),
+		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
+		sendEvent:     sendEvent,
 	}
 }
 
 type Profile struct {
 	smartblock.SmartBlock
-	basic.Basic
+	basic.AllOperations
 	basic.IHistory
 	file.File
 	stext.Text

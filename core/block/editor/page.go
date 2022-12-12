@@ -27,22 +27,22 @@ func NewPage(
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Page{
-		SmartBlock: sb,
-		Basic:      basic.NewBasic(sb),
-		IHistory:   basic.NewHistory(sb),
-		Text:       stext.NewText(sb),
-		File:       f,
-		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		Import:     _import.NewImport(sb, importServices),
-		Dataview:   dataview.NewDataview(sb),
-		Editor:     table.NewEditor(sb),
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text:          stext.NewText(sb),
+		File:          f,
+		Clipboard:     clipboard.NewClipboard(sb, f),
+		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
+		Import:        _import.NewImport(sb, importServices),
+		Dataview:      dataview.NewDataview(sb),
+		Editor:        table.NewEditor(sb),
 	}
 }
 
 type Page struct {
 	smartblock.SmartBlock
-	basic.Basic
+	basic.AllOperations
 	basic.IHistory
 	file.File
 	stext.Text

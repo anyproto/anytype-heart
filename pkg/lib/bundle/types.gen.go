@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "3ac38fcb8c6c8b66995333951e139e86535d8b772163d16839663c16e0c771b7"
+const TypeChecksum = "72401ce7a32e68fb86954db26e09378deffb5823f50fa92043204f0e63c6d850"
 
 type TypeKey string
 

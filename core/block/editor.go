@@ -23,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -65,8 +66,8 @@ func (s *Service) SetBreadcrumbs(ctx *session.Context, req pb.RpcObjectSetBreadc
 }
 
 func (s *Service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		id, err = b.Create(ctx, "", req)
+	err = DoState(s, req.ContextId, func(st *state.State, b basic.Creatable) error {
+		id, err = b.CreateBlock(st, req)
 		return err
 	})
 	return
@@ -77,43 +78,35 @@ func (s *Service) DuplicateBlocks(
 	req pb.RpcBlockListDuplicateRequest,
 ) (newIds []string, err error) {
 	if req.ContextId == req.TargetContextId || req.TargetContextId == "" {
-		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
-			if sb.Type() == model.SmartBlockType_Set {
-				return basic.ErrNotSupported
-			}
-
-			st := sb.NewStateCtx(ctx)
-			newIds, err = basic.Duplicate(req, st, st)
+		err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, sb basic.Duplicatable) error {
+			newIds, err = sb.Duplicate(st, st, req.TargetId, req.Position, req.BlockIds)
 			if err != nil {
 				return fmt.Errorf("duplicate: %w", err)
 			}
-			return sb.Apply(st)
+			return nil
 		})
 		return
 	}
 
-	err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
-		srcState := sb.NewStateCtx(ctx)
-		err = s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
+	err = DoStateCtx(s, ctx, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
+		err = DoState(s, req.TargetContextId, func(targetState *state.State, tb smartblock.SmartBlock) error {
 			if tb.Type() == model.SmartBlockType_Set {
 				return basic.ErrNotSupported
 			}
-
-			targetState := tb.NewState()
-			newIds, err = basic.Duplicate(req, srcState, targetState)
+			newIds, err = sb.Duplicate(srcState, targetState, req.TargetId, req.Position, req.BlockIds)
 			if err != nil {
 				return fmt.Errorf("duplicate: %w", err)
 			}
-			return tb.Apply(targetState)
+			return nil
 		})
-		return sb.Apply(srcState)
+		return nil
 	})
 
 	return
 }
 
 func (s *Service) UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	return Do(s, req.ContextId, func(b basic.Unlinkable) error {
 		return b.Unlink(ctx, req.BlockIds...)
 	})
 }
@@ -121,7 +114,7 @@ func (s *Service) UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteReq
 func (s *Service) SetDivStyle(
 	ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string,
 ) (err error) {
-	return s.DoBasic(contextId, func(b basic.Basic) error {
+	return Do(s, contextId, func(b basic.CommonOperations) error {
 		return b.SetDivStyle(ctx, style, ids...)
 	})
 }
@@ -155,13 +148,13 @@ func (s *Service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 		blocks = append(blocks, simple.New(b))
 	}
 
-	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.PasteBlocks(blocks, model.Block_Inner)
+	return DoState(s, contextId, func(s *state.State, b basic.CommonOperations) error {
+		return b.PasteBlocks(s, "", model.Block_Inner, blocks)
 	})
 }
 
 func (s *Service) ReplaceBlock(ctx *session.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	err = Do(s, req.ContextId, func(b basic.Replaceable) error {
 		newId, err = b.Replace(ctx, req.BlockId, req.Block)
 		return err
 	})
@@ -169,7 +162,7 @@ func (s *Service) ReplaceBlock(ctx *session.Context, req pb.RpcBlockReplaceReque
 }
 
 func (s *Service) SetFields(ctx *session.Context, req pb.RpcBlockSetFieldsRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetFields(ctx, &pb.RpcBlockListSetFieldsRequestBlockField{
 			BlockId: req.BlockId,
 			Fields:  req.Fields,
@@ -184,7 +177,7 @@ func (s *Service) SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsReq
 }
 
 func (s *Service) SetFieldsList(ctx *session.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetFields(ctx, req.BlockFields...)
 	})
 }
@@ -365,8 +358,8 @@ func (s *Service) SetTextText(ctx *session.Context, req pb.RpcBlockTextSetTextRe
 }
 
 func (s *Service) SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error {
-	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		return b.(basic.Basic).SetLatexText(ctx, req)
+	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
+		return b.SetLatexText(ctx, req)
 	})
 }
 
@@ -454,7 +447,7 @@ func (s *Service) SetTextIcon(ctx *session.Context, contextId, image, emoji stri
 func (s *Service) SetBackgroundColor(
 	ctx *session.Context, contextId string, color string, blockIds ...string,
 ) (err error) {
-	return s.DoBasic(contextId, func(b basic.Basic) error {
+	return Do(s, contextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			b.Model().BackgroundColor = color
 			return nil
@@ -463,7 +456,7 @@ func (s *Service) SetBackgroundColor(
 }
 
 func (s *Service) SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	return Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if linkBlock, ok := b.(link.Block); ok {
 				return linkBlock.SetAppearance(&model.BlockContentLink{
@@ -501,13 +494,13 @@ func (s *Service) SetLayout(ctx *session.Context, contextId string, layout model
 }
 
 func (s *Service) FeaturedRelationAdd(ctx *session.Context, contextId string, relations ...string) error {
-	return s.DoBasic(contextId, func(b basic.Basic) error {
+	return Do(s, contextId, func(b basic.CommonOperations) error {
 		return b.FeaturedRelationAdd(ctx, relations...)
 	})
 }
 
 func (s *Service) FeaturedRelationRemove(ctx *session.Context, contextId string, relations ...string) error {
-	return s.DoBasic(contextId, func(b basic.Basic) error {
+	return Do(s, contextId, func(b basic.CommonOperations) error {
 		return b.FeaturedRelationRemove(ctx, relations...)
 	})
 }
@@ -638,7 +631,7 @@ func (s *Service) BookmarkCreateAndFetch(
 }
 
 func (s *Service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		rel, err := s.relationService.FetchKey(req.Key)
 		if err != nil {
 			return err
@@ -650,7 +643,7 @@ func (s *Service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSe
 }
 
 func (s *Service) AddRelationBlock(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.AddRelationAndSet(ctx, req)
 	})
 }
@@ -958,7 +951,7 @@ func (s *Service) ListAvailableRelations(objectId string) (aggregatedRelations [
 func (s *Service) ListConvertToObjects(
 	ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest,
 ) (linkIds []string, err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+	err = Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		linkIds, err = b.ExtractBlocksToObjects(ctx, s, req)
 		return err
 	})
@@ -998,31 +991,21 @@ func (s *Service) MoveBlocksToNewPage(
 
 func (s *Service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
 	if req.ContextId == req.TargetContextId {
-		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return Do(s, req.ContextId, func(b basic.Movable) error {
 			return b.Move(ctx, req)
 		})
 	}
-	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
-		srcState := cb.NewState()
-		err := s.Do(req.TargetContextId, func(sb smartblock.SmartBlock) error {
-			destState := sb.NewState()
-			_, err := basic.Duplicate(pb.RpcBlockListDuplicateRequest{
-				ContextId:       req.ContextId,
-				TargetId:        req.DropTargetId,
-				BlockIds:        req.BlockIds,
-				Position:        req.Position,
-				TargetContextId: req.TargetContextId,
-			}, srcState, destState)
+	return DoState(s, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
+		return DoState(s, req.TargetContextId, func(destState *state.State, tb basic.Duplicatable) error {
+			_, err := sb.Duplicate(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
 			if err != nil {
 				return fmt.Errorf("paste: %w", err)
 			}
-			basic.CutBlocks(srcState, req.BlockIds)
-			return sb.Apply(destState)
+			for _, id := range req.BlockIds {
+				srcState.Unlink(id)
+			}
+			return nil
 		})
-		if err != nil {
-			return err
-		}
-		return cb.Apply(srcState)
 	})
 }
 
@@ -1126,4 +1109,14 @@ func (s *Service) TableColumnListFill(ctx *session.Context, req pb.RpcBlockTable
 		return t.ColumnListFill(st, req)
 	})
 	return err
+}
+
+func (s *Service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
+	var id string
+	err := DoStateCtx(s, ctx, req.ContextId, func(st *state.State, w widget.Widget) error {
+		var err error
+		id, err = w.CreateBlock(st, req)
+		return err
+	})
+	return id, err
 }

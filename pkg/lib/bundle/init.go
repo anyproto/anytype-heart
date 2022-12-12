@@ -110,6 +110,7 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
 	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
+	coresb.SmartBlockTypeWidget:      TypeKeyDashboard,
 }
 
 var DefaultSmartblockTypePerObjectType = map[TypeKey]coresb.SmartBlockType{
