@@ -483,10 +483,11 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
 	if sb.Type() == model.SmartBlockType_Breadcrumbs {
+		// little optimisation for breadcrumbs: we don't need any dependencies except simple blocks
 		return sb.Doc.(*state.State).DepSmartIds(true, false, false, false, false)
 	}
 
-	return sb.Doc.(*state.State).DepSmartIds(true, false, false, false, false)
+	return sb.Doc.(*state.State).DepSmartIds(true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
