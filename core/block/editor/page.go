@@ -28,12 +28,7 @@ type Page struct {
 	bookmark.Bookmark
 	_import.Import
 	dataview.Dataview
-
-	tableEditor *table.Editor
-}
-
-type HasTables interface {
-	TableEditor() *table.Editor
+	table.TableEditor
 }
 
 func NewPage(
@@ -54,11 +49,9 @@ func NewPage(
 		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
 		Import:        _import.NewImport(sb, importServices),
 		Dataview:      dataview.NewDataview(sb),
-		tableEditor:   table.NewEditor(sb),
+		TableEditor:   table.NewEditor(sb),
 	}
 }
-
-var _ HasTables = &Page{}
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.ObjectTypeUrls == nil {
@@ -95,8 +88,4 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 			tmpls...,
 		)...,
 	)
-}
-
-func (p *Page) TableEditor() *table.Editor {
-	return p.tableEditor
 }

@@ -19,6 +19,36 @@ import (
 
 var log = logging.Logger("anytype-simple-tables")
 
+// nolint:revive,interfacebloat
+type TableEditor interface {
+	TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) (string, error)
+	RowCreate(s *state.State, req pb.RpcBlockTableRowCreateRequest) (string, error)
+	RowDelete(s *state.State, req pb.RpcBlockTableRowDeleteRequest) error
+	ColumnDelete(s *state.State, req pb.RpcBlockTableColumnDeleteRequest) error
+	ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest) error
+	RowDuplicate(s *state.State, req pb.RpcBlockTableRowDuplicateRequest) (newRowID string, err error)
+	RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequest) error
+	RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequest) error
+	RowSetHeader(s *state.State, req pb.RpcBlockTableRowSetHeaderRequest) error
+	ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFillRequest) error
+	cleanupTables(_ smartblock.ApplyInfo) error
+	ColumnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) (string, error)
+	cloneColumnStyles(s *state.State, srcColID string, targetColID string) error
+	ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
+	Expand(s *state.State, req pb.RpcBlockTableExpandRequest) error
+	Sort(s *state.State, req pb.RpcBlockTableSortRequest) error
+	CellCreate(s *state.State, rowID string, colID string, b *model.Block) (string, error)
+}
+
+type Editor struct {
+	sb smartblock.SmartBlock
+
+	generateRowID func() string
+	generateColID func() string
+}
+
+var _ TableEditor = &Editor{}
+
 func NewEditor(sb smartblock.SmartBlock) *Editor {
 	genID := func() string {
 		return bson.NewObjectId().Hex()
@@ -33,13 +63,6 @@ func NewEditor(sb smartblock.SmartBlock) *Editor {
 		sb.AddHook(t.cleanupTables, smartblock.HookOnBlockClose)
 	}
 	return &t
-}
-
-type Editor struct {
-	sb smartblock.SmartBlock
-
-	generateRowID func() string
-	generateColID func() string
 }
 
 func (t *Editor) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) (string, error) {
