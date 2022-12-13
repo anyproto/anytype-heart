@@ -3,20 +3,22 @@ package basic
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 )
 
 func newTextBlock(id, contentText string, childrenIds []string) simple.Block {
@@ -134,13 +136,11 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "4"}))
 
 		b := NewBasic(sb)
+		st := sb.NewState()
 
-		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-			BlockIds:     []string{"3"},
-			DropTargetId: "4",
-			Position:     model.Block_Inner,
-		})
+		err := b.Move(st, st, "4", model.Block_Inner, []string{"3"})
 		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
 		assert.Len(t, sb.NewState().Pick("2").Model().ChildrenIds, 0)
 		assert.Len(t, sb.NewState().Pick("4").Model().ChildrenIds, 1)
 
@@ -167,12 +167,10 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, id0)
 
-		err = b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-			BlockIds:     []string{id0},
-			DropTargetId: template.TitleBlockId,
-			Position:     model.Block_Top,
-		})
+		st := sb.NewState()
+		err = b.Move(st, st, template.TitleBlockId, model.Block_Top, []string{id0})
 		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
 		assert.Equal(t, []string{template.HeaderLayoutId, id0, id1}, s.Pick(s.RootId()).Model().ChildrenIds)
 	})
 	t.Run("replace empty", func(t *testing.T) {
@@ -182,13 +180,10 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(newTextBlock("2", "one", nil))
 
 		b := NewBasic(sb)
-
-		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-			BlockIds:     []string{"2"},
-			DropTargetId: "1",
-			Position:     model.Block_InnerFirst,
-		})
+		st := sb.NewState()
+		err := b.Move(st, st, "1", model.Block_InnerFirst, []string{"2"})
 		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
 		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 1)
 	})
 	t.Run("replace background and color", func(t *testing.T) {
@@ -205,13 +200,10 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(secondBlock)
 
 		b := NewBasic(sb)
-
-		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-			BlockIds:     []string{"2"},
-			DropTargetId: "1",
-			Position:     model.Block_InnerFirst,
-		})
+		st := sb.NewState()
+		err := b.Move(st, st, "1", model.Block_InnerFirst, []string{"2"})
 		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
 		assert.Equal(t, sb.NewState().Pick("2").Model().BackgroundColor, "first_block_background_color")
 		assert.Equal(t, sb.NewState().Pick("2").Model().GetText().Color, "second_block_text_color")
 	})
@@ -222,14 +214,52 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(newTextBlock("2", "one", nil))
 
 		b := NewBasic(sb)
-
-		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-			BlockIds:     []string{"2"},
-			DropTargetId: "1",
-			Position:     model.Block_Top,
-		})
+		st := sb.NewState()
+		err := b.Move(st, nil, "1", model.Block_Top, []string{"2"})
 		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
 		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 2)
+	})
+}
+
+func TestBasic_MoveToAnotherObject(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		sb1 := smarttest.New("test1")
+		sb1.AddBlock(simple.New(&model.Block{Id: "test1", ChildrenIds: []string{"2", "4"}})).
+			AddBlock(newTextBlock("2", "t2", []string{"3"})).
+			AddBlock(newTextBlock("3", "t3", nil)).
+			AddBlock(newTextBlock("4", "", nil))
+
+		sb2 := smarttest.New("test2")
+		sb2.AddBlock(simple.New(&model.Block{Id: "test2", ChildrenIds: []string{}}))
+
+		b := NewBasic(sb1)
+		srcState := sb1.NewState()
+		destState := sb2.NewState()
+
+		srcId := "2"
+		wantBlocks := append([]simple.Block{srcState.Pick(srcId)}, srcState.Descendants(srcId)...)
+		err := b.Move(srcState, destState, "test2", model.Block_Inner, []string{srcId})
+		require.NoError(t, err)
+
+		require.NoError(t, sb1.Apply(srcState))
+		require.NoError(t, sb2.Apply(destState))
+
+		// Block is removed from source object
+		assert.Equal(t, []string{"4"}, sb1.NewState().Pick("test1").Model().ChildrenIds)
+		assert.Nil(t, sb1.NewState().Pick(srcId))
+
+		// Block is added to dest object
+		gotState := sb2.NewState()
+		gotId := gotState.Pick(gotState.RootId()).Model().ChildrenIds[0]
+		gotBlocks := append([]simple.Block{gotState.Pick(gotId)}, gotState.Descendants(gotId)...)
+
+		for i := range wantBlocks {
+			wb, gb := wantBlocks[i].Model(), gotBlocks[i].Model()
+			// ids are reassigned
+			assert.NotEqual(t, wb.Id, gb.Id)
+			assert.Equal(t, wb.Content, gb.Content)
+		}
 	})
 }
 

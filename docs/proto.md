@@ -1349,7 +1349,7 @@
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
-| TemplateCreateFromObjectType | [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request) | [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response) |  |
+| TemplateCreateFromObjectType | [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request) | [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response) | to be renamed to ObjectCreateTemplate |
 | TemplateClone | [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request) | [Rpc.Template.Clone.Response](#anytype-Rpc-Template-Clone-Response) |  |
 | TemplateExportAll | [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request) | [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
