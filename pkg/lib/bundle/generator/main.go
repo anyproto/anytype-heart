@@ -4,11 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	. "github.com/dave/jennifer/jen"
 )

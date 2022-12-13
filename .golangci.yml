@@ -56,6 +56,12 @@ linters:
     - govet
     - typecheck
     - unconvert
-
   max-issues-per-linter: 0
   max-same-issues: 0
+
+severity:
+  default-severity: error
+  rules:
+      - severity: warning
+        linters:
+          - lll

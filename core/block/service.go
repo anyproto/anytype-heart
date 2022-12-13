@@ -58,6 +58,7 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 )
 
 const (
@@ -173,6 +174,7 @@ func (s *Service) initPredefinedBlocks(ctx context.Context) {
 		s.anytype.PredefinedBlocks().MarketplaceType,
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
+		s.anytype.PredefinedBlocks().Widgets,
 	}
 	startTime := time.Now()
 	for _, id := range ids {
@@ -1022,12 +1024,13 @@ func (s *Service) createObject(
 		return "", objectId, err
 	}
 
-	b, ok := contextBlock.(basic.Basic)
+	st := contextBlock.NewStateCtx(ctx).SetGroupId(groupId)
+	b, ok := contextBlock.(basic.Creatable)
 	if !ok {
 		err = fmt.Errorf("%T doesn't implement basic.Basic", contextBlock)
 		return
 	}
-	linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
+	linkId, err = b.CreateBlock(st, pb.RpcBlockCreateRequest{
 		TargetId: req.TargetId,
 		Block: &model.Block{
 			Content: &model.BlockContentOfLink{
@@ -1043,6 +1046,7 @@ func (s *Service) createObject(
 	if err != nil {
 		err = fmt.Errorf("link create error: %v", err)
 	}
+	err = contextBlock.Apply(st)
 	return
 }
 
@@ -1192,6 +1196,8 @@ func (s *Service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewWorkspace(s)
 	case model.SmartBlockType_AccountOld:
 		sb = editor.NewThreadDB(s)
+	case model.SmartBlockType_Widget:
+		sb = editor.NewWidgetObject()
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -1237,20 +1243,6 @@ func (s *Service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 	return
 }
 
-func (s *Service) DoBasic(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_basic"), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(basic.Basic); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("basic operation not available for this block type: %T", sb)
-}
-
 func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.State, b table.Editor) error) error {
 	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
@@ -1270,13 +1262,13 @@ func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.
 	return fmt.Errorf("table operation not available for this block type: %T", sb)
 }
 
-func (s *Service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {
+func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
 		return err
 	}
 	defer release()
-	if bb, ok := sb.(basic.Basic); ok {
+	if bb, ok := sb.(basic.AllOperations); ok {
 		sb.Lock()
 		defer sb.Unlock()
 		return apply(bb)
@@ -1404,6 +1396,57 @@ func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	sb.Lock()
 	defer sb.Unlock()
 	return apply(sb)
+}
+
+func Do[t any](s *Service, id string, apply func(sb t) error) error {
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
+}
+
+func DoState[t any](
+	s *Service, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
+) error {
+	return DoStateCtx(s, nil, id, apply, flags...)
+}
+
+func DoStateCtx[t any](
+	s *Service, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
+) error {
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+
+	st := sb.NewStateCtx(ctx)
+	err = apply(st, bb)
+	if err != nil {
+		return fmt.Errorf("apply func: %w", err)
+	}
+
+	return sb.Apply(st, flags...)
 }
 
 func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
@@ -1676,7 +1719,7 @@ func (s *Service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 }
 
 func (s *Service) replaceLink(id, oldId, newId string) error {
-	return s.DoBasic(id, func(b basic.Basic) error {
+	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
 	})
 }

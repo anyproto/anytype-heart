@@ -42,7 +42,7 @@ var localDetailsAllowedToBeStored = []string{
 
 type SubObjectCollection struct {
 	smartblock.SmartBlock
-	basic.Basic
+	basic.AllOperations
 	basic.IHistory
 	dataview.Dataview
 	stext.Text
@@ -61,7 +61,7 @@ func NewSubObjectCollection(defaultCollectionName string) *SubObjectCollection {
 		collections:           map[string]map[string]SubObjectImpl{},
 	}
 
-	sc.Basic = basic.NewBasic(sc.SmartBlock)
+	sc.AllOperations = basic.NewBasic(sc.SmartBlock)
 	sc.IHistory = basic.NewHistory(sc.SmartBlock)
 	sc.Dataview = dataview.NewDataview(sc.SmartBlock)
 	sc.Text = stext.NewText(sc.SmartBlock)

@@ -61,11 +61,9 @@ func (t *editor) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) 
 	if err = t.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 		return
 	}
-	if t.Type() == model.SmartBlockType_Set {
-		return "", basic.ErrNotSupported
-	}
 
-	id, err = basic.CreateBlock(s, "", pb.RpcBlockCreateRequest{
+	// TODO: just create block without Basic operation, it's easy
+	id, err = basic.NewBasic(t.SmartBlock).CreateBlock(s, pb.RpcBlockCreateRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.TargetId,
 		Position:  req.Position,

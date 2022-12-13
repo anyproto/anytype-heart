@@ -22,7 +22,7 @@ func NewSet() *Set {
 		SmartBlock: smartblock.New(),
 	}
 
-	sb.Basic = basic.NewBasic(sb)
+	sb.CommonOperations = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)
 	sb.Dataview = dataview.NewDataview(sb)
 	sb.Text = stext.NewText(sb)
@@ -31,7 +31,7 @@ func NewSet() *Set {
 
 type Set struct {
 	smartblock.SmartBlock
-	basic.Basic
+	basic.CommonOperations
 	basic.IHistory
 	dataview.Dataview
 	stext.Text

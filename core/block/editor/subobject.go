@@ -24,18 +24,18 @@ import (
 func NewSubObject() *SubObject {
 	sb := smartblock.New()
 	return &SubObject{
-		SmartBlock: sb,
-		Basic:      basic.NewBasic(sb),
-		IHistory:   basic.NewHistory(sb),
-		Text:       stext.NewText(sb),
-		Clipboard:  clipboard.NewClipboard(sb, nil),
-		Dataview:   dataview.NewDataview(sb),
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text:          stext.NewText(sb),
+		Clipboard:     clipboard.NewClipboard(sb, nil),
+		Dataview:      dataview.NewDataview(sb),
 	}
 }
 
 type SubObject struct {
 	smartblock.SmartBlock
-	basic.Basic
+	basic.AllOperations
 	basic.IHistory
 	stext.Text
 	clipboard.Clipboard

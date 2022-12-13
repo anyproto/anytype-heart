@@ -3,6 +3,8 @@ package basic
 import (
 	"fmt"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -20,37 +22,87 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-type Basic interface {
-	Create(ctx *session.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
-	Unlink(ctx *session.Context, id ...string) (err error)
-	Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
-	Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error)
-	SetFields(ctx *session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
-	Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
-	SetDivStyle(ctx *session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
+type AllOperations interface {
+	Movable
+	Duplicatable
+	Unlinkable
+	Creatable
+	Replaceable
+	Updatable
 
-	PasteBlocks(blocks []simple.Block, position model.BlockPosition) (err error)
-	SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error
+	CommonOperations
+}
+
+type CommonOperations interface {
+	SetFields(ctx *session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
+	SetDivStyle(ctx *session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
+
+	SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error
 	FeaturedRelationAdd(ctx *session.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *session.Context, relations ...string) error
-	ReplaceLink(oldId, newId string) error
 
+	PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error)
+	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+}
+
+type Movable interface {
+	Move(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) error
+}
+
+type Duplicatable interface {
+	Duplicate(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (newIds []string, err error)
+}
+
+type Unlinkable interface {
+	Unlink(ctx *session.Context, id ...string) (err error)
+}
+
+type Creatable interface {
+	CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error)
+}
+
+type Replaceable interface {
+	Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error)
+}
+
+type Updatable interface {
+	Update(ctx *session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-func (bs *basic) PasteBlocks(blocks []simple.Block, position model.BlockPosition) (err error) {
-	s := bs.NewState()
-	if err := PasteBlocks(s, blocks, "", position); err != nil {
-		return fmt.Errorf("paste blocks: %w", err)
+func (bs *basic) PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error) {
+	childIdsRewrite := make(map[string]string)
+	for _, b := range blocks {
+		for i, cId := range b.Model().ChildrenIds {
+			newId := bson.NewObjectId().Hex()
+			childIdsRewrite[cId] = newId
+			b.Model().ChildrenIds[i] = newId
+		}
 	}
-	return bs.Apply(s)
+	for _, b := range blocks {
+		var child bool
+		if newId, ok := childIdsRewrite[b.Model().Id]; ok {
+			b.Model().Id = newId
+			child = true
+		} else {
+			b.Model().Id = bson.NewObjectId().Hex()
+		}
+		s.Add(b)
+		if !child {
+			err := s.InsertTo(targetBlockId, position, b.Model().Id)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
-func NewBasic(sb smartblock.SmartBlock) Basic {
+func NewBasic(sb smartblock.SmartBlock) AllOperations {
 	return &basic{sb}
 }
 
@@ -58,47 +110,53 @@ type basic struct {
 	smartblock.SmartBlock
 }
 
-func (bs *basic) Create(ctx *session.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
+func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {
 	if err = bs.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 		return
 	}
-	if bs.Type() == model.SmartBlockType_Set {
-		return "", ErrNotSupported
+	if req.TargetId != "" {
+		if s.IsChild(template.HeaderLayoutId, req.TargetId) {
+			req.Position = model.Block_Bottom
+			req.TargetId = template.HeaderLayoutId
+		}
 	}
-
-	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
-
-	id, err = CreateBlock(s, groupId, req)
-	if err != nil {
-		return "", fmt.Errorf("create block: %w", err)
-	}
-
-	if err = bs.Apply(s); err != nil {
+	if req.Block.GetContent() == nil {
+		err = fmt.Errorf("no block content")
 		return
 	}
-	return id, nil
+	req.Block.Id = ""
+	block := simple.New(req.Block)
+	block.Model().ChildrenIds = nil
+	err = block.Validate()
+	if err != nil {
+		return
+	}
+	s.Add(block)
+	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
+		return
+	}
+	return block.Model().Id, nil
 }
 
-func Duplicate(req pb.RpcBlockListDuplicateRequest, srcState, destState *state.State) (newIds []string, err error) {
-
-	pos := req.Position
-	targetId := req.TargetId
-	for _, id := range req.BlockIds {
+func (bs *basic) Duplicate(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (newIds []string, err error) {
+	blockIds = srcState.SelectRoots(blockIds)
+	for _, id := range blockIds {
 		copyId, e := copyBlocks(srcState, destState, id)
 		if e != nil {
 			return nil, e
 		}
-		if err = destState.InsertTo(targetId, pos, copyId); err != nil {
+		if err = destState.InsertTo(targetBlockId, position, copyId); err != nil {
 			return
 		}
-		pos = model.Block_Bottom
-		targetId = copyId
+		position = model.Block_Bottom
+		targetBlockId = copyId
 		newIds = append(newIds, copyId)
 	}
 	return
 }
 
 // some types of blocks need a special duplication mechanism
+// TODO: maybe name this Copy? Duplication is copying and pasting, but this method only copies blocks into memory
 type duplicatable interface {
 	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
@@ -132,10 +190,6 @@ func copyBlocks(srcState, destState *state.State, sourceId string) (id string, e
 }
 
 func (bs *basic) Unlink(ctx *session.Context, ids ...string) (err error) {
-	if bs.Type() == model.SmartBlockType_Set {
-		return ErrNotSupported
-	}
-
 	s := bs.NewStateCtx(ctx)
 
 	var someUnlinked bool
@@ -150,43 +204,49 @@ func (bs *basic) Unlink(ctx *session.Context, ids ...string) (err error) {
 	return bs.Apply(s)
 }
 
-func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (err error) {
-	if bs.Type() == model.SmartBlockType_Set {
-		return ErrNotSupported
+func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (err error) {
+	if srcState != destState && destState != nil {
+		_, err := bs.Duplicate(srcState, destState, targetBlockId, position, blockIds)
+		if err != nil {
+			return fmt.Errorf("paste: %w", err)
+		}
+		for _, id := range blockIds {
+			srcState.Unlink(id)
+		}
+		return nil
 	}
 
-	s := bs.NewStateCtx(ctx)
-	if req.DropTargetId != "" {
-		if s.IsChild(template.HeaderLayoutId, req.DropTargetId) || req.DropTargetId == template.HeaderLayoutId {
-			req.Position = model.Block_Bottom
-			req.DropTargetId = template.HeaderLayoutId
+	if targetBlockId != "" {
+		if srcState.IsChild(template.HeaderLayoutId, targetBlockId) || targetBlockId == template.HeaderLayoutId {
+			position = model.Block_Bottom
+			targetBlockId = template.HeaderLayoutId
 		}
 	}
 
 	var replacementCandidate simple.Block
-	for _, id := range req.BlockIds {
-		if b := s.Pick(id); b != nil {
+	for _, id := range blockIds {
+		if b := srcState.Pick(id); b != nil {
 			if replacementCandidate == nil {
-				replacementCandidate = s.Get(id)
+				replacementCandidate = srcState.Get(id)
 			}
-			s.Unlink(id)
+			srcState.Unlink(id)
 		}
 	}
 
-	if req.DropTargetId == "" {
-		req.DropTargetId = s.RootId()
-		req.Position = model.Block_Inner
+	if targetBlockId == "" {
+		targetBlockId = srcState.RootId()
+		position = model.Block_Inner
 	}
-	target := s.Get(req.DropTargetId)
+	target := srcState.Get(targetBlockId)
 	if target == nil {
 		return fmt.Errorf("target block not found")
 	}
 
 	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
 		if targetContent.Text.Style == model.BlockContentText_Paragraph &&
-			targetContent.Text.Text == "" && req.Position == model.Block_InnerFirst {
+			targetContent.Text.Text == "" && position == model.Block_InnerFirst {
 
-			req.Position = model.Block_Replace
+			position = model.Block_Replace
 
 			if replacementCandidate != nil {
 				if replacementCandidate.Model().BackgroundColor == "" {
@@ -202,17 +262,10 @@ func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObj
 		}
 	}
 
-	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
-		return
-	}
-	return bs.Apply(s)
+	return srcState.InsertTo(targetBlockId, position, blockIds...)
 }
 
 func (bs *basic) Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error) {
-	if bs.Type() == model.SmartBlockType_Set {
-		return "", ErrNotSupported
-	}
-
 	s := bs.NewStateCtx(ctx)
 	if block.GetContent() == nil {
 		err = fmt.Errorf("no block content")
