@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
 )
 
 func init() {
@@ -49,17 +50,17 @@ func (b *block) Normalize(s *state.State) error {
 	}
 
 	colIdx := map[string]int{}
-	for i, c := range tb.Columns().ChildrenIds {
+	for i, c := range tb.ColumnIDs() {
 		colIdx[c] = i
 	}
 
-	for _, rowId := range tb.Rows().ChildrenIds {
-		row := s.Get(rowId)
+	for _, rowID := range tb.RowIDs() {
+		row := s.Get(rowID)
 		// Fix data integrity by adding missing row
 		if row == nil {
-			row := makeRow(rowId)
+			row = makeRow(rowID)
 			if !s.Add(row) {
-				return fmt.Errorf("add missing row block %s", rowId)
+				return fmt.Errorf("add missing row block %s", rowID)
 			}
 			continue
 		}

@@ -995,18 +995,18 @@ func (s *Service) CreateTableBlock(ctx *session.Context, req pb.RpcBlockTableCre
 	return
 }
 
-func (s *Service) TableRowCreate(ctx *session.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowCreate(st, req)
+func (s *Service) TableRowCreate(ctx *session.Context, req pb.RpcBlockTableRowCreateRequest) error {
+	return s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		_, err := t.RowCreate(st, req)
+		return err
 	})
-	return
 }
 
-func (s *Service) TableColumnCreate(ctx *session.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnCreate(st, req)
+func (s *Service) TableColumnCreate(ctx *session.Context, req pb.RpcBlockTableColumnCreateRequest) error {
+	return s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		_, err := t.ColumnCreate(st, req)
+		return err
 	})
-	return
 }
 
 func (s *Service) TableRowDelete(ctx *session.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
@@ -1030,11 +1030,11 @@ func (s *Service) TableColumnMove(ctx *session.Context, req pb.RpcBlockTableColu
 	return
 }
 
-func (s *Service) TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowDuplicate(st, req)
+func (s *Service) TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRowDuplicateRequest) error {
+	return s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		_, err := t.RowDuplicate(st, req)
+		return err
 	})
-	return
 }
 
 func (s *Service) TableColumnDuplicate(

@@ -10,14 +10,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/JohannesKaufmann/html-to-markdown/escape"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/JohannesKaufmann/html-to-markdown/escape"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -275,11 +275,11 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 			return err
 		}
 
-		rowsCount := len(tb.Rows().ChildrenIds)
-		colsCount := len(tb.Columns().ChildrenIds)
+		rowsCount := len(tb.RowIDs())
+		colsCount := len(tb.ColumnIDs())
 		maxColWidth := make([]int, colsCount)
 		cells := make([][]string, rowsCount)
-		for rowIdx := range tb.Rows().ChildrenIds {
+		for rowIdx := range tb.RowIDs() {
 			cells[rowIdx] = make([]string, colsCount)
 		}
 

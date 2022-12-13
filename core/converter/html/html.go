@@ -198,7 +198,7 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 				h.buf.WriteString("<u>")
 			} else {
 				h.buf.WriteString("</u>")
-			}	
+			}
 		}
 	}
 
@@ -210,7 +210,7 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 				breakpoints[int(m.Range.To)] = struct{}{}
 			}
 		}
-		
+
 		textLen := utf16.UTF16RuneCountString(text.Text)
 		runes := []rune(text.Text)
 		// the end position of markdown text equals full length of text
@@ -453,8 +453,8 @@ func (h *HTML) renderTable(b *model.Block) {
 		}
 		colWidth[colId] = pbtypes.GetFloat64(col.Model().GetFields(), "width")
 	}
-	for _, rowId := range tb.Rows().ChildrenIds {
-		h.renderRow(rowId, cols, colWidth)
+	for _, rowID := range tb.RowIDs() {
+		h.renderRow(rowID, cols, colWidth)
 	}
 }
 
