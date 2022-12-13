@@ -104,8 +104,8 @@ func TestRowCreate(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{
-				generateRowId: idFromSlice([]string{tc.newRowId}),
+			tb := Editor{
+				generateRowID: idFromSlice([]string{tc.newRowId}),
 			}
 			id, err := tb.RowCreate(tc.source, tc.req)
 			require.NoError(t, err)
@@ -171,7 +171,7 @@ func TestRowListClean(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{}
+			tb := Editor{}
 			err := tb.RowListClean(tc.source, tc.req)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
@@ -222,9 +222,9 @@ func TestExpand(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{
-				generateColId: idFromSlice(tc.newColIds),
-				generateRowId: idFromSlice(tc.newRowIds),
+			tb := Editor{
+				generateColID: idFromSlice(tc.newColIds),
+				generateRowID: idFromSlice(tc.newRowIds),
 			}
 			err := tb.Expand(tc.source, tc.req)
 			require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestRowListFill(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{}
+			tb := Editor{}
 			err := tb.RowListFill(tc.source, tc.req)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
@@ -353,7 +353,7 @@ func TestColumnListFill(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{}
+			tb := Editor{}
 			err := tb.ColumnListFill(tc.source, tc.req)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
@@ -411,8 +411,8 @@ func TestColumnCreate(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{
-				generateColId: idFromSlice([]string{tc.newColId}),
+			tb := Editor{
+				generateColID: idFromSlice([]string{tc.newColId}),
 			}
 			id, err := tb.ColumnCreate(tc.source, tc.req)
 			require.NoError(t, err)
@@ -506,8 +506,8 @@ func TestColumnDuplicate(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{
-				generateColId: idFromSlice([]string{tc.newColId}),
+			tb := Editor{
+				generateColID: idFromSlice([]string{tc.newColId}),
 			}
 			id, err := tb.ColumnDuplicate(tc.source, tc.req)
 			require.NoError(t, err)
@@ -604,8 +604,8 @@ func TestRowDuplicate(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{
-				generateRowId: idFromSlice([]string{tc.newRowId}),
+			tb := Editor{
+				generateRowID: idFromSlice([]string{tc.newRowId}),
 			}
 			id, err := tb.RowDuplicate(tc.source, tc.req)
 			require.NoError(t, err)
@@ -660,7 +660,7 @@ func TestColumnMove(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{}
+			tb := Editor{}
 			err := tb.ColumnMove(tc.source, tc.req)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
@@ -709,7 +709,7 @@ func TestColumnDelete(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{}
+			tb := Editor{}
 			err := tb.ColumnDelete(tc.source, tc.req)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
@@ -866,7 +866,7 @@ func TestSort(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{}
+			tb := Editor{}
 			err := tb.Sort(tc.source, tc.req)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
@@ -911,7 +911,7 @@ func TestRowSetHeader(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb := editor{}
+			tb := Editor{}
 			err := tb.RowSetHeader(tc.source, tc.req)
 			require.NoError(t, err)
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
@@ -934,10 +934,8 @@ func TestEditorAPI(t *testing.T) {
 	}).(*state.State)
 
 	ed := NewEditor(nil)
-
-	rawEd := ed.(*editor)
-	rawEd.generateColId = idFromSlice([]string{"col1", "col2", "col3"})
-	rawEd.generateRowId = idFromSlice([]string{"row1", "row2"})
+	ed.generateColID = idFromSlice([]string{"col1", "col2", "col3"})
+	ed.generateRowID = idFromSlice([]string{"row1", "row2"})
 
 	tableID, err := ed.TableCreate(s, pb.RpcBlockTableCreateRequest{
 		TargetId: "root",
@@ -1070,11 +1068,11 @@ func mkTestTable(columns []string, rows []string, cells [][]string, opts ...test
 		if len(cc) == 0 {
 			continue
 		}
-		rowId, _, err := ParseCellId(cc[0])
+		rowID, _, err := ParseCellID(cc[0])
 		if err != nil {
 			panic(err)
 		}
-		cellsByRow[rowId] = cc
+		cellsByRow[rowID] = cc
 
 		for _, c := range cc {
 			proto, ok := o.blocks[c]

@@ -467,12 +467,12 @@ func (h *HTML) renderRow(rowId string, cols *model.Block, colWidth map[string]fl
 	defer h.buf.WriteString("</tr>")
 
 	colToCell := map[string]string{}
-	for _, cellId := range row.Model().ChildrenIds {
-		_, colId, err := table.ParseCellId(cellId)
+	for _, cellID := range row.Model().ChildrenIds {
+		_, colID, err := table.ParseCellID(cellID)
 		if err != nil {
 			continue
 		}
-		colToCell[colId] = cellId
+		colToCell[colID] = cellID
 	}
 
 	for _, colId := range cols.ChildrenIds {
