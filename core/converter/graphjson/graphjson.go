@@ -117,19 +117,19 @@ func (g *graphjson) Add(st *state.State) error {
 		}
 	}
 
-	for _, depId := range st.DepSmartIds(true, true, false, false, false) {
-		t, err := smartblock.SmartBlockTypeFromID(depId)
+	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
+		t, err := smartblock.SmartBlockTypeFromID(depID)
 		if err != nil {
 			continue
 		}
-		if _, ok := g.knownDocs[depId]; !ok {
+		if _, ok := g.knownDocs[depID]; !ok {
 			continue
 		}
 
 		if t == smartblock.SmartBlockTypeAnytypeProfile || t == smartblock.SmartBlockTypePage {
 			g.linksByNode[st.RootId()] = append(g.linksByNode[st.RootId()], &Edge{
 				Source:   st.RootId(),
-				Target:   depId,
+				Target:   depID,
 				EdgeType: EdgeTypeLink,
 				Name:     "Link", // todo: add link text
 			})

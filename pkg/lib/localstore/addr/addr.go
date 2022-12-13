@@ -58,6 +58,6 @@ func ConvertBundledObjectIdToInstalledId(bundledId string) (string, error) {
 	return "", fmt.Errorf("unknown bundled id")
 }
 
-func TimeToId(t time.Time) string {
+func TimeToID(t time.Time) string {
 	return DatePrefix + t.Format("2006-01-02")
 }

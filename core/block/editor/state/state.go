@@ -1085,12 +1085,15 @@ func (s *State) SetParent(parent *State) {
 
 func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, includeObjectTypes, includeCreatorModifier bool) (ids []string) {
 	if includeBlocks {
-		s.Iterate(func(b simple.Block) (isContinue bool) {
+		err := s.Iterate(func(b simple.Block) (isContinue bool) {
 			if ls, ok := b.(linkSource); ok {
 				ids = ls.FillSmartIds(ids)
 			}
 			return true
 		})
+		if err != nil {
+			log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+		}
 	}
 
 	if includeObjectTypes {
@@ -1103,61 +1106,71 @@ func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, inc
 		}
 	}
 
+	var details *types.Struct
 	if includeDetails {
-		details := s.CombinedDetails()
-		for _, rel := range s.GetRelationLinks() {
-			// do not index local dates such as lastOpened/lastModified
-			if includeRelations {
-				ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
-			}
-			if rel.Format == model.RelationFormat_date &&
-				(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
-				relInt := pbtypes.GetInt64(details, rel.Key)
-				if relInt > 0 {
-					t := time.Unix(relInt, 0)
-					t = t.In(time.UTC)
-					ids = append(ids, addr.TimeToId(t))
-				}
-				continue
-			}
+		details = s.CombinedDetails()
+	}
 
-			if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-				if includeCreatorModifier {
-					v := pbtypes.GetString(details, rel.Key)
-					ids = append(ids, v)
-				}
-				continue
-			}
+	for _, rel := range s.GetRelationLinks() {
+		// do not index local dates such as lastOpened/lastModified
+		if includeRelations {
+			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+		}
 
-			if rel.Key == bundle.RelationKeyId.String() ||
-				rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
-				rel.Key == bundle.RelationKeyFeaturedRelations.String() {
-				continue
-			}
+		if !includeDetails {
+			continue
+		}
 
-			if rel.Key == bundle.RelationKeyCoverId.String() {
+		// handle corner cases first for specific formats
+		if rel.Format == model.RelationFormat_date &&
+			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+			relInt := pbtypes.GetInt64(details, rel.Key)
+			if relInt > 0 {
+				t := time.Unix(relInt, 0)
+				t = t.In(time.UTC)
+				ids = append(ids, addr.TimeToID(t))
+			}
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
+			if includeCreatorModifier {
 				v := pbtypes.GetString(details, rel.Key)
-				_, err := cid.Decode(v)
-				if err != nil {
-					// this is an exception cause coverId can contains not a file hash but color
-					continue
-				}
 				ids = append(ids, v)
 			}
+			continue
+		}
 
-			if rel.Format != model.RelationFormat_object &&
-				rel.Format != model.RelationFormat_file &&
-				rel.Format != model.RelationFormat_status &&
-				rel.Format != model.RelationFormat_tag {
+		if rel.Key == bundle.RelationKeyId.String() ||
+			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
+			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(details, rel.Key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
+			}
+			ids = append(ids, v)
+		}
+
+		if rel.Format != model.RelationFormat_object &&
+			rel.Format != model.RelationFormat_file &&
+			rel.Format != model.RelationFormat_status &&
+			rel.Format != model.RelationFormat_tag {
+			continue
+		}
+
+		// add all object relation values as dependents
+		for _, targetID := range pbtypes.GetStringList(details, rel.Key) {
+			if targetID == "" {
 				continue
 			}
 
-			// add all object relation values as dependents
-			for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
-				if targetId != "" {
-					ids = append(ids, targetId)
-				}
-			}
+			ids = append(ids, targetID)
 		}
 	}
 
