@@ -118,7 +118,7 @@ func New() *Service {
 
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-	InjectWorkspaceId(details *types.Struct, objectId string)
+	InjectWorkspaceID(details *types.Struct, objectID string)
 
 	CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
 }
@@ -129,7 +129,7 @@ type DetailsGetter interface {
 type InternalFlagsGetter interface {
 	GetInternalFlags() []*model.InternalFlag
 }
-type TemplateIdGetter interface {
+type TemplateIDGetter interface {
 	GetTemplateId() string
 }
 
@@ -902,8 +902,8 @@ func (s *Service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 	return ob, nil
 }
 
-func (s *Service) StateFromTemplate(templateId, name string) (st *state.State, err error) {
-	if err = s.Do(templateId, func(b smartblock.SmartBlock) error {
+func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
+	if err = s.Do(templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
 		} else {
@@ -1087,11 +1087,11 @@ func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	return apply(sb)
 }
 
-type BlockPicker interface {
+type Picker interface {
 	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error)
 }
 
-func Do[t any](p BlockPicker, id string, apply func(sb t) error) error {
+func Do[t any](p Picker, id string, apply func(sb t) error) error {
 	sb, release, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
@@ -1109,14 +1109,14 @@ func Do[t any](p BlockPicker, id string, apply func(sb t) error) error {
 	return apply(bb)
 }
 
-func DoWithContext[t any](p BlockPicker, ctx context.Context, id string, apply func(sb t) error) error {
+func DoWithContext[t any](ctx context.Context, p Picker, id string, apply func(sb t) error) error {
 	sb, release, err := p.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}
 	defer release()
-	callerId, _ := ctx.Value(smartblock.CallerKey).(string)
-	if callerId != id {
+	callerID, _ := ctx.Value(smartblock.CallerKey).(string)
+	if callerID != id {
 		sb.Lock()
 		defer sb.Unlock()
 	}
@@ -1129,11 +1129,11 @@ func DoWithContext[t any](p BlockPicker, ctx context.Context, id string, apply f
 	return apply(bb)
 }
 
-func DoState[t any](p BlockPicker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoState[t any](p Picker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	return DoStateCtx(p, nil, id, apply, flags...)
 }
 
-func DoStateCtx[t any](p BlockPicker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	sb, release, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err

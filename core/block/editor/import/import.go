@@ -92,6 +92,9 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			_ = close()
 		}
 	}()
+	if err != nil {
+		return nil, err
+	}
 
 	filesCount := len(files)
 	log.Debug("FILES COUNT:", filesCount)
@@ -140,12 +143,13 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			continue
 		}
 
-		pageID, _, err := imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
+		var objectID string
+		objectID, _, err = imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 		if err != nil {
 			log.Errorf("failed to create smartblock: %s", err.Error())
 			continue
 		}
-		file.pageID = pageID
+		file.pageID = objectID
 		pagesCreated++
 	}
 
@@ -274,7 +278,8 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 		// wrap root-level csv files with page
 		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
 			// fixme: move initial details into CreateSmartBlock
-			pageID, _, err := imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
+			var objectID string
+			objectID, _, err = imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 			if err != nil {
 				log.Errorf("failed to create smartblock: %s", err.Error())
 				continue
@@ -295,11 +300,11 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			}
 
 			err = imp.ctrl.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-				ContextId: pageID,
+				ContextId: objectID,
 				Details:   details,
 			})
 
-			file.pageID = pageID
+			file.pageID = objectID
 			file.parsedBlocks = imp.convertCsvToLinks(name, files)
 		}
 
@@ -561,7 +566,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 
 			for i, block := range file.parsedBlocks {
 				log.Debug("Block:", i)
-				//file.parsedBlocks[i].Id = bson.NewObjectId().Hex()
+				// file.parsedBlocks[i].Id = bson.NewObjectId().Hex()
 
 				txt := block.GetText()
 				if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&

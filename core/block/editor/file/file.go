@@ -38,7 +38,7 @@ func NewFile(sb smartblock.SmartBlock, source BlockService) File {
 
 type BlockService interface {
 	DoFile(id string, apply func(f File) error) error
-	CreateLinkToTheNewObject(ctx *session.Context, groupId string, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error)
+	CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
 	ProcessAdd(p process.Process) (err error)
 	Anytype() core.Service
 }
@@ -50,7 +50,7 @@ type File interface {
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx *session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-	UploadFileWithHash(blockId string, source FileSource) (UploadResult, error)
+	UploadFileWithHash(blockID string, source FileSource) (UploadResult, error)
 	dropFilesHandler
 }
 
@@ -200,7 +200,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(nil, groupId, &pb.RpcBlockLinkCreateWithObjectRequest{
+			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(nil, &pb.RpcBlockLinkCreateWithObjectRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,

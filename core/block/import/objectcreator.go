@@ -88,7 +88,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		}
 	}()
 
-	newId, details, err := oc.objectCreator.CreateSmartBlockFromState(context.TODO(), sbType, nil, nil, st)
+	newID, details, err := oc.objectCreator.CreateSmartBlockFromState(context.TODO(), sbType, nil, nil, st)
 	if err != nil {
 		return nil, fmt.Errorf("crear object '%s'", st.RootId())
 	}
@@ -104,7 +104,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
-			s.Sync(ctx, newId, bl)
+			if serr := s.Sync(ctx, newID, bl); serr != nil {
+				log.With(zap.String("object id", pageID)).Errorf("sync: %s", serr)
+			}
 		}
 		return true
 	})

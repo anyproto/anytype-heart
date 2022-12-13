@@ -20,7 +20,7 @@ import (
 
 type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-	InjectWorkspaceId(details *types.Struct, objectId string)
+	InjectWorkspaceID(details *types.Struct, objectID string)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -71,8 +71,8 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 		}
 		det := &types.Struct{Fields: fields}
 
-		s.InjectWorkspaceId(det, req.ContextId)
-		objectId, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, det, nil, objState)
+		s.InjectWorkspaceID(det, req.ContextId)
+		objectID, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, det, nil, objState)
 		if err != nil {
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
@@ -82,7 +82,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
-						TargetBlockId: objectId,
+						TargetBlockId: objectID,
 						Style:         model.BlockContentLink_Page,
 					},
 				},
@@ -90,7 +90,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 			Position: model.Block_Replace,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("create link to object %s: %w", objectId, err)
+			return nil, fmt.Errorf("create link to object %s: %w", objectID, err)
 		}
 
 		linkIds = append(linkIds, linkId)

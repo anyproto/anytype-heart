@@ -19,7 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func (s *Service) TemplateCreateFromObject(id string) (templateId string, err error) {
+func (s *Service) TemplateCreateFromObject(id string) (templateID string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_Page {
@@ -31,14 +31,14 @@ func (s *Service) TemplateCreateFromObject(id string) (templateId string, err er
 		return
 	}
 
-	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) TemplateClone(id string) (templateId string, err error) {
+func (s *Service) TemplateClone(id string) (templateID string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_BundledTemplate {
@@ -56,14 +56,14 @@ func (s *Service) TemplateClone(id string) (templateId string, err error) {
 	}); err != nil {
 		return
 	}
-	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) ObjectDuplicate(id string) (objectId string, err error) {
+func (s *Service) ObjectDuplicate(id string) (objectID string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
@@ -81,28 +81,28 @@ func (s *Service) ObjectDuplicate(id string) (objectId string, err error) {
 		return
 	}
 
-	objectId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
+	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) TemplateCreateFromObjectByObjectType(otId string) (templateId string, err error) {
-	if err = s.Do(otId, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
+func (s *Service) TemplateCreateFromObjectByObjectType(otID string) (templateID string, err error) {
+	if err = s.Do(otID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
 		return "", fmt.Errorf("can't open objectType: %v", err)
 	}
 	var st = state.NewDoc("", nil).(*state.State)
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otId})
-	templateId, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otID))
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otID})
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
+func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceID string, err error) {
 	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeWorkspace,
 		&types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
@@ -114,26 +114,26 @@ func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceI
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
-func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, objectID string, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
 	}
 
-	s.objectCreator.InjectWorkspaceId(req.Details, req.ContextId)
-	objectId, _, err = s.CreateObject(req, "")
+	s.objectCreator.InjectWorkspaceID(req.Details, req.ContextId)
+	objectID, _, err = s.CreateObject(req, "")
 
 	if req.ContextId == "" {
 		return
 	}
 
-	err = DoState(s, req.ContextId, func(st *state.State, sb basic.Creatable) error {
-		linkId, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, sb basic.Creatable) error {
+		linkID, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
-						TargetBlockId: objectId,
+						TargetBlockId: objectID,
 						Style:         model.BlockContentLink_Page,
 					},
 				},
@@ -149,9 +149,9 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 	return
 }
 
-func (s *Service) ObjectToSet(id string, source []string) (newId string, err error) {
+func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	var details *types.Struct
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+	if err := s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
 
 		s := b.NewState()
@@ -167,25 +167,25 @@ func (s *Service) ObjectToSet(id string, source []string) (newId string, err err
 
 		return nil
 	}); err != nil {
-		return
+		return "", err
 	}
 
 	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
-	newId, _, err = s.objectCreator.CreateObject(&pb.RpcObjectCreateSetRequest{
+	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateSetRequest{
 		Source:  source,
 		Details: details,
 	}, bundle.TypeKeySet)
 	if err != nil {
-		return
+		return "", err
 	}
 
 	res, err := s.objectStore.GetWithLinksInfoByID(id)
 	if err != nil {
-		return
+		return "", err
 	}
 	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, newId); err != nil {
-			return
+		if err = s.replaceLink(il.Id, id, newID); err != nil {
+			return "", err
 		}
 	}
 	err = s.DeleteObject(id)
@@ -194,7 +194,7 @@ func (s *Service) ObjectToSet(id string, source []string) (newId string, err err
 		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
 	}
 
-	return
+	return id, nil
 }
 
 func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {

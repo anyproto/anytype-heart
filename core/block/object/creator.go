@@ -39,7 +39,7 @@ const eventCreate eventKey = 0
 
 type Creator struct {
 	blockService BlockService
-	blockPicker  block.BlockPicker
+	blockPicker  block.Picker
 	objectStore  objectstore.ObjectStore
 	bookmark     bookmark.Service
 
@@ -54,7 +54,7 @@ func NewCreator() *Creator {
 func (c *Creator) Init(a *app.App) (err error) {
 	c.anytype = a.MustComponent(core.CName).(core.Service)
 	c.blockService = a.MustComponent(block.CName).(BlockService)
-	c.blockPicker = a.MustComponent(block.CName).(block.BlockPicker)
+	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	return nil
@@ -69,13 +69,13 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
-	StateFromTemplate(templateId, name string) (st *state.State, err error)
+	StateFromTemplate(templateID, name string) (st *state.State, err error)
 }
 
-func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
-	if templateId != "" {
-		if createState, err = c.blockService.StateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+	if templateID != "" {
+		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 			return
 		}
 	} else {
@@ -104,42 +104,42 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		}
 	}
 
-	var workspaceId string
+	var workspaceID string
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
 			// TODO: add relations to relationIds
 		}
 
-		detailsWorkspaceId := details.Fields[bundle.RelationKeyWorkspaceId.String()]
-		if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
-			workspaceId = detailsWorkspaceId.GetStringValue()
+		detailsWorkspaceID := details.Fields[bundle.RelationKeyWorkspaceId.String()]
+		if detailsWorkspaceID != nil && detailsWorkspaceID.GetStringValue() != "" {
+			workspaceID = detailsWorkspaceID.GetStringValue()
 		}
 	}
 
 	// if we don't have anything in details then check the object store
-	if workspaceId == "" {
-		workspaceId = c.anytype.PredefinedBlocks().Account
+	if workspaceID == "" {
+		workspaceID = c.anytype.PredefinedBlocks().Account
 	}
 
-	if workspaceId != "" {
-		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	if workspaceID != "" {
+		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceID))
 	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID()))
 
 	ev := &metrics.CreateObjectEvent{
-		SetDetailsMs: time.Now().Sub(startTime).Milliseconds(),
+		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
 	ctx = context.WithValue(ctx, eventCreate, ev)
 	var tid = thread.Undef
-	if id := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); id != "" {
-		tid, err = thread.Decode(id)
+	if raw := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); raw != "" {
+		tid, err = thread.Decode(raw)
 		if err != nil {
 			log.Errorf("failed to decode thread id from the state: %s", err.Error())
 		}
 	}
-	csm, err := c.CreateObjectInWorkspace(ctx, workspaceId, tid, sbType)
+	csm, err := c.CreateObjectInWorkspace(ctx, workspaceID, tid, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -158,7 +158,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	if sb, err = c.blockService.NewSmartBlock(id, initCtx); err != nil {
 		return id, nil, err
 	}
-	ev.SmartblockCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
+	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
 	metrics.SharedClient.RecordEvent(*ev)
@@ -167,16 +167,16 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 // todo: rewrite with options
 // withId may me empty
-func (c *Creator) CreateObjectInWorkspace(ctx context.Context, workspaceId string, withId thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
+func (c *Creator) CreateObjectInWorkspace(ctx context.Context, workspaceID string, withID thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
 	startTime := time.Now()
 	ev, exists := ctx.Value(eventCreate).(*metrics.CreateObjectEvent)
-	err = block.DoWithContext(c.blockPicker, ctx, workspaceId, func(workspace *editor.Workspaces) error {
+	err = block.DoWithContext(ctx, c.blockPicker, workspaceID, func(workspace *editor.Workspaces) error {
 		if exists {
-			ev.GetWorkspaceBlockWaitMs = time.Now().Sub(startTime).Milliseconds()
+			ev.GetWorkspaceBlockWaitMs = time.Since(startTime).Milliseconds()
 		}
-		csm, err = workspace.CreateObject(withId, sbType)
+		csm, err = workspace.CreateObject(withID, sbType)
 		if exists {
-			ev.WorkspaceCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.GetWorkspaceBlockWaitMs
+			ev.WorkspaceCreateMs = time.Since(startTime).Milliseconds() - ev.GetWorkspaceBlockWaitMs
 		}
 		if err != nil {
 			return fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -189,24 +189,24 @@ func (c *Creator) CreateObjectInWorkspace(ctx context.Context, workspaceId strin
 	return csm, nil
 }
 
-func (c *Creator) InjectWorkspaceId(details *types.Struct, objectId string) {
-	workspaceId, err := c.anytype.GetWorkspaceIdForObject(objectId)
+func (c *Creator) InjectWorkspaceID(details *types.Struct, objectID string) {
+	workspaceID, err := c.anytype.GetWorkspaceIdForObject(objectID)
 	if err != nil {
-		workspaceId = ""
+		workspaceID = ""
 	}
-	if workspaceId == "" || details == nil {
+	if workspaceID == "" || details == nil {
 		return
 	}
 	threads.WorkspaceLogger.
-		With("workspace id", workspaceId).
+		With("workspace id", workspaceID).
 		Debug("adding workspace id to new object")
 	if details.Fields == nil {
 		details.Fields = make(map[string]*types.Value)
 	}
-	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
+	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
 }
 
-func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	var dvContent model.BlockContentOfDataview
@@ -252,9 +252,9 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setId string, ne
 }
 
 // TODO: it must be in another component
-func (c *Creator) CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
-	err = block.Do(c.blockPicker, workspaceId, func(ws *editor.Workspaces) error {
+	err = block.Do(c.blockPicker, workspaceID, func(ws *editor.Workspaces) error {
 		id, newDetails, err = ws.CreateSubObject(details)
 		return err
 	})
@@ -276,7 +276,7 @@ func (c *Creator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []st
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectId string, newDetails *types.Struct, err error) {
+func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
 	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("process uri: %w", err)
@@ -297,7 +297,10 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		details = internalflag.PutToDetails(details, internalFlags)
 	}
 
-	objectType, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	objectType, err := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	if err != nil && forcedType == "" {
+		return "", nil, fmt.Errorf("invalid type in details: %w", err)
+	}
 	if forcedType != "" {
 		objectType = forcedType
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
@@ -331,9 +334,9 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
-	var templateId string
-	if v, ok := req.(block.TemplateIdGetter); ok {
-		templateId = v.GetTemplateId()
+	var templateID string
+	if v, ok := req.(block.TemplateIDGetter); ok {
+		templateID = v.GetTemplateId()
 	}
-	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateId)
+	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateID)
 }

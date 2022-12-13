@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
@@ -65,7 +64,6 @@ type objectCreator interface {
 
 type builtinObjects struct {
 	cancel        func()
-	l             sync.Mutex
 	source        source.Service
 	objectCreator objectCreator
 	service       *block.Service

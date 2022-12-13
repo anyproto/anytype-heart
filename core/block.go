@@ -54,7 +54,7 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 	}
 	var id, targetId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, targetId, err = bs.CreateLinkToTheNewObject(ctx, "", req)
+		id, targetId, err = bs.CreateLinkToTheNewObject(ctx, req)
 		return
 	})
 	if err != nil {
