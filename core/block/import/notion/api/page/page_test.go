@@ -102,7 +102,7 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 
 	details := make(map[string]*types.Value, 0)
 
-	num := int64(12)
+	num := float64(12)
 	p := property.NumberItem{
 		ID:     "id",
 		Type:   string(property.PropertyConfigTypeNumber),

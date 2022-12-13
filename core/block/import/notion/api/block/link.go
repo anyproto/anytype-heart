@@ -17,6 +17,10 @@ type EmbedBlock struct {
 	Embed LinkToWeb `json:"embed"`
 }
 
+func (b *EmbedBlock) GetBlocks(req *MapRequest) *MapResponse {
+	return b.Embed.GetBlocks(req)
+}
+
 type LinkToWeb struct {
 	URL string `json:"url"`
 }
@@ -24,6 +28,10 @@ type LinkToWeb struct {
 type LinkPreviewBlock struct {
 	Block
 	LinkPreview LinkToWeb `json:"link_preview"`
+}
+
+func (b *LinkPreviewBlock) GetBlocks(req *MapRequest) *MapResponse {
+	return b.LinkPreview.GetBlocks(req)
 }
 
 func (b *LinkToWeb) GetBlocks(*MapRequest) *MapResponse {
@@ -159,6 +167,14 @@ func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 type BookmarkBlock struct {
 	Block
 	Bookmark BookmarkObject `json:"bookmark"`
+}
+
+func (b *BookmarkBlock) GetBlocks(*MapRequest) *MapResponse {
+	bl, id := b.Bookmark.GetBookmarkBlock()
+	return &MapResponse{
+		Blocks:   []*model.Block{bl},
+		BlockIDs: []string{id},
+	}
 }
 
 type BookmarkObject struct {

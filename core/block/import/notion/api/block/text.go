@@ -149,7 +149,7 @@ func (q *QuoteBlock) GetID() string {
 
 type NumberedListBlock struct {
 	Block
-	NumberedList TextObjectWithChildren `json:"bulleted_list_item"`
+	NumberedList TextObjectWithChildren `json:"numbered_list_item"`
 }
 
 func (n *NumberedListBlock) GetBlocks(req *MapRequest) *MapResponse {

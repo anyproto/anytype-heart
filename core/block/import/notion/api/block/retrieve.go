@@ -372,7 +372,7 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 					continue
 				}
 				blocks = append(blocks, &l)
-			case Unsupported:
+			case Unsupported, Template, SyncedBlock:
 				var u UnsupportedBlock
 				err = json.Unmarshal(buffer, &u)
 				if err != nil {

@@ -114,12 +114,12 @@ type NumberItem struct {
 	Object string `json:"object"`
 	ID     string `json:"id"`
 	Type   string `json:"type"`
-	Number *int64 `json:"number"`
+	Number *float64 `json:"number"`
 }
 
 func (np *NumberItem) SetDetail(key string, details map[string]*types.Value) {
 	if np.Number != nil {
-		details[key] = pbtypes.Int64(*np.Number)
+		details[key] = pbtypes.Float64(*np.Number)
 	}
 }
 
@@ -210,6 +210,7 @@ func (dp *DateItem) SetDetail(key string, details map[string]*types.Value) {
 			}
 			date.WriteString(dp.Date.End)
 		}
+		details[key] = pbtypes.String(date.String())
 	}
 }
 
@@ -222,7 +223,7 @@ func (dp *DateItem) GetID() string {
 }
 
 func (dp *DateItem) GetFormat() model.RelationFormat {
-	return model.RelationFormat_date
+	return model.RelationFormat_longtext
 }
 
 const (
