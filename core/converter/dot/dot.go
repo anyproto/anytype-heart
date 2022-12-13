@@ -134,7 +134,7 @@ func (d *dot) Add(st *state.State) error {
 		}
 	}
 
-	for _, depId := range st.DepSmartIds() {
+	for _, depId := range st.DepSmartIds(true, true, false, false, false) {
 		t, err := smartblock.SmartBlockTypeFromID(depId)
 		if err != nil {
 			continue

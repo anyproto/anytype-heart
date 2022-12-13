@@ -2,8 +2,10 @@ package addr
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"strings"
+	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 const (
@@ -54,4 +56,8 @@ func ConvertBundledObjectIdToInstalledId(bundledId string) (string, error) {
 	}
 
 	return "", fmt.Errorf("unknown bundled id")
+}
+
+func TimeToId(t time.Time) string {
+	return DatePrefix + t.Format("2006-01-02")
 }
