@@ -206,7 +206,18 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	fixMissingSmartblockTypes := func(s *state.State) {
 		// we have a bug in internal release that was not adding smartblocktype to newly created custom types
 		if len(pbtypes.GetIntList(s.Details(), bundle.RelationKeySmartblockTypes.String())) == 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(int(model.SmartBlockType_Page)))
+			sourceObject := pbtypes.GetString(s.Details(), bundle.RelationKeySourceObject.String())
+			var sbTypes []int
+			ot, err := bundle.GetTypeByUrl(sourceObject)
+			if err != nil {
+				for _, st := range ot.Types {
+					sbTypes = append(sbTypes, int(st))
+				}
+			} else {
+				sbTypes = []int{int(model.SmartBlockType_Page)}
+			}
+
+			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
 		}
 	}
 
