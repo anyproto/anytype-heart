@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -29,11 +28,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/mutex"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
@@ -484,84 +481,13 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 }
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
-func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, includeHidden bool) (ids []string) {
-	ids = sb.Doc.(*state.State).DepSmartIds()
-
-	if sb.Type() != model.SmartBlockType_Breadcrumbs {
-		if includeObjTypes {
-			for _, ot := range sb.ObjectTypes() {
-				if ot == "" {
-					log.Errorf("sb %s has empty ot", sb.Id())
-					continue
-				}
-				ids = append(ids, ot)
-			}
-		}
-
-		details := sb.CombinedDetails()
-
-		for _, rel := range sb.GetRelationLinks() {
-			// do not index local dates such as lastOpened/lastModified
-			if includeRelations {
-				ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
-			}
-			if rel.Format == model.RelationFormat_date &&
-				(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
-				relInt := pbtypes.GetInt64(details, rel.Key)
-				if relInt > 0 {
-					t := time.Unix(relInt, 0)
-					t = t.In(time.UTC)
-					ids = append(ids, source.TimeToId(t))
-				}
-				continue
-			}
-
-			if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-				if includeCreatorModifier {
-					v := pbtypes.GetString(details, rel.Key)
-					ids = append(ids, v)
-				}
-				continue
-			}
-
-			// todo refactor: should we have this case preserved? we don't have hidden flag available in the state anymore
-			//if rel.Hidden && !includeHidden {
-			//	continue
-			//}
-
-			if rel.Key == bundle.RelationKeyId.String() ||
-				rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
-				rel.Key == bundle.RelationKeyFeaturedRelations.String() {
-				continue
-			}
-
-			if rel.Key == bundle.RelationKeyCoverId.String() {
-				v := pbtypes.GetString(details, rel.Key)
-				_, err := cid.Decode(v)
-				if err != nil {
-					// this is an exception cause coverId can contains not a file hash but color
-					continue
-				}
-				ids = append(ids, v)
-			}
-
-			if rel.Format != model.RelationFormat_object &&
-				rel.Format != model.RelationFormat_file &&
-				rel.Format != model.RelationFormat_status &&
-				rel.Format != model.RelationFormat_tag {
-				continue
-			}
-
-			// add all object relation values as dependents
-			for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
-				if targetId != "" {
-					ids = append(ids, targetId)
-				}
-			}
-		}
+func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
+	if sb.Type() == model.SmartBlockType_Breadcrumbs {
+		// little optimisation for breadcrumbs: we don't need any dependencies except simple blocks
+		return sb.Doc.(*state.State).DepSmartIds(true, false, false, false, false)
 	}
-	ids = util.UniqueStrings(ids)
-	return
+
+	return sb.Doc.(*state.State).DepSmartIds(true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
