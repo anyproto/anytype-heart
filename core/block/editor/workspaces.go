@@ -326,7 +326,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			if coll != nil && coll.GetStructValue() != nil {
 				for sub := range coll.GetStructValue().GetFields() {
 					if err = p.initSubObject(ctx.State, collName, sub); err != nil {
-						return
+						log.Errorf("failed to init sub object %s-%s: %v", collName, sub, err)
 					}
 				}
 			}
