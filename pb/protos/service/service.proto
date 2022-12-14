@@ -192,6 +192,7 @@ service ClientCommands {
     rpc BlockDataviewGroupOrderUpdate (anytype.Rpc.BlockDataview.GroupOrder.Update.Request) returns (anytype.Rpc.BlockDataview.GroupOrder.Update.Response);
     rpc BlockDataviewObjectOrderUpdate (anytype.Rpc.BlockDataview.ObjectOrder.Update.Request) returns (anytype.Rpc.BlockDataview.ObjectOrder.Update.Response);
     rpc BlockDataviewCreateWithObject (anytype.Rpc.BlockDataview.CreateWithObject.Request) returns (anytype.Rpc.BlockDataview.CreateWithObject.Response);
+    rpc BlockDataviewCreateFromExistingObject (anytype.Rpc.BlockDataview.CreateFromExistingObject.Request) returns (anytype.Rpc.BlockDataview.CreateFromExistingObject.Response);
 
     // Simple table block commands
     // ***

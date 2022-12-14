@@ -2,8 +2,9 @@ package core
 
 import (
 	"context"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -124,6 +125,66 @@ func (mw *Middleware) BlockDataviewCreateWithObject(cctx context.Context,
 	}
 
 	return response(pb.RpcBlockDataviewCreateWithObjectResponseError_NULL, blockID, setID, nil)
+}
+
+func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context,
+	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockDataviewCreateFromExistingObjectResponseErrorCode,
+		id string,
+		err error) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
+		m := &pb.RpcBlockDataviewCreateFromExistingObjectResponse{
+			Error:          &pb.RpcBlockDataviewCreateFromExistingObjectResponseError{Code: code},
+			BlockId:        id,
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+
+		return m
+	}
+
+	var blockDvContent *model.BlockContentDataview
+
+	if req.Block != nil && req.Block.Content != nil {
+		if dvContent, ok := req.Block.Content.(*model.BlockContentOfDataview); ok {
+			blockDvContent = dvContent.Dataview
+			blockDvContent.TargetObjectId = req.TargetObjectId
+		}
+	}
+
+	var blockID string
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		err2 := bs.DoDataview(req.TargetObjectId, func(d dataview.Dataview) error {
+			targetViews, err := d.GetDataviewViews(template.DataviewBlockId)
+			if err != nil {
+				return err
+			}
+			blockDvContent.Views =  targetViews
+			return err
+		})
+		if err2 != nil {
+			return err2
+		}
+
+		blockID, err2 = bs.CreateBlock(ctx, pb.RpcBlockCreateRequest{
+			ContextId: req.ContextId,
+			TargetId:  req.TargetId,
+			Block:     req.Block,
+			Position:  req.Position,
+		})
+
+		return err2
+	})
+
+	if err != nil {
+		return response(pb.RpcBlockDataviewCreateFromExistingObjectResponseError_UNKNOWN_ERROR, "", err)
+	}
+
+	return response(pb.RpcBlockDataviewCreateFromExistingObjectResponseError_NULL, blockID, nil)
 }
 
 func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {

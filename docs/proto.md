@@ -189,6 +189,10 @@
     - [Rpc.BlockDataview.CreateBookmark.Request](#anytype-Rpc-BlockDataview-CreateBookmark-Request)
     - [Rpc.BlockDataview.CreateBookmark.Response](#anytype-Rpc-BlockDataview-CreateBookmark-Response)
     - [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error)
+    - [Rpc.BlockDataview.CreateFromExistingObject](#anytype-Rpc-BlockDataview-CreateFromExistingObject)
+    - [Rpc.BlockDataview.CreateFromExistingObject.Request](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Request)
+    - [Rpc.BlockDataview.CreateFromExistingObject.Response](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response)
+    - [Rpc.BlockDataview.CreateFromExistingObject.Response.Error](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error)
     - [Rpc.BlockDataview.CreateWithObject](#anytype-Rpc-BlockDataview-CreateWithObject)
     - [Rpc.BlockDataview.CreateWithObject.Request](#anytype-Rpc-BlockDataview-CreateWithObject-Request)
     - [Rpc.BlockDataview.CreateWithObject.Response](#anytype-Rpc-BlockDataview-CreateWithObject-Response)
@@ -829,6 +833,7 @@
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
     - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code)
+    - [Rpc.BlockDataview.CreateFromExistingObject.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error-Code)
     - [Rpc.BlockDataview.CreateWithObject.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateWithObject-Response-Error-Code)
     - [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code)
@@ -1408,6 +1413,7 @@
 | BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
 | BlockDataviewObjectOrderUpdate | [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request) | [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response) |  |
 | BlockDataviewCreateWithObject | [Rpc.BlockDataview.CreateWithObject.Request](#anytype-Rpc-BlockDataview-CreateWithObject-Request) | [Rpc.BlockDataview.CreateWithObject.Response](#anytype-Rpc-BlockDataview-CreateWithObject-Response) |  |
+| BlockDataviewCreateFromExistingObject | [Rpc.BlockDataview.CreateFromExistingObject.Request](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Request) | [Rpc.BlockDataview.CreateFromExistingObject.Response](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response) |  |
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
 | BlockTableExpand | [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request) | [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response) |  |
 | BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
@@ -4142,6 +4148,68 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateFromExistingObject"></a>
+
+### Rpc.BlockDataview.CreateFromExistingObject
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateFromExistingObject-Request"></a>
+
+### Rpc.BlockDataview.CreateFromExistingObject.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| block | [model.Block](#anytype-model-Block) |  |  |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+| targetObjectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateFromExistingObject-Response"></a>
+
+### Rpc.BlockDataview.CreateFromExistingObject.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.CreateFromExistingObject.Response.Error](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error) |  |  |
+| blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error"></a>
+
+### Rpc.BlockDataview.CreateFromExistingObject.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.CreateFromExistingObject.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -13428,6 +13496,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.CreateBookmark.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.CreateFromExistingObject.Response.Error.Code
 
 
 | Name | Number | Description |
