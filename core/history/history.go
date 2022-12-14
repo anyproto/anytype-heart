@@ -69,8 +69,7 @@ func (h *history) Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.
 	if err != nil {
 		return
 	}
-
-	metaD, _ := h.objectStore.QueryById(s.DepSmartIds())
+	metaD, _ := h.objectStore.QueryById(s.DepSmartIds(true, true, false, true, false))
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
 	var uniqueObjTypes []string
 	sbType, err := smartblock.SmartBlockTypeFromID(pageId)
