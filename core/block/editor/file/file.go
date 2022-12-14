@@ -13,7 +13,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -33,11 +32,15 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(a *app.App, sb smartblock.SmartBlock) File {
+func NewFile(
+	sb smartblock.SmartBlock,
+	fileSource BlockService,
+	anytype core.Service,
+) File {
 	return &sfile{
 		SmartBlock: sb,
-		fileSource: app.MustComponent[BlockService](a),
-		anytype:    app.MustComponent[core.Service](a),
+		fileSource: fileSource,
+		anytype:    anytype,
 	}
 }
 

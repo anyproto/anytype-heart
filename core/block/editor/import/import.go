@@ -17,7 +17,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -47,12 +46,17 @@ type Import interface {
 	ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error)
 }
 
-func NewImport(a *app.App, sb smartblock.SmartBlock) Import {
+func NewImport(
+	sb smartblock.SmartBlock,
+	ctrl Services,
+	creator ObjectCreator,
+	anytype core.Service,
+) Import {
 	return &importImpl{
 		SmartBlock: sb,
-		ctrl:       app.MustComponent[Services](a),
-		creator:    app.MustComponent[ObjectCreator](a),
-		anytype:    app.MustComponent[core.Service](a),
+		ctrl:       ctrl,
+		creator:    creator,
+		anytype:    anytype,
 	}
 }
 

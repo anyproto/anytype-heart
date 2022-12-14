@@ -7,7 +7,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -25,12 +24,17 @@ import (
 
 var log = logging.Logger("bookmark")
 
-func NewBookmark(a *app.App, sb smartblock.SmartBlock) Bookmark {
+func NewBookmark(
+	sb smartblock.SmartBlock,
+	blockService BlockService,
+	bookmarkSvc BookmarkService,
+	objectStore objectstore.ObjectStore,
+) Bookmark {
 	return &sbookmark{
 		SmartBlock:   sb,
-		blockService: app.MustComponent[BlockService](a),
-		bookmarkSvc:  app.MustComponent[BookmarkService](a),
-		objectStore:  app.MustComponent[objectstore.ObjectStore](a),
+		blockService: blockService,
+		bookmarkSvc:  bookmarkSvc,
+		objectStore:  objectStore,
 	}
 }
 

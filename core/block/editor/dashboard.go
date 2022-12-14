@@ -37,7 +37,12 @@ func NewDashboard() *Dashboard {
 
 func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 	p.AllOperations = basic.NewBasic(p.SmartBlock)
-	p.Import = _import.NewImport(ctx.App, p.SmartBlock)
+	p.Import = _import.NewImport(
+		p.SmartBlock,
+		app.MustComponent[_import.Services](ctx.App),
+		app.MustComponent[_import.ObjectCreator](ctx.App),
+		app.MustComponent[core.Service](ctx.App),
+	)
 	p.Collection = collection.NewCollection(p.SmartBlock)
 	p.DetailsModifier = app.MustComponent[DetailsModifier](ctx.App)
 	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)

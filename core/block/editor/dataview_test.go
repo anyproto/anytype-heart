@@ -12,7 +12,7 @@ import (
 
 func TestDataview_SetDetails(t *testing.T) {
 	var event *pb.Event
-	p := NewProfile(nil, nil, nil, func(e *pb.Event) {
+	p := NewProfile(func(e *pb.Event) {
 		event = e
 	})
 	p.SmartBlock = smarttest.New("1")

@@ -13,7 +13,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -42,12 +44,38 @@ func NewPage() *Page {
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	p.AllOperations = basic.NewBasic(p.SmartBlock)
 	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Text = stext.NewText(ctx.App, p.SmartBlock)
-	p.File = file.NewFile(ctx.App, p.SmartBlock)
-	p.Clipboard = clipboard.NewClipboard(ctx.App, p.SmartBlock)
-	p.Bookmark = bookmark.NewBookmark(ctx.App, p.SmartBlock)
-	p.Import = _import.NewImport(ctx.App, p.SmartBlock)
-	p.Dataview = dataview.NewDataview(ctx.App, p.SmartBlock)
+	p.Text = stext.NewText(
+		p.SmartBlock,
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
+	p.File = file.NewFile(
+		p.SmartBlock,
+		app.MustComponent[file.BlockService](ctx.App),
+		app.MustComponent[core.Service](ctx.App),
+	)
+	p.Clipboard = clipboard.NewClipboard(
+		p.SmartBlock,
+		p.File,
+		app.MustComponent[core.Service](ctx.App),
+	)
+	p.Bookmark = bookmark.NewBookmark(
+		p.SmartBlock,
+		app.MustComponent[bookmark.BlockService](ctx.App),
+		app.MustComponent[bookmark.BookmarkService](ctx.App),
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
+	p.Import = _import.NewImport(
+		p.SmartBlock,
+		app.MustComponent[_import.Services](ctx.App),
+		app.MustComponent[_import.ObjectCreator](ctx.App),
+		app.MustComponent[core.Service](ctx.App),
+	)
+	p.Dataview = dataview.NewDataview(
+		p.SmartBlock,
+		app.MustComponent[core.Service](ctx.App),
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+		app.MustComponent[relation2.Service](ctx.App),
+	)
 	p.Editor = table.NewEditor(p.SmartBlock)
 	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
 

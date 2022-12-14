@@ -4,33 +4,29 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	bundle "github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 const DefaultDetailsFieldName = "_defaultRecordFields"
@@ -54,7 +50,7 @@ func init() {
 type Dataview interface {
 	SetSource(ctx *session.Context, blockId string, source []string) (err error)
 
-	//GetAggregatedRelations(blockId string) ([]*model.Relation, error)
+	// GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 
 	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
@@ -68,12 +64,17 @@ type Dataview interface {
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 }
 
-func NewDataview(a *app.App, sb smartblock.SmartBlock) Dataview {
+func NewDataview(
+	sb smartblock.SmartBlock,
+	anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) Dataview {
 	dv := &sdataview{
 		SmartBlock:      sb,
-		anytype:         app.MustComponent[core.Service](a),
-		objectStore:     app.MustComponent[objectstore.ObjectStore](a),
-		relationService: app.MustComponent[relation2.Service](a),
+		anytype:         anytype,
+		objectStore:     objectStore,
+		relationService: relationService,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv

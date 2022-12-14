@@ -3,13 +3,17 @@ package editor
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -33,8 +37,16 @@ func NewSet() *Set {
 func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	p.CommonOperations = basic.NewBasic(p.SmartBlock)
 	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Dataview = dataview.NewDataview(ctx.App, p.SmartBlock)
-	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+	p.Dataview = dataview.NewDataview(
+		p.SmartBlock,
+		app.MustComponent[core.Service](ctx.App),
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+		app.MustComponent[relation2.Service](ctx.App),
+	)
+	p.Text = stext.NewText(
+		p.SmartBlock,
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
 
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {

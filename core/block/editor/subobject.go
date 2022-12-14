@@ -6,17 +6,22 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -38,9 +43,25 @@ func NewSubObject() *SubObject {
 func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 	o.AllOperations = basic.NewBasic(o.SmartBlock)
 	o.IHistory = basic.NewHistory(o.SmartBlock)
-	o.Text = stext.NewText(ctx.App, o.SmartBlock)
-	o.Clipboard = clipboard.NewClipboard(ctx.App, o.SmartBlock)
-	o.Dataview = dataview.NewDataview(ctx.App, o.SmartBlock)
+	o.Text = stext.NewText(
+		o.SmartBlock,
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
+	o.Clipboard = clipboard.NewClipboard(
+		o.SmartBlock,
+		file.NewFile(
+			o.SmartBlock,
+			app.MustComponent[file.BlockService](ctx.App),
+			app.MustComponent[core.Service](ctx.App),
+		),
+		app.MustComponent[core.Service](ctx.App),
+	)
+	o.Dataview = dataview.NewDataview(
+		o.SmartBlock,
+		app.MustComponent[core.Service](ctx.App),
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+		app.MustComponent[relation2.Service](ctx.App),
+	)
 
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return

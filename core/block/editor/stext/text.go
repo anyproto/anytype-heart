@@ -8,7 +8,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -35,10 +34,13 @@ type Text interface {
 	TurnInto(ctx *session.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
-func NewText(a *app.App, sb smartblock.SmartBlock) Text {
+func NewText(
+	sb smartblock.SmartBlock,
+	objectStore objectstore.ObjectStore,
+) Text {
 	t := &textImpl{
 		SmartBlock:     sb,
-		objectStore:    app.MustComponent[objectstore.ObjectStore](a),
+		objectStore:    objectStore,
 		setTextFlushed: make(chan struct{}),
 	}
 

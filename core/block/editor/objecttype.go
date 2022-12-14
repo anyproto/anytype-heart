@@ -16,7 +16,9 @@ import (
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -39,8 +41,16 @@ func NewObjectType() *ObjectType {
 func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	p.CommonOperations = basic.NewBasic(p.SmartBlock)
 	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Dataview = dataview2.NewDataview(ctx.App, p.SmartBlock)
-	p.Text = stext.NewText(ctx.App, p.SmartBlock)
+	p.Dataview = dataview2.NewDataview(
+		p.SmartBlock,
+		app.MustComponent[core.Service](ctx.App),
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+		app.MustComponent[relation2.Service](ctx.App),
+	)
+	p.Text = stext.NewText(
+		p.SmartBlock,
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
 
 	p.relationService = app.MustComponent[relation2.Service](ctx.App)
 

@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -70,8 +71,16 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	c.app = ctx.App
 	c.AllOperations = basic.NewBasic(c.SmartBlock)
 	c.IHistory = basic.NewHistory(c.SmartBlock)
-	c.Dataview = dataview.NewDataview(ctx.App, c.SmartBlock)
-	c.Text = stext.NewText(ctx.App, c.SmartBlock)
+	c.Dataview = dataview.NewDataview(
+		c.SmartBlock,
+		app.MustComponent[core.Service](ctx.App),
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+		app.MustComponent[relation2.Service](ctx.App),
+	)
+	c.Text = stext.NewText(
+		c.SmartBlock,
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
 	c.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
 	c.sourceService = ctx.App.MustComponent(source.CName).(source.Service)
 	c.anytype = app.MustComponent[core.Service](ctx.App)

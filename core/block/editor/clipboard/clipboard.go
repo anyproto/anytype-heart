@@ -12,7 +12,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/anymark/spaceReplace"
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -43,11 +42,15 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(a *app.App, sb smartblock.SmartBlock) Clipboard {
+func NewClipboard(
+	sb smartblock.SmartBlock,
+	file file.File,
+	anytype core.Service,
+) Clipboard {
 	return &clipboard{
 		SmartBlock: sb,
-		file:       file.NewFile(a, sb),
-		anytype:    app.MustComponent[core.Service](a),
+		file:       file,
+		anytype:    anytype,
 	}
 }
 

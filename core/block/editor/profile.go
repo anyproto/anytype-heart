@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -11,6 +12,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -38,10 +41,26 @@ func NewProfile(sendEvent func(e *pb.Event)) *Profile {
 func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	p.AllOperations = basic.NewBasic(p.SmartBlock)
 	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Text = stext.NewText(ctx.App, p.SmartBlock)
-	p.File = file.NewFile(ctx.App, p.SmartBlock)
-	p.Clipboard = clipboard.NewClipboard(ctx.App, p.SmartBlock)
-	p.Bookmark = bookmark.NewBookmark(ctx.App, p.SmartBlock)
+	p.Text = stext.NewText(
+		p.SmartBlock,
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
+	p.File = file.NewFile(
+		p.SmartBlock,
+		app.MustComponent[file.BlockService](ctx.App),
+		app.MustComponent[core.Service](ctx.App),
+	)
+	p.Clipboard = clipboard.NewClipboard(
+		p.SmartBlock,
+		p.File,
+		app.MustComponent[core.Service](ctx.App),
+	)
+	p.Bookmark = bookmark.NewBookmark(
+		p.SmartBlock,
+		app.MustComponent[bookmark.BlockService](ctx.App),
+		app.MustComponent[bookmark.BookmarkService](ctx.App),
+		app.MustComponent[objectstore.ObjectStore](ctx.App),
+	)
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
