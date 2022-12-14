@@ -1083,8 +1083,8 @@ func (s *State) SetParent(parent *State) {
 	s.parent = parent
 }
 
-func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, includeObjectTypes, includeCreatorModifier bool) (ids []string) {
-	if includeBlocks {
+func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifier bool) (ids []string) {
+	if blocks {
 		err := s.Iterate(func(b simple.Block) (isContinue bool) {
 			if ls, ok := b.(linkSource); ok {
 				ids = ls.FillSmartIds(ids)
@@ -1096,7 +1096,7 @@ func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, inc
 		}
 	}
 
-	if includeObjectTypes {
+	if objTypes {
 		for _, ot := range s.ObjectTypes() {
 			if ot == "" {
 				log.Errorf("sb %s has empty ot", s.RootId())
@@ -1106,25 +1106,26 @@ func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, inc
 		}
 	}
 
-	var details *types.Struct
-	if includeDetails {
-		details = s.CombinedDetails()
+	var det *types.Struct
+	if details {
+		det = s.CombinedDetails()
 	}
 
 	for _, rel := range s.GetRelationLinks() {
 		// do not index local dates such as lastOpened/lastModified
-		if includeRelations {
+		if relations {
 			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
 		}
 
-		if !includeDetails {
+		if !details {
 			continue
 		}
 
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
-			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
-			relInt := pbtypes.GetInt64(details, rel.Key)
+			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) &&
+			(slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+			relInt := pbtypes.GetInt64(det, rel.Key)
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)
 				t = t.In(time.UTC)
@@ -1134,8 +1135,8 @@ func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, inc
 		}
 
 		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-			if includeCreatorModifier {
-				v := pbtypes.GetString(details, rel.Key)
+			if creatorModifier {
+				v := pbtypes.GetString(det, rel.Key)
 				ids = append(ids, v)
 			}
 			continue
@@ -1148,7 +1149,7 @@ func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, inc
 		}
 
 		if rel.Key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(details, rel.Key)
+			v := pbtypes.GetString(det, rel.Key)
 			_, err := cid.Decode(v)
 			if err != nil {
 				// this is an exception cause coverId can contains not a file hash but color
@@ -1165,7 +1166,7 @@ func (s *State) DepSmartIds(includeBlocks, includeDetails, includeRelations, inc
 		}
 
 		// add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(details, rel.Key) {
+		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
 			if targetID == "" {
 				continue
 			}
