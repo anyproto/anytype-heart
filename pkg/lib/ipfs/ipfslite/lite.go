@@ -23,6 +23,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/core/routing"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -186,12 +187,14 @@ func setupLibP2PNode(ctx context.Context, cfg *Config, blockDS, peerDS ds.Batchi
 			ddht, err = newDHT(ctx, h, blockDS)
 			return ddht, err
 		}),
-		withForceReachability(network.ReachabilityPrivate), // most of the clients are behind NAT, so start with that assumption and then in case it wrong we will switch to public
+		withForceReachability(network.ReachabilityPrivate), // most of the clients are behind NAT,
+		// so start with that assumption and then in case it wrong we will switch to public
 		libp2p.ConnectionManager(cnmgr),
 		libp2p.Peerstore(pstore),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
-		libp2p.EnableAutoRelay(),            // if our network state changes we will try to connect to one of the relay specified below
-		libp2p.StaticRelays(cfg.RelayNodes), // in case we are under NAT we will announce our addresses through these nodes
+		libp2p.EnableAutoRelay(autorelay.WithStaticRelays(cfg.RelayNodes)), // if our network state
+		// changes we will try to connect to one of the relay specified below. In case we are under
+		// NAT we will announce our addresses through these nodes
 	}
 
 	h, err := libp2p.New(
@@ -225,7 +228,7 @@ func (ln *liteNet) Run(_ context.Context) error {
 		return err
 	}
 
-	ln.Peer, err = ipfslite.New(ctx, blockDS, ln.host, ln.dht, &ipfslite.Config{Offline: ln.cfg.Offline})
+	ln.Peer, err = ipfslite.New(ctx, blockDS, nil, ln.host, ln.dht, &ipfslite.Config{Offline: ln.cfg.Offline})
 	if err != nil {
 		return err
 	}
