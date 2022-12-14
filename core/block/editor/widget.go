@@ -21,17 +21,17 @@ type WidgetObject struct {
 
 func NewWidgetObject() *WidgetObject {
 	sb := smartblock.New()
-
-	return &WidgetObject{SmartBlock: sb}
+	bs := basic.NewBasic(sb)
+	return &WidgetObject{
+		SmartBlock: sb,
+		Movable:    bs,
+		Updatable:  bs,
+		IHistory:   basic.NewHistory(sb),
+		Widget:     widget.NewWidget(sb),
+	}
 }
 
 func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
-	bs := basic.NewBasic(w.SmartBlock)
-	w.Movable = bs
-	w.Updatable = bs
-	w.IHistory = basic.NewHistory(w.SmartBlock)
-	w.Widget = widget.NewWidget(w.SmartBlock)
-
 	if err = w.SmartBlock.Init(ctx); err != nil {
 		return
 	}

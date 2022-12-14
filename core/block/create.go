@@ -6,7 +6,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -202,48 +201,9 @@ func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	if err != nil {
 		return
 	}
-	switch sc.Type() {
-	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage()
-	case model.SmartBlockType_Archive:
-		sb = editor.NewArchive()
-	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard()
-	case model.SmartBlockType_Set:
-		sb = editor.NewSet()
-	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s.sendEvent)
-	case model.SmartBlockType_STObjectType,
-		model.SmartBlockType_BundledObjectType:
-		sb = editor.NewObjectType()
-	case model.SmartBlockType_BundledRelation:
-		sb = editor.NewSet()
-	case model.SmartBlockType_SubObject:
-		sb = editor.NewSubObject()
-	case model.SmartBlockType_File:
-		sb = editor.NewFiles()
-	case model.SmartBlockType_MarketplaceType:
-		sb = editor.NewMarketplaceType()
-	case model.SmartBlockType_MarketplaceRelation:
-		sb = editor.NewMarketplaceRelation()
-	case model.SmartBlockType_MarketplaceTemplate:
-		sb = editor.NewMarketplaceTemplate()
-	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate()
-	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate()
-	case model.SmartBlockType_Breadcrumbs:
-		sb = editor.NewBreadcrumbs()
-	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspace()
-	case model.SmartBlockType_AccountOld:
-		sb = editor.NewThreadDB()
-	case model.SmartBlockType_Widget:
-		sb = editor.NewWidgetObject()
-	default:
-		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
-	}
 
+	sb = s.objectFactory.New(sc.Type())
+	
 	sb.Lock()
 	defer sb.Unlock()
 	if initCtx == nil {

@@ -1,11 +1,7 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -22,31 +18,20 @@ const (
 )
 
 type MarketplaceType struct {
-	smartblock.SmartBlock
-	basic.CommonOperations
-	basic.IHistory
-	dataview.Dataview
-	stext.Text
+	*Set
 }
 
-func NewMarketplaceType() *MarketplaceType {
-	return &MarketplaceType{SmartBlock: smartblock.New()}
+func NewMarketplaceType(
+	anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) *MarketplaceType {
+	return &MarketplaceType{
+		Set: NewSet(anytype, objectStore, relationService),
+	}
 }
 
 func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
-	p.CommonOperations = basic.NewBasic(p.SmartBlock)
-	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Dataview = dataview.NewDataview(
-		p.SmartBlock,
-		app.MustComponent[core.Service](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-		app.MustComponent[relation2.Service](ctx.App),
-	)
-	p.Text = stext.NewText(
-		p.SmartBlock,
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -121,31 +106,20 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 type MarketplaceRelation struct {
-	smartblock.SmartBlock
-	basic.CommonOperations
-	basic.IHistory
-	dataview.Dataview
-	stext.Text
+	*Set
 }
 
-func NewMarketplaceRelation() *MarketplaceRelation {
-	return &MarketplaceRelation{SmartBlock: smartblock.New()}
+func NewMarketplaceRelation(
+	anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) *MarketplaceRelation {
+	return &MarketplaceRelation{
+		Set: NewSet(anytype, objectStore, relationService),
+	}
 }
 
 func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
-	p.CommonOperations = basic.NewBasic(p.SmartBlock)
-	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Dataview = dataview.NewDataview(
-		p.SmartBlock,
-		app.MustComponent[core.Service](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-		app.MustComponent[relation2.Service](ctx.App),
-	)
-	p.Text = stext.NewText(
-		p.SmartBlock,
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -202,31 +176,20 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 type MarketplaceTemplate struct {
-	smartblock.SmartBlock
-	basic.CommonOperations
-	basic.IHistory
-	dataview.Dataview
-	stext.Text
+	*Set
 }
 
-func NewMarketplaceTemplate() *MarketplaceTemplate {
-	return &MarketplaceTemplate{SmartBlock: smartblock.New()}
+func NewMarketplaceTemplate(
+	anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) *MarketplaceTemplate {
+	return &MarketplaceTemplate{
+		Set: NewSet(anytype, objectStore, relationService),
+	}
 }
 
 func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
-	p.CommonOperations = basic.NewBasic(p.SmartBlock)
-	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Dataview = dataview.NewDataview(
-		p.SmartBlock,
-		app.MustComponent[core.Service](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-		app.MustComponent[relation2.Service](ctx.App),
-	)
-	p.Text = stext.NewText(
-		p.SmartBlock,
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err

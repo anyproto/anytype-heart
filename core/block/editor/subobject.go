@@ -6,7 +6,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -36,33 +35,40 @@ type SubObject struct {
 	dataview.Dataview
 }
 
-func NewSubObject() *SubObject {
-	return &SubObject{SmartBlock: smartblock.New()}
+func NewSubObject(
+	objectStore objectstore.ObjectStore,
+	fileBlockService file.BlockService,
+	anytype core.Service,
+	relationService relation2.Service,
+) *SubObject {
+	sb := smartblock.New()
+	return &SubObject{
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+		Clipboard: clipboard.NewClipboard(
+			sb,
+			file.NewFile(
+				sb,
+				fileBlockService,
+				anytype,
+			),
+			anytype,
+		),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			relationService,
+		),
+	}
 }
 
 func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
-	o.AllOperations = basic.NewBasic(o.SmartBlock)
-	o.IHistory = basic.NewHistory(o.SmartBlock)
-	o.Text = stext.NewText(
-		o.SmartBlock,
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-	o.Clipboard = clipboard.NewClipboard(
-		o.SmartBlock,
-		file.NewFile(
-			o.SmartBlock,
-			app.MustComponent[file.BlockService](ctx.App),
-			app.MustComponent[core.Service](ctx.App),
-		),
-		app.MustComponent[core.Service](ctx.App),
-	)
-	o.Dataview = dataview.NewDataview(
-		o.SmartBlock,
-		app.MustComponent[core.Service](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-		app.MustComponent[relation2.Service](ctx.App),
-	)
-
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return
 	}

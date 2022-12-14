@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -53,15 +54,43 @@ type SubObjectCollection struct {
 	defaultCollectionName string
 	collections           map[string]map[string]SubObjectImpl
 
-	app           *app.App
-	sourceService source.Service
-	objectStore   objectstore.ObjectStore
-	anytype       core.Service
+	app              *app.App
+	sourceService    source.Service
+	objectStore      objectstore.ObjectStore
+	anytype          core.Service
+	relationService  relation2.Service
+	fileBlockService file.BlockService
 }
 
-func NewSubObjectCollection(defaultCollectionName string) *SubObjectCollection {
+func NewSubObjectCollection(
+	defaultCollectionName string,
+	objectStore objectstore.ObjectStore,
+	anytype core.Service,
+	relationService relation2.Service,
+	sourceService source.Service,
+	fileBlockService file.BlockService,
+) *SubObjectCollection {
+	sb := smartblock.New()
 	return &SubObjectCollection{
-		SmartBlock:            smartblock.New(),
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			relationService,
+		),
+
+		objectStore:           objectStore,
+		sourceService:         sourceService,
+		anytype:               anytype,
+		relationService:       relationService,
+		fileBlockService:      fileBlockService,
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
 	}
@@ -69,21 +98,6 @@ func NewSubObjectCollection(defaultCollectionName string) *SubObjectCollection {
 
 func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	c.app = ctx.App
-	c.AllOperations = basic.NewBasic(c.SmartBlock)
-	c.IHistory = basic.NewHistory(c.SmartBlock)
-	c.Dataview = dataview.NewDataview(
-		c.SmartBlock,
-		app.MustComponent[core.Service](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-		app.MustComponent[relation2.Service](ctx.App),
-	)
-	c.Text = stext.NewText(
-		c.SmartBlock,
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-	c.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
-	c.sourceService = ctx.App.MustComponent(source.CName).(source.Service)
-	c.anytype = app.MustComponent[core.Service](ctx.App)
 
 	return c.SmartBlock.Init(ctx)
 }
@@ -259,9 +273,9 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	var subObj SubObjectImpl
 	switch collection {
 	case collectionKeyObjectTypes:
-		subObj = NewObjectType()
+		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)
 	default:
-		subObj = NewSubObject()
+		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService)
 	}
 
 	var fullId string

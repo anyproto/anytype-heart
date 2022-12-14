@@ -3,7 +3,6 @@ package editor
 import (
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -29,16 +28,20 @@ type Archive struct {
 	objectStore     objectstore.ObjectStore
 }
 
-func NewArchive() *Archive {
+func NewArchive(
+	detailsModifier DetailsModifier,
+	objectStore objectstore.ObjectStore,
+) *Archive {
 	sb := smartblock.New()
-	return &Archive{SmartBlock: sb}
+	return &Archive{
+		SmartBlock:      sb,
+		Collection:      collection.NewCollection(sb),
+		DetailsModifier: detailsModifier,
+		objectStore:     objectStore,
+	}
 }
 
 func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
-	p.Collection = collection.NewCollection(p.SmartBlock)
-	p.DetailsModifier = app.MustComponent[DetailsModifier](ctx.App)
-	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
-
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}

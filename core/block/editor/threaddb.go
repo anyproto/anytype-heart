@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -23,13 +22,14 @@ type AccountMigrator interface {
 	MigrateMany(threadInfos []threads.ThreadInfo) (int, error)
 }
 
-func NewThreadDB() *ThreadDB {
-	return &ThreadDB{SmartBlock: smartblock.New()}
+func NewThreadDB(migrator AccountMigrator) *ThreadDB {
+	return &ThreadDB{
+		SmartBlock: smartblock.New(),
+		migrator:   migrator,
+	}
 }
 
 func (p *ThreadDB) Init(ctx *smartblock.InitContext) (err error) {
-	p.migrator = app.MustComponent[AccountMigrator](ctx.App)
-
 	if ctx.Source.Type() != model.SmartBlockType_AccountOld {
 		return fmt.Errorf("source type should be a workspace or an old account")
 	}

@@ -150,6 +150,7 @@ type Service struct {
 	relationService relation.Service
 
 	objectCreator objectCreator
+	objectFactory *editor.ObjectFactory
 }
 
 func (s *Service) Name() string {
@@ -169,6 +170,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
+	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return

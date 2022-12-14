@@ -3,7 +3,6 @@ package editor
 import (
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
@@ -25,29 +24,32 @@ type Dashboard struct {
 	basic.AllOperations
 	_import.Import
 	collection.Collection
+
 	DetailsModifier DetailsModifier
 	objectStore     objectstore.ObjectStore
 	anytype         core.Service
 }
 
-func NewDashboard() *Dashboard {
+func NewDashboard(
+	detailsModifier DetailsModifier,
+	objectStore objectstore.ObjectStore,
+	importerCtrl _import.Services,
+	objectCreator _import.ObjectCreator,
+	anytype core.Service,
+) *Dashboard {
 	sb := smartblock.New()
-	return &Dashboard{SmartBlock: sb}
+	return &Dashboard{
+		SmartBlock:      sb,
+		AllOperations:   basic.NewBasic(sb),
+		Import:          _import.NewImport(sb, importerCtrl, objectCreator, anytype),
+		Collection:      collection.NewCollection(sb),
+		DetailsModifier: detailsModifier,
+		objectStore:     objectStore,
+		anytype:         anytype,
+	}
 }
 
 func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
-	p.AllOperations = basic.NewBasic(p.SmartBlock)
-	p.Import = _import.NewImport(
-		p.SmartBlock,
-		app.MustComponent[_import.Services](ctx.App),
-		app.MustComponent[_import.ObjectCreator](ctx.App),
-		app.MustComponent[core.Service](ctx.App),
-	)
-	p.Collection = collection.NewCollection(p.SmartBlock)
-	p.DetailsModifier = app.MustComponent[DetailsModifier](ctx.App)
-	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
-	p.anytype = app.MustComponent[core.Service](ctx.App)
-
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}

@@ -3,7 +3,6 @@ package editor
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -29,25 +28,30 @@ type Set struct {
 	stext.Text
 }
 
-func NewSet() *Set {
+func NewSet(
+	anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) *Set {
 	sb := smartblock.New()
-	return &Set{SmartBlock: sb}
+	return &Set{
+		SmartBlock:       sb,
+		CommonOperations: basic.NewBasic(sb),
+		IHistory:         basic.NewHistory(sb),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			relationService,
+		),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+	}
 }
 
 func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
-	p.CommonOperations = basic.NewBasic(p.SmartBlock)
-	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Dataview = dataview.NewDataview(
-		p.SmartBlock,
-		app.MustComponent[core.Service](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-		app.MustComponent[relation2.Service](ctx.App),
-	)
-	p.Text = stext.NewText(
-		p.SmartBlock,
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err

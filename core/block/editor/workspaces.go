@@ -13,10 +13,12 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -65,9 +67,26 @@ type Workspaces struct {
 	objectStore     objectstore.ObjectStore
 }
 
-func NewWorkspace() *Workspaces {
+func NewWorkspace(
+	objectStore objectstore.ObjectStore,
+	anytype core.Service,
+	relationService relation2.Service,
+	sourceService source.Service,
+	modifier DetailsModifier,
+	fileBlockService file.BlockService,
+) *Workspaces {
 	return &Workspaces{
-		SubObjectCollection: NewSubObjectCollection(collectionKeyRelationOptions),
+		SubObjectCollection: NewSubObjectCollection(
+			collectionKeyRelationOptions,
+			objectStore,
+			anytype,
+			relationService,
+			sourceService,
+			fileBlockService,
+		),
+		DetailsModifier: modifier,
+		anytype:         anytype,
+		objectStore:     objectStore,
 	}
 }
 
@@ -78,13 +97,11 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.app = ctx.App
+	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
 	p.templateCloner = p.app.MustComponent("blockService").(templateCloner)
-	p.DetailsModifier = app.MustComponent[DetailsModifier](ctx.App)
-	p.anytype = app.MustComponent[core.Service](ctx.App)
 	p.threadService = p.anytype.ThreadsService()
 	p.threadQueue = p.anytype.ThreadsService().ThreadQueue()
-	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
 
 	if ctx.Source.Type() != model.SmartBlockType_Workspace && ctx.Source.Type() != model.SmartBlockType_AccountOld {
 		return fmt.Errorf("source type should be a workspace or an old account")

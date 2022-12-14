@@ -25,17 +25,20 @@ import (
 )
 
 type ObjectType struct {
-	smartblock.SmartBlock
-	basic.CommonOperations
-	basic.IHistory
-	dataview2.Dataview
-	stext.Text
+	*Set
 
 	relationService relation2.Service
 }
 
-func NewObjectType() *ObjectType {
-	return &ObjectType{SmartBlock: smartblock.New()}
+func NewObjectType(anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) *ObjectType {
+	return &ObjectType{
+		Set: NewSet(anytype, objectStore, relationService),
+
+		relationService: relationService,
+	}
 }
 
 func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {

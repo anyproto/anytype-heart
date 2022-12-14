@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/app"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -29,6 +28,7 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
+
 	_import.Import
 	dataview.Dataview
 	table.Editor
@@ -36,49 +36,61 @@ type Page struct {
 	objectStore objectstore.ObjectStore
 }
 
-func NewPage() *Page {
+func NewPage(
+	objectStore objectstore.ObjectStore,
+	importerCtrl _import.Services,
+	objectCreator _import.ObjectCreator,
+	anytype core.Service,
+	fileBlockService file.BlockService,
+	bookmarkBlockService bookmark.BlockService,
+	bookmarkService bookmark.BookmarkService,
+	relationService relation2.Service,
+) *Page {
 	sb := smartblock.New()
-	return &Page{SmartBlock: sb}
+	f := file.NewFile(
+		sb,
+		fileBlockService,
+		anytype,
+	)
+	return &Page{
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+		File: f,
+		Clipboard: clipboard.NewClipboard(
+			sb,
+			f,
+			anytype,
+		),
+		Bookmark: bookmark.NewBookmark(
+			sb,
+			bookmarkBlockService,
+			bookmarkService,
+			objectStore,
+		),
+		Import: _import.NewImport(
+			sb,
+			importerCtrl,
+			objectCreator,
+			anytype,
+		),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			relationService,
+		),
+		Editor: table.NewEditor(sb),
+
+		objectStore: objectStore,
+	}
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	p.AllOperations = basic.NewBasic(p.SmartBlock)
-	p.IHistory = basic.NewHistory(p.SmartBlock)
-	p.Text = stext.NewText(
-		p.SmartBlock,
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-	p.File = file.NewFile(
-		p.SmartBlock,
-		app.MustComponent[file.BlockService](ctx.App),
-		app.MustComponent[core.Service](ctx.App),
-	)
-	p.Clipboard = clipboard.NewClipboard(
-		p.SmartBlock,
-		p.File,
-		app.MustComponent[core.Service](ctx.App),
-	)
-	p.Bookmark = bookmark.NewBookmark(
-		p.SmartBlock,
-		app.MustComponent[bookmark.BlockService](ctx.App),
-		app.MustComponent[bookmark.BookmarkService](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-	)
-	p.Import = _import.NewImport(
-		p.SmartBlock,
-		app.MustComponent[_import.Services](ctx.App),
-		app.MustComponent[_import.ObjectCreator](ctx.App),
-		app.MustComponent[core.Service](ctx.App),
-	)
-	p.Dataview = dataview.NewDataview(
-		p.SmartBlock,
-		app.MustComponent[core.Service](ctx.App),
-		app.MustComponent[objectstore.ObjectStore](ctx.App),
-		app.MustComponent[relation2.Service](ctx.App),
-	)
-	p.Editor = table.NewEditor(p.SmartBlock)
-	p.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
-
 	if ctx.ObjectTypeUrls == nil {
 		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
