@@ -7,17 +7,13 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
-	"strings"
-
-	"github.com/gogo/protobuf/types"
-
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -169,7 +165,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			}
 			r = &relationutils.Relation{Relation: r2}
 		} else {
-			r, _ = p.RelationService().FetchKey(rel)
+			r, _ = p.relationService.FetchKey(rel)
 			if r == nil {
 				continue
 			}
@@ -246,4 +242,12 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 		fixMissingSmartblockTypes,
 	)
+}
+
+func (o *ObjectType) SetStruct(st *types.Struct) error {
+	o.Lock()
+	defer o.Unlock()
+	s := o.NewState()
+	s.SetDetails(st)
+	return o.Apply(s)
 }

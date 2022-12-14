@@ -16,7 +16,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -50,9 +52,10 @@ type SubObjectCollection struct {
 	defaultCollectionName string
 	collections           map[string]map[string]SubObjectImpl
 
+	app           *app.App
 	sourceService source.Service
 	objectStore   objectstore.ObjectStore
-	app           *app.App
+	anytype       core.Service
 }
 
 func NewSubObjectCollection(defaultCollectionName string) *SubObjectCollection {
@@ -70,7 +73,8 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	c.Dataview = dataview.NewDataview(ctx.App, c.SmartBlock)
 	c.Text = stext.NewText(ctx.App, c.SmartBlock)
 	c.objectStore = app.MustComponent[objectstore.ObjectStore](ctx.App)
-	c.sourceService = c.app.MustComponent(source.CName).(source.Service)
+	c.sourceService = ctx.App.MustComponent(source.CName).(source.Service)
+	c.anytype = app.MustComponent[core.Service](ctx.App)
 
 	return c.SmartBlock.Init(ctx)
 }
@@ -260,7 +264,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	}
 
 	ws := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
-	if ws == "" && c.Anytype().PredefinedBlocks().Account == st.RootId() {
+	if ws == "" && c.anytype.PredefinedBlocks().Account == st.RootId() {
 		ws = st.RootId()
 	}
 	subState, err := SubState(st, collection, fullId, ws)
