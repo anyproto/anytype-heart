@@ -134,8 +134,8 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 		id string,
 		err error) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
 		m := &pb.RpcBlockDataviewCreateFromExistingObjectResponse{
-			Error:          &pb.RpcBlockDataviewCreateFromExistingObjectResponseError{Code: code},
-			BlockId:        id,
+			Error:   &pb.RpcBlockDataviewCreateFromExistingObjectResponseError{Code: code},
+			BlockId: id,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -163,7 +163,7 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 			if err != nil {
 				return err
 			}
-			blockDvContent.Views =  targetViews
+			blockDvContent.Views = targetViews
 			return err
 		})
 		if err2 != nil {
