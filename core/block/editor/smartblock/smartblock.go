@@ -1119,7 +1119,7 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 		}
 		for k, after := range act.Details.After.Fields {
 			rel := relations.Get(k)
-			if rel != nil && (rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_object) {
+			if rel != nil && (rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) {
 				before := act.Details.Before.Fields[k]
 				// Check that value is actually changed
 				if before == nil || !before.Equal(after) {
