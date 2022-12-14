@@ -4175,8 +4175,6 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | targetId | [string](#string) |  |  |
-| block | [model.Block](#anytype-model-Block) |  |  |
-| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | targetObjectId | [string](#string) |  |  |
 
 

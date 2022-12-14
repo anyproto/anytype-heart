@@ -4521,8 +4521,6 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string targetId = 2;
-                anytype.model.Block block = 3;
-                anytype.model.Block.Position position = 4;
                 string targetObjectId = 5;
             }
 
