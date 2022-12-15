@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
