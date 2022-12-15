@@ -421,26 +421,26 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 	return bs.Apply(s)
 }
 
-func (bs *basic) PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error) {
+func (bs *basic) PasteBlocks(s *state.State, targetBlockID string, position model.BlockPosition, blocks []simple.Block) (err error) {
 	childIdsRewrite := make(map[string]string)
 	for _, b := range blocks {
-		for i, cId := range b.Model().ChildrenIds {
-			newId := bson.NewObjectId().Hex()
-			childIdsRewrite[cId] = newId
-			b.Model().ChildrenIds[i] = newId
+		for i, cID := range b.Model().ChildrenIds {
+			newID := bson.NewObjectId().Hex()
+			childIdsRewrite[cID] = newID
+			b.Model().ChildrenIds[i] = newID
 		}
 	}
 	for _, b := range blocks {
 		var child bool
-		if newId, ok := childIdsRewrite[b.Model().Id]; ok {
-			b.Model().Id = newId
+		if newID, ok := childIdsRewrite[b.Model().Id]; ok {
+			b.Model().Id = newID
 			child = true
 		} else {
 			b.Model().Id = bson.NewObjectId().Hex()
 		}
 		s.Add(b)
 		if !child {
-			err := s.InsertTo(targetBlockId, position, b.Model().Id)
+			err := s.InsertTo(targetBlockID, position, b.Model().Id)
 			if err != nil {
 				return err
 			}

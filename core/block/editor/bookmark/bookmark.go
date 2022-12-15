@@ -169,6 +169,7 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 	// we had a bug that migrated empty bookmarks blocks into bookmark objects. Now we need to reset them
 	// todo: remove this after we stop to populate bookmark block fields
 	if content.Url == "" && content.State == model.BlockContentBookmark_Done && content.Title == "" && content.FaviconHash == "" && content.TargetObjectId != "" {
+		// nolint:errcheck
 		det, _ := b.objectStore.GetDetails(content.TargetObjectId)
 		if det != nil && pbtypes.GetString(det.Details, bundle.RelationKeyUrl.String()) == "" && pbtypes.GetString(det.Details, bundle.RelationKeySource.String()) == "" {
 			bm.UpdateContent(func(content *model.BlockContentBookmark) {

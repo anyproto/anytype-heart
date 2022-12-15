@@ -90,6 +90,7 @@ func NewWorkspace(
 	}
 }
 
+// nolint:funlen
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	err = p.SubObjectCollection.Init(ctx)
 	if err != nil {
@@ -225,7 +226,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 type templateCloner interface {
-	TemplateClone(id string) (templateId string, err error)
+	TemplateClone(id string) (templateID string, err error)
 }
 
 type WorkspaceParameters struct {
@@ -282,17 +283,17 @@ func (p *Workspaces) GetAllObjects() []string {
 
 func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	st := p.NewState()
-	deviceId := p.anytype.Device()
+	deviceID := p.anytype.Device()
 
 	creatorCollection := st.GetCollection(source.CreatorCollection)
-	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceId] != nil {
+	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceID] != nil {
 		return nil
 	}
 	info, err := p.threadService.GetCreatorInfo(p.Id())
 	if err != nil {
 		return err
 	}
-	st.SetInStore([]string{source.CreatorCollection, deviceId}, p.pbCreatorInfoValue(info))
+	st.SetInStore([]string{source.CreatorCollection, deviceID}, p.pbCreatorInfoValue(info))
 
 	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
@@ -588,6 +589,7 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
 		return
@@ -627,6 +629,7 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
 
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation option. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
 		return
@@ -698,6 +701,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	}
 
 	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
 		return

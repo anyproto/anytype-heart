@@ -100,6 +100,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	layout, ok := ctx.State.Layout()
 	if !ok {
+		// nolint:errcheck
 		otypes, _ := objectstore.GetObjectTypes(p.objectStore, ctx.ObjectTypeUrls)
 		for _, ot := range otypes {
 			layout = ot.Layout

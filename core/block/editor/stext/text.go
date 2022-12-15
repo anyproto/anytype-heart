@@ -431,6 +431,7 @@ func (t *textImpl) TurnInto(ctx *session.Context, style model.BlockContentTextSt
 			if linkBlock, ok := b.(link.Block); ok {
 				var targetDetails *types.Struct
 				if targetId := linkBlock.Model().GetLink().TargetBlockId; targetId != "" {
+					// nolint:errcheck
 					result, _ := t.objectStore.QueryById([]string{targetId})
 					if len(result) > 0 {
 						targetDetails = result[0].Details
