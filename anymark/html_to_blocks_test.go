@@ -72,7 +72,9 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
 			md := New()
-			blocks, _, _ := md.HTMLToBlocks([]byte(testCase.HTML))
+			blocks, _, err := md.HTMLToBlocks([]byte(testCase.HTML))
+			require.NoError(t, err)
+
 			blocks = replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)

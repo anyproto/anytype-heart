@@ -29,8 +29,6 @@ type blocksRenderer struct {
 	baseFilepath      string
 	allFileShortPaths []string
 
-	// is next added list will be a numbered one
-	isNumberedList   bool
 	textBuffer       string
 	marksBuffer      []*model.BlockContentTextMark
 	marksStartQueue  []int
@@ -39,7 +37,7 @@ type blocksRenderer struct {
 	rootBlockIDs     []string
 	curStyledBlock   model.BlockContentTextStyle
 
-	listParentId  string
+	listParentID  string
 	listNestIsNum []bool
 	listNestLevel uint
 }
@@ -81,16 +79,14 @@ func (r *blocksRenderer) GetMarkStart() int {
 		last := r.openedTextBlocks[len(r.openedTextBlocks)-1]
 		if last.marksStartQueue != nil && len(last.marksStartQueue) > 0 {
 			return last.marksStartQueue[len(last.marksStartQueue)-1]
-		} else {
-			return 0
 		}
+		return 0
 	}
 
 	if r.marksStartQueue != nil && len(r.marksStartQueue) > 0 {
 		return r.marksStartQueue[len(r.marksStartQueue)-1]
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func (r *blocksRenderer) AddMark(mark model.BlockContentTextMark) {
@@ -144,10 +140,10 @@ func (r *blocksRenderer) GetRootBlockIDs() []string {
 	return r.rootBlockIDs
 }
 
-func (r *blocksRenderer) addChildrenId(cId string) {
-	for i, _ := range r.blocks {
-		if r.blocks[i].Id == r.listParentId && len(cId) > 0 {
-			r.blocks[i].ChildrenIds = append(r.blocks[i].ChildrenIds, cId)
+func (r *blocksRenderer) addChildID(cID string) {
+	for i := range r.blocks {
+		if r.blocks[i].Id == r.listParentID && len(cID) > 0 {
+			r.blocks[i].ChildrenIds = append(r.blocks[i].ChildrenIds, cID)
 		}
 	}
 }
@@ -155,20 +151,20 @@ func (r *blocksRenderer) addChildrenId(cId string) {
 func (r *blocksRenderer) SetListState(entering bool, isNumbered bool) {
 	if entering {
 		r.listNestIsNum = append(r.listNestIsNum, isNumbered)
-		r.listNestLevel += 1
+		r.listNestLevel++
 	} else if len(r.listNestIsNum) > 0 {
 		r.listNestIsNum = r.listNestIsNum[:len(r.listNestIsNum)-1]
-		r.listNestLevel -= 1
+		r.listNestLevel--
 	}
 
 	if len(r.listNestIsNum) > 1 {
 		if len(r.blocks) > 0 {
-			r.listParentId = r.blocks[len(r.blocks)-1].Id
+			r.listParentID = r.blocks[len(r.blocks)-1].Id
 		} else {
-			r.listParentId = ""
+			r.listParentID = ""
 		}
 	} else {
-		r.listParentId = ""
+		r.listParentID = ""
 	}
 }
 
@@ -296,15 +292,14 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 		t.Text = closingBlock.textBuffer
 	}
 
-	if len(t.Text) >= 3 && t.Text[:3] == "[ ]" {
+	switch {
+	case len(t.Text) >= 3 && t.Text[:3] == "[ ]":
 		t.Text = strings.TrimLeft(t.Text[3:], " ")
 		t.Style = model.BlockContentText_Checkbox
-
-	} else if len(t.Text) >= 2 && t.Text[:2] == "[]" {
+	case len(t.Text) >= 2 && t.Text[:2] == "[]":
 		t.Text = strings.TrimLeft(t.Text[2:], " ")
 		t.Style = model.BlockContentText_Checkbox
-
-	} else if len(t.Text) >= 3 && t.Text[:3] == "[x]" {
+	case len(t.Text) >= 3 && t.Text[:3] == "[x]":
 		t.Text = strings.TrimLeft(t.Text[3:], " ")
 		t.Style = model.BlockContentText_Checkbox
 		t.Checked = true
@@ -325,8 +320,8 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	// IMPORTANT: do not create a new block if textBuffer is empty
 	if len(t.Text) > 0 || len(closingBlock.ChildrenIds) > 0 {
 		// Nested list case:
-		if len(r.listParentId) > 0 {
-			r.addChildrenId(id)
+		if len(r.listParentID) > 0 {
+			r.addChildID(id)
 		}
 
 		r.blocks = append(r.blocks, &(closingBlock.Block))
@@ -348,7 +343,7 @@ func (r *blocksRenderer) ForceCloseTextBlock() {
 func (r *blocksRenderer) ProcessMarkdownArtifacts() {
 	res := markdownLink.FindAllStringSubmatchIndex(r.textBuffer, -1)
 	if len(res) != 0 {
-		for i, _ := range res {
+		for i := range res {
 			fmt.Println(res[i])
 		}
 	}

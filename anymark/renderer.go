@@ -231,14 +231,14 @@ func (r *Renderer) renderCodeSpan(_ util.BufWriter, source []byte, n ast.Node, e
 			}
 		}
 		return ast.WalkSkipChildren, nil
-	} else {
-		to := int32(text.UTF16RuneCountString(r.GetText()))
-
-		r.AddMark(model.BlockContentTextMark{
-			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
-			Type:  model.BlockContentTextMark_Keyboard,
-		})
 	}
+	to := int32(text.UTF16RuneCountString(r.GetText()))
+
+	r.AddMark(model.BlockContentTextMark{
+		Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
+		Type:  model.BlockContentTextMark_Keyboard,
+	})
+
 	return ast.WalkContinue, nil
 }
 
