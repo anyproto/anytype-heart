@@ -68,7 +68,7 @@ func (t *editor) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) 
 			Table: &model.BlockContentTable{},
 		},
 	})
-
+	id = b.Model().Id
 	if !s.Add(b) {
 		return "", fmt.Errorf("add table block")
 	}

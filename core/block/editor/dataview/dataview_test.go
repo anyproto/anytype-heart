@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -11,9 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_calculateEntriesDiff(t *testing.T) {
@@ -85,7 +86,7 @@ func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 				},
 			},
 		}}))
-		return NewDataview(sb), sb
+		return NewDataview(sb, nil, nil, nil), sb
 	}
 	assertViewPositions := func(viewId string, pos uint32, exp []string) {
 		dv, sb := newTestDv()

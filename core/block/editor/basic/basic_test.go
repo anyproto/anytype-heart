@@ -263,47 +263,6 @@ func TestBasic_MoveToAnotherObject(t *testing.T) {
 	})
 }
 
-func TestBasic_MoveToAnotherObject(t *testing.T) {
-	t.Run("basic", func(t *testing.T) {
-		sb1 := smarttest.New("test1")
-		sb1.AddBlock(simple.New(&model.Block{Id: "test1", ChildrenIds: []string{"2", "4"}})).
-			AddBlock(newTextBlock("2", "t2", []string{"3"})).
-			AddBlock(newTextBlock("3", "t3", nil)).
-			AddBlock(newTextBlock("4", "", nil))
-
-		sb2 := smarttest.New("test2")
-		sb2.AddBlock(simple.New(&model.Block{Id: "test2", ChildrenIds: []string{}}))
-
-		b := NewBasic(sb1)
-		srcState := sb1.NewState()
-		destState := sb2.NewState()
-
-		srcId := "2"
-		wantBlocks := append([]simple.Block{srcState.Pick(srcId)}, srcState.Descendants(srcId)...)
-		err := b.Move(srcState, destState, "test2", model.Block_Inner, []string{srcId})
-		require.NoError(t, err)
-
-		require.NoError(t, sb1.Apply(srcState))
-		require.NoError(t, sb2.Apply(destState))
-
-		// Block is removed from source object
-		assert.Equal(t, []string{"4"}, sb1.NewState().Pick("test1").Model().ChildrenIds)
-		assert.Nil(t, sb1.NewState().Pick(srcId))
-
-		// Block is added to dest object
-		gotState := sb2.NewState()
-		gotId := gotState.Pick(gotState.RootId()).Model().ChildrenIds[0]
-		gotBlocks := append([]simple.Block{gotState.Pick(gotId)}, gotState.Descendants(gotId)...)
-
-		for i := range wantBlocks {
-			wb, gb := wantBlocks[i].Model(), gotBlocks[i].Model()
-			// ids are reassigned
-			assert.NotEqual(t, wb.Id, gb.Id)
-			assert.Equal(t, wb.Content, gb.Content)
-		}
-	})
-}
-
 func TestBasic_Replace(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
