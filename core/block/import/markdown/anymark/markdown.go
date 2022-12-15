@@ -11,7 +11,7 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark/whitespace"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -92,7 +92,10 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 	})
 	converter.AddRules(strikethrough, br, underscore)
 
-	md, _ := converter.ConvertString(preprocessedSource)
+	md, err := converter.ConvertString(preprocessedSource)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// md := html2md.Convert(preprocessedSource)
 	md = whitespace.WhitespaceNormalizeString(md)

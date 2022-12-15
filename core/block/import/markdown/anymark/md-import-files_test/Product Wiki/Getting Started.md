@@ -43,7 +43,7 @@ You can add code notation to any Notion page:
 
 Instead of using folders, Notion lets you nest pages inside pages. Type `/page` and press `enter` to create a sub-page inside a page. Like this:
 
-[Copy of Example sub-page](Getting%20Started/Copy%20of%20Example%20sub%20page.md)
+[Copy of Example sub-page](Getting Started/Copy of Example sub page.md)
 
 # Advanced Techniques
 

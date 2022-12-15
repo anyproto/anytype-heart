@@ -14,8 +14,8 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
 	ce "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -129,7 +129,9 @@ func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors c
 					return fmt.Errorf("failed to open file: %s", err)
 				}
 				files[shortPath] = &FileInfo{}
-				m.createBlocksFromFile(shortPath, f, files)
+				if err = m.createBlocksFromFile(shortPath, f, files); err != nil {
+					log.Errorf("failed to create blocks from file %s: %s", shortPath, err)
+				}
 				files[shortPath].Source = ce.GetSourceDetail(shortPath, importPath)
 			}
 

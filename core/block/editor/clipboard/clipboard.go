@@ -10,12 +10,12 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/anytypeio/go-anytype-middleware/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"

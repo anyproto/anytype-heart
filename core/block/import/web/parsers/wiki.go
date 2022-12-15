@@ -9,7 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
