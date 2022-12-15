@@ -1098,3 +1098,37 @@ func (s *Service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreate
 	})
 	return id, err
 }
+
+func (s *Service) CopyViewToBlock(ctx *session.Context,
+	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) ([]*model.BlockContentDataviewView, error) {
+
+	var views []*model.BlockContentDataviewView
+
+	err := s.DoDataview(req.TargetObjectId, func(d dataview.Dataview) error {
+		var err error
+		views, err = d.GetDataviewViews(template.DataviewBlockId)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		st := b.NewStateCtx(ctx)
+		block := st.Get(req.BlockId)
+
+		dvContent := &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+			TargetObjectId: req.TargetObjectId,
+			Views: views,
+		}}
+
+		block.Model().Content = dvContent
+
+		return b.Apply(st)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return views, err
+}
