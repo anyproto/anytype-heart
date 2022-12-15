@@ -1,32 +1,21 @@
 package anymark
 
 import (
-	"bufio"
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
-
-	"github.com/anytypeio/go-anytype-middleware/anymark/renderer/html"
 )
 
 func TestConvertBlocks(t *testing.T) {
-	markdown := New(WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	))
 	source := []byte("## Hello world!\n Olol*ol*olo \n\n 123123")
-	var b bytes.Buffer
 
-	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer, "", []string{})
+	md := New()
 
-	err := markdown.ConvertBlocks(source, BR)
+	blocks, rootIDs, err := md.MarkdownToBlocks(source, "", nil)
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	assert.NotEmpty(t, BR.GetBlocks())
+	assert.NotEmpty(t, blocks)
+	assert.NotEmpty(t, rootIDs)
 }

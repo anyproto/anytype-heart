@@ -11,7 +11,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/anytypeio/go-anytype-middleware/anymark/spaceReplace"
+	"github.com/anytypeio/go-anytype-middleware/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -311,7 +311,7 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 		}
 	}
 
-	mdText := spaceReplace.WhitespaceNormalizeString(req.TextSlot)
+	mdText := whitespace.WhitespaceNormalizeString(req.TextSlot)
 
 	md := anymark.New()
 	blocks, _, err := md.MarkdownToBlocks([]byte(mdText), "", []string{})

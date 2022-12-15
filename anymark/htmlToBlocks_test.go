@@ -9,8 +9,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var (
@@ -70,8 +71,8 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
-			mdToBlocksConverter := New()
-			_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(testCase.HTML))
+			md := New()
+			_, blocks, _ := md.HTMLToBlocks([]byte(testCase.HTML))
 			blocks = replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)

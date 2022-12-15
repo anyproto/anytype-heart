@@ -1,4 +1,3 @@
-// Package goldmark implements functions to convert markdown text to a desired format.
 package anymark
 
 import (
@@ -6,21 +5,17 @@ import (
 	"regexp"
 	"strings"
 
-	htmlConverter "github.com/JohannesKaufmann/html-to-markdown"
+	htmlconverter "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark/renderer/html"
-	"github.com/anytypeio/go-anytype-middleware/anymark/spaceReplace"
+	"github.com/anytypeio/go-anytype-middleware/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var (
-	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
-	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
-	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
 	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	reWikiCode      = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
 
@@ -42,18 +37,7 @@ func New() Markdown {
 	return &markdown{}
 }
 
-// func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOption) error {
-// 	reader := text.NewReader(source)
-// 	doc := m.parser.Parse(reader, opts...)
-//
-// 	writer := bufio.NewWriter(w)
-// 	bWriter := blocksUtil.NewRWriter(writer, "", []string{})
-// 	// bWriter := blocksUtil.ExtendWriter(writer, &rState)
-//
-// 	return m.renderer.Render(bWriter, source, doc)
-// }
-
-func (m *markdown) ConvertBlocks(source []byte, r renderer.NodeRenderer) error {
+func (m *markdown) convertBlocks(source []byte, r renderer.NodeRenderer) error {
 	gm := goldmark.New(goldmark.WithRenderer(
 		renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(r, 1000))),
 	))
@@ -61,11 +45,10 @@ func (m *markdown) ConvertBlocks(source []byte, r renderer.NodeRenderer) error {
 }
 
 func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
-	w := html.NewRWriter(baseFilepath, allFileShortPaths)
-	r := html.NewRenderer(w)
+	r := NewRenderer(baseFilepath, allFileShortPaths)
 
 	// allFileShortPaths,
-	err = m.ConvertBlocks(markdownSource, r)
+	err = m.convertBlocks(markdownSource, r)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -84,9 +67,9 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
-	strikethrough := htmlConverter.Rule{
+	strikethrough := htmlconverter.Rule{
 		Filter: []string{"span"},
-		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
 			// If the span element has not the classname `bb_strike` return nil.
 			// That way the next rules will apply. In this case the commonmark rules.
 			// -> return nil -> next rule applies
@@ -98,26 +81,26 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 			// Because of the space it is not recognized as strikethrough.
 			// -> trim spaces at begin&end of string when inside strong/italic/...
 			content = strings.TrimSpace(content)
-			return htmlConverter.String("~" + content + "~")
+			return htmlconverter.String("~" + content + "~")
 		},
 	}
-	underscore := htmlConverter.Rule{
+	underscore := htmlconverter.Rule{
 		Filter: []string{"u", "ins"},
-		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
 			content = strings.TrimSpace(content)
-			return htmlConverter.String("<u>" + content + "</u>")
+			return htmlconverter.String("<u>" + content + "</u>")
 		},
 	}
 
-	br := htmlConverter.Rule{
+	br := htmlconverter.Rule{
 		Filter: []string{"br"},
-		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
 			content = strings.TrimSpace(content)
-			return htmlConverter.String("\n" + content)
+			return htmlconverter.String("\n" + content)
 		},
 	}
 
-	converter := htmlConverter.NewConverter("", true, &htmlConverter.Options{
+	converter := htmlconverter.NewConverter("", true, &htmlconverter.Options{
 		DisableEscaping:  true,
 		AllowHeaderBreak: true,
 		EmDelimiter:      "*",
@@ -127,15 +110,13 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 	md, _ := converter.ConvertString(preprocessedSource)
 
 	// md := html2md.Convert(preprocessedSource)
-	md = spaceReplace.WhitespaceNormalizeString(md)
+	md = whitespace.WhitespaceNormalizeString(md)
 	// md = strings.ReplaceAll(md, "*  *", "* *")
 
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
-	w := html.NewRWriter("", nil)
-	r := html.NewRenderer(w)
-
-	err = m.ConvertBlocks([]byte(md), r)
+	r := NewRenderer("", nil)
+	err = m.convertBlocks([]byte(md), r)
 	if err != nil {
 		return err, nil, nil
 	}
