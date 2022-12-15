@@ -173,7 +173,7 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 				Views: views,
 			}}
 
-			block.ModelToSave().Content = dvContent
+			block.Model().Content = dvContent
 
 			return b.Apply(st)
 		})
