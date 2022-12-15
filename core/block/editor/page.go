@@ -31,7 +31,7 @@ type Page struct {
 
 	_import.Import
 	dataview.Dataview
-	table.Editor
+	table.TableEditor
 
 	objectStore objectstore.ObjectStore
 }
@@ -84,7 +84,7 @@ func NewPage(
 			objectStore,
 			relationService,
 		),
-		Editor: table.NewEditor(sb),
+		TableEditor: table.NewEditor(sb),
 
 		objectStore: objectStore,
 	}

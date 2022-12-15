@@ -29,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -932,25 +931,6 @@ func (s *Service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 		return err
 	})
 	return
-}
-
-func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.State, b table.Editor) error) error {
-	sb, release, err := s.PickBlock(context.TODO(), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(table.Editor); ok {
-		sb.Lock()
-		defer sb.Unlock()
-
-		st := sb.NewStateCtx(ctx)
-		if err := apply(st, bb); err != nil {
-			return fmt.Errorf("apply function: %w", err)
-		}
-		return sb.Apply(st)
-	}
-	return fmt.Errorf("table operation not available for this block type: %T", sb)
 }
 
 func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {

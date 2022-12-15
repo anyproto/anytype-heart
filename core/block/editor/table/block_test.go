@@ -3,11 +3,12 @@ package table
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNormalize(t *testing.T) {
@@ -75,7 +76,7 @@ func TestNormalizeAbsentRow(t *testing.T) {
 		{"row2-col3"},
 	})
 	source.CleanupBlock("row3")
-	
+
 	want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{
 		{"row1-col2"},
 		{},
@@ -131,11 +132,11 @@ func TestDuplicate(t *testing.T) {
 	assertNotEqual(old.block.Model(), got.block.Model())
 	assertNotEqual(old.Columns(), got.Columns())
 	assertNotEqual(old.Rows(), got.Rows())
-	for i, oldId := range old.Rows().ChildrenIds {
-		newId := got.Rows().ChildrenIds[i]
+	for i, oldID := range old.RowIDs() {
+		newID := got.RowIDs()[i]
 
-		oldRow := s.Pick(oldId)
-		newRow := s.Pick(newId)
+		oldRow := s.Pick(oldID)
+		newRow := s.Pick(newID)
 
 		assertNotEqual(oldRow.Model(), newRow.Model())
 	}
