@@ -1119,7 +1119,7 @@ func (s *Service) CopyViewToBlock(ctx *session.Context,
 
 		dvContent := &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
 			TargetObjectId: req.TargetObjectId,
-			Views: views,
+			Views:          views,
 		}}
 
 		block.Model().Content = dvContent
