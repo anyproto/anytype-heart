@@ -18137,9 +18137,10 @@ Avatar of a user&#39;s account. It could be an image or color
 | homeObjectId | [string](#string) |  | home dashboard block id |
 | archiveObjectId | [string](#string) |  | archive block id |
 | profileObjectId | [string](#string) |  | profile block id |
-| marketplaceTypeObjectId | [string](#string) |  | marketplace type id |
-| marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
-| marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
+| marketplaceTypeObjectId | [string](#string) |  | deprecated, to be removed |
+| marketplaceRelationObjectId | [string](#string) |  | deprecated, to be removed |
+| marketplaceTemplateObjectId | [string](#string) |  | deprecated, to be removed |
+| marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  | marketplace template id |
 | widgetsId | [string](#string) |  |  |

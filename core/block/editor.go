@@ -988,103 +988,103 @@ func (s *Service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExis
 }
 
 func (s *Service) CreateTableBlock(ctx *session.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		id, err = t.TableCreate(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		id, err = e.TableCreate(st, req)
 		return err
 	})
 	return
 }
 
-func (s *Service) TableRowCreate(ctx *session.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowCreate(st, req)
+func (s *Service) TableRowCreate(ctx *session.Context, req pb.RpcBlockTableRowCreateRequest) error {
+	return DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		_, err := e.RowCreate(st, req)
+		return err
 	})
-	return
 }
 
-func (s *Service) TableColumnCreate(ctx *session.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnCreate(st, req)
+func (s *Service) TableColumnCreate(ctx *session.Context, req pb.RpcBlockTableColumnCreateRequest) error {
+	return DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		_, err := e.ColumnCreate(st, req)
+		return err
 	})
-	return
 }
 
 func (s *Service) TableRowDelete(ctx *session.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowDelete(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowDelete(st, req)
 	})
 	return
 }
 
 func (s *Service) TableColumnDelete(ctx *session.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnDelete(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.ColumnDelete(st, req)
 	})
 	return
 }
 
 func (s *Service) TableColumnMove(ctx *session.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnMove(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.ColumnMove(st, req)
 	})
 	return
 }
 
-func (s *Service) TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowDuplicate(st, req)
+func (s *Service) TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRowDuplicateRequest) error {
+	return DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		_, err := e.RowDuplicate(st, req)
+		return err
 	})
-	return
 }
 
 func (s *Service) TableColumnDuplicate(
 	ctx *session.Context, req pb.RpcBlockTableColumnDuplicateRequest,
 ) (id string, err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		id, err = t.ColumnDuplicate(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		id, err = e.ColumnDuplicate(st, req)
 		return err
 	})
 	return id, err
 }
 
 func (s *Service) TableExpand(ctx *session.Context, req pb.RpcBlockTableExpandRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.Expand(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.Expand(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableRowListFill(ctx *session.Context, req pb.RpcBlockTableRowListFillRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowListFill(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowListFill(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableRowListClean(ctx *session.Context, req pb.RpcBlockTableRowListCleanRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowListClean(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowListClean(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableRowSetHeader(ctx *session.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowSetHeader(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowSetHeader(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableSort(ctx *session.Context, req pb.RpcBlockTableSortRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.Sort(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.Sort(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableColumnListFill(ctx *session.Context, req pb.RpcBlockTableColumnListFillRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnListFill(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.ColumnListFill(st, req)
 	})
 	return err
 }

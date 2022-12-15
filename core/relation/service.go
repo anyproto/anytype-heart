@@ -76,6 +76,10 @@ func (b *bulkMigration) AddRelations(relations []*model.Relation) {
 			if _, exists := b.cache["opt"+opt.Id]; exists {
 				continue
 			}
+			// hack for missing relation name on snippet
+			if rel.Key == bundle.RelationKeySnippet.String() {
+				rel.Name = "Snippet"
+			}
 			opt.RelationKey = rel.Key
 			b.options = append(b.options, (&relationutils.Option{RelationOption: opt}).ToStruct())
 			b.cache["opt"+opt.Id] = struct{}{}
