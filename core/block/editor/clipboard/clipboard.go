@@ -266,8 +266,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 }
 
 func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
-	mdToBlocksConverter := anymark.New()
-	blocks, _, err := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
+	blocks, _, err := anymark.HTMLToBlocks([]byte(req.HtmlSlot))
 
 	if err != nil {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
@@ -313,8 +312,7 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 
 	mdText := whitespace.WhitespaceNormalizeString(req.TextSlot)
 
-	md := anymark.New()
-	blocks, _, err := md.MarkdownToBlocks([]byte(mdText), "", []string{})
+	blocks, _, err := anymark.MarkdownToBlocks([]byte(mdText), "", []string{})
 	if err != nil {
 		return cb.pasteRawText(ctx, req, textArr, groupId)
 	}

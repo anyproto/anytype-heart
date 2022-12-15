@@ -11,19 +11,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/pkg/errors"
+
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	ce "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/globalsign/mgo/bson"
-	"github.com/pkg/errors"
 )
 
 type Service interface {
 	TempDir() string
 }
 
-type MarkdownToBlocks struct{
+type MarkdownToBlocks struct {
 	Service
 }
 
@@ -51,7 +52,7 @@ func (m *MarkdownToBlocks) MarkdownToBlocks(importPath, mode string) (map[string
 	return files, allErrors
 }
 
-func (m *MarkdownToBlocks) processFiles(importPath, mode string, allErrors ce.ConvertError) (map[string]*FileInfo) {
+func (m *MarkdownToBlocks) processFiles(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	ext := filepath.Ext(importPath)
 	if strings.EqualFold(ext, ".zip") {
 		return m.processZipFile(importPath, mode, allErrors)
@@ -60,9 +61,8 @@ func (m *MarkdownToBlocks) processFiles(importPath, mode string, allErrors ce.Co
 	}
 }
 
-func (m *MarkdownToBlocks) processZipFile(importPath, mode string, allErrors ce.ConvertError) (map[string]*FileInfo) {
+func (m *MarkdownToBlocks) processZipFile(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	r, err := zip.OpenReader(importPath)
-	anymarkConv := anymark.New()
 	if err != nil {
 		allErrors.Add(importPath, err)
 		return nil
@@ -94,7 +94,7 @@ func (m *MarkdownToBlocks) processZipFile(importPath, mode string, allErrors ce.
 		}
 		files[shortPath] = &FileInfo{}
 		files[shortPath].Source = ce.GetSourceDetail(shortPath, importPath)
-		if err := m.createBlocksFromFile(shortPath, anymarkConv, rc, files); err != nil {
+		if err := m.createBlocksFromFile(shortPath, rc, files); err != nil {
 			allErrors.Add(shortPath, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 				return nil
@@ -111,9 +111,8 @@ func (m *MarkdownToBlocks) processZipFile(importPath, mode string, allErrors ce.
 	return files
 }
 
-func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors ce.ConvertError) (map[string]*FileInfo)  {
+func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	files := make(map[string]*FileInfo)
-	anymarkConv := anymark.New()
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -130,7 +129,7 @@ func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors c
 					return fmt.Errorf("failed to open file: %s", err)
 				}
 				files[shortPath] = &FileInfo{}
-				m.createBlocksFromFile(shortPath, anymarkConv, f, files)
+				m.createBlocksFromFile(shortPath, f, files)
 				files[shortPath].Source = ce.GetSourceDetail(shortPath, importPath)
 			}
 
@@ -145,7 +144,7 @@ func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors c
 	if err != nil {
 		allErrors.Add(importPath, err)
 	}
-	return files 
+	return files
 }
 
 func (m *MarkdownToBlocks) processBlocks(shortPath string, file *FileInfo, files map[string]*FileInfo) {
@@ -247,8 +246,6 @@ func (m *MarkdownToBlocks) processLinkBlock(shortPath string, file *FileInfo, fi
 	}
 }
 
-
-
 func (m *MarkdownToBlocks) convertTextToPageLink(block *model.Block) {
 	block.Content = &model.BlockContentOfLink{
 		Link: &model.BlockContentLink{
@@ -329,7 +326,7 @@ func (m *MarkdownToBlocks) convertTextToFile(block *model.Block) {
 	}
 }
 
-func (m *MarkdownToBlocks) createBlocksFromFile(shortPath string, anymarkConv anymark.Markdown, f io.ReadCloser, files map[string]*FileInfo) error {
+func (m *MarkdownToBlocks) createBlocksFromFile(shortPath string, f io.ReadCloser, files map[string]*FileInfo) error {
 	if filepath.Base(shortPath) == shortPath {
 		files[shortPath].IsRootFile = true
 	}
@@ -338,7 +335,7 @@ func (m *MarkdownToBlocks) createBlocksFromFile(shortPath string, anymarkConv an
 		if err != nil {
 			return err
 		}
-		files[shortPath].ParsedBlocks, _, err = anymarkConv.MarkdownToBlocks(b, filepath.Dir(shortPath), nil)
+		files[shortPath].ParsedBlocks, _, err = anymark.MarkdownToBlocks(b, filepath.Dir(shortPath), nil)
 		if err != nil {
 			log.Errorf("failed to read blocks %s: %s", shortPath, err.Error())
 		}

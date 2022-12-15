@@ -22,33 +22,18 @@ var (
 	reWikiWbr = regexp.MustCompile(`<wbr[^>]*>`)
 )
 
-// A Markdown interface offers functions to convert Markdown text to
-// a desired format.
-type Markdown interface {
-	HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, err error)
-	MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error)
-}
-
-type markdown struct {
-}
-
-// New returns a new Markdown with given options.
-func New() Markdown {
-	return &markdown{}
-}
-
-func (m *markdown) convertBlocks(source []byte, r renderer.NodeRenderer) error {
+func convertBlocks(source []byte, r renderer.NodeRenderer) error {
 	gm := goldmark.New(goldmark.WithRenderer(
 		renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(r, 1000))),
 	))
 	return gm.Convert(source, &bytes.Buffer{})
 }
 
-func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
+func MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	r := NewRenderer(baseFilepath, allFileShortPaths)
 
 	// allFileShortPaths,
-	err = m.convertBlocks(markdownSource, r)
+	err = convertBlocks(markdownSource, r)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -56,7 +41,7 @@ func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, 
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
 
-func (m *markdown) HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, err error) {
+func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	preprocessedSource := string(source)
 
 	preprocessedSource = transformCSSUnderscore(preprocessedSource)
@@ -116,7 +101,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlock
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
 	r := NewRenderer("", nil)
-	err = m.convertBlocks([]byte(md), r)
+	err = convertBlocks([]byte(md), r)
 	if err != nil {
 		return nil, nil, err
 	}

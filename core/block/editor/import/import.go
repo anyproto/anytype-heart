@@ -13,6 +13,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -24,8 +27,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -460,8 +461,6 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[string]*fileInfo, fileClose func() error, err error) {
 	log.Debug("1. DirWithMarkdownToBlocks: directory %s", importPath)
 
-	anymarkConv := anymark.New()
-
 	files = make(map[string]*fileInfo)
 	fileClose = func() error {
 		return nil
@@ -546,7 +545,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 				continue
 			}
 
-			file.parsedBlocks, _, err = anymarkConv.MarkdownToBlocks(b, filepath.Dir(shortPath), allFileShortPaths)
+			file.parsedBlocks, _, err = anymark.MarkdownToBlocks(b, filepath.Dir(shortPath), allFileShortPaths)
 			if err != nil {
 				log.Errorf("failed to read blocks %s: %s", shortPath, err.Error())
 			}
@@ -555,7 +554,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 
 			for i, block := range file.parsedBlocks {
 				log.Debug("Block:", i)
-				//file.parsedBlocks[i].Id = bson.NewObjectId().Hex()
+				// file.parsedBlocks[i].Id = bson.NewObjectId().Hex()
 
 				txt := block.GetText()
 				if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&

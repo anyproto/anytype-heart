@@ -28,8 +28,7 @@ func TestConvertMdToBlocks(t *testing.T) {
 
 	for testNum, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
-			mdToBlocksConverter := New()
-			blocks, _, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
+			blocks, _, _ := MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
 			replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)
