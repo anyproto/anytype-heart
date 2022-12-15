@@ -50,15 +50,22 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	if err != nil {
 		return err
 	}
-	d := doc.Details()
+	d := doc.CombinedDetails()
 	fileType := detectFileType(pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String()))
+
+	fname := pbtypes.GetString(d, bundle.RelationKeyName.String())
+	ext := pbtypes.GetString(d, bundle.RelationKeyFileExt.String())
+
+	if ext != "" && !strings.HasSuffix(fname, "."+ext) {
+		fname = fname + "." + ext
+	}
 
 	var blocks []*model.Block
 	blocks = append(blocks, &model.Block{
 		Id: "file",
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				Name:    pbtypes.GetString(d, bundle.RelationKeyName.String()),
+				Name:    fname,
 				Mime:    pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String()),
 				Hash:    p.Id(),
 				Type:    detectFileType(pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String())),

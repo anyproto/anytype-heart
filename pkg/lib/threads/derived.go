@@ -8,9 +8,9 @@ import (
 
 	"github.com/anytypeio/go-slip21"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/textileio/crypto/symmetric"
 	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/crypto/symmetric"
 	threadsDb "github.com/textileio/go-threads/db"
 	threadsUtil "github.com/textileio/go-threads/util"
 
