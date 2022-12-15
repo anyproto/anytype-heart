@@ -64,6 +64,7 @@ func getDetailsForFileOrImage(ctx context.Context, a core.Service, id string) (p
 		if err != nil {
 			return nil, false, err
 		}
+		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(a.PredefinedBlocks().Account)
 		return d, true, nil
 	}
 

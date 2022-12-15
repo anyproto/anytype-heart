@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -202,6 +203,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceTypeObjectId:     pBlocks.MarketplaceType,
 		MarketplaceRelationObjectId: pBlocks.MarketplaceRelation,
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
+		MarketplaceWorkspaceId:      addr.AnytypeMarketplaceWorkspace,
 		AccountSpaceId:              pBlocks.Account,
 		WidgetsId:                   pBlocks.Widgets,
 		GatewayUrl:                  gwAddr,

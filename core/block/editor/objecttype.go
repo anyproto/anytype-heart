@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"golang.org/x/exp/slices"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -212,7 +213,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 		if system {
 			rest := p.Restrictions()
-			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Blocks, model.Restrictions_Details}...)
+			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Blocks, model.Restrictions_Details, model.Restrictions_Delete}...)
 			dv := rest.Dataview.Copy()
 			if internal {
 				// internal mean not possible to create the object using the standard ObjectCreate flow
@@ -225,8 +226,23 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	fixMissingSmartblockTypes := func(s *state.State) {
 		// we have a bug in internal release that was not adding smartblocktype to newly created custom types
-		if len(pbtypes.GetIntList(s.Details(), bundle.RelationKeySmartblockTypes.String())) == 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(int(model.SmartBlockType_Page)))
+		currTypes := pbtypes.GetIntList(s.Details(), bundle.RelationKeySmartblockTypes.String())
+		sourceObject := pbtypes.GetString(s.Details(), bundle.RelationKeySourceObject.String())
+		var (
+			err     error
+			sbTypes []int
+		)
+		if sourceObject != "" {
+			sbTypes, err = state.ListSmartblockTypes(sourceObject)
+			if err != nil {
+				log.Errorf("failed to list smartblock types for %s: %v", sourceObject, err)
+			}
+		} else {
+			sbTypes = []int{int(model.SmartBlockType_Page)}
+		}
+
+		if !slices.Equal(currTypes, sbTypes) {
+			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
 		}
 	}
 

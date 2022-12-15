@@ -201,7 +201,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			if coll != nil && coll.GetStructValue() != nil {
 				for sub := range coll.GetStructValue().GetFields() {
 					if err = p.initSubObject(ctx.State, collName, sub); err != nil {
-						return
+						log.Errorf("failed to init sub object %s-%s: %v", collName, sub, err)
 					}
 				}
 			}
@@ -685,7 +685,11 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
-	object.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(int(model.SmartBlockType_Page))
+	sbType := pbtypes.GetIntList(details, bundle.RelationKeySmartblockTypes.String())
+	if len(sbType) == 0 {
+		sbType = []int{int(model.SmartBlockType_Page)}
+	}
+	object.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbType...)
 
 	// no need to check for the generated bson's
 	if st.HasInStore([]string{collectionKeyObjectTypes, key}) {

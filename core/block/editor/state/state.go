@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
@@ -1082,13 +1083,99 @@ func (s *State) SetParent(parent *State) {
 	s.parent = parent
 }
 
-func (s *State) DepSmartIds() (ids []string) {
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if ls, ok := b.(linkSource); ok {
-			ids = ls.FillSmartIds(ids)
+func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifier bool) (ids []string) {
+	if blocks {
+		err := s.Iterate(func(b simple.Block) (isContinue bool) {
+			if ls, ok := b.(linkSource); ok {
+				ids = ls.FillSmartIds(ids)
+			}
+			return true
+		})
+		if err != nil {
+			log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 		}
-		return true
-	})
+	}
+
+	if objTypes {
+		for _, ot := range s.ObjectTypes() {
+			if ot == "" {
+				log.Errorf("sb %s has empty ot", s.RootId())
+				continue
+			}
+			ids = append(ids, ot)
+		}
+	}
+
+	var det *types.Struct
+	if details {
+		det = s.CombinedDetails()
+	}
+
+	for _, rel := range s.GetRelationLinks() {
+		// do not index local dates such as lastOpened/lastModified
+		if relations {
+			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+		}
+
+		if !details {
+			continue
+		}
+
+		// handle corner cases first for specific formats
+		if rel.Format == model.RelationFormat_date &&
+			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) &&
+			(slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+			relInt := pbtypes.GetInt64(det, rel.Key)
+			if relInt > 0 {
+				t := time.Unix(relInt, 0)
+				t = t.In(time.UTC)
+				ids = append(ids, addr.TimeToID(t))
+			}
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
+			if creatorModifier {
+				v := pbtypes.GetString(det, rel.Key)
+				ids = append(ids, v)
+			}
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyId.String() ||
+			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
+			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(det, rel.Key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
+			}
+			ids = append(ids, v)
+		}
+
+		if rel.Format != model.RelationFormat_object &&
+			rel.Format != model.RelationFormat_file &&
+			rel.Format != model.RelationFormat_status &&
+			rel.Format != model.RelationFormat_tag {
+			continue
+		}
+
+		// add all object relation values as dependents
+		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+			if targetID == "" {
+				continue
+			}
+
+			ids = append(ids, targetID)
+		}
+	}
+
+	ids = util.UniqueStrings(ids)
 	return
 }
 

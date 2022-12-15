@@ -127,7 +127,3 @@ func (v *date) LogHeads() map[string]string {
 func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
-
-func TimeToId(t time.Time) string {
-	return addr.DatePrefix + t.Format("2006-01-02")
-}
