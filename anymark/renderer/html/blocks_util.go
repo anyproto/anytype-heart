@@ -1,63 +1,23 @@
 // Package renderer renders the given AST to certain formats.
-package blocksUtil
+package html
 
 import (
-	"bufio"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
-	"github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/google/uuid"
-	"io"
 	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/google/uuid"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 )
 
 var (
 	markdownLink = regexp.MustCompile(`(?:__|[*#])|\[(.*?)\]\(.*?\)`)
 )
-
-// A RWriter is a subset of the bufio.Writer .
-type RWriter interface {
-	// TODO: LEGACY, remove it later
-	io.Writer
-	Available() int
-	Buffered() int
-	Flush() error
-	WriteByte(c byte) error
-	WriteRune(r rune) (size int, err error)
-	WriteString(s string) (int, error)
-
-	// Main part
-	GetText() string
-	AddTextToBuffer(s string)
-	AddTextByte(b []byte)
-
-	GetRootBlockIDs() []string
-	GetBlocks() []*model.Block
-
-	GetMarkStart() int
-	SetMarkStart()
-
-	AddMark(mark model.BlockContentTextMark)
-
-	ProcessMarkdownArtifacts()
-
-	AddImageBlock(url string)
-	OpenNewTextBlock(model.BlockContentTextStyle)
-	CloseTextBlock(model.BlockContentTextStyle)
-	ForceCloseTextBlock()
-
-	SetListState(entering bool, isNumbered bool)
-	GetIsNumberedList() (isNumbered bool)
-
-	GetAllFileShortPaths() []string
-	GetBaseFilepath() string
-
-	AddDivider()
-}
 
 type textBlock struct {
 	model.Block
@@ -67,7 +27,6 @@ type textBlock struct {
 }
 
 type rWriter struct {
-	*bufio.Writer
 	baseFilepath      string
 	allFileShortPaths []string
 
@@ -214,8 +173,8 @@ func (rw *rWriter) GetIsNumberedList() (isNumbered bool) {
 	return rw.listNestIsNum[len(rw.listNestIsNum)-1]
 }
 
-func NewRWriter(writer *bufio.Writer, baseFilepath string, allFileShortPaths []string) RWriter {
-	return &rWriter{Writer: writer, baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths, listNestLevel: 0}
+func NewRWriter(baseFilepath string, allFileShortPaths []string) *rWriter {
+	return &rWriter{baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths, listNestLevel: 0}
 }
 
 func (rw *rWriter) GetText() string {

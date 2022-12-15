@@ -7,6 +7,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/pkg/errors"
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -17,10 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 var (
@@ -71,7 +72,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		return &converter.Response{Error: allErrors}
 	}
 	files, allErrors := m.blockConverter.MarkdownToBlocks(path, req.GetMode().String())
-	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING{
+	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return &converter.Response{Error: allErrors}
 		}
@@ -81,7 +82,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		allErrors.Add(path, fmt.Errorf("couldn't found md files"))
 		return &converter.Response{Error: allErrors}
 	}
-	
+
 	for name, file := range files {
 		// index links in the root csv file
 		if !file.IsRootFile || !strings.EqualFold(filepath.Ext(name), ".csv") {
@@ -196,7 +197,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 
 	for name, file := range files {
 		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
-			details[name].Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true) 
+			details[name].Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 			file.ParsedBlocks = m.convertCsvToLinks(name, files)
 		}
 
@@ -224,7 +225,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		file.ParsedBlocks = blocks
 	}
 
-	//process file blocks
+	// process file blocks
 	for _, file := range files {
 		if file.PageID == "" {
 			// not a page
@@ -424,4 +425,3 @@ func (m *Markdown) getIdFromPath(path string) (id string) {
 	}
 	return b[:len(b)-3]
 }
-
