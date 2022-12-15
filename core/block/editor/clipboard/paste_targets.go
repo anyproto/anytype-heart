@@ -36,7 +36,7 @@ func init() {
 }
 
 func newCellTarget(b simple.Block) PasteTarget {
-	if _, _, err := table.ParseCellId(b.Model().Id); err == nil {
+	if _, _, err := table.ParseCellID(b.Model().Id); err == nil {
 		return &cellTarget{
 			Block: b.Model(),
 		}
