@@ -35,18 +35,14 @@ func init() {
 	converter.RegisterFunc(New)
 }
 
-type MarkdownToBlocksConverter interface {
-	MarkdownToBlocks(importPath, mode string) (map[string]*FileInfo, converter.ConvertError)
-}
-
 type Markdown struct {
-	blockConverter MarkdownToBlocksConverter
+	blockConverter *mdConverter
 }
 
 const Name = "Notion"
 
 func New(s core.Service) converter.Converter {
-	return &Markdown{blockConverter: NewMarkdownToBlocks(s)}
+	return &Markdown{blockConverter: newMDConverter(s)}
 }
 
 func (m *Markdown) Name() string {
@@ -71,7 +67,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		allErrors.Add(path, err)
 		return &converter.Response{Error: allErrors}
 	}
-	files, allErrors := m.blockConverter.MarkdownToBlocks(path, req.GetMode().String())
+	files, allErrors := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return &converter.Response{Error: allErrors}

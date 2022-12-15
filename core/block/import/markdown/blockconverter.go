@@ -24,7 +24,7 @@ type Service interface {
 	TempDir() string
 }
 
-type MarkdownToBlocks struct {
+type mdConverter struct {
 	Service
 }
 
@@ -39,11 +39,11 @@ type FileInfo struct {
 	Source          string
 }
 
-func NewMarkdownToBlocks(s Service) *MarkdownToBlocks {
-	return &MarkdownToBlocks{Service: s}
+func newMDConverter(s Service) *mdConverter {
+	return &mdConverter{Service: s}
 }
 
-func (m *MarkdownToBlocks) MarkdownToBlocks(importPath, mode string) (map[string]*FileInfo, ce.ConvertError) {
+func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*FileInfo, ce.ConvertError) {
 	allErrors := ce.NewError()
 	files := m.processFiles(importPath, mode, allErrors)
 
@@ -52,7 +52,7 @@ func (m *MarkdownToBlocks) MarkdownToBlocks(importPath, mode string) (map[string
 	return files, allErrors
 }
 
-func (m *MarkdownToBlocks) processFiles(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	ext := filepath.Ext(importPath)
 	if strings.EqualFold(ext, ".zip") {
 		return m.processZipFile(importPath, mode, allErrors)
@@ -61,7 +61,7 @@ func (m *MarkdownToBlocks) processFiles(importPath, mode string, allErrors ce.Co
 	}
 }
 
-func (m *MarkdownToBlocks) processZipFile(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	r, err := zip.OpenReader(importPath)
 	if err != nil {
 		allErrors.Add(importPath, err)
@@ -111,7 +111,7 @@ func (m *MarkdownToBlocks) processZipFile(importPath, mode string, allErrors ce.
 	return files
 }
 
-func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processDirectory(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	files := make(map[string]*FileInfo)
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -149,14 +149,14 @@ func (m *MarkdownToBlocks) processDirectory(importPath, mode string, allErrors c
 	return files
 }
 
-func (m *MarkdownToBlocks) processBlocks(shortPath string, file *FileInfo, files map[string]*FileInfo) {
+func (m *mdConverter) processBlocks(shortPath string, file *FileInfo, files map[string]*FileInfo) {
 	for _, block := range file.ParsedBlocks {
 		m.processTextBlock(block, files)
 	}
 	m.processLinkBlock(shortPath, file, files)
 }
 
-func (m *MarkdownToBlocks) processTextBlock(block *model.Block, files map[string]*FileInfo) {
+func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*FileInfo) {
 	txt := block.GetText()
 	if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
 		txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
@@ -206,7 +206,7 @@ func (m *MarkdownToBlocks) processTextBlock(block *model.Block, files map[string
 	}
 }
 
-func (m *MarkdownToBlocks) processFileBlock(block *model.Block, files map[string]*FileInfo) {
+func (m *mdConverter) processFileBlock(block *model.Block, files map[string]*FileInfo) {
 	if f := block.GetFile(); f != nil {
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
@@ -215,7 +215,7 @@ func (m *MarkdownToBlocks) processFileBlock(block *model.Block, files map[string
 	}
 }
 
-func (m *MarkdownToBlocks) processLinkBlock(shortPath string, file *FileInfo, files map[string]*FileInfo) {
+func (m *mdConverter) processLinkBlock(shortPath string, file *FileInfo, files map[string]*FileInfo) {
 	ext := filepath.Ext(shortPath)
 	dependentFilesDir := strings.TrimSuffix(shortPath, ext)
 	var hasUnlinkedDependentMDFiles bool
@@ -248,7 +248,7 @@ func (m *MarkdownToBlocks) processLinkBlock(shortPath string, file *FileInfo, fi
 	}
 }
 
-func (m *MarkdownToBlocks) convertTextToPageLink(block *model.Block) {
+func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 	block.Content = &model.BlockContentOfLink{
 		Link: &model.BlockContentLink{
 			TargetBlockId: block.GetText().Marks.Marks[0].Param,
@@ -257,7 +257,7 @@ func (m *MarkdownToBlocks) convertTextToPageLink(block *model.Block) {
 	}
 }
 
-func (m *MarkdownToBlocks) convertTextToBookmark(block *model.Block) {
+func (m *mdConverter) convertTextToBookmark(block *model.Block) {
 	if _, err := url.Parse(block.GetText().Marks.Marks[0].Param); err != nil {
 		return
 	}
@@ -269,7 +269,7 @@ func (m *MarkdownToBlocks) convertTextToBookmark(block *model.Block) {
 	}
 }
 
-func (m *MarkdownToBlocks) convertTextToPageMention(block *model.Block) {
+func (m *mdConverter) convertTextToPageMention(block *model.Block) {
 	for _, mark := range block.GetText().Marks.Marks {
 		if mark.Type != model.BlockContentTextMark_Link {
 			continue
@@ -278,7 +278,7 @@ func (m *MarkdownToBlocks) convertTextToPageMention(block *model.Block) {
 	}
 }
 
-func (m *MarkdownToBlocks) convertTextToFile(block *model.Block) {
+func (m *mdConverter) convertTextToFile(block *model.Block) {
 	// "svg" excluded
 	if block.GetText().Marks.Marks[0].Param == "" {
 		return
@@ -328,7 +328,7 @@ func (m *MarkdownToBlocks) convertTextToFile(block *model.Block) {
 	}
 }
 
-func (m *MarkdownToBlocks) createBlocksFromFile(shortPath string, f io.ReadCloser, files map[string]*FileInfo) error {
+func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, files map[string]*FileInfo) error {
 	if filepath.Base(shortPath) == shortPath {
 		files[shortPath].IsRootFile = true
 	}
@@ -351,7 +351,7 @@ func (m *MarkdownToBlocks) createBlocksFromFile(shortPath string, f io.ReadClose
 	return nil
 }
 
-func (m *MarkdownToBlocks) createFile(f *model.BlockContentFile, id string, files map[string]*FileInfo) {
+func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map[string]*FileInfo) {
 	baseName := filepath.Base(f.Name) + id
 	tempDir := m.TempDir()
 	newFile := filepath.Join(tempDir, baseName)
