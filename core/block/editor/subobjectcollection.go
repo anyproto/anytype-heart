@@ -37,7 +37,6 @@ var localDetailsAllowedToBeStored = []string{
 	bundle.RelationKeyType.String(),
 	bundle.RelationKeyLastModifiedDate.String(),
 	bundle.RelationKeyLastModifiedBy.String(),
-	bundle.RelationKeyLastOpenedDate.String(),
 }
 
 type SubObjectCollection struct {

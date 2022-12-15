@@ -75,27 +75,19 @@ var InternalTypes = []TypeKey{
 	TypeKeySpace,
 	TypeKeyRelation,
 	TypeKeyRelationOption,
+	TypeKeyDashboard,
 }
 
-var SystemTypes = []TypeKey{
+var SystemTypes = append(InternalTypes, []TypeKey{
 	TypeKeyPage,
 	TypeKeyNote,
 	TypeKeyTask,
 	TypeKeyObjectType,
-	TypeKeyRelation,
-	TypeKeyRelationOption,
-	TypeKeyFile,
-	TypeKeyImage,
-	TypeKeyAudio,
-	TypeKeyVideo,
 	TypeKeySet,
 	TypeKeyProfile,
 	TypeKeyTemplate,
-	TypeKeyDate,
 	TypeKeyBookmark,
-	TypeKeyDashboard,
-	TypeKeySpace,
-}
+}...)
 
 var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyFile.URL(),

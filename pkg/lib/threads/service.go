@@ -20,11 +20,11 @@ import (
 	threadsQueue "github.com/textileio/go-threads/net/queue"
 
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/crypto/symmetric"
 	threadsApp "github.com/textileio/go-threads/core/app"
 	tlcore "github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/crypto/symmetric"
 	threadsDb "github.com/textileio/go-threads/db"
 	"github.com/textileio/go-threads/db/keytransform"
 	"google.golang.org/grpc"

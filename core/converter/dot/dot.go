@@ -134,18 +134,18 @@ func (d *dot) Add(st *state.State) error {
 		}
 	}
 
-	for _, depId := range st.DepSmartIds() {
-		t, err := smartblock.SmartBlockTypeFromID(depId)
+	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
+		t, err := smartblock.SmartBlockTypeFromID(depID)
 		if err != nil {
 			continue
 		}
-		if _, ok := d.knownDocs[depId]; !ok {
+		if _, ok := d.knownDocs[depID]; !ok {
 			continue
 		}
 
 		if t == smartblock.SmartBlockTypeAnytypeProfile || t == smartblock.SmartBlockTypePage {
 			d.linksByNode[st.RootId()] = append(d.linksByNode[st.RootId()], linkInfo{
-				target:   depId,
+				target:   depID,
 				edgeType: EdgeTypeLink,
 				name:     "", // todo: add link text
 				full:     "",

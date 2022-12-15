@@ -3,6 +3,8 @@ package basic
 import (
 	"fmt"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -18,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
 )
 
 type AllOperations interface {
@@ -47,12 +48,10 @@ type CommonOperations interface {
 	ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 }
 
-// TODO Move and Duplicate must share 'duplication' logic
 type Movable interface {
-	Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
+	Move(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) error
 }
 
-// TODO Move and Duplicate must share 'duplication' logic
 type Duplicatable interface {
 	Duplicate(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (newIds []string, err error)
 }
@@ -205,39 +204,49 @@ func (bs *basic) Unlink(ctx *session.Context, ids ...string) (err error) {
 	return bs.Apply(s)
 }
 
-func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (err error) {
-	s := bs.NewStateCtx(ctx)
-	if req.DropTargetId != "" {
-		if s.IsChild(template.HeaderLayoutId, req.DropTargetId) || req.DropTargetId == template.HeaderLayoutId {
-			req.Position = model.Block_Bottom
-			req.DropTargetId = template.HeaderLayoutId
+func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (err error) {
+	if srcState != destState && destState != nil {
+		_, err := bs.Duplicate(srcState, destState, targetBlockId, position, blockIds)
+		if err != nil {
+			return fmt.Errorf("paste: %w", err)
+		}
+		for _, id := range blockIds {
+			srcState.Unlink(id)
+		}
+		return nil
+	}
+
+	if targetBlockId != "" {
+		if srcState.IsChild(template.HeaderLayoutId, targetBlockId) || targetBlockId == template.HeaderLayoutId {
+			position = model.Block_Bottom
+			targetBlockId = template.HeaderLayoutId
 		}
 	}
 
 	var replacementCandidate simple.Block
-	for _, id := range req.BlockIds {
-		if b := s.Pick(id); b != nil {
+	for _, id := range blockIds {
+		if b := srcState.Pick(id); b != nil {
 			if replacementCandidate == nil {
-				replacementCandidate = s.Get(id)
+				replacementCandidate = srcState.Get(id)
 			}
-			s.Unlink(id)
+			srcState.Unlink(id)
 		}
 	}
 
-	if req.DropTargetId == "" {
-		req.DropTargetId = s.RootId()
-		req.Position = model.Block_Inner
+	if targetBlockId == "" {
+		targetBlockId = srcState.RootId()
+		position = model.Block_Inner
 	}
-	target := s.Get(req.DropTargetId)
+	target := srcState.Get(targetBlockId)
 	if target == nil {
 		return fmt.Errorf("target block not found")
 	}
 
 	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
 		if targetContent.Text.Style == model.BlockContentText_Paragraph &&
-			targetContent.Text.Text == "" && req.Position == model.Block_InnerFirst {
+			targetContent.Text.Text == "" && position == model.Block_InnerFirst {
 
-			req.Position = model.Block_Replace
+			position = model.Block_Replace
 
 			if replacementCandidate != nil {
 				if replacementCandidate.Model().BackgroundColor == "" {
@@ -253,10 +262,7 @@ func (bs *basic) Move(ctx *session.Context, req pb.RpcBlockListMoveToExistingObj
 		}
 	}
 
-	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
-		return
-	}
-	return bs.Apply(s)
+	return srcState.InsertTo(targetBlockId, position, blockIds...)
 }
 
 func (bs *basic) Replace(ctx *session.Context, id string, block *model.Block) (newId string, err error) {

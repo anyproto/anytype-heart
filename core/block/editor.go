@@ -80,26 +80,16 @@ func (s *Service) DuplicateBlocks(
 	if req.ContextId == req.TargetContextId || req.TargetContextId == "" {
 		err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, sb basic.Duplicatable) error {
 			newIds, err = sb.Duplicate(st, st, req.TargetId, req.Position, req.BlockIds)
-			if err != nil {
-				return fmt.Errorf("duplicate: %w", err)
-			}
-			return nil
+			return err
 		})
 		return
 	}
 
 	err = DoStateCtx(s, ctx, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
-		err = DoState(s, req.TargetContextId, func(targetState *state.State, tb smartblock.SmartBlock) error {
-			if tb.Type() == model.SmartBlockType_Set {
-				return basic.ErrNotSupported
-			}
+		return DoState(s, req.TargetContextId, func(targetState *state.State, tb basic.Creatable) error {
 			newIds, err = sb.Duplicate(srcState, targetState, req.TargetId, req.Position, req.BlockIds)
-			if err != nil {
-				return fmt.Errorf("duplicate: %w", err)
-			}
-			return nil
+			return err
 		})
-		return nil
 	})
 
 	return
@@ -965,153 +955,141 @@ func (s *Service) ListConvertToObjects(
 
 func (s *Service) MoveBlocksToNewPage(
 	ctx *session.Context, req pb.RpcBlockListMoveToNewObjectRequest,
-) (linkId string, err error) {
+) (linkID string, err error) {
 	// 1. Create new page, link
-	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
+	linkID, objectID, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
 		Details:   req.Details,
 	})
-
 	if err != nil {
-		return linkId, err
+		return
 	}
 
 	// 2. Move blocks to new page
-	err = s.MoveBlocks(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-		ContextId:       req.ContextId,
-		BlockIds:        req.BlockIds,
-		TargetContextId: pageId,
-		DropTargetId:    "",
-		Position:        0,
+	err = DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
+		return DoState(s, objectID, func(destState *state.State, tb basic.Movable) error {
+			return sb.Move(srcState, destState, "", model.Block_Inner, req.BlockIds)
+		})
 	})
-
 	if err != nil {
-		return linkId, err
+		return
 	}
-
-	return linkId, err
+	return linkID, err
 }
 
 func (s *Service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
 	if req.ContextId == req.TargetContextId {
-		return Do(s, req.ContextId, func(b basic.Movable) error {
-			return b.Move(ctx, req)
+		return DoState(s, req.ContextId, func(st *state.State, b basic.Movable) error {
+			return b.Move(st, st, req.DropTargetId, req.Position, req.BlockIds)
 		})
 	}
-	return DoState(s, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
-		return DoState(s, req.TargetContextId, func(destState *state.State, tb basic.Duplicatable) error {
-			_, err := sb.Duplicate(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
-			if err != nil {
-				return fmt.Errorf("paste: %w", err)
-			}
-			for _, id := range req.BlockIds {
-				srcState.Unlink(id)
-			}
-			return nil
+	return DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
+		return DoState(s, req.TargetContextId, func(destState *state.State, tb basic.Movable) error {
+			return sb.Move(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
 		})
 	})
 }
 
 func (s *Service) CreateTableBlock(ctx *session.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		id, err = t.TableCreate(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		id, err = e.TableCreate(st, req)
 		return err
 	})
 	return
 }
 
-func (s *Service) TableRowCreate(ctx *session.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowCreate(st, req)
+func (s *Service) TableRowCreate(ctx *session.Context, req pb.RpcBlockTableRowCreateRequest) error {
+	return DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		_, err := e.RowCreate(st, req)
+		return err
 	})
-	return
 }
 
-func (s *Service) TableColumnCreate(ctx *session.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnCreate(st, req)
+func (s *Service) TableColumnCreate(ctx *session.Context, req pb.RpcBlockTableColumnCreateRequest) error {
+	return DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		_, err := e.ColumnCreate(st, req)
+		return err
 	})
-	return
 }
 
 func (s *Service) TableRowDelete(ctx *session.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowDelete(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowDelete(st, req)
 	})
 	return
 }
 
 func (s *Service) TableColumnDelete(ctx *session.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnDelete(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.ColumnDelete(st, req)
 	})
 	return
 }
 
 func (s *Service) TableColumnMove(ctx *session.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnMove(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.ColumnMove(st, req)
 	})
 	return
 }
 
-func (s *Service) TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowDuplicate(st, req)
+func (s *Service) TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRowDuplicateRequest) error {
+	return DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		_, err := e.RowDuplicate(st, req)
+		return err
 	})
-	return
 }
 
 func (s *Service) TableColumnDuplicate(
 	ctx *session.Context, req pb.RpcBlockTableColumnDuplicateRequest,
 ) (id string, err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		id, err = t.ColumnDuplicate(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		id, err = e.ColumnDuplicate(st, req)
 		return err
 	})
 	return id, err
 }
 
 func (s *Service) TableExpand(ctx *session.Context, req pb.RpcBlockTableExpandRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.Expand(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.Expand(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableRowListFill(ctx *session.Context, req pb.RpcBlockTableRowListFillRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowListFill(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowListFill(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableRowListClean(ctx *session.Context, req pb.RpcBlockTableRowListCleanRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowListClean(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowListClean(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableRowSetHeader(ctx *session.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.RowSetHeader(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.RowSetHeader(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableSort(ctx *session.Context, req pb.RpcBlockTableSortRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.Sort(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.Sort(st, req)
 	})
 	return err
 }
 
 func (s *Service) TableColumnListFill(ctx *session.Context, req pb.RpcBlockTableColumnListFillRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
-		return t.ColumnListFill(st, req)
+	err = DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e table.TableEditor) error {
+		return e.ColumnListFill(st, req)
 	})
 	return err
 }
