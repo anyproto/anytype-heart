@@ -11,11 +11,11 @@ func TestConvertBlocks(t *testing.T) {
 
 	md := New()
 
-	blocks, rootIDs, err := md.MarkdownToBlocks(source, "", nil)
+	blocks, _, err := md.MarkdownToBlocks(source, "", nil)
 	if err != nil {
 		t.Error(err.Error())
 	}
 
 	assert.NotEmpty(t, blocks)
-	assert.NotEmpty(t, rootIDs)
+	assert.NoError(t, err)
 }

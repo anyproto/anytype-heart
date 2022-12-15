@@ -267,7 +267,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 
 func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	mdToBlocksConverter := anymark.New()
-	err, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
+	blocks, _, err := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
 
 	if err != nil {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err

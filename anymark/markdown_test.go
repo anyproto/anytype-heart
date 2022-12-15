@@ -17,7 +17,7 @@ type MdCase struct {
 }
 
 func TestConvertMdToBlocks(t *testing.T) {
-	bs, err := ioutil.ReadFile("_test/md_cases.json")
+	bs, err := ioutil.ReadFile("testdata/md_cases.json")
 	if err != nil {
 		panic(err)
 	}

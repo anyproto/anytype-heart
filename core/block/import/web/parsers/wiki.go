@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/pkg/errors"
+
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 )
 
 const wikiRegexp = "\\/wiki\\/([\\w%]+)"
@@ -35,7 +35,7 @@ func (w *DumbWikiParser) ParseUrl(url string) (*model.SmartBlockSnapshotBase, er
 	if err != nil {
 		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
 	}
-	err, blocks, _ := mdToBlocksConverter.HTMLToBlocks(bytes)
+	blocks, _, err := mdToBlocksConverter.HTMLToBlocks(bytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
 	}

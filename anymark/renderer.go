@@ -341,7 +341,7 @@ func (r *Renderer) renderText(_ util.BufWriter, source []byte, node ast.Node, en
 	segment := n.Segment
 
 	r.AddTextToBuffer(string(segment.Value(source)))
-	if n.HardLineBreak() || n.SoftLineBreak() {
+	if n.HardLineBreak() {
 		r.ForceCloseTextBlock()
 
 	} else if n.SoftLineBreak() {

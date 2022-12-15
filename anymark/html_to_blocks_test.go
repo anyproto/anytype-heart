@@ -53,7 +53,7 @@ func replaceFakeIds(anySlot []*model.Block) (anySlotConverted []*model.Block) {
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
-	bs, err := ioutil.ReadFile("_test/testData.json")
+	bs, err := ioutil.ReadFile("testdata/testData.json")
 	if err != nil {
 		panic(err)
 	}
@@ -65,14 +65,14 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 	var dumpTests = os.Getenv("DUMP_TESTS") == "1"
 	var dumpPath string
 	if dumpTests {
-		dumpPath = filepath.Join("_test", "html")
+		dumpPath = filepath.Join("testdata", "html")
 		os.MkdirAll(dumpPath, 0700)
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
 			md := New()
-			_, blocks, _ := md.HTMLToBlocks([]byte(testCase.HTML))
+			blocks, _, _ := md.HTMLToBlocks([]byte(testCase.HTML))
 			blocks = replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)

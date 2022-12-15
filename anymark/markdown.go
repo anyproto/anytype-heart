@@ -25,7 +25,7 @@ var (
 // A Markdown interface offers functions to convert Markdown text to
 // a desired format.
 type Markdown interface {
-	HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string)
+	HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, err error)
 	MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error)
 }
 
@@ -56,7 +56,7 @@ func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, 
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
 
-func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string) {
+func (m *markdown) HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	preprocessedSource := string(source)
 
 	preprocessedSource = transformCSSUnderscore(preprocessedSource)
@@ -118,7 +118,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 	r := NewRenderer("", nil)
 	err = m.convertBlocks([]byte(md), r)
 	if err != nil {
-		return err, nil, nil
+		return nil, nil, err
 	}
-	return nil, r.GetBlocks(), r.GetRootBlockIDs()
+	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
