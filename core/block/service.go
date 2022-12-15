@@ -206,7 +206,7 @@ func (s *Service) initPredefinedBlocks(ctx context.Context) {
 			ctx = nil
 		}
 		initTime := time.Now()
-		sb, err := s.NewSmartBlock(id, ctx)
+		sb, err := s.objectFactory.InitObject(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
 				if id == s.anytype.PredefinedBlocks().Account {
@@ -1286,7 +1286,7 @@ func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		return newOpenedBlock(sb), nil
 	}
 
-	sb, err := s.NewSmartBlock(id, &smartblock.InitContext{
+	sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{
 		Ctx: ctx,
 	})
 	if err != nil {

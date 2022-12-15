@@ -121,7 +121,9 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBloc
 
 	s.objectCreator.InjectWorkspaceID(req.Details, req.ContextId)
 	objectID, _, err = s.CreateObject(req, "")
-
+	if err != nil {
+		return
+	}
 	if req.ContextId == "" {
 		return
 	}
@@ -194,25 +196,6 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	}
 
 	return id, nil
-}
-
-func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := s.source.NewSource(id, false)
-	if err != nil {
-		return
-	}
-
-	sb = s.objectFactory.New(sc.Type())
-	
-	sb.Lock()
-	defer sb.Unlock()
-	if initCtx == nil {
-		initCtx = &smartblock.InitContext{}
-	}
-	initCtx.App = s.app
-	initCtx.Source = sc
-	err = sb.Init(initCtx)
-	return
 }
 
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {

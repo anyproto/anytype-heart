@@ -30,6 +30,8 @@ type ObjectFactory struct {
 	sourceService        source.Service
 	accountMigrator      AccountMigrator
 	sendEvent            func(e *pb.Event)
+
+	app *app.App
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -49,6 +51,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.accountMigrator = app.MustComponent[AccountMigrator](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
+
+	f.app = a
 	return nil
 }
 
@@ -56,6 +60,24 @@ const CName = "objectFactory"
 
 func (f *ObjectFactory) Name() (name string) {
 	return CName
+}
+
+func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
+	sc, err := f.sourceService.NewSource(id, false)
+	if err != nil {
+		return
+	}
+
+	sb = f.New(sc.Type())
+	sb.Lock()
+	defer sb.Unlock()
+	if initCtx == nil {
+		initCtx = &smartblock.InitContext{}
+	}
+	initCtx.App = f.app
+	initCtx.Source = sc
+	err = sb.Init(initCtx)
+	return
 }
 
 func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {

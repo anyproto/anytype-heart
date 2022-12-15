@@ -38,10 +38,12 @@ type eventKey int
 const eventCreate eventKey = 0
 
 type Creator struct {
-	blockService BlockService
-	blockPicker  block.Picker
-	objectStore  objectstore.ObjectStore
-	bookmark     bookmark.Service
+	blockService  BlockService
+	blockPicker   block.Picker
+	objectStore   objectstore.ObjectStore
+	bookmark      bookmark.Service
+	objectFactory *editor.ObjectFactory
+	app           *app.App
 
 	// TODO: remove it?
 	anytype core.Service
@@ -57,6 +59,8 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
+	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
+	c.app = a
 	return nil
 }
 
@@ -68,7 +72,6 @@ func (c *Creator) Name() (name string) {
 
 // TODO Temporarily
 type BlockService interface {
-	NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
 }
 
@@ -155,7 +158,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		RelationIds:    relationIds,
 	}
 	var sb smartblock.SmartBlock
-	if sb, err = c.blockService.NewSmartBlock(id, initCtx); err != nil {
+	if sb, err = c.objectFactory.InitObject(id, initCtx); err != nil {
 		return id, nil, err
 	}
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
