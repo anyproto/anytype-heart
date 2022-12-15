@@ -4,6 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -11,10 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type testExtractObjects struct {
@@ -36,7 +37,7 @@ func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, sbTyp
 	return id, nil, nil
 }
 
-func (t testExtractObjects) InjectWorkspaceId(details *types.Struct, objectId string) {}
+func (t testExtractObjects) InjectWorkspaceID(details *types.Struct, objectId string) {}
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
 	got := slice.Difference(a, b)
