@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -131,11 +132,15 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockDataviewCreateFromExistingObjectResponseErrorCode,
-		id string,
+		blockId string,
+		targetObjectId string,
+		views []*model.BlockContentDataviewView,
 		err error) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
 		m := &pb.RpcBlockDataviewCreateFromExistingObjectResponse{
+			BlockId: blockId,
+			TargetObjectId: targetObjectId,
+			View: views,
 			Error:   &pb.RpcBlockDataviewCreateFromExistingObjectResponseError{Code: code},
-			BlockId: id,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -146,45 +151,46 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 		return m
 	}
 
-	var blockDvContent *model.BlockContentDataview
-
-	if req.Block != nil && req.Block.Content != nil {
-		if dvContent, ok := req.Block.Content.(*model.BlockContentOfDataview); ok {
-			blockDvContent = dvContent.Dataview
-			blockDvContent.TargetObjectId = req.TargetObjectId
-		}
-	}
-
-	var blockID string
+	var views []*model.BlockContentDataviewView
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		err2 := bs.DoDataview(req.TargetObjectId, func(d dataview.Dataview) error {
-			targetViews, err := d.GetDataviewViews(template.DataviewBlockId)
-			if err != nil {
-				return err
-			}
-			blockDvContent.Views = targetViews
+
+		err := bs.DoDataview(req.TargetObjectId, func(d dataview.Dataview) error {
+			var err error
+			views, err = d.GetDataviewViews(template.DataviewBlockId)
 			return err
 		})
-		if err2 != nil {
-			return err2
+		if err != nil {
+			return err
 		}
 
-		blockID, err2 = bs.CreateBlock(ctx, pb.RpcBlockCreateRequest{
-			ContextId: req.ContextId,
-			TargetId:  req.TargetId,
-			Block:     req.Block,
-			Position:  req.Position,
-		})
+		err = bs.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+			st := b.NewStateCtx(ctx)
+			block := st.Get(req.BlockId)
 
-		return err2
+			dvContent := &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				TargetObjectId: req.TargetObjectId,
+				Views: views,
+			}}
+
+			block.ModelToSave().Content = dvContent
+
+			return b.Apply(st)
+		})
+		if err != nil {
+			return err
+		}
+
+		return err
 	})
 
 	if err != nil {
-		return response(pb.RpcBlockDataviewCreateFromExistingObjectResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcBlockDataviewCreateFromExistingObjectResponseError_UNKNOWN_ERROR,
+			req.BlockId, req.TargetObjectId, views, err)
 	}
 
-	return response(pb.RpcBlockDataviewCreateFromExistingObjectResponseError_NULL, blockID, nil)
+	return response(pb.RpcBlockDataviewCreateFromExistingObjectResponseError_NULL,
+		req.BlockId, req.TargetObjectId, views, err)
 }
 
 func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {

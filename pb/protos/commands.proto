@@ -4520,14 +4520,16 @@ message Rpc {
 
             message Request {
                 string contextId = 1;
-                string targetId = 2;
-                string targetObjectId = 5;
+                string blockId = 2;
+                string targetObjectId = 3;
             }
 
             message Response {
                 Error error = 1;
                 string blockId = 2;
-                ResponseEvent event = 4;
+                string targetObjectId = 3;
+                repeated anytype.model.Block.Content.Dataview.View view = 4;
+                ResponseEvent event = 5;
 
                 message Error {
                     Code code = 1;

@@ -4174,7 +4174,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | targetObjectId | [string](#string) |  |  |
 
 
@@ -4192,6 +4192,8 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockDataview.CreateFromExistingObject.Response.Error](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error) |  |  |
 | blockId | [string](#string) |  |  |
+| targetObjectId | [string](#string) |  |  |
+| view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
