@@ -1099,7 +1099,7 @@ func (s *Service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreate
 	return id, err
 }
 
-func (s *Service) CopyViewToBlock(ctx *session.Context,
+func (s *Service) CopyViewsToBlock(ctx *session.Context,
 	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) ([]*model.BlockContentDataviewView, error) {
 
 	var views []*model.BlockContentDataviewView

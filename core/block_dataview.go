@@ -98,7 +98,7 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		views, err = bs.CopyViewToBlock(ctx, req)
+		views, err = bs.CopyViewsToBlock(ctx, req)
 		return err
 	})
 
