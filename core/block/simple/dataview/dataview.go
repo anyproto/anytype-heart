@@ -343,7 +343,7 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 }
 
 func (l *Dataview) HasSmartIds() bool {
-	return len(l.content.RelationLinks) > 0
+	return len(l.content.RelationLinks) > 0 || l.content.TargetObjectId != ""
 }
 
 func (d *Dataview) AddRelation(relation *model.RelationLink) error {
