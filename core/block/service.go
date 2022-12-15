@@ -931,25 +931,6 @@ func (s *Service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 	return
 }
 
-func (s *Service) DoTable(id string, ctx *session.Context, apply func(st *state.State, b table.Editor) error) error {
-	sb, release, err := s.PickBlock(context.TODO(), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(table.Editor); ok {
-		sb.Lock()
-		defer sb.Unlock()
-
-		st := sb.NewStateCtx(ctx)
-		if err := apply(st, bb); err != nil {
-			return fmt.Errorf("apply function: %w", err)
-		}
-		return sb.Apply(st)
-	}
-	return fmt.Errorf("table operation not available for this block type: %T", sb)
-}
-
 func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
 	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
