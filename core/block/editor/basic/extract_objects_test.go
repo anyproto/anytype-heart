@@ -37,7 +37,7 @@ func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, sbTyp
 	return id, nil, nil
 }
 
-func (t testExtractObjects) InjectWorkspaceID(details *types.Struct, objectId string) {}
+func (t testExtractObjects) InjectWorkspaceID(details *types.Struct, objectID string) {}
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
 	got := slice.Difference(a, b)
