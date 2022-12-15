@@ -336,8 +336,8 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 		ids = append(ids, addr.RelationKeyToIdPrefix+rl.Key)
 	}
 
-	if l.Base.GetDataview().TargetObjectId != "" {
-		ids = append(ids, l.Base.GetDataview().TargetObjectId)
+	if l.content.TargetObjectId != "" {
+		ids = append(ids, l.content.TargetObjectId)
 	}
 	return ids
 }

@@ -1117,12 +1117,13 @@ func (s *Service) CopyViewsToBlock(ctx *session.Context,
 		st := b.NewStateCtx(ctx)
 		block := st.Get(req.BlockId)
 
-		dvContent := &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
-			TargetObjectId: req.TargetObjectId,
-			Views:          views,
-		}}
+		dvContent, ok := block.Model().Content.(*model.BlockContentOfDataview)
+		if !ok {
+			return fmt.Errorf("block must contain dataView content")
+		}
 
-		block.Model().Content = dvContent
+		dvContent.Dataview.Views = views
+		dvContent.Dataview.TargetObjectId = req.TargetObjectId
 
 		return b.Apply(st)
 	})
