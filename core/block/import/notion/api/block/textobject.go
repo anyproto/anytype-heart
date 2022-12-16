@@ -84,7 +84,6 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 				Style:   style,
 				Marks:   &model.BlockContentTextMarks{Marks: marks},
 				Checked: false,
-				Color:   api.NotionColorToAnytype[t.Color],
 			},
 		},
 	})
@@ -150,7 +149,7 @@ func (t *TextObject) handleMentionType(rt api.RichText, text *strings.Builder, r
 
 func (t *TextObject) handleUserMention(rt api.RichText, text *strings.Builder) []*model.BlockContentTextMark {
 	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(rt.Mention.User.Name)
+	text.WriteString(rt.PlainText)
 	to := textUtil.UTF16RuneCountString(text.String())
 	return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 }

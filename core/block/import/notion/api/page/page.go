@@ -154,7 +154,7 @@ func (ds *Service) transformPages(ctx context.Context,
 
 	allErrors := converter.ConvertError{}
 	relations := ds.handlePageProperties(apiKey, p.ID, p.Properties, details, request.NotionPageIdsToAnytype, request.NotionDatabaseIdsToAnytype)
-
+	addFCoverDetail(p, details)
 	notionBlocks, blocksAndChildrenErr := ds.blockService.GetBlocksAndChildren(ctx, p.ID, apiKey, pageSize, mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
@@ -214,4 +214,20 @@ func linkRelationsIDWithAnytypeID(rel *property.RelationItem, notionPagesIdsToAn
 			r.ID = anytypeID
 		}
 	}
+}
+
+func addFCoverDetail(p Page, details map[string]*types.Value) {
+	if p.Cover != nil {
+		if p.Cover.Type == api.External {
+			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.External.URL)
+			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+		}
+
+		if p.Cover.Type == api.File {
+			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.File.URL)
+			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+		}
+
+	}
+
 }

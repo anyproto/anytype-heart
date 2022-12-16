@@ -43,6 +43,7 @@ func Test_GetTextBlocksTextUserMention(t *testing.T) {
 						Name:      "Nastya",
 					},
 				},
+				PlainText: "Nastya",
 			},
 		},
 	}

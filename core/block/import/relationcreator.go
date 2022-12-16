@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -20,13 +21,15 @@ import (
 type RelationService struct {
 	core    core.Service
 	service *block.Service
+	store   filestore.FileStore
 }
 
 // NewRelationCreator constructor for RelationService
-func NewRelationCreator(service *block.Service, core core.Service) RelationCreator {
+func NewRelationCreator(service *block.Service, store filestore.FileStore, core core.Service) RelationCreator {
 	return &RelationService{
 		service: service,
 		core:    core,
+		store:   store,
 	}
 }
 
@@ -76,7 +79,7 @@ func (rc *RelationService) Create(ctx *session.Context,
 			}
 
 			if r.Format == model.RelationFormat_file {
-				rc.handleFileRelation(ctx, snapshot, r, filesToDelete)
+				filesToDelete = append(filesToDelete, rc.handleFileRelation(ctx, snapshot, r.Name)...)
 			}
 			details := make([]*pb.RpcObjectSetDetailsDetail, 0)
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
@@ -99,7 +102,31 @@ func (rc *RelationService) Create(ctx *session.Context,
 			}
 		}
 	}
+
+	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {
+		log.Errorf("failed to upload cover image %s", err)
+	} else {
+		filesToDelete = append(filesToDelete, ftd...)
+	}
+
 	return filesToDelete, oldRelationBlockToNew, nil
+}
+
+func (rc *RelationService) handleCoverRelation(ctx *session.Context,
+	snapshot *model.SmartBlockSnapshotBase,
+	pageID string) ([]string, error) {
+	filesToDelete := rc.handleFileRelation(ctx, snapshot, bundle.RelationKeyCoverId.String())
+	details := make([]*pb.RpcObjectSetDetailsDetail, 0)
+	details = append(details, &pb.RpcObjectSetDetailsDetail{
+		Key:   bundle.RelationKeyCoverId.String(),
+		Value: snapshot.Details.Fields[bundle.RelationKeyCoverId.String()],
+	})
+	err := rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
+		ContextId: pageID,
+		Details:   details,
+	})
+
+	return filesToDelete, err
 }
 
 func (rc *RelationService) handleListValue(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, r *converter.Relation, relationID string) {
@@ -130,33 +157,57 @@ func (rc *RelationService) handleListValue(ctx *session.Context, snapshot *model
 
 func (rc *RelationService) handleFileRelation(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
-	r *converter.Relation,
-	filesToDelete []string) {
-	files := snapshot.Details.Fields[r.Name].GetListValue()
-
-	if files == nil {
-		return
-	}
-	allFilesHashes := make([]string, 0)
-	for _, f := range files.Values {
-		file := f.GetStringValue()
-		if file != "" {
-			req := pb.RpcFileUploadRequest{LocalPath: file}
-			if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
-				req.Url = file
-				req.LocalPath = ""
-			}
-			hash, err := rc.service.UploadFile(req)
-			if err != nil {
-				log.Errorf("file uploading %s", err)
-			} else {
-				file = hash
-			}
-			filesToDelete = append(filesToDelete, file)
-			allFilesHashes = append(allFilesHashes, file)
+	name string) []string {
+	var allFiles []string
+	if files := snapshot.Details.Fields[name].GetListValue(); files != nil {
+		for _, f := range files.Values {
+			allFiles = append(allFiles, f.GetStringValue())
 		}
 	}
-	snapshot.Details.Fields[r.Name] = pbtypes.StringList(allFilesHashes)
+
+	if files := snapshot.Details.Fields[name].GetStringValue(); files != "" {
+		allFiles = append(allFiles, files)
+	}
+
+	allFilesHashes := make([]string, 0)
+
+	filesToDelete := make([]string, 0, len(allFiles))
+	for _, f := range allFiles {
+		if f == "" {
+			continue
+		}
+		if _, err := rc.store.GetByHash(f); err == nil {
+			allFilesHashes = append(allFilesHashes, f)
+			continue
+		}
+
+		req := pb.RpcFileUploadRequest{LocalPath: f}
+
+		if strings.HasPrefix(f, "http://") || strings.HasPrefix(f, "https://") {
+			req.Url = f
+			req.LocalPath = ""
+		}
+
+		hash, err := rc.service.UploadFile(req)
+		if err != nil {
+			log.Errorf("file uploading %s", err)
+		} else {
+			f = hash
+		}
+
+		filesToDelete = append(filesToDelete, f)
+		allFilesHashes = append(allFilesHashes, f)
+	}
+
+	if snapshot.Details.Fields[name].GetListValue() != nil {
+		snapshot.Details.Fields[name] = pbtypes.StringList(allFilesHashes)
+	}
+
+	if snapshot.Details.Fields[name].GetStringValue() != "" && len(allFilesHashes) != 0 {
+		snapshot.Details.Fields[name] = pbtypes.String(allFilesHashes[0])
+	}
+
+	return filesToDelete
 }
 
 func (rc *RelationService) linkRelationsBlocks(snapshot *model.SmartBlockSnapshotBase, oldID, newID string) (*model.Block, *model.Block) {

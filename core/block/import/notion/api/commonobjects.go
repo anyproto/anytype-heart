@@ -10,19 +10,19 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-type richTextType string
+type RichTextType string
 
 const (
-	Text     richTextType = "text"
-	Mention  richTextType = "mention"
-	Equation richTextType = "equation"
+	Text     RichTextType = "text"
+	Mention  RichTextType = "mention"
+	Equation RichTextType = "equation"
 )
 
 const NotionBackgroundColorSuffix = "background"
 
 // RichText represent RichText object from Notion https://developers.notion.com/reference/rich-text
 type RichText struct {
-	Type        richTextType    `json:"type,omitempty"`
+	Type        RichTextType    `json:"type,omitempty"`
 	Text        *TextObject     `json:"text,omitempty"`
 	Mention     *MentionObject  `json:"mention,omitempty"`
 	Equation    *EquationObject `json:"equation,omitempty"`

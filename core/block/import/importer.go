@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
@@ -44,7 +45,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	}
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	ou := NewObjectUpdater(i.s, core, factory)
-	relationCreator := NewRelationCreator(i.s, core)
+	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
+	relationCreator := NewRelationCreator(i.s, fs, core)
 	i.oc = NewCreator(i.s, core, ou, factory, relationCreator)
 	return nil
 }

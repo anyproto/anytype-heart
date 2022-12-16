@@ -97,12 +97,37 @@ func (ds *Service) GetDatabase(ctx context.Context,
 
 func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {
 	details := make(map[string]*types.Value, 0)
+	relations := make([]*converter.Relation, 0)
 	details[bundle.RelationKeySource.String()] = pbtypes.String(d.URL)
 	if len(d.Title) > 0 {
 		details[bundle.RelationKeyName.String()] = pbtypes.String(d.Title[0].PlainText)
 	}
 	if d.Icon != nil && d.Icon.Emoji != nil {
 		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*d.Icon.Emoji)
+	}
+
+	if d.Cover != nil {
+		var relation *converter.Relation
+
+		if d.Cover.Type == api.External {
+			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.External.URL)
+			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+			relation = &converter.Relation{
+				Name:   bundle.RelationKeyCoverId.String(),
+				Format: model.RelationFormat_file,
+			}
+		}
+
+		if d.Cover.Type == api.File {
+			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.File.URL)
+			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
+			relation = &converter.Relation{
+				Name:   bundle.RelationKeyCoverId.String(),
+				Format: model.RelationFormat_file,
+			}
+		}
+
+		relations = append(relations, relation)
 	}
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.String(d.CreatedTime.String())
 	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)

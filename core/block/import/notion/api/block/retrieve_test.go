@@ -784,3 +784,207 @@ func Test_GetBlocksAndChildrenSuccessError(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Empty(t, bl)
 }
+
+func TestTableBlocks(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`
+		{
+			"object": "list",
+			"results": [
+				{
+					"object": "block",
+					"id": "25377f65-71cf-4779-9829-de3717767148",
+					"parent": {
+						"type": "block_id",
+						"block_id": "049ab49c-17a5-4c03-bdbf-71811b4524b7"
+					},
+					"created_time": "2022-12-09T08:39:00.000Z",
+					"last_edited_time": "2022-12-09T08:40:00.000Z",
+					"created_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"has_children": false,
+					"archived": false,
+					"type": "table_row",
+					"table_row": {
+						"cells": [
+							[
+								{
+									"type": "text",
+									"text": {
+										"content": "1",
+										"link": null
+									},
+									"annotations": {
+										"bold": false,
+										"italic": false,
+										"strikethrough": false,
+										"underline": false,
+										"code": false,
+										"color": "default"
+									},
+									"plain_text": "1",
+									"href": null
+								}
+							],
+							[],
+							[
+								{
+									"type": "text",
+									"text": {
+										"content": "dddd",
+										"link": null
+									},
+									"annotations": {
+										"bold": false,
+										"italic": false,
+										"strikethrough": false,
+										"underline": false,
+										"code": false,
+										"color": "pink"
+									},
+									"plain_text": "dddd",
+									"href": null
+								}
+							],
+							[]
+						]
+					}
+				},
+				{
+					"object": "block",
+					"id": "f9e3bf51-eb64-45c7-bf68-2776d808e503",
+					"parent": {
+						"type": "block_id",
+						"block_id": "049ab49c-17a5-4c03-bdbf-71811b4524b7"
+					},
+					"created_time": "2022-12-09T08:39:00.000Z",
+					"last_edited_time": "2022-12-09T08:40:00.000Z",
+					"created_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"has_children": false,
+					"archived": false,
+					"type": "table_row",
+					"table_row": {
+						"cells": [
+							[],
+							[
+								{
+									"type": "text",
+									"text": {
+										"content": "fsdf",
+										"link": null
+									},
+									"annotations": {
+										"bold": false,
+										"italic": true,
+										"strikethrough": false,
+										"underline": false,
+										"code": false,
+										"color": "default"
+									},
+									"plain_text": "fsdf",
+									"href": null
+								}
+							],
+							[],
+							[]
+						]
+					}
+				},
+				{
+					"object": "block",
+					"id": "1f68a81c-ba09-4f1a-ae99-a999dee96b07",
+					"parent": {
+						"type": "block_id",
+						"block_id": "049ab49c-17a5-4c03-bdbf-71811b4524b7"
+					},
+					"created_time": "2022-12-09T08:39:00.000Z",
+					"last_edited_time": "2022-12-09T08:40:00.000Z",
+					"created_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "60faafc6-0c5c-4479-a3f7-67d77cd8a56d"
+					},
+					"has_children": false,
+					"archived": false,
+					"type": "table_row",
+					"table_row": {
+						"cells": [
+							[
+								{
+									"type": "text",
+									"text": {
+										"content": "fdsdf",
+										"link": null
+									},
+									"annotations": {
+										"bold": true,
+										"italic": false,
+										"strikethrough": false,
+										"underline": false,
+										"code": false,
+										"color": "default"
+									},
+									"plain_text": "fdsdf",
+									"href": null
+								}
+							],
+							[],
+							[
+								{
+									"type": "text",
+									"text": {
+										"content": "sdf",
+										"link": null
+									},
+									"annotations": {
+										"bold": false,
+										"italic": false,
+										"strikethrough": false,
+										"underline": false,
+										"code": false,
+										"color": "gray_background"
+									},
+									"plain_text": "sdf",
+									"href": null
+								}
+							],
+							[]
+						]
+					}
+				}
+			],
+			"next_cursor": null,
+			"has_more": false,
+			"type": "block",
+			"block": {}
+		}
+		`))
+	}))
+
+	defer s.Close()
+	pageSize := int64(100)
+	c := client.NewClient()
+	c.BasePath = s.URL
+
+	blockService := New(c)
+	bl, err := blockService.GetBlocksAndChildren(context.TODO(), "id", "key", pageSize, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	assert.Nil(t, err)
+	assert.NotNil(t, bl)
+	assert.Len(t, bl, 3)
+}

@@ -380,6 +380,38 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 					continue
 				}
 				blocks = append(blocks, &u)
+			case Table:
+				var t TableBlock
+				err = json.Unmarshal(buffer, &t)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &t)
+			case TableRow:
+				var t TableRowBlock
+				err = json.Unmarshal(buffer, &t)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &t)
+			case ColumnList:
+				var cl ColumnListBlock
+				err = json.Unmarshal(buffer, &cl)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &cl)
+			case Column:
+				var cb ColumnBlock
+				err = json.Unmarshal(buffer, &cb)
+				if err != nil {
+					logger.With(zap.String("method", "getBlocks")).Error(err)
+					continue
+				}
+				blocks = append(blocks, &cb)
 			}
 		}
 

@@ -310,3 +310,11 @@ type EquationBlock struct {
 	Block
 	Equation api.EquationObject `json:"equation"`
 }
+
+func (e *EquationBlock) GetBlocks(req *MapRequest) *MapResponse {
+	bl := e.Equation.HandleEquation()
+	return &MapResponse{
+		Blocks:   []*model.Block{bl},
+		BlockIDs: []string{bl.Id},
+	}
+}
