@@ -91,7 +91,7 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 			if _, exists := selec.Attr("href"); exists {
 				return nil
 			}
-			return htmlconverter.String(strings.TrimSpace(content))
+			return htmlconverter.String(content)
 		},
 	}
 
