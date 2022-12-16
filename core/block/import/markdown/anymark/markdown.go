@@ -85,12 +85,22 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 		},
 	}
 
+	anohref := htmlconverter.Rule{
+		Filter: []string{"a"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			if _, exists := selec.Attr("href"); exists {
+				return nil
+			}
+			return htmlconverter.String(strings.TrimSpace(content))
+		},
+	}
+
 	converter := htmlconverter.NewConverter("", true, &htmlconverter.Options{
 		DisableEscaping:  true,
 		AllowHeaderBreak: true,
 		EmDelimiter:      "*",
 	})
-	converter.AddRules(strikethrough, br, underscore)
+	converter.AddRules(strikethrough, br, underscore, anohref)
 
 	md, err := converter.ConvertString(preprocessedSource)
 	if err != nil {
