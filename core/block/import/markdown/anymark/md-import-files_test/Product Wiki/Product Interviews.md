@@ -14,7 +14,7 @@ Create a quote by typing `/quote` and pressing `enter`.
 
 You can also add an inline database to a page, and create different views of it. Below, click `Default View` to see the same info as a list. You can create as many views as you want.
 
-[Interview Question Database](Product%20Interviews/Interview%20Question%20Database.csv)
+[Interview Question Database](Product Interviews/Interview Question Database.csv)
 
 # Further Reading
 

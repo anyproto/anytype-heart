@@ -17,7 +17,7 @@ type MdCase struct {
 }
 
 func TestConvertMdToBlocks(t *testing.T) {
-	bs, err := ioutil.ReadFile("_test/md_cases.json")
+	bs, err := ioutil.ReadFile("testdata/md_cases.json")
 	if err != nil {
 		panic(err)
 	}
@@ -28,8 +28,8 @@ func TestConvertMdToBlocks(t *testing.T) {
 
 	for testNum, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
-			mdToBlocksConverter := New()
-			blocks, _, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
+			blocks, _, err := MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
+			require.NoError(t, err)
 			replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)

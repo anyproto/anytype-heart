@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const wikiRegexp = "\\/wiki\\/([\\w%]+)"
@@ -24,7 +24,6 @@ func New() Parser {
 }
 
 func (w *DumbWikiParser) ParseUrl(url string) (*model.SmartBlockSnapshotBase, error) {
-	mdToBlocksConverter := anymark.New()
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
@@ -35,7 +34,7 @@ func (w *DumbWikiParser) ParseUrl(url string) (*model.SmartBlockSnapshotBase, er
 	if err != nil {
 		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
 	}
-	err, blocks, _ := mdToBlocksConverter.HTMLToBlocks(bytes)
+	blocks, _, err := anymark.HTMLToBlocks(bytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
 	}
