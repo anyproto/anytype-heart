@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -61,7 +62,7 @@ func (t *TitleItem) SetDetail(key string, details map[string]*types.Value) {
 	var richText strings.Builder
 	for i, title := range t.Title {
 		richText.WriteString(title.PlainText)
-		if i != len(title.PlainText)-1 {
+		if i != len(t.Title)-1 {
 			richText.WriteString("\n")
 		}
 	}
@@ -111,9 +112,9 @@ func (rt *RichTextItem) GetFormat() model.RelationFormat {
 }
 
 type NumberItem struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Type   string `json:"type"`
+	Object string   `json:"object"`
+	ID     string   `json:"id"`
+	Type   string   `json:"type"`
 	Number *float64 `json:"number"`
 }
 
@@ -586,18 +587,89 @@ func (sp *StatusItem) GetFormat() model.RelationFormat {
 	return model.RelationFormat_status
 }
 
-type RollupItem struct{}
+type rollupType string
 
-func (r *RollupItem) SetDetail(key string, details map[string]*types.Value) {}
+const (
+	rollupNumber rollupType = "number"
+	rollupDate   rollupType = "date"
+	rollupArray  rollupType = "array"
+)
+
+type propertyObjects []interface{}
+type RollupItem struct {
+	ID     string       `json:"id"`
+	Type   string       `json:"type"`
+	Rollup RollupObject `json:"rollup"`
+}
+
+type RollupObject struct {
+	Type   rollupType      `json:"type"`
+	Number float64         `json:"number"`
+	Date   *api.DateObject `json:"date"`
+	Array  propertyObjects `json:"array"`
+}
+
+func (r *RollupItem) SetDetail(key string, details map[string]*types.Value) {
+	switch r.Rollup.Type {
+	case rollupNumber:
+		details[key] = pbtypes.Float64(r.Rollup.Number)
+	case rollupDate:
+		di := DateItem{Date: r.Rollup.Date}
+		di.SetDetail(key, details)
+	case rollupArray:
+		r.handleArrayType(key, details)
+	}
+}
+
+func (r *RollupItem) handleArrayType(key string, details map[string]*types.Value) {
+	result := make([]string, 0)
+	for _, pr := range r.Rollup.Array {
+		tempDetails := make(map[string]*types.Value, 0)
+		object, err := getPropertyObject(pr)
+		if err != nil {
+			logger.With(zap.String("method", "RollupItem.SetDetail")).Error(err)
+			continue
+		}
+		if ds, ok := object.(DetailSetter); ok {
+			ds.SetDetail(key, tempDetails)
+		}
+		if _, ok := object.(*TitleItem); ok {
+			name := tempDetails[bundle.RelationKeyName.String()]
+			result = append(result, name.GetStringValue())
+		}
+		if value, ok := tempDetails[key]; ok && value != nil {
+			switch value.GetKind().(type) {
+			case *types.Value_StringValue:
+				res := value.GetStringValue()
+				result = append(result, res)
+			case *types.Value_BoolValue:
+				res := value.GetBoolValue()
+				result = append(result, strconv.FormatBool(res))
+			case *types.Value_NumberValue:
+				res := value.GetNumberValue()
+				result = append(result, strconv.FormatFloat(res, 'f', 0, 64))
+			}
+		}
+	}
+	details[key] = pbtypes.StringList(result)
+}
 
 func (r *RollupItem) GetPropertyType() ConfigType {
 	return PropertyConfigTypeRollup
 }
 
 func (r *RollupItem) GetFormat() model.RelationFormat {
+	switch r.Rollup.Type {
+	case rollupNumber:
+		return model.RelationFormat_number
+	case rollupDate:
+		return model.RelationFormat_longtext
+	case rollupArray:
+		return model.RelationFormat_tag
+	}
 	return model.RelationFormat_longtext
 }
 
 func (r *RollupItem) GetID() string {
-	return ""
+	return r.ID
 }

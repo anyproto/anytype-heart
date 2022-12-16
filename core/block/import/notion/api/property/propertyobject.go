@@ -1,9 +1,39 @@
 package property
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
+
+var logger = logging.Logger("notion-property-retriever")
+
+const endpoint = "/pages/%s/properties/%s"
+
+const endpointWithStartCursor = "/pages/%s/properties/%s?start_cursor=%s"
+
+type TitleObject struct {
+	Title api.RichText `json:"title"`
+}
+
+type RichTextObject struct {
+	RichText api.RichText `json:"rich_text"`
+}
+
+type RelationObject struct {
+	Relation Relation `json:"relation"`
+}
+
+type PeopleObject struct {
+	People api.User `json:"people"`
+}
 
 type Properties map[string]Object
 
@@ -24,67 +54,196 @@ func (p *Properties) UnmarshalJSON(data []byte) error {
 func parsePropertyConfigs(raw map[string]interface{}) (Properties, error) {
 	result := make(Properties)
 	for k, v := range raw {
-		var p Object
-		switch rawProperty := v.(type) {
-		case map[string]interface{}:
-			switch ConfigType(rawProperty["type"].(string)) {
-			case PropertyConfigTypeTitle:
-				p = &TitleItem{}
-			case PropertyConfigTypeRichText:
-				p = &RichTextItem{}
-			case PropertyConfigTypeNumber:
-				p = &NumberItem{}
-			case PropertyConfigTypeSelect:
-				p = &SelectItem{}
-			case PropertyConfigTypeMultiSelect:
-				p = &MultiSelectItem{}
-			case PropertyConfigTypeDate:
-				p = &DateItem{}
-			case PropertyConfigTypePeople:
-				p = &PeopleItem{}
-			case PropertyConfigTypeFiles:
-				p = &FileItem{}
-			case PropertyConfigTypeCheckbox:
-				p = &CheckboxItem{}
-			case PropertyConfigTypeURL:
-				p = &UrlItem{}
-			case PropertyConfigTypeEmail:
-				p = &EmailItem{}
-			case PropertyConfigTypePhoneNumber:
-				p = &PhoneItem{}
-			case PropertyConfigTypeFormula:
-				p = &FormulaItem{}
-			case PropertyConfigTypeRelation:
-				p = &RelationItem{}
-			case PropertyConfigTypeRollup:
-				p = &RollupItem{}
-			case PropertyConfigCreatedTime:
-				p = &CreatedTimeItem{}
-			case PropertyConfigCreatedBy:
-				p = &CreatedByItem{}
-			case PropertyConfigLastEditedTime:
-				p = &LastEditedTimeItem{}
-			case PropertyConfigLastEditedBy:
-				p = &LastEditedByItem{}
-			case PropertyConfigStatus:
-				p = &StatusItem{}
-			default:
-				return nil, fmt.Errorf("unsupported property type: %s", rawProperty["type"].(string))
-			}
-			b, err := json.Marshal(rawProperty)
-			if err != nil {
-				return nil, err
-			}
-
-			if err = json.Unmarshal(b, &p); err != nil {
-				return nil, err
-			}
-
-			result[k] = p
-		default:
-			return nil, fmt.Errorf("unsupported property format %T", v)
+		p, err := getPropertyObject(v)
+		if err != nil {
+			return nil, err
 		}
+		result[k] = p
 	}
 
 	return result, nil
+}
+
+func getPropertyObject(v interface{}) (Object, error) {
+	var p Object
+	switch rawProperty := v.(type) {
+	case map[string]interface{}:
+		switch ConfigType(rawProperty["type"].(string)) {
+		case PropertyConfigTypeTitle:
+			p = &TitleItem{}
+		case PropertyConfigTypeRichText:
+			p = &RichTextItem{}
+		case PropertyConfigTypeNumber:
+			p = &NumberItem{}
+		case PropertyConfigTypeSelect:
+			p = &SelectItem{}
+		case PropertyConfigTypeMultiSelect:
+			p = &MultiSelectItem{}
+		case PropertyConfigTypeDate:
+			p = &DateItem{}
+		case PropertyConfigTypePeople:
+			p = &PeopleItem{}
+		case PropertyConfigTypeFiles:
+			p = &FileItem{}
+		case PropertyConfigTypeCheckbox:
+			p = &CheckboxItem{}
+		case PropertyConfigTypeURL:
+			p = &UrlItem{}
+		case PropertyConfigTypeEmail:
+			p = &EmailItem{}
+		case PropertyConfigTypePhoneNumber:
+			p = &PhoneItem{}
+		case PropertyConfigTypeFormula:
+			p = &FormulaItem{}
+		case PropertyConfigTypeRelation:
+			p = &RelationItem{}
+		case PropertyConfigTypeRollup:
+			p = &RollupItem{}
+		case PropertyConfigCreatedTime:
+			p = &CreatedTimeItem{}
+		case PropertyConfigCreatedBy:
+			p = &CreatedByItem{}
+		case PropertyConfigLastEditedTime:
+			p = &LastEditedTimeItem{}
+		case PropertyConfigLastEditedBy:
+			p = &LastEditedByItem{}
+		case PropertyConfigStatus:
+			p = &StatusItem{}
+		default:
+			return nil, fmt.Errorf("unsupported property type: %s", rawProperty["type"].(string))
+		}
+		b, err := json.Marshal(rawProperty)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = json.Unmarshal(b, &p); err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported property format %T", v)
+	}
+	return p, nil
+}
+
+type Service struct {
+	client *client.Client
+}
+
+func New(client *client.Client) *Service {
+	return &Service{
+		client: client,
+	}
+}
+
+type propertyPaginatedRespone struct {
+	Object     string        `json:"object"`
+	ID         string        `json:"id"`
+	Type       string        `json:"type"`
+	Results    []interface{} `json:"results"`
+	Item       interface{}   `json:"property_item"`
+	HasMore    bool          `json:"has_more"`
+	NextCursor string        `json:"next_cursor"`
+}
+
+// GetPropertyObject get from Notion properties values with tyoe People, Title, Relations and Rich text
+// because they have pagination
+func (s *Service) GetPropertyObject(ctx context.Context,
+	pageID, propertyID, apiKey string,
+	propertyType ConfigType) ([]interface{}, error) {
+	var (
+		hasMore     = true
+		body        = &bytes.Buffer{}
+		startCursor string
+		response    propertyPaginatedRespone
+		properties  = make([]interface{}, 0)
+	)
+
+	for hasMore {
+		request := fmt.Sprintf(endpoint, pageID, propertyID)
+		if startCursor != "" {
+			request = fmt.Sprintf(endpointWithStartCursor, pageID, propertyID, startCursor)
+		}
+		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, body)
+
+		if err != nil {
+			return nil, fmt.Errorf("GetPropertyObject: %s", err)
+		}
+		res, err := s.client.HttpClient.Do(req)
+
+		if err != nil {
+			return nil, fmt.Errorf("GetPropertyObject: %s", err)
+		}
+		defer res.Body.Close()
+
+		b, err := ioutil.ReadAll(res.Body)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if res.StatusCode != http.StatusOK {
+			notionErr := client.TransformHttpCodeToError(b)
+			if notionErr == nil {
+				return nil, fmt.Errorf("GetPropertyObject: failed http request, %d code", res.StatusCode)
+			}
+			return nil, notionErr
+		}
+
+		err = json.Unmarshal(b, &response)
+		if err != nil {
+			continue
+		}
+		result := response.Results
+		for _, v := range result {
+			buffer, err := json.Marshal(v)
+			if err != nil {
+				logger.Errorf("GetPropertyObject: failed to marshal: %s", err)
+				continue
+			}
+			if propertyType == PropertyConfigTypeTitle {
+				p := TitleObject{}
+				err = json.Unmarshal(buffer, &p)
+				if err != nil {
+					logger.Errorf("GetPropertyObject: failed to marshal TitleItem: %s", err)
+					continue
+				}
+				properties = append(properties, &p.Title)
+			}
+			if propertyType == PropertyConfigTypeRichText {
+				p := RichTextObject{}
+				err = json.Unmarshal(buffer, &p)
+				if err != nil {
+					logger.Errorf("GetPropertyObject: failed to marshal RichTextItem: %s", err)
+					continue
+				}
+				properties = append(properties, &p.RichText)
+			}
+			if propertyType == PropertyConfigTypeRelation {
+				p := RelationObject{}
+				err = json.Unmarshal(buffer, &p)
+				if err != nil {
+					logger.Errorf("GetPropertyObject: failed to marshal RelationItem: %s", err)
+					continue
+				}
+				properties = append(properties, &p.Relation)
+			}
+			if propertyType == PropertyConfigTypePeople {
+				p := PeopleObject{}
+				err = json.Unmarshal(buffer, &p)
+				if err != nil {
+					logger.Errorf("GetPropertyObject: failed to marshal PeopleItem: %s", err)
+					continue
+				}
+				properties = append(properties, &p.People)
+			}
+		}
+		if response.HasMore {
+			startCursor = response.NextCursor
+			continue
+		}
+		hasMore = false
+	}
+	return properties, nil
 }

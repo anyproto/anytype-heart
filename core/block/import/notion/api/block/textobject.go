@@ -48,9 +48,11 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 					relation        *converter.Relation
 				)
 				relationBlock, relation, details, relationBlockID = t.handleDateMention(rt, &text)
-				allBlocks = append(allBlocks, relationBlock)
-				allIds = append(allIds, relationBlockID)
-				relations = append(relations, relation)
+				if relationBlock != nil {
+					allBlocks = append(allBlocks, relationBlock)
+					allIds = append(allIds, relationBlockID)
+					relations = append(relations, relation)
+				}
 				continue
 			}
 			marks = append(marks, t.handleMentionType(rt, &text, req)...)
@@ -61,9 +63,11 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 			allIds = append(allIds, eqBlock.Id)
 		}
 	}
-	var backgroundColor string
+	var backgroundColor, textColor string
 	if strings.Contains(t.Color, api.NotionBackgroundColorSuffix) {
 		backgroundColor = api.NotionColorToAnytype[t.Color]
+	} else {
+		textColor = api.NotionColorToAnytype[t.Color]
 	}
 
 	if t.isNotTextBlocks() {
@@ -84,6 +88,7 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 				Style:   style,
 				Marks:   &model.BlockContentTextMarks{Marks: marks},
 				Checked: false,
+				Color:   textColor,
 			},
 		},
 	})

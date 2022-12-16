@@ -183,7 +183,11 @@ func (u *uploader) SetUrl(url string) Uploader {
 			return nil, err
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		// setting timeout to avoid locking for a long time
+		cl := http.DefaultClient
+		cl.Timeout = time.Second * 20
+
+		resp, err := cl.Do(req)
 		if err != nil {
 			return nil, err
 		}

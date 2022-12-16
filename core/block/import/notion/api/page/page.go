@@ -29,15 +29,17 @@ const (
 )
 
 type Service struct {
-	blockService *block.Service
-	client       *client.Client
+	blockService    *block.Service
+	client          *client.Client
+	propertyService *property.Service
 }
 
 // New is a constructor for Service
 func New(client *client.Client) *Service {
 	return &Service{
-		blockService: block.New(client),
-		client:       client,
+		blockService:    block.New(client),
+		client:          client,
+		propertyService: property.New(client),
 	}
 }
 
@@ -102,9 +104,18 @@ func (ds *Service) GetPages(ctx context.Context,
 	for _, p := range pages {
 		for _, v := range p.Properties {
 			if t, ok := v.(*property.TitleItem); ok {
-				title := api.RichTextToDescription(t.Title)
-				pageNameToID[p.ID] = title
-				break
+				properties, err := ds.propertyService.GetPropertyObject(ctx, p.ID, t.GetID(), apiKey, t.GetPropertyType())
+				if err != nil {
+					logger.With("method", "handlePageProperties").Errorf("failed to get paginated property, %s", v.GetPropertyType())
+					continue
+				}
+				title := make([]*api.RichText, 0, len(properties))
+				for _, o := range properties {
+					if t, ok := o.(*api.RichText); ok {
+						title = append(title, t)
+					}
+				}
+				t.Title = title
 			}
 		}
 	}
@@ -153,7 +164,7 @@ func (ds *Service) transformPages(ctx context.Context,
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 
 	allErrors := converter.ConvertError{}
-	relations := ds.handlePageProperties(apiKey, p.ID, p.Properties, details, request.NotionPageIdsToAnytype, request.NotionDatabaseIdsToAnytype)
+	relations := ds.handlePageProperties(ctx, apiKey, p.ID, p.Properties, details, request)
 	addFCoverDetail(p, details)
 	notionBlocks, blocksAndChildrenErr := ds.blockService.GetBlocksAndChildren(ctx, p.ID, apiKey, pageSize, mode)
 	if blocksAndChildrenErr != nil {
@@ -177,14 +188,23 @@ func (ds *Service) transformPages(ctx context.Context,
 }
 
 // handlePageProperties gets properties values by their ids from notion api and transforms them to Details and RelationLinks
-func (ds *Service) handlePageProperties(apiKey, pageID string,
+func (ds *Service) handlePageProperties(ctx context.Context,
+	apiKey, pageID string,
 	p property.Properties,
 	d map[string]*types.Value,
-	notionPagesIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) []*converter.Relation {
+	req *block.MapRequest) []*converter.Relation {
 	relations := make([]*converter.Relation, 0)
 	for k, v := range p {
-		if rel, ok := v.(*property.RelationItem); ok {
-			linkRelationsIDWithAnytypeID(rel, notionPagesIdsToAnytype, notionDatabaseIdsToAnytype)
+		if isPropertyPaginated(v) {
+			properties, err := ds.propertyService.GetPropertyObject(ctx, pageID, v.GetID(), apiKey, v.GetPropertyType())
+			if err != nil {
+				logger.With("method", "handlePageProperties").Errorf("failed to get paginated property, %s", v.GetPropertyType())
+				continue
+			}
+			ds.handlePaginatedProperty(v, properties)
+		}
+		if r, ok := v.(*property.RelationItem); ok {
+			linkRelationsIDWithAnytypeID(r, req.NotionPageIdsToAnytype, req.NotionDatabaseIdsToAnytype)
 		}
 		var (
 			ds property.DetailSetter
@@ -201,6 +221,29 @@ func (ds *Service) handlePageProperties(apiKey, pageID string,
 		})
 	}
 	return relations
+}
+
+func (*Service) handlePaginatedProperty(v property.Object, properties []interface{}) {
+	switch pr := v.(type) {
+	case *property.RelationItem:
+		relationItems := make([]*property.Relation, 0, len(properties))
+		for _, o := range properties {
+			relationItems = append(relationItems, o.(*property.Relation))
+		}
+		pr.Relation = relationItems
+	case *property.RichTextItem:
+		richText := make([]*api.RichText, 0, len(properties))
+		for _, o := range properties {
+			richText = append(richText, o.(*api.RichText))
+		}
+		pr.RichText = richText
+	case *property.PeopleItem:
+		pList := make([]*api.User, 0, len(properties))
+		for _, o := range properties {
+			pList = append(pList, o.(*api.User))
+		}
+		pr.People = pList
+	}
 }
 
 // linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin. In property we get id from Notion, so we somehow need to
@@ -230,4 +273,12 @@ func addFCoverDetail(p Page, details map[string]*types.Value) {
 
 	}
 
+}
+
+func isPropertyPaginated(pr property.Object) bool {
+	if r, ok := pr.(*property.RelationItem); ok && r.HasMore {
+		return true
+	}
+	return pr.GetPropertyType() == property.PropertyConfigTypeRichText ||
+		pr.GetPropertyType() == property.PropertyConfigTypePeople
 }

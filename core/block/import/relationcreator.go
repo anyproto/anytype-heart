@@ -7,7 +7,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -18,18 +17,27 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
+type relationIDFormat struct {
+	ID     string
+	Format model.RelationFormat
+}
+
+type relations []relationIDFormat
+
 type RelationService struct {
-	core    core.Service
-	service *block.Service
-	store   filestore.FileStore
+	core             core.Service
+	service          *block.Service
+	createdRelations map[string]relations // need this field to avoid creation of the same relations
+	store            filestore.FileStore
 }
 
 // NewRelationCreator constructor for RelationService
 func NewRelationCreator(service *block.Service, store filestore.FileStore, core core.Service) RelationCreator {
 	return &RelationService{
-		service: service,
-		core:    core,
-		store:   store,
+		service:          service,
+		core:             core,
+		createdRelations: make(map[string]relations, 0),
+		store:            store,
 	}
 }
 
@@ -40,67 +48,101 @@ func (rc *RelationService) Create(ctx *session.Context,
 	relations []*converter.Relation,
 	pageID string) ([]string, map[string]*model.Block, error) {
 	var (
-		object                *types.Struct
-		relationID            string
 		err                   error
 		filesToDelete         = make([]string, 0)
 		oldRelationBlockToNew = make(map[string]*model.Block, 0)
+		createRequest         = make([]*types.Struct, 0)
+		existedRelationsIDs   = make([]string, 0)
+		setDetailsRequest     = make([]*pb.RpcObjectSetDetailsDetail, 0)
 	)
 
 	for _, r := range relations {
-		detail := &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():           pbtypes.String(r.Name),
-				bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(r.Format)),
-				bundle.RelationKeyType.String():           pbtypes.String(bundle.TypeKeyRelation.URL()),
-				bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(model.ObjectType_relation)),
-			},
+		var (
+			relationID string
+		)
+		if rel, ok := rc.createdRelations[r.Name]; ok {
+			for _, v := range rel {
+				if v.Format == r.Format {
+					relationID = v.ID
+					existedRelationsIDs = append(existedRelationsIDs, relationID)
+					break
+				}
+			}
 		}
 
-		if _, object, err = rc.service.CreateSubObjectInWorkspace(detail, rc.core.PredefinedBlocks().Account); err != nil && err != editor.ErrSubObjectAlreadyExists {
-			log.Errorf("create relation %s", err)
+		if relationID == "" {
+			detail := &types.Struct{
+				Fields: map[string]*types.Value{
+					bundle.RelationKeyName.String():           pbtypes.String(r.Name),
+					bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(r.Format)),
+					bundle.RelationKeyType.String():           pbtypes.String(bundle.TypeKeyRelation.URL()),
+					bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(model.ObjectType_relation)),
+				},
+			}
+			createRequest = append(createRequest, detail)
+		}
+	}
+	var objects []*types.Struct
+	if _, objects, err = rc.service.CreateSubObjectsInWorkspace(createRequest); err != nil {
+		log.Errorf("create relation %s", err)
+	}
+
+	ids := make([]string, 0, len(existedRelationsIDs)+len(objects))
+	ids = append(ids, existedRelationsIDs...)
+
+	for _, s := range objects {
+		name := pbtypes.GetString(s, bundle.RelationKeyName.String())
+		id := pbtypes.GetString(s, bundle.RelationKeyRelationKey.String())
+		format := model.RelationFormat(pbtypes.GetFloat64(s, bundle.RelationKeyRelationFormat.String()))
+		rc.createdRelations[name] = append(rc.createdRelations[name], relationIDFormat{
+			ID:     id,
+			Format: format,
+		})
+		ids = append(ids, id)
+	}
+
+	if err = rc.service.AddExtraRelations(ctx, pageID, ids); err != nil {
+		log.Errorf("add extra relation %s", err)
+	}
+
+	for _, r := range relations {
+		var relationID string
+		if cr, ok := rc.createdRelations[r.Name]; ok {
+			for _, rel := range cr {
+				if rel.Format == r.Format {
+					relationID = rel.ID
+				}
+			}
+		}
+		if relationID == "" {
 			continue
 		}
-
-		if object != nil && object.Fields != nil && object.Fields[bundle.RelationKeyRelationKey.String()] != nil {
-			relationID = object.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
-		} else {
-			continue
-		}
-
-		if err := rc.service.AddExtraRelations(ctx, pageID, []string{relationID}); err != nil {
-			log.Errorf("add extra relation %s", err)
-			continue
-		}
-
-		if snapshot.Details != nil && snapshot.Details.Fields != nil && object != nil {
+		if snapshot.Details != nil && snapshot.Details.Fields != nil {
 			if snapshot.Details.Fields[r.Name].GetListValue() != nil {
 				rc.handleListValue(ctx, snapshot, r, relationID)
 			}
-
 			if r.Format == model.RelationFormat_file {
 				filesToDelete = append(filesToDelete, rc.handleFileRelation(ctx, snapshot, r.Name)...)
 			}
-			details := make([]*pb.RpcObjectSetDetailsDetail, 0)
-			details = append(details, &pb.RpcObjectSetDetailsDetail{
-				Key:   relationID,
-				Value: snapshot.Details.Fields[r.Name],
-			})
-			err = rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-				ContextId: pageID,
-				Details:   details,
-			})
-			if err != nil {
-				log.Errorf("set details %s", err)
-				continue
-			}
 		}
+		setDetailsRequest = append(setDetailsRequest, &pb.RpcObjectSetDetailsDetail{
+			Key:   relationID,
+			Value: snapshot.Details.Fields[r.Name],
+		})
 		if r.BlockID != "" {
 			original, new := rc.linkRelationsBlocks(snapshot, r.BlockID, relationID)
 			if original != nil && new != nil {
 				oldRelationBlockToNew[original.GetId()] = new
 			}
 		}
+	}
+
+	err = rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
+		ContextId: pageID,
+		Details:   setDetailsRequest,
+	})
+	if err != nil {
+		log.Errorf("set details %s", err)
 	}
 
 	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {

@@ -8,7 +8,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-// TODO tests
 func SetPageLinksInDatabase(databaseSnaphots *converter.Response,
 	pages []Page,
 	databases []database.Database,
