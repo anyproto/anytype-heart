@@ -23,16 +23,6 @@ func Warn(format string, args ...interface{}) {
 		aurora.Sprintf(aurora.BrightBlack(format), args...)))
 }
 
-func Error(format string, args ...interface{}) {
-	fmt.Println(aurora.Sprintf(aurora.Yellow("> Error! %s"),
-		aurora.Sprintf(aurora.BrightBlack(format), args...)))
-}
-
-func End(format string, args ...interface{}) {
-	Message(format, args...)
-	os.Exit(0)
-}
-
 func Fatal(format string, args ...interface{}) {
 	fmt.Println(aurora.Sprintf(aurora.Red("> Fatal! %s"),
 		aurora.Sprintf(aurora.BrightBlack(format), args...)))
