@@ -1,6 +1,8 @@
 package kanban
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -69,4 +71,10 @@ func GroupsToStrSlice(groups []*model.BlockContentDataviewGroup) []string {
 	}
 
 	return res
+}
+
+func Hash(id string) string {
+	hash := md5.Sum([]byte(id))
+	idHash := hex.EncodeToString(hash[:])
+	return idHash
 }
