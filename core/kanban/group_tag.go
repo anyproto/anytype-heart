@@ -72,7 +72,7 @@ func (t *GroupTag) MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, err
 
 	for _, g := range groups {
 		result = append(result, &model.BlockContentDataviewGroup{
-			Id:  Hash(g.Id),
+			Id: Hash(g.Id),
 			Value: &model.BlockContentDataviewGroupValueOfTag{
 				Tag: &model.BlockContentDataviewTag{
 					Ids: g.Data.Ids,
