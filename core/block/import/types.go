@@ -9,6 +9,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+
+	// import plugins
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
