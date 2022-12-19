@@ -62,7 +62,7 @@ require (
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.9
-	github.com/miolini/datacounter v1.0.2
+	github.com/miolini/datacounter v1.0.3
 	github.com/mr-tron/base58 v1.2.0
 	github.com/msingleton/amplitude-go v0.0.0-20200312121213-b7c11448c30e
 	github.com/multiformats/go-base32 v0.1.0
