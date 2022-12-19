@@ -39,10 +39,6 @@ func (b *rowBlock) Copy() simple.Block {
 	return NewRowBlock(pbtypes.CopyBlock(b.Model()))
 }
 
-func (b *rowBlock) SetIsHeader(v bool) {
-	b.content.IsHeader = v
-}
-
 func (b *rowBlock) Diff(sb simple.Block) (msgs []simple.EventMessage, err error) {
 	other, ok := sb.(*rowBlock)
 	if !ok {

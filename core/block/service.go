@@ -67,17 +67,11 @@ const (
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
-	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
-
-var (
-	blockCacheTTL       = time.Minute
-	blockCleanupTimeout = time.Second * 30
-)
 
 var (
 	// quick fix for limiting file upload goroutines
@@ -694,26 +688,6 @@ func (s *Service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
 		return newIds, nil
 	}
 	return nil, merr.ErrorOrNil()
-}
-
-func (s *Service) DeleteArchivedObject(id string) (err error) {
-	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("unexpected archive block type: %T", b)
-		}
-
-		if exists, _ := archive.HasObject(id); exists {
-			if err = s.DeleteObject(id); err == nil {
-				err = archive.RemoveObject(id)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
-	})
 }
 
 func (s *Service) AddCreatorInfoIfNeeded(workspaceId string) error {

@@ -654,14 +654,6 @@ func (s *Service) Wakeup(id string) (err error) {
 	})
 }
 
-func (s *Service) GetRelations(objectId string) (relations []*model.Relation, err error) {
-	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
-		relations = b.Relations(nil).Models()
-		return nil
-	})
-	return
-}
-
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
 func (s *Service) ModifyDetails(
 	objectId string, modifier func(current *types.Struct) (*types.Struct, error),

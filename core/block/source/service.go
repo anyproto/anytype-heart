@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -28,7 +27,6 @@ type Service interface {
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
-	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
 }
@@ -87,19 +85,6 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 	}
 
 	return newSource(s.anytype, s.statusService, tid, listenToOwnChanges)
-}
-
-func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	ss, err := s.NewSource(id, false)
-	if err != nil {
-		return nil, err
-	}
-	defer ss.Close()
-	if v, ok := ss.(SourceIdEndodedDetails); ok {
-		return v.DetailsFromId()
-	}
-	_ = ss.Close()
-	return nil, fmt.Errorf("id unsupported")
 }
 
 func (s *service) RegisterStaticSource(id string, new func() Source) {

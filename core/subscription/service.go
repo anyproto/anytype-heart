@@ -40,10 +40,8 @@ func New() Service {
 type Service interface {
 	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
-	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
-	UnsubscribeAll() (err error)
 
 	app.ComponentRunnable
 }
@@ -290,10 +288,6 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 	}, nil
 }
 
-func (s *service) SubscribeIds(subId string, ids []string) (records []*types.Struct, err error) {
-	return
-}
-
 func (s *service) Unsubscribe(subIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -303,16 +297,6 @@ func (s *service) Unsubscribe(subIds ...string) (err error) {
 			delete(s.subscriptions, subId)
 		}
 	}
-	return
-}
-
-func (s *service) UnsubscribeAll() (err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-	for _, sub := range s.subscriptions {
-		sub.close()
-	}
-	s.subscriptions = make(map[string]subscription)
 	return
 }
 
