@@ -115,7 +115,6 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 	return blocks, nil
 }
 
-// to avoid error with many statements
 //nolint:funlen
 func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 	blocks := make([]interface{}, 0)
