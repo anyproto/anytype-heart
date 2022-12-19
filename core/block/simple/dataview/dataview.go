@@ -245,8 +245,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 	if dv.content.TargetObjectId != d.content.TargetObjectId {
 		msgs = append(msgs,
-			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewTargetObjectId{
-				BlockDataviewTargetObjectId: &pb.EventBlockDataviewTargetObjectIdSet{
+			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewTargetObjectIdSet{
+				BlockDataviewTargetObjectIdSet: &pb.EventBlockDataviewTargetObjectIdSet{
 					Id:             dv.Id,
 					TargetObjectId: dv.content.TargetObjectId,
 				}},

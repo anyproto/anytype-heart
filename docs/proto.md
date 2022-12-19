@@ -17219,7 +17219,7 @@ Precondition: user A opened a block
 | blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
-| blockDataviewTargetObjectId | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
+| blockDataviewTargetObjectIdSet | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
 | blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |

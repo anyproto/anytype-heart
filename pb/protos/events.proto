@@ -65,7 +65,7 @@ message Event {
             Block.Dataview.ObjectOrderUpdate blockDataViewObjectOrderUpdate = 39;
             Block.Dataview.RelationDelete blockDataviewRelationDelete = 124;
             Block.Dataview.RelationSet blockDataviewRelationSet = 123;
-            Block.Dataview.TargetObjectIdSet blockDataviewTargetObjectId = 125;
+            Block.Dataview.TargetObjectIdSet blockDataviewTargetObjectIdSet = 125;
 
             // deprecated
             Block.Dataview.OldRelationDelete blockDataviewOldRelationDelete = 24;
