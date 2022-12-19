@@ -25,7 +25,7 @@ type Service struct {
 	client *client.Client
 }
 
-type SearchResponse struct {
+type Response struct {
 	Results    []interface{} `json:"results"`
 	HasMore    bool          `json:"has_more"`
 	NextCursor *string       `json:"next_cursor"`
@@ -86,7 +86,7 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
 		}
-		res, err := s.client.HttpClient.Do(req)
+		res, err := s.client.HTTPClient.Do(req)
 
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
@@ -98,9 +98,9 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 		if err != nil {
 			return nil, nil, err
 		}
-		var objects SearchResponse
+		var objects Response
 		if res.StatusCode != http.StatusOK {
-			notionErr := client.TransformHttpCodeToError(b)
+			notionErr := client.TransformHTTPCodeToError(b)
 			if notionErr == nil {
 				return nil, nil, fmt.Errorf("failed http request, %d code", res.StatusCode)
 			}

@@ -30,61 +30,62 @@ func init() {
 }
 
 type Notion struct {
-	search          *search.Service
-	databaseService *database.Service
-	pageService     *page.Service
+	search    *search.Service
+	dbService *database.Service
+	pgService *page.Service
 }
 
 func New(core.Service) converter.Converter {
 	cl := client.NewClient()
 	return &Notion{
-		search:          search.New(cl),
-		databaseService: database.New(),
-		pageService:     page.New(cl),
+		search:    search.New(cl),
+		dbService: database.New(),
+		pgService: page.New(cl),
 	}
 }
 
-func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest,
+	progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	ce := converter.NewError()
 	apiKey := n.getParams(req)
 	if apiKey == "" {
 		ce.Add("apiKey", fmt.Errorf("failed to extract apikey"))
 		return nil, ce
 	}
-	databases, pages, err := search.Retry(n.search.Search, retryAmount, retryDelay)(context.TODO(), apiKey, pageSize)
+	db, pages, err := search.Retry(n.search.Search, retryAmount, retryDelay)(context.TODO(), apiKey, pageSize)
 
 	if err != nil {
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
 		return nil, ce
 	}
 
-	progress.SetTotal(int64(len(databases)*numberOfStepsForDatabases + len(pages)*numberOfStepsForPages))
-	databasesSnapshots, notionIdsToAnytype, databaseNameToID, dbErr := n.databaseService.GetDatabase(context.TODO(), req.Mode, databases, progress)
+	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases + len(pages)*numberOfStepsForPages))
+	dbSnapshots, notionIdsToAnytype, dbNameToID, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
 
 	if dbErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(dbErr)
 		return nil, ce
 	}
 
-	request := &block.MapRequest{
+	r := &block.MapRequest{
 		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
-		DatabaseNameToID:           databaseNameToID,
+		DatabaseNameToID:           dbNameToID,
 	}
-	pagesSnapshots, notionPageIdsToAnytype, pageErr := n.pageService.GetPages(context.TODO(), apiKey, req.Mode, pages, request, progress)
-	if pageErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-		ce.Merge(pageErr)
+	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, r, progress)
+	if pgErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		ce.Merge(pgErr)
 		return nil, ce
 	}
 
-	page.SetPageLinksInDatabase(databasesSnapshots, pages, databases, notionPageIdsToAnytype, notionIdsToAnytype)
+	page.SetPageLinksInDatabase(dbSnapshots, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
 
-	allSnaphots := make([]*converter.Snapshot, 0, len(pagesSnapshots.Snapshots)+len(databasesSnapshots.Snapshots))
-	allSnaphots = append(allSnaphots, pagesSnapshots.Snapshots...)
-	allSnaphots = append(allSnaphots, databasesSnapshots.Snapshots...)
-	relations := mergeMaps(databasesSnapshots.Relations, pagesSnapshots.Relations)
+	allSnaphots := make([]*converter.Snapshot, 0, len(pgSnapshots.Snapshots)+len(dbSnapshots.Snapshots))
+	allSnaphots = append(allSnaphots, pgSnapshots.Snapshots...)
+	allSnaphots = append(allSnaphots, dbSnapshots.Snapshots...)
+	relations := mergeMaps(dbSnapshots.Relations, pgSnapshots.Relations)
 
-	if pageErr != nil {
-		ce.Merge(pageErr)
+	if pgErr != nil {
+		ce.Merge(pgErr)
 	}
 
 	if dbErr != nil {

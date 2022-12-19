@@ -7,40 +7,40 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-type BlockType string
+type Type string
 
 const (
-	Paragraph       BlockType = "paragraph"
-	BulletList      BlockType = "bulleted_list_item"
-	NumberList      BlockType = "numbered_list_item"
-	Toggle          BlockType = "toggle"
-	SyncedBlock     BlockType = "synced_block"
-	Template        BlockType = "template"
-	Column          BlockType = "column"
-	ChildPage       BlockType = "child_page"
-	ChildDatabase   BlockType = "child_database"
-	Table           BlockType = "table"
-	Heading1        BlockType = "heading_1"
-	Heading2        BlockType = "heading_2"
-	Heading3        BlockType = "heading_3"
-	ToDo            BlockType = "to_do"
-	Embed           BlockType = "embed"
-	Image           BlockType = "image"
-	Video           BlockType = "video"
-	File            BlockType = "file"
-	Pdf             BlockType = "pdf"
-	Bookmark        BlockType = "bookmark"
-	Callout         BlockType = "callout"
-	Quote           BlockType = "quote"
-	Equation        BlockType = "equation"
-	Divider         BlockType = "divider"
-	TableOfContents BlockType = "table_of_contents"
-	ColumnList      BlockType = "column_list"
-	LinkPreview     BlockType = "link_preview"
-	LinkToPage      BlockType = "link_to_page"
-	TableRow        BlockType = "table_row"
-	Code            BlockType = "code"
-	Unsupported     BlockType = "unsupported"
+	Paragraph       Type = "paragraph"
+	BulletList      Type = "bulleted_list_item"
+	NumberList      Type = "numbered_list_item"
+	Toggle          Type = "toggle"
+	SyncedBlock     Type = "synced_block"
+	Template        Type = "template"
+	Column          Type = "column"
+	ChildPage       Type = "child_page"
+	ChildDatabase   Type = "child_database"
+	Table           Type = "table"
+	Heading1        Type = "heading_1"
+	Heading2        Type = "heading_2"
+	Heading3        Type = "heading_3"
+	ToDo            Type = "to_do"
+	Embed           Type = "embed"
+	Image           Type = "image"
+	Video           Type = "video"
+	File            Type = "file"
+	Pdf             Type = "pdf"
+	Bookmark        Type = "bookmark"
+	Callout         Type = "callout"
+	Quote           Type = "quote"
+	Equation        Type = "equation"
+	Divider         Type = "divider"
+	TableOfContents Type = "table_of_contents"
+	ColumnList      Type = "column_list"
+	LinkPreview     Type = "link_preview"
+	LinkToPage      Type = "link_to_page"
+	TableRow        Type = "table_row"
+	Code            Type = "code"
+	Unsupported     Type = "unsupported"
 )
 
 type Block struct {
@@ -53,7 +53,7 @@ type Block struct {
 	Parent         api.Parent `json:"parent"`
 	Archived       bool       `json:"archived"`
 	HasChildren    bool       `json:"has_children"`
-	Type           BlockType  `json:"type"`
+	Type           Type       `json:"type"`
 }
 
 type Identifiable interface {

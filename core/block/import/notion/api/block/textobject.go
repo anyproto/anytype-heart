@@ -109,14 +109,14 @@ func (t *TextObject) handleTextType(rt api.RichText,
 	notionDatabaseIdsToAnytype map[string]string) []*model.BlockContentTextMark {
 	marks := []*model.BlockContentTextMark{}
 	from := textUtil.UTF16RuneCountString(text.String())
-	if rt.Text != nil && rt.Text.Link != nil && rt.Text.Link.Url != "" {
+	if rt.Text != nil && rt.Text.Link != nil && rt.Text.Link.URL != "" {
 		text.WriteString(rt.Text.Content)
 	} else {
 		text.WriteString(rt.PlainText)
 	}
 	to := textUtil.UTF16RuneCountString(text.String())
-	if rt.Text != nil && rt.Text.Link != nil && rt.Text.Link.Url != "" {
-		url := strings.Trim(rt.Text.Link.Url, "/")
+	if rt.Text != nil && rt.Text.Link != nil && rt.Text.Link.URL != "" {
+		url := strings.Trim(rt.Text.Link.URL, "/")
 		if databaseID, ok := notionDatabaseIdsToAnytype[url]; ok {
 			url = databaseID
 		}
@@ -136,7 +136,9 @@ func (t *TextObject) handleTextType(rt api.RichText,
 	return marks
 }
 
-func (t *TextObject) handleMentionType(rt api.RichText, text *strings.Builder, req *MapRequest) []*model.BlockContentTextMark {
+func (t *TextObject) handleMentionType(rt api.RichText,
+	text *strings.Builder,
+	req *MapRequest) []*model.BlockContentTextMark {
 	if rt.Mention.Type == api.UserMention {
 		return t.handleUserMention(rt, text)
 	}
@@ -201,7 +203,8 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 	return marks
 }
 
-func (t *TextObject) handleDateMention(rt api.RichText, text *strings.Builder) (*model.Block, *converter.Relation, map[string]*types.Value, string) {
+func (t *TextObject) handleDateMention(rt api.RichText,
+	text *strings.Builder) (*model.Block, *converter.Relation, map[string]*types.Value, string) {
 	var textDate string
 	if rt.Mention.Date.Start != "" {
 		textDate = rt.Mention.Date.Start
@@ -232,7 +235,7 @@ func (t *TextObject) handleDateMention(rt api.RichText, text *strings.Builder) (
 
 func (t *TextObject) handleLinkPreviewMention(rt api.RichText, text *strings.Builder) []*model.BlockContentTextMark {
 	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(rt.Mention.LinkPreview.Url)
+	text.WriteString(rt.Mention.LinkPreview.URL)
 	to := textUtil.UTF16RuneCountString(text.String())
 	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	marks = append(marks, &model.BlockContentTextMark{

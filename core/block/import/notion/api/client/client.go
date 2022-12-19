@@ -9,28 +9,30 @@ import (
 )
 
 const (
-	notionUrl  = "https://api.notion.com/v1"
+	notionURL  = "https://api.notion.com/v1"
 	apiVersion = "2022-06-28"
 )
 
 type Client struct {
-	HttpClient *http.Client
+	HTTPClient *http.Client
 	BasePath   string
 }
 
 // NewClient is a constructor for Client
 func NewClient() *Client {
 	c := &Client{
-		HttpClient: &http.Client{Timeout: time.Minute},
-		BasePath:   notionUrl,
+		HTTPClient: &http.Client{Timeout: time.Minute},
+		BasePath:   notionURL,
 	}
 	return c
 }
 
 // PrepareRequest create http.Request based on given method, url and body
-func (c *Client) PrepareRequest(ctx context.Context, apiKey, method, url string, body *bytes.Buffer) (*http.Request, error) {
-	resultUrl := c.BasePath + url
-	req, err := http.NewRequestWithContext(ctx, method, resultUrl, body)
+func (c *Client) PrepareRequest(ctx context.Context,
+	apiKey, method, url string,
+	body *bytes.Buffer) (*http.Request, error) {
+	resultURL := c.BasePath + url
+	req, err := http.NewRequestWithContext(ctx, method, resultURL, body)
 	if err != nil {
 		return nil, err
 	}

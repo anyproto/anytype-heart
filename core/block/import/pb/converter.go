@@ -34,7 +34,8 @@ func New(core.Service) converter.Converter {
 	return new(Pb)
 }
 
-func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
+	progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	path, e := p.GetParams(req.Params)
 	allErrors := converter.NewError()
 	if e != nil {

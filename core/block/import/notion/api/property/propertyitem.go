@@ -390,28 +390,28 @@ func (c *CheckboxItem) GetFormat() model.RelationFormat {
 	return model.RelationFormat_checkbox
 }
 
-type UrlItem struct {
+type URLItem struct {
 	Object string  `json:"object"`
 	ID     string  `json:"id"`
 	Type   string  `json:"type"`
 	URL    *string `json:"url"`
 }
 
-func (u *UrlItem) SetDetail(key string, details map[string]*types.Value) {
+func (u *URLItem) SetDetail(key string, details map[string]*types.Value) {
 	if u.URL != nil {
 		details[key] = pbtypes.String(*u.URL)
 	}
 }
 
-func (u *UrlItem) GetPropertyType() ConfigType {
+func (u *URLItem) GetPropertyType() ConfigType {
 	return PropertyConfigTypeURL
 }
 
-func (u *UrlItem) GetID() string {
+func (u *URLItem) GetID() string {
 	return u.ID
 }
 
-func (u *UrlItem) GetFormat() model.RelationFormat {
+func (u *URLItem) GetFormat() model.RelationFormat {
 	return model.RelationFormat_url
 }
 
@@ -473,7 +473,11 @@ type CreatedTimeItem struct {
 }
 
 func (ct *CreatedTimeItem) SetDetail(key string, details map[string]*types.Value) {
-	t, _ := time.Parse(time.RFC3339, ct.CreatedTime)
+	t, err := time.Parse(time.RFC3339, ct.CreatedTime)
+	if err != nil {
+		logger.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
+		return
+	}
 	details[key] = pbtypes.Int64(t.Unix())
 }
 
@@ -520,7 +524,11 @@ type LastEditedTimeItem struct {
 }
 
 func (le *LastEditedTimeItem) SetDetail(key string, details map[string]*types.Value) {
-	t, _ := time.Parse(time.RFC3339, le.LastEditedTime)
+	t, err := time.Parse(time.RFC3339, le.LastEditedTime)
+	if err != nil {
+		logger.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
+		return
+	}
 	details[key] = pbtypes.Int64(t.Unix())
 }
 

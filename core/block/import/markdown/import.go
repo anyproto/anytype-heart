@@ -67,7 +67,8 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
+	progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	path := m.GetParams(req)
 
 	files, allErrors := m.blockConverter.MarkdownToBlocks(path, req.GetMode().String())

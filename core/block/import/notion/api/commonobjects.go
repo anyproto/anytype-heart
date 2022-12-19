@@ -52,7 +52,7 @@ func (e *EquationObject) HandleEquation() *model.Block {
 }
 
 type Link struct {
-	Url string `json:"url,omitempty"`
+	URL string `json:"url,omitempty"`
 }
 
 func (rt *RichText) BuildMarkdownFromAnnotations(from, to int32) []*model.BlockContentTextMark {

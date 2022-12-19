@@ -46,7 +46,7 @@ func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 	p := property.LastEditedTimeItem{
 		ID:             "id",
 		Type:           string(property.PropertyConfigLastEditedTime),
-		LastEditedTime: "2022-12-07",
+		LastEditedTime: "2022-10-24T22:56:00.000Z",
 	}
 	pr := property.Properties{"LastEditedTime": &p}
 	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})

@@ -32,8 +32,18 @@ type ObjectCreator struct {
 	syncFactory     *syncer.Factory
 }
 
-func NewCreator(service *block.Service, core core.Service, updater Updater, syncFactory *syncer.Factory, relationCreator RelationCreator) Creator {
-	return &ObjectCreator{service: service, core: core, updater: updater, syncFactory: syncFactory, relationCreator: relationCreator}
+func NewCreator(service *block.Service,
+	core core.Service,
+	updater Updater,
+	syncFactory *syncer.Factory,
+	relationCreator RelationCreator) Creator {
+	return &ObjectCreator{
+		service:         service,
+		core:            core,
+		updater:         updater,
+		syncFactory:     syncFactory,
+		relationCreator: relationCreator,
+	}
 }
 
 // Create creates smart blocks from given snapshots

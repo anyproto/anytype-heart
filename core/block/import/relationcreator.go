@@ -41,8 +41,8 @@ func NewRelationCreator(service *block.Service, store filestore.FileStore, core 
 	}
 }
 
-// Create read relations link from snaphot and create according relations in anytype, also set details for according relation in object
-// for files it loads them in ipfs
+// Create read relations link from snaphot and create according relations in anytype,
+// also set details for according relation in object for files it loads them in ipfs
 func (rc *RelationService) Create(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	relations []*converter.Relation,
@@ -171,7 +171,10 @@ func (rc *RelationService) handleCoverRelation(ctx *session.Context,
 	return filesToDelete, err
 }
 
-func (rc *RelationService) handleListValue(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, r *converter.Relation, relationID string) {
+func (rc *RelationService) handleListValue(ctx *session.Context,
+	snapshot *model.SmartBlockSnapshotBase,
+	r *converter.Relation,
+	relationID string) {
 	var (
 		optionsIds = make([]string, 0)
 		id         string
@@ -252,7 +255,8 @@ func (rc *RelationService) handleFileRelation(ctx *session.Context,
 	return filesToDelete
 }
 
-func (rc *RelationService) linkRelationsBlocks(snapshot *model.SmartBlockSnapshotBase, oldID, newID string) (*model.Block, *model.Block) {
+func (rc *RelationService) linkRelationsBlocks(snapshot *model.SmartBlockSnapshotBase,
+	oldID, newID string) (*model.Block, *model.Block) {
 	for _, b := range snapshot.Blocks {
 		if rel, ok := b.Content.(*model.BlockContentOfRelation); ok && rel.Relation.GetKey() == oldID {
 			return b, &model.Block{

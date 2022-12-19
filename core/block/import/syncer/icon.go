@@ -34,11 +34,11 @@ func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 
 	err = is.service.Do(id, func(sb smartblock.SmartBlock) error {
 		bs := basic.NewBasic(sb)
-		err := bs.Update(ctx, func(simpleBlock simple.Block) error {
+		upErr := bs.Update(ctx, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = hash
 			return nil
 		}, b.Model().Id)
-		if err != nil {
+		if upErr != nil {
 			return fmt.Errorf("failed to update block: %s", err)
 		}
 		return nil

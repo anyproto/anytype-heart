@@ -13,15 +13,15 @@ func Test_GetTextBlocksTextSuccess(t *testing.T) {
 	to := &TextObject{
 		RichText: []api.RichText{
 			{
-				Type: api.Text,
+				Type:      api.Text,
 				PlainText: "test",
 			},
 			{
-				Type: api.Text,
+				Type:      api.Text,
 				PlainText: "test2",
 			},
 		},
-		Color:    api.RedBackGround,
+		Color: api.RedBackGround,
 	}
 
 	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
@@ -39,8 +39,8 @@ func Test_GetTextBlocksTextUserMention(t *testing.T) {
 				Mention: &api.MentionObject{
 					Type: api.UserMention,
 					User: &api.User{
-						ID:        "id",
-						Name:      "Nastya",
+						ID:   "id",
+						Name: "Nastya",
 					},
 				},
 				PlainText: "Nastya",
@@ -136,7 +136,7 @@ func Test_GetTextBlocksLinkPreview(t *testing.T) {
 				Mention: &api.MentionObject{
 					Type: api.LinkPreview,
 					LinkPreview: &api.Link{
-						Url: "ref",
+						URL: "ref",
 					},
 				},
 			},
@@ -171,11 +171,11 @@ func Test_GetTextBlocksEquation(t *testing.T) {
 }
 
 func Test_GetCodeBlocksSuccess(t *testing.T) {
-	co := &CodeBlock{ 
+	co := &CodeBlock{
 		Code: CodeObject{
 			RichText: []api.RichText{
 				{
-					Type: api.Text,
+					Type:      api.Text,
 					PlainText: "Code",
 				},
 			},

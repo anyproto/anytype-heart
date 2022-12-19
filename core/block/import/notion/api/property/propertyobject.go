@@ -88,7 +88,7 @@ func getPropertyObject(v interface{}) (Object, error) {
 		case PropertyConfigTypeCheckbox:
 			p = &CheckboxItem{}
 		case PropertyConfigTypeURL:
-			p = &UrlItem{}
+			p = &URLItem{}
 		case PropertyConfigTypeEmail:
 			p = &EmailItem{}
 		case PropertyConfigTypePhoneNumber:
@@ -170,7 +170,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
-		res, err := s.client.HttpClient.Do(req)
+		res, err := s.client.HTTPClient.Do(req)
 
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
@@ -184,7 +184,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		}
 
 		if res.StatusCode != http.StatusOK {
-			notionErr := client.TransformHttpCodeToError(b)
+			notionErr := client.TransformHTTPCodeToError(b)
 			if notionErr == nil {
 				return nil, fmt.Errorf("GetPropertyObject: failed http request, %d code", res.StatusCode)
 			}

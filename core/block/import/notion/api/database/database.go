@@ -74,9 +74,8 @@ func (ds *Service) GetDatabase(ctx context.Context,
 			convereterError.Add(d.ID, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil, nil, convereterError
-			} else {
-				continue
 			}
+			continue
 		}
 		snapshot := ds.transformDatabase(d)
 

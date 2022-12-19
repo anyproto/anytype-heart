@@ -89,9 +89,8 @@ func (ds *Service) GetPages(ctx context.Context,
 			convereterError.Add(p.ID, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil, convereterError
-			} else {
-				continue
 			}
+			continue
 		}
 		notionPagesIdsToAnytype[p.ID] = tid.String()
 	}
@@ -131,9 +130,8 @@ func (ds *Service) GetPages(ctx context.Context,
 			convereterError.Merge(ce)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil, convereterError
-			} else {
-				continue
 			}
+			continue
 		}
 		pageID := notionPagesIdsToAnytype[p.ID]
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
@@ -187,7 +185,8 @@ func (ds *Service) transformPages(ctx context.Context,
 	return snapshot, relations, nil
 }
 
-// handlePageProperties gets properties values by their ids from notion api and transforms them to Details and RelationLinks
+// handlePageProperties gets properties values by their ids from notion api
+// and transforms them to Details and RelationLinks
 func (ds *Service) handlePageProperties(ctx context.Context,
 	apiKey, pageID string,
 	p property.Properties,
@@ -211,7 +210,8 @@ func (ds *Service) handlePageProperties(ctx context.Context,
 			ok bool
 		)
 		if ds, ok = v.(property.DetailSetter); !ok {
-			logger.With("method", "handlePageProperties").Errorf("failed to convert to interface DetailSetter, %s", v.GetPropertyType())
+			logger.With("method", "handlePageProperties").
+				Errorf("failed to convert to interface DetailSetter, %s", v.GetPropertyType())
 			continue
 		}
 		ds.SetDetail(k, d)
@@ -246,9 +246,11 @@ func (*Service) handlePaginatedProperty(v property.Object, properties []interfac
 	}
 }
 
-// linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin. In property we get id from Notion, so we somehow need to
-// map this ID with anytype for correct Relation. We use two maps notionPagesIdsToAnytype, notionDatabaseIdsToAnytype for this
-func linkRelationsIDWithAnytypeID(rel *property.RelationItem, notionPagesIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
+// linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
+// In property we get id from Notion, so we somehow need to map this ID with anytype for correct Relation.
+// We use two maps notionPagesIdsToAnytype, notionDatabaseIdsToAnytype for this
+func linkRelationsIDWithAnytypeID(rel *property.RelationItem,
+	notionPagesIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
 	for _, r := range rel.Relation {
 		if anytypeID, ok := notionPagesIdsToAnytype[r.ID]; ok {
 			r.ID = anytypeID
