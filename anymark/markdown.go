@@ -37,9 +37,7 @@ func DefaultRenderer() renderer.Renderer {
 
 var (
 	defaultMarkdown = New()
-	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
 	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
-	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
 	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	reWikiCode      = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
 
@@ -63,17 +61,6 @@ type Markdown interface {
 	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
 	HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string)
 	MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error)
-	// Parser returns a Parser that will be used for conversion.
-	Parser() parser.Parser
-
-	// SetParser sets a Parser to this object.
-	SetParser(parser.Parser)
-
-	// Parser returns a Renderer that will be used for conversion.
-	Renderer() renderer.Renderer
-
-	// SetRenderer sets a Renderer to this object.
-	SetRenderer(renderer.Renderer)
 }
 
 // Option is a functional option type for Markdown objects.
@@ -235,22 +222,6 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 	}
 
 	return nil, bWriter.GetBlocks(), bWriter.GetRootBlockIDs()
-}
-
-func (m *markdown) Parser() parser.Parser {
-	return m.parser
-}
-
-func (m *markdown) SetParser(v parser.Parser) {
-	m.parser = v
-}
-
-func (m *markdown) Renderer() renderer.Renderer {
-	return m.renderer
-}
-
-func (m *markdown) SetRenderer(v renderer.Renderer) {
-	m.renderer = v
 }
 
 // An Extender interface is used for extending Markdown.

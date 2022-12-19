@@ -23,17 +23,11 @@ var (
 type RWriter interface {
 	// TODO: LEGACY, remove it later
 	io.Writer
-	Available() int
-	Buffered() int
 	Flush() error
-	WriteByte(c byte) error
-	WriteRune(r rune) (size int, err error)
-	WriteString(s string) (int, error)
 
 	// Main part
 	GetText() string
 	AddTextToBuffer(s string)
-	AddTextByte(b []byte)
 
 	GetRootBlockIDs() []string
 	GetBlocks() []*model.Block
@@ -53,7 +47,6 @@ type RWriter interface {
 	SetListState(entering bool, isNumbered bool)
 	GetIsNumberedList() (isNumbered bool)
 
-	GetAllFileShortPaths() []string
 	GetBaseFilepath() string
 
 	AddDivider()
@@ -86,10 +79,6 @@ type rWriter struct {
 	listNestLevel uint
 }
 
-func (rw *rWriter) GetAllFileShortPaths() []string {
-	return rw.allFileShortPaths
-}
-
 func (rw *rWriter) GetBaseFilepath() string {
 	return rw.baseFilepath
 }
@@ -102,16 +91,6 @@ func (rw *rWriter) SetMarkStart() {
 	}
 
 	rw.marksStartQueue = append(rw.marksStartQueue, text.UTF16RuneCountString(rw.textBuffer))
-}
-
-func (rw *rWriter) AddTextByte(b []byte) {
-	if len(rw.openedTextBlocks) > 0 {
-		last := rw.openedTextBlocks[len(rw.openedTextBlocks)-1]
-		last.textBuffer += string(b)
-		return
-	}
-
-	rw.textBuffer += string(b)
 }
 
 func (rw *rWriter) GetMarkStart() int {

@@ -29,8 +29,6 @@ import (
 
 var (
 	ErrAllSlotsEmpty        = errors.New("all slots are empty")
-	ErrTitlePasteRestricted = errors.New("paste to title restricted")
-	ErrOutOfRange           = errors.New("out of range")
 	log                     = logging.Logger("anytype-clipboard")
 )
 

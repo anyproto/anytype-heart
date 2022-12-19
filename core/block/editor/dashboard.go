@@ -5,7 +5,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -17,12 +16,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func NewDashboard(importServices _import.Services, dmservice DetailsModifier) *Dashboard {
+func NewDashboard(dmservice DetailsModifier) *Dashboard {
 	sb := smartblock.New()
 	return &Dashboard{
 		SmartBlock:      sb,
 		AllOperations:   basic.NewBasic(sb), // deprecated
-		Import:          _import.NewImport(sb, importServices),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: dmservice,
 	}
@@ -31,7 +29,6 @@ func NewDashboard(importServices _import.Services, dmservice DetailsModifier) *D
 type Dashboard struct {
 	smartblock.SmartBlock
 	basic.AllOperations
-	_import.Import
 	collection.Collection
 	DetailsModifier DetailsModifier
 }

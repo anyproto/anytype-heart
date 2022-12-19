@@ -51,7 +51,6 @@ type Uploader interface {
 	SetUrl(url string) Uploader
 	SetFile(path string) Uploader
 	SetGroupId(groupId string) Uploader
-	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
@@ -166,11 +165,6 @@ func (u *uploader) SetBytes(b []byte) Uploader {
 			},
 		}, nil
 	}
-	return u
-}
-
-func (u *uploader) AddOptions(options ...files.AddOption) Uploader {
-	u.opts = append(u.opts, options...)
 	return u
 }
 

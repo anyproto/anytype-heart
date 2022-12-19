@@ -589,8 +589,6 @@ func (r *Renderer) renderString(w blocksUtil.RWriter, source []byte, node ast.No
 	return ast.WalkContinue, nil
 }
 
-var dataPrefix = []byte("data-")
-
 // A Writer interface wirtes textual contents to a writer.
 type Writer interface {
 	// Write writes the given source to writer with resolving references and unescaping
@@ -616,12 +614,3 @@ func (d *defaultWriter) Write(writer blocksUtil.RWriter, source []byte) {
 // DefaultWriter is a default implementation of the Writer.
 var DefaultWriter = &defaultWriter{}
 
-var bDataImage = []byte("data:image/")
-var bPng = []byte("png;")
-var bGif = []byte("gif;")
-var bJpeg = []byte("jpeg;")
-var bWebp = []byte("webp;")
-var bJs = []byte("javascript:")
-var bVb = []byte("vbscript:")
-var bFile = []byte("file:")
-var bData = []byte("data:")
