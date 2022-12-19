@@ -23,11 +23,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
-	"github.com/libp2p/go-libp2p/core/peer"
-	pstore "github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/textileio/go-threads/core/net"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,15 +57,11 @@ type Service interface {
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
-	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
-	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
 	FileGetKeys(hash string) (*files.FileKeys, error)
 	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
-	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
-	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
@@ -232,10 +225,6 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 // ⚠️ Will return empty struct in case it runs before Anytype.Start()
 func (a *Anytype) PredefinedBlocks() threads.DerivedSmartblockIds {
 	return a.predefinedBlockIds
-}
-
-func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
-	a.ThreadService().Threads().Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
 }
 
 func (a *Anytype) Start() error {

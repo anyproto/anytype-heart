@@ -245,7 +245,6 @@ type ObjectStore interface {
 	GetOutboundLinksById(id string) ([]string, error)
 	GetInboundLinksById(id string) ([]string, error)
 
-	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error)
 
@@ -276,8 +275,6 @@ type ObjectStore interface {
 	SaveAccountState(state *cafePb.AccountState) (err error)
 
 	GetCurrentWorkspaceId() (string, error)
-	SetCurrentWorkspaceId(threadId string) (err error)
-	RemoveCurrentWorkspaceId() (err error)
 
 	AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error)
 	RemoveThreadQueueEntry(threadId string) (err error)
@@ -493,34 +490,6 @@ func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
 		return "", err
 	}
 	return string(val), nil
-}
-
-func (m *dsObjectStore) SetCurrentWorkspaceId(threadId string) (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if err := txn.Put(currentWorkspace, []byte(threadId)); err != nil {
-		return fmt.Errorf("failed to put into ds: %w", err)
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if err := txn.Delete(currentWorkspace); err != nil {
-		return fmt.Errorf("failed to delete from ds: %w", err)
-	}
-
-	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetAccountState() (cfg *cafePb.AccountState, err error) {
@@ -1444,39 +1413,6 @@ func (m *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
 	return findInboundLinks(txn, id)
 }
 
-func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	pages, err := m.getObjectsInfo(txn, []string{id})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(pages) == 0 {
-		return nil, fmt.Errorf("page not found")
-	}
-	page := pages[0]
-
-	outboundsIds, err := findOutboundLinks(txn, id)
-	if err != nil {
-		return nil, err
-	}
-
-	outbound, err := m.getObjectsInfo(txn, outboundsIds)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.ObjectInfoWithOutboundLinks{
-		Info:          page,
-		OutboundLinks: outbound,
-	}, nil
-}
-
 func (m *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -1938,31 +1874,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	return nil
 }
 
-func storeOptions(txn noctxds.Txn, options []*model.RelationOption) error {
-	var err error
-	for _, opt := range options {
-		err = storeOption(txn, opt)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func storeOption(txn noctxds.Txn, option *model.RelationOption) error {
-	b, err := proto.Marshal(option)
-	if err != nil {
-		return err
-	}
-
-	optionKey := relationsOptionsBase.ChildString(option.Id)
-	return txn.Put(optionKey, b)
-}
-
-func (m *dsObjectStore) Prefix() string {
-	return pagesPrefix
-}
-
 func (m *dsObjectStore) Indexes() []localstore.Index {
 	return []localstore.Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexObjectTypeObject}
 }
@@ -1983,15 +1894,6 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 	dsq.Filters = append([]query.Filter{idsQuery}, dsq.Filters...)
 	dsq.Orders = append([]query.Order{idsQuery}, dsq.Orders...)
 	return dsq, nil
-}
-
-func (m *dsObjectStore) listIdsOfType(txn noctxds.Txn, ot string) ([]string, error) {
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	return localstore.GetLeavesFromResults(res)
 }
 
 func (m *dsObjectStore) listRelationsKeys(txn noctxds.Txn) ([]string, error) {
@@ -2047,15 +1949,6 @@ func (m *dsObjectStore) listRelations(txn noctxds.Txn, limit int) ([]*model.Rela
 	return rels, nil
 }
 
-func isObjectBelongToType(txn noctxds.Txn, id, objType string) (bool, error) {
-	objTypeCompact, err := objTypeCompactEncode(objType)
-	if err != nil {
-		return false, err
-	}
-
-	return localstore.HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
-}
-
 /* internal */
 // getObjectDetails returns empty(not nil) details when not found in the DS
 func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
@@ -2100,20 +1993,6 @@ func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	}
 }
 
-// getSetRelations returns the list of relations last time indexed for the set's dataview
-func getSetRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
-	var relations model.Relations
-	if val, err := txn.Get(setRelationsBase.ChildString(id)); err != nil {
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get relations: %w", err)
-		}
-	} else if err := proto.Unmarshal(val, &relations); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
-	}
-
-	return relations.GetRelations(), nil
-}
-
 // getObjectRelations returns the list of relations last time indexed for the object
 func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	var relations model.Relations
@@ -2126,28 +2005,6 @@ func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	}
 
 	return relations.GetRelations(), nil
-}
-
-func getOption(txn noctxds.Txn, optionId string) (*model.RelationOption, error) {
-	var opt model.RelationOption
-	if val, err := txn.Get(relationsOptionsBase.ChildString(optionId)); err != nil {
-		log.Debugf("getOption %s: not found", optionId)
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get option from localstore: %w", err)
-		}
-	} else if err := proto.Unmarshal(val, &opt); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal option: %w", err)
-	}
-
-	return &opt, nil
-}
-
-func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
-	if !pbtypes.HasField(det, bundle.RelationKeyType.String()) {
-		return nil, fmt.Errorf("type not found in details")
-	}
-
-	return pbtypes.GetStringList(det, bundle.RelationKeyType.String()), nil
 }
 
 func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
