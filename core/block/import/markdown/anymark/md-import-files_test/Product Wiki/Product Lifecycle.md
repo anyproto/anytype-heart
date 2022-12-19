@@ -24,7 +24,7 @@ Assign the roadmap item to the appropriate reviewer(s). Mark the spec `In Review
 
 # 4. Notify stakeholders
 
-Make sure you loop in the right stakeholders, including design and engineering. You can reference other guides in this wiki to figure out who these people are. The [](Product%20Directory.csv) is a good place to start. 
+Make sure you loop in the right stakeholders, including design and engineering. You can reference other guides in this wiki to figure out who these people are. The [](Product Directory.csv) is a good place to start. 
 
 # Further Reading
 

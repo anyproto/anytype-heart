@@ -14,4 +14,4 @@ Make sure the feature has been thoroughly tested by our QA team. Leave instructi
 
 # 3. Contact the product manager
 
-The product manager is responsible for bundling features and product changes into our biweekly releases. You can determine who this is by checking the [](Product%20Directory.csv).
+The product manager is responsible for bundling features and product changes into our biweekly releases. You can determine who this is by checking the [](Product Directory.csv).

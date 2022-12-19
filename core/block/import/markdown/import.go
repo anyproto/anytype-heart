@@ -37,18 +37,14 @@ func init() {
 	converter.RegisterFunc(New)
 }
 
-type MarkdownToBlocksConverter interface {
-	MarkdownToBlocks(importPath, mode string) (map[string]*FileInfo, converter.ConvertError)
-}
-
 type Markdown struct {
-	blockConverter MarkdownToBlocksConverter
+	blockConverter *mdConverter
 }
 
 const Name = "Markdown"
 
 func New(s core.Service) converter.Converter {
-	return &Markdown{blockConverter: NewMarkdownToBlocks(s)}
+	return &Markdown{blockConverter: newMDConverter(s)}
 }
 
 func (m *Markdown) Name() string {
@@ -71,7 +67,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	path := m.GetParams(req)
 
-	files, allErrors := m.blockConverter.MarkdownToBlocks(path, req.GetMode().String())
+	files, allErrors := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, allErrors
@@ -312,7 +308,6 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
 		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
 			details[name].Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 			file.ParsedBlocks = m.convertCsvToLinks(name, files)
-			details[name].Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 		}
 
 		if file.PageID == "" {
@@ -342,7 +337,6 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
 
 	return nil
 }
-
 func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress *process.Progress) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
@@ -402,6 +396,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 
 	return snapshots, nil
 }
+
 func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress *process.Progress) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
