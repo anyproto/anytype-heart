@@ -201,7 +201,7 @@ func NewWithLocalstore(ds noctxds.DSTxnBatching) ObjectStore {
 }
 
 type SourceIdEncodedDetails interface {
-	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
+	GetDetailsFromIDBasedSource(id string) (*types.Struct, error)
 }
 
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
@@ -1011,9 +1011,9 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	for _, id := range ids {
 		if sbt, err := smartblock.SmartBlockTypeFromID(id); err == nil {
 			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
-				details, err := m.sourceService.GetDetailsFromIdBasedSource(id)
+				details, err := m.sourceService.GetDetailsFromIDBasedSource(id)
 				if err != nil {
-					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
+					log.Errorf("QueryByIds failed to GetDetailsFromIDBasedSource id: %s", id)
 					continue
 				}
 				details.Fields[database.RecordIDField] = pb.ToValue(id)
@@ -2020,7 +2020,7 @@ func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 	var details *types.Struct
 	if indexDetails, _ := sbt.Indexable(); !indexDetails {
 		if m.sourceService != nil {
-			details, err = m.sourceService.GetDetailsFromIdBasedSource(id)
+			details, err = m.sourceService.GetDetailsFromIDBasedSource(id)
 			if err != nil {
 				return nil, err
 			}

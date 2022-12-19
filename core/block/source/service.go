@@ -27,7 +27,7 @@ type Service interface {
 	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
-	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
+	GetDetailsFromIDBasedSource(id string) (*types.Struct, error)
 
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
@@ -101,7 +101,7 @@ func (s *service) RemoveStaticSource(id string) {
 	delete(s.staticIds, id)
 }
 
-func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
+func (s *service) GetDetailsFromIDBasedSource(id string) (*types.Struct, error) {
 	ss, err := s.NewSource(id, false)
 	if err != nil {
 		return nil, err
