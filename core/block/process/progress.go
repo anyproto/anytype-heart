@@ -5,8 +5,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/globalsign/mgo/bson"
+
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 func NewProgress(pType pb.ModelProcessType) *Progress {
