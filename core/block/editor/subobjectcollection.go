@@ -119,7 +119,11 @@ func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (er
 	}
 	st.RemoveFromStore([]string{collection, key})
 	if v, exists := c.collections[collection]; exists {
-		delete(v, key)
+		if o, exists := v[key]; exists {
+			o.SetIsDeleted()
+			o.Close()
+			delete(v, key)
+		}
 	}
 	c.sourceService.RemoveStaticSource(objectId)
 
@@ -157,7 +161,7 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 				if coll, ok := c.collections[keySet.Path[0]]; ok {
 					if opt, ok := coll[keySet.Path[1]]; ok {
 						if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetCollection(keySet.Path[0]), keySet.Path[1])); e != nil {
-							log.With("threadId", c.Id()).Errorf("options: can't set struct: %v", e)
+							log.With("threadId", c.Id()).Errorf("options: can't set struct %s-%s: %v", keySet.Path[0], keySet.Path[1], e)
 						}
 					} else {
 						if err = c.initSubObject(st, keySet.Path[0], keySet.Path[1]); err != nil {
@@ -166,7 +170,14 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 					}
 				}
 			}
+		} else if keyUnset := ch.GetStoreKeyUnset(); keyUnset != nil {
+			err = c.removeObject(st, strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator))
+			if err != nil {
+				log.With("threadId", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
+				return err
+			}
 		}
+
 	}
 	return
 }
@@ -212,9 +223,9 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 		if !notOnlyLocalDetailsChanged {
 			// todo: it shouldn't be done here, we have a place for it in the state, but it's not possible to set the virtual changes there
 			// revert lastModifiedDate details
-			prev := p.State.ParentState().LocalDetails().GetFields()[bundle.RelationKeyLastModifiedDate.String()]
-			if prev != nil {
-				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prev
+			prev := p.State.ParentState().LocalDetails().GetFields()
+			if prev != nil && prev[bundle.RelationKeyLastModifiedDate.String()] != nil {
+				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prev[bundle.RelationKeyLastModifiedDate.String()]
 			}
 		}
 
@@ -262,10 +273,19 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	if ws == "" && c.Anytype().PredefinedBlocks().Account == st.RootId() {
 		ws = st.RootId()
 	}
+	if v := st.StoreKeysRemoved(); v != nil {
+		if _, exists := v[fullId]; exists {
+			log.Errorf("initSubObject %s: found keyremoved, calling removeObject", fullId)
+			return c.removeObject(st, fullId)
+		}
+	}
+
 	subState, err := SubState(st, collection, fullId, ws)
 	if err != nil {
 		return
 	}
+
+	log.Errorf("initSubObject %s: found subobj", fullId)
 
 	if _, exists := c.collections[collection]; !exists {
 		c.collections[collection] = map[string]SubObjectImpl{}
