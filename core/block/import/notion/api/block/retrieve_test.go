@@ -6,9 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetBlocksAndChildrenSuccessParagraph(t *testing.T) {

@@ -41,7 +41,6 @@ func Test_GetBookmarkBlock(t *testing.T) {
 	assert.Equal(t, bb.GetBookmark().GetTitle(), "Text")
 }
 
-
 func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
 	c := &Child{Title: "title"}
 	nameToID := map[string]string{"id": "title"}

@@ -1,16 +1,17 @@
 package importer
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/types"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 )
 
 // Importer incapsulate logic with import
