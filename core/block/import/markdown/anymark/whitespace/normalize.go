@@ -1,4 +1,4 @@
-package spaceReplace
+package whitespace
 
 import (
 	"golang.org/x/text/unicode/norm"
