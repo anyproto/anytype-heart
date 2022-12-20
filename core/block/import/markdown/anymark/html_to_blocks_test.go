@@ -53,7 +53,7 @@ func replaceFakeIds(anySlot []*model.Block) (anySlotConverted []*model.Block) {
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
-	bs, err := ioutil.ReadFile("testdata/testData.json")
+	bs, err := ioutil.ReadFile("testdata/html_cases.json")
 	if err != nil {
 		panic(err)
 	}
