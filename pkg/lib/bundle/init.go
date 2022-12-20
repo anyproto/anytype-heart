@@ -299,7 +299,6 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) *types2.Struct {
 		RelationKeyIsHidden.String():              pbtypes.Bool(rel.Hidden),
 		RelationKeyIsReadonly.String():            pbtypes.Bool(rel.ReadOnlyRelation),
 		RelationKeyRelationReadonlyValue.String(): pbtypes.Bool(rel.ReadOnly),
-		RelationKeyMpAddedToLibrary.String():      pbtypes.Bool(true), // temp
 	}}
 }
 
