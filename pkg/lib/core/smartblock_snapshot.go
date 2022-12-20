@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 	cid "github.com/ipfs/go-cid"
@@ -21,12 +20,7 @@ import (
 
 type SmartBlockSnapshot interface {
 	State() vclock.VClock
-	Creator() (string, error)
-	CreatedDate() *time.Time
-	ReceivedDate() *time.Time
 	Blocks() ([]*model.Block, error)
-	Meta() (*SmartBlockMeta, error)
-	PublicWebURL() (string, error)
 }
 
 var ErrFailedToDecodeSnapshot = fmt.Errorf("failed to decode pb block snapshot")
@@ -49,29 +43,11 @@ func (snapshot smartBlockSnapshot) State() vclock.VClock {
 	return snapshot.state
 }
 
-func (snapshot smartBlockSnapshot) Creator() (string, error) {
-	return snapshot.creator, nil
-}
-
-func (snapshot smartBlockSnapshot) CreatedDate() *time.Time {
-	return nil
-}
-
-func (snapshot smartBlockSnapshot) ReceivedDate() *time.Time {
-	return nil
-}
-
 func (snapshot smartBlockSnapshot) Blocks() ([]*model.Block, error) {
 	// todo: blocks lazy loading
 	return snapshot.blocks, nil
 }
 
-func (snapshot smartBlockSnapshot) Meta() (*SmartBlockMeta, error) {
-	return &SmartBlockMeta{Details: snapshot.details}, nil
-}
-
-func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
-	return "", fmt.Errorf("not implemented")
 	/*ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -107,8 +83,6 @@ func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
 		event.BodyID().String(),
 		base64.RawURLEncoding.EncodeToString(bodyKeyBin),
 	), nil*/
-}
-
 type SnapshotWithMetadata struct {
 	storage.SmartBlockSnapshot
 	Creator  string

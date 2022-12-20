@@ -54,14 +54,12 @@ type Block interface {
 	SetIconEmoji(emoji string)
 	SetIconImage(imageHash string)
 
-	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error)
 	RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error)
 	RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error)
 	Merge(b simple.Block, opts ...MergeOption) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 	FillSmartIds(ids []string) []string
-	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetText) error
 
 	IsEmpty() bool
@@ -249,53 +247,6 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 
 func (t *Text) GetText() (text string) {
 	return t.content.Text
-}
-
-func (t *Text) Split(pos int32) (simple.Block, error) {
-	if pos < 0 || int(pos) > textutil.UTF16RuneCountString(t.content.Text) {
-		return nil, ErrOutOfRange
-	}
-	runes := textutil.StrToUTF16(t.content.Text)
-	t.content.Text = textutil.UTF16ToStr(runes[pos:])
-	if t.content.Marks == nil {
-		t.content.Marks = &model.BlockContentTextMarks{}
-	}
-	newMarks := &model.BlockContentTextMarks{}
-	oldMarks := &model.BlockContentTextMarks{}
-	for _, mark := range t.content.Marks.Marks {
-		if mark.Range.From >= pos {
-			mark.Range.From -= pos
-			mark.Range.To -= pos
-			newMarks.Marks = append(newMarks.Marks, mark)
-		} else if mark.Range.To <= pos {
-			oldMarks.Marks = append(oldMarks.Marks, mark)
-		} else {
-			newMark := &model.BlockContentTextMark{
-				Range: &model.Range{
-					From: 0,
-					To:   mark.Range.To - pos,
-				},
-				Type:  mark.Type,
-				Param: mark.Param,
-			}
-			newMarks.Marks = append(newMarks.Marks, newMark)
-			mark.Range.To = pos
-			oldMarks.Marks = append(oldMarks.Marks, mark)
-		}
-	}
-	t.content.Marks = newMarks
-	newBlock := simple.New(&model.Block{
-		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:    textutil.UTF16ToStr(runes[:pos]),
-			Style:   t.content.Style,
-			Marks:   oldMarks,
-			Checked: t.content.Checked,
-			Color:   t.content.Color,
-		}},
-		BackgroundColor: t.BackgroundColor,
-		Align:           t.Align,
-	})
-	return newBlock, nil
 }
 
 func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error) {
@@ -646,17 +597,6 @@ func (t *Text) FillSmartIds(ids []string) []string {
 		}
 	}
 	return ids
-}
-
-func (t *Text) HasSmartIds() bool {
-	if t.content.Marks != nil {
-		for _, m := range t.content.Marks.Marks {
-			if m.Type == model.BlockContentTextMark_Mention || m.Type == model.BlockContentTextMark_Object {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (t *Text) ApplyEvent(e *pb.EventBlockSetText) error {

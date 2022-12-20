@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -56,9 +55,6 @@ type Block interface {
 	GetSource() []string
 	SetSource(source []string) error
 	SetActiveView(activeView string)
-
-	FillSmartIds(ids []string) []string
-	HasSmartIds() bool
 
 	// AddRelationOld DEPRECATED
 	AddRelationOld(relation model.Relation)
@@ -310,26 +306,6 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	return nil
 }
 
-func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
-	for i, view := range l.GetDataview().Views {
-		if view.Id == l.content.ActiveView {
-			return l.GetDataview().Views[i]
-		}
-	}
-	return nil
-}
-
-func (l *Dataview) FillSmartIds(ids []string) []string {
-	for _, rl := range l.content.RelationLinks {
-		ids = append(ids, addr.RelationKeyToIdPrefix+rl.Key)
-	}
-	return ids
-}
-
-func (l *Dataview) HasSmartIds() bool {
-	return len(l.content.RelationLinks) > 0
-}
-
 func (d *Dataview) AddRelation(relation *model.RelationLink) error {
 	if pbtypes.RelationLinks(d.content.RelationLinks).Has(relation.Key) {
 		return ErrRelationExists
@@ -504,14 +480,4 @@ func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) err
 	}
 
 	return nil
-}
-
-func (l *Dataview) relationsWithObjectFormat() []string {
-	var relationsWithObjFormat []string
-	for _, rel := range l.GetDataview().Relations {
-		if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
-			relationsWithObjFormat = append(relationsWithObjFormat, rel.Key)
-		}
-	}
-	return relationsWithObjFormat
 }

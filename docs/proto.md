@@ -548,10 +548,6 @@
     - [Rpc.Object.ImportList.Request](#anytype.Rpc.Object.ImportList.Request)
     - [Rpc.Object.ImportList.Response](#anytype.Rpc.Object.ImportList.Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype.Rpc.Object.ImportList.Response.Error)
-    - [Rpc.Object.ImportMarkdown](#anytype.Rpc.Object.ImportMarkdown)
-    - [Rpc.Object.ImportMarkdown.Request](#anytype.Rpc.Object.ImportMarkdown.Request)
-    - [Rpc.Object.ImportMarkdown.Response](#anytype.Rpc.Object.ImportMarkdown.Response)
-    - [Rpc.Object.ImportMarkdown.Response.Error](#anytype.Rpc.Object.ImportMarkdown.Response.Error)
     - [Rpc.Object.ListDelete](#anytype.Rpc.Object.ListDelete)
     - [Rpc.Object.ListDelete.Request](#anytype.Rpc.Object.ListDelete.Request)
     - [Rpc.Object.ListDelete.Response](#anytype.Rpc.Object.ListDelete.Response)
@@ -914,7 +910,6 @@
     - [Rpc.Object.Import.Response.Error.Code](#anytype.Rpc.Object.Import.Response.Error.Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype.Rpc.Object.ImportList.ImportResponse.Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype.Rpc.Object.ImportList.Response.Error.Code)
-    - [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Object.ImportMarkdown.Response.Error.Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype.Rpc.Object.ListDelete.Response.Error.Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype.Rpc.Object.ListDuplicate.Response.Error.Code)
     - [Rpc.Object.ListExport.Format](#anytype.Rpc.Object.ListExport.Format)
@@ -1319,7 +1314,6 @@
 | ObjectSetBreadcrumbs | [Rpc.Object.SetBreadcrumbs.Request](#anytype.Rpc.Object.SetBreadcrumbs.Request) | [Rpc.Object.SetBreadcrumbs.Response](#anytype.Rpc.Object.SetBreadcrumbs.Response) |  |
 | ObjectUndo | [Rpc.Object.Undo.Request](#anytype.Rpc.Object.Undo.Request) | [Rpc.Object.Undo.Response](#anytype.Rpc.Object.Undo.Response) |  |
 | ObjectRedo | [Rpc.Object.Redo.Request](#anytype.Rpc.Object.Redo.Request) | [Rpc.Object.Redo.Response](#anytype.Rpc.Object.Redo.Response) |  |
-| ObjectImportMarkdown | [Rpc.Object.ImportMarkdown.Request](#anytype.Rpc.Object.ImportMarkdown.Request) | [Rpc.Object.ImportMarkdown.Response](#anytype.Rpc.Object.ImportMarkdown.Response) |  |
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype.Rpc.Object.ListExport.Request) | [Rpc.Object.ListExport.Response](#anytype.Rpc.Object.ListExport.Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype.Rpc.Object.BookmarkFetch.Request) | [Rpc.Object.BookmarkFetch.Response](#anytype.Rpc.Object.BookmarkFetch.Response) |  |
 | ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype.Rpc.Object.ToBookmark.Request) | [Rpc.Object.ToBookmark.Response](#anytype.Rpc.Object.ToBookmark.Response) |  |
@@ -9387,65 +9381,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.ImportMarkdown"></a>
-
-### Rpc.Object.ImportMarkdown
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.ImportMarkdown.Request"></a>
-
-### Rpc.Object.ImportMarkdown.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| importPath | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.ImportMarkdown.Response"></a>
-
-### Rpc.Object.ImportMarkdown.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.ImportMarkdown.Response.Error](#anytype.Rpc.Object.ImportMarkdown.Response.Error) |  |  |
-| rootLinkIds | [string](#string) | repeated |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.ImportMarkdown.Response.Error"></a>
-
-### Rpc.Object.ImportMarkdown.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Object.ImportMarkdown.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Object.ListDelete"></a>
 
 ### Rpc.Object.ListDelete
@@ -14528,19 +14463,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INTERNAL_ERROR | 1 |  |
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
-
-
-
-<a name="anytype.Rpc.Object.ImportMarkdown.Response.Error.Code"></a>
-
-### Rpc.Object.ImportMarkdown.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 

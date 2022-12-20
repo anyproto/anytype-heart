@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -31,10 +30,6 @@ type DocInfo struct {
 	State      *state.State
 }
 
-type RelationOptionsInfo struct {
-	RelationId string
-	Options    []*types.Struct
-}
 
 type OnDocChangeCallback func(ctx context.Context, info DocInfo) error
 

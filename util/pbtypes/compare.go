@@ -160,20 +160,6 @@ func RelationsDiff(rels1, rels2 []*model.Relation) (added []*model.Relation, upd
 	return
 }
 
-func RelationsEqual(rels1 []*model.Relation, rels2 []*model.Relation) (equal bool) {
-	if len(rels1) != len(rels2) {
-		return false
-	}
-
-	for i := 0; i < len(rels2); i++ {
-		if !RelationEqual(rels1[i], rels2[i]) {
-			return false
-		}
-	}
-
-	return true
-}
-
 func RelationEqualOmitDictionary(rel1 *model.Relation, rel2 *model.Relation) (equal bool) {
 	if rel1 == nil && rel2 != nil {
 		return false
@@ -219,31 +205,6 @@ func RelationEqualOmitDictionary(rel1 *model.Relation, rel2 *model.Relation) (eq
 	return true
 }
 
-// RelationCompatible returns if provided relations are compatible in terms of underlying data format
-// e.g. it is ok if relation can have a different name and selectDict, while having the same key and format
-func RelationCompatible(rel1 *model.Relation, rel2 *model.Relation) (equal bool) {
-	if rel1 == nil && rel2 != nil {
-		return false
-	}
-	if rel2 == nil && rel1 != nil {
-		return false
-	}
-	if rel2 == nil && rel1 == nil {
-		return true
-	}
-
-	if rel1.Key != rel2.Key {
-		return false
-	}
-	if rel1.Format != rel2.Format {
-		return false
-	}
-
-	// todo: should we compare objectType here?
-
-	return true
-}
-
 func RelationEqual(rel1 *model.Relation, rel2 *model.Relation) (equal bool) {
 	if !RelationEqualOmitDictionary(rel1, rel2) {
 		return false
@@ -263,75 +224,6 @@ func RelationSelectDictEqual(dict1, dict2 []*model.RelationOption) bool {
 		}
 	}
 
-	return true
-}
-
-func RelationSelectDictDiff(dict1, dict2 []*model.RelationOption) (added []*model.RelationOption, updated []*model.RelationOption, removed []string) {
-	for i := 0; i < len(dict2); i++ {
-		if opt := GetOption(dict1, dict2[i].Id); opt == nil {
-			added = append(added, dict2[i])
-			continue
-		} else {
-			if !OptionEqual(opt, dict2[i]) {
-				updated = append(updated, dict2[i])
-				continue
-			}
-		}
-	}
-
-	for i := 0; i < len(dict1); i++ {
-		if r := GetOption(dict2, dict1[i].Id); r == nil {
-			removed = append(removed, dict1[i].Id)
-			continue
-		}
-	}
-	return
-}
-
-func RelationSelectDictDiffOmitScope(dict1, dict2 []*model.RelationOption) (added []*model.RelationOption, updated []*model.RelationOption, removed []string) {
-	for i := 0; i < len(dict2); i++ {
-		if opt := GetOption(dict1, dict2[i].Id); opt == nil {
-			added = append(added, dict2[i])
-			continue
-		} else {
-			if !OptionEqualOmitScope(opt, dict2[i]) {
-				updated = append(updated, dict2[i])
-				continue
-			}
-		}
-	}
-
-	for i := 0; i < len(dict1); i++ {
-		if r := GetOption(dict2, dict1[i].Id); r == nil {
-			removed = append(removed, dict1[i].Id)
-			continue
-		}
-	}
-	return
-}
-
-func OptionEqualOmitScope(opt1, opt2 *model.RelationOption) bool {
-	if (opt1 == nil) && (opt2 != nil) {
-		return false
-	}
-
-	if (opt1 != nil) && (opt2 == nil) {
-		return false
-	}
-
-	if opt1 == nil && opt2 == nil {
-		return true
-	}
-
-	if opt1.Id != opt2.Id {
-		return false
-	}
-	if opt1.Text != opt2.Text {
-		return false
-	}
-	if opt1.Color != opt2.Color {
-		return false
-	}
 	return true
 }
 
@@ -495,19 +387,4 @@ func SortedRange(s *types.Struct, f func(k string, v *types.Value)) {
 	for _, k := range keys {
 		f(k, s.Fields[k])
 	}
-}
-
-func RelationOptionsFilter(options []*model.RelationOption, f func(option *model.RelationOption) bool) []*model.RelationOption {
-	if len(options) == 0 {
-		return nil
-	}
-
-	res := make([]*model.RelationOption, 0, len(options))
-	for i := range options {
-		if f(options[i]) {
-			res = append(res, options[i])
-		}
-	}
-
-	return res
 }

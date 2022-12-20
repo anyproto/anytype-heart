@@ -96,26 +96,6 @@ func (v *files) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	return s, nil
 }
 
-func (v *files) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	s := &state.State{}
-
-	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
-	defer cancel()
-
-	d, _, err := getDetailsForFileOrImage(ctx, v.a, v.id)
-	if err != nil {
-		if err == core.ErrFileNotIndexable {
-			return s, nil
-		}
-		return nil, err
-	}
-
-	s.SetDetails(d)
-	s.SetLocalDetail(bundle.RelationKeyId.String(), pbtypes.String(v.id))
-	s.SetObjectTypes(pbtypes.GetStringList(d, bundle.RelationKeyType.String()))
-	return s, nil
-}
-
 func (v *files) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }

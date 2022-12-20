@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
 
@@ -28,7 +27,6 @@ const blockServiceCName = "blockService"
 
 var (
 	ErrNotFound = errors.New("relation not found")
-	ErrExists   = errors.New("relation with given key already exists")
 	log         = logging.Logger("anytype-relations")
 )
 
@@ -424,8 +422,4 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 func (s *service) validateOptions(rel *relationutils.Relation, v []string) error {
 	//TODO:
 	return nil
-}
-
-func generateRelationKey() string {
-	return bson.NewObjectId().Hex()
 }
