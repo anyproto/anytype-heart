@@ -66,10 +66,13 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		removedCollectionKeysMap[t] = struct{}{}
 	}
 
+	detailsToSave := pbtypes.StructCutKeys(snapshot.Data.Details,
+		append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+
 	s := &State{
 		rootId:          rootId,
 		blocks:          blocks,
-		details:         pbtypes.StructCutKeys(snapshot.Data.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...)),
+		details:         detailsToSave,
 		extraRelations:  snapshot.Data.ExtraRelations,
 		relationLinks:   snapshot.Data.RelationLinks,
 		objectTypes:     snapshot.Data.ObjectTypes,

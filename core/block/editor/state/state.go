@@ -1118,7 +1118,9 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 			continue
 		}
 
-		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() || rel.Key == bundle.RelationKeyWorkspaceId.String() {
+		if rel.Key == bundle.RelationKeyCreator.String() ||
+			rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
+			rel.Key == bundle.RelationKeyWorkspaceId.String() {
 			if creatorModifierWorkspace {
 				v := pbtypes.GetString(det, rel.Key)
 				ids = append(ids, v)
@@ -1448,7 +1450,8 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 		oldval := store.Fields[path[len(path)-1]]
 		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
-		delete(s.storeKeyRemoved, strings.Join(path, collectionKeysRemovedSeparator)) // in case we have previously removed this key
+		// in case we have previously removed this key
+		delete(s.storeKeyRemoved, strings.Join(path, collectionKeysRemovedSeparator))
 		return
 	}
 	changed = true
