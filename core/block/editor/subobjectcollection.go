@@ -294,8 +294,6 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		return
 	}
 
-	log.Errorf("initSubObject %s: found subobj", fullId)
-
 	if _, exists := c.collections[collection]; !exists {
 		c.collections[collection] = map[string]SubObjectImpl{}
 	}
