@@ -109,21 +109,6 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
-func (p *Workspaces) GetAllObjects() []string {
-	st := p.NewState()
-	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
-	if workspaceCollection == nil || workspaceCollection.Fields == nil {
-		return nil
-	}
-	objects := make([]string, 0, len(workspaceCollection.Fields))
-	for objId, workspaceId := range workspaceCollection.Fields {
-		if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
-			objects = append(objects, objId)
-		}
-	}
-	return objects
-}
-
 func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	st := p.NewState()
 	deviceId := p.Anytype().Device()

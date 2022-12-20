@@ -280,34 +280,6 @@ func (mw *Middleware) BlockCut(cctx context.Context, req *pb.RpcBlockCutRequest)
 	return response(pb.RpcBlockCutResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
 }
 
-func (mw *Middleware) ObjectImportMarkdown(cctx context.Context, req *pb.RpcObjectImportMarkdownRequest) *pb.RpcObjectImportMarkdownResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectImportMarkdownResponseErrorCode, rootLinkIds []string, err error) *pb.RpcObjectImportMarkdownResponse {
-		m := &pb.RpcObjectImportMarkdownResponse{
-			Error:       &pb.RpcObjectImportMarkdownResponseError{Code: code},
-			RootLinkIds: rootLinkIds,
-		}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-
-	var rootLinkIds []string
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		rootLinkIds, err = bs.ImportMarkdown(ctx, *req)
-		return err
-	})
-
-	if err != nil {
-		return response(pb.RpcObjectImportMarkdownResponseError_UNKNOWN_ERROR, rootLinkIds, err)
-	}
-
-	return response(pb.RpcObjectImportMarkdownResponseError_NULL, rootLinkIds, nil)
-}
-
 func (mw *Middleware) BlockExport(cctx context.Context, req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockExportResponseErrorCode, path string, err error) *pb.RpcBlockExportResponse {

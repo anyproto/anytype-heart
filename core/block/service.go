@@ -25,7 +25,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -67,17 +66,11 @@ const (
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
-	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
-
-var (
-	blockCacheTTL       = time.Minute
-	blockCleanupTimeout = time.Second * 30
-)
 
 var (
 	// quick fix for limiting file upload goroutines
@@ -696,26 +689,6 @@ func (s *Service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
 	return nil, merr.ErrorOrNil()
 }
 
-func (s *Service) DeleteArchivedObject(id string) (err error) {
-	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("unexpected archive block type: %T", b)
-		}
-
-		if exists, _ := archive.HasObject(id); exists {
-			if err = s.DeleteObject(id); err == nil {
-				err = archive.RemoveObject(id)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
-	})
-}
-
 func (s *Service) AddCreatorInfoIfNeeded(workspaceId string) error {
 	if s.Anytype().PredefinedBlocks().IsAccount(workspaceId) {
 		return nil
@@ -1161,11 +1134,11 @@ func (s *Service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.bookmark)
+		sb = editor.NewPage(s, s, s.bookmark)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard(s, s)
+		sb = editor.NewDashboard(s)
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet()
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
@@ -1186,9 +1159,9 @@ func (s *Service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate()
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.bookmark)
+		sb = editor.NewTemplate(s, s, s.bookmark)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.bookmark)
+		sb = editor.NewTemplate(s, s, s.bookmark)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
@@ -1336,21 +1309,6 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 		return apply(bb)
 	}
 	return fmt.Errorf("undo operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoImport(id string, apply func(b _import.Import) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(_import.Import); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-
-	return fmt.Errorf("import operation not available for this block type: %T", sb)
 }
 
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
