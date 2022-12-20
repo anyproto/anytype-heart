@@ -707,7 +707,9 @@ func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id st
 	}
 
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(w.Id())
-
+	if pbtypes.GetFloat64(details, bundle.RelationKeyCreatedDate.String()) == 0 {
+		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(time.Now().Unix()))
+	}
 	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.URL():
 		return w.createObjectType(st, details)
