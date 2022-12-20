@@ -605,7 +605,8 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectSetSource(cctx context.Context, req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
+func (mw *Middleware) ObjectSetSource(cctx context.Context,
+	req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
 		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}

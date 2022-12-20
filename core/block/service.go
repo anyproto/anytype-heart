@@ -639,7 +639,7 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		s := b.NewStateCtx(ctx)
-		s.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(req.Source))
+		s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
 		return b.Apply(s, smartblock.NoRestrictions)
 	})
 }
