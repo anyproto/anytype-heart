@@ -29,6 +29,13 @@ var log = logging.Logger("anytype-mw-state")
 const (
 	snippetMinSize = 50
 	snippetMaxSize = 300
+
+	HeaderLayoutId           = "header"
+	TitleBlockId             = "title"
+	DescriptionBlockId       = "description"
+	DataviewBlockId          = "dataview"
+	DataviewTemplatesBlockId = "templates"
+	FeaturedRelationsId      = "featuredRelations"
 )
 
 var (
@@ -1204,7 +1211,7 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
-			if chId == "header" {
+			if chId == HeaderLayoutId || chId == FeaturedRelationsId || chId == DataviewBlockId || chId == DataviewTemplatesBlockId {
 				continue
 			}
 			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil && !emptyTextFound {

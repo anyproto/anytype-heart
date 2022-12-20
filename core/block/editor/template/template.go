@@ -1,6 +1,8 @@
 package template
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -11,9 +13,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
 )
 
+// duplicate constants stored at core/block/editor/state/state.go and can't be reused from here as it would create a circular dependency
+// after refactoring these templates we need to find a better place for these constants and IsEmpty method
 const (
 	HeaderLayoutId      = "header"
 	TitleBlockId        = "title"

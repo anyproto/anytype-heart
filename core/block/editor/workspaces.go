@@ -310,7 +310,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			}
 			if coll != nil && coll.GetStructValue() != nil {
 				for sub := range coll.GetStructValue().GetFields() {
-					if err = p.initSubObject(ctx.State, collName, sub); err != nil {
+					if err = p.initSubObject(ctx.State, collName, sub, false); err != nil {
 						log.Errorf("failed to init sub object %s-%s: %v", collName, sub, err)
 					}
 				}
@@ -552,7 +552,7 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
+	if err = w.initSubObject(st, collectionKeyRelations, key, true); err != nil {
 		return
 	}
 	return
@@ -591,7 +591,7 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed relation option. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
+	if err = w.initSubObject(st, collectionKeyRelationOptions, key, true); err != nil {
 		return
 	}
 	return
@@ -662,7 +662,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 
 	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
+	if err = w.initSubObject(st, collectionKeyObjectTypes, key, true); err != nil {
 		return
 	}
 
