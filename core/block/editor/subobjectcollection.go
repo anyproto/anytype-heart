@@ -280,6 +280,14 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		}
 	}
 
+	storedDetails, err := c.ObjectStore().GetDetails(fullId)
+	if storedDetails.GetDetails() != nil && pbtypes.GetBool(storedDetails.Details, bundle.RelationKeyIsDeleted.String()) {
+		err = c.ObjectStore().DeleteDetails(fullId)
+		if err != nil {
+			log.Errorf("initSubObject %s: failed to delete deleted details: %v", fullId, err)
+		}
+	}
+
 	subState, err := SubState(st, collection, fullId, ws)
 	if err != nil {
 		return
