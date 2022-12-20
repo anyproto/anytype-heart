@@ -1090,7 +1090,7 @@ func (s *State) SetParent(parent *State) {
 	s.parent = parent
 }
 
-func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifier bool) (ids []string) {
+func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
 	if blocks {
 		err := s.Iterate(func(b simple.Block) (isContinue bool) {
 			if ls, ok := b.(linkSource); ok {
@@ -1141,8 +1141,8 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 			continue
 		}
 
-		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-			if creatorModifier {
+		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() || rel.Key == bundle.RelationKeyWorkspaceId.String() {
+			if creatorModifierWorkspace {
 				v := pbtypes.GetString(det, rel.Key)
 				ids = append(ids, v)
 			}

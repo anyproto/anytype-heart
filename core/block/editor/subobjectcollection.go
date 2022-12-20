@@ -282,6 +282,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 
 	storedDetails, err := c.ObjectStore().GetDetails(fullId)
 	if storedDetails.GetDetails() != nil && pbtypes.GetBool(storedDetails.Details, bundle.RelationKeyIsDeleted.String()) {
+		// we have removed this subobject previously, so let's removed stored details(with isDeleted=true) so it will not be injected to the new subobject
 		err = c.ObjectStore().DeleteDetails(fullId)
 		if err != nil {
 			log.Errorf("initSubObject %s: failed to delete deleted details: %v", fullId, err)
