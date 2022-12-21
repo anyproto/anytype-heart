@@ -1,37 +1,39 @@
 package slice
 
 import (
-	"github.com/globalsign/mgo/bson"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/globalsign/mgo/bson"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Diff(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
 	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004"}
 
-	chs := Diff(origin, changed)
+	chs := Diff(StringsToIDs(origin), StringsToIDs(changed))
 
-	assert.Equal(t, chs, []Change{
-		{Op: OperationMove, Ids: []string{"008"}, AfterId: "000"},
-		{Op: OperationMove, Ids: []string{"004"}, AfterId: "009"}},
+	assert.Equal(t, chs, []Change[ID]{
+		{Op: OperationMove, Items: []ID{"008"}, AfterId: "000"},
+		{Op: OperationMove, Items: []ID{"004"}, AfterId: "009"}},
 	)
 }
 
 func Test_ChangesApply(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
-	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004", "new"}
+	changed := []ID{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004", "new"}
 
-	chs := Diff(origin, changed)
+	chs := Diff(StringsToIDs(origin), changed)
 
-	res := ApplyChanges(origin, chs)
+	res := ApplyChanges(StringsToIDs(origin), chs)
 
 	assert.Equal(t, changed, res)
 }
 
 func Test_SameLength(t *testing.T) {
+	// TODO use quickcheck here
 	for i := 0; i < 10000; i++ {
 		l := randNum(5, 200)
 		origin := getRandArray(l)
@@ -40,10 +42,10 @@ func Test_SameLength(t *testing.T) {
 		rand.Shuffle(len(changed),
 			func(i, j int) { changed[i], changed[j] = changed[j], changed[i] })
 
-		chs := Diff(origin, changed)
-		res := ApplyChanges(origin, chs)
+		chs := Diff(StringsToIDs(origin), StringsToIDs(changed))
+		res := ApplyChanges(StringsToIDs(origin), chs)
 
-		assert.Equal(t, res, changed)
+		assert.Equal(t, res, StringsToIDs(changed))
 	}
 }
 
@@ -76,19 +78,19 @@ func Test_DifferentLength(t *testing.T) {
 			changed = Insert(changed, insIdx, []string{bson.NewObjectId().Hex()}...)
 		}
 
-		chs := Diff(origin, changed)
-		res := ApplyChanges(origin, chs)
+		chs := Diff(StringsToIDs(origin), StringsToIDs(changed))
+		res := ApplyChanges(StringsToIDs(origin), chs)
 
-		assert.Equal(t, res, changed)
+		assert.Equal(t, res, StringsToIDs(changed))
 	}
 }
 
-func randNum(min, max int) int{
+func randNum(min, max int) int {
 	if max <= min {
 		return max
 	}
 	rand.Seed(time.Now().UnixNano())
-	return  rand.Intn(max - min) + min
+	return rand.Intn(max-min) + min
 }
 
 func getRandArray(len int) []string {

@@ -119,11 +119,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 	for _, order2 := range dv.content.ObjectOrders {
 		var found bool
-		var changes []slice.Change
+		var changes []slice.Change[slice.ID]
 		for _, order1 := range d.content.ObjectOrders {
 			if order1.ViewId == order2.ViewId && order1.GroupId == order2.GroupId {
 				found = true
-				changes = slice.Diff(order1.ObjectIds, order2.ObjectIds)
+				changes = slice.Diff(slice.StringsToIDs(order1.ObjectIds), slice.StringsToIDs(order2.ObjectIds))
 				break
 			}
 		}

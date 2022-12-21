@@ -42,7 +42,7 @@ func DifferenceRemovedAdded(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func FindPos(s []string, v string) int {
+func FindPos[T comparable](s []T, v T) int {
 	for i, sv := range s {
 		if sv == v {
 			return i
@@ -62,7 +62,7 @@ func Difference(a, b []string) []string {
 	return diff
 }
 
-func Insert(s []string, pos int, v ...string) []string {
+func Insert[T any](s []T, pos int, v ...T) []T {
 	if len(s) <= pos {
 		return append(s, v...)
 	}
@@ -84,8 +84,8 @@ func Remove(s []string, v string) []string {
 	return s[:n]
 }
 
-func Filter(vals []string, cond func(string) bool) []string {
-	var result = make([]string, 0, len(vals))
+func Filter[T any](vals []T, cond func(T) bool) []T {
+	var result = make([]T, 0, len(vals))
 	for i := range vals {
 		if cond(vals[i]) {
 			result = append(result, vals[i])

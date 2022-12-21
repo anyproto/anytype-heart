@@ -211,7 +211,7 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 	return
 }
 
-func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change {
+func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change[slice.ID] {
 	sliceOpMap := map[pb.EventBlockDataviewSliceOperation]slice.DiffOperation{
 		pb.EventBlockDataview_SliceOperationNone:    slice.OperationNone,
 		pb.EventBlockDataview_SliceOperationAdd:     slice.OperationAdd,
@@ -220,15 +220,15 @@ func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Ch
 		pb.EventBlockDataview_SliceOperationReplace: slice.OperationReplace,
 	}
 
-	var res []slice.Change
+	var res []slice.Change[slice.ID]
 	for _, eventCh := range changes {
-		res = append(res, slice.Change{Op: sliceOpMap[eventCh.Op], Ids: eventCh.Ids, AfterId: eventCh.AfterId})
+		res = append(res, slice.Change[slice.ID]{Op: sliceOpMap[eventCh.Op], Items: slice.StringsToIDs(eventCh.Ids), AfterId: eventCh.AfterId})
 	}
 
 	return res
 }
 
-func SliceChangeToEvents(changes []slice.Change) []*pb.EventBlockDataviewSliceChange {
+func SliceChangeToEvents(changes []slice.Change[slice.ID]) []*pb.EventBlockDataviewSliceChange {
 	eventsOpMap := map[slice.DiffOperation]pb.EventBlockDataviewSliceOperation{
 		slice.OperationNone:    pb.EventBlockDataview_SliceOperationNone,
 		slice.OperationAdd:     pb.EventBlockDataview_SliceOperationAdd,
@@ -239,7 +239,7 @@ func SliceChangeToEvents(changes []slice.Change) []*pb.EventBlockDataviewSliceCh
 
 	var res []*pb.EventBlockDataviewSliceChange
 	for _, sliceCh := range changes {
-		res = append(res, &pb.EventBlockDataviewSliceChange{Op: eventsOpMap[sliceCh.Op], Ids: sliceCh.Ids, AfterId: sliceCh.AfterId})
+		res = append(res, &pb.EventBlockDataviewSliceChange{Op: eventsOpMap[sliceCh.Op], Ids: slice.IDsToStrings(sliceCh.Items), AfterId: sliceCh.AfterId})
 	}
 
 	return res
