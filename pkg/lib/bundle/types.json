@@ -141,7 +141,7 @@
       "Date"
     ],
     "emoji": "📅",
-    "hidden": false,
+    "hidden": true,
     "layout": "basic",
     "relations": [
       "tag"

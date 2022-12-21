@@ -700,7 +700,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		return
 	}
 
-	records, _, err := w.ObjectStore().Query(nil, database2.Query{
+	bundledTemplates, _, err := w.ObjectStore().Query(nil, database2.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -714,14 +714,41 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 			},
 		},
 	})
+
+	alreadyInstalledTemplates, _, err := w.ObjectStore().Query(nil, database2.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(addr.ObjectTypeKeyToIdPrefix + key),
+			},
+		},
+	})
 	if err != nil {
 		return
 	}
 
+	var existingTemplatesMap = map[string]struct{}{}
+	for _, rec := range alreadyInstalledTemplates {
+		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+		if sourceObject != "" {
+			existingTemplatesMap[sourceObject] = struct{}{}
+		}
+	}
+
 	go func() {
 		// todo: remove this dirty hack to avoid lock
-		for _, record := range records {
+		for _, record := range bundledTemplates {
 			id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+			if _, exists := existingTemplatesMap[id]; exists {
+				continue
+			}
+
 			_, err := w.templateCloner.TemplateClone(id)
 			if err != nil {
 				log.Errorf("failed to clone template %s: %s", id, err.Error())

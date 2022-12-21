@@ -1485,6 +1485,7 @@ func (s *Service) TemplateClone(id string) (templateId string, err error) {
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
 		t := st.ObjectTypes()
 		t, _ = relationutils.MigrateObjectTypeIds(t)
 		st.SetObjectTypes(t)
