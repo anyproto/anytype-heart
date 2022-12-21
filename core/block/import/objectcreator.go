@@ -113,7 +113,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.UpdateRelations(ctx, snapshot, pageID, relations, nil)
+	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.CreateRelations(ctx, snapshot, pageID, relations, nil)
 
 	if err != nil {
 		return nil, fmt.Errorf("relation create '%s'", err)

@@ -46,7 +46,7 @@ func NewRelationCreator(service *block.Service, store filestore.FileStore, core 
 	}
 }
 
-func (rc *RelationService) UpdateRelations(ctx *session.Context,
+func (rc *RelationService) CreateRelations(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	pageID string,
 	relations []*converter.Relation,
@@ -91,10 +91,11 @@ func (rc *RelationService) UpdateRelations(ctx *session.Context,
 		notExistedRelations = append(notExistedRelations, r)
 	}
 
-	filesToDelete, oldRelationBlockToNew, err := rc.update(ctx, snapshot, existedRelations, pageID)
+	filesToDelete, oldRelationBlockToNew, failedRelations, err := rc.update(ctx, snapshot, existedRelations, pageID)
 	if err != nil {
 		return nil, nil, err
 	}
+	notExistedRelations = append(notExistedRelations, failedRelations...)
 	createfilesToDelete, relationsBlocks, err := rc.create(ctx, snapshot, notExistedRelations, pageID)
 	if err != nil {
 		return nil, nil, err
@@ -215,21 +216,21 @@ func (rc *RelationService) create(ctx *session.Context,
 func (rc *RelationService) update(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	relations map[string]*converter.Relation,
-	pageID string) ([]string, map[string]*model.Block, error) {
+	pageID string) ([]string, map[string]*model.Block, []*converter.Relation, error) {
 	var (
 		err                   error
 		filesToDelete         = make([]string, 0)
 		oldRelationBlockToNew = make(map[string]*model.Block, 0)
-		setDetailsRequest     = make([]*pb.RpcObjectSetDetailsDetail, 0)
+		failedRelations       = make([]*converter.Relation, 0)
 	)
 
-	ids := make([]string, 0, len(relations))
-
-	if err = rc.service.AddExtraRelations(ctx, pageID, ids); err != nil {
-		log.Errorf("add extra relation %s", err)
-	}
-
+	// to get failed relations and fallback them to create function
 	for key, r := range relations {
+		if err = rc.service.AddExtraRelations(ctx, pageID, []string{key}); err != nil {
+			log.Errorf("add extra relation %s", err)
+			failedRelations = append(failedRelations, r)
+			continue
+		}
 		if snapshot.Details != nil && snapshot.Details.Fields != nil {
 			if snapshot.Details.Fields[r.Name].GetListValue() != nil {
 				rc.handleListValue(ctx, snapshot, r, key)
@@ -238,6 +239,7 @@ func (rc *RelationService) update(ctx *session.Context,
 				filesToDelete = append(filesToDelete, rc.handleFileRelation(ctx, snapshot, r.Name)...)
 			}
 		}
+		setDetailsRequest := make([]*pb.RpcObjectSetDetailsDetail, 0)
 		setDetailsRequest = append(setDetailsRequest, &pb.RpcObjectSetDetailsDetail{
 			Key:   key,
 			Value: snapshot.Details.Fields[r.Name],
@@ -248,14 +250,14 @@ func (rc *RelationService) update(ctx *session.Context,
 				oldRelationBlockToNew[original.GetId()] = new
 			}
 		}
-	}
-
-	err = rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-		ContextId: pageID,
-		Details:   setDetailsRequest,
-	})
-	if err != nil {
-		log.Errorf("set details %s", err)
+		err = rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
+			ContextId: pageID,
+			Details:   setDetailsRequest,
+		})
+		if err != nil {
+			log.Errorf("set details %s", err)
+			failedRelations = append(failedRelations, r)
+		}
 	}
 
 	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {
@@ -264,7 +266,7 @@ func (rc *RelationService) update(ctx *session.Context,
 		filesToDelete = append(filesToDelete, ftd...)
 	}
 
-	return filesToDelete, oldRelationBlockToNew, nil
+	return filesToDelete, oldRelationBlockToNew, failedRelations, nil
 
 }
 

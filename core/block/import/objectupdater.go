@@ -131,7 +131,7 @@ func (ou *ObjectUpdater) update(ctx *session.Context,
 			return nil, err
 		}
 		var err error
-		filesToDelete, oldRelationBlockToNew, err = ou.relationCreator.UpdateRelations(ctx, snapshot, id, relations, nil)
+		filesToDelete, oldRelationBlockToNew, err = ou.relationCreator.CreateRelations(ctx, snapshot, id, relations, nil)
 		if err != nil {
 			return nil, err
 		}

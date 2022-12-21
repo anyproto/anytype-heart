@@ -43,5 +43,5 @@ type RelationCreator interface {
 	//nolint: lll
 	ReplaceRelationBlock(ctx *session.Context, st *state.State, oldRelationBlocksToNew map[string]*model.Block, pageID string)
 	//nolint: lll
-	UpdateRelations(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, relations []*converter.Relation, relationsLinks pbtypes.RelationLinks) ([]string, map[string]*model.Block, error)
+	CreateRelations(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, relations []*converter.Relation, relationsLinks pbtypes.RelationLinks) ([]string, map[string]*model.Block, error)
 }
