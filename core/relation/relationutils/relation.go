@@ -94,6 +94,13 @@ func (rs Relations) GetByKey(key string) *Relation {
 	return nil
 }
 
+func (rs Relations) GetModelByKey(key string) *model.Relation {
+	if r := rs.GetByKey(key); r != nil {
+		return r.Relation
+	}
+	return nil
+}
+
 func MigrateRelationModels(rels []*model.Relation) (relLinks []*model.RelationLink) {
 	relLinks = make([]*model.RelationLink, 0, len(rels))
 	for _, rel := range rels {

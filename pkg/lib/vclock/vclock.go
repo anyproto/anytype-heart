@@ -198,6 +198,49 @@ func (vc VClock) Compare(other VClock, cond Condition) bool {
 	return cond&otherIs != 0
 }
 
+func (vc VClock) Copy() VClock {
+	if vc.IsNil() {
+		return Undef
+	}
+
+	vc.mutex.RLock()
+	defer vc.mutex.RUnlock()
+
+	cp := make(map[string]uint64, len(vc.m))
+	for key, value := range vc.m {
+		cp[key] = value
+	}
+	return VClock{mutex: &sync.RWMutex{}, m: cp}
+}
+
+func (vc VClock) Increment(s string) {
+	if vc.IsNil() {
+		log.Errorf("trying to increment Undef vclock")
+		return
+	}
+
+	vc.mutex.RLock()
+	defer vc.mutex.RUnlock()
+
+	vc.m[s] = vc.m[s] + 1
+}
+
+func (vc VClock) Map() map[string]uint64 {
+	if vc.IsNil() {
+		return make(map[string]uint64, 0)
+	}
+
+	vc.mutex.RLock()
+	defer vc.mutex.RUnlock()
+
+	cp := make(map[string]uint64, len(vc.m))
+	for key, value := range vc.m {
+		cp[key] = value
+	}
+
+	return cp
+}
+
 func (vc VClock) Hash() string {
 	var (
 		sum     [32]byte

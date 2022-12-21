@@ -21,6 +21,24 @@ type pubKey struct {
 	crypto.PubKey
 }
 
+func NewPubKey(t KeypairType, pk crypto.PubKey) (PubKey, error) {
+	if t != KeypairTypeAccount && t != KeypairTypeDevice {
+		return nil, fmt.Errorf("incorrect KeypairType")
+	}
+
+	pubk := pubKey{
+		keyType: t,
+		PubKey:  pk,
+	}
+
+	_, err := getAddress(t, pk)
+	if err != nil {
+		return nil, err
+	}
+
+	return pubk, nil
+}
+
 func NewPubKeyFromAddress(t KeypairType, address string) (PubKey, error) {
 	if t != KeypairTypeAccount && t != KeypairTypeDevice {
 		return nil, fmt.Errorf("incorrect KeypairType")

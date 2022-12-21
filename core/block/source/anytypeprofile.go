@@ -74,6 +74,15 @@ func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, e
 	return s, nil
 }
 
+func (v *anytypeProfile) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	s := &state.State{}
+	d := v.getDetails()
+
+	s.SetDetails(d)
+	s.SetObjectType(bundle.TypeKeyProfile.URL())
+	return s, nil
+}
+
 func (v *anytypeProfile) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }

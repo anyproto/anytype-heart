@@ -40,8 +40,10 @@ func New() Service {
 type Service interface {
 	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
+	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
+	UnsubscribeAll() (err error)
 
 	app.ComponentRunnable
 }
@@ -279,6 +281,29 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 			return nil, err
 		}
 		s.subscriptions[sub.id] = sub
+
+		records, err := s.objectStore.GetAggregatedOptions(bundle.RelationKeyTag.String())
+		if err != nil {
+			return nil, fmt.Errorf("fail to get tags records: %v", err)
+		}
+		for _, rec := range records {
+			idHash := kanban.Hash(rec.Id)
+			hashExist := false
+			for _, g := range dataViewGroups {
+				if idHash == g.Id {
+					hashExist = true
+					break
+				}
+			}
+			if !hashExist {
+				dataViewGroups = append(dataViewGroups, &model.BlockContentDataviewGroup{
+					Id: idHash,
+					Value: &model.BlockContentDataviewGroupValueOfTag{Tag: &model.BlockContentDataviewTag{
+						Ids: []string{rec.Id},
+					}},
+				})
+			}
+		}
 	}
 
 	return &pb.RpcObjectGroupsSubscribeResponse{
@@ -286,6 +311,10 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		Groups: dataViewGroups,
 		SubId:  subId,
 	}, nil
+}
+
+func (s *service) SubscribeIds(subId string, ids []string) (records []*types.Struct, err error) {
+	return
 }
 
 func (s *service) Unsubscribe(subIds ...string) (err error) {
@@ -297,6 +326,16 @@ func (s *service) Unsubscribe(subIds ...string) (err error) {
 			delete(s.subscriptions, subId)
 		}
 	}
+	return
+}
+
+func (s *service) UnsubscribeAll() (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	for _, sub := range s.subscriptions {
+		sub.close()
+	}
+	s.subscriptions = make(map[string]subscription)
 	return
 }
 

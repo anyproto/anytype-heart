@@ -22,6 +22,13 @@ const (
 	EdgeTypeLink
 )
 
+type linkInfo struct {
+	target   string
+	edgeType edgeType
+	name     string
+	full     string
+}
+
 type Node struct {
 	Id          string `json:"id,omitempty"`
 	Type        string `json:"type,omitempty"`

@@ -75,6 +75,10 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 	return s, nil
 }
 
+func (v *bundledObjectType) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	return v.ReadDoc(ctx, nil, false)
+}
+
 func (v *bundledObjectType) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }

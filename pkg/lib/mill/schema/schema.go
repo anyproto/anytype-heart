@@ -8,6 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
+// ErrFileValidationFailed indicates dag schema validation failed
+var ErrFileValidationFailed = fmt.Errorf("file failed schema validation")
+
 // ErrEmptySchema indicates a schema is empty
 var ErrEmptySchema = fmt.Errorf("schema does not create any files")
 
@@ -17,11 +20,31 @@ var ErrLinkOrderNotSolvable = fmt.Errorf("link order is not solvable")
 // ErrSchemaInvalidMill indicates a schema has an invalid mill entry
 var ErrSchemaInvalidMill = fmt.Errorf("schema contains an invalid mill")
 
+// ErrMissingJsonSchema indicates json schema is missing
+var ErrMissingJsonSchema = fmt.Errorf("json mill requires a json schema")
+
+// ErrBadJsonSchema indicates json schema is invalid
+var ErrBadJsonSchema = fmt.Errorf("json schema is not valid")
+
 // FileTag indicates the link should "use" the input file as source
 const FileTag = ":file"
 
 // SingleFileTag is a magic key indicating that a directory is actually a single file
 const SingleFileTag = ":single"
+
+// ValidateMill is false if mill is not one of the built in tags
+func ValidateMill(mill string) bool {
+	switch mill {
+	case
+		"/schema",
+		"/blob",
+		"/image/resize",
+		"/image/exif",
+		"/json":
+		return true
+	}
+	return false
+}
 
 // LinkByName finds a link w/ one of the given names in the provided list
 func LinkByName(links []*ipld.Link, names []string) *ipld.Link {
