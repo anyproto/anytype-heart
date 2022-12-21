@@ -51,6 +51,10 @@ func (v *virtual) ReadDoc(ctx context.Context, eceiver ChangeReceiver, empty boo
 	return state.NewDoc(v.id, nil), nil
 }
 
+func (v *virtual) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	return state.NewDoc(v.id, nil), nil
+}
+
 func (v *virtual) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }

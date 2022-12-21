@@ -11,7 +11,25 @@ import (
 )
 
 var ErrRepoExists = fmt.Errorf("repo not empty, reinitializing would overwrite your account")
+var ErrRepoDoesNotExist = fmt.Errorf("repo does not exist, initialization is required")
+var ErrMigrationRequired = fmt.Errorf("repo needs migration")
 var ErrRepoCorrupted = fmt.Errorf("repo is corrupted")
+
+func WalletListLocalAccounts(rootPath string) ([]string, error) {
+	repos, err := ioutil.ReadDir(rootPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var accounts []string
+	for _, f := range repos {
+		if len(f.Name()) == 48 {
+			accounts = append(accounts, f.Name())
+		}
+	}
+
+	return accounts, nil
+}
 
 func WalletGenerateMnemonic(wordCount int) (string, error) {
 	w, err := wallet.WalletFromWordCount(wordCount)

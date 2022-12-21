@@ -31,6 +31,7 @@ import (
 const DefaultDetailsFieldName = "_defaultRecordFields"
 
 var log = logging.Logger("anytype-mw-editor-dataview")
+var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 var DefaultDataviewRelations = make([]bundle.RelationKey, 0, len(bundle.RequiredInternalRelations))
 
 func init() {

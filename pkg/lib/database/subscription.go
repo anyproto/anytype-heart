@@ -18,8 +18,14 @@ type subscription struct {
 
 type Subscription interface {
 	Close()
+	RecordChan() chan *types.Struct
 	Subscribe(ids []string) (added []string)
+	Subscriptions() []string
 	Publish(id string, msg *types.Struct) bool
+}
+
+func (sub *subscription) RecordChan() chan *types.Struct {
+	return sub.ch
 }
 
 func (sub *subscription) Close() {
@@ -77,6 +83,23 @@ func (sub *subscription) Publish(id string, msg *types.Struct) bool {
 		}
 	}
 	return false
+}
+
+func (sub *subscription) SubscribedForId(id string) bool {
+	sub.RLock()
+	defer sub.RUnlock()
+	for _, idE := range sub.ids {
+		if idE == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (sub *subscription) Subscriptions() []string {
+	sub.RLock()
+	defer sub.RUnlock()
+	return sub.ids
 }
 
 func NewSubscription(ids []string, ch chan *types.Struct) Subscription {

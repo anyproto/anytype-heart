@@ -81,6 +81,10 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	return s, nil
 }
 
+func (v *bundledRelation) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	return v.ReadDoc(ctx, nil, false)
+}
+
 func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {
 	if params.State.ChangeId() == "" {
 		// allow the first changes created by Init
