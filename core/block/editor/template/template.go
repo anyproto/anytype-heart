@@ -15,7 +15,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-// duplicate constants stored at core/block/editor/state/state.go and can't be reused from here as it would create a circular dependency
+// duplicate constants stored at core/block/editor/state/state.go
+// it can't be reused from here as it would create a circular dependency
 // after refactoring these templates we need to find a better place for these constants and IsEmpty method
 const (
 	HeaderLayoutId      = "header"
