@@ -347,7 +347,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		if !collectionKeyIsSupported(pathS[0]) {
 			continue
 		}
-		if err = p.initSubObject(ctx.State, pathS[0], strings.Join(pathS[1:], addr.SubObjectCollectionIdSeparator)); err != nil {
+		if err = p.initSubObject(ctx.State, pathS[0], strings.Join(pathS[1:], addr.SubObjectCollectionIdSeparator), true); err != nil {
 			log.Errorf("failed to init deleted sub object %s: %v", path, err)
 		}
 	}
