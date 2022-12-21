@@ -379,7 +379,7 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
-		err := uri.URIManager.Validate(strings.TrimSpace(v.GetStringValue()))
+		err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
 		if err != nil {
 			return fmt.Errorf("failed to parse URL: %s", err.Error())
 		}

@@ -258,7 +258,7 @@ func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 }
 
 func (m *mdConverter) convertTextToBookmark(block *model.Block) {
-	if err := uri.URIManager.Validate(block.GetText().Marks.Marks[0].Param); err != nil {
+	if err := uri.ValidateURI(block.GetText().Marks.Marks[0].Param); err != nil {
 		return
 	}
 

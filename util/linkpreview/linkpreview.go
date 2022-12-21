@@ -86,7 +86,7 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) 
 	}
 
 	if len(og.Image) != 0 {
-		url, err := uri.URIManager.ValidateAndNormalizeURI(og.Image[0].URL)
+		url, err := uri.ValidateAndNormalizeURI(og.Image[0].URL)
 		if err == nil {
 			i.ImageUrl = url
 		}
@@ -126,7 +126,7 @@ func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model
 	} else {
 		i.Type = model.LinkPreview_Unknown
 	}
-	pUrl, e := uri.URIManager.ValidateAndParseURI(fetchUrl)
+	pUrl, e := uri.ValidateAndParseURI(fetchUrl)
 	if e == nil {
 		pUrl.Path = "favicon.ico"
 		pUrl.RawQuery = ""

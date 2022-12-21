@@ -18,27 +18,7 @@ var (
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
 )
 
-type Validator interface {
-	Validate(string) error
-}
-
-type Parser interface {
-	ParseURI(string) *url.URL
-}
-
-type Normalizer interface {
-	NormalizeURI(string) string
-}
-
-type Manager struct {
-	Validator
-	Parser
-	Normalizer
-}
-
-var URIManager Manager
-
-func (m Manager) Validate(uri string) error {
+func ValidateURI(uri string) error {
 	uri = strings.TrimSpace(uri)
 
 	if len(uri) == 0 {
@@ -53,12 +33,12 @@ func (m Manager) Validate(uri string) error {
 	return err
 }
 
-func (m Manager) ParseURI(uri string) *url.URL {
+func ParseURI(uri string) *url.URL {
 	u, _ := url.Parse(uri)
 	return u
 }
 
-func (m Manager) NormalizeURI(uri string) string {
+func NormalizeURI(uri string) string {
 	if noPrefixEmailRegexp.MatchString(uri) {
 		return "mailto:" + uri
 	} else if noPrefixTelRegexp.MatchString(uri) {
@@ -69,7 +49,7 @@ func (m Manager) NormalizeURI(uri string) string {
 	return uri
 }
 
-func (m Manager) ValidateAndParseURI(uri string) (*url.URL, error) {
+func ValidateAndParseURI(uri string) (*url.URL, error) {
 	uri = strings.TrimSpace(uri)
 
 	if len(uri) == 0 {
@@ -84,10 +64,10 @@ func (m Manager) ValidateAndParseURI(uri string) (*url.URL, error) {
 	return nil, err
 }
 
-func (m Manager) ValidateAndNormalizeURI(uri string) (string, error) {
-	err := m.Validate(uri)
+func ValidateAndNormalizeURI(uri string) (string, error) {
+	err := ValidateURI(uri)
 	if err != nil {
 		return "", err
 	}
-	return m.NormalizeURI(uri), nil
+	return NormalizeURI(uri), nil
 }

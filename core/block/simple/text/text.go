@@ -234,7 +234,7 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 	} else {
 		for mI, _ := range marks.Marks {
 			if marks.Marks[mI].Type == model.BlockContentTextMark_Link {
-				m, err := uri.URIManager.ValidateAndNormalizeURI(marks.Marks[mI].Param)
+				m, err := uri.ValidateAndNormalizeURI(marks.Marks[mI].Param)
 				if err == nil {
 					marks.Marks[mI].Param = m
 				}
