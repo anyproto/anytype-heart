@@ -117,6 +117,15 @@ func (sbt SmartBlockType) Valid() (err error) {
 	return fmt.Errorf("unknown smartblock type")
 }
 
+func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
+	for _, t := range sbts {
+		if t == sbt {
+			return true
+		}
+	}
+	return false
+}
+
 // Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
 func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {

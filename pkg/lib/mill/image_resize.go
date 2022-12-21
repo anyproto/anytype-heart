@@ -54,6 +54,19 @@ func (m *ImageResize) Encrypt() bool {
 	return true
 }
 
+func (m *ImageResize) Pin() bool {
+	return false
+}
+
+func (m *ImageResize) AcceptMedia(media string) error {
+	return accepts([]string{
+		"image/jpeg",
+		"image/png",
+		"image/gif",
+		"image/x-icon",
+	}, media)
+}
+
 func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(m.Opts, add)
 }

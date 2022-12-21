@@ -56,6 +56,7 @@ type DebugTree interface {
 	Stats() DebugTreeStats
 	LocalStore() (*model.ObjectInfo, error)
 	BuildStateByTree(t *change.Tree) (*state.State, error)
+	BuildState() (*state.State, error)
 	Close() error
 }
 
@@ -195,6 +196,14 @@ func (r *debugTree) Stats() (s DebugTreeStats) {
 		}
 	}
 	return
+}
+
+func (r *debugTree) BuildState() (*state.State, error) {
+	t, _, err := change.BuildTree(context.TODO(), r)
+	if err != nil {
+		return nil, err
+	}
+	return r.BuildStateByTree(t)
 }
 
 func (r *debugTree) BuildStateByTree(t *change.Tree) (*state.State, error) {

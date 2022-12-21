@@ -13,6 +13,7 @@ import (
 
 var (
 	maxChildrenThreshold = 40
+	divSize              = maxChildrenThreshold / 2
 )
 
 func (s *State) Normalize(withLayouts bool) (err error) {

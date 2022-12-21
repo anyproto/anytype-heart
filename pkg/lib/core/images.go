@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"io"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
@@ -86,3 +87,10 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 	return img, nil
 }
 
+func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
+	return a.ImageAdd(ctx, files.WithBytes(content), files.WithName(filename))
+}
+
+func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) {
+	return a.ImageAdd(ctx, files.WithReader(content), files.WithName(filename))
+}

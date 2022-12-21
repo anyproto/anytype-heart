@@ -96,6 +96,18 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	return s, nil
 }
 
+func (v *date) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	if err = v.parseId(); err != nil {
+		return
+	}
+	s := &state.State{}
+	d := v.getDetails()
+
+	s.SetDetails(d)
+	s.SetObjectType(bundle.TypeKeyDate.URL())
+	return s, nil
+}
+
 func (v *date) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }

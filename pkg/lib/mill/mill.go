@@ -23,6 +23,8 @@ type Result struct {
 type Mill interface {
 	ID() string
 	Encrypt() bool // encryption allowed
+	Pin() bool     // pin by default
+	AcceptMedia(media string) error
 	Options(add map[string]interface{}) (string, error)
 	Mill(r io.ReadSeeker, name string) (*Result, error)
 }

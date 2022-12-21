@@ -31,6 +31,12 @@ type LoadFunc func(ctx context.Context, id string) (value Object, err error)
 
 type Option func(*oCache)
 
+var WithLogServiceName = func(name string) Option {
+	return func(cache *oCache) {
+		cache.log = cache.log.With("service_name", name)
+	}
+}
+
 var WithTTL = func(ttl time.Duration) Option {
 	return func(cache *oCache) {
 		cache.ttl = ttl

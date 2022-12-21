@@ -47,6 +47,7 @@ type Source interface {
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
 	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
+	ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
 	FindFirstChange(ctx context.Context) (c *change.Change, err error)
 	Close() (err error)
@@ -162,6 +163,11 @@ func (s *source) Type() model.SmartBlockType {
 
 func (s *source) Virtual() bool {
 	return false
+}
+
+func (s *source) ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc state.Doc, err error) {
+	s.metaOnly = true
+	return s.readDoc(ctx, receiver, false)
 }
 
 func (s *source) ReadDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {

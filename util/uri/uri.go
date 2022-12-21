@@ -5,6 +5,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var (
@@ -16,6 +18,22 @@ var (
 	haveUriSchemeRegex     = regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
 )
+
+func ValidateEmail(email string) bool {
+	if len(email) == 0 {
+		return false
+	}
+
+	return noPrefixEmailRegexp.MatchString(email)
+}
+
+func ValidatePhone(phone string) bool {
+	if len(phone) == 0 {
+		return false
+	}
+
+	return noPrefixTelRegexp.MatchString(phone)
+}
 
 // ProcessURI tries to verify the web URI and return the normalized URI
 func ProcessURI(url string) (urlOut string, err error) {
@@ -42,4 +60,22 @@ func ProcessURI(url string) (urlOut string, err error) {
 	}
 
 	return url, fmt.Errorf("not a uri")
+}
+
+func ProcessAllURI(blocks []*model.Block) []*model.Block {
+	for bI, _ := range blocks {
+		if blocks[bI].GetText() != nil && blocks[bI].GetText().Marks != nil && len(blocks[bI].GetText().Marks.Marks) > 0 {
+			marks := blocks[bI].GetText().Marks.Marks
+
+			for mI, _ := range marks {
+				if marks[mI].Type == model.BlockContentTextMark_Link {
+					marks[mI].Param, _ = ProcessURI(marks[mI].Param)
+				}
+			}
+
+			blocks[bI].GetText().Marks.Marks = marks
+		}
+	}
+
+	return blocks
 }

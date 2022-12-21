@@ -27,8 +27,8 @@ type Service interface {
 	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
-	GetDetailsFromIDBasedSource(id string) (*types.Struct, error)
 
+	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
 }
@@ -89,19 +89,7 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 	return newSource(s.anytype, s.statusService, tid, listenToOwnChanges)
 }
 
-func (s *service) RegisterStaticSource(id string, new func() Source) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.staticIds[id] = new
-}
-
-func (s *service) RemoveStaticSource(id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.staticIds, id)
-}
-
-func (s *service) GetDetailsFromIDBasedSource(id string) (*types.Struct, error) {
+func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
 	ss, err := s.NewSource(id, false)
 	if err != nil {
 		return nil, err
@@ -112,4 +100,16 @@ func (s *service) GetDetailsFromIDBasedSource(id string) (*types.Struct, error) 
 	}
 	_ = ss.Close()
 	return nil, fmt.Errorf("id unsupported")
+}
+
+func (s *service) RegisterStaticSource(id string, new func() Source) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.staticIds[id] = new
+}
+
+func (s *service) RemoveStaticSource(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.staticIds, id)
 }
