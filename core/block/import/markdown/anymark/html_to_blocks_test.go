@@ -9,8 +9,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var (
@@ -52,7 +53,7 @@ func replaceFakeIds(anySlot []*model.Block) (anySlotConverted []*model.Block) {
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
-	bs, err := ioutil.ReadFile("_test/testData.json")
+	bs, err := ioutil.ReadFile("testdata/html_cases.json")
 	if err != nil {
 		panic(err)
 	}
@@ -64,14 +65,15 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 	var dumpTests = os.Getenv("DUMP_TESTS") == "1"
 	var dumpPath string
 	if dumpTests {
-		dumpPath = filepath.Join("_test", "html")
+		dumpPath = filepath.Join("testdata", "html")
 		os.MkdirAll(dumpPath, 0700)
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
-			mdToBlocksConverter := New()
-			_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(testCase.HTML))
+			blocks, _, err := HTMLToBlocks([]byte(testCase.HTML))
+			require.NoError(t, err)
+
 			blocks = replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)

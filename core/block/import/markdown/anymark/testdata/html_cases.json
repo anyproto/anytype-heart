@@ -172,5 +172,10 @@
     "desc": "Styles underline text with italic and bold texts",
     "html": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html>\n<head>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n<meta http-equiv=\"Content-Style-Type\" content=\"text/css\">\n<title></title>\n<meta name=\"Generator\" content=\"Cocoa HTML Writer\">\n<meta name=\"CocoaVersion\" content=\"2113.4\">\n<style type=\"text/css\">\np.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}\nspan.s1 {text-decoration: underline}\n</style>\n</head>\n<body>\n<p class=\"p1\"><span class=\"s1\">Underline</span><b>Bold</b><i>Italic</i></p>\n</body>\n</html>\n",
     "blocks": [{"id":"1","Content":{"text":{"text":"UnderlineBoldItalic","marks":{"marks":[{"range":{"to":9},"type":4},{"range":{"from":9, "to":13},"type":3},{"range":{"from":13, "to":19},"type":2}]}}}}]
+  },
+  {
+    "desc": "a tag with no href",
+    "html": "<a class=\"jump-link video-time\" data-video-part=\"-1\" data-video-time=\"660\">11:00</a>",
+    "blocks": [{"id":"1","Content":{"text":{"text":"11:00","marks":{}}}}]
   }
 ]
