@@ -629,6 +629,10 @@
     - [Rpc.Object.SetObjectType.Request](#anytype-Rpc-Object-SetObjectType-Request)
     - [Rpc.Object.SetObjectType.Response](#anytype-Rpc-Object-SetObjectType-Response)
     - [Rpc.Object.SetObjectType.Response.Error](#anytype-Rpc-Object-SetObjectType-Response-Error)
+    - [Rpc.Object.SetSource](#anytype-Rpc-Object-SetSource)
+    - [Rpc.Object.SetSource.Request](#anytype-Rpc-Object-SetSource-Request)
+    - [Rpc.Object.SetSource.Response](#anytype-Rpc-Object-SetSource-Response)
+    - [Rpc.Object.SetSource.Response.Error](#anytype-Rpc-Object-SetSource-Response-Error)
     - [Rpc.Object.ShareByLink](#anytype-Rpc-Object-ShareByLink)
     - [Rpc.Object.ShareByLink.Request](#anytype-Rpc-Object-ShareByLink-Request)
     - [Rpc.Object.ShareByLink.Response](#anytype-Rpc-Object-ShareByLink-Response)
@@ -939,6 +943,7 @@
     - [Rpc.Object.SetIsFavorite.Response.Error.Code](#anytype-Rpc-Object-SetIsFavorite-Response-Error-Code)
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype-Rpc-Object-SetLayout-Response-Error-Code)
     - [Rpc.Object.SetObjectType.Response.Error.Code](#anytype-Rpc-Object-SetObjectType-Response-Error-Code)
+    - [Rpc.Object.SetSource.Response.Error.Code](#anytype-Rpc-Object-SetSource-Response-Error-Code)
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype-Rpc-Object-ShareByLink-Response-Error-Code)
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
@@ -1313,6 +1318,7 @@
 | ObjectSetInternalFlags | [Rpc.Object.SetInternalFlags.Request](#anytype-Rpc-Object-SetInternalFlags-Request) | [Rpc.Object.SetInternalFlags.Response](#anytype-Rpc-Object-SetInternalFlags-Response) |  |
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype-Rpc-Object-SetIsFavorite-Request) | [Rpc.Object.SetIsFavorite.Response](#anytype-Rpc-Object-SetIsFavorite-Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype-Rpc-Object-SetIsArchived-Request) | [Rpc.Object.SetIsArchived.Response](#anytype-Rpc-Object-SetIsArchived-Response) |  |
+| ObjectSetSource | [Rpc.Object.SetSource.Request](#anytype-Rpc-Object-SetSource-Request) | [Rpc.Object.SetSource.Response](#anytype-Rpc-Object-SetSource-Response) |  |
 | ObjectListDuplicate | [Rpc.Object.ListDuplicate.Request](#anytype-Rpc-Object-ListDuplicate-Request) | [Rpc.Object.ListDuplicate.Response](#anytype-Rpc-Object-ListDuplicate-Response) |  |
 | ObjectListDelete | [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request) | [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response) |  |
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
@@ -10598,6 +10604,65 @@ deprecated, to be removed |
 
 
 
+<a name="anytype-Rpc-Object-SetSource"></a>
+
+### Rpc.Object.SetSource
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetSource-Request"></a>
+
+### Rpc.Object.SetSource.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetSource-Response"></a>
+
+### Rpc.Object.SetSource.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SetSource.Response.Error](#anytype-Rpc-Object-SetSource-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetSource-Response-Error"></a>
+
+### Rpc.Object.SetSource.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SetSource.Response.Error.Code](#anytype-Rpc-Object-SetSource-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ShareByLink"></a>
 
 ### Rpc.Object.ShareByLink
@@ -14878,6 +14943,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-SetSource-Response-Error-Code"></a>
+
+### Rpc.Object.SetSource.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
