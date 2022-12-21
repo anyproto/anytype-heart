@@ -5,7 +5,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"io"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
@@ -87,7 +86,7 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) 
 	}
 
 	if len(og.Image) != 0 {
-		url, err := uri.ProcessURI(og.Image[0].URL)
+		url, err := uri.URIManager.ValidateAndNormalizeURI(og.Image[0].URL)
 		if err == nil {
 			i.ImageUrl = url
 		}
@@ -127,7 +126,7 @@ func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model
 	} else {
 		i.Type = model.LinkPreview_Unknown
 	}
-	pUrl, e := url.Parse(fetchUrl)
+	pUrl, e := uri.URIManager.ValidateAndParseURI(fetchUrl)
 	if e == nil {
 		pUrl.Path = "favicon.ico"
 		pUrl.RawQuery = ""

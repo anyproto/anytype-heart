@@ -2,11 +2,10 @@ package uri
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var (
@@ -19,63 +18,76 @@ var (
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
 )
 
-func ValidateEmail(email string) bool {
-	if len(email) == 0 {
-		return false
-	}
-
-	return noPrefixEmailRegexp.MatchString(email)
+type Validator interface {
+	Validate(string) error
 }
 
-func ValidatePhone(phone string) bool {
-	if len(phone) == 0 {
-		return false
-	}
-
-	return noPrefixTelRegexp.MatchString(phone)
+type Parser interface {
+	ParseURI(string) *url.URL
 }
 
-// ProcessURI tries to verify the web URI and return the normalized URI
-func ProcessURI(url string) (urlOut string, err error) {
-	if len(url) == 0 {
-		return url, fmt.Errorf("url is empty")
-
-	} else if noPrefixEmailRegexp.MatchString(url) {
-		return "mailto:" + url, nil
-
-	} else if noPrefixTelRegexp.MatchString(url) {
-		return "tel:" + url, nil
-
-	} else if winFilepathPrefixRegex.MatchString(url) {
-		return "", fmt.Errorf("filepath not supported")
-
-	} else if strings.HasPrefix(url, string(os.PathSeparator)) || strings.HasPrefix(url, ".") {
-		return "", fmt.Errorf("filepath not supported")
-
-	} else if noPrefixHttpRegex.MatchString(url) {
-		return "http://" + url, nil
-
-	} else if haveUriSchemeRegex.MatchString(url) {
-		return url, nil
-	}
-
-	return url, fmt.Errorf("not a uri")
+type Normalizer interface {
+	NormalizeURI(string) string
 }
 
-func ProcessAllURI(blocks []*model.Block) []*model.Block {
-	for bI, _ := range blocks {
-		if blocks[bI].GetText() != nil && blocks[bI].GetText().Marks != nil && len(blocks[bI].GetText().Marks.Marks) > 0 {
-			marks := blocks[bI].GetText().Marks.Marks
+type Manager struct {
+	Validator
+	Parser
+	Normalizer
+}
 
-			for mI, _ := range marks {
-				if marks[mI].Type == model.BlockContentTextMark_Link {
-					marks[mI].Param, _ = ProcessURI(marks[mI].Param)
-				}
-			}
+var URIManager Manager
 
-			blocks[bI].GetText().Marks.Marks = marks
-		}
+func (m Manager) Validate(uri string) error {
+	uri = strings.TrimSpace(uri)
+
+	if len(uri) == 0 {
+		return fmt.Errorf("url is empty")
+	} else if winFilepathPrefixRegex.MatchString(uri) {
+		return fmt.Errorf("filepath not supported")
+	} else if strings.HasPrefix(uri, string(os.PathSeparator)) || strings.HasPrefix(uri, ".") {
+		return fmt.Errorf("filepath not supported")
 	}
 
-	return blocks
+	_, err := url.Parse(uri)
+	return err
+}
+
+func (m Manager) ParseURI(uri string) *url.URL {
+	u, _ := url.Parse(uri)
+	return u
+}
+
+func (m Manager) NormalizeURI(uri string) string {
+	if noPrefixEmailRegexp.MatchString(uri) {
+		return "mailto:" + uri
+	} else if noPrefixTelRegexp.MatchString(uri) {
+		return "tel:" + uri
+	} else if noPrefixHttpRegex.MatchString(uri) {
+		return "http://" + uri
+	}
+	return uri
+}
+
+func (m Manager) ValidateAndParseURI(uri string) (*url.URL, error) {
+	uri = strings.TrimSpace(uri)
+
+	if len(uri) == 0 {
+		return nil, fmt.Errorf("url is empty")
+	} else if winFilepathPrefixRegex.MatchString(uri) {
+		return nil, fmt.Errorf("filepath not supported")
+	} else if strings.HasPrefix(uri, string(os.PathSeparator)) || strings.HasPrefix(uri, ".") {
+		return nil, fmt.Errorf("filepath not supported")
+	}
+
+	_, err := url.Parse(uri)
+	return nil, err
+}
+
+func (m Manager) ValidateAndNormalizeURI(uri string) (string, error) {
+	err := m.Validate(uri)
+	if err != nil {
+		return "", err
+	}
+	return m.NormalizeURI(uri), nil
 }

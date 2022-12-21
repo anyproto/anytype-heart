@@ -3,7 +3,6 @@ package relation
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 const CName = "relation"
@@ -379,7 +379,7 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
-		_, err := url.Parse(strings.TrimSpace(v.GetStringValue()))
+		err := uri.URIManager.Validate(strings.TrimSpace(v.GetStringValue()))
 		if err != nil {
 			return fmt.Errorf("failed to parse URL: %s", err.Error())
 		}

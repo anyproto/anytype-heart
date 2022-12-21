@@ -61,7 +61,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-	url, err = uri.ProcessURI(url)
+	url, err = uri.URIManager.ValidateAndNormalizeURI(url)
 	if err != nil {
 		// Do nothing
 	}

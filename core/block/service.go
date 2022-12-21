@@ -1593,7 +1593,7 @@ func (s *Service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 func (s *Service) ObjectCreateBookmark(
 	req pb.RpcObjectCreateBookmarkRequest,
 ) (objectId string, newDetails *types.Struct, err error) {
-	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
+	u, err := uri.URIManager.ValidateAndNormalizeURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("process uri: %w", err)
 	}
@@ -1602,7 +1602,7 @@ func (s *Service) ObjectCreateBookmark(
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	url, err := uri.ProcessURI(req.Url)
+	url, err := uri.URIManager.ValidateAndNormalizeURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}

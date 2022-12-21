@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 type Service interface {
@@ -258,7 +258,7 @@ func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 }
 
 func (m *mdConverter) convertTextToBookmark(block *model.Block) {
-	if _, err := url.Parse(block.GetText().Marks.Marks[0].Param); err != nil {
+	if err := uri.URIManager.Validate(block.GetText().Marks.Marks[0].Param); err != nil {
 		return
 	}
 
