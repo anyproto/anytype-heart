@@ -30,6 +30,13 @@ const (
 	snippetMinSize                 = 50
 	snippetMaxSize                 = 300
 	collectionKeysRemovedSeparator = "-"
+
+	HeaderLayoutID           = "header"
+	TitleBlockID             = "title"
+	DescriptionBlockID       = "description"
+	DataviewBlockID          = "dataview"
+	DataviewTemplatesBlockID = "templates"
+	FeaturedRelationsID      = "featuredRelations"
 )
 
 var (
@@ -1221,7 +1228,7 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 	}
 	var emptyTextFound bool
 
-	if title := s.Pick("title"); title != nil {
+	if title := s.Pick(TitleBlockID); title != nil {
 		if checkTitle {
 			if title.Model().GetText().Text != "" {
 				return false
@@ -1236,7 +1243,10 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
-			if chId == "header" {
+			if chId == HeaderLayoutID ||
+				chId == FeaturedRelationsID ||
+				chId == DataviewBlockID ||
+				chId == DataviewTemplatesBlockID {
 				continue
 			}
 			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil && !emptyTextFound {

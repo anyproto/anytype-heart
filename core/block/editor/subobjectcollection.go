@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -165,7 +166,7 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 							log.With("threadId", c.Id()).Errorf("options: can't set struct %s-%s: %v", keySet.Path[0], keySet.Path[1], e)
 						}
 					} else {
-						if err = c.initSubObject(st, keySet.Path[0], keySet.Path[1]); err != nil {
+						if err = c.initSubObject(st, keySet.Path[0], keySet.Path[1], false); err != nil {
 							return
 						}
 					}
@@ -253,7 +254,7 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	return c.SmartBlock.Init(ctx)
 }
 
-func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string) (err error) {
+func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string, justCreated bool) (err error) {
 	var subObj SubObjectImpl
 	switch collection {
 	case collectionKeyObjectTypes:
@@ -295,6 +296,12 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		return
 	}
 
+	if justCreated {
+		det := subState.CombinedDetails()
+		internalflag.PutToDetails(det, []*model.InternalFlag{{Value: model.InternalFlag_editorDeleteEmpty}})
+		subState.SetDetails(det)
+		// inject the internal flag to the state
+	}
 	if _, exists := c.collections[collection]; !exists {
 		c.collections[collection] = map[string]SubObjectImpl{}
 	}
