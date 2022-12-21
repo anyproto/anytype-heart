@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -57,9 +56,6 @@ type Block interface {
 	SetSource(source []string) error
 	SetActiveView(activeView string)
 	SetTargetObjectID(targetObjectID string)
-
-	FillSmartIds(ids []string) []string
-	HasSmartIds() bool
 
 	// AddRelationOld DEPRECATED
 	AddRelationOld(relation model.Relation)
@@ -530,14 +526,4 @@ func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) err
 	}
 
 	return nil
-}
-
-func (l *Dataview) relationsWithObjectFormat() []string {
-	var relationsWithObjFormat []string
-	for _, rel := range l.GetDataview().Relations {
-		if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
-			relationsWithObjFormat = append(relationsWithObjFormat, rel.Key)
-		}
-	}
-	return relationsWithObjFormat
 }

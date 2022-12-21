@@ -123,16 +123,6 @@ func (b *treeBuilder) writeChanges(logs []core.SmartblockLog) (err error) {
 	return
 }
 
-func createFileWithDateInZip(zw *zip.Writer, name string, modified time.Time) (io.Writer, error) {
-	header := &zip.FileHeader{
-		Name:     name,
-		Method:   zip.Deflate,
-		Modified: modified,
-	}
-
-	return zw.CreateHeader(header)
-}
-
 func (b *treeBuilder) writeChange(id string) (nextIds []string) {
 	if _, ok := b.changes[id]; ok {
 		return

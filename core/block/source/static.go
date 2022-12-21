@@ -55,10 +55,6 @@ func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty boo
 	return s.doc, nil
 }
 
-func (s *static) ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc state.Doc, err error) {
-	return s.doc, nil
-}
-
 func (s *static) PushChange(params PushChangeParams) (id string, err error) {
 	if s.pushChange != nil {
 		return s.pushChange(params)

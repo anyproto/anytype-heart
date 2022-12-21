@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
@@ -26,7 +25,6 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
-	_import.Import
 	dataview.Dataview
 	table.TableEditor
 }
@@ -34,7 +32,6 @@ type Page struct {
 func NewPage(
 	fileSource file.BlockService,
 	pageManager bookmark.BlockService,
-	importServices _import.Services,
 	bookmarkSvc bookmark.BookmarkService,
 ) *Page {
 	sb := smartblock.New()
@@ -47,7 +44,6 @@ func NewPage(
 		File:          f,
 		Clipboard:     clipboard.NewClipboard(sb, f),
 		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		Import:        _import.NewImport(sb, importServices),
 		Dataview:      dataview.NewDataview(sb),
 		TableEditor:   table.NewEditor(sb),
 	}
