@@ -16,6 +16,10 @@ var (
 	noPrefixHttpRegex      = regexp.MustCompile(`^[\pL\d.-]+(?:\.[\pL\\d.-]+)+[\pL\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.\/\d]+$`)
 	haveUriSchemeRegex     = regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
+
+	// errors
+	urlEmptyError             = fmt.Errorf("url is empty")
+	filepathNotSupportedError = fmt.Errorf("filepath not supported")
 )
 
 func ValidateURI(uri string) error {
@@ -53,15 +57,15 @@ func ValidateAndParseURI(uri string) (*url.URL, error) {
 	uri = strings.TrimSpace(uri)
 
 	if len(uri) == 0 {
-		return nil, fmt.Errorf("url is empty")
+		return nil, urlEmptyError
 	} else if winFilepathPrefixRegex.MatchString(uri) {
-		return nil, fmt.Errorf("filepath not supported")
+		return nil, filepathNotSupportedError
 	} else if strings.HasPrefix(uri, string(os.PathSeparator)) || strings.HasPrefix(uri, ".") {
-		return nil, fmt.Errorf("filepath not supported")
+		return nil, filepathNotSupportedError
 	}
 
-	_, err := url.Parse(uri)
-	return nil, err
+	u, err := url.Parse(uri)
+	return u, err
 }
 
 func ValidateAndNormalizeURI(uri string) (string, error) {
