@@ -51,6 +51,15 @@ var objectTypeToCollection = map[bundle.TypeKey]string{
 	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
 }
 
+func collectionKeyIsSupported(collKey string) bool {
+	for _, v := range objectTypeToCollection {
+		if v == collKey {
+			return true
+		}
+	}
+	return false
+}
+
 func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(collectionKeyRelationOptions),
@@ -320,7 +329,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
 		for collName, coll := range data.Fields {
-			if collName == source.WorkspaceCollection || collName == source.AccountMigration || collName == source.CreatorCollection || collName == source.HighlightedCollection {
+			if !collectionKeyIsSupported(collName) {
 				continue
 			}
 			if coll != nil && coll.GetStructValue() != nil {
@@ -330,6 +339,16 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 					}
 				}
 			}
+		}
+	}
+
+	for path := range ctx.State.StoreKeysRemoved() {
+		pathS := strings.Split(path, "/")
+		if !collectionKeyIsSupported(pathS[0]) {
+			continue
+		}
+		if err = p.initSubObject(ctx.State, pathS[0], strings.Join(pathS[1:], addr.SubObjectCollectionIdSeparator)); err != nil {
+			log.Errorf("failed to init deleted sub object %s: %v", path, err)
 		}
 	}
 
