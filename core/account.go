@@ -631,16 +631,15 @@ func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRe
 		return response(pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
 	}
 
-	address := mw.app.MustComponent(core.CName).(core.Service).Account()
-	err := mw.stop()
-	if err != nil {
-		return response(pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE, err)
-	}
-
 	if req.RemoveData {
-		err := os.RemoveAll(filepath.Join(mw.rootPath, address))
+		err := mw.AccountRemoveLocalData()
 		if err != nil {
 			return response(pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	} else {
+		err := mw.stop()
+		if err != nil {
+			return response(pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE, err)
 		}
 	}
 
@@ -802,12 +801,42 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 	cfg := config.ConfigRequired{}
 	cfg.TimeZone = req.TimeZone
+	cfg.IPFSStorageAddr = req.IPFSStorageAddr
 	err := files.WriteJsonConfig(conf.GetConfigPath(), cfg)
 	if err != nil {
 		return response(pb.RpcAccountConfigUpdateResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
 
 	return response(pb.RpcAccountConfigUpdateResponseError_NULL, err)
+}
+
+func (mw *Middleware) AccountRemoveLocalData() error {
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
+	address := mw.app.MustComponent(core.CName).(core.Service).Account()
+
+	configPath := conf.GetConfigPath()
+	fileConf := config.ConfigRequired{}
+	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
+		return err
+	}
+
+	err := mw.stop()
+	if err != nil {
+		return err
+	}
+
+	if fileConf.IPFSStorageAddr != "" {
+		if err2 := os.RemoveAll(fileConf.IPFSStorageAddr); err2 != nil {
+			return err2
+		}
+	}
+
+	err = os.RemoveAll(filepath.Join(mw.rootPath, address))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {

@@ -1932,6 +1932,7 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | timeZone | [string](#string) |  |  |
+| IPFSStorageAddr | [string](#string) |  |  |
 
 
 
@@ -14514,7 +14515,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Notion | 0 |  |
-| Markdown | 1 |  |
 
 
 
