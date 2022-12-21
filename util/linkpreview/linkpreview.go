@@ -126,11 +126,11 @@ func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model
 	} else {
 		i.Type = model.LinkPreview_Unknown
 	}
-	pUrl, e := uri.ValidateAndParseURI(fetchUrl)
+	pURL, e := uri.ValidateAndParseURI(fetchUrl)
 	if e == nil {
-		pUrl.Path = "favicon.ico"
-		pUrl.RawQuery = ""
-		i.FaviconUrl = pUrl.String()
+		pURL.Path = "favicon.ico"
+		pURL.RawQuery = ""
+		i.FaviconUrl = pURL.String()
 	}
 	return
 }

@@ -18,8 +18,8 @@ var (
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
 
 	// errors
-	urlEmptyError             = fmt.Errorf("url is empty")
-	filepathNotSupportedError = fmt.Errorf("filepath not supported")
+	errUrlEmpty             = fmt.Errorf("url is empty")
+	errFilepathNotSupported = fmt.Errorf("filepath not supported")
 )
 
 func ValidateURI(uri string) error {
@@ -38,16 +38,20 @@ func ValidateURI(uri string) error {
 }
 
 func ParseURI(uri string) *url.URL {
-	u, _ := url.Parse(uri)
+	u, err := url.Parse(uri)
+	if err != nil {
+		// do nothing as validation is implemented in ValidateAndParseURI
+	}
 	return u
 }
 
 func NormalizeURI(uri string) string {
-	if noPrefixEmailRegexp.MatchString(uri) {
+	switch {
+	case noPrefixEmailRegexp.MatchString(uri):
 		return "mailto:" + uri
-	} else if noPrefixTelRegexp.MatchString(uri) {
+	case noPrefixTelRegexp.MatchString(uri):
 		return "tel:" + uri
-	} else if noPrefixHttpRegex.MatchString(uri) {
+	case noPrefixHttpRegex.MatchString(uri):
 		return "http://" + uri
 	}
 	return uri
@@ -56,12 +60,15 @@ func NormalizeURI(uri string) string {
 func ValidateAndParseURI(uri string) (*url.URL, error) {
 	uri = strings.TrimSpace(uri)
 
-	if len(uri) == 0 {
-		return nil, urlEmptyError
-	} else if winFilepathPrefixRegex.MatchString(uri) {
-		return nil, filepathNotSupportedError
-	} else if strings.HasPrefix(uri, string(os.PathSeparator)) || strings.HasPrefix(uri, ".") {
-		return nil, filepathNotSupportedError
+	switch {
+	case len(uri) == 0:
+		return nil, errUrlEmpty
+	case winFilepathPrefixRegex.MatchString(uri):
+		return nil, errFilepathNotSupported
+	case strings.HasPrefix(uri, string(os.PathSeparator)):
+		return nil, errFilepathNotSupported
+	case strings.HasPrefix(uri, "."):
+		return nil, errFilepathNotSupported
 	}
 
 	u, err := url.Parse(uri)
