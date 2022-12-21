@@ -35,6 +35,7 @@ type SubObjectImpl interface {
 
 var localDetailsAllowedToBeStored = []string{
 	bundle.RelationKeyType.String(),
+	bundle.RelationKeyCreatedDate.String(),
 	bundle.RelationKeyLastModifiedDate.String(),
 	bundle.RelationKeyLastModifiedBy.String(),
 }

@@ -1046,16 +1046,6 @@
     "source": "details"
   },
   {
-    "description": "Relation that indicates document in draft state",
-    "format": "checkbox",
-    "hidden": true,
-    "key": "isDraft",
-    "maxCount": 1,
-    "name": "Is draft",
-    "readonly": true,
-    "source": "derived"
-  },
-  {
     "format": "file",
     "hidden": false,
     "key": "trailer",
@@ -1572,22 +1562,12 @@
   },
   {
     "format": "longtext",
-    "hidden": true,
+    "hidden": false,
     "key": "job",
     "maxCount": 1,
     "name": "Job",
     "readonly": false,
     "source": "details"
-  },
-  {
-    "description": "Have been added to library from marketplace",
-    "format": "checkbox",
-    "hidden": true,
-    "key": "mpAddedToLibrary",
-    "maxCount": 1,
-    "name": "Added to library",
-    "readonly": false,
-    "source": "account"
   },
   {
     "description": "Important relations that always appear at the top of the object",
