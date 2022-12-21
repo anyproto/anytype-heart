@@ -7,20 +7,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("anytype-mw-state")
@@ -89,8 +90,9 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
-	store       *types.Struct
-	objectTypes []string
+	store                *types.Struct
+	objectTypes          []string
+	objectTypesToMigrate []string
 
 	changesStructureIgnoreIds []string
 
@@ -596,6 +598,13 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			s.parent.objectTypes = s.objectTypes
 		}
 	}
+
+	if s.parent != nil && s.objectTypesToMigrate != nil {
+		prev := s.parent.ObjectTypesToMigrate()
+		if !slice.UnsortedEquals(prev, s.objectTypesToMigrate) {
+			s.parent.objectTypesToMigrate = s.objectTypesToMigrate
+		}
+	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -668,6 +677,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
+	}
+	if s.objectTypesToMigrate != nil {
+		s.parent.objectTypesToMigrate = s.objectTypesToMigrate
 	}
 	if s.store != nil {
 		s.parent.store = s.store
@@ -843,12 +855,17 @@ func (s *State) SetObjectType(objectType string) *State {
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
+	// todo: we lost the second type here, so it becomes inconsistent with the objectTypes in the state
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
 	return s
 }
 
-func (s *State) InjectDerivedDetails() {
+func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
+	s.objectTypesToMigrate = objectTypes
+	return s
+}
 
+func (s *State) InjectDerivedDetails() {
 	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
 		if b := s.Get("dataview"); b != nil {
 			source := b.Model().GetDataview().GetSource()
@@ -858,13 +875,6 @@ func (s *State) InjectDerivedDetails() {
 		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
-
-	sbTypes, err := ListSmartblockTypes(s.RootId())
-	if err == nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
-	} else {
-		log.Debugf("ListSmartblockTypes: %s", err)
-	}
 
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
@@ -888,7 +898,7 @@ func ListSmartblockTypes(objectId string) ([]int, error) {
 			res = append(res, int(t))
 		}
 		return res, nil
-	} else if !strings.HasPrefix(objectId, "b") {
+	} else if strings.HasPrefix(objectId, addr.ObjectTypeKeyToIdPrefix) && !strings.HasPrefix(objectId, "b") {
 		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 
@@ -957,6 +967,13 @@ func (s *State) ObjectTypes() []string {
 		return s.parent.ObjectTypes()
 	}
 	return s.objectTypes
+}
+
+func (s *State) ObjectTypesToMigrate() []string {
+	if s.objectTypes == nil && s.parent != nil {
+		return s.parent.ObjectTypesToMigrate()
+	}
+	return s.objectTypesToMigrate
 }
 
 // ObjectType returns only the first objectType and produce warning in case the state has more than 1 object type
@@ -1066,13 +1083,99 @@ func (s *State) SetParent(parent *State) {
 	s.parent = parent
 }
 
-func (s *State) DepSmartIds() (ids []string) {
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if ls, ok := b.(linkSource); ok {
-			ids = ls.FillSmartIds(ids)
+func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifier bool) (ids []string) {
+	if blocks {
+		err := s.Iterate(func(b simple.Block) (isContinue bool) {
+			if ls, ok := b.(linkSource); ok {
+				ids = ls.FillSmartIds(ids)
+			}
+			return true
+		})
+		if err != nil {
+			log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 		}
-		return true
-	})
+	}
+
+	if objTypes {
+		for _, ot := range s.ObjectTypes() {
+			if ot == "" {
+				log.Errorf("sb %s has empty ot", s.RootId())
+				continue
+			}
+			ids = append(ids, ot)
+		}
+	}
+
+	var det *types.Struct
+	if details {
+		det = s.CombinedDetails()
+	}
+
+	for _, rel := range s.GetRelationLinks() {
+		// do not index local dates such as lastOpened/lastModified
+		if relations {
+			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+		}
+
+		if !details {
+			continue
+		}
+
+		// handle corner cases first for specific formats
+		if rel.Format == model.RelationFormat_date &&
+			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) &&
+			(slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+			relInt := pbtypes.GetInt64(det, rel.Key)
+			if relInt > 0 {
+				t := time.Unix(relInt, 0)
+				t = t.In(time.UTC)
+				ids = append(ids, addr.TimeToID(t))
+			}
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
+			if creatorModifier {
+				v := pbtypes.GetString(det, rel.Key)
+				ids = append(ids, v)
+			}
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyId.String() ||
+			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
+			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(det, rel.Key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
+			}
+			ids = append(ids, v)
+		}
+
+		if rel.Format != model.RelationFormat_object &&
+			rel.Format != model.RelationFormat_file &&
+			rel.Format != model.RelationFormat_status &&
+			rel.Format != model.RelationFormat_tag {
+			continue
+		}
+
+		// add all object relation values as dependents
+		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+			if targetID == "" {
+				continue
+			}
+
+			ids = append(ids, targetID)
+		}
+	}
+
+	ids = util.UniqueStrings(ids)
 	return
 }
 
@@ -1150,6 +1253,9 @@ func (s *State) Copy() *State {
 	objTypes := make([]string, len(s.ObjectTypes()))
 	copy(objTypes, s.ObjectTypes())
 
+	objTypesToMigrate := make([]string, len(s.ObjectTypesToMigrate()))
+	copy(objTypesToMigrate, s.ObjectTypesToMigrate())
+
 	agOptsCopy := make(map[string][]*model.RelationOption, len(s.AggregatedOptionsByRelation()))
 	for k, v := range s.AggregatedOptionsByRelation() {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
@@ -1171,6 +1277,7 @@ func (s *State) Copy() *State {
 		extraRelations:              pbtypes.CopyRelations(s.OldExtraRelations()),
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,
+		objectTypesToMigrate:        objTypesToMigrate,
 		noObjectType:                s.noObjectType,
 		store:                       pbtypes.CopyStruct(s.Store()),
 	}

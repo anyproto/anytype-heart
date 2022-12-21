@@ -90,6 +90,10 @@
     - [Rpc.Block.Create.Request](#anytype-Rpc-Block-Create-Request)
     - [Rpc.Block.Create.Response](#anytype-Rpc-Block-Create-Response)
     - [Rpc.Block.Create.Response.Error](#anytype-Rpc-Block-Create-Response-Error)
+    - [Rpc.Block.CreateWidget](#anytype-Rpc-Block-CreateWidget)
+    - [Rpc.Block.CreateWidget.Request](#anytype-Rpc-Block-CreateWidget-Request)
+    - [Rpc.Block.CreateWidget.Response](#anytype-Rpc-Block-CreateWidget-Response)
+    - [Rpc.Block.CreateWidget.Response.Error](#anytype-Rpc-Block-CreateWidget-Response-Error)
     - [Rpc.Block.Cut](#anytype-Rpc-Block-Cut)
     - [Rpc.Block.Cut.Request](#anytype-Rpc-Block-Cut-Request)
     - [Rpc.Block.Cut.Response](#anytype-Rpc-Block-Cut-Response)
@@ -760,6 +764,19 @@
     - [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request)
     - [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response)
     - [Rpc.Workspace.GetCurrent.Response.Error](#anytype-Rpc-Workspace-GetCurrent-Response-Error)
+    - [Rpc.Workspace.Object](#anytype-Rpc-Workspace-Object)
+    - [Rpc.Workspace.Object.Add](#anytype-Rpc-Workspace-Object-Add)
+    - [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request)
+    - [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response)
+    - [Rpc.Workspace.Object.Add.Response.Error](#anytype-Rpc-Workspace-Object-Add-Response-Error)
+    - [Rpc.Workspace.Object.ListAdd](#anytype-Rpc-Workspace-Object-ListAdd)
+    - [Rpc.Workspace.Object.ListAdd.Request](#anytype-Rpc-Workspace-Object-ListAdd-Request)
+    - [Rpc.Workspace.Object.ListAdd.Response](#anytype-Rpc-Workspace-Object-ListAdd-Response)
+    - [Rpc.Workspace.Object.ListAdd.Response.Error](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error)
+    - [Rpc.Workspace.Object.ListRemove](#anytype-Rpc-Workspace-Object-ListRemove)
+    - [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request)
+    - [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response)
+    - [Rpc.Workspace.Object.ListRemove.Response.Error](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error)
     - [Rpc.Workspace.Select](#anytype-Rpc-Workspace-Select)
     - [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request)
     - [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response)
@@ -784,6 +801,7 @@
     - [Rpc.App.Shutdown.Response.Error.Code](#anytype-Rpc-App-Shutdown-Response-Error-Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype-Rpc-Block-Copy-Response-Error-Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype-Rpc-Block-Create-Response-Error-Code)
+    - [Rpc.Block.CreateWidget.Response.Error.Code](#anytype-Rpc-Block-CreateWidget-Response-Error-Code)
     - [Rpc.Block.Cut.Response.Error.Code](#anytype-Rpc-Block-Cut-Response-Error-Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype-Rpc-Block-Download-Response-Error-Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype-Rpc-Block-Export-Response-Error-Code)
@@ -948,6 +966,9 @@
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype-Rpc-Workspace-GetAll-Response-Error-Code)
     - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype-Rpc-Workspace-GetCurrent-Response-Error-Code)
+    - [Rpc.Workspace.Object.Add.Response.Error.Code](#anytype-Rpc-Workspace-Object-Add-Response-Error-Code)
+    - [Rpc.Workspace.Object.ListAdd.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code)
+    - [Rpc.Workspace.Object.ListRemove.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype-Rpc-Workspace-Select-Response-Error-Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code)
   
@@ -1064,6 +1085,8 @@
     - [Event.Block.Set.Text.Style](#anytype-Event-Block-Set-Text-Style)
     - [Event.Block.Set.Text.Text](#anytype-Event-Block-Set-Text-Text)
     - [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign)
+    - [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget)
+    - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.Details](#anytype-Event-Object-Details)
@@ -1158,6 +1181,7 @@
     - [Block.Content.Text](#anytype-model-Block-Content-Text)
     - [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark)
     - [Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks)
+    - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [InternalFlag](#anytype-model-InternalFlag)
@@ -1203,6 +1227,7 @@
     - [Block.Content.Link.Style](#anytype-model-Block-Content-Link-Style)
     - [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type)
     - [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style)
+    - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
@@ -1248,6 +1273,9 @@
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
+| WorkspaceObjectAdd | [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request) | [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response) |  |
+| WorkspaceObjectListAdd | [Rpc.Workspace.Object.ListAdd.Request](#anytype-Rpc-Workspace-Object-ListAdd-Request) | [Rpc.Workspace.Object.ListAdd.Response](#anytype-Rpc-Workspace-Object-ListAdd-Response) |  |
+| WorkspaceObjectListRemove | [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request) | [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response) |  |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request) | [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response) |  |
 | WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request) | [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response) |  |
 | WorkspaceGetAll | [Rpc.Workspace.GetAll.Request](#anytype-Rpc-Workspace-GetAll-Request) | [Rpc.Workspace.GetAll.Response](#anytype-Rpc-Workspace-GetAll-Response) |  |
@@ -1321,7 +1349,7 @@
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
-| TemplateCreateFromObjectType | [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request) | [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response) |  |
+| TemplateCreateFromObjectType | [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request) | [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response) | to be renamed to ObjectCreateTemplate |
 | TemplateClone | [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request) | [Rpc.Template.Clone.Response](#anytype-Rpc-Template-Clone-Response) |  |
 | TemplateExportAll | [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request) | [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
@@ -1395,6 +1423,7 @@
 | BlockRelationAdd | [Rpc.BlockRelation.Add.Request](#anytype-Rpc-BlockRelation-Add-Request) | [Rpc.BlockRelation.Add.Response](#anytype-Rpc-BlockRelation-Add-Response) |  |
 | BlockDivListSetStyle | [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request) | [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response) |  |
 | BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
+| BlockCreateWidget | [Rpc.Block.CreateWidget.Request](#anytype-Rpc-Block-CreateWidget-Request) | [Rpc.Block.CreateWidget.Response](#anytype-Rpc-Block-CreateWidget-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype-Rpc-Debug-Sync-Request) | [Rpc.Debug.Sync.Response](#anytype-Rpc-Debug-Sync-Response) |  |
@@ -2620,6 +2649,68 @@ common simple block command
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Create.Response.Error.Code](#anytype-Rpc-Block-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-CreateWidget"></a>
+
+### Rpc.Block.CreateWidget
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-CreateWidget-Request"></a>
+
+### Rpc.Block.CreateWidget.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest block |
+| block | [model.Block](#anytype-model-Block) |  |  |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+| widgetLayout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-CreateWidget-Response"></a>
+
+### Rpc.Block.CreateWidget.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.CreateWidget.Response.Error](#anytype-Rpc-Block-CreateWidget-Response-Error) |  |  |
+| blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-CreateWidget-Response-Error"></a>
+
+### Rpc.Block.CreateWidget.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.CreateWidget.Response.Error.Code](#anytype-Rpc-Block-CreateWidget-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12398,6 +12489,188 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Object"></a>
+
+### Rpc.Workspace.Object
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-Add"></a>
+
+### Rpc.Workspace.Object.Add
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-Add-Request"></a>
+
+### Rpc.Workspace.Object.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-Add-Response"></a>
+
+### Rpc.Workspace.Object.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Object.Add.Response.Error](#anytype-Rpc-Workspace-Object-Add-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-Add-Response-Error"></a>
+
+### Rpc.Workspace.Object.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Object.Add.Response.Error.Code](#anytype-Rpc-Workspace-Object-Add-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListAdd"></a>
+
+### Rpc.Workspace.Object.ListAdd
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListAdd-Request"></a>
+
+### Rpc.Workspace.Object.ListAdd.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListAdd-Response"></a>
+
+### Rpc.Workspace.Object.ListAdd.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Object.ListAdd.Response.Error](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error) |  |  |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListAdd-Response-Error"></a>
+
+### Rpc.Workspace.Object.ListAdd.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Object.ListAdd.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListRemove"></a>
+
+### Rpc.Workspace.Object.ListRemove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListRemove-Request"></a>
+
+### Rpc.Workspace.Object.ListRemove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListRemove-Response"></a>
+
+### Rpc.Workspace.Object.ListRemove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Object.ListRemove.Response.Error](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListRemove-Response-Error"></a>
+
+### Rpc.Workspace.Object.ListRemove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Object.ListRemove.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Workspace-Select"></a>
 
 ### Rpc.Workspace.Select
@@ -12770,6 +13043,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Block-Create-Response-Error-Code"></a>
 
 ### Rpc.Block.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Block-CreateWidget-Response-Error-Code"></a>
+
+### Rpc.Block.CreateWidget.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -14943,6 +15229,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Object-Add-Response-Error-Code"></a>
+
+### Rpc.Workspace.Object.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code"></a>
+
+### Rpc.Workspace.Object.ListAdd.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code"></a>
+
+### Rpc.Workspace.Object.ListRemove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Workspace-Select-Response-Error-Code"></a>
 
 ### Rpc.Workspace.Select.Response.Error.Code
@@ -16716,6 +17041,37 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-Widget"></a>
+
+### Event.Block.Set.Widget
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| layout | [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Widget-Layout"></a>
+
+### Event.Block.Set.Widget.Layout
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -16757,6 +17113,7 @@ Precondition: user A opened a block
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
 | blockSetTableRow | [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow) |  |  |
+| blockSetWidget | [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
@@ -17682,11 +18039,13 @@ Avatar of a user&#39;s account. It could be an image or color
 | homeObjectId | [string](#string) |  | home dashboard block id |
 | archiveObjectId | [string](#string) |  | archive block id |
 | profileObjectId | [string](#string) |  | profile block id |
-| marketplaceTypeObjectId | [string](#string) |  | marketplace type id |
-| marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
-| marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
+| marketplaceTypeObjectId | [string](#string) |  | deprecated, to be removed |
+| marketplaceRelationObjectId | [string](#string) |  | deprecated, to be removed |
+| marketplaceTemplateObjectId | [string](#string) |  | deprecated, to be removed |
+| marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  | marketplace template id |
+| widgetsId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
@@ -17743,6 +18102,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
 | tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
 | tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
+| widget | [Block.Content.Widget](#anytype-model-Block-Content-Widget) |  |  |
 
 
 
@@ -18249,6 +18609,21 @@ Link: block to link some content from an external sources.
 
 
 
+<a name="anytype-model-Block-Content-Widget"></a>
+
+### Block.Content.Widget
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| layout | [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Block-Restrictions"></a>
 
 ### Block.Restrictions
@@ -18354,6 +18729,7 @@ Used to decode block meta only, without the content itself
 | readonly | [bool](#bool) |  |  |
 | types | [SmartBlockType](#anytype-model-SmartBlockType) | repeated |  |
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
+| installedByDefault | [bool](#bool) |  |  |
 
 
 
@@ -18989,6 +19365,18 @@ stored |
 
 
 
+<a name="anytype-model-Block-Content-Widget-Layout"></a>
+
+### Block.Content.Widget.Layout
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Link | 0 |  |
+| Tree | 1 |  |
+
+
+
 <a name="anytype-model-Block-Position"></a>
 
 ### Block.Position
@@ -19175,6 +19563,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Database | 64 |  |
 | Set | 65 | only have dataview simpleblock |
 | STObjectType | 96 | have relations list |
+| Widget | 112 |  |
 | File | 256 |  |
 | Template | 288 |  |
 | BundledTemplate | 289 |  |

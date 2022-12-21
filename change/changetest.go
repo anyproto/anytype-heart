@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/gogo/protobuf/proto"
 )
 
 func NewTestSmartBlock() *TestSmartblock {

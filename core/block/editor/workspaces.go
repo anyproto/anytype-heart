@@ -2,63 +2,74 @@ package editor
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	database2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/textileio/go-threads/core/thread"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 const (
-	collectionKeySignature       = "signature"
-	collectionKeyAccount         = "account"
-	collectionKeyAddrs           = "addrs"
-	collectionKeyId              = "id"
-	collectionKeyKey             = "key"
+	collectionKeySignature = "signature"
+	collectionKeyAccount   = "account"
+	collectionKeyAddrs     = "addrs"
+	collectionKeyId        = "id"
+	collectionKeyKey       = "key"
+)
+
+const (
 	collectionKeyRelationOptions = "opt"
 	collectionKeyRelations       = "rel"
+	collectionKeyObjectTypes     = "ot"
 )
+
+var objectTypeToCollection = map[bundle.TypeKey]string{
+	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
+	bundle.TypeKeyRelation:       collectionKeyRelations,
+	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
+}
 
 func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
-		Set:             NewSet(),
-		DetailsModifier: dmservice,
-		collections:     map[string]map[string]*SubObject{},
+		SubObjectCollection: NewSubObjectCollection(collectionKeyRelationOptions),
+		DetailsModifier:     dmservice,
 	}
 }
 
+type templateCloner interface {
+	TemplateClone(id string) (templateId string, err error)
+}
+
 type Workspaces struct {
-	*Set
+	*SubObjectCollection
 	DetailsModifier DetailsModifier
 	threadService   threads.Service
 	threadQueue     threads.ThreadQueue
-
-	changedRelationIds, changedRelationIdsOptions []string
-	collections                                   map[string]map[string]*SubObject
-
-	sourceService source.Service
-	app           *app.App
+	templateCloner  templateCloner
+	sourceService   source.Service
+	app             *app.App
 }
 
 type WorkspaceParameters struct {
@@ -95,16 +106,6 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 		return err
 	}
 	st.RemoveFromStore([]string{source.WorkspaceCollection, objectId})
-	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
-}
-
-func (p *Workspaces) DeleteSubObject(objectId string) error {
-	st := p.NewState()
-	err := p.ObjectStore().DeleteObject(objectId)
-	if err != nil {
-		log.Errorf("error deleting sub object from store %s %s %v", objectId, p.Id(), err.Error())
-	}
-	st.RemoveFromStore([]string{collectionKeyRelationOptions, objectId})
 	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
@@ -215,16 +216,19 @@ func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
+	err = p.SubObjectCollection.Init(ctx)
+	if err != nil {
+		return err
+	}
+
 	p.app = ctx.App
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
+	p.templateCloner = p.app.MustComponent("blockService").(templateCloner)
 
 	if ctx.Source.Type() != model.SmartBlockType_Workspace && ctx.Source.Type() != model.SmartBlockType_AccountOld {
 		return fmt.Errorf("source type should be a workspace or an old account")
 	}
 
-	if err = p.SmartBlock.Init(ctx); err != nil {
-		return
-	}
 	p.threadService = p.Anytype().ThreadsService()
 	p.threadQueue = p.Anytype().ThreadsService().ThreadQueue()
 
@@ -316,13 +320,13 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
 		for collName, coll := range data.Fields {
-			if collName == source.WorkspaceCollection {
+			if collName == source.WorkspaceCollection || collName == source.AccountMigration || collName == source.CreatorCollection || collName == source.HighlightedCollection {
 				continue
 			}
 			if coll != nil && coll.GetStructValue() != nil {
 				for sub := range coll.GetStructValue().GetFields() {
 					if err = p.initSubObject(ctx.State, collName, sub); err != nil {
-						return
+						log.Errorf("failed to init sub object %s-%s: %v", collName, sub, err)
 					}
 				}
 			}
@@ -535,7 +539,7 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	}
 
 	object = pbtypes.CopyStruct(details)
-	key := pbtypes.GetString(object, bundle.RelationKeyRelationKey.String())
+	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	if key == "" {
 		key = bson.NewObjectId().Hex()
 	} else {
@@ -544,48 +548,26 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 			return id, object, ErrSubObjectAlreadyExists
 		}
 		if bundle.HasRelation(key) {
-			object.Fields[bundle.RelationKeySource.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
+			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
 		}
 	}
 	id = addr.RelationKeyToIdPrefix + key
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+
+	objectTypes := pbtypes.GetStringList(object, bundle.RelationKeyRelationFormatObjectTypes.String())
+	if len(objectTypes) > 0 {
+		var objectTypesToMigrate []string
+		objectTypes, objectTypesToMigrate = relationutils.MigrateObjectTypeIds(objectTypes)
+		if len(objectTypesToMigrate) > 0 {
+			st.SetObjectTypesToMigrate(append(st.ObjectTypesToMigrate(), objectTypesToMigrate...))
+		}
+	}
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
-	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(object))
+	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
-		return
-	}
-	return
-}
-
-func (w *Workspaces) CreateRelation(details *types.Struct) (id string, object *types.Struct, err error) {
-	st := w.NewState()
-	id, object, err = w.createRelation(st, details)
-	if err != nil {
-		return
-	}
-	if err = w.Apply(st, smartblock.NoHooks); err != nil {
-		return
-	}
-	return
-}
-
-func (w *Workspaces) CreateRelations(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	st := w.NewState()
-	for _, rel := range details {
-		id, object, err2 := w.createRelation(st, rel)
-		if err2 != nil {
-			if err2 != ErrSubObjectAlreadyExists {
-				log.Errorf("failed to createRelation: %s", err2.Error())
-			}
-			continue
-		}
-		ids = append(ids, id)
-		objects = append(objects, object)
-	}
-
-	if err = w.Apply(st, smartblock.NoHooks); err != nil {
 		return
 	}
 	return
@@ -607,7 +589,7 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 	}
 
 	object = pbtypes.CopyStruct(details)
-	key := pbtypes.GetString(object, bundle.RelationKeyId.String())
+	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
 	if key == "" {
 		key = bson.NewObjectId().Hex()
 	} else {
@@ -622,16 +604,140 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
 
-	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(object))
+	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed relation option. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
 		return
 	}
 	return
 }
 
-func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create object type: no data")
+	}
+
+	var recommendedRelationIds []string
+	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		relKey, err2 := pbtypes.RelationIdToKey(relId)
+		if err2 != nil {
+			log.Errorf("create object type: invalid recommended relation id: %s", relId)
+			continue
+		}
+		rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
+		if rel != nil {
+			_, _, err2 := w.createRelation(st, (&relationutils.Relation{rel}).ToStruct())
+			if err2 != nil && err2 != ErrSubObjectAlreadyExists {
+				err = fmt.Errorf("failed to create relation for objectType: %s", err2.Error())
+				return
+			}
+		}
+		recommendedRelationIds = append(recommendedRelationIds, addr.RelationKeyToIdPrefix+relKey)
+	}
+	object = pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		key = strings.TrimPrefix(key, addr.BundledObjectTypeURLPrefix)
+		if bundle.HasObjectType(key) {
+			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledObjectTypeURLPrefix + key)
+		}
+	}
+
+	rawLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
+	layout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawLayout)))
+	if err != nil {
+		return "", nil, fmt.Errorf("invalid layout %d: %w", rawLayout, err)
+	}
+
+	for _, rel := range layout.RequiredRelations {
+		relId := addr.RelationKeyToIdPrefix + rel.Key
+		if slice.FindPos(recommendedRelationIds, relId) != -1 {
+			continue
+		}
+		recommendedRelationIds = append(recommendedRelationIds, relId)
+	}
+	id = addr.ObjectTypeKeyToIdPrefix + key
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+	sbType := pbtypes.GetIntList(details, bundle.RelationKeySmartblockTypes.String())
+	if len(sbType) == 0 {
+		sbType = []int{int(model.SmartBlockType_Page)}
+	}
+	object.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbType...)
+
+	// no need to check for the generated bson's
+	if st.HasInStore([]string{collectionKeyObjectTypes, key}) {
+		// todo: optimize this
+		return id, object, ErrSubObjectAlreadyExists
+	}
+
+	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
+	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
+		return
+	}
+
+	records, _, err := w.ObjectStore().Query(nil, database2.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix + key),
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+
+	go func() {
+		// todo: remove this dirty hack to avoid lock
+		for _, record := range records {
+			id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+			_, err := w.templateCloner.TemplateClone(id)
+			if err != nil {
+				log.Errorf("failed to clone template %s: %s", id, err.Error())
+			}
+		}
+	}()
+	return
+}
+
+func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create object type: no data")
+	}
+
+	if pbtypes.GetString(details, bundle.RelationKeyType.String()) == "" {
+		return "", nil, fmt.Errorf("type is empty")
+	}
+
+	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(w.Id())
+
+	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
+	case bundle.TypeKeyObjectType.URL():
+		return w.createObjectType(st, details)
+	case bundle.TypeKeyRelation.URL():
+		return w.createRelation(st, details)
+	case bundle.TypeKeyRelationOption.URL():
+		return w.createRelationOption(st, details)
+	default:
+		return "", nil, fmt.Errorf("invalid type: %s", pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	}
+}
+
+func (w *Workspaces) CreateSubObject(details *types.Struct) (id string, object *types.Struct, err error) {
 	st := w.NewState()
-	id, object, err = w.createRelationOption(st, details)
+	id, object, err = w.createObject(st, details)
 	if err != nil {
 		return "", nil, err
 	}
@@ -641,18 +747,47 @@ func (w *Workspaces) CreateRelationOption(details *types.Struct) (id string, obj
 	return
 }
 
-func (w *Workspaces) CreateRelationOptions(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+func (w *Workspaces) CreateSubObjects(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
 	st := w.NewState()
-	for _, rel := range details {
-		id, object, err2 := w.createRelationOption(st, rel)
-		if err2 != nil {
-			log.Errorf("failed to createRelationOption: %s", err2.Error())
+	var (
+		id     string
+		object *types.Struct
+	)
+	for _, det := range details {
+		id, object, err = w.createObject(st, det)
+		if err != nil {
+			if err != ErrSubObjectAlreadyExists {
+				log.Errorf("failed to create sub object: %s", err.Error())
+			}
 			continue
 		}
 		ids = append(ids, id)
 		objects = append(objects, object)
 	}
 
+	if len(ids) == 0 {
+		return
+	}
+	// reset error in case we have at least 1 object created
+	err = nil
+	if err = w.Apply(st, smartblock.NoHooks); err != nil {
+		return
+	}
+	return
+}
+
+func (w *Workspaces) RemoveSubObjects(objectIds []string) (err error) {
+	st := w.NewState()
+	for _, id := range objectIds {
+		err = w.removeObject(st, id)
+		if err != nil {
+			log.Errorf("failed to remove sub object: %s", err.Error())
+			continue
+		}
+	}
+
+	// reset error in case we have at least 1 object created
+	err = nil
 	if err = w.Apply(st, smartblock.NoHooks); err != nil {
 		return
 	}

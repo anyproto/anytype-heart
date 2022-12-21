@@ -9,15 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/ipfs/go-datastore/query"
-
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-datastore/query"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -34,28 +29,35 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
 )
 
 const (
@@ -92,165 +94,6 @@ type EventKey int
 
 const ObjectCreateEvent EventKey = 0
 
-type Service interface {
-	Do(id string, apply func(b smartblock.SmartBlock) error) error
-	DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error
-
-	OpenBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (*model.ObjectView, error)
-	ShowBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (*model.ObjectView, error)
-	OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectView, blockId string, err error)
-	SetBreadcrumbs(ctx *session.Context, req pb.RpcObjectSetBreadcrumbsRequest) (err error)
-	CloseBlock(id string) error
-	CloseBlocks()
-	CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest) (string, error)
-	CreateLinkToTheNewObject(ctx *session.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error)
-	CreateObjectFromState(ctx *session.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, st *state.State) (linkId string, pageId string, err error)
-	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-	DuplicateBlocks(ctx *session.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
-	UnlinkBlock(ctx *session.Context, req pb.RpcBlockListDeleteRequest) error
-	ReplaceBlock(ctx *session.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
-	ObjectToSet(id string, source []string) (newId string, err error)
-
-	MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
-	MoveBlocksToNewPage(ctx *session.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error)
-	ListConvertToObjects(ctx *session.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
-	SetFields(ctx *session.Context, req pb.RpcBlockSetFieldsRequest) error
-	SetFieldsList(ctx *session.Context, req pb.RpcBlockListSetFieldsRequest) error
-
-	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
-	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) // you must copy original struct within the modifier in order to modify it
-
-	GetRelations(objectId string) (relations []*model.Relation, err error)
-	AddExtraRelations(ctx *session.Context, id string, relations []string) (err error)
-	RemoveExtraRelations(ctx *session.Context, id string, relationKeys []string) (err error)
-	CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, newDetails *types.Struct, err error)
-	SetDataviewSource(ctx *session.Context, contextId, blockId string, source []string) error
-
-	ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error)
-	SetObjectTypes(ctx *session.Context, objectId string, objectTypes []string) (err error)
-
-	Paste(ctx *session.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
-
-	Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Export(req pb.RpcBlockExportRequest) (path string, err error)
-	ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinkIds []string, err error)
-
-	SplitBlock(ctx *session.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
-	MergeBlock(ctx *session.Context, req pb.RpcBlockMergeRequest) error
-	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
-	SetTextText(ctx *session.Context, req pb.RpcBlockTextSetTextRequest) error
-	SetTextStyle(ctx *session.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error
-	SetTextChecked(ctx *session.Context, req pb.RpcBlockTextSetCheckedRequest) error
-	SetTextColor(ctx *session.Context, contextId string, color string, blockIds ...string) error
-	SetTextMark(ctx *session.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
-	SetTextIcon(ctx *session.Context, contextId, image, emoji string, blockIds ...string) error
-	ClearTextStyle(ctx *session.Context, contextId string, blockIds ...string) error
-	ClearTextContent(ctx *session.Context, contextId string, blockIds ...string) error
-	SetBackgroundColor(ctx *session.Context, contextId string, color string, blockIds ...string) error
-	SetAlign(ctx *session.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
-	SetVerticalAlign(ctx *session.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error)
-	SetLayout(ctx *session.Context, id string, layout model.ObjectTypeLayout) error
-	SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error)
-
-	FeaturedRelationAdd(ctx *session.Context, contextId string, relations ...string) error
-	FeaturedRelationRemove(ctx *session.Context, contextId string, relations ...string) error
-
-	TurnInto(ctx *session.Context, id string, style model.BlockContentTextStyle, ids ...string) error
-
-	SetDivStyle(ctx *session.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
-
-	SetFileStyle(ctx *session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string) error
-	UploadFile(req pb.RpcFileUploadRequest) (hash string, err error)
-	UploadFileBlockWithHash(ctx *session.Context, contextId string, req pb.RpcBlockUploadRequest) (hash string, err error) 
-	UploadBlockFile(ctx *session.Context, req pb.RpcBlockUploadRequest, groupId string) error
-	UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploadRequest) (err error)
-	CreateAndUploadFile(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
-	DropFiles(req pb.RpcFileDropRequest) (err error)
-
-	Undo(ctx *session.Context, req pb.RpcObjectUndoRequest) (pb.RpcObjectUndoRedoCounter, error)
-	Redo(ctx *session.Context, req pb.RpcObjectRedoRequest) (pb.RpcObjectUndoRedoCounter, error)
-
-	SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error
-	SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error
-	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) error
-	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) error
-
-	DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) error
-	DeleteObject(id string) error
-
-	GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error)
-	DeleteDataviewView(ctx *session.Context, req pb.RpcBlockDataviewViewDeleteRequest) error
-	UpdateDataviewView(ctx *session.Context, req pb.RpcBlockDataviewViewUpdateRequest) error
-	SetDataviewActiveView(ctx *session.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error
-	SetDataviewViewPosition(ctx *session.Context, request pb.RpcBlockDataviewViewSetPositionRequest) error
-	CreateDataviewView(ctx *session.Context, req pb.RpcBlockDataviewViewCreateRequest) (id string, err error)
-	AddDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error)
-	DeleteDataviewRelation(ctx *session.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
-	UpdateDataviewGroupOrder(ctx *session.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
-	UpdateDataviewObjectOrder(ctx *session.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error
-
-	CreateRelation(details *types.Struct) (id string, object *types.Struct, err error)
-	CreateRelationOption(details *types.Struct) (id string, newDetails *types.Struct, err error)
-	RemoveListOption(ctx *session.Context, ids []string, checkInObjects bool) error
-
-	BookmarkFetch(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) error
-	BookmarkFetchSync(ctx *session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
-	BookmarkCreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
-
-	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (objectId string, newDetails *types.Struct, err error)
-	ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error)
-	ObjectToBookmark(id string, url string) (newId string, err error)
-
-	CreateTableBlock(ctx *session.Context, req pb.RpcBlockTableCreateRequest) (id string, err error)
-	TableExpand(ctx *session.Context, req pb.RpcBlockTableExpandRequest) (err error)
-	TableRowCreate(ctx *session.Context, req pb.RpcBlockTableRowCreateRequest) (err error)
-	TableRowDuplicate(ctx *session.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error)
-	TableRowDelete(ctx *session.Context, req pb.RpcBlockTableRowDeleteRequest) (err error)
-	TableRowListFill(ctx *session.Context, req pb.RpcBlockTableRowListFillRequest) (err error)
-	TableRowListClean(ctx *session.Context, req pb.RpcBlockTableRowListCleanRequest) (err error)
-	TableRowSetHeader(ctx *session.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error)
-	TableColumnCreate(ctx *session.Context, req pb.RpcBlockTableColumnCreateRequest) (err error)
-	TableColumnDuplicate(ctx *session.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
-	TableColumnMove(ctx *session.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
-	TableColumnDelete(ctx *session.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error)
-	TableColumnListFill(ctx *session.Context, req pb.RpcBlockTableColumnListFillRequest) (err error)
-	TableSort(ctx *session.Context, req pb.RpcBlockTableSortRequest) (err error)
-
-	SetRelationKey(ctx *session.Context, request pb.RpcBlockRelationSetKeyRequest) error
-	AddRelationBlock(ctx *session.Context, request pb.RpcBlockRelationAddRequest) error
-
-	Process() process.Service
-	ProcessAdd(p process.Process) (err error)
-	ProcessCancel(id string) error
-
-	SimplePaste(contextId string, anySlot []*model.Block) (err error)
-
-	GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, err error)
-	Wakeup(id string) (err error)
-
-	TemplateCreateFromObject(id string) (templateId string, err error)
-	TemplateCreateFromObjectByObjectType(otId string) (templateId string, err error)
-	TemplateClone(id string) (templateId string, err error)
-	ObjectsDuplicate(ids []string) (newIds []string, err error)
-	ObjectApplyTemplate(contextId, templateId string) error
-
-	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
-	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
-	GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error)
-	GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error)
-	SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error
-
-	ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error
-	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
-
-	AddCreatorInfoIfNeeded(workspaceId string) error
-
-	app.ComponentRunnable
-}
-
 type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
@@ -273,11 +116,11 @@ type openedBlock struct {
 	threadId thread.ID
 }
 
-func New() Service {
-	return new(service)
+func New() *Service {
+	return &Service{}
 }
 
-type service struct {
+type Service struct {
 	anytype         core.Service
 	status          status.Service
 	sendEvent       func(event *pb.Event)
@@ -294,11 +137,11 @@ type service struct {
 	relationService relation.Service
 }
 
-func (s *service) Name() string {
+func (s *Service) Name() string {
 	return CName
 }
 
-func (s *service) Init(a *app.App) (err error) {
+func (s *Service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.status = a.MustComponent(status.CName).(status.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
@@ -315,12 +158,12 @@ func (s *service) Init(a *app.App) (err error) {
 	return
 }
 
-func (s *service) Run(ctx context.Context) (err error) {
+func (s *Service) Run(ctx context.Context) (err error) {
 	s.initPredefinedBlocks(ctx)
 	return
 }
 
-func (s *service) initPredefinedBlocks(ctx context.Context) {
+func (s *Service) initPredefinedBlocks(ctx context.Context) {
 	ids := []string{
 		s.anytype.PredefinedBlocks().Account,
 		s.anytype.PredefinedBlocks().AccountOld,
@@ -330,6 +173,7 @@ func (s *service) initPredefinedBlocks(ctx context.Context) {
 		s.anytype.PredefinedBlocks().MarketplaceType,
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
+		s.anytype.PredefinedBlocks().Widgets,
 	}
 	startTime := time.Now()
 	for _, id := range ids {
@@ -373,11 +217,13 @@ func (s *service) initPredefinedBlocks(ctx context.Context) {
 	}
 }
 
-func (s *service) Anytype() core.Service {
+func (s *Service) Anytype() core.Service {
 	return s.anytype
 }
 
-func (s *service) OpenBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
+func (s *Service) OpenBlock(
+	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
+) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
 	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
 	if err != nil {
@@ -437,7 +283,9 @@ func (s *service) OpenBlock(ctx *session.Context, id string, includeRelationsAsD
 	return obj, nil
 }
 
-func (s *service) ShowBlock(ctx *session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
+func (s *Service) ShowBlock(
+	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
+) (obj *model.ObjectView, err error) {
 	cctx := context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_show")
 	err2 := s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
@@ -452,7 +300,7 @@ func (s *service) ShowBlock(ctx *session.Context, id string, includeRelationsAsD
 	return
 }
 
-func (s *service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectView, blockId string, err error) {
+func (s *Service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectView, blockId string, err error) {
 	bs := editor.NewBreadcrumbs()
 	if err = bs.Init(&smartblock.InitContext{
 		App:    s.app,
@@ -478,7 +326,7 @@ func (s *service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectV
 	return obj, bs.Id(), nil
 }
 
-func (s *service) CloseBlock(id string) error {
+func (s *Service) CloseBlock(id string) error {
 	var (
 		isDraft     bool
 		workspaceId string
@@ -505,7 +353,7 @@ func (s *service) CloseBlock(id string) error {
 	return nil
 }
 
-func (s *service) CloseBlocks() {
+func (s *Service) CloseBlocks() {
 	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
 		ob := v.(*openedBlock)
 		ob.Lock()
@@ -516,7 +364,7 @@ func (s *service) CloseBlocks() {
 	})
 }
 
-func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
+func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
 	id, _, err := s.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypeWorkspace,
 		&types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
@@ -527,11 +375,79 @@ func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceI
 	return id, err
 }
 
-func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
+func (s *Service) AddSubObjectToWorkspace(
+	sourceObjectId, workspaceId string,
+) (id string, object *types.Struct, err error) {
+	ids, details, err := s.AddSubObjectsToWorkspace([]string{sourceObjectId}, workspaceId)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(ids) == 0 {
+		return "", nil, fmt.Errorf("failed to add object")
+	}
+
+	return ids[0], details[0], nil
+}
+
+func (s *Service) AddSubObjectsToWorkspace(
+	sourceObjectIds []string, workspaceId string,
+) (ids []string, objects []*types.Struct, err error) {
+	// todo: we should add route to object via workspace
+	var details = make([]*types.Struct, 0, len(sourceObjectIds))
+
+	for _, sourceObjectId := range sourceObjectIds {
+		err = s.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
+			d := pbtypes.CopyStruct(b.Details())
+			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceId {
+				return errors.New("object already in collection")
+			}
+			d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
+			u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
+			if err != nil {
+				u = b.ObjectType()
+			}
+			d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(u)
+			d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+			d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
+
+			details = append(details, d)
+			return nil
+		})
+		if err != nil {
+			return
+		}
+	}
+
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		ws, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect workspace id")
+		}
+		ids, objects, err = ws.CreateSubObjects(details)
+		return err
+	})
+
+	return
+}
+
+func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string) (err error) {
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		ws, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect workspace id")
+		}
+		err = ws.RemoveSubObjects(objectIds)
+		return err
+	})
+
+	return
+}
+
+func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	panic("should be removed")
 }
 
-func (s *service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
+func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
 	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
 	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
 		return "", nil
@@ -539,11 +455,11 @@ func (s *service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (st
 	return workspaceId, err
 }
 
-func (s *service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
+func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
 	return s.anytype.GetAllWorkspaces()
 }
 
-func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
+func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
 	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
 	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
@@ -554,7 +470,7 @@ func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) 
 	})
 }
 
-func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
+func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
 	if req.ObjectId == "" || req.Payload == "" {
 		return fmt.Errorf("cannot add object without objectId or payload")
 	}
@@ -578,7 +494,7 @@ func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest)
 	})
 }
 
-func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
+func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
 	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
 	if err == core.ErrObjectDoesNotBelongToWorkspace {
 		workspaceId = s.Anytype().PredefinedBlocks().Account
@@ -615,7 +531,7 @@ func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 }
 
 // SetPagesIsArchived is deprecated
-func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error {
+func (s *Service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -658,7 +574,7 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) e
 }
 
 // SetPagesIsFavorite is deprecated
-func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error {
+func (s *Service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error {
 	return s.Do(s.anytype.PredefinedBlocks().Home, func(b smartblock.SmartBlock) error {
 		fav, ok := b.(collection.Collection)
 		if !ok {
@@ -695,7 +611,7 @@ func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) e
 	})
 }
 
-func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
+func (s *Service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
 	return s.Do(collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
@@ -709,18 +625,18 @@ func (s *service) objectLinksCollectionModify(collectionId string, objectId stri
 	})
 }
 
-func (s *service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error) {
+func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error) {
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Home, req.ContextId, req.IsFavorite)
 }
 
-func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
+func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
 	if err := s.checkArchivedRestriction(req.IsArchived, req.ContextId); err != nil {
 		return err
 	}
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
 }
 
-func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
+func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil
 	}
@@ -730,7 +646,7 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 	return nil
 }
 
-func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err error) {
+func (s *Service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -759,7 +675,7 @@ func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err 
 	})
 }
 
-func (s *service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
+func (s *Service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
 	var newId string
 	var merr multierror.Error
 	var anySucceed bool
@@ -780,7 +696,7 @@ func (s *service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
 	return nil, merr.ErrorOrNil()
 }
 
-func (s *service) DeleteArchivedObject(id string) (err error) {
+func (s *Service) DeleteArchivedObject(id string) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -800,7 +716,7 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *service) AddCreatorInfoIfNeeded(workspaceId string) error {
+func (s *Service) AddCreatorInfoIfNeeded(workspaceId string) error {
 	if s.Anytype().PredefinedBlocks().IsAccount(workspaceId) {
 		return nil
 	}
@@ -813,7 +729,7 @@ func (s *service) AddCreatorInfoIfNeeded(workspaceId string) error {
 	})
 }
 
-func (s *service) DeleteObject(id string) (err error) {
+func (s *Service) DeleteObject(id string) (err error) {
 	var (
 		fileHashes  []string
 		workspaceId string
@@ -876,7 +792,7 @@ func (s *service) DeleteObject(id string) (err error) {
 	return
 }
 
-func (s *service) sendOnRemoveEvent(ids ...string) {
+func (s *Service) sendOnRemoveEvent(ids ...string) {
 	if s.sendEvent != nil {
 		s.sendEvent(&pb.Event{
 			Messages: []*pb.EventMessage{
@@ -892,14 +808,28 @@ func (s *service) sendOnRemoveEvent(ids ...string) {
 	}
 }
 
-func (s *service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSmartBlock(
+	ctx context.Context,
+	sbType coresb.SmartBlockType,
+	details *types.Struct,
+	relationIds []string,
+) (id string, newDetails *types.Struct, err error) {
 	return s.CreateSmartBlockFromState(ctx, sbType, details, relationIds, state.NewDoc("", nil).NewState())
 }
 
-func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSmartBlockFromTemplate(
+	ctx context.Context,
+	sbType coresb.SmartBlockType,
+	details *types.Struct,
+	relationIds []string,
+	templateId string,
+) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateId != "" {
-		if createState, err = s.stateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+		if createState, err = s.stateFromTemplate(
+			templateId,
+			pbtypes.GetString(details, bundle.RelationKeyName.String()),
+		); err != nil {
 			return
 		}
 	} else {
@@ -908,7 +838,13 @@ func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 	return s.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
 }
 
-func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSmartBlockFromState(
+	ctx context.Context,
+	sbType coresb.SmartBlockType,
+	details *types.Struct,
+	relationIds []string,
+	createState *state.State,
+) (id string, newDetails *types.Struct, err error) {
 	startTime := time.Now()
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {
@@ -989,7 +925,11 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
-func (s *service) CreateLinkToTheNewObject(ctx *session.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+func (s *Service) CreateLinkToTheNewObject(
+	ctx *session.Context,
+	groupId string,
+	req pb.RpcBlockLinkCreateWithObjectRequest,
+) (linkId string, objectId string, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
@@ -1030,7 +970,13 @@ func (s *service) CreateLinkToTheNewObject(ctx *session.Context, groupId string,
 	return s.createObject(ctx, nil, groupId, req, true, creator)
 }
 
-func (s *service) CreateObjectFromState(ctx *session.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
+func (s *Service) CreateObjectFromState(
+	ctx *session.Context,
+	contextBlock smartblock.SmartBlock,
+	groupId string,
+	req pb.RpcBlockLinkCreateWithObjectRequest,
+	state *state.State,
+) (linkId string, objectId string, err error) {
 	return s.createObject(ctx, contextBlock, groupId, req, false, func(ctx context.Context) (string, error) {
 		objectId, _, err = s.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, nil, state)
 		if err != nil {
@@ -1040,7 +986,14 @@ func (s *service) CreateObjectFromState(ctx *session.Context, contextBlock smart
 	})
 }
 
-func (s *service) createObject(ctx *session.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, storeLink bool, create func(context.Context) (objectId string, err error)) (linkId string, objectId string, err error) {
+func (s *Service) createObject(
+	ctx *session.Context,
+	contextBlock smartblock.SmartBlock,
+	groupId string,
+	req pb.RpcBlockLinkCreateWithObjectRequest,
+	storeLink bool,
+	create func(context.Context) (objectId string, err error),
+) (linkId string, objectId string, err error) {
 	if contextBlock != nil {
 		if contextBlock.Type() == model.SmartBlockType_Set {
 			return "", "", basic.ErrNotSupported
@@ -1070,12 +1023,13 @@ func (s *service) createObject(ctx *session.Context, contextBlock smartblock.Sma
 		return "", objectId, err
 	}
 
-	b, ok := contextBlock.(basic.Basic)
+	st := contextBlock.NewStateCtx(ctx).SetGroupId(groupId)
+	b, ok := contextBlock.(basic.Creatable)
 	if !ok {
 		err = fmt.Errorf("%T doesn't implement basic.Basic", contextBlock)
 		return
 	}
-	linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
+	linkId, err = b.CreateBlock(st, pb.RpcBlockCreateRequest{
 		TargetId: req.TargetId,
 		Block: &model.Block{
 			Content: &model.BlockContentOfLink{
@@ -1091,62 +1045,42 @@ func (s *service) createObject(ctx *session.Context, contextBlock smartblock.Sma
 	if err != nil {
 		err = fmt.Errorf("link create error: %v", err)
 	}
+	err = contextBlock.Apply(st)
 	return
 }
 
-func (s *service) CreateRelationOption(opt *types.Struct) (id string, newDetails *types.Struct, err error) {
+func (s *Service) CreateSubObjectInWorkspace(
+	details *types.Struct, workspaceId string,
+) (id string, newDetails *types.Struct, err error) {
+	// todo: rewrite to the current workspace id
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("object is not a workspace")
+		}
+
+		id, newDetails, err = workspace.CreateSubObject(details)
+		return err
+	})
+	return
+}
+
+func (s *Service) CreateSubObjectsInWorkspace(
+	details []*types.Struct,
+) (ids []string, objects []*types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		id, newDetails, err = workspace.CreateRelationOption(opt)
+		ids, objects, err = workspace.CreateSubObjects(details)
 		return err
 	})
 	return
 }
 
-func (s *service) CreateRelation(rel *types.Struct) (id string, object *types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		id, object, err = workspace.CreateRelation(rel)
-		return err
-	})
-	return
-}
-
-func (s *service) CreateRelations(rel []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		ids, objects, err = workspace.CreateRelations(rel)
-		return err
-	})
-	return
-}
-
-func (s *service) CreateRelationOptions(rel []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		ids, objects, err = workspace.CreateRelationOptions(rel)
-		return err
-	})
-	return
-}
-
-func (s *service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
+func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
 	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		var ok bool
@@ -1193,24 +1127,24 @@ func (s *service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 	return nil
 }
 
-func (s *service) Process() process.Service {
+func (s *Service) Process() process.Service {
 	return s.process
 }
 
-func (s *service) ProcessAdd(p process.Process) (err error) {
+func (s *Service) ProcessAdd(p process.Process) (err error) {
 	return s.process.Add(p)
 }
 
-func (s *service) ProcessCancel(id string) (err error) {
+func (s *Service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
 }
 
-func (s *service) Close() error {
+func (s *Service) Close() error {
 	return s.cache.Close()
 }
 
 // pickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *service) pickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+func (s *Service) pickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
 	ob, err := s.getSmartblock(ctx, id)
 	if err != nil {
 		return
@@ -1220,7 +1154,7 @@ func (s *service) pickBlock(ctx context.Context, id string) (sb smartblock.Smart
 	}, nil
 }
 
-func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
+func (s *Service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
 	sc, err := s.source.NewSource(id, false)
 	if err != nil {
 		return
@@ -1261,6 +1195,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewWorkspace(s)
 	case model.SmartBlockType_AccountOld:
 		sb = editor.NewThreadDB(s)
+	case model.SmartBlockType_Widget:
+		sb = editor.NewWidgetObject()
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -1276,7 +1212,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	return
 }
 
-func (s *service) stateFromTemplate(templateId, name string) (st *state.State, err error) {
+func (s *Service) stateFromTemplate(templateId, name string) (st *state.State, err error) {
 	if err = s.Do(templateId, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
@@ -1290,7 +1226,7 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 	return
 }
 
-func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err error) {
+func (s *Service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err error) {
 	err = s.DoWithContext(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "migrate_many"), s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
@@ -1306,46 +1242,13 @@ func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err e
 	return
 }
 
-func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_basic"), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(basic.Basic); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("basic operation not available for this block type: %T", sb)
-}
-
-func (s *service) DoTable(id string, ctx *session.Context, apply func(st *state.State, b table.Editor) error) error {
-	sb, release, err := s.pickBlock(context.TODO(), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(table.Editor); ok {
-		sb.Lock()
-		defer sb.Unlock()
-
-		st := sb.NewStateCtx(ctx)
-		if err := apply(st, bb); err != nil {
-			return fmt.Errorf("apply function: %w", err)
-		}
-		return sb.Apply(st)
-	}
-	return fmt.Errorf("table operation not available for this block type: %T", sb)
-}
-
-func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {
+func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
 		return err
 	}
 	defer release()
-	if bb, ok := sb.(basic.Basic); ok {
+	if bb, ok := sb.(basic.AllOperations); ok {
 		sb.Lock()
 		defer sb.Unlock()
 		return apply(bb)
@@ -1353,7 +1256,7 @@ func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) 
 	return fmt.Errorf("basic operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
+func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
 	if err != nil {
 		return err
@@ -1367,7 +1270,7 @@ func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 	return fmt.Errorf("clipboard operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoText(id string, apply func(b stext.Text) error) error {
+func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
 	if err != nil {
 		return err
@@ -1381,7 +1284,7 @@ func (s *service) DoText(id string, apply func(b stext.Text) error) error {
 	return fmt.Errorf("text operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoFile(id string, apply func(b file.File) error) error {
+func (s *Service) DoFile(id string, apply func(b file.File) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
 	if err != nil {
 		return err
@@ -1395,7 +1298,7 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 	return fmt.Errorf("file operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
+func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
 	if err != nil {
 		return err
@@ -1409,7 +1312,7 @@ func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 	return fmt.Errorf("bookmark operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
+func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
 	if err != nil {
 		return err
@@ -1421,7 +1324,7 @@ func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error 
 	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error {
+func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
 	if err != nil {
 		return err
@@ -1435,7 +1338,7 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 	return fmt.Errorf("undo operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
+func (s *Service) DoImport(id string, apply func(b _import.Import) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
 	if err != nil {
 		return err
@@ -1450,7 +1353,7 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 	return fmt.Errorf("import operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
+func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
 	if err != nil {
 		return err
@@ -1464,7 +1367,7 @@ func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 	return fmt.Errorf("text operation not available for this block type: %T", sb)
 }
 
-func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
+func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
 	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
@@ -1475,7 +1378,58 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	return apply(sb)
 }
 
-func (s *service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
+func Do[t any](s *Service, id string, apply func(sb t) error) error {
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
+}
+
+func DoState[t any](
+	s *Service, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
+) error {
+	return DoStateCtx(s, nil, id, apply, flags...)
+}
+
+func DoStateCtx[t any](
+	s *Service, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag,
+) error {
+	sb, release, err := s.pickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+
+	st := sb.NewStateCtx(ctx)
+	err = apply(st, bb)
+	if err != nil {
+		return fmt.Errorf("apply func: %w", err)
+	}
+
+	return sb.Apply(st, flags...)
+}
+
+func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
 	sb, release, err := s.pickBlock(ctx, id)
 	if err != nil {
 		return err
@@ -1489,7 +1443,7 @@ func (s *service) DoWithContext(ctx context.Context, id string, apply func(b sma
 	return apply(sb)
 }
 
-func (s *service) TemplateCreateFromObject(id string) (templateId string, err error) {
+func (s *Service) TemplateCreateFromObject(id string) (templateId string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_Page {
@@ -1508,7 +1462,7 @@ func (s *service) TemplateCreateFromObject(id string) (templateId string, err er
 	return
 }
 
-func (s *service) TemplateCreateFromObjectByObjectType(otId string) (templateId string, err error) {
+func (s *Service) TemplateCreateFromObjectByObjectType(otId string) (templateId string, err error) {
 	if err = s.Do(otId, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
 		return "", fmt.Errorf("can't open objectType: %v", err)
 	}
@@ -1522,7 +1476,7 @@ func (s *service) TemplateCreateFromObjectByObjectType(otId string) (templateId 
 	return
 }
 
-func (s *service) TemplateClone(id string) (templateId string, err error) {
+func (s *Service) TemplateClone(id string) (templateId string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_BundledTemplate {
@@ -1531,6 +1485,11 @@ func (s *service) TemplateClone(id string) (templateId string, err error) {
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
+		t := st.ObjectTypes()
+		t, _ = relationutils.MigrateObjectTypeIds(t)
+		st.SetObjectTypes(t)
+		targetObjectType, _ := relationutils.MigrateObjectTypeId(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectType))
 		return nil
 	}); err != nil {
 		return
@@ -1542,7 +1501,7 @@ func (s *service) TemplateClone(id string) (templateId string, err error) {
 	return
 }
 
-func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
+func (s *Service) ObjectDuplicate(id string) (objectId string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
@@ -1567,7 +1526,7 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	return
 }
 
-func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
+func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 	return s.Do(contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
 		ts, err := s.stateFromTemplate(templateId, pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String()))
@@ -1601,13 +1560,13 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 	})
 }
 
-func (s *service) ResetToState(pageId string, state *state.State) (err error) {
+func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
 	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
 		return sb.ResetToVersion(state)
 	})
 }
 
-func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
+func (s *Service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 	contentCh := make(chan *model.BlockContentBookmark, 1)
 	go func() {
 		defer close(contentCh)
@@ -1631,7 +1590,9 @@ func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (objectId string, newDetails *types.Struct, err error) {
+func (s *Service) ObjectCreateBookmark(
+	req pb.RpcObjectCreateBookmarkRequest,
+) (objectId string, newDetails *types.Struct, err error) {
 	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("process uri: %w", err)
@@ -1640,7 +1601,7 @@ func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (o
 	return s.bookmark.CreateBookmarkObject(req.Details, res)
 }
 
-func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
+func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
 	url, err := uri.ProcessURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
@@ -1654,7 +1615,7 @@ func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	return nil
 }
 
-func (s *service) ObjectToBookmark(id string, url string) (objectId string, err error) {
+func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err error) {
 	objectId, _, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -1686,7 +1647,7 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 	return
 }
 
-func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
+func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
 	sbt, _ := coresb.SmartBlockTypeFromID(id)
 	if sbt == coresb.SmartBlockTypeSubObject {
 		workspaceId := s.anytype.PredefinedBlocks().Account
@@ -1722,7 +1683,7 @@ func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 	return
 }
 
-func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock, err error) {
+func (s *Service) getSmartblock(ctx context.Context, id string) (ob *openedBlock, err error) {
 	val, err := s.cache.Get(ctx, id)
 	if err != nil {
 		return
@@ -1737,8 +1698,8 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 	return ob, nil
 }
 
-func (s *service) replaceLink(id, oldId, newId string) error {
-	return s.DoBasic(id, func(b basic.Basic) error {
+func (s *Service) replaceLink(id, oldId, newId string) error {
+	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
 	})
 }

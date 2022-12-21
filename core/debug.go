@@ -6,19 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block"
-
-	"github.com/anytypeio/go-anytype-middleware/core/debug"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-
-	"github.com/textileio/go-threads/jsonpatcher"
-
-	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -26,6 +13,16 @@ import (
 	"github.com/textileio/go-threads/cbor"
 	threadsNet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/jsonpatcher"
+
+	"github.com/anytypeio/go-anytype-middleware/change"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/debug"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 )
 
 func (mw *Middleware) DebugThread(cctx context.Context, req *pb.RpcDebugThreadRequest) *pb.RpcDebugThreadResponse {
@@ -159,7 +156,7 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 		path string
 		err  error
 	)
-	err = mw.doBlockService(func(s block.Service) error {
+	err = mw.doBlockService(func(s *block.Service) error {
 		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
 		path, err = dbg.DumpLocalstore(req.DocIds, req.Path)
 		return err

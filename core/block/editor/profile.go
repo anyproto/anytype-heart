@@ -19,20 +19,20 @@ func NewProfile(fileSource file.BlockService, pageManager bookmark.BlockService,
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
-		SmartBlock: sb,
-		Basic:      basic.NewBasic(sb),
-		IHistory:   basic.NewHistory(sb),
-		Text:       stext.NewText(sb),
-		File:       f,
-		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		sendEvent:  sendEvent,
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text:          stext.NewText(sb),
+		File:          f,
+		Clipboard:     clipboard.NewClipboard(sb, f),
+		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
+		sendEvent:     sendEvent,
 	}
 }
 
 type Profile struct {
 	smartblock.SmartBlock
-	basic.Basic
+	basic.AllOperations
 	basic.IHistory
 	file.File
 	stext.Text
@@ -47,7 +47,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}, model.ObjectType_profile),
 		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 		template.WithTitle,
 		// template.WithAlignedDescription(model.Block_AlignCenter, true),

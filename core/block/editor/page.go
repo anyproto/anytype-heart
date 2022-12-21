@@ -18,6 +18,19 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
+type Page struct {
+	smartblock.SmartBlock
+	basic.AllOperations
+	basic.IHistory
+	file.File
+	stext.Text
+	clipboard.Clipboard
+	bookmark.Bookmark
+	_import.Import
+	dataview.Dataview
+	table.TableEditor
+}
+
 func NewPage(
 	fileSource file.BlockService,
 	pageManager bookmark.BlockService,
@@ -27,30 +40,17 @@ func NewPage(
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Page{
-		SmartBlock: sb,
-		Basic:      basic.NewBasic(sb),
-		IHistory:   basic.NewHistory(sb),
-		Text:       stext.NewText(sb),
-		File:       f,
-		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		Import:     _import.NewImport(sb, importServices),
-		Dataview:   dataview.NewDataview(sb),
-		Editor:     table.NewEditor(sb),
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text:          stext.NewText(sb),
+		File:          f,
+		Clipboard:     clipboard.NewClipboard(sb, f),
+		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
+		Import:        _import.NewImport(sb, importServices),
+		Dataview:      dataview.NewDataview(sb),
+		TableEditor:   table.NewEditor(sb),
 	}
-}
-
-type Page struct {
-	smartblock.SmartBlock
-	basic.Basic
-	basic.IHistory
-	file.File
-	stext.Text
-	clipboard.Clipboard
-	bookmark.Bookmark
-	_import.Import
-	dataview.Dataview
-	table.Editor
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
@@ -70,7 +70,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	tmpls := []template.StateTransformer{
-		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
+		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls, layout),
 		bookmarksvc.WithFixedBookmarks(p.Bookmark),
 	}
 

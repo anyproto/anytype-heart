@@ -3,23 +3,24 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/textileio/go-threads/core/db"
-	"github.com/textileio/go-threads/core/thread"
-	threadsUtil "github.com/textileio/go-threads/util"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/db"
+	"github.com/textileio/go-threads/core/thread"
+	threadsDb "github.com/textileio/go-threads/db"
+	threadsUtil "github.com/textileio/go-threads/util"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	threadsDb "github.com/textileio/go-threads/db"
 )
 
 const (

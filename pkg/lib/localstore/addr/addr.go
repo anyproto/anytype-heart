@@ -2,15 +2,20 @@ package addr
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"strings"
+	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 const (
-	VirtualObjectSeparator = "-"
-	RelationKeyToIdPrefix  = "rel-" //
+	SubObjectCollectionIdSeparator = "-"
+	RelationKeyToIdPrefix          = "rel-" //
+	ObjectTypeKeyToIdPrefix        = "ot-"  //
 
-	BundledRelationURLPrefix   = "_br"
+	BundledRelationURLPrefix    = "_br"
+	OldIndexedRelationURLPrefix = "_ir"
+
 	BundledObjectTypeURLPrefix = "_ot"
 
 	AnytypeProfileId            = "_anytype_profile"
@@ -40,5 +45,19 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 
 // returns the
 func GetVirtualCollectionObjectId(collectionName, key string) string {
-	return collectionName + VirtualObjectSeparator + key
+	return collectionName + SubObjectCollectionIdSeparator + key
+}
+
+func ConvertBundledObjectIdToInstalledId(bundledId string) (string, error) {
+	if strings.HasPrefix(bundledId, BundledRelationURLPrefix) {
+		return RelationKeyToIdPrefix + strings.TrimPrefix(bundledId, BundledRelationURLPrefix), nil
+	} else if strings.HasPrefix(bundledId, BundledObjectTypeURLPrefix) {
+		return ObjectTypeKeyToIdPrefix + strings.TrimPrefix(bundledId, BundledObjectTypeURLPrefix), nil
+	}
+
+	return "", fmt.Errorf("unknown bundled id")
+}
+
+func TimeToID(t time.Time) string {
+	return DatePrefix + t.Format("2006-01-02")
 }

@@ -2,19 +2,19 @@ package source
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewDate(a core.Service, id string) (s Source) {
@@ -56,14 +56,15 @@ func (v *date) Virtual() bool {
 
 func (v *date) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyId.String():         pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeyDate.URL()),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_basic)),
-		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
+		bundle.RelationKeyName.String():        pbtypes.String(v.t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyId.String():          pbtypes.String(v.id),
+		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
+		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
+		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
+		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_basic)),
+		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
+		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.a.PredefinedBlocks().Account),
 	}}
 }
 
@@ -125,8 +126,4 @@ func (v *date) LogHeads() map[string]string {
 
 func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
-}
-
-func TimeToId(t time.Time) string {
-	return addr.DatePrefix + t.Format("2006-01-02")
 }

@@ -48,6 +48,12 @@ var WithObjectTypes = func(otypes []string) StateTransformer {
 	}
 }
 
+var WithForcedObjectTypes = func(otypes []string) StateTransformer {
+	return func(s *state.State) {
+		s.SetObjectTypes(otypes)
+	}
+}
+
 // WithNoObjectTypes is a special case used only for Archive
 var WithNoObjectTypes = func() StateTransformer {
 	return func(s *state.State) {
@@ -103,7 +109,7 @@ var WithRequiredRelations = func() StateTransformer {
 	return WithRelations(bundle.RequiredInternalRelations)
 }
 
-var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
+var WithObjectTypesAndLayout = func(otypes []string, layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {
 			s.SetObjectTypes(otypes)
@@ -111,15 +117,8 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 			otypes = s.ObjectTypes()
 		}
 
-		d := s.Details()
-		if d == nil || d.Fields == nil || d.Fields[bundle.RelationKeyLayout.String()] == nil {
-			for _, ot := range otypes {
-				t, err := bundle.GetTypeByUrl(ot)
-				if err != nil {
-					continue
-				}
-				s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(t.Layout)))
-			}
+		if !pbtypes.HasField(s.Details(), bundle.RelationKeyLayout.String()) {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(layout)))
 		}
 	}
 }
@@ -152,6 +151,24 @@ var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTra
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil || !s.Details().Fields[key.String()].Equal(value) {
 			s.SetDetailAndBundledRelation(key, value)
+		}
+	}
+}
+
+// MigrateRelationValue moves a relation value from the old key to the new key.
+// In case new key already exists, it does nothing
+// In case old key does not exist, it does nothing
+var MigrateRelationValue = func(from bundle.RelationKey, to bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		if s.Details().GetFields() == nil {
+			return
+		}
+		if s.Details().GetFields()[to.String()] == nil {
+			if val := s.Details().GetFields()[from.String()]; val != nil {
+				s.SetDetailAndBundledRelation(to, val)
+				s.RemoveDetail(from.String())
+				s.RemoveRelation(from.String())
+			}
 		}
 	}
 }
@@ -259,6 +276,37 @@ var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
 })
+
+var WithAddedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		var featRels = pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+		if slice.FindPos(featRels, key.String()) > -1 {
+			return
+		} else {
+			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(append(featRels, key.String())))
+		}
+	}
+}
+
+var WithAddedFeaturedRelations = func(keys ...string) StateTransformer {
+	return func(s *state.State) {
+		currentVal := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+
+		keys = slice.Filter(keys, func(key string) bool {
+			if slice.FindPos(currentVal, key) > -1 {
+				return false
+			} else {
+				return true
+			}
+		})
+
+		if len(keys) > 0 {
+			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(append(currentVal, keys...)))
+		}
+
+		return
+	}
+}
 
 var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())

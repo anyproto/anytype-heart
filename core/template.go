@@ -28,7 +28,7 @@ func (mw *Middleware) TemplateCreateFromObject(cctx context.Context, req *pb.Rpc
 		return m
 	}
 	var templateId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		templateId, err = bs.TemplateCreateFromObject(req.ContextId)
 		return
 	})
@@ -48,7 +48,7 @@ func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateClo
 		return m
 	}
 	var templateId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		templateId, err = bs.TemplateClone(req.ContextId)
 		return
 	})
@@ -66,7 +66,7 @@ func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ObjectApplyTemplate(req.ContextId, req.TemplateId)
 	})
 	return response(err)
@@ -85,7 +85,7 @@ func (mw *Middleware) TemplateCreateFromObjectType(cctx context.Context, req *pb
 		return m
 	}
 	var templateId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		templateId, err = bs.TemplateCreateFromObjectByObjectType(req.ObjectType)
 		return
 	})
@@ -112,7 +112,7 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 		path string
 		err  error
 	)
-	err = mw.doBlockService(func(_ block.Service) error {
+	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		res, _, err := ds.QueryObjectInfo(database.Query{
@@ -165,7 +165,7 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 		path string
 		err  error
 	)
-	err = mw.doBlockService(func(_ block.Service) error {
+	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		res, _, err := ds.QueryObjectInfo(database.Query{

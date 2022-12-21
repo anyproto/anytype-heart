@@ -32,7 +32,7 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 		ver *pb.RpcHistoryVersion
 		err error
 	)
-	if err = mw.doBlockService(func(bs block.Service) (err error) {
+	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
 		obj, ver, err = hs.Show(req.ObjectId, req.VersionId)
 		return
@@ -63,7 +63,7 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 		vers []*pb.RpcHistoryVersion
 		err  error
 	)
-	if err = mw.doBlockService(func(bs block.Service) (err error) {
+	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
 		vers, err = hs.Versions(req.ObjectId, req.LastVersionId, int(req.Limit))
 		return
@@ -87,7 +87,7 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 		}
 		return
 	}
-	return response(mw.doBlockService(func(bs block.Service) (err error) {
+	return response(mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
 		return hs.SetVersion(req.ObjectId, req.VersionId)
 	}))

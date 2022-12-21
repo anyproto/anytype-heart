@@ -3,13 +3,6 @@ package state
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -17,10 +10,17 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/widget"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
@@ -118,6 +118,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewSourceSet:
 		if err = apply(o.BlockDataviewSourceSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
+				url, migrated := relationutils.MigrateObjectTypeIds(o.BlockDataviewSourceSet.Source)
+				if len(migrated) > 0 {
+					s.SetObjectTypesToMigrate(append(s.ObjectTypesToMigrate(), migrated...))
+					o.BlockDataviewSourceSet.Source = url
+				}
 				return f.SetSource(o.BlockDataviewSourceSet.Source)
 			}
 			return fmt.Errorf("not a dataview block")
@@ -267,6 +272,15 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				return nil
 			}
 			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockSetWidget:
+		if err = apply(o.BlockSetWidget.Id, func(b simple.Block) error {
+			if tr, ok := b.(widget.Block); ok {
+				return tr.ApplyEvent(o.BlockSetWidget)
+			}
+			return fmt.Errorf("not a widget block")
 		}); err != nil {
 			return
 		}

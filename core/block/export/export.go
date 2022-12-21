@@ -3,6 +3,16 @@ package export
 import (
 	"bytes"
 	"context"
+	"math/rand"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/gosimple/slug"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -22,14 +32,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/gosimple/slug"
-	"math/rand"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 const CName = "export"
@@ -46,12 +48,12 @@ type Export interface {
 }
 
 type export struct {
-	bs block.Service
+	bs *block.Service
 	a  core.Service
 }
 
 func (e *export) Init(a *app.App) (err error) {
-	e.bs = a.MustComponent(block.CName).(block.Service)
+	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
 	return
 }

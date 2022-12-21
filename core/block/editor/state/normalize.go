@@ -2,11 +2,13 @@ package state
 
 import (
 	"fmt"
+
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
 )
 
 var (

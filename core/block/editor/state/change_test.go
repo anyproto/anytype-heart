@@ -2,16 +2,17 @@ package state
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 	"testing"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func makeStoreWithTwoKeysAndValue(first, second, value string) *types.Struct {

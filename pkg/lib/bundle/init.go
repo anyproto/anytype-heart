@@ -12,8 +12,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-// RequiredInternalRelations contains internal relations will be added to any new object type.
-// Missing ones will be added to object on opening or during reindex
+// RequiredInternalRelations contains internal relations that will be added to EVERY new or existing object
+// if this relation only needs SPECIFIC objects(e.g. of some type) add it to the SystemRelations
 var RequiredInternalRelations = []RelationKey{
 	RelationKeyId,
 	RelationKeyName,
@@ -35,13 +35,59 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyLastModifiedBy,
 	RelationKeyLastOpenedDate,
 	RelationKeyFeaturedRelations,
-	RelationKeyIsHidden,
-	RelationKeyIsArchived,
 	RelationKeyIsFavorite,
 	RelationKeyWorkspaceId,
 	RelationKeyLinks,
 	RelationKeyInternalFlags,
+	RelationKeyRestrictions,
 }
+
+// SystemRelations contains relations that have some special biz logic depends on them in some objects
+// in case EVERY object depend on the relation please add it to RequiredInternalRelations
+var SystemRelations = append(RequiredInternalRelations, []RelationKey{
+	RelationKeyAddedDate,
+	RelationKeySource,
+	RelationKeySourceObject,
+	RelationKeySetOf,
+	RelationKeyRelationFormat,
+	RelationKeyRelationKey,
+	RelationKeyRelationReadonlyValue,
+	RelationKeyRelationDefaultValue,
+	RelationKeyRelationMaxCount,
+	RelationKeyRelationOptionColor,
+	RelationKeyRelationFormatObjectTypes,
+	RelationKeyIsReadonly,
+	RelationKeyIsDeleted,
+	RelationKeyIsHidden,
+	RelationKeyIsArchived,
+	RelationKeyTemplateIsBundled,
+	RelationKeyTag,
+}...)
+
+// InternalTypes contains the list of types that are not possible
+// to create as a general object because they have specific logic
+var InternalTypes = []TypeKey{
+	TypeKeyFile,
+	TypeKeyImage,
+	TypeKeyAudio,
+	TypeKeyVideo,
+	TypeKeyDate,
+	TypeKeySpace,
+	TypeKeyRelation,
+	TypeKeyRelationOption,
+	TypeKeyDashboard,
+}
+
+var SystemTypes = append(InternalTypes, []TypeKey{
+	TypeKeyPage,
+	TypeKeyNote,
+	TypeKeyTask,
+	TypeKeyObjectType,
+	TypeKeySet,
+	TypeKeyProfile,
+	TypeKeyTemplate,
+	TypeKeyBookmark,
+}...)
 
 var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyFile.URL(),
@@ -56,6 +102,7 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
 	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
+	coresb.SmartBlockTypeWidget:      TypeKeyDashboard,
 }
 
 var DefaultSmartblockTypePerObjectType = map[TypeKey]coresb.SmartBlockType{
@@ -267,8 +314,23 @@ func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
 }
 
 func TypeKeyFromUrl(url string) (TypeKey, error) {
-	if !strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
-		return "", fmt.Errorf("invalid type url: no prefix found")
+	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
+		return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
 	}
-	return TypeKey(strings.TrimPrefix(url, addr.BundledObjectTypeURLPrefix)), nil
+
+	if strings.HasPrefix(url, addr.ObjectTypeKeyToIdPrefix) {
+		return TypeKey(strings.TrimPrefix(url, addr.ObjectTypeKeyToIdPrefix)), nil
+	}
+
+	return "", fmt.Errorf("invalid type url: no prefix found")
+}
+
+func FilterRelationKeys(keys []RelationKey, cond func(RelationKey) bool) []RelationKey {
+	var res = make([]RelationKey, 0, len(keys))
+	for _, key := range keys {
+		if cond(key) {
+			res = append(res, key)
+		}
+	}
+	return res
 }
