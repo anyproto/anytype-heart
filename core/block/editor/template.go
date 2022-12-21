@@ -9,24 +9,38 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewTemplate(
-	fileSource file.BlockService,
-	pageManager bookmark.BlockService,
-	importServices _import.Services,
-	creator _import.ObjectCreator,
-	bookmarkSvc bookmark.BookmarkService,
-) *Template {
-	page := NewPage(fileSource, pageManager, importServices, creator, bookmarkSvc)
-	return &Template{Page: page}
-}
-
 type Template struct {
 	*Page
+}
+
+func NewTemplate(
+	objectStore objectstore.ObjectStore,
+	importerCtrl _import.Services,
+	objectCreator _import.ObjectCreator,
+	anytype core.Service,
+	fileBlockService file.BlockService,
+	bookmarkBlockService bookmark.BlockService,
+	bookmarkService bookmark.BookmarkService,
+	relationService relation2.Service,
+) *Template {
+	return &Template{Page: NewPage(
+		objectStore,
+		importerCtrl,
+		objectCreator,
+		anytype,
+		fileBlockService,
+		bookmarkBlockService,
+		bookmarkService,
+		relationService,
+	)}
 }
 
 func (t *Template) Init(ctx *smartblock.InitContext) (err error) {

@@ -149,6 +149,7 @@ type Service struct {
 	relationService relation.Service
 
 	objectCreator objectCreator
+	objectFactory *editor.ObjectFactory
 }
 
 func (s *Service) Name() string {
@@ -168,6 +169,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
+	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -203,7 +205,7 @@ func (s *Service) initPredefinedBlocks(ctx context.Context) {
 			ctx = nil
 		}
 		initTime := time.Now()
-		sb, err := s.NewSmartBlock(id, ctx)
+		sb, err := s.objectFactory.InitObject(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
 				if id == s.anytype.PredefinedBlocks().Account {
@@ -1264,7 +1266,7 @@ func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		return newOpenedBlock(sb), nil
 	}
 
-	sb, err := s.NewSmartBlock(id, &smartblock.InitContext{
+	sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{
 		Ctx: ctx,
 	})
 	if err != nil {

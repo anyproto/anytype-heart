@@ -616,7 +616,7 @@ func (s *Service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSe
 		if err != nil {
 			return err
 		}
-		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{
+		return b.AddRelationAndSet(ctx, s.relationService, pb.RpcBlockRelationAddRequest{
 			RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId,
 		})
 	})
@@ -624,7 +624,7 @@ func (s *Service) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSe
 
 func (s *Service) AddRelationBlock(ctx *session.Context, req pb.RpcBlockRelationAddRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.AddRelationAndSet(ctx, req)
+		return b.AddRelationAndSet(ctx, s.relationService, req)
 	})
 }
 

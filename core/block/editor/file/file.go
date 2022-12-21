@@ -32,8 +32,16 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, source BlockService) File {
-	return &sfile{SmartBlock: sb, fileSource: source}
+func NewFile(
+	sb smartblock.SmartBlock,
+	fileSource BlockService,
+	anytype core.Service,
+) File {
+	return &sfile{
+		SmartBlock: sb,
+		fileSource: fileSource,
+		anytype:    anytype,
+	}
 }
 
 type BlockService interface {
@@ -65,6 +73,7 @@ type FileSource struct {
 type sfile struct {
 	smartblock.SmartBlock
 	fileSource BlockService
+	anytype    core.Service
 }
 
 func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -155,7 +164,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 func (sf *sfile) newUploader() Uploader {
 	return &uploader{
 		service: sf.fileSource,
-		anytype: sf.Anytype(),
+		anytype: sf.anytype,
 	}
 }
 

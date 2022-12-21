@@ -13,10 +13,12 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -24,6 +26,7 @@ import (
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	database2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
@@ -51,170 +54,43 @@ var objectTypeToCollection = map[bundle.TypeKey]string{
 	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
 }
 
-func NewWorkspace(dmservice DetailsModifier) *Workspaces {
-	return &Workspaces{
-		SubObjectCollection: NewSubObjectCollection(collectionKeyRelationOptions),
-		DetailsModifier:     dmservice,
-	}
-}
-
-type templateCloner interface {
-	TemplateClone(id string) (templateId string, err error)
-}
-
 type Workspaces struct {
 	*SubObjectCollection
+
+	app             *app.App
 	DetailsModifier DetailsModifier
 	threadService   threads.Service
 	threadQueue     threads.ThreadQueue
 	templateCloner  templateCloner
 	sourceService   source.Service
-	app             *app.App
+	anytype         core.Service
+	objectStore     objectstore.ObjectStore
 }
 
-type WorkspaceParameters struct {
-	IsHighlighted bool
-	WorkspaceId   string
+func NewWorkspace(
+	objectStore objectstore.ObjectStore,
+	anytype core.Service,
+	relationService relation2.Service,
+	sourceService source.Service,
+	modifier DetailsModifier,
+	fileBlockService file.BlockService,
+) *Workspaces {
+	return &Workspaces{
+		SubObjectCollection: NewSubObjectCollection(
+			collectionKeyRelationOptions,
+			objectStore,
+			anytype,
+			relationService,
+			sourceService,
+			fileBlockService,
+		),
+		DetailsModifier: modifier,
+		anytype:         anytype,
+		objectStore:     objectStore,
+	}
 }
 
-func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
-	return wp.IsHighlighted == other.IsHighlighted
-}
-
-func (p *Workspaces) CreateObject(id thread.ID, sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
-	st := p.NewState()
-	if !id.Defined() {
-		var err error
-		id, err = threads.ThreadCreateID(thread.AccessControlled, sbType)
-		if err != nil {
-			return nil, err
-		}
-	}
-	threadInfo, err := p.threadQueue.CreateThreadSync(id, p.Id())
-	if err != nil {
-		return nil, err
-	}
-	st.SetInStore([]string{source.WorkspaceCollection, threadInfo.ID.String()}, p.pbThreadInfoValueFromStruct(threadInfo))
-
-	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
-}
-
-func (p *Workspaces) DeleteObject(objectId string) error {
-	st := p.NewState()
-	err := p.threadQueue.DeleteThreadSync(objectId, p.Id())
-	if err != nil {
-		return err
-	}
-	st.RemoveFromStore([]string{source.WorkspaceCollection, objectId})
-	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
-}
-
-func (p *Workspaces) GetAllObjects() []string {
-	st := p.NewState()
-	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
-	if workspaceCollection == nil || workspaceCollection.Fields == nil {
-		return nil
-	}
-	objects := make([]string, 0, len(workspaceCollection.Fields))
-	for objId, workspaceId := range workspaceCollection.Fields {
-		if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
-			objects = append(objects, objId)
-		}
-	}
-	return objects
-}
-
-func (p *Workspaces) AddCreatorInfoIfNeeded() error {
-	st := p.NewState()
-	deviceId := p.Anytype().Device()
-
-	creatorCollection := st.GetCollection(source.CreatorCollection)
-	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceId] != nil {
-		return nil
-	}
-	info, err := p.threadService.GetCreatorInfo(p.Id())
-	if err != nil {
-		return err
-	}
-	st.SetInStore([]string{source.CreatorCollection, deviceId}, p.pbCreatorInfoValue(info))
-
-	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
-}
-
-func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) (int, error) {
-	st := p.NewState()
-	migrated := 0
-	for _, info := range infos {
-		if st.ContainsInStore([]string{source.AccountMigration, info.ID}) {
-			continue
-		}
-		st.SetInStore([]string{source.AccountMigration, info.ID}, pbtypes.Bool(true))
-		st.SetInStore([]string{source.WorkspaceCollection, info.ID},
-			p.pbThreadInfoValue(info.ID, info.Key, info.Addrs),
-		)
-		migrated++
-	}
-
-	err := p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
-	if err != nil {
-		return 0, err
-	}
-
-	return migrated, nil
-}
-
-func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
-	st := p.NewState()
-	err := p.threadQueue.AddThreadSync(threads.ThreadInfo{
-		ID:    objectId,
-		Key:   key,
-		Addrs: addrs,
-	}, p.Id())
-	if err != nil {
-		return err
-	}
-	st.SetInStore([]string{source.WorkspaceCollection, objectId}, p.pbThreadInfoValue(objectId, key, addrs))
-
-	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
-}
-
-func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
-	threadId, err := thread.Decode(objectId)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to decode object %s: %w", objectId, err)
-	}
-
-	// we could have gotten the data from state, but to be sure 100% let's take it from service :-)
-	threadInfo, err := p.threadService.GetThreadInfo(threadId)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
-	}
-	var publicAddrs []ma.Multiaddr
-	for _, adr := range threadInfo.Addrs {
-		// ignore cafe addr if it is there because we will add this anyway
-		if manet.IsPublicAddr(adr) && adr.String() != p.threadService.CafePeer().String() {
-			publicAddrs = append(publicAddrs, adr)
-		}
-	}
-	if len(publicAddrs) > 2 {
-		publicAddrs = publicAddrs[len(publicAddrs)-2:]
-	}
-	publicAddrs = append(publicAddrs, p.threadService.CafePeer())
-
-	return threadInfo.Key.String(), util.MultiAddressesToStrings(publicAddrs), nil
-}
-
-func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
-	// TODO: this should be removed probably in the future?
-	if p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
-		return fmt.Errorf("highlighting not supported for the account space")
-	}
-
-	st := p.NewState()
-	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
-	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
-}
-
+// nolint:funlen
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	err = p.SubObjectCollection.Init(ctx)
 	if err != nil {
@@ -222,15 +98,15 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.app = ctx.App
+	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
 	p.templateCloner = p.app.MustComponent("blockService").(templateCloner)
+	p.threadService = p.anytype.ThreadsService()
+	p.threadQueue = p.anytype.ThreadsService().ThreadQueue()
 
 	if ctx.Source.Type() != model.SmartBlockType_Workspace && ctx.Source.Type() != model.SmartBlockType_AccountOld {
 		return fmt.Errorf("source type should be a workspace or an old account")
 	}
-
-	p.threadService = p.Anytype().ThreadsService()
-	p.threadQueue = p.Anytype().ThreadsService().ThreadQueue()
 
 	dataviewAllHighlightedObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
@@ -338,9 +214,9 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
-		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
+		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
 			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
-		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
+		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
 			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, false),
@@ -349,13 +225,160 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	)
 }
 
+type templateCloner interface {
+	TemplateClone(id string) (templateID string, err error)
+}
+
+type WorkspaceParameters struct {
+	IsHighlighted bool
+	WorkspaceId   string
+}
+
+func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
+	return wp.IsHighlighted == other.IsHighlighted
+}
+
+func (p *Workspaces) CreateObject(id thread.ID, sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
+	st := p.NewState()
+	if !id.Defined() {
+		var err error
+		id, err = threads.ThreadCreateID(thread.AccessControlled, sbType)
+		if err != nil {
+			return nil, err
+		}
+	}
+	threadInfo, err := p.threadQueue.CreateThreadSync(id, p.Id())
+	if err != nil {
+		return nil, err
+	}
+	st.SetInStore([]string{source.WorkspaceCollection, threadInfo.ID.String()}, p.pbThreadInfoValueFromStruct(threadInfo))
+
+	return core.NewSmartBlock(threadInfo, p.anytype), p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (p *Workspaces) DeleteObject(objectId string) error {
+	st := p.NewState()
+	err := p.threadQueue.DeleteThreadSync(objectId, p.Id())
+	if err != nil {
+		return err
+	}
+	st.RemoveFromStore([]string{source.WorkspaceCollection, objectId})
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (p *Workspaces) GetAllObjects() []string {
+	st := p.NewState()
+	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
+	if workspaceCollection == nil || workspaceCollection.Fields == nil {
+		return nil
+	}
+	objects := make([]string, 0, len(workspaceCollection.Fields))
+	for objId, workspaceId := range workspaceCollection.Fields {
+		if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
+			objects = append(objects, objId)
+		}
+	}
+	return objects
+}
+
+func (p *Workspaces) AddCreatorInfoIfNeeded() error {
+	st := p.NewState()
+	deviceID := p.anytype.Device()
+
+	creatorCollection := st.GetCollection(source.CreatorCollection)
+	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceID] != nil {
+		return nil
+	}
+	info, err := p.threadService.GetCreatorInfo(p.Id())
+	if err != nil {
+		return err
+	}
+	st.SetInStore([]string{source.CreatorCollection, deviceID}, p.pbCreatorInfoValue(info))
+
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) (int, error) {
+	st := p.NewState()
+	migrated := 0
+	for _, info := range infos {
+		if st.ContainsInStore([]string{source.AccountMigration, info.ID}) {
+			continue
+		}
+		st.SetInStore([]string{source.AccountMigration, info.ID}, pbtypes.Bool(true))
+		st.SetInStore([]string{source.WorkspaceCollection, info.ID},
+			p.pbThreadInfoValue(info.ID, info.Key, info.Addrs),
+		)
+		migrated++
+	}
+
+	err := p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+	if err != nil {
+		return 0, err
+	}
+
+	return migrated, nil
+}
+
+func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
+	st := p.NewState()
+	err := p.threadQueue.AddThreadSync(threads.ThreadInfo{
+		ID:    objectId,
+		Key:   key,
+		Addrs: addrs,
+	}, p.Id())
+	if err != nil {
+		return err
+	}
+	st.SetInStore([]string{source.WorkspaceCollection, objectId}, p.pbThreadInfoValue(objectId, key, addrs))
+
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
+	threadId, err := thread.Decode(objectId)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to decode object %s: %w", objectId, err)
+	}
+
+	// we could have gotten the data from state, but to be sure 100% let's take it from service :-)
+	threadInfo, err := p.threadService.GetThreadInfo(threadId)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
+	}
+	var publicAddrs []ma.Multiaddr
+	for _, adr := range threadInfo.Addrs {
+		// ignore cafe addr if it is there because we will add this anyway
+		if manet.IsPublicAddr(adr) && adr.String() != p.threadService.CafePeer().String() {
+			publicAddrs = append(publicAddrs, adr)
+		}
+	}
+	if len(publicAddrs) > 2 {
+		publicAddrs = publicAddrs[len(publicAddrs)-2:]
+	}
+	publicAddrs = append(publicAddrs, p.threadService.CafePeer())
+
+	return threadInfo.Key.String(), util.MultiAddressesToStrings(publicAddrs), nil
+}
+
+func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
+	// TODO: this should be removed probably in the future?
+	if p.anytype.PredefinedBlocks().IsAccount(p.Id()) {
+		return fmt.Errorf("highlighting not supported for the account space")
+	}
+
+	st := p.NewState()
+	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+}
+
 // TODO: try to save results from processing of previous state and get changes from apply for performance
 func (p *Workspaces) updateObjects(info smartblock.ApplyInfo) error {
 	objects, parameters := p.workspaceObjectsAndParametersFromState(info.State)
 	startTime := time.Now()
 	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
 	metrics.SharedClient.RecordEvent(metrics.ProcessThreadsEvent{WaitTimeMs: time.Now().Sub(startTime).Milliseconds()})
-	if !p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
+	if !p.anytype.PredefinedBlocks().IsAccount(p.Id()) {
 		storedParameters := p.workspaceParametersFromRecords(p.storedRecordsForWorkspace())
 		// we ignore the workspace object itself
 		delete(storedParameters, p.Id())
@@ -365,7 +388,7 @@ func (p *Workspaces) updateObjects(info smartblock.ApplyInfo) error {
 }
 
 func (p *Workspaces) storedRecordsForWorkspace() []database2.Record {
-	records, _, err := p.ObjectStore().Query(nil, database2.Query{
+	records, _, err := p.objectStore.Query(nil, database2.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyWorkspaceId.String(),
@@ -566,7 +589,8 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
-	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
+	// nolint:errcheck
+	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
 		return
 	}
@@ -605,7 +629,8 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
 
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
-	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed relation option. Do it before the init so we will not have existing local details populated
+	// nolint:errcheck
+	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation option. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
 		return
 	}
@@ -676,12 +701,13 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	}
 
 	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
-	_ = w.ObjectStore().DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
+	// nolint:errcheck
+	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
 	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
 		return
 	}
 
-	records, _, err := w.ObjectStore().Query(nil, database2.Query{
+	records, _, err := w.objectStore.Query(nil, database2.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),

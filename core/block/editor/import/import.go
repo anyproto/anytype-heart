@@ -23,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -45,14 +46,25 @@ type Import interface {
 	ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error)
 }
 
-func NewImport(sb smartblock.SmartBlock, ctrl Services, creator ObjectCreator) Import {
-	return &importImpl{SmartBlock: sb, ctrl: ctrl, creator: creator}
+func NewImport(
+	sb smartblock.SmartBlock,
+	ctrl Services,
+	creator ObjectCreator,
+	anytype core.Service,
+) Import {
+	return &importImpl{
+		SmartBlock: sb,
+		ctrl:       ctrl,
+		creator:    creator,
+		anytype:    anytype,
+	}
 }
 
 type importImpl struct {
 	smartblock.SmartBlock
 	ctrl    Services
 	creator ObjectCreator
+	anytype core.Service
 }
 
 type fileInfo struct {
@@ -84,7 +96,7 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 	progress.SetProgressMessage("read dir")
 	s := imp.NewStateCtx(ctx)
 	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
-	tempDir := imp.Anytype().TempDir()
+	tempDir := imp.anytype.TempDir()
 
 	files, close, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
 	defer func() {

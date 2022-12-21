@@ -10,30 +10,43 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func NewDashboard(importServices _import.Services, creator _import.ObjectCreator, dmservice DetailsModifier) *Dashboard {
-	sb := smartblock.New()
-	return &Dashboard{
-		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb), // deprecated
-		Import:          _import.NewImport(sb, importServices, creator),
-		Collection:      collection.NewCollection(sb),
-		DetailsModifier: dmservice,
-	}
-}
-
 type Dashboard struct {
 	smartblock.SmartBlock
 	basic.AllOperations
 	_import.Import
 	collection.Collection
+
 	DetailsModifier DetailsModifier
+	objectStore     objectstore.ObjectStore
+	anytype         core.Service
+}
+
+func NewDashboard(
+	detailsModifier DetailsModifier,
+	objectStore objectstore.ObjectStore,
+	importerCtrl _import.Services,
+	objectCreator _import.ObjectCreator,
+	anytype core.Service,
+) *Dashboard {
+	sb := smartblock.New()
+	return &Dashboard{
+		SmartBlock:      sb,
+		AllOperations:   basic.NewBasic(sb),
+		Import:          _import.NewImport(sb, importerCtrl, objectCreator, anytype),
+		Collection:      collection.NewCollection(sb),
+		DetailsModifier: detailsModifier,
+		objectStore:     objectStore,
+		anytype:         anytype,
+	}
 }
 
 func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
@@ -52,7 +65,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 		template.WithEmpty,
 		template.WithDetailName("Home"),
 		template.WithDetailIconEmoji("🏠"),
-		template.WithNoRootLink(p.Anytype().PredefinedBlocks().Archive),
+		template.WithNoRootLink(p.anytype.PredefinedBlocks().Archive),
 		template.WithRequiredRelations(),
 		template.WithNoDuplicateLinks(),
 	); err != nil {
@@ -69,9 +82,9 @@ func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	p.Anytype().ThreadsService().ThreadQueue().UpdatePriority(favoritedIds, threads.HighPriority)
+	p.anytype.ThreadsService().ThreadQueue().UpdatePriority(favoritedIds, threads.HighPriority)
 
-	records, _, err := p.ObjectStore().Query(nil, database.Query{
+	records, _, err := p.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsFavorite.String(),

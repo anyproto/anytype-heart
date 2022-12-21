@@ -6,7 +6,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -122,7 +121,9 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBloc
 
 	s.objectCreator.InjectWorkspaceID(req.Details, req.ContextId)
 	objectID, _, err = s.CreateObject(req, "")
-
+	if err != nil {
+		return
+	}
 	if req.ContextId == "" {
 		return
 	}
@@ -195,64 +196,6 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	}
 
 	return id, nil
-}
-
-func (s *Service) NewSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := s.source.NewSource(id, false)
-	if err != nil {
-		return
-	}
-	switch sc.Type() {
-	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.objectCreator, s.bookmark)
-	case model.SmartBlockType_Archive:
-		sb = editor.NewArchive(s)
-	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard(s, s.objectCreator, s)
-	case model.SmartBlockType_Set:
-		sb = editor.NewSet()
-	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s, s, s.bookmark, s.sendEvent)
-	case model.SmartBlockType_STObjectType,
-		model.SmartBlockType_BundledObjectType:
-		sb = editor.NewObjectType()
-	case model.SmartBlockType_BundledRelation:
-		sb = editor.NewSet()
-	case model.SmartBlockType_SubObject:
-		sb = editor.NewSubObject()
-	case model.SmartBlockType_File:
-		sb = editor.NewFiles()
-	case model.SmartBlockType_MarketplaceType:
-		sb = editor.NewMarketplaceType()
-	case model.SmartBlockType_MarketplaceRelation:
-		sb = editor.NewMarketplaceRelation()
-	case model.SmartBlockType_MarketplaceTemplate:
-		sb = editor.NewMarketplaceTemplate()
-	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.objectCreator, s.bookmark)
-	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.objectCreator, s.bookmark)
-	case model.SmartBlockType_Breadcrumbs:
-		sb = editor.NewBreadcrumbs()
-	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspace(s)
-	case model.SmartBlockType_AccountOld:
-		sb = editor.NewThreadDB(s)
-	case model.SmartBlockType_Widget:
-		sb = editor.NewWidgetObject()
-	default:
-		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
-	}
-
-	sb.Lock()
-	defer sb.Unlock()
-	if initCtx == nil {
-		initCtx = &smartblock.InitContext{}
-	}
-	initCtx.App = s.app
-	initCtx.Source = sc
-	err = sb.Init(initCtx)
-	return
 }
 
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
