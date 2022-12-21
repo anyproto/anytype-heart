@@ -51,7 +51,7 @@ type Dataview interface {
 
 	//GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
-	GetDataviewViews(blockId string) ([]*model.BlockContentDataviewView, error)
+	GetDataview(blockId string) (*model.BlockContentDataview, error)
 
 	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
@@ -161,14 +161,14 @@ func (d *sdataview) GetDataviewRelations(blockId string) ([]*model.Relation, err
 	return tb.Model().GetDataview().GetRelations(), nil
 }
 
-func (d *sdataview) GetDataviewViews(blockId string) ([]*model.BlockContentDataviewView, error) {
+func (d *sdataview) GetDataview(blockId string) (*model.BlockContentDataview, error) {
 	st := d.NewState()
 	tb, err := getDataviewBlock(st, blockId)
 	if err != nil {
 		return nil, err
 	}
 
-	return tb.Model().GetDataview().GetViews(), nil
+	return tb.Model().GetDataview(), nil
 }
 
 func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error {

@@ -1099,14 +1099,14 @@ func (s *Service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreate
 	return id, err
 }
 
-func (s *Service) CopyViewsToBlock(ctx *session.Context,
+func (s *Service) CopyDataviewToBlock(ctx *session.Context,
 	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) ([]*model.BlockContentDataviewView, error) {
 
-	var views []*model.BlockContentDataviewView
+	var targetDvContent *model.BlockContentDataview
 
 	err := s.DoDataview(req.TargetObjectId, func(d dataview.Dataview) error {
 		var err error
-		views, err = d.GetDataviewViews(template.DataviewBlockId)
+		targetDvContent, err = d.GetDataview(template.DataviewBlockId)
 		return err
 	})
 	if err != nil {
@@ -1122,7 +1122,8 @@ func (s *Service) CopyViewsToBlock(ctx *session.Context,
 			return fmt.Errorf("block must contain dataView content")
 		}
 
-		dvContent.Dataview.Views = views
+		dvContent.Dataview.Views = targetDvContent.Views
+		dvContent.Dataview.RelationLinks = targetDvContent.RelationLinks
 		dvContent.Dataview.TargetObjectId = req.TargetObjectId
 
 		return b.Apply(st)
@@ -1131,5 +1132,5 @@ func (s *Service) CopyViewsToBlock(ctx *session.Context,
 		return nil, err
 	}
 
-	return views, err
+	return targetDvContent.Views, err
 }
