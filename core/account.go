@@ -826,8 +826,8 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 	}
 
 	if fileConf.IPFSStorageAddr != "" {
-		if err := os.RemoveAll(fileConf.IPFSStorageAddr); err != nil {
-			return err
+		if err2 := os.RemoveAll(fileConf.IPFSStorageAddr); err2 != nil {
+			return err2
 		}
 	}
 
