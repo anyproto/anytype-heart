@@ -44,9 +44,9 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[converter.Name()] = converter
 	}
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
-	ou := NewObjectUpdater(i.s, core, factory)
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	relationCreator := NewRelationCreator(i.s, fs, core)
+	ou := NewObjectUpdater(i.s, core, factory, relationCreator)
 	i.oc = NewCreator(i.s, core, ou, factory, relationCreator)
 	return nil
 }

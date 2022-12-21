@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -19,20 +20,28 @@ import (
 )
 
 type ObjectUpdater struct {
-	service     *block.Service
-	core        core.Service
-	syncFactory *syncer.Factory
+	service         *block.Service
+	core            core.Service
+	syncFactory     *syncer.Factory
+	relationCreator RelationCreator
 }
 
-func NewObjectUpdater(service *block.Service, core core.Service, syncFactory *syncer.Factory) Updater {
+func NewObjectUpdater(service *block.Service,
+	core core.Service,
+	syncFactory *syncer.Factory,
+	relationCreator RelationCreator) Updater {
 	return &ObjectUpdater{
-		service:     service,
-		core:        core,
-		syncFactory: syncFactory,
+		service:         service,
+		core:            core,
+		syncFactory:     syncFactory,
+		relationCreator: relationCreator,
 	}
 }
 
-func (ou *ObjectUpdater) Update(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string) (*types.Struct, error) {
+func (ou *ObjectUpdater) Update(ctx *session.Context,
+	snapshot *model.SmartBlockSnapshotBase,
+	relations []*converter.Relation,
+	pageID string) (*types.Struct, []string, error) {
 	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeySource.String()] != nil {
 		source := snapshot.Details.Fields[bundle.RelationKeySource.String()].GetStringValue()
 		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
@@ -47,7 +56,8 @@ func (ou *ObjectUpdater) Update(ctx *session.Context, snapshot *model.SmartBlock
 		})
 		if err == nil {
 			if len(records) > 0 {
-				return records[0].Details, ou.update(ctx, snapshot, records, pageID)
+				filesToDelete, err := ou.update(ctx, snapshot, records, relations, pageID)
+				return records[0].Details, filesToDelete, err
 			}
 		}
 	}
@@ -65,19 +75,25 @@ func (ou *ObjectUpdater) Update(ctx *session.Context, snapshot *model.SmartBlock
 		})
 		if err == nil {
 			if len(records) > 0 {
-				return records[0].Details, ou.update(ctx, snapshot, records, pageID)
+				filesToDelete, err := ou.update(ctx, snapshot, records, relations, pageID)
+				return records[0].Details, filesToDelete, err
 			}
 		}
 	}
-	return nil, fmt.Errorf("no source or id details")
+	return nil, nil, fmt.Errorf("no source or id details")
 }
 
 func (ou *ObjectUpdater) update(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	records []database.Record,
-	pageID string) error {
+	relations []*converter.Relation,
+	pageID string) ([]string, error) {
 	details := records[0]
 	simpleBlocks := make([]simple.Block, 0)
+	var (
+		filesToDelete         = make([]string, 0)
+		oldRelationBlockToNew = make(map[string]*model.Block, 0)
+	)
 	id := details.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	if details.Details != nil {
 		allBlocksIds := make([]string, 0)
@@ -112,7 +128,19 @@ func (ou *ObjectUpdater) update(ctx *session.Context,
 			}
 			return b.Apply(s)
 		}); err != nil {
-			return err
+			return nil, err
+		}
+		var err error
+		filesToDelete, oldRelationBlockToNew, err = ou.relationCreator.UpdateRelations(ctx, snapshot, id, relations, nil)
+		if err != nil {
+			return nil, err
+		}
+		if err := ou.service.Do(id, func(b sb.SmartBlock) error {
+			s := b.NewStateCtx(ctx)
+			ou.relationCreator.ReplaceRelationBlock(ctx, s, oldRelationBlockToNew, id)
+			return nil
+		}); err != nil {
+			return nil, err
 		}
 		for _, b := range simpleBlocks {
 			s := ou.syncFactory.GetSyncer(b)
@@ -121,5 +149,5 @@ func (ou *ObjectUpdater) update(ctx *session.Context,
 			}
 		}
 	}
-	return nil
+	return filesToDelete, nil
 }

@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	editor "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
@@ -58,8 +57,17 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	var err error
 
 	if updateExisting {
-		if details, err := oc.updater.Update(ctx, snapshot, pageID); err == nil {
+		var (
+			filesToDelete []string
+			details       *types.Struct
+		)
+		if details, filesToDelete, err = oc.updater.Update(ctx, snapshot, relations, pageID); err == nil {
 			return details, nil
+		}
+		if err != nil {
+			for _, hash := range filesToDelete {
+				oc.deleteFile(hash)
+			}
 		}
 		log.Warn("failed to update existing object: %s", err)
 	}
@@ -105,7 +113,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.Create(ctx, snapshot, relations, pageID)
+	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.UpdateRelations(ctx, snapshot, pageID, relations, nil)
 
 	if err != nil {
 		return nil, fmt.Errorf("relation create '%s'", err)
@@ -119,7 +127,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 
-	oc.replaceRelationBlock(ctx, st, oldRelationBlocksToNew, pageID)
+	oc.relationCreator.ReplaceRelationBlock(ctx, st, oldRelationBlocksToNew, pageID)
 
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
@@ -196,38 +204,5 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 		if err = oc.core.FileStore().DeleteFileKeys(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
 		}
-	}
-}
-
-func (oc *ObjectCreator) replaceRelationBlock(ctx *session.Context,
-	st *state.State,
-	oldRelationBlocksToNew map[string]*model.Block,
-	pageID string) {
-	if err := st.Iterate(func(b simple.Block) (isContinue bool) {
-		if b.Model().GetRelation() == nil {
-			return true
-		}
-		bl, ok := oldRelationBlocksToNew[b.Model().GetId()]
-		if !ok {
-			return true
-		}
-		if sbErr := oc.service.Do(pageID, func(sb editor.SmartBlock) error {
-			s := sb.NewStateCtx(ctx)
-			simpleBlock := simple.New(bl)
-			s.Add(simpleBlock)
-			if err := s.InsertTo(b.Model().GetId(), model.Block_Replace, simpleBlock.Model().GetId()); err != nil {
-				return err
-			}
-			if err := sb.Apply(s); err != nil {
-				return err
-			}
-			return nil
-		}); sbErr != nil {
-			log.With(zap.String("object id", pageID)).Errorf("failed to replace relation block: %w", sbErr)
-		}
-
-		return true
-	}); err != nil {
-		log.With(zap.String("object id", pageID)).Errorf("failed to replace relation block: %w", err)
 	}
 }
