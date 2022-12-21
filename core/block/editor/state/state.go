@@ -277,6 +277,13 @@ func (s *State) IsChild(parentId, childId string) bool {
 	}
 }
 
+func (s *State) PickOriginParentOf(id string) (res simple.Block) {
+	if s.parent != nil {
+		return s.parent.PickParentOf(id)
+	}
+	return
+}
+
 func (s *State) getStringBuf() []string {
 	if s.parent != nil {
 		return s.parent.getStringBuf()
@@ -335,6 +342,12 @@ func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 // Exists indicate that block exists in state, including parents
 func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
+}
+
+// InState indicate that block was copied into this state, parents not checking
+func (s *State) InState(id string) (ok bool) {
+	_, ok = s.blocks[id]
+	return
 }
 
 func (s *State) SearchText() (text string) {
@@ -923,6 +936,16 @@ func (s *State) AggregatedOptionsByRelation() map[string][]*model.RelationOption
 
 func (s *State) CombinedDetails() *types.Struct {
 	return pbtypes.StructMerge(s.Details(), s.LocalDetails(), false)
+}
+
+func (s *State) HasCombinedDetailsKey(key string) bool {
+	if pbtypes.HasField(s.Details(), key) {
+		return true
+	}
+	if pbtypes.HasField(s.LocalDetails(), key) {
+		return true
+	}
+	return false
 }
 
 func (s *State) Details() *types.Struct {

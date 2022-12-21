@@ -88,6 +88,10 @@ func (v *threadDB) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty b
 	return s, nil
 }
 
+func (v *threadDB) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+	return v.createState()
+}
+
 func (v *threadDB) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }

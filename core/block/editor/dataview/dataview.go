@@ -31,6 +31,7 @@ import (
 const DefaultDetailsFieldName = "_defaultRecordFields"
 
 var log = logging.Logger("anytype-mw-editor-dataview")
+var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 var DefaultDataviewRelations = make([]bundle.RelationKey, 0, len(bundle.RequiredInternalRelations))
 
 func init() {
@@ -49,6 +50,7 @@ type Dataview interface {
 	SetSource(ctx *session.Context, blockId string, source []string) (err error)
 
 	//GetAggregatedRelations(blockId string) ([]*model.Relation, error)
+	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 
 	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
@@ -146,6 +148,16 @@ func (d *sdataview) DeleteRelations(ctx *session.Context, blockId string, relati
 		return d.Apply(s)
 	}
 	return d.Apply(s, smartblock.NoEvent)
+}
+
+func (d *sdataview) GetDataviewRelations(blockId string) ([]*model.Relation, error) {
+	st := d.NewState()
+	tb, err := getDataviewBlock(st, blockId)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Model().GetDataview().GetRelations(), nil
 }
 
 func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error {

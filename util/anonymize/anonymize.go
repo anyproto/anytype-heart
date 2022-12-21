@@ -6,12 +6,25 @@ import (
 	"math/rand"
 	"unicode"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
+
+func State(s *state.State) (res *state.State) {
+	// blocks
+	res = s.Copy()
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		b.Model().Content = Block(b.Model()).Content
+		return true
+	})
+	s.SetDetails(Struct(s.Details()))
+	return
+}
 
 func Change(ch *pb.Change) (res *pb.Change) {
 	resB, _ := ch.Marshal()

@@ -1202,6 +1202,49 @@ func (sb *smartBlock) AddHook(f HookCallback, events ...Hook) {
 	}
 }
 
+func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []*model.Relation, aggregatedRelations []*model.Relation, details *types.Struct) []*model.Relation {
+	var m = make(map[string]int, len(extraRelations))
+	var rels = make([]*model.Relation, 0, len(objTypeRelations)+len(extraRelations))
+
+	for i, rel := range extraRelations {
+		m[rel.Key] = i
+		rels = append(rels, pbtypes.CopyRelation(rel))
+	}
+
+	for _, rel := range objTypeRelations {
+		if _, exists := m[rel.Key]; exists {
+			continue
+		}
+		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = len(rels) - 1
+	}
+
+	for _, rel := range aggregatedRelations {
+		if i, exists := m[rel.Key]; exists {
+			// overwrite name that we've got from DS
+			if rels[i].Name != rel.Name {
+				rels[i].Name = rel.Name
+			}
+			continue
+		}
+		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = len(rels) - 1
+	}
+
+	if details == nil || details.Fields == nil {
+		return rels
+	}
+	return rels
+}
+
+func (sb *smartBlock) baseRelations() []*model.Relation {
+	rels := []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
+	for _, rel := range rels {
+		rel.Scope = model.Relation_object
+	}
+	return rels
+}
+
 // deprecated, use RelationLinks instead
 func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink
