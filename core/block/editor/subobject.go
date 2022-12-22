@@ -9,37 +9,63 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewSubObject() *SubObject {
-	sb := smartblock.New()
-	return &SubObject{
-		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb),
-		IHistory:      basic.NewHistory(sb),
-		Text:          stext.NewText(sb),
-		Clipboard:     clipboard.NewClipboard(sb, nil),
-		Dataview:      dataview.NewDataview(sb),
-	}
-}
-
 type SubObject struct {
 	smartblock.SmartBlock
+
 	basic.AllOperations
 	basic.IHistory
 	stext.Text
 	clipboard.Clipboard
 	dataview.Dataview
+}
+
+func NewSubObject(
+	objectStore objectstore.ObjectStore,
+	fileBlockService file.BlockService,
+	anytype core.Service,
+	relationService relation2.Service,
+) *SubObject {
+	sb := smartblock.New()
+	return &SubObject{
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+		Clipboard: clipboard.NewClipboard(
+			sb,
+			file.NewFile(
+				sb,
+				fileBlockService,
+				anytype,
+			),
+			anytype,
+		),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			relationService,
+		),
+	}
 }
 
 func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
