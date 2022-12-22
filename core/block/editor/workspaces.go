@@ -196,16 +196,26 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
 		for collName, coll := range data.Fields {
-			if collName == source.WorkspaceCollection || collName == source.AccountMigration || collName == source.CreatorCollection || collName == source.HighlightedCollection {
+			if !collectionKeyIsSupported(collName) {
 				continue
 			}
 			if coll != nil && coll.GetStructValue() != nil {
 				for sub := range coll.GetStructValue().GetFields() {
-					if err = p.initSubObject(ctx.State, collName, sub); err != nil {
+					if err = p.initSubObject(ctx.State, collName, sub, false); err != nil {
 						log.Errorf("failed to init sub object %s-%s: %v", collName, sub, err)
 					}
 				}
 			}
+		}
+	}
+
+	for path := range ctx.State.StoreKeysRemoved() {
+		pathS := strings.Split(path, "/")
+		if !collectionKeyIsSupported(pathS[0]) {
+			continue
+		}
+		if err = p.initSubObject(ctx.State, pathS[0], strings.Join(pathS[1:], addr.SubObjectCollectionIdSeparator), true); err != nil {
+			log.Errorf("failed to init deleted sub object %s: %v", path, err)
 		}
 	}
 
@@ -591,7 +601,7 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyRelations, key); err != nil {
+	if err = w.initSubObject(st, collectionKeyRelations, key, true); err != nil {
 		return
 	}
 	return
@@ -631,7 +641,7 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation option. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyRelationOptions, key); err != nil {
+	if err = w.initSubObject(st, collectionKeyRelationOptions, key, true); err != nil {
 		return
 	}
 	return
@@ -703,11 +713,11 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyObjectTypes, key); err != nil {
+	if err = w.initSubObject(st, collectionKeyObjectTypes, key, true); err != nil {
 		return
 	}
 
-	records, _, err := w.objectStore.Query(nil, database2.Query{
+	bundledTemplates, _, err := w.objectStore.Query(nil, database2.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -721,14 +731,41 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 			},
 		},
 	})
+
+	alreadyInstalledTemplates, _, err := w.objectStore.Query(nil, database2.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(addr.ObjectTypeKeyToIdPrefix + key),
+			},
+		},
+	})
 	if err != nil {
 		return
 	}
 
+	var existingTemplatesMap = map[string]struct{}{}
+	for _, rec := range alreadyInstalledTemplates {
+		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+		if sourceObject != "" {
+			existingTemplatesMap[sourceObject] = struct{}{}
+		}
+	}
+
 	go func() {
 		// todo: remove this dirty hack to avoid lock
-		for _, record := range records {
+		for _, record := range bundledTemplates {
 			id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+			if _, exists := existingTemplatesMap[id]; exists {
+				continue
+			}
+
 			_, err := w.templateCloner.TemplateClone(id)
 			if err != nil {
 				log.Errorf("failed to clone template %s: %s", id, err.Error())
@@ -748,7 +785,9 @@ func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id st
 	}
 
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(w.Id())
-
+	if pbtypes.GetFloat64(details, bundle.RelationKeyCreatedDate.String()) == 0 {
+		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(time.Now().Unix()))
+	}
 	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.URL():
 		return w.createObjectType(st, details)
@@ -818,4 +857,13 @@ func (w *Workspaces) RemoveSubObjects(objectIds []string) (err error) {
 		return
 	}
 	return
+}
+
+func collectionKeyIsSupported(collKey string) bool {
+	for _, v := range objectTypeToCollection {
+		if v == collKey {
+			return true
+		}
+	}
+	return false
 }

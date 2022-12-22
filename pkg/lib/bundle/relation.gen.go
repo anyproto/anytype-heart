@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "ffe24ce6bd57220fb80e1b7734f8839d83f22729030fd54221a9e8909ef88151"
+const RelationChecksum = "f5c7d5db3c6f88a59fe345425922e9e5898f4557d2cbb454e4c2e1eb5d7a120b"
 
 type RelationKey string
 
@@ -123,7 +123,6 @@ const (
 	RelationKeyAudioGenre                RelationKey = "audioGenre"
 	RelationKeyIntentions                RelationKey = "intentions"
 	RelationKeyTelegram                  RelationKey = "telegram"
-	RelationKeyIsDraft                   RelationKey = "isDraft"
 	RelationKeyTrailer                   RelationKey = "trailer"
 	RelationKeyName                      RelationKey = "name"
 	RelationKeyMood                      RelationKey = "mood"
@@ -178,7 +177,6 @@ const (
 	RelationKeyFileExt                   RelationKey = "fileExt"
 	RelationKeyScope                     RelationKey = "scope"
 	RelationKeyJob                       RelationKey = "job"
-	RelationKeyMpAddedToLibrary          RelationKey = "mpAddedToLibrary"
 	RelationKeyFeaturedRelations         RelationKey = "featuredRelations"
 	RelationKeyPhone                     RelationKey = "phone"
 	RelationKeyImdbRating                RelationKey = "imdbRating"
@@ -1142,20 +1140,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyIsDraft: {
-
-			DataSource:       model.Relation_derived,
-			Description:      "Relation that indicates document in draft state",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brisDraft",
-			Key:              "isDraft",
-			MaxCount:         1,
-			Name:             "Is draft",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyIsFavorite: {
 
 			DataSource:       model.Relation_account,
@@ -1217,7 +1201,6 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
 			Id:               "_brjob",
 			Key:              "job",
 			MaxCount:         1,
@@ -1445,20 +1428,6 @@ var (
 			Id:               "_brmood",
 			Key:              "mood",
 			Name:             "Mood",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyMpAddedToLibrary: {
-
-			DataSource:       model.Relation_account,
-			Description:      "Have been added to library from marketplace",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brmpAddedToLibrary",
-			Key:              "mpAddedToLibrary",
-			MaxCount:         1,
-			Name:             "Added to library",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

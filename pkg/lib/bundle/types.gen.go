@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "9d3e4ff8bff0beff290400235834ceea0b4a86f29e8618f15c28ca288008421b"
+const TypeChecksum = "de53240e6875b46532feb5ee9e9b0996db1e832050d55519fce6041b175114c2"
 
 type TypeKey string
 
@@ -204,6 +204,7 @@ var (
 		TypeKeyDate: {
 
 			Description:   "Gregorian calendar date",
+			Hidden:        true,
 			IconEmoji:     "📅",
 			Layout:        model.ObjectType_basic,
 			Name:          "Date",
