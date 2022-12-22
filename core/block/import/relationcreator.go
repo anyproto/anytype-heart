@@ -180,20 +180,17 @@ func (rc *RelationService) handleListValue(ctx *session.Context,
 		id         string
 		err        error
 	)
-	for _, v := range snapshot.Details.Fields[r.Name].GetListValue().Values {
-		if r.Format == model.RelationFormat_tag || r.Format == model.RelationFormat_status {
-			if id, _, err = rc.service.CreateSubObjectInWorkspace(&types.Struct{
-				Fields: map[string]*types.Value{
-					bundle.RelationKeyName.String():        pbtypes.String(v.GetStringValue()),
-					bundle.RelationKeyRelationKey.String(): pbtypes.String(relationID),
-					bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
-					bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_relationOption)),
-				},
-			}, rc.core.PredefinedBlocks().Account); err != nil {
-				log.Errorf("add extra relation %s", err)
-			}
-		} else {
-			id = v.GetStringValue()
+	for _, tag := range r.SelectDict {
+		if id, _, err = rc.service.CreateSubObjectInWorkspace(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String():                pbtypes.String(tag.Text),
+				bundle.RelationKeyRelationKey.String():         pbtypes.String(relationID),
+				bundle.RelationKeyType.String():                pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				bundle.RelationKeyLayout.String():              pbtypes.Float64(float64(model.ObjectType_relationOption)),
+				bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(tag.Color),
+			},
+		}, rc.core.PredefinedBlocks().Account); err != nil {
+			log.Errorf("add extra relation %s", err)
 		}
 		optionsIds = append(optionsIds, id)
 	}

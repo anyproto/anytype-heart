@@ -174,11 +174,9 @@ func (ds *Service) transformPages(ctx context.Context,
 
 	request.Blocks = notionBlocks
 	resp := ds.blockService.MapNotionBlocksToAnytype(request)
-	resp.MergeDetails(details)
-	relations = append(relations, resp.Relations...)
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:      resp.Blocks,
-		Details:     &types.Struct{Fields: resp.Details},
+		Details:     &types.Struct{Fields: details},
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
 
@@ -215,10 +213,17 @@ func (ds *Service) handlePageProperties(ctx context.Context,
 			continue
 		}
 		ds.SetDetail(k, d)
-		relations = append(relations, &converter.Relation{
-			Name:   k,
-			Format: v.GetFormat(),
-		})
+
+		rel := &converter.Relation{
+			Relation: &model.Relation{
+				Name:   k,
+				Format: v.GetFormat(),
+			},
+		}
+		if isPropertyTag(v) {
+			setOptionsForListRelation(v, rel.Relation)
+		}
+		relations = append(relations, rel)
 	}
 	return relations
 }
@@ -283,4 +288,34 @@ func isPropertyPaginated(pr property.Object) bool {
 	}
 	return pr.GetPropertyType() == property.PropertyConfigTypeRichText ||
 		pr.GetPropertyType() == property.PropertyConfigTypePeople
+}
+
+func isPropertyTag(pr property.Object) bool {
+	return pr.GetPropertyType() == property.PropertyConfigTypeMultiSelect ||
+		pr.GetPropertyType() == property.PropertyConfigTypeSelect ||
+		pr.GetPropertyType() == property.PropertyConfigStatus
+}
+
+func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
+	var text, color []string
+	switch property := pr.(type) {
+	case *property.StatusItem:
+		text = append(text, property.Status.Name)
+		color = append(color, api.NotionColorToAnytype[property.Status.Color])
+	case *property.SelectItem:
+		text = append(text, property.Select.Name)
+		color = append(color, api.NotionColorToAnytype[property.Select.Color])
+	case *property.MultiSelectItem:
+		for _, so := range property.MultiSelect {
+			text = append(text, so.Name)
+			color = append(color, api.NotionColorToAnytype[so.Color])
+		}
+	}
+
+	for i := 0; i < len(text); i++ {
+		rel.SelectDict = append(rel.SelectDict, &model.RelationOption{
+			Text:  text[i],
+			Color: color[i],
+		})
+	}
 }

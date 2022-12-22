@@ -131,8 +131,6 @@ func (t *TableBlock) getRows(req *MapRequest,
 			}
 			rowTextBlocks = append(rowTextBlocks, resp.Blocks...)
 			childBlockIDsCurrRow = append(childBlockIDsCurrRow, resp.BlockIDs...)
-			tableResponse.Relations = append(tableResponse.Relations, resp.Relations...)
-			tableResponse.MergeDetails(resp.Details)
 		}
 
 		var isHeader bool
