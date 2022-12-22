@@ -288,11 +288,6 @@ type ObjectStore interface {
 	GetThreadQueueState() (map[string]map[string]struct{}, map[string]map[string]struct{}, error)
 }
 
-type relationOption struct {
-	relationKey string
-	optionId    string
-}
-
 type relationObjectType struct {
 	relationKeys []string
 	objectTypes  []string
@@ -311,11 +306,6 @@ var filterNotSystemObjects = &filterSmartblockTypes{
 type filterSmartblockTypes struct {
 	smartBlockTypes []smartblock.SmartBlockType
 	not             bool
-}
-
-type RelationWithObjectType struct {
-	objectType string
-	relation   *model.Relation
 }
 
 func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
@@ -1938,27 +1928,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	return nil
 }
 
-func storeOptions(txn noctxds.Txn, options []*model.RelationOption) error {
-	var err error
-	for _, opt := range options {
-		err = storeOption(txn, opt)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func storeOption(txn noctxds.Txn, option *model.RelationOption) error {
-	b, err := proto.Marshal(option)
-	if err != nil {
-		return err
-	}
-
-	optionKey := relationsOptionsBase.ChildString(option.Id)
-	return txn.Put(optionKey, b)
-}
-
 func (m *dsObjectStore) Prefix() string {
 	return pagesPrefix
 }
@@ -2047,15 +2016,6 @@ func (m *dsObjectStore) listRelations(txn noctxds.Txn, limit int) ([]*model.Rela
 	return rels, nil
 }
 
-func isObjectBelongToType(txn noctxds.Txn, id, objType string) (bool, error) {
-	objTypeCompact, err := objTypeCompactEncode(objType)
-	if err != nil {
-		return false, err
-	}
-
-	return localstore.HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
-}
-
 /* internal */
 // getObjectDetails returns empty(not nil) details when not found in the DS
 func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
@@ -2100,20 +2060,6 @@ func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	}
 }
 
-// getSetRelations returns the list of relations last time indexed for the set's dataview
-func getSetRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
-	var relations model.Relations
-	if val, err := txn.Get(setRelationsBase.ChildString(id)); err != nil {
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get relations: %w", err)
-		}
-	} else if err := proto.Unmarshal(val, &relations); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
-	}
-
-	return relations.GetRelations(), nil
-}
-
 // getObjectRelations returns the list of relations last time indexed for the object
 func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	var relations model.Relations
@@ -2126,28 +2072,6 @@ func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	}
 
 	return relations.GetRelations(), nil
-}
-
-func getOption(txn noctxds.Txn, optionId string) (*model.RelationOption, error) {
-	var opt model.RelationOption
-	if val, err := txn.Get(relationsOptionsBase.ChildString(optionId)); err != nil {
-		log.Debugf("getOption %s: not found", optionId)
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get option from localstore: %w", err)
-		}
-	} else if err := proto.Unmarshal(val, &opt); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal option: %w", err)
-	}
-
-	return &opt, nil
-}
-
-func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
-	if !pbtypes.HasField(det, bundle.RelationKeyType.String()) {
-		return nil, fmt.Errorf("type not found in details")
-	}
-
-	return pbtypes.GetStringList(det, bundle.RelationKeyType.String()), nil
 }
 
 func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {

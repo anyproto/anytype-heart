@@ -19,7 +19,6 @@ import (
 var (
 	ErrDuplicateKey = fmt.Errorf("duplicate key")
 	ErrNotFound     = fmt.Errorf("not found")
-	errTxnTooBig    = fmt.Errorf("Txn is too big to fit into one request")
 )
 
 var (
@@ -249,21 +248,6 @@ func AddIndexesWithTxn(store Indexable, txn ds.Txn, newVal interface{}, newValPr
 	return nil
 }
 
-func AddIndexes(store Indexable, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
-	txn, err := ds.NewTransaction(false)
-	if err != nil {
-		return err
-	}
-	defer txn.Discard()
-
-	err = AddIndexesWithTxn(store, txn, newVal, newValPrimary)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
 func RemoveIndexes(store Indexable, ds ds.TxnDatastore, val interface{}, valPrimary string) error {
 	txn, err := ds.NewTransaction(false)
 	if err != nil {
@@ -331,22 +315,6 @@ func GetKeysByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyInde
 	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, separator, hash)
 
 	return GetKeys(txn, key.String(), limit)
-}
-
-func QueryByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool, limit int) (query.Results, error) {
-	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, separator, hash)
-
-	return txn.Query(query.Query{
-		Prefix:   key.String(),
-		Limit:    limit,
-		KeysOnly: false,
-	})
-}
-
-func HasPrimaryKeyByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool, primaryIndex string) (exists bool, err error) {
-	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, separator, hash).ChildString(primaryIndex)
-
-	return txn.Has(key)
 }
 
 func CountAllKeysFromResults(results query.Results) (int, error) {

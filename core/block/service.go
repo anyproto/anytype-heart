@@ -66,17 +66,11 @@ const (
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
-	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
-
-var (
-	blockCacheTTL       = time.Minute
-	blockCleanupTimeout = time.Second * 30
-)
 
 var (
 	// quick fix for limiting file upload goroutines

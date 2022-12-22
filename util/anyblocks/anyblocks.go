@@ -6,16 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func AllBlocksToCode(blocks []*model.Block) (blocksOut []*model.Block) {
-	for i, b := range blocks {
-		if t := b.GetText(); t != nil {
-			blocks[i].GetText().Style = model.BlockContentText_Code
-		}
-	}
-
-	return PreprocessBlocks(blocks)
-}
-
 func PreprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 
 	blocksOut = []*model.Block{}

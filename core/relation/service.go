@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
 
@@ -24,11 +23,8 @@ import (
 
 const CName = "relation"
 
-const blockServiceCName = "blockService"
-
 var (
 	ErrNotFound = errors.New("relation not found")
-	ErrExists   = errors.New("relation with given key already exists")
 	log         = logging.Logger("anytype-relations")
 )
 
@@ -218,12 +214,6 @@ type fetchOptions struct {
 
 type FetchOption func(options *fetchOptions)
 
-func WithWorkspaceId(id string) FetchOption {
-	return func(options *fetchOptions) {
-		options.workspaceId = &id
-	}
-}
-
 func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -255,34 +245,6 @@ func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationu
 			RelationKey: bundle.RelationKeyWorkspaceId.String(),
 			Value:       pbtypes.String(*o.workspaceId),
 		})
-	}
-	f, err := database.NewFilters(q, nil, nil)
-	if err != nil {
-		return
-	}
-	records, err := s.objectStore.QueryRaw(query.Query{
-		Filters: []query.Filter{f},
-	})
-	for _, rec := range records {
-		return relationutils.RelationFromStruct(rec.Details), nil
-	}
-	return nil, ErrNotFound
-}
-
-func (s *service) fetchOptionsByKey(key string) (relation *relationutils.Relation, err error) {
-	q := database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Value:       pbtypes.String(key),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.String()),
-			},
-		},
 	}
 	f, err := database.NewFilters(q, nil, nil)
 	if err != nil {
@@ -424,8 +386,4 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 func (s *service) validateOptions(rel *relationutils.Relation, v []string) error {
 	// TODO:
 	return nil
-}
-
-func generateRelationKey() string {
-	return bson.NewObjectId().Hex()
 }

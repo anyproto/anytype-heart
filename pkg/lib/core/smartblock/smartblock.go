@@ -22,7 +22,6 @@ const (
 	SmartBlockTypeProfilePage         = SmartBlockType(model.SmartBlockType_ProfilePage)
 	SmartBlockTypeHome                = SmartBlockType(model.SmartBlockType_Home)
 	SmartBlockTypeArchive             = SmartBlockType(model.SmartBlockType_Archive)
-	SmartBlockTypeDatabase            = SmartBlockType(model.SmartBlockType_Database)
 	SmartBlockTypeSet                 = SmartBlockType(model.SmartBlockType_Set)
 	SmartBlockTypeObjectType          = SmartBlockType(model.SmartBlockType_STObjectType)
 	SmartBlockTypeFile                = SmartBlockType(model.SmartBlockType_File)
