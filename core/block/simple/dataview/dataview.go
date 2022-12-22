@@ -214,36 +214,15 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	for _, view2 := range dv.content.Views {
 		var found bool
 		var changed bool
-		var filterChanges []slice.Change[withID[*model.BlockContentDataviewFilter]]
+		var viewFilterChanges []*pb.EventBlockDataviewViewUpdateFilter
 
 		for _, view1 := range d.content.Views {
 			if view1.Id == view2.Id {
 				found = true
 				changed = !proto.Equal(view1, view2)
 
-				{
+				viewFilterChanges = diffViewFilters(view1, view2)
 
-					calcID := func(f *model.BlockContentDataviewFilter) string {
-						// TODO temp
-						return f.RelationKey
-					}
-					equal := func(a, b withID[*model.BlockContentDataviewFilter]) bool {
-						if a.item.RelationKey != b.item.RelationKey {
-							return false
-						}
-						if a.item.Condition != b.item.Condition {
-							return false
-						}
-						return true
-					}
-					filterChanges = slice.Diff(wrapWithIDs(view1.Filters, calcID), wrapWithIDs(view2.Filters, calcID), equal)
-					if len(filterChanges) > 0 {
-						fmt.Println("filters")
-					}
-					for _, x := range filterChanges {
-						fmt.Printf("%s\n", x)
-					}
-				}
 				{
 
 					calcID := func(s *model.BlockContentDataviewSort) string {
@@ -288,55 +267,12 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 		}
 
-		if len(filterChanges) > 0 {
-			var changes []*pb.EventBlockDataviewViewUpdateFilter
-			changes = unwrapChanges(
-				filterChanges,
-				func(afterID string, items []*model.BlockContentDataviewFilter) *pb.EventBlockDataviewViewUpdateFilter {
-					return &pb.EventBlockDataviewViewUpdateFilter{
-						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfAdd{
-							Add: &pb.EventBlockDataviewViewUpdateFilterAdd{
-								AfterId: afterID,
-								Items:   items,
-							},
-						},
-					}
-				},
-				func(ids []string) *pb.EventBlockDataviewViewUpdateFilter {
-					return &pb.EventBlockDataviewViewUpdateFilter{
-						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfRemove{
-							Remove: &pb.EventBlockDataviewViewUpdateFilterRemove{
-								Ids: ids,
-							},
-						},
-					}
-				},
-				func(afterID string, ids []string) *pb.EventBlockDataviewViewUpdateFilter {
-					return &pb.EventBlockDataviewViewUpdateFilter{
-						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfMove{
-							&pb.EventBlockDataviewViewUpdateFilterMove{
-								AfterId: afterID,
-								Ids:     ids,
-							},
-						},
-					}
-				},
-				func(id string, item *model.BlockContentDataviewFilter) *pb.EventBlockDataviewViewUpdateFilter {
-					return &pb.EventBlockDataviewViewUpdateFilter{
-						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfUpdate{
-							&pb.EventBlockDataviewViewUpdateFilterUpdate{
-								Id:   id,
-								Item: item,
-							},
-						},
-					}
-				})
-
+		if len(viewFilterChanges) > 0 {
 			msgs = append(msgs,
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
 						&pb.EventBlockDataviewViewUpdate{
-							Filter: changes,
+							Filter: viewFilterChanges,
 						},
 					}}})
 		}
