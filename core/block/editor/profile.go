@@ -11,24 +11,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
-
-func NewProfile(fileSource file.BlockService, pageManager bookmark.BlockService, bookmarkSvc bookmark.BookmarkService, sendEvent func(e *pb.Event)) *Profile {
-	sb := smartblock.New()
-	f := file.NewFile(sb, fileSource)
-	return &Profile{
-		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb),
-		IHistory:      basic.NewHistory(sb),
-		Text:          stext.NewText(sb),
-		File:          f,
-		Clipboard:     clipboard.NewClipboard(sb, f),
-		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		sendEvent:     sendEvent,
-	}
-}
 
 type Profile struct {
 	smartblock.SmartBlock
@@ -40,6 +27,44 @@ type Profile struct {
 	bookmark.Bookmark
 
 	sendEvent func(e *pb.Event)
+}
+
+func NewProfile(
+	objectStore objectstore.ObjectStore,
+	anytype core.Service,
+	fileBlockService file.BlockService,
+	bookmarkBlockService bookmark.BlockService,
+	bookmarkService bookmark.BookmarkService,
+	sendEvent func(e *pb.Event),
+) *Profile {
+	sb := smartblock.New()
+	f := file.NewFile(
+		sb,
+		fileBlockService,
+		anytype,
+	)
+	return &Profile{
+		SmartBlock:    sb,
+		sendEvent:     sendEvent,
+		AllOperations: basic.NewBasic(sb),
+		IHistory:      basic.NewHistory(sb),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+		File: f,
+		Clipboard: clipboard.NewClipboard(
+			sb,
+			f,
+			anytype,
+		),
+		Bookmark: bookmark.NewBookmark(
+			sb,
+			bookmarkBlockService,
+			bookmarkService,
+			objectStore,
+		),
+	}
 }
 
 func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {

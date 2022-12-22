@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -45,7 +46,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	}
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s))
 	ou := NewObjectUpdater(i.s, core, factory)
-	i.oc = NewCreator(i.s, core, ou, factory)
+	i.oc = NewCreator(i.s, a.MustComponent(object.CName).(objectCreator), core, ou, factory)
 	return nil
 }
 
