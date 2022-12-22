@@ -10624,7 +10624,6 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
 | source | [string](#string) | repeated |  |
 
 

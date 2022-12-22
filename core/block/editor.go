@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
