@@ -27,8 +27,16 @@ import (
 var log = logging.Logger("anytype-mw-state")
 
 const (
-	snippetMinSize = 50
-	snippetMaxSize = 300
+	snippetMinSize                 = 50
+	snippetMaxSize                 = 300
+	collectionKeysRemovedSeparator = "-"
+
+	HeaderLayoutID           = "header"
+	TitleBlockID             = "title"
+	DescriptionBlockID       = "description"
+	DataviewBlockID          = "dataview"
+	DataviewTemplatesBlockID = "templates"
+	FeaturedRelationsID      = "featuredRelations"
 )
 
 var (
@@ -86,11 +94,13 @@ type State struct {
 	localDetails  *types.Struct
 	relationLinks pbtypes.RelationLinks
 
-	// deprecated
+	// deprecated, used for migration
 	extraRelations              []*model.Relation
-	aggregatedOptionsByRelation map[string][]*model.RelationOption
+	aggregatedOptionsByRelation map[string][]*model.RelationOption // deprecated, used for migration
 
-	store                *types.Struct
+	store           *types.Struct
+	storeKeyRemoved map[string]struct{}
+
 	objectTypes          []string
 	objectTypesToMigrate []string
 
@@ -649,6 +659,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.store = s.store
 	}
 
+	if s.parent != nil && s.storeKeyRemoved != nil {
+		s.parent.storeKeyRemoved = s.storeKeyRemoved
+	}
+
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -1083,7 +1097,7 @@ func (s *State) SetParent(parent *State) {
 	s.parent = parent
 }
 
-func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifier bool) (ids []string) {
+func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
 	if blocks {
 		err := s.Iterate(func(b simple.Block) (isContinue bool) {
 			if ls, ok := b.(linkSource); ok {
@@ -1134,8 +1148,10 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 			continue
 		}
 
-		if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-			if creatorModifier {
+		if rel.Key == bundle.RelationKeyCreator.String() ||
+			rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
+			rel.Key == bundle.RelationKeyWorkspaceId.String() {
+			if creatorModifierWorkspace {
 				v := pbtypes.GetString(det, rel.Key)
 				ids = append(ids, v)
 			}
@@ -1212,7 +1228,7 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 	}
 	var emptyTextFound bool
 
-	if title := s.Pick("title"); title != nil {
+	if title := s.Pick(TitleBlockID); title != nil {
 		if checkTitle {
 			if title.Model().GetText().Text != "" {
 				return false
@@ -1227,7 +1243,10 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
-			if chId == "header" {
+			if chId == HeaderLayoutID ||
+				chId == FeaturedRelationsID ||
+				chId == DataviewBlockID ||
+				chId == DataviewTemplatesBlockID {
 				continue
 			}
 			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil && !emptyTextFound {
@@ -1267,6 +1286,12 @@ func (s *State) Copy() *State {
 			Key:    rl.Key,
 		}
 	}
+
+	storeKeyRemoved := s.StoreKeysRemoved()
+	storeKeyRemovedCopy := make(map[string]struct{}, len(storeKeyRemoved))
+	for i := range storeKeyRemoved {
+		storeKeyRemovedCopy[i] = struct{}{}
+	}
 	copy := &State{
 		ctx:                         s.ctx,
 		blocks:                      blocks,
@@ -1280,6 +1305,7 @@ func (s *State) Copy() *State {
 		objectTypesToMigrate:        objTypesToMigrate,
 		noObjectType:                s.noObjectType,
 		store:                       pbtypes.CopyStruct(s.Store()),
+		storeKeyRemoved:             storeKeyRemovedCopy,
 	}
 	return copy
 }
@@ -1363,9 +1389,17 @@ func (s *State) createOrCopyStoreFromParent() {
 		return
 	}
 	s.store = pbtypes.CopyStruct(s.Store())
+	// copy map[string]struct{} to map[string]struct{}
+	m := s.StoreKeysRemoved()
+	s.storeKeyRemoved = make(map[string]struct{}, len(m))
+	for k := range m {
+		s.storeKeyRemoved[k] = struct{}{}
+	}
+
 	if s.store == nil {
 		s.store = &types.Struct{Fields: map[string]*types.Value{}}
 	}
+	s.storeKeyRemoved = make(map[string]struct{})
 }
 
 func (s *State) SetInStore(path []string, value *types.Value) (changed bool) {
@@ -1449,10 +1483,14 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 		oldval := store.Fields[path[len(path)-1]]
 		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
+		// in case we have previously removed this key
+		delete(s.storeKeyRemoved, strings.Join(path, collectionKeysRemovedSeparator))
 		return
 	}
 	changed = true
 	delete(store.Fields, path[len(path)-1])
+	// store all keys that were removed, so we explicitly know this and can make an additional handling
+	s.storeKeyRemoved[strings.Join(path, collectionKeysRemovedSeparator)] = struct{}{}
 	// cleaning empty structs from collection to avoid empty pb values
 	idx := len(path) - 2
 	for len(store.Fields) == 0 && idx >= 0 {
@@ -1541,6 +1579,17 @@ func (s *State) Store() *types.Struct {
 		return nil
 	}
 	return iterState.store
+}
+
+func (s *State) StoreKeysRemoved() map[string]struct{} {
+	iterState := s
+	for iterState != nil && iterState.storeKeyRemoved == nil {
+		iterState = iterState.parent
+	}
+	if iterState == nil {
+		return nil
+	}
+	return iterState.storeKeyRemoved
 }
 
 func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {

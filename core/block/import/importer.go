@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -46,8 +47,9 @@ func (i *Import) Init(a *app.App) (err error) {
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	ou := NewObjectUpdater(i.s, core, factory)
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
-	relationCreator := NewRelationCreator(i.s, fs, core)
-	i.oc = NewCreator(i.s, core, ou, factory, relationCreator)
+	objCreator := a.MustComponent(object.CName).(objectCreator)
+	relationCreator := NewRelationCreator(i.s, objCreator, fs, core)
+	i.oc = NewCreator(i.s, objCreator, ou, factory, relationCreator)
 	return nil
 }
 

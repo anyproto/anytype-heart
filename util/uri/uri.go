@@ -63,11 +63,11 @@ func ProcessURI(url string) (urlOut string, err error) {
 }
 
 func ProcessAllURI(blocks []*model.Block) []*model.Block {
-	for bI, _ := range blocks {
+	for bI := range blocks {
 		if blocks[bI].GetText() != nil && blocks[bI].GetText().Marks != nil && len(blocks[bI].GetText().Marks.Marks) > 0 {
 			marks := blocks[bI].GetText().Marks.Marks
 
-			for mI, _ := range marks {
+			for mI := range marks {
 				if marks[mI].Type == model.BlockContentTextMark_Link {
 					marks[mI].Param, _ = ProcessURI(marks[mI].Param)
 				}

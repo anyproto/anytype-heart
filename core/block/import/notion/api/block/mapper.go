@@ -16,8 +16,8 @@ type MapRequest struct {
 }
 
 type MapResponse struct {
-	Blocks    []*model.Block
-	BlockIDs  []string
+	Blocks   []*model.Block
+	BlockIDs []string
 }
 
 func (m *MapResponse) Merge(mergedResp *MapResponse) {

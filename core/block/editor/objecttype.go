@@ -1,19 +1,22 @@
 package editor
 
 import (
-	"golang.org/x/exp/slices"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -21,30 +24,30 @@ import (
 
 type ObjectType struct {
 	*Set
+
+	relationService relation2.Service
 }
 
-func NewObjectType() *ObjectType {
+func NewObjectType(anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) *ObjectType {
 	return &ObjectType{
-		Set: NewSet(),
+		Set: NewSet(anytype, objectStore, relationService),
+
+		relationService: relationService,
 	}
 }
 
-func (o *ObjectType) SetStruct(st *types.Struct) error {
-	o.Lock()
-	defer o.Unlock()
-	s := o.NewState()
-	s.SetDetails(st)
-	return o.Apply(s)
-}
-
-func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
-	if err = p.SmartBlock.Init(ctx); err != nil {
+// nolint:funlen
+func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
+	if err = t.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source: []string{p.Id()},
+			Source: []string{t.Id()},
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   "_view1_1",
@@ -64,7 +67,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	var templatesSource string
 	var isBundled bool
-	if strings.HasPrefix(p.Id(), addr.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(t.Id(), addr.BundledObjectTypeURLPrefix) {
 		isBundled = true
 	}
 
@@ -94,7 +97,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 							Operator:    model.BlockContentDataviewFilter_And,
 							RelationKey: bundle.RelationKeyTargetObjectType.String(),
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String(p.RootId()),
+							Value:       pbtypes.String(t.RootId()),
 						}},
 				},
 			},
@@ -104,7 +107,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	for _, relId := range pbtypes.GetStringList(ctx.State.Details(), bundle.RelationKeyRecommendedRelations.String()) {
 		relKey, err := pbtypes.RelationIdToKey(relId)
 		if err != nil {
-			log.Errorf("recommendedRelations of %s has incorrect id: %s", p.Id(), relId)
+			log.Errorf("recommendedRelations of %s has incorrect id: %s", t.Id(), relId)
 			continue
 		}
 		if slice.FindPos(recommendedRelationsKeys, relKey) == -1 {
@@ -120,7 +123,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}*/
 
-	recommendedLayout := pbtypes.GetString(p.Details(), bundle.RelationKeyRecommendedLayout.String())
+	recommendedLayout := pbtypes.GetString(t.Details(), bundle.RelationKeyRecommendedLayout.String())
 	if recommendedLayout == "" {
 		recommendedLayout = model.ObjectType_basic.String()
 	} else if _, ok := model.ObjectTypeLayout_value[recommendedLayout]; !ok {
@@ -159,7 +162,8 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			}
 			r = &relationutils.Relation{Relation: r2}
 		} else {
-			r, _ = p.RelationService().FetchKey(rel)
+			// nolint:errcheck
+			r, _ = t.relationService.FetchKey(rel)
 			if r == nil {
 				continue
 			}
@@ -172,12 +176,12 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		})
 	}
 
-	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(t.RootId())}}
 
 	if !isBundled {
 		var system bool
 		for _, o := range bundle.SystemTypes {
-			if addr.ObjectTypeKeyToIdPrefix+o.String() == p.RootId() {
+			if addr.ObjectTypeKeyToIdPrefix+o.String() == t.RootId() {
 				system = true
 				break
 			}
@@ -185,21 +189,21 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 		var internal bool
 		for _, o := range bundle.InternalTypes {
-			if addr.ObjectTypeKeyToIdPrefix+o.String() == p.RootId() {
+			if addr.ObjectTypeKeyToIdPrefix+o.String() == t.RootId() {
 				internal = true
 				break
 			}
 		}
 
 		if system {
-			rest := p.Restrictions()
+			rest := t.Restrictions()
 			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Blocks, model.Restrictions_Details, model.Restrictions_Delete}...)
 			dv := rest.Dataview.Copy()
 			if internal {
 				// internal mean not possible to create the object using the standard ObjectCreate flow
 				dv = append(dv, model.RestrictionsDataviewRestrictions{BlockId: template.DataviewBlockId, Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject}})
 			}
-			p.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: dv})
+			t.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: dv})
 
 		}
 	}
@@ -226,7 +230,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	return smartblock.ObjectApplyTemplate(p, ctx.State,
+	return smartblock.ObjectApplyTemplate(t, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}, model.ObjectType_objectType),
 		template.WithEmpty,
 		template.WithTitle,
@@ -237,7 +241,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDataview(dataview, true),
 		template.WithForcedDetail(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds)),
 		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject),
-		template.WithChildrenSorter(p.RootId(), func(blockIds []string) {
+		template.WithChildrenSorter(t.RootId(), func(blockIds []string) {
 			i := slice.FindPos(blockIds, "templates")
 			j := slice.FindPos(blockIds, template.DataviewBlockId)
 			// templates dataview must come before the type dataview
@@ -251,4 +255,12 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 		fixMissingSmartblockTypes,
 	)
+}
+
+func (t *ObjectType) SetStruct(st *types.Struct) error {
+	t.Lock()
+	defer t.Unlock()
+	s := t.NewState()
+	s.SetDetails(st)
+	return t.Apply(s)
 }

@@ -13,20 +13,20 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewThreadDB(migrator AccountMigrator) *ThreadDB {
-	return &ThreadDB{
-		SmartBlock: smartblock.New(),
-		migrator:   migrator,
-	}
+type ThreadDB struct {
+	smartblock.SmartBlock
+	migrator AccountMigrator
 }
 
 type AccountMigrator interface {
 	MigrateMany(threadInfos []threads.ThreadInfo) (int, error)
 }
 
-type ThreadDB struct {
-	smartblock.SmartBlock
-	migrator AccountMigrator
+func NewThreadDB(migrator AccountMigrator) *ThreadDB {
+	return &ThreadDB{
+		SmartBlock: smartblock.New(),
+		migrator:   migrator,
+	}
 }
 
 func (p *ThreadDB) Init(ctx *smartblock.InitContext) (err error) {

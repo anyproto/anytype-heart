@@ -12,7 +12,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -26,30 +28,65 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
+
 	_import.Import
 	dataview.Dataview
 	table.TableEditor
+
+	objectStore objectstore.ObjectStore
 }
 
 func NewPage(
-	fileSource file.BlockService,
-	pageManager bookmark.BlockService,
-	importServices _import.Services,
-	bookmarkSvc bookmark.BookmarkService,
+	objectStore objectstore.ObjectStore,
+	importerCtrl _import.Services,
+	objectCreator _import.ObjectCreator,
+	anytype core.Service,
+	fileBlockService file.BlockService,
+	bookmarkBlockService bookmark.BlockService,
+	bookmarkService bookmark.BookmarkService,
+	relationService relation2.Service,
 ) *Page {
 	sb := smartblock.New()
-	f := file.NewFile(sb, fileSource)
+	f := file.NewFile(
+		sb,
+		fileBlockService,
+		anytype,
+	)
 	return &Page{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb),
 		IHistory:      basic.NewHistory(sb),
-		Text:          stext.NewText(sb),
-		File:          f,
-		Clipboard:     clipboard.NewClipboard(sb, f),
-		Bookmark:      bookmark.NewBookmark(sb, pageManager, bookmarkSvc),
-		Import:        _import.NewImport(sb, importServices),
-		Dataview:      dataview.NewDataview(sb),
-		TableEditor:   table.NewEditor(sb),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+		File: f,
+		Clipboard: clipboard.NewClipboard(
+			sb,
+			f,
+			anytype,
+		),
+		Bookmark: bookmark.NewBookmark(
+			sb,
+			bookmarkBlockService,
+			bookmarkService,
+			objectStore,
+		),
+		Import: _import.NewImport(
+			sb,
+			importerCtrl,
+			objectCreator,
+			anytype,
+		),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			relationService,
+		),
+		TableEditor: table.NewEditor(sb),
+
+		objectStore: objectStore,
 	}
 }
 
@@ -63,7 +100,8 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	layout, ok := ctx.State.Layout()
 	if !ok {
-		otypes, _ := objectstore.GetObjectTypes(p.ObjectStore(), ctx.ObjectTypeUrls)
+		// nolint:errcheck
+		otypes, _ := objectstore.GetObjectTypes(p.objectStore, ctx.ObjectTypeUrls)
 		for _, ot := range otypes {
 			layout = ot.Layout
 		}

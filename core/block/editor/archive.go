@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -8,20 +10,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/types"
 )
-
-func NewArchive(service DetailsModifier) *Archive {
-	sb := smartblock.New()
-	return &Archive{
-		SmartBlock:      sb,
-		Collection:      collection.NewCollection(sb),
-		DetailsModifier: service,
-	}
-}
 
 type DetailsModifier interface {
 	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
@@ -32,6 +25,20 @@ type Archive struct {
 	smartblock.SmartBlock
 	collection.Collection
 	DetailsModifier DetailsModifier
+	objectStore     objectstore.ObjectStore
+}
+
+func NewArchive(
+	detailsModifier DetailsModifier,
+	objectStore objectstore.ObjectStore,
+) *Archive {
+	sb := smartblock.New()
+	return &Archive{
+		SmartBlock:      sb,
+		Collection:      collection.NewCollection(sb),
+		DetailsModifier: detailsModifier,
+		objectStore:     objectStore,
+	}
 }
 
 func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
@@ -53,7 +60,7 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	records, _, err := p.ObjectStore().Query(nil, database.Query{
+	records, _, err := p.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),

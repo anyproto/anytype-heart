@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
-	"io"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
