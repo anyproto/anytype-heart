@@ -33,7 +33,10 @@ type RelationService struct {
 }
 
 // NewRelationCreator constructor for RelationService
-func NewRelationCreator(service *block.Service, objCreator objectCreator, store filestore.FileStore, core core.Service) RelationCreator {
+func NewRelationCreator(service *block.Service,
+	objCreator objectCreator,
+	store filestore.FileStore,
+	core core.Service) RelationCreator {
 	return &RelationService{
 		service:          service,
 		objCreator:       objCreator,
