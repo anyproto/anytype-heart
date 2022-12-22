@@ -86,7 +86,30 @@ func (d *Dataview) Validate() error {
 	return nil
 }
 
+type withID[T any] struct {
+	item T
+
+	id string
+}
+
+func (w withID[T]) GetId() string {
+	return w.id
+}
+
+func wrapWithIDs[T any](items []T, calcID func(item T) string) []withID[T] {
+	wrapped := make([]withID[T], len(items))
+	for i, item := range items {
+		wrapped[i] = withID[T]{
+			item: item,
+			id:   calcID(item),
+		}
+	}
+	return wrapped
+}
+
 func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
+	fmt.Println("DIFF", b.Model().GetId())
+
 	dv, ok := b.(*Dataview)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
@@ -161,6 +184,50 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 			if view1.Id == view2.Id {
 				found = true
 				changed = !proto.Equal(view1, view2)
+
+				{
+
+					calcID := func(f *model.BlockContentDataviewFilter) string {
+						// TODO temp
+						return f.RelationKey
+					}
+					res := slice.Diff(wrapWithIDs(view1.Filters, calcID), wrapWithIDs(view2.Filters, calcID))
+					if len(res) > 0 {
+						fmt.Println("filters")
+					}
+					for _, x := range res {
+						fmt.Printf("%s\n", x)
+					}
+				}
+				{
+
+					calcID := func(s *model.BlockContentDataviewSort) string {
+						// TODO temp
+						return s.RelationKey
+					}
+					res := slice.Diff(wrapWithIDs(view1.Sorts, calcID), wrapWithIDs(view2.Sorts, calcID))
+					if len(res) > 0 {
+						fmt.Println("sorts")
+					}
+					for _, x := range res {
+						fmt.Printf("%s\n", x)
+					}
+				}
+				{
+
+					calcID := func(s *model.BlockContentDataviewRelation) string {
+						// TODO temp
+						return s.Key
+					}
+					res := slice.Diff(wrapWithIDs(view1.Relations, calcID), wrapWithIDs(view2.Relations, calcID))
+					if len(res) > 0 {
+						fmt.Println("relations")
+					}
+					for _, x := range res {
+						fmt.Printf("%s\n", x)
+					}
+				}
+
 				break
 			}
 		}

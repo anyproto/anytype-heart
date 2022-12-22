@@ -1,6 +1,8 @@
 package slice
 
 import (
+	"fmt"
+
 	"github.com/mb0/diff"
 )
 
@@ -25,6 +27,20 @@ type Change[T IDGetter] struct {
 	changeRemove  *ChangeRemove
 	changeMove    *ChangeMove
 	changeReplace *ChangeReplace[T]
+}
+
+func (c Change[T]) String() string {
+	switch {
+	case c.changeAdd != nil:
+		return c.changeAdd.String()
+	case c.changeRemove != nil:
+		return c.changeRemove.String()
+	case c.changeMove != nil:
+		return c.changeMove.String()
+	case c.changeReplace != nil:
+		return c.changeReplace.String()
+	}
+	return ""
 }
 
 func MakeChangeAdd[T IDGetter](items []T, afterId string) Change[T] {
@@ -88,18 +104,34 @@ type ChangeAdd[T IDGetter] struct {
 	AfterId string
 }
 
+func (c ChangeAdd[T]) String() string {
+	return fmt.Sprintf("add %v after %s", c.Items, c.AfterId)
+}
+
 type ChangeMove struct {
 	IDs     []string
 	AfterId string
+}
+
+func (c ChangeMove) String() string {
+	return fmt.Sprintf("move %v after %s", c.IDs, c.AfterId)
 }
 
 type ChangeRemove struct {
 	IDs []string
 }
 
+func (c ChangeRemove) String() string {
+	return fmt.Sprintf("remove %v", c.IDs)
+}
+
 type ChangeReplace[T IDGetter] struct {
 	Items   []T
 	AfterId string
+}
+
+func (c ChangeReplace[T]) String() string {
+	return fmt.Sprintf("replace %v after %s", c.Items, c.AfterId)
 }
 
 type IDGetter interface {
