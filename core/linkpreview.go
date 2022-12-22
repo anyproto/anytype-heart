@@ -15,7 +15,7 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	urlStr, err := uri.ValidateAndNormalizeURI(req.Url)
+	u, err := uri.NormalizeAndParseURI(req.Url)
 	if err != nil {
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
@@ -24,7 +24,6 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 			},
 		}
 	}
-	u := uri.ParseURI(urlStr)
 
 	mw.m.RLock()
 	defer mw.m.RUnlock()

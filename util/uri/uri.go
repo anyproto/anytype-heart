@@ -22,9 +22,7 @@ var (
 	errFilepathNotSupported = fmt.Errorf("filepath not supported")
 )
 
-func ValidateURI(uri string) error {
-	uri = strings.TrimSpace(uri)
-
+func excludePathAndEmptyURIs(uri string) error {
 	switch {
 	case len(uri) == 0:
 		return errURLEmpty
@@ -36,19 +34,10 @@ func ValidateURI(uri string) error {
 		return errFilepathNotSupported
 	}
 
-	_, err := url.Parse(uri)
-	return err
+	return nil
 }
 
-func ParseURI(uri string) *url.URL {
-	u, err := url.Parse(uri)
-	if err != nil {
-		// do nothing as validation is implemented in ValidateAndParseURI
-	}
-	return u
-}
-
-func NormalizeURI(uri string) string {
+func normalizeURI(uri string) string {
 	switch {
 	case noPrefixEmailRegexp.MatchString(uri):
 		return "mailto:" + uri
@@ -57,31 +46,42 @@ func NormalizeURI(uri string) string {
 	case noPrefixHttpRegex.MatchString(uri):
 		return "http://" + uri
 	}
+
 	return uri
 }
 
-func ValidateAndParseURI(uri string) (*url.URL, error) {
+func ValidateURI(uri string) error {
 	uri = strings.TrimSpace(uri)
-
-	switch {
-	case len(uri) == 0:
-		return nil, errURLEmpty
-	case winFilepathPrefixRegex.MatchString(uri):
-		return nil, errFilepathNotSupported
-	case strings.HasPrefix(uri, string(os.PathSeparator)):
-		return nil, errFilepathNotSupported
-	case strings.HasPrefix(uri, "."):
-		return nil, errFilepathNotSupported
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return err
 	}
 
-	u, err := url.Parse(uri)
-	return u, err
+	_, err := url.Parse(uri)
+	return err
 }
 
-func ValidateAndNormalizeURI(uri string) (string, error) {
-	err := ValidateURI(uri)
-	if err != nil {
+func ParseURI(uri string) (*url.URL, error) {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return nil, err
+	}
+
+	return url.Parse(uri)
+}
+
+func NormalizeURI(uri string) (string, error) {
+	if err := ValidateURI(uri); err != nil {
 		return "", err
 	}
-	return NormalizeURI(uri), nil
+
+	return normalizeURI(uri), nil
+}
+
+func NormalizeAndParseURI(uri string) (*url.URL, error) {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return nil, err
+	}
+
+	return url.Parse(normalizeURI(uri))
 }

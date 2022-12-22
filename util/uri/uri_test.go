@@ -9,55 +9,64 @@ import (
 func TestURI_NormalizeURI(t *testing.T) {
 	t.Run("should process mailto uri", func(t *testing.T) {
 		uri := "john@doe.com"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, "mailto:"+uri, processedURI)
 	})
 
 	t.Run("should process tel uri", func(t *testing.T) {
 		uri := "+491234567"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, "tel:"+uri, processedURI)
 	})
 
 	t.Run("should process url", func(t *testing.T) {
 		uri := "website.com"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
 	t.Run("should process url with additional content 1", func(t *testing.T) {
 		uri := "website.com/123/456"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
 	t.Run("should process url with additional content 2", func(t *testing.T) {
 		uri := "website.com?content=11"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
 	t.Run("should process url with additional content and numbers", func(t *testing.T) {
 		uri := "webs1te.com/123/456"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
 	t.Run("should not modify url with http://", func(t *testing.T) {
 		uri := "http://website.com"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, uri, processedURI)
 	})
 
 	t.Run("should not modify url with https://", func(t *testing.T) {
 		uri := "https://website.com"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, uri, processedURI)
 	})
 
 	t.Run("should not modify non url/tel/mailto uri", func(t *testing.T) {
 		uri := "type:content"
-		processedURI := NormalizeURI(uri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
 		assert.Equal(t, uri, processedURI)
 	})
 }
