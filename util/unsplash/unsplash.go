@@ -111,8 +111,8 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 		fUrl := v.Urls.Regular.String()
 		// hack to have full hd instead of 1080w,
 		// in case unsplash will change the URL format it will not break things
-		u, _ := uri.ParseURI(fUrl)
-		if u != nil {
+		u, err := uri.ParseURI(fUrl)
+		if err == nil {
 			if q := u.Query(); q.Get("w") != "" {
 				q.Set("w", "1920")
 				u.RawQuery = q.Encode()
