@@ -212,34 +212,55 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 }
 
 func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change[slice.ID] {
-	sliceOpMap := map[pb.EventBlockDataviewSliceOperation]slice.DiffOperation{
-		pb.EventBlockDataview_SliceOperationNone:    slice.OperationNone,
-		pb.EventBlockDataview_SliceOperationAdd:     slice.OperationAdd,
-		pb.EventBlockDataview_SliceOperationMove:    slice.OperationMove,
-		pb.EventBlockDataview_SliceOperationRemove:  slice.OperationRemove,
-		pb.EventBlockDataview_SliceOperationReplace: slice.OperationReplace,
-	}
-
 	var res []slice.Change[slice.ID]
 	for _, eventCh := range changes {
-		res = append(res, slice.Change[slice.ID]{Op: sliceOpMap[eventCh.Op], Items: slice.StringsToIDs(eventCh.Ids), AfterId: eventCh.AfterId})
+		var ch slice.Change[slice.ID]
+		switch eventCh.Op {
+		case pb.EventBlockDataview_SliceOperationAdd:
+			ch = slice.MakeChangeAdd(slice.StringsToIDs(eventCh.Ids), eventCh.AfterId)
+		case pb.EventBlockDataview_SliceOperationMove:
+			ch = slice.MakeChangeMove[slice.ID](eventCh.Ids, eventCh.AfterId)
+		case pb.EventBlockDataview_SliceOperationRemove:
+			ch = slice.MakeChangeRemove[slice.ID](eventCh.Ids)
+		case pb.EventBlockDataview_SliceOperationReplace:
+			ch = slice.MakeChangeReplace(slice.StringsToIDs(eventCh.Ids), eventCh.AfterId)
+		}
+		res = append(res, ch)
 	}
 
 	return res
 }
 
 func SliceChangeToEvents(changes []slice.Change[slice.ID]) []*pb.EventBlockDataviewSliceChange {
-	eventsOpMap := map[slice.DiffOperation]pb.EventBlockDataviewSliceOperation{
-		slice.OperationNone:    pb.EventBlockDataview_SliceOperationNone,
-		slice.OperationAdd:     pb.EventBlockDataview_SliceOperationAdd,
-		slice.OperationMove:    pb.EventBlockDataview_SliceOperationMove,
-		slice.OperationRemove:  pb.EventBlockDataview_SliceOperationRemove,
-		slice.OperationReplace: pb.EventBlockDataview_SliceOperationReplace,
-	}
-
 	var res []*pb.EventBlockDataviewSliceChange
 	for _, sliceCh := range changes {
-		res = append(res, &pb.EventBlockDataviewSliceChange{Op: eventsOpMap[sliceCh.Op], Ids: slice.IDsToStrings(sliceCh.Items), AfterId: sliceCh.AfterId})
+		if add := sliceCh.Add(); add != nil {
+			res = append(res, &pb.EventBlockDataviewSliceChange{
+				Op:      pb.EventBlockDataview_SliceOperationAdd,
+				Ids:     slice.IDsToStrings(add.Items),
+				AfterId: add.AfterId,
+			})
+		}
+		if move := sliceCh.Move(); move != nil {
+			res = append(res, &pb.EventBlockDataviewSliceChange{
+				Op:      pb.EventBlockDataview_SliceOperationMove,
+				Ids:     move.IDs,
+				AfterId: move.AfterId,
+			})
+		}
+		if rm := sliceCh.Remove(); rm != nil {
+			res = append(res, &pb.EventBlockDataviewSliceChange{
+				Op:  pb.EventBlockDataview_SliceOperationRemove,
+				Ids: rm.IDs,
+			})
+		}
+		if replace := sliceCh.Replace(); replace != nil {
+			res = append(res, &pb.EventBlockDataviewSliceChange{
+				Op:      pb.EventBlockDataview_SliceOperationReplace,
+				Ids:     slice.IDsToStrings(replace.Items),
+				AfterId: replace.AfterId,
+			})
+		}
 	}
 
 	return res

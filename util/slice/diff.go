@@ -4,19 +4,100 @@ import (
 	"github.com/mb0/diff"
 )
 
-type DiffOperation int
+// type DiffOperation int
+//
+// const (
+// 	OperationNone DiffOperation = iota
+// 	OperationAdd
+// 	OperationMove
+// 	OperationRemove
+// 	OperationReplace
+// )
 
-const (
-	OperationNone DiffOperation = iota
-	OperationAdd
-	OperationMove
-	OperationRemove
-	OperationReplace
-)
+// type Change[T IDGetter] struct {
+// 	Op DiffOperation
+// 	Items   []T
+// 	AfterId string
+// }
 
 type Change[T IDGetter] struct {
-	Op DiffOperation
-	// TODO rename
+	changeAdd     *ChangeAdd[T]
+	changeRemove  *ChangeRemove
+	changeMove    *ChangeMove
+	changeReplace *ChangeReplace[T]
+}
+
+func MakeChangeAdd[T IDGetter](items []T, afterId string) Change[T] {
+	return Change[T]{
+		changeAdd: &ChangeAdd[T]{items, afterId},
+	}
+}
+
+func MakeChangeRemove[T IDGetter](ids []string) Change[T] {
+	return Change[T]{
+		changeRemove: &ChangeRemove{ids},
+	}
+}
+
+func MakeChangeMove[T IDGetter](ids []string, afterID string) Change[T] {
+	return Change[T]{
+		changeMove: &ChangeMove{ids, afterID},
+	}
+}
+
+func MakeChangeReplace[T IDGetter](items []T, afterID string) Change[T] {
+	return Change[T]{
+		changeReplace: &ChangeReplace[T]{items, afterID},
+	}
+}
+
+func (c Change[T]) Len() int {
+	if c.changeAdd != nil {
+		return len(c.changeAdd.Items)
+	}
+	if c.changeRemove != nil {
+		return len(c.changeRemove.IDs)
+	}
+	if c.changeMove != nil {
+		return len(c.changeMove.IDs)
+	}
+	if c.changeReplace != nil {
+		return len(c.changeReplace.Items)
+	}
+	return 0
+}
+
+func (c *Change[T]) Add() *ChangeAdd[T] {
+	return c.changeAdd
+}
+
+func (c *Change[T]) Remove() *ChangeRemove {
+	return c.changeRemove
+}
+
+func (c *Change[T]) Move() *ChangeMove {
+	return c.changeMove
+}
+
+func (c *Change[T]) Replace() *ChangeReplace[T] {
+	return c.changeReplace
+}
+
+type ChangeAdd[T IDGetter] struct {
+	Items   []T
+	AfterId string
+}
+
+type ChangeMove struct {
+	IDs     []string
+	AfterId string
+}
+
+type ChangeRemove struct {
+	IDs []string
+}
+
+type ChangeReplace[T IDGetter] struct {
 	Items   []T
 	AfterId string
 }
@@ -83,39 +164,42 @@ func Diff[T IDGetter](origin, changed []T) []Change[T] {
 			for _, it := range inserts {
 				id := it.GetId()
 				if _, ok := delMap[id]; ok { // move
-					if oneCh.Op != OperationMove {
-						if len(oneCh.Items) > 0 {
+					mv := oneCh.Move()
+					if mv == nil {
+						if oneCh.Len() > 0 {
 							result = append(result, oneCh)
 						}
-						oneCh = Change[T]{Op: OperationMove, AfterId: afterId}
+						oneCh = MakeChangeMove[T](nil, afterId)
+						mv = oneCh.Move()
 					}
-					oneCh.Items = append(oneCh.Items, it)
+					mv.IDs = append(mv.IDs, it.GetId())
 					delete(delMap, id)
 				} else { // insert new
-					if oneCh.Op != OperationAdd {
-						if len(oneCh.Items) > 0 {
+					add := oneCh.Add()
+					if add == nil {
+						if oneCh.Len() > 0 {
 							result = append(result, oneCh)
 						}
-						oneCh = Change[T]{Op: OperationAdd, AfterId: afterId}
+						oneCh = MakeChangeAdd[T](nil, afterId)
+						add = oneCh.Add()
 					}
-					oneCh.Items = append(oneCh.Items, it)
+					add.Items = append(add.Items, it)
 				}
 				afterId = id
 			}
 
-			if len(oneCh.Items) > 0 {
+			if oneCh.Len() > 0 {
 				result = append(result, oneCh)
 			}
 		}
 	}
 
 	if len(delMap) > 0 { // remove
-		delIds := make([]T, 0, len(delMap))
-		for _, it := range delMap {
-			delIds = append(delIds, it)
+		delIDs := make([]string, 0, len(delMap))
+		for id := range delMap {
+			delIDs = append(delIDs, id)
 		}
-		// TODO maybe just use ID wrapper, don't store WHOLE items
-		result = append(result, Change[T]{Op: OperationRemove, Items: delIds})
+		result = append(result, MakeChangeRemove[T](delIDs))
 	}
 
 	return result
@@ -134,35 +218,51 @@ func ApplyChanges[T IDGetter](origin []T, changes []Change[T]) []T {
 	res := make([]T, len(origin))
 	copy(res, origin)
 
+	// make origin map by id
+	itemsMap := make(map[string]T, len(origin))
+	for _, it := range origin {
+		itemsMap[it.GetId()] = it
+	}
+
 	for _, ch := range changes {
-		switch ch.Op {
-		case OperationAdd:
+		if add := ch.Add(); add != nil {
 			pos := -1
-			if ch.AfterId != "" {
-				pos = findPos(res, ch.AfterId)
+			if add.AfterId != "" {
+				pos = findPos(res, add.AfterId)
 				if pos < 0 {
 					continue
 				}
 			}
-			res = Insert(res, pos+1, ch.Items...)
-		case OperationMove:
+			res = Insert(res, pos+1, add.Items...)
+		}
+
+		if move := ch.Move(); move != nil {
 			withoutMoved := Filter(res, func(id T) bool {
-				return findPos(ch.Items, id.GetId()) < 0
+				return FindPos(move.IDs, id.GetId()) < 0
 			})
 			pos := -1
-			if ch.AfterId != "" {
-				pos = findPos(withoutMoved, ch.AfterId)
+			if move.AfterId != "" {
+				pos = findPos(withoutMoved, move.AfterId)
 				if pos < 0 {
 					continue
 				}
 			}
-			res = Insert(withoutMoved, pos+1, ch.Items...)
-		case OperationRemove:
+
+			items := make([]T, 0, len(move.IDs))
+			for _, id := range move.IDs {
+				items = append(items, itemsMap[id])
+			}
+			res = Insert(withoutMoved, pos+1, items...)
+		}
+
+		if rm := ch.Remove(); rm != nil {
 			res = Filter(res, func(id T) bool {
-				return findPos(ch.Items, id.GetId()) < 0
+				return FindPos(rm.IDs, id.GetId()) < 0
 			})
-		case OperationReplace:
-			res = ch.Items
+		}
+
+		if replace := ch.Replace(); replace != nil {
+			res = replace.Items
 		}
 	}
 

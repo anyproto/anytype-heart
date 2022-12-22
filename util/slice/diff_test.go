@@ -16,9 +16,9 @@ func Test_Diff(t *testing.T) {
 	chs := Diff(StringsToIDs(origin), StringsToIDs(changed))
 
 	assert.Equal(t, chs, []Change[ID]{
-		{Op: OperationMove, Items: []ID{"008"}, AfterId: "000"},
-		{Op: OperationMove, Items: []ID{"004"}, AfterId: "009"}},
-	)
+		MakeChangeMove[ID]([]string{"008"}, "000"),
+		MakeChangeMove[ID]([]string{"004"}, "009"),
+	})
 }
 
 func Test_ChangesApply(t *testing.T) {
