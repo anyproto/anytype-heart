@@ -68,3 +68,66 @@ func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatav
 			}
 		})
 }
+
+func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateRelation {
+	calcID := func(f *model.BlockContentDataviewRelation) string {
+		// TODO temp
+		return f.Key
+	}
+	equal := func(a, b withID[*model.BlockContentDataviewRelation]) bool {
+		if a.item.Key != b.item.Key {
+			return false
+		}
+		if a.item.IsVisible != b.item.IsVisible {
+			return false
+		}
+		return true
+	}
+
+	diff := slice.Diff(wrapWithIDs(a.Relations, calcID), wrapWithIDs(b.Relations, calcID), equal)
+	if len(diff) == 0 {
+		return nil
+	}
+
+	return unwrapChanges(
+		diff,
+		func(afterID string, items []*model.BlockContentDataviewRelation) *pb.EventBlockDataviewViewUpdateRelation {
+			return &pb.EventBlockDataviewViewUpdateRelation{
+				Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfAdd{
+					Add: &pb.EventBlockDataviewViewUpdateRelationAdd{
+						AfterId: afterID,
+						Items:   items,
+					},
+				},
+			}
+		},
+		func(ids []string) *pb.EventBlockDataviewViewUpdateRelation {
+			return &pb.EventBlockDataviewViewUpdateRelation{
+				Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfRemove{
+					Remove: &pb.EventBlockDataviewViewUpdateRelationRemove{
+						Ids: ids,
+					},
+				},
+			}
+		},
+		func(afterID string, ids []string) *pb.EventBlockDataviewViewUpdateRelation {
+			return &pb.EventBlockDataviewViewUpdateRelation{
+				Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfMove{
+					Move: &pb.EventBlockDataviewViewUpdateRelationMove{
+						AfterId: afterID,
+						Ids:     ids,
+					},
+				},
+			}
+		},
+		func(id string, item *model.BlockContentDataviewRelation) *pb.EventBlockDataviewViewUpdateRelation {
+			return &pb.EventBlockDataviewViewUpdateRelation{
+				Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfUpdate{
+					Update: &pb.EventBlockDataviewViewUpdateRelationUpdate{
+						Id:   id,
+						Item: item,
+					},
+				},
+			}
+		})
+}

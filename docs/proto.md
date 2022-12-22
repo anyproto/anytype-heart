@@ -1002,6 +1002,11 @@
     - [Event.Block.Dataview.ViewUpdate.Filter.Move](#anytype-Event-Block-Dataview-ViewUpdate-Filter-Move)
     - [Event.Block.Dataview.ViewUpdate.Filter.Remove](#anytype-Event-Block-Dataview-ViewUpdate-Filter-Remove)
     - [Event.Block.Dataview.ViewUpdate.Filter.Update](#anytype-Event-Block-Dataview-ViewUpdate-Filter-Update)
+    - [Event.Block.Dataview.ViewUpdate.Relation](#anytype-Event-Block-Dataview-ViewUpdate-Relation)
+    - [Event.Block.Dataview.ViewUpdate.Relation.Add](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Add)
+    - [Event.Block.Dataview.ViewUpdate.Relation.Move](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Move)
+    - [Event.Block.Dataview.ViewUpdate.Relation.Remove](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Remove)
+    - [Event.Block.Dataview.ViewUpdate.Relation.Update](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Update)
     - [Event.Block.Delete](#anytype-Event-Block-Delete)
     - [Event.Block.FilesUpload](#anytype-Event-Block-FilesUpload)
     - [Event.Block.Fill](#anytype-Event-Block-Fill)
@@ -15657,7 +15662,10 @@ sent when the view have been changed or added
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| viewId | [string](#string) |  |  |
 | filter | [Event.Block.Dataview.ViewUpdate.Filter](#anytype-Event-Block-Dataview-ViewUpdate-Filter) | repeated |  |
+| relation | [Event.Block.Dataview.ViewUpdate.Relation](#anytype-Event-Block-Dataview-ViewUpdate-Relation) | repeated |  |
 
 
 
@@ -15739,6 +15747,87 @@ sent when the view have been changed or added
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | item | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Relation"></a>
+
+### Event.Block.Dataview.ViewUpdate.Relation
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| add | [Event.Block.Dataview.ViewUpdate.Relation.Add](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Add) |  |  |
+| remove | [Event.Block.Dataview.ViewUpdate.Relation.Remove](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Remove) |  |  |
+| update | [Event.Block.Dataview.ViewUpdate.Relation.Update](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Update) |  |  |
+| move | [Event.Block.Dataview.ViewUpdate.Relation.Move](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Move) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Relation-Add"></a>
+
+### Event.Block.Dataview.ViewUpdate.Relation.Add
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| afterId | [string](#string) |  |  |
+| items | [model.Block.Content.Dataview.Relation](#anytype-model-Block-Content-Dataview-Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Relation-Move"></a>
+
+### Event.Block.Dataview.ViewUpdate.Relation.Move
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| afterId | [string](#string) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Relation-Remove"></a>
+
+### Event.Block.Dataview.ViewUpdate.Relation.Remove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Relation-Update"></a>
+
+### Event.Block.Dataview.ViewUpdate.Relation.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| item | [model.Block.Content.Dataview.Relation](#anytype-model-Block-Content-Dataview-Relation) |  |  |
 
 
 

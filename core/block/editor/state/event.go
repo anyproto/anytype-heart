@@ -275,6 +275,19 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+
+	case *pb.EventMessageValueOfBlockDataviewViewUpdate:
+		ev := o.BlockDataviewViewUpdate
+		if err = apply(ev.Id, func(b simple.Block) error {
+			if dvBlock, ok := b.(dataview.Block); ok {
+				dvBlock.ApplyViewUpdate(ev)
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+
 	case *pb.EventMessageValueOfBlockSetWidget:
 		if err = apply(o.BlockSetWidget.Id, func(b simple.Block) error {
 			if tr, ok := b.(widget.Block); ok {

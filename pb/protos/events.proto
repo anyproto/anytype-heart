@@ -684,7 +684,10 @@ message Event {
             }
 
             message ViewUpdate {
-                repeated Filter filter = 1;
+                string id = 1;
+                string viewId = 2;
+                repeated Filter filter = 3;
+                repeated Relation relation = 4;
 
                 message Filter {
                     oneof operation {
@@ -704,6 +707,31 @@ message Event {
                     message Update {
                         string id = 1;
                         anytype.model.Block.Content.Dataview.Filter item = 2;
+                    }
+                    message Move {
+                        string afterId = 1;
+                        repeated string ids = 2;
+                    }
+                }
+
+                message Relation {
+                    oneof operation {
+                        Add add = 1;
+                        Remove remove = 2;
+                        Update update = 3;
+                        Move move = 4;
+                    }
+
+                    message Add {
+                        string afterId = 1;
+                        repeated anytype.model.Block.Content.Dataview.Relation items = 2;
+                    }
+                    message Remove {
+                        repeated string ids = 1;
+                    }
+                    message Update {
+                        string id = 1;
+                        anytype.model.Block.Content.Dataview.Relation item = 2;
                     }
                     message Move {
                         string afterId = 1;

@@ -66,6 +66,8 @@ type Block interface {
 	UpdateRelationOld(relationKey string, relation model.Relation) error
 	// DeleteRelationOld DEPRECATED
 	DeleteRelationOld(relationKey string) error
+
+	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
 }
 
 type Dataview struct {
@@ -92,6 +94,10 @@ type withID[T any] struct {
 	id string
 }
 
+func wrapWithID[T any](item T, calcID func(item T) string) withID[T] {
+	return withID[T]{item, calcID(item)}
+}
+
 func (w withID[T]) GetId() string {
 	return w.id
 }
@@ -99,10 +105,7 @@ func (w withID[T]) GetId() string {
 func wrapWithIDs[T any](items []T, calcID func(item T) string) []withID[T] {
 	wrapped := make([]withID[T], len(items))
 	for i, item := range items {
-		wrapped[i] = withID[T]{
-			item: item,
-			id:   calcID(item),
-		}
+		wrapped[i] = wrapWithID(item, calcID)
 	}
 	return wrapped
 }
@@ -214,7 +217,10 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	for _, view2 := range dv.content.Views {
 		var found bool
 		var changed bool
-		var viewFilterChanges []*pb.EventBlockDataviewViewUpdateFilter
+		var (
+			viewFilterChanges   []*pb.EventBlockDataviewViewUpdateFilter
+			viewRelationChanges []*pb.EventBlockDataviewViewUpdateRelation
+		)
 
 		for _, view1 := range d.content.Views {
 			if view1.Id == view2.Id {
@@ -222,6 +228,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 				changed = !proto.Equal(view1, view2)
 
 				viewFilterChanges = diffViewFilters(view1, view2)
+				viewRelationChanges = diffViewRelations(view1, view2)
 
 				{
 
@@ -239,40 +246,21 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 						fmt.Printf("%s\n", x)
 					}
 				}
-				{
-
-					calcID := func(s *model.BlockContentDataviewRelation) string {
-						// TODO temp
-						return s.Key
-					}
-					res := slice.Diff(wrapWithIDs(view1.Relations, calcID), wrapWithIDs(view2.Relations, calcID), func(a, b withID[*model.BlockContentDataviewRelation]) bool {
-						if a.item.Key != b.item.Key {
-							return false
-						}
-						if a.item.IsVisible != b.item.IsVisible {
-							return false
-						}
-						return true
-					})
-					if len(res) > 0 {
-						fmt.Println("relations")
-					}
-					for _, x := range res {
-						fmt.Printf("%s\n", x)
-					}
-				}
 
 				break
 			}
 
 		}
 
-		if len(viewFilterChanges) > 0 {
+		if len(viewFilterChanges) > 0 || len(viewRelationChanges) > 0 {
 			msgs = append(msgs,
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
 						&pb.EventBlockDataviewViewUpdate{
-							Filter: viewFilterChanges,
+							Id:       dv.Id,
+							ViewId:   view2.Id,
+							Filter:   viewFilterChanges,
+							Relation: viewRelationChanges,
 						},
 					}}})
 		}
@@ -626,4 +614,32 @@ func (l *Dataview) relationsWithObjectFormat() []string {
 		}
 	}
 	return relationsWithObjFormat
+}
+
+func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
+	var view *model.BlockContentDataviewView
+	for _, v := range l.content.Views {
+		if v.Id == upd.ViewId {
+			view = v
+			break
+		}
+	}
+	if view == nil {
+		return
+	}
+
+	var changes []slice.Change[withID[*model.BlockContentDataviewRelation]]
+	for _, r := range upd.Relation {
+		if v := r.GetUpdate(); v != nil {
+			changes = append(changes, slice.MakeChangeReplace(wrapWithID(v.Item, func(f *model.BlockContentDataviewRelation) string {
+				return f.Key
+			}), v.Id))
+		}
+	}
+
+	relations := slice.ApplyChanges(wrapWithIDs(view.Relations, func(f *model.BlockContentDataviewRelation) string {
+		return f.Key
+	}), changes)
+
+	view.Relations = unwrapItems(relations)
 }
