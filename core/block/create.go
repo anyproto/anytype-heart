@@ -196,7 +196,7 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
 	}
 
-	return id, nil
+	return newID, nil
 }
 
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
