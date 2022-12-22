@@ -1945,6 +1945,7 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | timeZone | [string](#string) |  |  |
+| IPFSStorageAddr | [string](#string) |  |  |
 
 
 
@@ -19163,6 +19164,7 @@ stored |
 | extraRelations | [Relation](#anytype-model-Relation) | repeated | deprecated |
 | objectTypes | [string](#string) | repeated |  |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 
 

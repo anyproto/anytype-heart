@@ -99,8 +99,6 @@ type SmartBlock interface {
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
-	Anytype() core.Service
-	RelationService() relation2.Service
 	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
@@ -122,8 +120,6 @@ type SmartBlock interface {
 	AddHook(f HookCallback, events ...Hook)
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() (doc.DocInfo, error)
-	DocService() doc.Service
-	ObjectStore() objectstore.ObjectStore
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
 	ObjectClose()

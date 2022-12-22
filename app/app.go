@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"os"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
@@ -125,6 +125,18 @@ func (app *App) MustComponent(name string) Component {
 		panic(fmt.Errorf("component '%s' not registered", name))
 	}
 	return s
+}
+
+func MustComponent[i any](app *App) i {
+	app.mu.RLock()
+	defer app.mu.RUnlock()
+	for _, s := range app.components {
+		if v, ok := s.(i); ok {
+			return v
+		}
+	}
+	dummy := new(i)
+	panic(fmt.Errorf("component with interface %T is not found", dummy))
 }
 
 // ComponentNames returns all registered names

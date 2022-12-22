@@ -61,15 +61,24 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	// clear nil values
 	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
 
+	removedCollectionKeysMap := make(map[string]struct{}, len(snapshot.Data.RemovedCollectionKeys))
+	for _, t := range snapshot.Data.RemovedCollectionKeys {
+		removedCollectionKeysMap[t] = struct{}{}
+	}
+
+	detailsToSave := pbtypes.StructCutKeys(snapshot.Data.Details,
+		append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+
 	s := &State{
-		rootId:         rootId,
-		blocks:         blocks,
-		details:        pbtypes.StructCutKeys(snapshot.Data.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...)),
-		extraRelations: snapshot.Data.ExtraRelations,
-		relationLinks:  snapshot.Data.RelationLinks,
-		objectTypes:    snapshot.Data.ObjectTypes,
-		fileKeys:       fileKeys,
-		store:          snapshot.Data.Collections,
+		rootId:          rootId,
+		blocks:          blocks,
+		details:         detailsToSave,
+		extraRelations:  snapshot.Data.ExtraRelations,
+		relationLinks:   snapshot.Data.RelationLinks,
+		objectTypes:     snapshot.Data.ObjectTypes,
+		fileKeys:        fileKeys,
+		store:           snapshot.Data.Collections,
+		storeKeyRemoved: removedCollectionKeysMap,
 	}
 
 	if !sOpts.doNotMigrateTypes {

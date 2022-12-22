@@ -22,7 +22,6 @@ type WidgetObject struct {
 func NewWidgetObject() *WidgetObject {
 	sb := smartblock.New()
 	bs := basic.NewBasic(sb)
-
 	return &WidgetObject{
 		SmartBlock: sb,
 		Movable:    bs,

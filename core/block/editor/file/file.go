@@ -9,6 +9,10 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -20,9 +24,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 )
 
 const (
@@ -31,13 +32,21 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, source BlockService) File {
-	return &sfile{SmartBlock: sb, fileSource: source}
+func NewFile(
+	sb smartblock.SmartBlock,
+	fileSource BlockService,
+	anytype core.Service,
+) File {
+	return &sfile{
+		SmartBlock: sb,
+		fileSource: fileSource,
+		anytype:    anytype,
+	}
 }
 
 type BlockService interface {
 	DoFile(id string, apply func(f File) error) error
-	CreateLinkToTheNewObject(ctx *session.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error)
+	CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
 	ProcessAdd(p process.Process) (err error)
 	Anytype() core.Service
 }
@@ -49,7 +58,7 @@ type File interface {
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx *session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-	UploadFileWithHash(blockId string, source FileSource) (UploadResult, error) 
+	UploadFileWithHash(blockID string, source FileSource) (UploadResult, error)
 	dropFilesHandler
 }
 
@@ -64,6 +73,7 @@ type FileSource struct {
 type sfile struct {
 	smartblock.SmartBlock
 	fileSource BlockService
+	anytype    core.Service
 }
 
 func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -81,7 +91,7 @@ func (sf *sfile) UploadState(s *state.State, id string, source FileSource, isSyn
 	if res := sf.upload(s, id, source, isSync); res.Err != nil {
 		return res.Err
 	}
-	return 
+	return
 }
 
 func (sf *sfile) SetFileStyle(ctx *session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error) {
@@ -121,7 +131,7 @@ func (sf *sfile) CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreate
 		Path: req.LocalPath,
 		Url:  req.Url,
 	}, false).Err; err != nil {
-		return 
+		return
 	}
 	if err = sf.Apply(s); err != nil {
 		return
@@ -148,13 +158,13 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	} else {
 		upl.SetGroupId(s.GroupId()).AsyncUpdates(sf.Id()).UploadAsync(context.TODO())
 	}
-	return 
+	return
 }
 
 func (sf *sfile) newUploader() Uploader {
 	return &uploader{
 		service: sf.fileSource,
-		anytype: sf.Anytype(),
+		anytype: sf.anytype,
 	}
 }
 
@@ -199,7 +209,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(nil, groupId, pb.RpcBlockLinkCreateWithObjectRequest{
+			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(nil, &pb.RpcBlockLinkCreateWithObjectRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,

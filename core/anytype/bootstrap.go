@@ -11,8 +11,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -135,6 +137,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(session.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
-		Register(kanban.New())
+		Register(object.NewCreator()).
+		Register(kanban.New()).
+		Register(editor.NewObjectFactory())
 	return
 }
