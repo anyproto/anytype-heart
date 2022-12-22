@@ -13,7 +13,7 @@ func Test_Diff(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
 	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004"}
 
-	chs := Diff(StringsToIDs(origin), StringsToIDs(changed))
+	chs := Diff(StringsToIDs(origin), StringsToIDs(changed), CompareID)
 
 	assert.Equal(t, chs, []Change[ID]{
 		MakeChangeMove[ID]([]string{"008"}, "000"),
@@ -21,11 +21,49 @@ func Test_Diff(t *testing.T) {
 	})
 }
 
+type testItem struct {
+	id        string
+	someField int
+}
+
+func (t testItem) GetId() string {
+	return t.id
+}
+
+func Test_Replace(t *testing.T) {
+	origin := []testItem{
+		{"000", 100},
+		{"001", 101},
+		{"002", 102},
+	}
+	changed := []testItem{
+		{"001", 101},
+		{"002", 102},
+		{"000", 103},
+	}
+
+	chs := Diff(origin, changed, func(a, b testItem) bool {
+		if a.id != b.id {
+			return false
+		}
+		return a.someField == b.someField
+	})
+
+	assert.Equal(t, []Change[testItem]{
+		MakeChangeReplace(testItem{"000", 103}, "000"),
+		MakeChangeMove[testItem]([]string{"000"}, "002"),
+	}, chs)
+
+	got := ApplyChanges(origin, chs)
+
+	assert.Equal(t, changed, got)
+}
+
 func Test_ChangesApply(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
 	changed := []ID{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004", "new"}
 
-	chs := Diff(StringsToIDs(origin), changed)
+	chs := Diff(StringsToIDs(origin), changed, CompareID)
 
 	res := ApplyChanges(StringsToIDs(origin), chs)
 
@@ -42,7 +80,7 @@ func Test_SameLength(t *testing.T) {
 		rand.Shuffle(len(changed),
 			func(i, j int) { changed[i], changed[j] = changed[j], changed[i] })
 
-		chs := Diff(StringsToIDs(origin), StringsToIDs(changed))
+		chs := Diff(StringsToIDs(origin), StringsToIDs(changed), CompareID)
 		res := ApplyChanges(StringsToIDs(origin), chs)
 
 		assert.Equal(t, res, StringsToIDs(changed))
@@ -78,7 +116,7 @@ func Test_DifferentLength(t *testing.T) {
 			changed = Insert(changed, insIdx, []string{bson.NewObjectId().Hex()}...)
 		}
 
-		chs := Diff(StringsToIDs(origin), StringsToIDs(changed))
+		chs := Diff(StringsToIDs(origin), StringsToIDs(changed), CompareID)
 		res := ApplyChanges(StringsToIDs(origin), chs)
 
 		assert.Equal(t, res, StringsToIDs(changed))

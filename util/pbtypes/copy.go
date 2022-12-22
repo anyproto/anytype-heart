@@ -223,7 +223,8 @@ func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Ch
 		case pb.EventBlockDataview_SliceOperationRemove:
 			ch = slice.MakeChangeRemove[slice.ID](eventCh.Ids)
 		case pb.EventBlockDataview_SliceOperationReplace:
-			ch = slice.MakeChangeReplace(slice.StringsToIDs(eventCh.Ids), eventCh.AfterId)
+			// TODO check this out
+			// ch = slice.MakeChangeReplace(slice.StringsToIDs(eventCh.Ids), eventCh.AfterId)
 		}
 		res = append(res, ch)
 	}
@@ -254,13 +255,14 @@ func SliceChangeToEvents(changes []slice.Change[slice.ID]) []*pb.EventBlockDatav
 				Ids: rm.IDs,
 			})
 		}
-		if replace := sliceCh.Replace(); replace != nil {
-			res = append(res, &pb.EventBlockDataviewSliceChange{
-				Op:      pb.EventBlockDataview_SliceOperationReplace,
-				Ids:     slice.IDsToStrings(replace.Items),
-				AfterId: replace.AfterId,
-			})
-		}
+		// TODO check this out
+		// if replace := sliceCh.Replace(); replace != nil {
+		// 	res = append(res, &pb.EventBlockDataviewSliceChange{
+		// 		Op:      pb.EventBlockDataview_SliceOperationReplace,
+		// 		Ids:     slice.IDsToStrings(replace.Items),
+		// 		AfterId: replace.AfterId,
+		// 	})
+		// }
 	}
 
 	return res

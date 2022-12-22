@@ -107,6 +107,40 @@ func wrapWithIDs[T any](items []T, calcID func(item T) string) []withID[T] {
 	return wrapped
 }
 
+// unwrap items from withID wrapper
+func unwrapItems[T any](items []withID[T]) []T {
+	res := make([]T, len(items))
+	for i, it := range items {
+		res[i] = it.item
+	}
+	return res
+}
+
+func unwrapChanges[T, R any](
+	changes []slice.Change[withID[T]],
+	add func(afterID string, items []T) R,
+	remove func(ids []string) R,
+	move func(afterID string, ids []string) R,
+	update func(id string, item T) R,
+) []R {
+	res := make([]R, 0, len(changes))
+	for _, c := range changes {
+		if v := c.Add(); v != nil {
+			res = append(res, add(v.AfterId, unwrapItems(v.Items)))
+		}
+		if v := c.Remove(); v != nil {
+			res = append(res, remove(v.IDs))
+		}
+		if v := c.Move(); v != nil {
+			res = append(res, move(v.AfterId, v.IDs))
+		}
+		if v := c.Replace(); v != nil {
+			res = append(res, update(v.ID, v.Item.item))
+		}
+	}
+	return res
+}
+
 func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	fmt.Println("DIFF", b.Model().GetId())
 
@@ -146,7 +180,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		for _, order1 := range d.content.ObjectOrders {
 			if order1.ViewId == order2.ViewId && order1.GroupId == order2.GroupId {
 				found = true
-				changes = slice.Diff(slice.StringsToIDs(order1.ObjectIds), slice.StringsToIDs(order2.ObjectIds))
+				changes = slice.Diff(slice.StringsToIDs(order1.ObjectIds), slice.StringsToIDs(order2.ObjectIds), slice.CompareID)
 				break
 			}
 		}
@@ -180,6 +214,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	for _, view2 := range dv.content.Views {
 		var found bool
 		var changed bool
+		var filterChanges []slice.Change[withID[*model.BlockContentDataviewFilter]]
+
 		for _, view1 := range d.content.Views {
 			if view1.Id == view2.Id {
 				found = true
@@ -191,11 +227,20 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 						// TODO temp
 						return f.RelationKey
 					}
-					res := slice.Diff(wrapWithIDs(view1.Filters, calcID), wrapWithIDs(view2.Filters, calcID))
-					if len(res) > 0 {
+					equal := func(a, b withID[*model.BlockContentDataviewFilter]) bool {
+						if a.item.RelationKey != b.item.RelationKey {
+							return false
+						}
+						if a.item.Condition != b.item.Condition {
+							return false
+						}
+						return true
+					}
+					filterChanges = slice.Diff(wrapWithIDs(view1.Filters, calcID), wrapWithIDs(view2.Filters, calcID), equal)
+					if len(filterChanges) > 0 {
 						fmt.Println("filters")
 					}
-					for _, x := range res {
+					for _, x := range filterChanges {
 						fmt.Printf("%s\n", x)
 					}
 				}
@@ -205,7 +250,9 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 						// TODO temp
 						return s.RelationKey
 					}
-					res := slice.Diff(wrapWithIDs(view1.Sorts, calcID), wrapWithIDs(view2.Sorts, calcID))
+					res := slice.Diff(wrapWithIDs(view1.Sorts, calcID), wrapWithIDs(view2.Sorts, calcID), func(a, b withID[*model.BlockContentDataviewSort]) bool {
+						return a.item.RelationKey == b.item.RelationKey
+					})
 					if len(res) > 0 {
 						fmt.Println("sorts")
 					}
@@ -219,7 +266,15 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 						// TODO temp
 						return s.Key
 					}
-					res := slice.Diff(wrapWithIDs(view1.Relations, calcID), wrapWithIDs(view2.Relations, calcID))
+					res := slice.Diff(wrapWithIDs(view1.Relations, calcID), wrapWithIDs(view2.Relations, calcID), func(a, b withID[*model.BlockContentDataviewRelation]) bool {
+						if a.item.Key != b.item.Key {
+							return false
+						}
+						if a.item.IsVisible != b.item.IsVisible {
+							return false
+						}
+						return true
+					})
 					if len(res) > 0 {
 						fmt.Println("relations")
 					}
@@ -230,6 +285,60 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 				break
 			}
+
+		}
+
+		if len(filterChanges) > 0 {
+			var changes []*pb.EventBlockDataviewViewUpdateFilter
+			changes = unwrapChanges(
+				filterChanges,
+				func(afterID string, items []*model.BlockContentDataviewFilter) *pb.EventBlockDataviewViewUpdateFilter {
+					return &pb.EventBlockDataviewViewUpdateFilter{
+						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfAdd{
+							Add: &pb.EventBlockDataviewViewUpdateFilterAdd{
+								AfterId: afterID,
+								Items:   items,
+							},
+						},
+					}
+				},
+				func(ids []string) *pb.EventBlockDataviewViewUpdateFilter {
+					return &pb.EventBlockDataviewViewUpdateFilter{
+						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfRemove{
+							Remove: &pb.EventBlockDataviewViewUpdateFilterRemove{
+								Ids: ids,
+							},
+						},
+					}
+				},
+				func(afterID string, ids []string) *pb.EventBlockDataviewViewUpdateFilter {
+					return &pb.EventBlockDataviewViewUpdateFilter{
+						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfMove{
+							&pb.EventBlockDataviewViewUpdateFilterMove{
+								AfterId: afterID,
+								Ids:     ids,
+							},
+						},
+					}
+				},
+				func(id string, item *model.BlockContentDataviewFilter) *pb.EventBlockDataviewViewUpdateFilter {
+					return &pb.EventBlockDataviewViewUpdateFilter{
+						Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfUpdate{
+							&pb.EventBlockDataviewViewUpdateFilterUpdate{
+								Id:   id,
+								Item: item,
+							},
+						},
+					}
+				})
+
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
+						&pb.EventBlockDataviewViewUpdate{
+							Filter: changes,
+						},
+					}}})
 		}
 
 		if !found || changed {

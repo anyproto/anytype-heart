@@ -65,6 +65,7 @@ message Event {
             Block.Dataview.ObjectOrderUpdate blockDataViewObjectOrderUpdate = 39;
             Block.Dataview.RelationDelete blockDataviewRelationDelete = 124;
             Block.Dataview.RelationSet blockDataviewRelationSet = 123;
+            Block.Dataview.ViewUpdate blockDataviewViewUpdate = 125;
 
             // deprecated
             Block.Dataview.OldRelationDelete blockDataviewOldRelationDelete = 24;
@@ -680,6 +681,35 @@ message Event {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
                 anytype.model.Block.Content.Dataview.View view = 3;
+            }
+
+            message ViewUpdate {
+                repeated Filter filter = 1;
+
+                message Filter {
+                    oneof operation {
+                        Add add = 1;
+                        Remove remove = 2;
+                        Update update = 3;
+                        Move move = 4;
+                    }
+
+                    message Add {
+                        string afterId = 1;
+                        repeated anytype.model.Block.Content.Dataview.Filter items = 2;
+                    }
+                    message Remove {
+                        repeated string ids = 1;
+                    }
+                    message Update {
+                        string id = 1;
+                        anytype.model.Block.Content.Dataview.Filter item = 2;
+                    }
+                    message Move {
+                        string afterId = 1;
+                        repeated string ids = 2;
+                    }
+                }
             }
 
             message ViewDelete {
