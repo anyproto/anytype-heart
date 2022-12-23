@@ -68,6 +68,7 @@ type Block interface {
 	DeleteRelationOld(relationKey string) error
 
 	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
+	AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error
 }
 
 type Dataview struct {
@@ -542,4 +543,14 @@ func (l *Dataview) relationsWithObjectFormat() []string {
 		}
 	}
 	return relationsWithObjFormat
+}
+
+func (l *Dataview) AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	view.Filters = append(view.Filters, filter)
+	return nil
 }

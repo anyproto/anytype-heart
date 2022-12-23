@@ -239,3 +239,27 @@ func (mw *Middleware) BlockDataviewSetSource(cctx context.Context, req *pb.RpcBl
 
 	return resp(err)
 }
+
+func (mw *Middleware) BlockDataviewFilterAdd(cctx context.Context, req *pb.RpcBlockDataviewFilterAddRequest) *pb.RpcBlockDataviewFilterAddResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterAddResponse {
+		r := &pb.RpcBlockDataviewFilterAddResponse{
+			Error: &pb.RpcBlockDataviewFilterAddResponseError{
+				Code: pb.RpcBlockDataviewFilterAddResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterAddResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.AddDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter)
+	})
+
+	return resp(err)
+}

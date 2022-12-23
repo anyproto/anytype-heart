@@ -62,6 +62,8 @@ type Dataview interface {
 	UpdateView(ctx *session.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
 	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
+
+	AddFilter(ctx *session.Context, blockId string, viewId string, filter *model.BlockContentDataviewFilter) (err error)
 }
 
 func NewDataview(

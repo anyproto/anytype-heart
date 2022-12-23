@@ -1,4 +1,4 @@
-//go:build !mutexdeadlockdetector
+//go:build nomutexdeadlockdetector
 
 package mutex
 
