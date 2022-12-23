@@ -3,11 +3,6 @@ package mill
 import (
 	"bytes"
 	"fmt"
-	"github.com/chai2010/webp"
-	"github.com/disintegration/imaging"
-	"github.com/dsoprea/go-exif/v3"
-	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
-	_ "golang.org/x/image/webp"
 	"image"
 	"image/color/palette"
 	"image/draw"
@@ -18,6 +13,12 @@ import (
 	"strconv"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
+	"github.com/chai2010/webp"
+	"github.com/disintegration/imaging"
+	"github.com/dsoprea/go-exif/v3"
+	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
+	// Import for image.DecodeConfig to support .webp format
+	_ "golang.org/x/image/webp"
 )
 
 // Format enumerates the type of images currently supported
@@ -167,19 +168,14 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		if format == JPEG && img == nil {
 			// we already have img decoded if we have orientation <= 1
 			img, err = jpeg.Decode(r)
-			if err != nil {
-				return nil, err
-			}
 		} else if format == WEBP {
 			img, err = webp.Decode(r)
-			if err != nil {
-				return nil, err
-			}
 		} else if format != JPEG {
 			img, err = png.Decode(r)
-			if err != nil {
-				return nil, err
-			}
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		resized := imaging.Resize(img, width, 0, imaging.Lanczos)
