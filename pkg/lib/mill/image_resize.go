@@ -3,6 +3,7 @@ package mill
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"image"
 	"image/color/palette"
 	"image/draw"
@@ -166,13 +167,14 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		}, nil
 	}
 
-	if format == JPEG || format == PNG || format == ICO || format == WEBP {
-		if format == JPEG && img == nil {
+	if slices.Contains([]Format{JPEG, PNG, ICO, WEBP}, format) {
+		switch {
+		case format == JPEG && img == nil:
 			// we already have img decoded if we have orientation <= 1
 			img, err = jpeg.Decode(r)
-		} else if format == WEBP {
+		case format == WEBP:
 			img, err = webp.Decode(r)
-		} else if format != JPEG {
+		case format != JPEG:
 			img, err = png.Decode(r)
 		}
 
@@ -184,11 +186,12 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
 		buff := &bytes.Buffer{}
-		if format == JPEG {
+		switch format {
+		case JPEG:
 			err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality})
-		} else if format == WEBP {
+		case WEBP:
 			err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)})
-		} else {
+		default:
 			err = png.Encode(buff, resized)
 		}
 
