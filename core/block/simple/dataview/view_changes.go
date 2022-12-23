@@ -96,7 +96,6 @@ func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatav
 }
 
 func getViewRelationID(f *model.BlockContentDataviewRelation) string {
-	// TODO temp
 	return f.Key
 }
 
@@ -160,7 +159,6 @@ func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDat
 }
 
 func getViewSortID(f *model.BlockContentDataviewSort) string {
-	// TODO temp
 	return f.RelationKey
 }
 
@@ -221,4 +219,99 @@ func diffViewSorts(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatavie
 				},
 			}
 		})
+}
+
+func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
+	var view *model.BlockContentDataviewView
+	for _, v := range l.content.Views {
+		if v.Id == upd.ViewId {
+			view = v
+			break
+		}
+	}
+	if view == nil {
+		return
+	}
+
+	if f := upd.Fields; f != nil {
+		view.Type = f.Type
+		view.Name = f.Name
+		view.CoverRelationKey = f.CoverRelationKey
+		view.HideIcon = f.HideIcon
+		view.CardSize = f.CardSize
+		view.CoverFit = f.CoverFit
+		view.GroupRelationKey = f.GroupRelationKey
+		view.GroupBackgroundColors = f.GroupBackgroundColors
+	}
+
+	{
+		var changes []slice.Change[*model.BlockContentDataviewRelation]
+		for _, r := range upd.Relation {
+			if v := r.GetUpdate(); v != nil {
+				changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
+			} else if v := r.GetAdd(); v != nil {
+				changes = append(changes, slice.MakeChangeAdd(v.Items, v.AfterId))
+			} else if v := r.GetRemove(); v != nil {
+				changes = append(changes, slice.MakeChangeRemove[*model.BlockContentDataviewRelation](v.Ids))
+			} else if v := r.GetMove(); v != nil {
+				changes = append(changes, slice.MakeChangeMove[*model.BlockContentDataviewRelation](v.Ids, v.AfterId))
+			}
+		}
+		view.Relations = slice.ApplyChanges(view.Relations, changes, getViewRelationID)
+	}
+	{
+		var changes []slice.Change[*model.BlockContentDataviewFilter]
+		for _, r := range upd.Filter {
+			if v := r.GetUpdate(); v != nil {
+				changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
+			} else if v := r.GetAdd(); v != nil {
+				changes = append(changes, slice.MakeChangeAdd(v.Items, v.AfterId))
+			} else if v := r.GetRemove(); v != nil {
+				changes = append(changes, slice.MakeChangeRemove[*model.BlockContentDataviewFilter](v.Ids))
+			} else if v := r.GetMove(); v != nil {
+				changes = append(changes, slice.MakeChangeMove[*model.BlockContentDataviewFilter](v.Ids, v.AfterId))
+			}
+		}
+		view.Filters = slice.ApplyChanges(view.Filters, changes, getViewFilterID)
+	}
+	{
+		var changes []slice.Change[*model.BlockContentDataviewSort]
+		for _, r := range upd.Sort {
+			if v := r.GetUpdate(); v != nil {
+				changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
+			} else if v := r.GetAdd(); v != nil {
+				changes = append(changes, slice.MakeChangeAdd(v.Items, v.AfterId))
+			} else if v := r.GetRemove(); v != nil {
+				changes = append(changes, slice.MakeChangeRemove[*model.BlockContentDataviewSort](v.Ids))
+			} else if v := r.GetMove(); v != nil {
+				changes = append(changes, slice.MakeChangeMove[*model.BlockContentDataviewSort](v.Ids, v.AfterId))
+			}
+		}
+		view.Sorts = slice.ApplyChanges(view.Sorts, changes, getViewSortID)
+	}
+}
+
+func unwrapChanges[T, R any](
+	changes []slice.Change[T],
+	add func(afterID string, items []T) R,
+	remove func(ids []string) R,
+	move func(afterID string, ids []string) R,
+	update func(id string, item T) R,
+) []R {
+	res := make([]R, 0, len(changes))
+	for _, c := range changes {
+		if v := c.Add(); v != nil {
+			res = append(res, add(v.AfterId, v.Items))
+		}
+		if v := c.Remove(); v != nil {
+			res = append(res, remove(v.IDs))
+		}
+		if v := c.Move(); v != nil {
+			res = append(res, move(v.AfterId, v.IDs))
+		}
+		if v := c.Replace(); v != nil {
+			res = append(res, update(v.ID, v.Item))
+		}
+	}
+	return res
 }
