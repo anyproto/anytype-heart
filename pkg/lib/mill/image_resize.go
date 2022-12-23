@@ -206,7 +206,9 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 				"height": height,
 			},
 		}, nil
-	} else if format == GIF {
+	}
+
+	if format == GIF {
 		gifImg, err := gif.DecodeAll(r)
 		if err != nil {
 			return nil, err
