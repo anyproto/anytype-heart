@@ -193,6 +193,9 @@ service ClientCommands {
     rpc BlockDataviewObjectOrderUpdate (anytype.Rpc.BlockDataview.ObjectOrder.Update.Request) returns (anytype.Rpc.BlockDataview.ObjectOrder.Update.Response);
 
     rpc BlockDataviewFilterAdd (anytype.Rpc.BlockDataview.Filter.Add.Request) returns (anytype.Rpc.BlockDataview.Filter.Add.Response);
+    rpc BlockDataviewFilterRemove (anytype.Rpc.BlockDataview.Filter.Remove.Request) returns (anytype.Rpc.BlockDataview.Filter.Remove.Response);
+    rpc BlockDataviewFilterUpdate (anytype.Rpc.BlockDataview.Filter.Update.Request) returns (anytype.Rpc.BlockDataview.Filter.Update.Response);
+    rpc BlockDataviewFilterSort (anytype.Rpc.BlockDataview.Filter.Sort.Request) returns (anytype.Rpc.BlockDataview.Filter.Sort.Response);
 
     // Simple table block commands
     // ***

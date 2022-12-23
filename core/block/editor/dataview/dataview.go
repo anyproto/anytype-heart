@@ -64,6 +64,9 @@ type Dataview interface {
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 
 	AddFilter(ctx *session.Context, blockId string, viewId string, filter *model.BlockContentDataviewFilter) (err error)
+	RemoveFilters(ctx *session.Context, blockId string, viewId string, filterIDs []string) (err error)
+	UpdateFilter(ctx *session.Context, blockId string, viewId string, filter *model.BlockContentDataviewFilter) (err error)
+	ReorderFilters(ctx *session.Context, blockId string, viewId string, filterIDs []string) (err error)
 }
 
 func NewDataview(

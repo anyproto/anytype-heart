@@ -51,6 +51,15 @@ func FindPos[T comparable](s []T, v T) int {
 	return -1
 }
 
+func Find[T comparable](s []T, cond func(T) bool) int {
+	for i, sv := range s {
+		if cond(sv) {
+			return i
+		}
+	}
+	return -1
+}
+
 // Difference returns the elements in `a` that aren't in `b`.
 func Difference(a, b []string) []string {
 	var diff = make([]string, 0, len(a))
@@ -77,6 +86,18 @@ func Remove(s []string, v string) []string {
 	var n int
 	for _, x := range s {
 		if x != v {
+			s[n] = x
+			n++
+		}
+	}
+	return s[:n]
+}
+
+// RemoveIndex reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
+func RemoveIndex[T any](s []T, idx int) []T {
+	var n int
+	for i, x := range s {
+		if i != idx {
 			s[n] = x
 			n++
 		}

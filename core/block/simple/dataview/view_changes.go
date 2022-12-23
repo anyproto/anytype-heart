@@ -1,6 +1,8 @@
 package dataview
 
 import (
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -37,13 +39,7 @@ func getViewFilterID(f *model.BlockContentDataviewFilter) string {
 }
 
 func isViewFiltersEqual(a, b *model.BlockContentDataviewFilter) bool {
-	if a.RelationKey != b.RelationKey {
-		return false
-	}
-	if a.Condition != b.Condition {
-		return false
-	}
-	return true
+	return proto.Equal(a, b)
 }
 
 func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateFilter {

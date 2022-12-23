@@ -68,7 +68,11 @@ type Block interface {
 	DeleteRelationOld(relationKey string) error
 
 	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
+
 	AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error
+	RemoveFilters(viewId string, filterIDs []string) error
+	UpdateFilter(viewId string, filter *model.BlockContentDataviewFilter) error
+	ReorderFilters(viewId string, ids []string) error
 }
 
 type Dataview struct {
@@ -552,5 +556,57 @@ func (l *Dataview) AddFilter(viewId string, filter *model.BlockContentDataviewFi
 	}
 
 	view.Filters = append(view.Filters, filter)
+	return nil
+}
+
+func (l *Dataview) RemoveFilters(viewId string, filterIDs []string) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	view.Filters = slice.Filter(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
+		// TODO IT's temporarily
+		return slice.FindPos(filterIDs, f.RelationKey) == -1
+	})
+	return nil
+}
+
+func (l *Dataview) UpdateFilter(viewId string, filter *model.BlockContentDataviewFilter) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	idx := slice.Find(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
+		return filter.RelationKey == f.RelationKey
+	})
+	if idx < 0 {
+		return fmt.Errorf("filter with id %s is not found", filter.RelationKey)
+	}
+
+	view.Filters[idx] = filter
+
+	return nil
+}
+
+func (l *Dataview) ReorderFilters(viewId string, ids []string) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	filtersMap := make(map[string]*model.BlockContentDataviewFilter)
+	for _, f := range view.Filters {
+		filtersMap[f.RelationKey] = f
+	}
+
+	view.Filters = view.Filters[:0]
+	for _, id := range ids {
+		if f, ok := filtersMap[id]; ok {
+			view.Filters = append(view.Filters, f)
+		}
+	}
+
 	return nil
 }

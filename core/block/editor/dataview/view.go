@@ -23,3 +23,60 @@ func (d *sdataview) AddFilter(
 
 	return d.Apply(s)
 }
+
+func (d *sdataview) RemoveFilters(
+	ctx *session.Context,
+	blockId string,
+	viewId string,
+	filterIDs []string,
+) (err error) {
+	s := d.NewStateCtx(ctx)
+	dv, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	if err = dv.RemoveFilters(viewId, filterIDs); err != nil {
+		return err
+	}
+
+	return d.Apply(s)
+}
+
+func (d *sdataview) UpdateFilter(
+	ctx *session.Context,
+	blockId string,
+	viewId string,
+	filter *model.BlockContentDataviewFilter,
+) (err error) {
+	s := d.NewStateCtx(ctx)
+	dv, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	if err = dv.UpdateFilter(viewId, filter); err != nil {
+		return err
+	}
+
+	return d.Apply(s)
+}
+
+func (d *sdataview) ReorderFilters(
+	ctx *session.Context,
+	blockId string,
+	viewId string,
+	filterIDs []string,
+) (err error) {
+	s := d.NewStateCtx(ctx)
+	dv, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	if err = dv.ReorderFilters(viewId, filterIDs); err != nil {
+		return err
+	}
+
+	return d.Apply(s)
+}

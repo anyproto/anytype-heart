@@ -263,3 +263,75 @@ func (mw *Middleware) BlockDataviewFilterAdd(cctx context.Context, req *pb.RpcBl
 
 	return resp(err)
 }
+
+func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.RpcBlockDataviewFilterRemoveRequest) *pb.RpcBlockDataviewFilterRemoveResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterRemoveResponse {
+		r := &pb.RpcBlockDataviewFilterRemoveResponse{
+			Error: &pb.RpcBlockDataviewFilterRemoveResponseError{
+				Code: pb.RpcBlockDataviewFilterRemoveResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterRemoveResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewFilterUpdate(cctx context.Context, req *pb.RpcBlockDataviewFilterUpdateRequest) *pb.RpcBlockDataviewFilterUpdateResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterUpdateResponse {
+		r := &pb.RpcBlockDataviewFilterUpdateResponse{
+			Error: &pb.RpcBlockDataviewFilterUpdateResponseError{
+				Code: pb.RpcBlockDataviewFilterUpdateResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterUpdateResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.UpdateDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewFilterSort(cctx context.Context, req *pb.RpcBlockDataviewFilterSortRequest) *pb.RpcBlockDataviewFilterSortResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterSortResponse {
+		r := &pb.RpcBlockDataviewFilterSortResponse{
+			Error: &pb.RpcBlockDataviewFilterSortResponseError{
+				Code: pb.RpcBlockDataviewFilterSortResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterSortResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+	})
+
+	return resp(err)
+}
