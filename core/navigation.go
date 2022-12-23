@@ -8,13 +8,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -117,50 +114,17 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		return m
 	}
 
-	id, newDetails, err := mw.objectCreate(req)
+	var (
+		id         string
+		newDetails *types.Struct
+	)
+	err := mw.doBlockService(func(bs *block.Service) error {
+		var err error
+		id, newDetails, err = bs.CreateObject(req, "")
+		return err
+	})
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
-}
-
-func (mw *Middleware) objectCreate(req *pb.RpcObjectCreateRequest) (id string, details *types.Struct, err error) {
-	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
-
-	ot, _ := bundle.TypeKeyFromUrl(pbtypes.GetString(req.Details, bundle.RelationKeyType.String()))
-	var sbType = coresb.SmartBlockTypePage
-
-	switch ot {
-	case bundle.TypeKeyBookmark:
-		return mw.objectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
-			Details: req.Details,
-		})
-	case bundle.TypeKeySet:
-		return mw.objectCreateSet(&pb.RpcObjectCreateSetRequest{
-			Details:       req.Details,
-			InternalFlags: req.InternalFlags,
-			Source:        pbtypes.GetStringList(req.Details, bundle.RelationKeySetOf.String()),
-		})
-	case bundle.TypeKeyObjectType:
-		return mw.objectCreateObjectType(&pb.RpcObjectCreateObjectTypeRequest{
-			Details:       req.Details,
-			InternalFlags: req.InternalFlags,
-		})
-	case bundle.TypeKeyRelation:
-		return mw.objectCreateRelation(&pb.RpcObjectCreateRelationRequest{
-			Details: req.Details,
-		})
-
-	case bundle.TypeKeyRelationOption:
-		return mw.objectCreateRelationOption(&pb.RpcObjectCreateRelationOptionRequest{
-			Details: req.Details,
-		})
-	case bundle.TypeKeyTemplate:
-		sbType = coresb.SmartBlockTypeTemplate
-	}
-	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		id, details, err = bs.CreateSmartBlockFromTemplate(context.TODO(), sbType, req.Details, nil, req.TemplateId)
-		return
-	})
-	return
 }

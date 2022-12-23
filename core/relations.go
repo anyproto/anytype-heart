@@ -143,7 +143,15 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 
-	id, newDetails, err := mw.objectCreateObjectType(req)
+	var (
+		id         string
+		newDetails *types.Struct
+	)
+	err := mw.doBlockService(func(bs *block.Service) error {
+		var err error
+		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyObjectType)
+		return err
+	})
 	if err != nil {
 		return response(pb.RpcObjectCreateObjectTypeResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
@@ -164,7 +172,15 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		return m
 	}
 
-	id, newDetails, err := mw.objectCreateSet(req)
+	var (
+		id         string
+		newDetails *types.Struct
+	)
+	err := mw.doBlockService(func(bs *block.Service) error {
+		var err error
+		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeySet)
+		return err
+	})
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", nil, err)
@@ -173,20 +189,6 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	}
 
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
-}
-
-func (mw *Middleware) objectCreateSet(req *pb.RpcObjectCreateSetRequest) (string, *types.Struct, error) {
-	var id string
-	var newDetails *types.Struct
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		if req.GetDetails().GetFields() == nil {
-			req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-		id, newDetails, err = bs.CreateSet(*req)
-		return err
-	})
-	return id, newDetails, err
 }
 
 func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectType, error) {
@@ -213,11 +215,19 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 			Details:  object,
 		}
 	}
-	id, object, err := mw.objectCreateRelation(req)
+	var (
+		id         string
+		newDetails *types.Struct
+	)
+	err := mw.doBlockService(func(bs *block.Service) error {
+		var err error
+		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyRelation)
+		return err
+	})
 	if err != nil {
 		return response("", nil, err)
 	}
-	return response(id, object, err)
+	return response(id, newDetails, err)
 }
 
 func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
@@ -239,50 +249,16 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 		}
 	}
 
-	id, newDetails, err := mw.objectCreateRelationOption(req)
-	return response(id, newDetails, err)
-}
-
-func (mw *Middleware) objectCreateRelationOption(req *pb.RpcObjectCreateRelationOptionRequest) (string, *types.Struct, error) {
-	if req.GetDetails().GetFields() == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
-	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-	var id string
-	var object *types.Struct
-	err := mw.doBlockService(func(rs *block.Service) error {
+	var (
+		id         string
+		newDetails *types.Struct
+	)
+	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
+		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyRelationOption)
 		return err
 	})
-	return id, object, err
-}
-
-func (mw *Middleware) objectCreateObjectType(req *pb.RpcObjectCreateObjectTypeRequest) (id string, object *types.Struct, err error) {
-	if req.GetDetails().GetFields() == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
-	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-	err = mw.doBlockService(func(rs *block.Service) error {
-		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
-		return err
-	})
-	return
-}
-
-func (mw *Middleware) objectCreateRelation(req *pb.RpcObjectCreateRelationRequest) (id string, object *types.Struct, err error) {
-	if req.GetDetails().GetFields() == nil {
-		req.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	req.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
-	req.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-	err = mw.doBlockService(func(rs *block.Service) error {
-		id, object, err = rs.CreateSubObjectInWorkspace(req.Details, mw.GetAnytype().PredefinedBlocks().Account)
-		return err
-	})
-	return
+	return response(id, newDetails, err)
 }
 
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {

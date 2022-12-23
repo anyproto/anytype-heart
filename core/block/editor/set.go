@@ -9,7 +9,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -17,24 +20,35 @@ import (
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
-func NewSet() *Set {
-	sb := &Set{
-		SmartBlock: smartblock.New(),
-	}
-
-	sb.CommonOperations = basic.NewBasic(sb)
-	sb.IHistory = basic.NewHistory(sb)
-	sb.Dataview = dataview.NewDataview(sb)
-	sb.Text = stext.NewText(sb)
-	return sb
-}
-
 type Set struct {
 	smartblock.SmartBlock
 	basic.CommonOperations
 	basic.IHistory
 	dataview.Dataview
 	stext.Text
+}
+
+func NewSet(
+	anytype core.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+) *Set {
+	sb := smartblock.New()
+	return &Set{
+		SmartBlock:       sb,
+		CommonOperations: basic.NewBasic(sb),
+		IHistory:         basic.NewHistory(sb),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			relationService,
+		),
+		Text: stext.NewText(
+			sb,
+			objectStore,
+		),
+	}
 }
 
 func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
