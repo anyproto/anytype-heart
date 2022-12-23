@@ -198,14 +198,14 @@
     - [Rpc.BlockDataview.Filter.Remove.Request](#anytype-Rpc-BlockDataview-Filter-Remove-Request)
     - [Rpc.BlockDataview.Filter.Remove.Response](#anytype-Rpc-BlockDataview-Filter-Remove-Response)
     - [Rpc.BlockDataview.Filter.Remove.Response.Error](#anytype-Rpc-BlockDataview-Filter-Remove-Response-Error)
+    - [Rpc.BlockDataview.Filter.Replace](#anytype-Rpc-BlockDataview-Filter-Replace)
+    - [Rpc.BlockDataview.Filter.Replace.Request](#anytype-Rpc-BlockDataview-Filter-Replace-Request)
+    - [Rpc.BlockDataview.Filter.Replace.Response](#anytype-Rpc-BlockDataview-Filter-Replace-Response)
+    - [Rpc.BlockDataview.Filter.Replace.Response.Error](#anytype-Rpc-BlockDataview-Filter-Replace-Response-Error)
     - [Rpc.BlockDataview.Filter.Sort](#anytype-Rpc-BlockDataview-Filter-Sort)
     - [Rpc.BlockDataview.Filter.Sort.Request](#anytype-Rpc-BlockDataview-Filter-Sort-Request)
     - [Rpc.BlockDataview.Filter.Sort.Response](#anytype-Rpc-BlockDataview-Filter-Sort-Response)
     - [Rpc.BlockDataview.Filter.Sort.Response.Error](#anytype-Rpc-BlockDataview-Filter-Sort-Response-Error)
-    - [Rpc.BlockDataview.Filter.Update](#anytype-Rpc-BlockDataview-Filter-Update)
-    - [Rpc.BlockDataview.Filter.Update.Request](#anytype-Rpc-BlockDataview-Filter-Update-Request)
-    - [Rpc.BlockDataview.Filter.Update.Response](#anytype-Rpc-BlockDataview-Filter-Update-Response)
-    - [Rpc.BlockDataview.Filter.Update.Response.Error](#anytype-Rpc-BlockDataview-Filter-Update-Response-Error)
     - [Rpc.BlockDataview.GroupOrder](#anytype-Rpc-BlockDataview-GroupOrder)
     - [Rpc.BlockDataview.GroupOrder.Update](#anytype-Rpc-BlockDataview-GroupOrder-Update)
     - [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request)
@@ -844,8 +844,8 @@
     - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Remove-Response-Error-Code)
+    - [Rpc.BlockDataview.Filter.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Replace-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Sort-Response-Error-Code)
-    - [Rpc.BlockDataview.Filter.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Update-Response-Error-Code)
     - [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
@@ -1441,7 +1441,7 @@
 | BlockDataviewObjectOrderUpdate | [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request) | [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response) |  |
 | BlockDataviewFilterAdd | [Rpc.BlockDataview.Filter.Add.Request](#anytype-Rpc-BlockDataview-Filter-Add-Request) | [Rpc.BlockDataview.Filter.Add.Response](#anytype-Rpc-BlockDataview-Filter-Add-Response) |  |
 | BlockDataviewFilterRemove | [Rpc.BlockDataview.Filter.Remove.Request](#anytype-Rpc-BlockDataview-Filter-Remove-Request) | [Rpc.BlockDataview.Filter.Remove.Response](#anytype-Rpc-BlockDataview-Filter-Remove-Response) |  |
-| BlockDataviewFilterUpdate | [Rpc.BlockDataview.Filter.Update.Request](#anytype-Rpc-BlockDataview-Filter-Update-Request) | [Rpc.BlockDataview.Filter.Update.Response](#anytype-Rpc-BlockDataview-Filter-Update-Response) |  |
+| BlockDataviewFilterReplace | [Rpc.BlockDataview.Filter.Replace.Request](#anytype-Rpc-BlockDataview-Filter-Replace-Request) | [Rpc.BlockDataview.Filter.Replace.Response](#anytype-Rpc-BlockDataview-Filter-Replace-Response) |  |
 | BlockDataviewFilterSort | [Rpc.BlockDataview.Filter.Sort.Request](#anytype-Rpc-BlockDataview-Filter-Sort-Request) | [Rpc.BlockDataview.Filter.Sort.Response](#anytype-Rpc-BlockDataview-Filter-Sort-Response) |  |
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
 | BlockTableExpand | [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request) | [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response) |  |
@@ -4315,6 +4315,67 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype-Rpc-BlockDataview-Filter-Replace"></a>
+
+### Rpc.BlockDataview.Filter.Replace
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Filter-Replace-Request"></a>
+
+### Rpc.BlockDataview.Filter.Replace.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to update |
+| viewId | [string](#string) |  | id of view to update |
+| filterId | [string](#string) |  |  |
+| filter | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Filter-Replace-Response"></a>
+
+### Rpc.BlockDataview.Filter.Replace.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.Filter.Replace.Response.Error](#anytype-Rpc-BlockDataview-Filter-Replace-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Filter-Replace-Response-Error"></a>
+
+### Rpc.BlockDataview.Filter.Replace.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.Filter.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Replace-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-BlockDataview-Filter-Sort"></a>
 
 ### Rpc.BlockDataview.Filter.Sort
@@ -4368,66 +4429,6 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.Filter.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Sort-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Filter-Update"></a>
-
-### Rpc.BlockDataview.Filter.Update
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Filter-Update-Request"></a>
-
-### Rpc.BlockDataview.Filter.Update.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block to update |
-| viewId | [string](#string) |  | id of view to update |
-| filter | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Filter-Update-Response"></a>
-
-### Rpc.BlockDataview.Filter.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.Filter.Update.Response.Error](#anytype-Rpc-BlockDataview-Filter-Update-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-Filter-Update-Response-Error"></a>
-
-### Rpc.BlockDataview.Filter.Update.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.Filter.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Update-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -13684,9 +13685,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockDataview-Filter-Sort-Response-Error-Code"></a>
+<a name="anytype-Rpc-BlockDataview-Filter-Replace-Response-Error-Code"></a>
 
-### Rpc.BlockDataview.Filter.Sort.Response.Error.Code
+### Rpc.BlockDataview.Filter.Replace.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -13697,9 +13698,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockDataview-Filter-Update-Response-Error-Code"></a>
+<a name="anytype-Rpc-BlockDataview-Filter-Sort-Response-Error-Code"></a>
 
-### Rpc.BlockDataview.Filter.Update.Response.Error.Code
+### Rpc.BlockDataview.Filter.Sort.Response.Error.Code
 
 
 | Name | Number | Description |

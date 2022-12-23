@@ -65,7 +65,7 @@ type Dataview interface {
 
 	AddFilter(ctx *session.Context, blockId string, viewId string, filter *model.BlockContentDataviewFilter) (err error)
 	RemoveFilters(ctx *session.Context, blockId string, viewId string, filterIDs []string) (err error)
-	UpdateFilter(ctx *session.Context, blockId string, viewId string, filter *model.BlockContentDataviewFilter) (err error)
+	ReplaceFilter(ctx *session.Context, blockId string, viewId string, filterID string, filter *model.BlockContentDataviewFilter) (err error)
 	ReorderFilters(ctx *session.Context, blockId string, viewId string, filterIDs []string) (err error)
 }
 

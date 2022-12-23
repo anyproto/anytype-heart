@@ -288,16 +288,16 @@ func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.Rp
 	return resp(err)
 }
 
-func (mw *Middleware) BlockDataviewFilterUpdate(cctx context.Context, req *pb.RpcBlockDataviewFilterUpdateRequest) *pb.RpcBlockDataviewFilterUpdateResponse {
+func (mw *Middleware) BlockDataviewFilterReplace(cctx context.Context, req *pb.RpcBlockDataviewFilterReplaceRequest) *pb.RpcBlockDataviewFilterReplaceResponse {
 	ctx := mw.newContext(cctx)
-	resp := func(err error) *pb.RpcBlockDataviewFilterUpdateResponse {
-		r := &pb.RpcBlockDataviewFilterUpdateResponse{
-			Error: &pb.RpcBlockDataviewFilterUpdateResponseError{
-				Code: pb.RpcBlockDataviewFilterUpdateResponseError_NULL,
+	resp := func(err error) *pb.RpcBlockDataviewFilterReplaceResponse {
+		r := &pb.RpcBlockDataviewFilterReplaceResponse{
+			Error: &pb.RpcBlockDataviewFilterReplaceResponseError{
+				Code: pb.RpcBlockDataviewFilterReplaceResponseError_NULL,
 			},
 		}
 		if err != nil {
-			r.Error.Code = pb.RpcBlockDataviewFilterUpdateResponseError_UNKNOWN_ERROR
+			r.Error.Code = pb.RpcBlockDataviewFilterReplaceResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
 			r.Event = ctx.GetResponseEvent()
@@ -306,7 +306,7 @@ func (mw *Middleware) BlockDataviewFilterUpdate(cctx context.Context, req *pb.Rp
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.UpdateDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter)
+		return bs.ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterId, req.Filter)
 	})
 
 	return resp(err)

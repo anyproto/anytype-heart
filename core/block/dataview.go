@@ -30,15 +30,16 @@ func (s *Service) RemoveDataviewFilters(
 	})
 }
 
-func (s *Service) UpdateDataviewFilter(
+func (s *Service) ReplaceDataviewFilter(
 	ctx *session.Context,
 	contextId string,
 	blockId string,
 	viewId string,
+	filterID string,
 	filter *model.BlockContentDataviewFilter,
 ) (err error) {
 	return Do(s, contextId, func(b dataview.Dataview) error {
-		return b.UpdateFilter(ctx, blockId, viewId, filter)
+		return b.ReplaceFilter(ctx, blockId, viewId, filterID, filter)
 	})
 }
 

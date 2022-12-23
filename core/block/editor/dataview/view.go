@@ -43,10 +43,11 @@ func (d *sdataview) RemoveFilters(
 	return d.Apply(s)
 }
 
-func (d *sdataview) UpdateFilter(
+func (d *sdataview) ReplaceFilter(
 	ctx *session.Context,
 	blockId string,
 	viewId string,
+	filterID string,
 	filter *model.BlockContentDataviewFilter,
 ) (err error) {
 	s := d.NewStateCtx(ctx)
@@ -55,7 +56,7 @@ func (d *sdataview) UpdateFilter(
 		return err
 	}
 
-	if err = dv.UpdateFilter(viewId, filter); err != nil {
+	if err = dv.ReplaceFilter(viewId, filterID, filter); err != nil {
 		return err
 	}
 

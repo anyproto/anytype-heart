@@ -71,7 +71,7 @@ type Block interface {
 
 	AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error
 	RemoveFilters(viewId string, filterIDs []string) error
-	UpdateFilter(viewId string, filter *model.BlockContentDataviewFilter) error
+	ReplaceFilter(viewId string, filterID string, filter *model.BlockContentDataviewFilter) error
 	ReorderFilters(viewId string, ids []string) error
 }
 
@@ -584,19 +584,20 @@ func (l *Dataview) RemoveFilters(viewId string, filterIDs []string) error {
 	return nil
 }
 
-func (l *Dataview) UpdateFilter(viewId string, filter *model.BlockContentDataviewFilter) error {
+func (l *Dataview) ReplaceFilter(viewId string, filterID string, filter *model.BlockContentDataviewFilter) error {
 	view, err := l.GetView(viewId)
 	if err != nil {
 		return err
 	}
 
 	idx := slice.Find(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
-		return filter.Id == f.Id
+		return f.Id == filterID
 	})
 	if idx < 0 {
 		return fmt.Errorf("filter with id %s is not found", filter.RelationKey)
 	}
 
+	filter.Id = filterID
 	view.Filters[idx] = filter
 
 	return nil

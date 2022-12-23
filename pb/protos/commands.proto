@@ -4559,12 +4559,13 @@ message Rpc {
                 }
             }
 
-            message Update {
+            message Replace {
                 message Request {
                     string contextId = 1;
                     string blockId = 2; // id of dataview block to update
                     string viewId = 3; // id of view to update
-                    anytype.model.Block.Content.Dataview.Filter filter = 4;
+                    string filterId = 4;
+                    anytype.model.Block.Content.Dataview.Filter filter = 5;
                 }
 
                 message Response {
