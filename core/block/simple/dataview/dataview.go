@@ -579,8 +579,7 @@ func (l *Dataview) RemoveFilters(viewId string, filterIDs []string) error {
 	}
 
 	view.Filters = slice.Filter(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
-		// TODO IT's temporarily
-		return slice.FindPos(filterIDs, f.RelationKey) == -1
+		return slice.FindPos(filterIDs, f.Id) == -1
 	})
 	return nil
 }
@@ -592,7 +591,7 @@ func (l *Dataview) UpdateFilter(viewId string, filter *model.BlockContentDatavie
 	}
 
 	idx := slice.Find(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
-		return filter.RelationKey == f.RelationKey
+		return filter.Id == f.Id
 	})
 	if idx < 0 {
 		return fmt.Errorf("filter with id %s is not found", filter.RelationKey)
@@ -611,7 +610,7 @@ func (l *Dataview) ReorderFilters(viewId string, ids []string) error {
 
 	filtersMap := make(map[string]*model.BlockContentDataviewFilter)
 	for _, f := range view.Filters {
-		filtersMap[f.RelationKey] = f
+		filtersMap[f.Id] = f
 	}
 
 	view.Filters = view.Filters[:0]
