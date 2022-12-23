@@ -95,13 +95,7 @@ func getViewRelationID(f *model.BlockContentDataviewRelation) string {
 }
 
 func isViewRelationsEqual(a, b *model.BlockContentDataviewRelation) bool {
-	if a.Key != b.Key {
-		return false
-	}
-	if a.IsVisible != b.IsVisible {
-		return false
-	}
-	return true
+	return proto.Equal(a, b)
 }
 
 func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateRelation {
@@ -158,13 +152,7 @@ func getViewSortID(f *model.BlockContentDataviewSort) string {
 }
 
 func isViewSortsEqual(a, b *model.BlockContentDataviewSort) bool {
-	if a.RelationKey != b.RelationKey {
-		return false
-	}
-	if a.Type != b.Type {
-		return false
-	}
-	return true
+	return proto.Equal(a, b)
 }
 
 func diffViewSorts(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateSort {
