@@ -280,7 +280,11 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 
 			items := make([]T, 0, len(move.IDs))
 			for _, id := range move.IDs {
-				items = append(items, itemsMap[id])
+				v, ok := itemsMap[id]
+				if !ok {
+					continue
+				}
+				items = append(items, v)
 			}
 			res = Insert(withoutMoved, pos+1, items...)
 		}

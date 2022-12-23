@@ -382,6 +382,7 @@ message Block {
             }
 
             message Filter {
+                string id = 9;
                 Operator operator = 1; // looks not applicable?
                 string RelationKey = 2;
                 string relationProperty = 5;

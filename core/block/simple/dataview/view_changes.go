@@ -34,8 +34,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 }
 
 func getViewFilterID(f *model.BlockContentDataviewFilter) string {
-	// TODO temp
-	return f.RelationKey
+	return f.Id
 }
 
 func isViewFiltersEqual(a, b *model.BlockContentDataviewFilter) bool {

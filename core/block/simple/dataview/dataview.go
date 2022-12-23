@@ -282,6 +282,11 @@ func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	if view.Id == "" {
 		view.Id = uuid.New().String()
 	}
+	for _, f := range view.Filters {
+		if f.Id == "" {
+			f.Id = bson.NewObjectId().Hex()
+		}
+	}
 
 	s.content.Views = append(s.content.Views, &view)
 }
@@ -323,6 +328,11 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 			v.Relations = view.Relations
 			v.Sorts = view.Sorts
 			v.Filters = view.Filters
+			for _, f := range v.Filters {
+				if f.Id == "" {
+					f.Id = bson.NewObjectId().Hex()
+				}
+			}
 			v.Name = view.Name
 			v.Type = view.Type
 			v.CoverRelationKey = view.CoverRelationKey
@@ -555,6 +565,9 @@ func (l *Dataview) AddFilter(viewId string, filter *model.BlockContentDataviewFi
 		return err
 	}
 
+	if filter.Id == "" {
+		filter.Id = bson.NewObjectId().Hex()
+	}
 	view.Filters = append(view.Filters, filter)
 	return nil
 }

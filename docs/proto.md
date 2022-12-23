@@ -18825,6 +18825,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | operator | [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator) |  | looks not applicable? |
 | RelationKey | [string](#string) |  |  |
 | relationProperty | [string](#string) |  |  |

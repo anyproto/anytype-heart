@@ -108,6 +108,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		}
 		// add missing done relation
 		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))
+		templates = append(templates, template.WithDataviewAddIDsToFilters(template.DataviewBlockId))
 	}
 	templates = append(templates, template.WithTitle)
 	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)
