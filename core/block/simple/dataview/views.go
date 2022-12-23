@@ -133,3 +133,63 @@ func (l *Dataview) ReorderSorts(viewId string, ids []string) error {
 	}
 	return nil
 }
+
+func (l *Dataview) AddViewRelation(viewId string, relation *model.BlockContentDataviewRelation) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	view.Relations = append(view.Relations, relation)
+	return nil
+}
+
+func (l *Dataview) RemoveViewRelations(viewId string, relationKeys []string) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	view.Relations = slice.Filter(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
+		return slice.FindPos(relationKeys, f.Key) == -1
+	})
+	return nil
+}
+
+func (l *Dataview) ReplaceViewRelation(viewId string, relationKey string, relation *model.BlockContentDataviewRelation) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	idx := slice.Find(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
+		return f.Key == relationKey
+	})
+	if idx < 0 {
+		return fmt.Errorf("relation with key %s is not found", relationKey)
+	}
+
+	view.Relations[idx] = relation
+
+	return nil
+}
+
+func (l *Dataview) ReorderViewRelations(viewId string, relationKeys []string) error {
+	view, err := l.GetView(viewId)
+	if err != nil {
+		return err
+	}
+
+	relationsMap := make(map[string]*model.BlockContentDataviewRelation)
+	for _, r := range view.Relations {
+		relationsMap[r.Key] = r
+	}
+
+	view.Relations = view.Relations[:0]
+	for _, key := range relationKeys {
+		if r, ok := relationsMap[key]; ok {
+			view.Relations = append(view.Relations, r)
+		}
+	}
+	return nil
+}

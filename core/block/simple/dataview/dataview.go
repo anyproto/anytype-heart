@@ -78,6 +78,11 @@ type Block interface {
 	RemoveSorts(viewId string, sortIDs []string) error
 	ReplaceSort(viewId string, sortID string, sort *model.BlockContentDataviewSort) error
 	ReorderSorts(viewId string, ids []string) error
+
+	AddViewRelation(viewId string, relation *model.BlockContentDataviewRelation) error
+	RemoveViewRelations(viewId string, relationKeys []string) error
+	ReplaceViewRelation(viewId string, relationKey string, relation *model.BlockContentDataviewRelation) error
+	ReorderViewRelations(viewId string, relationKeys []string) error
 }
 
 type Dataview struct {

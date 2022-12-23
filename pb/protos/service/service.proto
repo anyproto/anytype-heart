@@ -202,7 +202,11 @@ service ClientCommands {
     rpc BlockDataviewSortReplace (anytype.Rpc.BlockDataview.Sort.Replace.Request) returns (anytype.Rpc.BlockDataview.Sort.Replace.Response);
     rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.Sort.Request) returns (anytype.Rpc.BlockDataview.Sort.Sort.Response);
 
-    
+    rpc BlockDataviewViewRelationAdd (anytype.Rpc.BlockDataview.ViewRelation.Add.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Add.Response);
+    rpc BlockDataviewViewRelationRemove (anytype.Rpc.BlockDataview.ViewRelation.Remove.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Remove.Response);
+    rpc BlockDataviewViewRelationReplace (anytype.Rpc.BlockDataview.ViewRelation.Replace.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Replace.Response);
+    rpc BlockDataviewViewRelationSort (anytype.Rpc.BlockDataview.ViewRelation.Sort.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Sort.Response);
+
     // Simple table block commands
     // ***
     rpc BlockTableCreate (anytype.Rpc.BlockTable.Create.Request) returns (anytype.Rpc.BlockTable.Create.Response);

@@ -144,3 +144,72 @@ func (s *Service) ReorderDataviewSorts(
 		return dv.ReorderSorts(viewId, sortIDs)
 	})
 }
+
+func (s *Service) AddDataviewViewRelation(
+	ctx *session.Context,
+	contextId string,
+	blockId string,
+	viewId string,
+	relation *model.BlockContentDataviewRelation,
+) (err error) {
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(s, blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.AddViewRelation(viewId, relation)
+	})
+}
+
+func (s *Service) RemoveDataviewViewRelations(
+	ctx *session.Context,
+	contextId string,
+	blockId string,
+	viewId string,
+	relationKeys []string,
+) (err error) {
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(s, blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.RemoveViewRelations(viewId, relationKeys)
+	})
+}
+
+func (s *Service) ReplaceDataviewViewRelation(
+	ctx *session.Context,
+	contextId string,
+	blockId string,
+	viewId string,
+	relationKey string,
+	relation *model.BlockContentDataviewRelation,
+) (err error) {
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(s, blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.ReplaceViewRelation(viewId, relationKey, relation)
+	})
+}
+
+func (s *Service) ReorderDataviewViewRelations(
+	ctx *session.Context,
+	contextId string,
+	blockId string,
+	viewId string,
+	relationKeys []string,
+) (err error) {
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(s, blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.ReorderViewRelations(viewId, relationKeys)
+	})
+}
