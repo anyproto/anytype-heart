@@ -3,9 +3,11 @@ package mill
 import (
 	"bytes"
 	"fmt"
+	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
+	_ "golang.org/x/image/webp"
 	"image"
 	"image/color/palette"
 	"image/draw"
@@ -30,6 +32,7 @@ const (
 	PNG  Format = "png"
 	GIF  Format = "gif"
 	ICO  Format = "ico"
+	WEBP Format = "webp"
 )
 
 type ImageSize struct {
@@ -150,7 +153,7 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 			r2 = r
 		}
 		// here is an optimisation
-		// lets return the original picture in case it has not been resized or normilised
+		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
 			File: r2,
 			Meta: map[string]interface{}{
@@ -220,6 +223,27 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 			Meta: map[string]interface{}{
 				"width":  gifImg.Config.Width,
 				"height": gifImg.Config.Height,
+			},
+		}, nil
+	} else if format == WEBP {
+		webpImg, err := webp.Decode(r)
+		if err != nil {
+			return nil, err
+		}
+
+		resized := imaging.Resize(webpImg, width, 0, imaging.Lanczos)
+		width, height = resized.Rect.Max.X, resized.Rect.Max.Y
+
+		buff := &bytes.Buffer{}
+		if err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)}); err != nil {
+			return nil, err
+		}
+
+		return &Result{
+			File: buff,
+			Meta: map[string]interface{}{
+				"width":  width,
+				"height": height,
 			},
 		}, nil
 	}
