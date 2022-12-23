@@ -63,10 +63,7 @@ type Dataview interface {
 	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 
-	AddFilter(ctx *session.Context, blockId string, viewId string, filter *model.BlockContentDataviewFilter) (err error)
-	RemoveFilters(ctx *session.Context, blockId string, viewId string, filterIDs []string) (err error)
-	ReplaceFilter(ctx *session.Context, blockId string, viewId string, filterID string, filter *model.BlockContentDataviewFilter) (err error)
-	ReorderFilters(ctx *session.Context, blockId string, viewId string, filterIDs []string) (err error)
+	GetDataviewBlock(blockID string) (dataview.Block, error)
 }
 
 func NewDataview(
@@ -90,6 +87,20 @@ type sdataview struct {
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
 	relationService relation2.Service
+}
+
+func (d *sdataview) GetDataviewBlock(blockID string) (dataview.Block, error) {
+	st := d.NewState()
+	tb, err := getDataviewBlock(st, blockID)
+	if err != nil {
+		return nil, err
+	}
+
+	v, ok := tb.(dataview.Block)
+	if !ok {
+		return nil, fmt.Errorf("block %s is not a dataview block", blockID)
+	}
+	return v, nil
 }
 
 func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []string) (err error) {

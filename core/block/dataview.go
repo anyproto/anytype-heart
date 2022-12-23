@@ -2,6 +2,7 @@ package block
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -13,8 +14,13 @@ func (s *Service) AddDataviewFilter(
 	viewId string,
 	filter *model.BlockContentDataviewFilter,
 ) (err error) {
-	return Do(s, contextId, func(b dataview.Dataview) error {
-		return b.AddFilter(ctx, blockId, viewId, filter)
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.AddFilter(viewId, filter)
 	})
 }
 
@@ -25,8 +31,13 @@ func (s *Service) RemoveDataviewFilters(
 	viewId string,
 	filterIDs []string,
 ) (err error) {
-	return Do(s, contextId, func(b dataview.Dataview) error {
-		return b.RemoveFilters(ctx, blockId, viewId, filterIDs)
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.RemoveFilters(viewId, filterIDs)
 	})
 }
 
@@ -38,8 +49,13 @@ func (s *Service) ReplaceDataviewFilter(
 	filterID string,
 	filter *model.BlockContentDataviewFilter,
 ) (err error) {
-	return Do(s, contextId, func(b dataview.Dataview) error {
-		return b.ReplaceFilter(ctx, blockId, viewId, filterID, filter)
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.ReplaceFilter(viewId, filterID, filter)
 	})
 }
 
@@ -50,7 +66,12 @@ func (s *Service) ReorderDataviewFilters(
 	viewId string,
 	filterIDs []string,
 ) (err error) {
-	return Do(s, contextId, func(b dataview.Dataview) error {
-		return b.ReorderFilters(ctx, blockId, viewId, filterIDs)
+	return DoStateCtx(s, ctx, contextId, func(s *state.State, d dataview.Dataview) error {
+		dv, err := d.GetDataviewBlock(blockId)
+		if err != nil {
+			return err
+		}
+
+		return dv.ReorderFilters(viewId, filterIDs)
 	})
 }
