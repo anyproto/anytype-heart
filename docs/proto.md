@@ -997,6 +997,7 @@
     - [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder)
     - [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet)
     - [Event.Block.Dataview.ViewUpdate](#anytype-Event-Block-Dataview-ViewUpdate)
+    - [Event.Block.Dataview.ViewUpdate.Fields](#anytype-Event-Block-Dataview-ViewUpdate-Fields)
     - [Event.Block.Dataview.ViewUpdate.Filter](#anytype-Event-Block-Dataview-ViewUpdate-Filter)
     - [Event.Block.Dataview.ViewUpdate.Filter.Add](#anytype-Event-Block-Dataview-ViewUpdate-Filter-Add)
     - [Event.Block.Dataview.ViewUpdate.Filter.Move](#anytype-Event-Block-Dataview-ViewUpdate-Filter-Move)
@@ -1007,6 +1008,11 @@
     - [Event.Block.Dataview.ViewUpdate.Relation.Move](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Move)
     - [Event.Block.Dataview.ViewUpdate.Relation.Remove](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Remove)
     - [Event.Block.Dataview.ViewUpdate.Relation.Update](#anytype-Event-Block-Dataview-ViewUpdate-Relation-Update)
+    - [Event.Block.Dataview.ViewUpdate.Sort](#anytype-Event-Block-Dataview-ViewUpdate-Sort)
+    - [Event.Block.Dataview.ViewUpdate.Sort.Add](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Add)
+    - [Event.Block.Dataview.ViewUpdate.Sort.Move](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Move)
+    - [Event.Block.Dataview.ViewUpdate.Sort.Remove](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Remove)
+    - [Event.Block.Dataview.ViewUpdate.Sort.Update](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Update)
     - [Event.Block.Delete](#anytype-Event-Block-Delete)
     - [Event.Block.FilesUpload](#anytype-Event-Block-FilesUpload)
     - [Event.Block.Fill](#anytype-Event-Block-Fill)
@@ -15666,6 +15672,30 @@ sent when the view have been changed or added
 | viewId | [string](#string) |  |  |
 | filter | [Event.Block.Dataview.ViewUpdate.Filter](#anytype-Event-Block-Dataview-ViewUpdate-Filter) | repeated |  |
 | relation | [Event.Block.Dataview.ViewUpdate.Relation](#anytype-Event-Block-Dataview-ViewUpdate-Relation) | repeated |  |
+| sort | [Event.Block.Dataview.ViewUpdate.Sort](#anytype-Event-Block-Dataview-ViewUpdate-Sort) | repeated |  |
+| fields | [Event.Block.Dataview.ViewUpdate.Fields](#anytype-Event-Block-Dataview-ViewUpdate-Fields) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Fields"></a>
+
+### Event.Block.Dataview.ViewUpdate.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [model.Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type) |  |  |
+| name | [string](#string) |  |  |
+| coverRelationKey | [string](#string) |  | Relation used for cover in gallery |
+| hideIcon | [bool](#bool) |  | Hide icon near name |
+| cardSize | [model.Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
+| coverFit | [bool](#bool) |  | Image fits container |
+| groupRelationKey | [string](#string) |  | Group view by this relationKey |
+| groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 
 
 
@@ -15828,6 +15858,87 @@ sent when the view have been changed or added
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | item | [model.Block.Content.Dataview.Relation](#anytype-model-Block-Content-Dataview-Relation) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Sort"></a>
+
+### Event.Block.Dataview.ViewUpdate.Sort
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| add | [Event.Block.Dataview.ViewUpdate.Sort.Add](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Add) |  |  |
+| remove | [Event.Block.Dataview.ViewUpdate.Sort.Remove](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Remove) |  |  |
+| update | [Event.Block.Dataview.ViewUpdate.Sort.Update](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Update) |  |  |
+| move | [Event.Block.Dataview.ViewUpdate.Sort.Move](#anytype-Event-Block-Dataview-ViewUpdate-Sort-Move) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Sort-Add"></a>
+
+### Event.Block.Dataview.ViewUpdate.Sort.Add
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| afterId | [string](#string) |  |  |
+| items | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Sort-Move"></a>
+
+### Event.Block.Dataview.ViewUpdate.Sort.Move
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| afterId | [string](#string) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Sort-Remove"></a>
+
+### Event.Block.Dataview.ViewUpdate.Sort.Remove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Dataview-ViewUpdate-Sort-Update"></a>
+
+### Event.Block.Dataview.ViewUpdate.Sort.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| item | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) |  |  |
 
 
 

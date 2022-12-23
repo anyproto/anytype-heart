@@ -6,6 +6,31 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
+func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataviewViewUpdateFields {
+	isEqual := a.Type == b.Type &&
+		a.Name == b.Name &&
+		a.CoverRelationKey == b.CoverRelationKey &&
+		a.HideIcon == b.HideIcon &&
+		a.CardSize == b.CardSize &&
+		a.CoverFit == b.CoverFit &&
+		a.GroupRelationKey == b.GroupRelationKey &&
+		a.GroupBackgroundColors == b.GroupBackgroundColors
+
+	if isEqual {
+		return nil
+	}
+	return &pb.EventBlockDataviewViewUpdateFields{
+		Type:                  b.Type,
+		Name:                  b.Name,
+		CoverRelationKey:      b.CoverRelationKey,
+		HideIcon:              b.HideIcon,
+		CardSize:              b.CardSize,
+		CoverFit:              b.CoverFit,
+		GroupRelationKey:      b.GroupRelationKey,
+		GroupBackgroundColors: b.GroupBackgroundColors,
+	}
+}
+
 func getViewFilterID(f *model.BlockContentDataviewFilter) string {
 	// TODO temp
 	return f.RelationKey
@@ -126,6 +151,70 @@ func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDat
 			return &pb.EventBlockDataviewViewUpdateRelation{
 				Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfUpdate{
 					Update: &pb.EventBlockDataviewViewUpdateRelationUpdate{
+						Id:   id,
+						Item: item,
+					},
+				},
+			}
+		})
+}
+
+func getViewSortID(f *model.BlockContentDataviewSort) string {
+	// TODO temp
+	return f.RelationKey
+}
+
+func isViewSortsEqual(a, b *model.BlockContentDataviewSort) bool {
+	if a.RelationKey != b.RelationKey {
+		return false
+	}
+	if a.Type != b.Type {
+		return false
+	}
+	return true
+}
+
+func diffViewSorts(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateSort {
+	diff := slice.Diff(a.Sorts, b.Sorts, getViewSortID, isViewSortsEqual)
+	if len(diff) == 0 {
+		return nil
+	}
+
+	return unwrapChanges(
+		diff,
+		func(afterID string, items []*model.BlockContentDataviewSort) *pb.EventBlockDataviewViewUpdateSort {
+			return &pb.EventBlockDataviewViewUpdateSort{
+				Operation: &pb.EventBlockDataviewViewUpdateSortOperationOfAdd{
+					Add: &pb.EventBlockDataviewViewUpdateSortAdd{
+						AfterId: afterID,
+						Items:   items,
+					},
+				},
+			}
+		},
+		func(ids []string) *pb.EventBlockDataviewViewUpdateSort {
+			return &pb.EventBlockDataviewViewUpdateSort{
+				Operation: &pb.EventBlockDataviewViewUpdateSortOperationOfRemove{
+					Remove: &pb.EventBlockDataviewViewUpdateSortRemove{
+						Ids: ids,
+					},
+				},
+			}
+		},
+		func(afterID string, ids []string) *pb.EventBlockDataviewViewUpdateSort {
+			return &pb.EventBlockDataviewViewUpdateSort{
+				Operation: &pb.EventBlockDataviewViewUpdateSortOperationOfMove{
+					Move: &pb.EventBlockDataviewViewUpdateSortMove{
+						AfterId: afterID,
+						Ids:     ids,
+					},
+				},
+			}
+		},
+		func(id string, item *model.BlockContentDataviewSort) *pb.EventBlockDataviewViewUpdateSort {
+			return &pb.EventBlockDataviewViewUpdateSort{
+				Operation: &pb.EventBlockDataviewViewUpdateSortOperationOfUpdate{
+					Update: &pb.EventBlockDataviewViewUpdateSortUpdate{
 						Id:   id,
 						Item: item,
 					},

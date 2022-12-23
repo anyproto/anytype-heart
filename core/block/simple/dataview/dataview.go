@@ -216,56 +216,42 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	// @TODO: rewrite for optimised compare
 	for _, view2 := range dv.content.Views {
 		var found bool
-		var changed bool
 		var (
 			viewFilterChanges   []*pb.EventBlockDataviewViewUpdateFilter
 			viewRelationChanges []*pb.EventBlockDataviewViewUpdateRelation
+			viewSortChanges     []*pb.EventBlockDataviewViewUpdateSort
+			viewFieldsChange    *pb.EventBlockDataviewViewUpdateFields
 		)
 
 		for _, view1 := range d.content.Views {
 			if view1.Id == view2.Id {
 				found = true
-				changed = !proto.Equal(view1, view2)
 
+				viewFieldsChange = diffViewFields(view1, view2)
 				viewFilterChanges = diffViewFilters(view1, view2)
 				viewRelationChanges = diffViewRelations(view1, view2)
-
-				// {
-				//
-				// 	calcID := func(s *model.BlockContentDataviewSort) string {
-				// 		// TODO temp
-				// 		return s.RelationKey
-				// 	}
-				// 	res := slice.Diff(wrapWithIDs(view1.Sorts, calcID), wrapWithIDs(view2.Sorts, calcID), func(a, b withID[*model.BlockContentDataviewSort]) bool {
-				// 		return a.item.RelationKey == b.item.RelationKey
-				// 	})
-				// 	if len(res) > 0 {
-				// 		fmt.Println("sorts")
-				// 	}
-				// 	for _, x := range res {
-				// 		fmt.Printf("%s\n", x)
-				// 	}
-				// }
+				viewSortChanges = diffViewSorts(view1, view2)
 
 				break
 			}
-
 		}
 
-		if len(viewFilterChanges) > 0 || len(viewRelationChanges) > 0 {
+		if len(viewFilterChanges) > 0 || len(viewRelationChanges) > 0 || len(viewSortChanges) > 0 || viewFieldsChange != nil {
 			msgs = append(msgs,
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
 						&pb.EventBlockDataviewViewUpdate{
 							Id:       dv.Id,
 							ViewId:   view2.Id,
+							Fields:   viewFieldsChange,
 							Filter:   viewFilterChanges,
 							Relation: viewRelationChanges,
+							Sort:     viewSortChanges,
 						},
 					}}})
 		}
 
-		if !found || changed {
+		if !found {
 			msgs = append(msgs,
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewSet{
@@ -628,16 +614,80 @@ func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		return
 	}
 
-	var changes []slice.Change[*model.BlockContentDataviewRelation]
-	for _, r := range upd.Relation {
-		if v := r.GetUpdate(); v != nil {
-			changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
+	if f := upd.Fields; f != nil {
+		fmt.Println("apply fields", f)
+		view.Type = f.Type
+		view.Name = f.Name
+		view.CoverRelationKey = f.CoverRelationKey
+		view.HideIcon = f.HideIcon
+		view.CardSize = f.CardSize
+		view.CoverFit = f.CoverFit
+		view.GroupRelationKey = f.GroupRelationKey
+		view.GroupBackgroundColors = f.GroupBackgroundColors
+	}
+
+	{
+		var changes []slice.Change[*model.BlockContentDataviewRelation]
+		for _, r := range upd.Relation {
+			if v := r.GetUpdate(); v != nil {
+				changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
+			} else if v := r.GetAdd(); v != nil {
+				changes = append(changes, slice.MakeChangeAdd(v.Items, v.AfterId))
+			} else if v := r.GetRemove(); v != nil {
+				changes = append(changes, slice.MakeChangeRemove[*model.BlockContentDataviewRelation](v.Ids))
+			} else if v := r.GetMove(); v != nil {
+				changes = append(changes, slice.MakeChangeMove[*model.BlockContentDataviewRelation](v.Ids, v.AfterId))
+			}
 		}
+		if len(changes) > 0 {
+			fmt.Println("apply relation changes")
+			for _, ch := range changes {
+				fmt.Println("  ", ch)
+			}
+		}
+		view.Relations = slice.ApplyChanges(view.Relations, changes, getViewRelationID)
+	}
+	{
+		var changes []slice.Change[*model.BlockContentDataviewFilter]
+		for _, r := range upd.Filter {
+			if v := r.GetUpdate(); v != nil {
+				changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
+			} else if v := r.GetAdd(); v != nil {
+				changes = append(changes, slice.MakeChangeAdd(v.Items, v.AfterId))
+			} else if v := r.GetRemove(); v != nil {
+				changes = append(changes, slice.MakeChangeRemove[*model.BlockContentDataviewFilter](v.Ids))
+			} else if v := r.GetMove(); v != nil {
+				changes = append(changes, slice.MakeChangeMove[*model.BlockContentDataviewFilter](v.Ids, v.AfterId))
+			}
+		}
+		if len(changes) > 0 {
+			fmt.Println("apply filters changes")
+			for _, ch := range changes {
+				fmt.Println("  ", ch)
+			}
+		}
+		view.Filters = slice.ApplyChanges(view.Filters, changes, getViewFilterID)
+	}
+	{
+		var changes []slice.Change[*model.BlockContentDataviewSort]
+		for _, r := range upd.Sort {
+			if v := r.GetUpdate(); v != nil {
+				changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
+			} else if v := r.GetAdd(); v != nil {
+				changes = append(changes, slice.MakeChangeAdd(v.Items, v.AfterId))
+			} else if v := r.GetRemove(); v != nil {
+				changes = append(changes, slice.MakeChangeRemove[*model.BlockContentDataviewSort](v.Ids))
+			} else if v := r.GetMove(); v != nil {
+				changes = append(changes, slice.MakeChangeMove[*model.BlockContentDataviewSort](v.Ids, v.AfterId))
+			}
+		}
+		if len(changes) > 0 {
+			fmt.Println("apply sorts changes")
+			for _, ch := range changes {
+				fmt.Println("  ", ch)
+			}
+		}
+		view.Sorts = slice.ApplyChanges(view.Sorts, changes, getViewSortID)
 	}
 
-	for _, ch := range changes {
-		fmt.Println("  ", ch)
-	}
-
-	view.Relations = slice.ApplyChanges(view.Relations, changes, getViewRelationID)
 }
