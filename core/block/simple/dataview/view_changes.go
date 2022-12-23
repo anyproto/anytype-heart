@@ -6,22 +6,23 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateFilter {
-	calcID := func(f *model.BlockContentDataviewFilter) string {
-		// TODO temp
-		return f.RelationKey
-	}
-	equal := func(a, b withID[*model.BlockContentDataviewFilter]) bool {
-		if a.item.RelationKey != b.item.RelationKey {
-			return false
-		}
-		if a.item.Condition != b.item.Condition {
-			return false
-		}
-		return true
-	}
+func getViewFilterID(f *model.BlockContentDataviewFilter) string {
+	// TODO temp
+	return f.RelationKey
+}
 
-	diff := slice.Diff(wrapWithIDs(a.Filters, calcID), wrapWithIDs(b.Filters, calcID), equal)
+func isViewFiltersEqual(a, b *model.BlockContentDataviewFilter) bool {
+	if a.RelationKey != b.RelationKey {
+		return false
+	}
+	if a.Condition != b.Condition {
+		return false
+	}
+	return true
+}
+
+func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateFilter {
+	diff := slice.Diff(a.Filters, b.Filters, getViewFilterID, isViewFiltersEqual)
 	if len(diff) == 0 {
 		return nil
 	}
@@ -69,22 +70,23 @@ func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatav
 		})
 }
 
-func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateRelation {
-	calcID := func(f *model.BlockContentDataviewRelation) string {
-		// TODO temp
-		return f.Key
-	}
-	equal := func(a, b withID[*model.BlockContentDataviewRelation]) bool {
-		if a.item.Key != b.item.Key {
-			return false
-		}
-		if a.item.IsVisible != b.item.IsVisible {
-			return false
-		}
-		return true
-	}
+func getViewRelationID(f *model.BlockContentDataviewRelation) string {
+	// TODO temp
+	return f.Key
+}
 
-	diff := slice.Diff(wrapWithIDs(a.Relations, calcID), wrapWithIDs(b.Relations, calcID), equal)
+func isViewRelationsEqual(a, b *model.BlockContentDataviewRelation) bool {
+	if a.Key != b.Key {
+		return false
+	}
+	if a.IsVisible != b.IsVisible {
+		return false
+	}
+	return true
+}
+
+func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateRelation {
+	diff := slice.Diff(a.Relations, b.Relations, getViewRelationID, isViewRelationsEqual)
 	if len(diff) == 0 {
 		return nil
 	}

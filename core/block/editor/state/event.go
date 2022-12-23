@@ -255,18 +255,18 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		event := o.BlockDataViewObjectOrderUpdate
 		if err = apply(event.Id, func(b simple.Block) error {
 			if dvBlock, ok := b.(dataview.Block); ok {
-				var existOrder []slice.ID
+				var existOrder []string
 				for _, order := range dvBlock.Model().GetDataview().ObjectOrders {
 					if order.ViewId == event.ViewId && order.GroupId == event.GroupId {
-						existOrder = slice.StringsToIDs(order.ObjectIds)
+						existOrder = order.ObjectIds
 					}
 				}
 
 				changes := o.BlockDataViewObjectOrderUpdate.GetSliceChanges()
-				changedIds := slice.ApplyChanges(existOrder, pbtypes.EventsToSliceChange(changes))
+				changedIds := slice.ApplyChanges(existOrder, pbtypes.EventsToSliceChange(changes), slice.Identity[string])
 
 				dvBlock.SetViewObjectOrder([]*model.BlockContentDataviewObjectOrder{
-					{ViewId: event.ViewId, GroupId: event.GroupId, ObjectIds: slice.IDsToStrings(changedIds)},
+					{ViewId: event.ViewId, GroupId: event.GroupId, ObjectIds: changedIds},
 				})
 
 				return nil

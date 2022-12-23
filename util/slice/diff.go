@@ -6,23 +6,15 @@ import (
 	"github.com/mb0/diff"
 )
 
-// type DiffOperation int
-//
-// const (
-// 	OperationNone DiffOperation = iota
-// 	OperationAdd
-// 	OperationMove
-// 	OperationRemove
-// 	OperationReplace
-// )
+func Identity[T any](x T) T {
+	return x
+}
 
-// type Change[T IDGetter] struct {
-// 	Op DiffOperation
-// 	Items   []T
-// 	AfterId string
-// }
+func Equal[T comparable](a, b T) bool {
+	return a == b
+}
 
-type Change[T IDGetter] struct {
+type Change[T any] struct {
 	changeAdd     *ChangeAdd[T]
 	changeRemove  *ChangeRemove
 	changeMove    *ChangeMove
@@ -43,25 +35,25 @@ func (c Change[T]) String() string {
 	return ""
 }
 
-func MakeChangeAdd[T IDGetter](items []T, afterId string) Change[T] {
+func MakeChangeAdd[T any](items []T, afterId string) Change[T] {
 	return Change[T]{
 		changeAdd: &ChangeAdd[T]{items, afterId},
 	}
 }
 
-func MakeChangeRemove[T IDGetter](ids []string) Change[T] {
+func MakeChangeRemove[T any](ids []string) Change[T] {
 	return Change[T]{
 		changeRemove: &ChangeRemove{ids},
 	}
 }
 
-func MakeChangeMove[T IDGetter](ids []string, afterID string) Change[T] {
+func MakeChangeMove[T any](ids []string, afterID string) Change[T] {
 	return Change[T]{
 		changeMove: &ChangeMove{ids, afterID},
 	}
 }
 
-func MakeChangeReplace[T IDGetter](item T, id string) Change[T] {
+func MakeChangeReplace[T any](item T, id string) Change[T] {
 	return Change[T]{
 		changeReplace: &ChangeReplace[T]{item, id},
 	}
@@ -114,7 +106,7 @@ func (c *Change[T]) Replace() *ChangeReplace[T] {
 	return c.changeReplace
 }
 
-type ChangeAdd[T IDGetter] struct {
+type ChangeAdd[T any] struct {
 	Items   []T
 	AfterId string
 }
@@ -140,7 +132,7 @@ func (c ChangeRemove) String() string {
 	return fmt.Sprintf("remove %v", c.IDs)
 }
 
-type ChangeReplace[T IDGetter] struct {
+type ChangeReplace[T any] struct {
 	Item T
 	ID   string
 }
@@ -149,48 +141,21 @@ func (c ChangeReplace[T]) String() string {
 	return fmt.Sprintf("replace %v after %s", c.Item, c.ID)
 }
 
-type IDGetter interface {
-	GetId() string
-}
-
-type MixedInput[T IDGetter] struct {
-	A       []T
-	B       []T
-	compare func(T, T) bool
+type MixedInput[T any] struct {
+	A     []T
+	B     []T
+	getID func(T) string
 }
 
 func (m *MixedInput[T]) Equal(a, b int) bool {
-	return m.A[a].GetId() == m.B[b].GetId()
-	// return m.compare(m.A[a], m.B[b])
+	return m.getID(m.A[a]) == m.getID(m.B[b])
 }
 
-type ID string
-
-func (id ID) GetId() string { return string(id) }
-
-func StringsToIDs(ss []string) []ID {
-	ids := make([]ID, 0, len(ss))
-	for _, s := range ss {
-		ids = append(ids, ID(s))
-	}
-	return ids
-}
-
-func IDsToStrings(ids []ID) []string {
-	ss := make([]string, 0, len(ids))
-	for _, id := range ids {
-		ss = append(ss, string(id))
-	}
-	return ss
-}
-
-func CompareID(a, b ID) bool { return a == b }
-
-func Diff[T IDGetter](origin, changed []T, equal func(T, T) bool) []Change[T] {
+func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) bool) []Change[T] {
 	m := &MixedInput[T]{
 		origin,
 		changed,
-		equal,
+		getID,
 	}
 
 	var result []Change[T]
@@ -198,25 +163,24 @@ func Diff[T IDGetter](origin, changed []T, equal func(T, T) bool) []Change[T] {
 	changes := diff.Diff(len(m.A), len(m.B), m)
 	delMap := make(map[string]T)
 
-	// TODO handle replace
 	changedMap := make(map[string]T)
 	for _, c := range changed {
-		changedMap[c.GetId()] = c
+		changedMap[getID(c)] = c
 	}
 	for _, c := range origin {
-		v, ok := changedMap[c.GetId()]
+		v, ok := changedMap[getID(c)]
 		if !ok {
 			continue
 		}
 		if !equal(c, v) {
-			result = append(result, MakeChangeReplace[T](v, c.GetId()))
+			result = append(result, MakeChangeReplace[T](v, getID(c)))
 		}
 	}
 
 	for _, c := range changes {
 		if c.Del > 0 {
 			for _, id := range m.A[c.A : c.A+c.Del] {
-				delMap[id.GetId()] = id
+				delMap[getID(id)] = id
 			}
 		}
 	}
@@ -226,11 +190,11 @@ func Diff[T IDGetter](origin, changed []T, equal func(T, T) bool) []Change[T] {
 			inserts := m.B[c.B : c.B+c.Ins]
 			afterId := ""
 			if c.A > 0 {
-				afterId = m.A[c.A-1].GetId()
+				afterId = getID(m.A[c.A-1])
 			}
 			var oneCh Change[T]
 			for _, it := range inserts {
-				id := it.GetId()
+				id := getID(it)
 				if _, ok := delMap[id]; ok { // move
 					mv := oneCh.Move()
 					if mv == nil {
@@ -240,7 +204,7 @@ func Diff[T IDGetter](origin, changed []T, equal func(T, T) bool) []Change[T] {
 						oneCh = MakeChangeMove[T](nil, afterId)
 						mv = oneCh.Move()
 					}
-					mv.IDs = append(mv.IDs, it.GetId())
+					mv.IDs = append(mv.IDs, getID(it))
 					delete(delMap, id)
 				} else { // insert new
 					add := oneCh.Add()
@@ -269,56 +233,32 @@ func Diff[T IDGetter](origin, changed []T, equal func(T, T) bool) []Change[T] {
 		}
 		result = append(result, MakeChangeRemove[T](delIDs))
 	}
-	//
-	// originMap := make(map[string]T)
-	// for _, it := range origin {
-	// 	originMap[it.GetId()] = it
-	// }
-	// changedMap := make(map[string]T)
-	// for _, it := range changed {
-	// 	changedMap[it.GetId()] = it
-	// }
-	//
-	// for _, c := range result {
-	// 	mv := c.Move()
-	// 	if mv == nil {
-	// 		continue
-	// 	}
-	//
-	// 	for _, id := range mv.IDs {
-	// 		if !equal(originMap[id], changedMap[id]) {
-	// 			result = append(result, MakeChangeReplace[T](changedMap[id], id))
-	// 		}
-	// 	}
-	//
-	// }
-
 	return result
 }
 
-func findPos[T IDGetter](s []T, id string) int {
+func findPos[T any](s []T, getID func(T) string, id string) int {
 	for i, sv := range s {
-		if sv.GetId() == id {
+		if getID(sv) == id {
 			return i
 		}
 	}
 	return -1
 }
 
-func ApplyChanges[T IDGetter](origin []T, changes []Change[T]) []T {
+func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) []T {
 	res := make([]T, len(origin))
 	copy(res, origin)
 
 	itemsMap := make(map[string]T, len(origin))
 	for _, it := range origin {
-		itemsMap[it.GetId()] = it
+		itemsMap[getID(it)] = it
 	}
 
 	for _, ch := range changes {
 		if add := ch.Add(); add != nil {
 			pos := -1
 			if add.AfterId != "" {
-				pos = findPos(res, add.AfterId)
+				pos = findPos(res, getID, add.AfterId)
 				if pos < 0 {
 					continue
 				}
@@ -328,11 +268,11 @@ func ApplyChanges[T IDGetter](origin []T, changes []Change[T]) []T {
 
 		if move := ch.Move(); move != nil {
 			withoutMoved := Filter(res, func(id T) bool {
-				return FindPos(move.IDs, id.GetId()) < 0
+				return FindPos(move.IDs, getID(id)) < 0
 			})
 			pos := -1
 			if move.AfterId != "" {
-				pos = findPos(withoutMoved, move.AfterId)
+				pos = findPos(withoutMoved, getID, move.AfterId)
 				if pos < 0 {
 					continue
 				}
@@ -347,13 +287,13 @@ func ApplyChanges[T IDGetter](origin []T, changes []Change[T]) []T {
 
 		if rm := ch.Remove(); rm != nil {
 			res = Filter(res, func(id T) bool {
-				return FindPos(rm.IDs, id.GetId()) < 0
+				return FindPos(rm.IDs, getID(id)) < 0
 			})
 		}
 
 		if replace := ch.Replace(); replace != nil {
 			itemsMap[replace.ID] = replace.Item
-			pos := findPos(res, replace.ID)
+			pos := findPos(res, getID, replace.ID)
 			if pos >= 0 && pos < len(res) {
 				res[pos] = replace.Item
 			}

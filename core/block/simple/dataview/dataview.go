@@ -88,39 +88,39 @@ func (d *Dataview) Validate() error {
 	return nil
 }
 
-type withID[T any] struct {
-	item T
-
-	id string
-}
-
-func wrapWithID[T any](item T, calcID func(item T) string) withID[T] {
-	return withID[T]{item, calcID(item)}
-}
-
-func (w withID[T]) GetId() string {
-	return w.id
-}
-
-func wrapWithIDs[T any](items []T, calcID func(item T) string) []withID[T] {
-	wrapped := make([]withID[T], len(items))
-	for i, item := range items {
-		wrapped[i] = wrapWithID(item, calcID)
-	}
-	return wrapped
-}
-
-// unwrap items from withID wrapper
-func unwrapItems[T any](items []withID[T]) []T {
-	res := make([]T, len(items))
-	for i, it := range items {
-		res[i] = it.item
-	}
-	return res
-}
+// type withID[T any] struct {
+// 	item T
+//
+// 	id string
+// }
+//
+// func wrapWithID[T any](item T, calcID func(item T) string) withID[T] {
+// 	return withID[T]{item, calcID(item)}
+// }
+//
+// func (w withID[T]) GetId() string {
+// 	return w.id
+// }
+//
+// func wrapWithIDs[T any](items []T, calcID func(item T) string) []withID[T] {
+// 	wrapped := make([]withID[T], len(items))
+// 	for i, item := range items {
+// 		wrapped[i] = wrapWithID(item, calcID)
+// 	}
+// 	return wrapped
+// }
+//
+// // unwrap items from withID wrapper
+// func unwrapItems[T any](items []withID[T]) []T {
+// 	res := make([]T, len(items))
+// 	for i, it := range items {
+// 		res[i] = it.item
+// 	}
+// 	return res
+// }
 
 func unwrapChanges[T, R any](
-	changes []slice.Change[withID[T]],
+	changes []slice.Change[T],
 	add func(afterID string, items []T) R,
 	remove func(ids []string) R,
 	move func(afterID string, ids []string) R,
@@ -129,7 +129,7 @@ func unwrapChanges[T, R any](
 	res := make([]R, 0, len(changes))
 	for _, c := range changes {
 		if v := c.Add(); v != nil {
-			res = append(res, add(v.AfterId, unwrapItems(v.Items)))
+			res = append(res, add(v.AfterId, v.Items))
 		}
 		if v := c.Remove(); v != nil {
 			res = append(res, remove(v.IDs))
@@ -138,7 +138,7 @@ func unwrapChanges[T, R any](
 			res = append(res, move(v.AfterId, v.IDs))
 		}
 		if v := c.Replace(); v != nil {
-			res = append(res, update(v.ID, v.Item.item))
+			res = append(res, update(v.ID, v.Item))
 		}
 	}
 	return res
@@ -179,11 +179,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 	for _, order2 := range dv.content.ObjectOrders {
 		var found bool
-		var changes []slice.Change[slice.ID]
+		var changes []slice.Change[string]
 		for _, order1 := range d.content.ObjectOrders {
 			if order1.ViewId == order2.ViewId && order1.GroupId == order2.GroupId {
 				found = true
-				changes = slice.Diff(slice.StringsToIDs(order1.ObjectIds), slice.StringsToIDs(order2.ObjectIds), slice.CompareID)
+				changes = slice.Diff(order1.ObjectIds, order2.ObjectIds, slice.Identity[string], slice.Equal[string])
 				break
 			}
 		}
@@ -230,22 +230,22 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 				viewFilterChanges = diffViewFilters(view1, view2)
 				viewRelationChanges = diffViewRelations(view1, view2)
 
-				{
-
-					calcID := func(s *model.BlockContentDataviewSort) string {
-						// TODO temp
-						return s.RelationKey
-					}
-					res := slice.Diff(wrapWithIDs(view1.Sorts, calcID), wrapWithIDs(view2.Sorts, calcID), func(a, b withID[*model.BlockContentDataviewSort]) bool {
-						return a.item.RelationKey == b.item.RelationKey
-					})
-					if len(res) > 0 {
-						fmt.Println("sorts")
-					}
-					for _, x := range res {
-						fmt.Printf("%s\n", x)
-					}
-				}
+				// {
+				//
+				// 	calcID := func(s *model.BlockContentDataviewSort) string {
+				// 		// TODO temp
+				// 		return s.RelationKey
+				// 	}
+				// 	res := slice.Diff(wrapWithIDs(view1.Sorts, calcID), wrapWithIDs(view2.Sorts, calcID), func(a, b withID[*model.BlockContentDataviewSort]) bool {
+				// 		return a.item.RelationKey == b.item.RelationKey
+				// 	})
+				// 	if len(res) > 0 {
+				// 		fmt.Println("sorts")
+				// 	}
+				// 	for _, x := range res {
+				// 		fmt.Printf("%s\n", x)
+				// 	}
+				// }
 
 				break
 			}
@@ -628,18 +628,16 @@ func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		return
 	}
 
-	var changes []slice.Change[withID[*model.BlockContentDataviewRelation]]
+	var changes []slice.Change[*model.BlockContentDataviewRelation]
 	for _, r := range upd.Relation {
 		if v := r.GetUpdate(); v != nil {
-			changes = append(changes, slice.MakeChangeReplace(wrapWithID(v.Item, func(f *model.BlockContentDataviewRelation) string {
-				return f.Key
-			}), v.Id))
+			changes = append(changes, slice.MakeChangeReplace(v.Item, v.Id))
 		}
 	}
 
-	relations := slice.ApplyChanges(wrapWithIDs(view.Relations, func(f *model.BlockContentDataviewRelation) string {
-		return f.Key
-	}), changes)
+	for _, ch := range changes {
+		fmt.Println("  ", ch)
+	}
 
-	view.Relations = unwrapItems(relations)
+	view.Relations = slice.ApplyChanges(view.Relations, changes, getViewRelationID)
 }
