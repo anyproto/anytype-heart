@@ -197,6 +197,12 @@ service ClientCommands {
     rpc BlockDataviewFilterReplace (anytype.Rpc.BlockDataview.Filter.Replace.Request) returns (anytype.Rpc.BlockDataview.Filter.Replace.Response);
     rpc BlockDataviewFilterSort (anytype.Rpc.BlockDataview.Filter.Sort.Request) returns (anytype.Rpc.BlockDataview.Filter.Sort.Response);
 
+    rpc BlockDataviewSortAdd (anytype.Rpc.BlockDataview.Sort.Add.Request) returns (anytype.Rpc.BlockDataview.Sort.Add.Response);
+    rpc BlockDataviewSortRemove (anytype.Rpc.BlockDataview.Sort.Remove.Request) returns (anytype.Rpc.BlockDataview.Sort.Remove.Response);
+    rpc BlockDataviewSortReplace (anytype.Rpc.BlockDataview.Sort.Replace.Request) returns (anytype.Rpc.BlockDataview.Sort.Replace.Response);
+    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.Sort.Request) returns (anytype.Rpc.BlockDataview.Sort.Sort.Response);
+
+    
     // Simple table block commands
     // ***
     rpc BlockTableCreate (anytype.Rpc.BlockTable.Create.Request) returns (anytype.Rpc.BlockTable.Create.Response);

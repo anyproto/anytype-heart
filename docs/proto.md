@@ -233,6 +233,23 @@
     - [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request)
     - [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response)
     - [Rpc.BlockDataview.SetSource.Response.Error](#anytype-Rpc-BlockDataview-SetSource-Response-Error)
+    - [Rpc.BlockDataview.Sort](#anytype-Rpc-BlockDataview-Sort)
+    - [Rpc.BlockDataview.Sort.Add](#anytype-Rpc-BlockDataview-Sort-Add)
+    - [Rpc.BlockDataview.Sort.Add.Request](#anytype-Rpc-BlockDataview-Sort-Add-Request)
+    - [Rpc.BlockDataview.Sort.Add.Response](#anytype-Rpc-BlockDataview-Sort-Add-Response)
+    - [Rpc.BlockDataview.Sort.Add.Response.Error](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error)
+    - [Rpc.BlockDataview.Sort.Remove](#anytype-Rpc-BlockDataview-Sort-Remove)
+    - [Rpc.BlockDataview.Sort.Remove.Request](#anytype-Rpc-BlockDataview-Sort-Remove-Request)
+    - [Rpc.BlockDataview.Sort.Remove.Response](#anytype-Rpc-BlockDataview-Sort-Remove-Response)
+    - [Rpc.BlockDataview.Sort.Remove.Response.Error](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error)
+    - [Rpc.BlockDataview.Sort.Replace](#anytype-Rpc-BlockDataview-Sort-Replace)
+    - [Rpc.BlockDataview.Sort.Replace.Request](#anytype-Rpc-BlockDataview-Sort-Replace-Request)
+    - [Rpc.BlockDataview.Sort.Replace.Response](#anytype-Rpc-BlockDataview-Sort-Replace-Response)
+    - [Rpc.BlockDataview.Sort.Replace.Response.Error](#anytype-Rpc-BlockDataview-Sort-Replace-Response-Error)
+    - [Rpc.BlockDataview.Sort.Sort](#anytype-Rpc-BlockDataview-Sort-Sort)
+    - [Rpc.BlockDataview.Sort.Sort.Request](#anytype-Rpc-BlockDataview-Sort-Sort-Request)
+    - [Rpc.BlockDataview.Sort.Sort.Response](#anytype-Rpc-BlockDataview-Sort-Sort-Response)
+    - [Rpc.BlockDataview.Sort.Sort.Response.Error](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error)
     - [Rpc.BlockDataview.View](#anytype-Rpc-BlockDataview-View)
     - [Rpc.BlockDataview.View.Create](#anytype-Rpc-BlockDataview-View-Create)
     - [Rpc.BlockDataview.View.Create.Request](#anytype-Rpc-BlockDataview-View-Create-Request)
@@ -852,6 +869,10 @@
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code)
     - [Rpc.BlockDataview.SetSource.Response.Error.Code](#anytype-Rpc-BlockDataview-SetSource-Response-Error-Code)
+    - [Rpc.BlockDataview.Sort.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error-Code)
+    - [Rpc.BlockDataview.Sort.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error-Code)
+    - [Rpc.BlockDataview.Sort.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Replace-Response-Error-Code)
+    - [Rpc.BlockDataview.Sort.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error-Code)
     - [Rpc.BlockDataview.View.Create.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Create-Response-Error-Code)
     - [Rpc.BlockDataview.View.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.View.SetActive.Response.Error.Code](#anytype-Rpc-BlockDataview-View-SetActive-Response-Error-Code)
@@ -1443,6 +1464,10 @@
 | BlockDataviewFilterRemove | [Rpc.BlockDataview.Filter.Remove.Request](#anytype-Rpc-BlockDataview-Filter-Remove-Request) | [Rpc.BlockDataview.Filter.Remove.Response](#anytype-Rpc-BlockDataview-Filter-Remove-Response) |  |
 | BlockDataviewFilterReplace | [Rpc.BlockDataview.Filter.Replace.Request](#anytype-Rpc-BlockDataview-Filter-Replace-Request) | [Rpc.BlockDataview.Filter.Replace.Response](#anytype-Rpc-BlockDataview-Filter-Replace-Response) |  |
 | BlockDataviewFilterSort | [Rpc.BlockDataview.Filter.Sort.Request](#anytype-Rpc-BlockDataview-Filter-Sort-Request) | [Rpc.BlockDataview.Filter.Sort.Response](#anytype-Rpc-BlockDataview-Filter-Sort-Response) |  |
+| BlockDataviewSortAdd | [Rpc.BlockDataview.Sort.Add.Request](#anytype-Rpc-BlockDataview-Sort-Add-Request) | [Rpc.BlockDataview.Sort.Add.Response](#anytype-Rpc-BlockDataview-Sort-Add-Response) |  |
+| BlockDataviewSortRemove | [Rpc.BlockDataview.Sort.Remove.Request](#anytype-Rpc-BlockDataview-Sort-Remove-Request) | [Rpc.BlockDataview.Sort.Remove.Response](#anytype-Rpc-BlockDataview-Sort-Remove-Response) |  |
+| BlockDataviewSortReplace | [Rpc.BlockDataview.Sort.Replace.Request](#anytype-Rpc-BlockDataview-Sort-Replace-Request) | [Rpc.BlockDataview.Sort.Replace.Response](#anytype-Rpc-BlockDataview-Sort-Replace-Response) |  |
+| BlockDataviewSortSort | [Rpc.BlockDataview.Sort.Sort.Request](#anytype-Rpc-BlockDataview-Sort-Sort-Request) | [Rpc.BlockDataview.Sort.Sort.Response](#anytype-Rpc-BlockDataview-Sort-Sort-Response) |  |
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
 | BlockTableExpand | [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request) | [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response) |  |
 | BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
@@ -4812,6 +4837,257 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.SetSource.Response.Error.Code](#anytype-Rpc-BlockDataview-SetSource-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort"></a>
+
+### Rpc.BlockDataview.Sort
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Add"></a>
+
+### Rpc.BlockDataview.Sort.Add
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Add-Request"></a>
+
+### Rpc.BlockDataview.Sort.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to update |
+| viewId | [string](#string) |  | id of view to update |
+| sort | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Add-Response"></a>
+
+### Rpc.BlockDataview.Sort.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.Sort.Add.Response.Error](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Add-Response-Error"></a>
+
+### Rpc.BlockDataview.Sort.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.Sort.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Remove"></a>
+
+### Rpc.BlockDataview.Sort.Remove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Remove-Request"></a>
+
+### Rpc.BlockDataview.Sort.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to update |
+| viewId | [string](#string) |  | id of view to update |
+| sortIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Remove-Response"></a>
+
+### Rpc.BlockDataview.Sort.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.Sort.Remove.Response.Error](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Remove-Response-Error"></a>
+
+### Rpc.BlockDataview.Sort.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.Sort.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Replace"></a>
+
+### Rpc.BlockDataview.Sort.Replace
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Replace-Request"></a>
+
+### Rpc.BlockDataview.Sort.Replace.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to update |
+| viewId | [string](#string) |  | id of view to update |
+| sortId | [string](#string) |  |  |
+| sort | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Replace-Response"></a>
+
+### Rpc.BlockDataview.Sort.Replace.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.Sort.Replace.Response.Error](#anytype-Rpc-BlockDataview-Sort-Replace-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Replace-Response-Error"></a>
+
+### Rpc.BlockDataview.Sort.Replace.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.Sort.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Replace-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Sort"></a>
+
+### Rpc.BlockDataview.Sort.Sort
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Sort-Request"></a>
+
+### Rpc.BlockDataview.Sort.Sort.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to update |
+| viewId | [string](#string) |  | id of view to update |
+| sortIds | [string](#string) | repeated | new order of sorts |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Sort-Response"></a>
+
+### Rpc.BlockDataview.Sort.Sort.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.Sort.Sort.Response.Error](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Sort-Response-Error"></a>
+
+### Rpc.BlockDataview.Sort.Sort.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.Sort.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -13780,6 +14056,58 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockDataview-SetSource-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.SetSource.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Add-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.Sort.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Remove-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.Sort.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Replace-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.Sort.Replace.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockDataview-Sort-Sort-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.Sort.Sort.Response.Error.Code
 
 
 | Name | Number | Description |

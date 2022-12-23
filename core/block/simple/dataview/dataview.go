@@ -73,6 +73,11 @@ type Block interface {
 	RemoveFilters(viewId string, filterIDs []string) error
 	ReplaceFilter(viewId string, filterID string, filter *model.BlockContentDataviewFilter) error
 	ReorderFilters(viewId string, ids []string) error
+
+	AddSort(viewId string, sort *model.BlockContentDataviewSort) error
+	RemoveSorts(viewId string, sortIDs []string) error
+	ReplaceSort(viewId string, sortID string, sort *model.BlockContentDataviewSort) error
+	ReorderSorts(viewId string, ids []string) error
 }
 
 type Dataview struct {
@@ -557,69 +562,4 @@ func (l *Dataview) relationsWithObjectFormat() []string {
 		}
 	}
 	return relationsWithObjFormat
-}
-
-func (l *Dataview) AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error {
-	view, err := l.GetView(viewId)
-	if err != nil {
-		return err
-	}
-
-	if filter.Id == "" {
-		filter.Id = bson.NewObjectId().Hex()
-	}
-	view.Filters = append(view.Filters, filter)
-	return nil
-}
-
-func (l *Dataview) RemoveFilters(viewId string, filterIDs []string) error {
-	view, err := l.GetView(viewId)
-	if err != nil {
-		return err
-	}
-
-	view.Filters = slice.Filter(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
-		return slice.FindPos(filterIDs, f.Id) == -1
-	})
-	return nil
-}
-
-func (l *Dataview) ReplaceFilter(viewId string, filterID string, filter *model.BlockContentDataviewFilter) error {
-	view, err := l.GetView(viewId)
-	if err != nil {
-		return err
-	}
-
-	idx := slice.Find(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
-		return f.Id == filterID
-	})
-	if idx < 0 {
-		return fmt.Errorf("filter with id %s is not found", filter.RelationKey)
-	}
-
-	filter.Id = filterID
-	view.Filters[idx] = filter
-
-	return nil
-}
-
-func (l *Dataview) ReorderFilters(viewId string, ids []string) error {
-	view, err := l.GetView(viewId)
-	if err != nil {
-		return err
-	}
-
-	filtersMap := make(map[string]*model.BlockContentDataviewFilter)
-	for _, f := range view.Filters {
-		filtersMap[f.Id] = f
-	}
-
-	view.Filters = view.Filters[:0]
-	for _, id := range ids {
-		if f, ok := filtersMap[id]; ok {
-			view.Filters = append(view.Filters, f)
-		}
-	}
-
-	return nil
 }

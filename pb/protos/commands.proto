@@ -4610,6 +4610,108 @@ message Rpc {
                 }
             }
         }
+        message Sort {
+            message Add {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to update
+                    string viewId = 3; // id of view to update
+                    anytype.model.Block.Content.Dataview.Sort sort = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+
+            message Remove {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to update
+                    string viewId = 3; // id of view to update
+                    repeated string sortIds = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+
+            message Replace {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to update
+                    string viewId = 3; // id of view to update
+                    string sortId = 4;
+                    anytype.model.Block.Content.Dataview.Sort sort = 5;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+
+            message Sort {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to update
+                    string viewId = 3; // id of view to update
+                    repeated string sortIds = 4; // new order of sorts
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     message Debug {

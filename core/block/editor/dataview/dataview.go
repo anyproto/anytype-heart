@@ -63,7 +63,7 @@ type Dataview interface {
 	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 
-	GetDataviewBlock(blockID string) (dataview.Block, error)
+	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
 func NewDataview(
@@ -89,9 +89,8 @@ type sdataview struct {
 	relationService relation2.Service
 }
 
-func (d *sdataview) GetDataviewBlock(blockID string) (dataview.Block, error) {
-	st := d.NewState()
-	tb, err := getDataviewBlock(st, blockID)
+func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
+	tb, err := getDataviewBlock(s, blockID)
 	if err != nil {
 		return nil, err
 	}
