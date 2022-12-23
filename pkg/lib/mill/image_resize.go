@@ -163,10 +163,15 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		}, nil
 	}
 
-	if format == JPEG || format == PNG || format == ICO {
+	if format == JPEG || format == PNG || format == ICO || format == WEBP {
 		if format == JPEG && img == nil {
 			// we already have img decoded if we have orientation <= 1
 			img, err = jpeg.Decode(r)
+			if err != nil {
+				return nil, err
+			}
+		} else if format == WEBP {
+			img, err = webp.Decode(r)
 			if err != nil {
 				return nil, err
 			}
@@ -183,6 +188,10 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		buff := &bytes.Buffer{}
 		if format == JPEG {
 			if err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}); err != nil {
+				return nil, err
+			}
+		} else if format == WEBP {
+			if err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)}); err != nil {
 				return nil, err
 			}
 		} else {
@@ -223,27 +232,6 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 			Meta: map[string]interface{}{
 				"width":  gifImg.Config.Width,
 				"height": gifImg.Config.Height,
-			},
-		}, nil
-	} else if format == WEBP {
-		webpImg, err := webp.Decode(r)
-		if err != nil {
-			return nil, err
-		}
-
-		resized := imaging.Resize(webpImg, width, 0, imaging.Lanczos)
-		width, height = resized.Rect.Max.X, resized.Rect.Max.Y
-
-		buff := &bytes.Buffer{}
-		if err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)}); err != nil {
-			return nil, err
-		}
-
-		return &Result{
-			File: buff,
-			Meta: map[string]interface{}{
-				"width":  width,
-				"height": height,
 			},
 		}, nil
 	}
