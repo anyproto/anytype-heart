@@ -12,11 +12,13 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
+
 	// Import for image.DecodeConfig to support .webp format
 	_ "golang.org/x/image/webp"
 )
@@ -183,17 +185,15 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 
 		buff := &bytes.Buffer{}
 		if format == JPEG {
-			if err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}); err != nil {
-				return nil, err
-			}
+			err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality})
 		} else if format == WEBP {
-			if err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)}); err != nil {
-				return nil, err
-			}
+			err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)})
 		} else {
-			if err = png.Encode(buff, resized); err != nil {
-				return nil, err
-			}
+			err = png.Encode(buff, resized)
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		return &Result{
