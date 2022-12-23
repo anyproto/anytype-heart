@@ -3,7 +3,6 @@ package mill
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"image"
 	"image/color/palette"
 	"image/draw"
@@ -17,6 +16,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
 
