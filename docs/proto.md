@@ -18292,6 +18292,8 @@ Bookmark is to keep a web-link and to preview a content.
 | RelationKey | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |
+| format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
+| includeTime | [bool](#bool) |  |  |
 
 
 
