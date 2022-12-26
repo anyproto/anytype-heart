@@ -267,7 +267,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 		}
 
 		if move := ch.Move(); move != nil {
-			withoutMoved := Filter(res, func(id T) bool {
+			withoutMoved := FilterMut(res, func(id T) bool {
 				return FindPos(move.IDs, getID(id)) < 0
 			})
 			pos := -1
@@ -290,7 +290,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 		}
 
 		if rm := ch.Remove(); rm != nil {
-			res = Filter(res, func(id T) bool {
+			res = FilterMut(res, func(id T) bool {
 				return FindPos(rm.IDs, getID(id)) < 0
 			})
 		}

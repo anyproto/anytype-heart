@@ -115,6 +115,16 @@ func Filter[T any](vals []T, cond func(T) bool) []T {
 	return result
 }
 
+func FilterMut[T any](vals []T, cond func(T) bool) []T {
+	result := vals[:0]
+	for i := range vals {
+		if cond(vals[i]) {
+			result = append(result, vals[i])
+		}
+	}
+	return result
+}
+
 func GetRandomString(s []string, seed string) string {
 	rand.Seed(int64(hash(seed)))
 	return s[rand.Intn(len(s))]

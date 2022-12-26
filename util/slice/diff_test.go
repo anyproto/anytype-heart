@@ -147,7 +147,11 @@ func genTestItems(count int) []*testItem {
 }
 
 /*
+Original
 BenchmarkApplyChanges-8             3135            433618 ns/op          540552 B/op        558 allocs/op
+
+Use FilterMut that reuses original slice capacity
+BenchmarkApplyChanges-8             4134            346602 ns/op           90448 B/op        206 allocs/op
 */
 func BenchmarkApplyChanges(b *testing.B) {
 	const itemsCount = 100
