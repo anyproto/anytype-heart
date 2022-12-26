@@ -35,9 +35,9 @@ func (c Change[T]) String() string {
 	return ""
 }
 
-func MakeChangeAdd[T any](items []T, afterId string) Change[T] {
+func MakeChangeAdd[T any](items []T, afterID string) Change[T] {
 	return Change[T]{
-		changeAdd: &ChangeAdd[T]{items, afterId},
+		changeAdd: &ChangeAdd[T]{items, afterID},
 	}
 }
 
@@ -117,11 +117,11 @@ func (c ChangeAdd[T]) String() string {
 
 type ChangeMove struct {
 	IDs     []string
-	AfterId string
+	AfterID string
 }
 
 func (c ChangeMove) String() string {
-	return fmt.Sprintf("move %v after %s", c.IDs, c.AfterId)
+	return fmt.Sprintf("move %v after %s", c.IDs, c.AfterID)
 }
 
 type ChangeRemove struct {
@@ -272,8 +272,8 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 			})
 
 			pos := -1
-			if move.AfterId != "" {
-				pos = findPos(res, getID, move.AfterId)
+			if move.AfterID != "" {
+				pos = findPos(res, getID, move.AfterID)
 				if pos < 0 {
 					continue
 				}

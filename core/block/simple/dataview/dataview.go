@@ -71,20 +71,20 @@ type Block interface {
 	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
 	ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate)
 
-	AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error
-	RemoveFilters(viewId string, filterIDs []string) error
-	ReplaceFilter(viewId string, filterID string, filter *model.BlockContentDataviewFilter) error
-	ReorderFilters(viewId string, ids []string) error
+	AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error
+	RemoveFilters(viewID string, filterIDs []string) error
+	ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error
+	ReorderFilters(viewID string, ids []string) error
 
-	AddSort(viewId string, sort *model.BlockContentDataviewSort) error
-	RemoveSorts(viewId string, relationKeys []string) error
-	ReplaceSort(viewId string, relationKey string, sort *model.BlockContentDataviewSort) error
-	ReorderSorts(viewId string, relationKeys []string) error
+	AddSort(viewID string, sort *model.BlockContentDataviewSort) error
+	RemoveSorts(viewID string, relationKeys []string) error
+	ReplaceSort(viewID string, relationKey string, sort *model.BlockContentDataviewSort) error
+	ReorderSorts(viewID string, relationKeys []string) error
 
-	AddViewRelation(viewId string, relation *model.BlockContentDataviewRelation) error
-	RemoveViewRelations(viewId string, relationKeys []string) error
-	ReplaceViewRelation(viewId string, relationKey string, relation *model.BlockContentDataviewRelation) error
-	ReorderViewRelations(viewId string, relationKeys []string) error
+	AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error
+	RemoveViewRelations(viewID string, relationKeys []string) error
+	ReplaceViewRelation(viewID string, relationKey string, relation *model.BlockContentDataviewRelation) error
+	ReorderViewRelations(viewID string, relationKeys []string) error
 }
 
 type Dataview struct {
@@ -199,7 +199,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 			msgs = append(msgs,
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
-						&pb.EventBlockDataviewViewUpdate{
+						BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
 							Id:       dv.Id,
 							ViewId:   view2.Id,
 							Fields:   viewFieldsChange,
@@ -354,8 +354,8 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 }
 
 // SetViewFields updates only simple fields of a view. It doesn't update filters, relations, sorts.
-func (s *Dataview) SetViewFields(viewID string, view *model.BlockContentDataviewView) error {
-	v, err := s.GetView(viewID)
+func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataviewView) error {
+	v, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}

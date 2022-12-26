@@ -59,7 +59,7 @@ type Dataview interface {
 	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
 	AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
 	DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
-	UpdateView(ctx *session.Context, blockId string, viewId string, view *model.BlockContentDataviewView, showEvent bool) error
+	UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
 	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
 
@@ -90,16 +90,7 @@ type sdataview struct {
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
-	tb, err := getDataviewBlock(s, blockID)
-	if err != nil {
-		return nil, err
-	}
-
-	v, ok := tb.(dataview.Block)
-	if !ok {
-		return nil, fmt.Errorf("block %s is not a dataview block", blockID)
-	}
-	return v, nil
+	return getDataviewBlock(s, blockID)
 }
 
 func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []string) (err error) {
@@ -209,14 +200,14 @@ func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) UpdateView(ctx *session.Context, blockId string, viewId string, view *model.BlockContentDataviewView, showEvent bool) error {
+func (d *sdataview) UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
-	dvBlock, err := getDataviewBlock(s, blockId)
+	dvBlock, err := getDataviewBlock(s, blockID)
 	if err != nil {
 		return err
 	}
 
-	if err = dvBlock.SetViewFields(viewId, view); err != nil {
+	if err = dvBlock.SetViewFields(viewID, view); err != nil {
 		return err
 	}
 

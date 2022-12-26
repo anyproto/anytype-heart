@@ -9,8 +9,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func (l *Dataview) AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -22,8 +22,8 @@ func (l *Dataview) AddFilter(viewId string, filter *model.BlockContentDataviewFi
 	return nil
 }
 
-func (l *Dataview) RemoveFilters(viewId string, filterIDs []string) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -34,8 +34,8 @@ func (l *Dataview) RemoveFilters(viewId string, filterIDs []string) error {
 	return nil
 }
 
-func (l *Dataview) ReplaceFilter(viewId string, filterID string, filter *model.BlockContentDataviewFilter) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -53,8 +53,8 @@ func (l *Dataview) ReplaceFilter(viewId string, filterID string, filter *model.B
 	return nil
 }
 
-func (l *Dataview) ReorderFilters(viewId string, ids []string) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) ReorderFilters(viewID string, ids []string) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -74,8 +74,8 @@ func (l *Dataview) ReorderFilters(viewId string, ids []string) error {
 	return nil
 }
 
-func (l *Dataview) AddSort(viewId string, sort *model.BlockContentDataviewSort) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) AddSort(viewID string, sort *model.BlockContentDataviewSort) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -84,8 +84,8 @@ func (l *Dataview) AddSort(viewId string, sort *model.BlockContentDataviewSort) 
 	return nil
 }
 
-func (l *Dataview) RemoveSorts(viewId string, relationKeys []string) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) RemoveSorts(viewID string, relationKeys []string) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,8 @@ func (l *Dataview) RemoveSorts(viewId string, relationKeys []string) error {
 	return nil
 }
 
-func (l *Dataview) ReplaceSort(viewId string, relationKey string, sort *model.BlockContentDataviewSort) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) ReplaceSort(viewID string, relationKey string, sort *model.BlockContentDataviewSort) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -114,8 +114,8 @@ func (l *Dataview) ReplaceSort(viewId string, relationKey string, sort *model.Bl
 	return nil
 }
 
-func (l *Dataview) ReorderSorts(viewId string, relationKeys []string) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) ReorderSorts(viewID string, relationKeys []string) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -134,8 +134,8 @@ func (l *Dataview) ReorderSorts(viewId string, relationKeys []string) error {
 	return nil
 }
 
-func (l *Dataview) AddViewRelation(viewId string, relation *model.BlockContentDataviewRelation) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -144,8 +144,8 @@ func (l *Dataview) AddViewRelation(viewId string, relation *model.BlockContentDa
 	return nil
 }
 
-func (l *Dataview) RemoveViewRelations(viewId string, relationKeys []string) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -156,8 +156,8 @@ func (l *Dataview) RemoveViewRelations(viewId string, relationKeys []string) err
 	return nil
 }
 
-func (l *Dataview) ReplaceViewRelation(viewId string, relationKey string, relation *model.BlockContentDataviewRelation) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relation *model.BlockContentDataviewRelation) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -174,8 +174,8 @@ func (l *Dataview) ReplaceViewRelation(viewId string, relationKey string, relati
 	return nil
 }
 
-func (l *Dataview) ReorderViewRelations(viewId string, relationKeys []string) error {
-	view, err := l.GetView(viewId)
+func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) error {
+	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}

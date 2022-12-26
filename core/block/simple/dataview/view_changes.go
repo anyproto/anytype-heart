@@ -41,6 +41,7 @@ func isViewFiltersEqual(a, b *model.BlockContentDataviewFilter) bool {
 	return proto.Equal(a, b)
 }
 
+// nolint:dupl
 func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateFilter {
 	diff := slice.Diff(a.Filters, b.Filters, getViewFilterID, isViewFiltersEqual)
 	if len(diff) == 0 {
@@ -71,7 +72,7 @@ func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatav
 		func(afterID string, ids []string) *pb.EventBlockDataviewViewUpdateFilter {
 			return &pb.EventBlockDataviewViewUpdateFilter{
 				Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfMove{
-					&pb.EventBlockDataviewViewUpdateFilterMove{
+					Move: &pb.EventBlockDataviewViewUpdateFilterMove{
 						AfterId: afterID,
 						Ids:     ids,
 					},
@@ -81,7 +82,7 @@ func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatav
 		func(id string, item *model.BlockContentDataviewFilter) *pb.EventBlockDataviewViewUpdateFilter {
 			return &pb.EventBlockDataviewViewUpdateFilter{
 				Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfUpdate{
-					&pb.EventBlockDataviewViewUpdateFilterUpdate{
+					Update: &pb.EventBlockDataviewViewUpdateFilterUpdate{
 						Id:   id,
 						Item: item,
 					},
@@ -98,6 +99,7 @@ func isViewRelationsEqual(a, b *model.BlockContentDataviewRelation) bool {
 	return proto.Equal(a, b)
 }
 
+// nolint:dupl
 func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateRelation {
 	diff := slice.Diff(a.Relations, b.Relations, getViewRelationID, isViewRelationsEqual)
 	if len(diff) == 0 {
@@ -155,6 +157,7 @@ func isViewSortsEqual(a, b *model.BlockContentDataviewSort) bool {
 	return proto.Equal(a, b)
 }
 
+// nolint:dupl
 func diffViewSorts(a, b *model.BlockContentDataviewView) []*pb.EventBlockDataviewViewUpdateSort {
 	diff := slice.Diff(a.Sorts, b.Sorts, getViewSortID, isViewSortsEqual)
 	if len(diff) == 0 {
@@ -290,7 +293,7 @@ func unwrapChanges[T, R any](
 			res = append(res, remove(v.IDs))
 		}
 		if v := c.Move(); v != nil {
-			res = append(res, move(v.AfterId, v.IDs))
+			res = append(res, move(v.AfterID, v.IDs))
 		}
 		if v := c.Replace(); v != nil {
 			res = append(res, update(v.ID, v.Item))
@@ -318,7 +321,7 @@ func diffViewObjectOrder(a, b *model.BlockContentDataviewObjectOrder) []*pb.Even
 			res = append(res, &pb.EventBlockDataviewSliceChange{
 				Op:      pb.EventBlockDataview_SliceOperationMove,
 				Ids:     move.IDs,
-				AfterId: move.AfterId,
+				AfterId: move.AfterID,
 			})
 		}
 		if rm := sliceCh.Remove(); rm != nil {
