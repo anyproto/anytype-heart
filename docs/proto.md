@@ -4557,6 +4557,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to insert the new block |
 | view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) |  |  |
+| source | [string](#string) | repeated |  |
 
 
 

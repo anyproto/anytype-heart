@@ -55,7 +55,7 @@ type Dataview interface {
 
 	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
-	CreateView(ctx *session.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
+	CreateView(ctx *session.Context, blockId string, view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
 	AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
 	DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
@@ -269,7 +269,7 @@ func (d *sdataview) SetViewPosition(ctx *session.Context, blockId string, viewId
 	return d.Apply(s)
 }
 
-func (d *sdataview) CreateView(ctx *session.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
+func (d *sdataview) CreateView(ctx *session.Context, id string, view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error) {
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, id)
@@ -277,7 +277,14 @@ func (d *sdataview) CreateView(ctx *session.Context, id string, view model.Block
 		return nil, err
 	}
 
-	sch, err := d.getSchema(tb)
+	if len(source) == 0 {
+		source = pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeySetOf.String())
+		if len(source) == 0 {
+			return nil, fmt.Errorf("source not found")
+		}
+	}
+
+	sch, err := d.getSchema(tb, source)
 	if err != nil {
 		return nil, err
 	}
@@ -432,8 +439,8 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 	return nil, fmt.Errorf("relation or type not found")
 }
 
-func (d *sdataview) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
-	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
+func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
+	return SchemaBySources(source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
