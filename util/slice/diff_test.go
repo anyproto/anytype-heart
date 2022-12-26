@@ -13,7 +13,7 @@ func Test_Diff(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
 	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004"}
 
-	chs := Diff(origin, changed, identityString, equalString)
+	chs := Diff(origin, changed, Identity[string], Equal[string])
 
 	assert.Equal(t, chs, []Change[string]{
 		MakeChangeMove[string]([]string{"008"}, "000"),
@@ -62,9 +62,9 @@ func Test_ChangesApply(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
 	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004", "new"}
 
-	chs := Diff(origin, changed, identityString, equalString)
+	chs := Diff(origin, changed, Identity[string], Equal[string])
 
-	res := ApplyChanges(origin, chs, identityString)
+	res := ApplyChanges(origin, chs, Identity[string])
 
 	assert.Equal(t, changed, res)
 }
@@ -79,8 +79,8 @@ func Test_SameLength(t *testing.T) {
 		rand.Shuffle(len(changed),
 			func(i, j int) { changed[i], changed[j] = changed[j], changed[i] })
 
-		chs := Diff(origin, changed, identityString, equalString)
-		res := ApplyChanges(origin, chs, identityString)
+		chs := Diff(origin, changed, Identity[string], Equal[string])
+		res := ApplyChanges(origin, chs, Identity[string])
 
 		assert.Equal(t, res, changed)
 	}
@@ -115,8 +115,8 @@ func Test_DifferentLength(t *testing.T) {
 			changed = Insert(changed, insIdx, []string{bson.NewObjectId().Hex()}...)
 		}
 
-		chs := Diff(origin, changed, identityString, equalString)
-		res := ApplyChanges(origin, chs, identityString)
+		chs := Diff(origin, changed, Identity[string], Equal[string])
+		res := ApplyChanges(origin, chs, Identity[string])
 
 		assert.Equal(t, res, changed)
 	}
@@ -136,4 +136,56 @@ func getRandArray(len int) []string {
 		res[i] = bson.NewObjectId().Hex()
 	}
 	return res
+}
+
+func genTestItems(count int) []*testItem {
+	items := make([]*testItem, count)
+	for i := 0; i < count; i++ {
+		items[i] = &testItem{id: bson.NewObjectId().Hex(), someField: rand.Intn(1000)}
+	}
+	return items
+}
+
+/*
+BenchmarkApplyChanges-8             3135            433618 ns/op          540552 B/op        558 allocs/op
+*/
+func BenchmarkApplyChanges(b *testing.B) {
+	const itemsCount = 100
+	items := genTestItems(itemsCount)
+
+	changes := make([]Change[*testItem], 500)
+	for i := 0; i < 500; i++ {
+		switch rand.Intn(4) {
+		case 0:
+			it := items[rand.Intn(itemsCount)]
+			newItem := &(*it)
+			newItem.someField = rand.Intn(1000)
+			changes[i] = MakeChangeReplace(newItem, it.id)
+		case 1:
+			idx := rand.Intn(itemsCount + 1)
+			var id string
+			// Let it be a chance to use empty AfterID
+			if idx < itemsCount {
+				id = items[idx].id
+			}
+			changes[i] = MakeChangeAdd(genTestItems(rand.Intn(2)+1), id)
+		case 2:
+			changes[i] = MakeChangeRemove[*testItem]([]string{items[rand.Intn(itemsCount)].id})
+		case 3:
+			idx := rand.Intn(itemsCount + 1)
+			var id string
+			// Let it be a chance to use empty AfterID
+			if idx < itemsCount {
+				id = items[idx].id
+			}
+			changes[i] = MakeChangeMove[*testItem]([]string{items[rand.Intn(itemsCount)].id}, id)
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = ApplyChanges(items, changes, func(a *testItem) string {
+			return a.id
+		})
+	}
 }
