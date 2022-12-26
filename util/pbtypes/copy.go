@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -209,61 +208,4 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 		}
 	}
 	return
-}
-
-func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change[string] {
-	var res []slice.Change[string]
-	for _, eventCh := range changes {
-		var ch slice.Change[string]
-		switch eventCh.Op {
-		case pb.EventBlockDataview_SliceOperationAdd:
-			ch = slice.MakeChangeAdd(eventCh.Ids, eventCh.AfterId)
-		case pb.EventBlockDataview_SliceOperationMove:
-			ch = slice.MakeChangeMove[string](eventCh.Ids, eventCh.AfterId)
-		case pb.EventBlockDataview_SliceOperationRemove:
-			ch = slice.MakeChangeRemove[string](eventCh.Ids)
-		case pb.EventBlockDataview_SliceOperationReplace:
-			// TODO check this out
-			// ch = slice.MakeChangeReplace(slice.StringsToIDs(eventCh.Ids), eventCh.AfterId)
-		}
-		res = append(res, ch)
-	}
-
-	return res
-}
-
-func SliceChangeToEvents(changes []slice.Change[string]) []*pb.EventBlockDataviewSliceChange {
-	var res []*pb.EventBlockDataviewSliceChange
-	for _, sliceCh := range changes {
-		if add := sliceCh.Add(); add != nil {
-			res = append(res, &pb.EventBlockDataviewSliceChange{
-				Op:      pb.EventBlockDataview_SliceOperationAdd,
-				Ids:     add.Items,
-				AfterId: add.AfterId,
-			})
-		}
-		if move := sliceCh.Move(); move != nil {
-			res = append(res, &pb.EventBlockDataviewSliceChange{
-				Op:      pb.EventBlockDataview_SliceOperationMove,
-				Ids:     move.IDs,
-				AfterId: move.AfterId,
-			})
-		}
-		if rm := sliceCh.Remove(); rm != nil {
-			res = append(res, &pb.EventBlockDataviewSliceChange{
-				Op:  pb.EventBlockDataview_SliceOperationRemove,
-				Ids: rm.IDs,
-			})
-		}
-		// TODO check this out
-		// if replace := sliceCh.Replace(); replace != nil {
-		// 	res = append(res, &pb.EventBlockDataviewSliceChange{
-		// 		Op:      pb.EventBlockDataview_SliceOperationReplace,
-		// 		Ids:     slice.IDsToStrings(replace.Items),
-		// 		AfterId: replace.AfterId,
-		// 	})
-		// }
-	}
-
-	return res
 }

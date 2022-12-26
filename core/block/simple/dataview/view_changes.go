@@ -298,3 +298,71 @@ func unwrapChanges[T, R any](
 	}
 	return res
 }
+
+func diffViewObjectOrder(a, b *model.BlockContentDataviewObjectOrder) []*pb.EventBlockDataviewSliceChange {
+	diff := slice.Diff(a.ObjectIds, b.ObjectIds, slice.Identity[string], slice.Equal[string])
+	if len(diff) == 0 {
+		return nil
+	}
+
+	var res []*pb.EventBlockDataviewSliceChange
+	for _, sliceCh := range diff {
+		if add := sliceCh.Add(); add != nil {
+			res = append(res, &pb.EventBlockDataviewSliceChange{
+				Op:      pb.EventBlockDataview_SliceOperationAdd,
+				Ids:     add.Items,
+				AfterId: add.AfterId,
+			})
+		}
+		if move := sliceCh.Move(); move != nil {
+			res = append(res, &pb.EventBlockDataviewSliceChange{
+				Op:      pb.EventBlockDataview_SliceOperationMove,
+				Ids:     move.IDs,
+				AfterId: move.AfterId,
+			})
+		}
+		if rm := sliceCh.Remove(); rm != nil {
+			res = append(res, &pb.EventBlockDataviewSliceChange{
+				Op:  pb.EventBlockDataview_SliceOperationRemove,
+				Ids: rm.IDs,
+			})
+		}
+
+		// Replace change is not supported
+	}
+
+	return res
+}
+
+func (l *Dataview) ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate) {
+	var existOrder []string
+	for _, order := range l.Model().GetDataview().ObjectOrders {
+		if order.ViewId == upd.ViewId && order.GroupId == upd.GroupId {
+			existOrder = order.ObjectIds
+		}
+	}
+
+	rawChanges := upd.GetSliceChanges()
+
+	changes := make([]slice.Change[string], 0, len(rawChanges))
+	for _, eventCh := range rawChanges {
+		var ch slice.Change[string]
+		switch eventCh.Op {
+		case pb.EventBlockDataview_SliceOperationAdd:
+			ch = slice.MakeChangeAdd(eventCh.Ids, eventCh.AfterId)
+		case pb.EventBlockDataview_SliceOperationMove:
+			ch = slice.MakeChangeMove[string](eventCh.Ids, eventCh.AfterId)
+		case pb.EventBlockDataview_SliceOperationRemove:
+			ch = slice.MakeChangeRemove[string](eventCh.Ids)
+		case pb.EventBlockDataview_SliceOperationReplace:
+			// Replace change is not supported
+		}
+		changes = append(changes, ch)
+	}
+
+	changedIds := slice.ApplyChanges(existOrder, changes, slice.Identity[string])
+
+	l.SetViewObjectOrder([]*model.BlockContentDataviewObjectOrder{
+		{ViewId: upd.ViewId, GroupId: upd.GroupId, ObjectIds: changedIds},
+	})
+}

@@ -69,6 +69,7 @@ type Block interface {
 	DeleteRelationOld(relationKey string) error
 
 	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
+	ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate)
 
 	AddFilter(viewId string, filter *model.BlockContentDataviewFilter) error
 	RemoveFilters(viewId string, filterIDs []string) error
@@ -137,11 +138,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 	for _, order2 := range dv.content.ObjectOrders {
 		var found bool
-		var changes []slice.Change[string]
+		var changes []*pb.EventBlockDataviewSliceChange
 		for _, order1 := range d.content.ObjectOrders {
 			if order1.ViewId == order2.ViewId && order1.GroupId == order2.GroupId {
 				found = true
-				changes = slice.Diff(order1.ObjectIds, order2.ObjectIds, slice.Identity[string], slice.Equal[string])
+				changes = diffViewObjectOrder(order1, order2)
 				break
 			}
 		}
@@ -166,7 +167,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 							Id:           dv.Id,
 							ViewId:       order2.ViewId,
 							GroupId:      order2.GroupId,
-							SliceChanges: pbtypes.SliceChangeToEvents(changes),
+							SliceChanges: changes,
 						}}}})
 		}
 	}
@@ -339,11 +340,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.Relations = view.Relations
 	v.Sorts = view.Sorts
 	v.Filters = view.Filters
-	for _, f := range v.Filters {
-		if f.Id == "" {
-			f.Id = bson.NewObjectId().Hex()
-		}
-	}
+
 	v.Name = view.Name
 	v.Type = view.Type
 	v.CoverRelationKey = view.CoverRelationKey
