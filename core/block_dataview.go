@@ -378,7 +378,7 @@ func (mw *Middleware) BlockDataviewSortRemove(cctx context.Context, req *pb.RpcB
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.RemoveDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.SortIds)
+		return bs.RemoveDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
 	})
 
 	return resp(err)
@@ -402,7 +402,7 @@ func (mw *Middleware) BlockDataviewSortReplace(cctx context.Context, req *pb.Rpc
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReplaceDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.SortId, req.Sort)
+		return bs.ReplaceDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKey, req.Sort)
 	})
 
 	return resp(err)
@@ -426,7 +426,7 @@ func (mw *Middleware) BlockDataviewSortSort(cctx context.Context, req *pb.RpcBlo
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReorderDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.SortIds)
+		return bs.ReorderDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
 	})
 
 	return resp(err)

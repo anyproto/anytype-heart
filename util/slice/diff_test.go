@@ -71,7 +71,7 @@ func Test_ChangesApply(t *testing.T) {
 
 func Test_SameLength(t *testing.T) {
 	// TODO use quickcheck here
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 1; i++ {
 		l := randNum(5, 200)
 		origin := getRandArray(l)
 		changed := make([]string, len(origin))

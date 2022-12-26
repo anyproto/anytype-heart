@@ -75,9 +75,9 @@ type Block interface {
 	ReorderFilters(viewId string, ids []string) error
 
 	AddSort(viewId string, sort *model.BlockContentDataviewSort) error
-	RemoveSorts(viewId string, sortIDs []string) error
-	ReplaceSort(viewId string, sortID string, sort *model.BlockContentDataviewSort) error
-	ReorderSorts(viewId string, ids []string) error
+	RemoveSorts(viewId string, relationKeys []string) error
+	ReplaceSort(viewId string, relationKey string, sort *model.BlockContentDataviewSort) error
+	ReorderSorts(viewId string, relationKeys []string) error
 
 	AddViewRelation(viewId string, relation *model.BlockContentDataviewRelation) error
 	RemoveViewRelations(viewId string, relationKeys []string) error

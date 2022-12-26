@@ -84,26 +84,26 @@ func (l *Dataview) AddSort(viewId string, sort *model.BlockContentDataviewSort) 
 	return nil
 }
 
-func (l *Dataview) RemoveSorts(viewId string, sortIDs []string) error {
+func (l *Dataview) RemoveSorts(viewId string, relationKeys []string) error {
 	view, err := l.GetView(viewId)
 	if err != nil {
 		return err
 	}
 
 	view.Sorts = slice.Filter(view.Sorts, func(f *model.BlockContentDataviewSort) bool {
-		return slice.FindPos(sortIDs, getViewSortID(f)) == -1
+		return slice.FindPos(relationKeys, getViewSortID(f)) == -1
 	})
 	return nil
 }
 
-func (l *Dataview) ReplaceSort(viewId string, sortID string, sort *model.BlockContentDataviewSort) error {
+func (l *Dataview) ReplaceSort(viewId string, relationKey string, sort *model.BlockContentDataviewSort) error {
 	view, err := l.GetView(viewId)
 	if err != nil {
 		return err
 	}
 
 	idx := slice.Find(view.Sorts, func(f *model.BlockContentDataviewSort) bool {
-		return getViewSortID(f) == sortID
+		return getViewSortID(f) == relationKey
 	})
 	if idx < 0 {
 		return fmt.Errorf("sort with id %s is not found", sort.RelationKey)
@@ -114,7 +114,7 @@ func (l *Dataview) ReplaceSort(viewId string, sortID string, sort *model.BlockCo
 	return nil
 }
 
-func (l *Dataview) ReorderSorts(viewId string, ids []string) error {
+func (l *Dataview) ReorderSorts(viewId string, relationKeys []string) error {
 	view, err := l.GetView(viewId)
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func (l *Dataview) ReorderSorts(viewId string, ids []string) error {
 	}
 
 	view.Sorts = view.Sorts[:0]
-	for _, id := range ids {
+	for _, id := range relationKeys {
 		if f, ok := sortsMap[id]; ok {
 			view.Sorts = append(view.Sorts, f)
 		}
