@@ -44,6 +44,7 @@ type Block interface {
 	simple.Block
 	GetView(viewID string) (*model.BlockContentDataviewView, error)
 	SetView(viewID string, view model.BlockContentDataviewView) error
+	SetViewFields(viewID string, view *model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
@@ -330,35 +331,46 @@ func (s *Dataview) DeleteView(viewID string) error {
 }
 
 func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) error {
-	var found bool
-	for _, v := range s.content.Views {
-		if v.Id == viewID {
-			found = true
+	v, err := s.GetView(viewID)
+	if err != nil {
+		return nil
+	}
 
-			v.Relations = view.Relations
-			v.Sorts = view.Sorts
-			v.Filters = view.Filters
-			for _, f := range v.Filters {
-				if f.Id == "" {
-					f.Id = bson.NewObjectId().Hex()
-				}
-			}
-			v.Name = view.Name
-			v.Type = view.Type
-			v.CoverRelationKey = view.CoverRelationKey
-			v.HideIcon = view.HideIcon
-			v.CoverFit = view.CoverFit
-			v.CardSize = view.CardSize
-			v.GroupRelationKey = view.GroupRelationKey
-			v.GroupBackgroundColors = view.GroupBackgroundColors
-
-			break
+	v.Relations = view.Relations
+	v.Sorts = view.Sorts
+	v.Filters = view.Filters
+	for _, f := range v.Filters {
+		if f.Id == "" {
+			f.Id = bson.NewObjectId().Hex()
 		}
 	}
+	v.Name = view.Name
+	v.Type = view.Type
+	v.CoverRelationKey = view.CoverRelationKey
+	v.HideIcon = view.HideIcon
+	v.CoverFit = view.CoverFit
+	v.CardSize = view.CardSize
+	v.GroupRelationKey = view.GroupRelationKey
+	v.GroupBackgroundColors = view.GroupBackgroundColors
 
-	if !found {
-		return ErrViewNotFound
+	return nil
+}
+
+// SetViewFields updates only simple fields of a view. It doesn't update filters, relations, sorts.
+func (s *Dataview) SetViewFields(viewID string, view *model.BlockContentDataviewView) error {
+	v, err := s.GetView(viewID)
+	if err != nil {
+		return err
 	}
+
+	v.Name = view.Name
+	v.Type = view.Type
+	v.CoverRelationKey = view.CoverRelationKey
+	v.HideIcon = view.HideIcon
+	v.CoverFit = view.CoverFit
+	v.CardSize = view.CardSize
+	v.GroupRelationKey = view.GroupRelationKey
+	v.GroupBackgroundColors = view.GroupBackgroundColors
 
 	return nil
 }
