@@ -163,52 +163,56 @@ func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) boo
 	}
 
 	for _, c := range changes {
-		if c.Del > 0 {
-			for _, id := range m.A[c.A : c.A+c.Del] {
-				delMap[getID(id)] = id
-			}
+		if c.Del <= 0 {
+			continue
+		}
+		for _, id := range m.A[c.A : c.A+c.Del] {
+			delMap[getID(id)] = id
 		}
 	}
 
 	for _, c := range changes {
-		if c.Ins > 0 {
-			inserts := m.B[c.B : c.B+c.Ins]
-			afterId := ""
-			if c.A > 0 {
-				afterId = getID(m.A[c.A-1])
-			}
-			var oneCh Change[T]
-			for _, it := range inserts {
-				id := getID(it)
-				if _, ok := delMap[id]; ok { // move
-					mv := oneCh.Move()
-					if mv == nil {
-						if oneCh.Len() > 0 {
-							result = append(result, oneCh)
-						}
-						oneCh = MakeChangeMove[T](nil, afterId)
-						mv = oneCh.Move()
-					}
-					mv.IDs = append(mv.IDs, getID(it))
-					delete(delMap, id)
-				} else { // insert new
-					add := oneCh.Add()
-					if add == nil {
-						if oneCh.Len() > 0 {
-							result = append(result, oneCh)
-						}
-						oneCh = MakeChangeAdd[T](nil, afterId)
-						add = oneCh.Add()
-					}
-					add.Items = append(add.Items, it)
-				}
-				afterId = id
-			}
-
-			if oneCh.Len() > 0 {
-				result = append(result, oneCh)
-			}
+		if c.Ins <= 0 {
+			continue
 		}
+
+		inserts := m.B[c.B : c.B+c.Ins]
+		var afterID string
+		if c.A > 0 {
+			afterID = getID(m.A[c.A-1])
+		}
+		var oneCh Change[T]
+		for _, it := range inserts {
+			id := getID(it)
+			if _, ok := delMap[id]; ok { // move
+				mv := oneCh.Move()
+				if mv == nil {
+					if oneCh.Len() > 0 {
+						result = append(result, oneCh)
+					}
+					oneCh = MakeChangeMove[T](nil, afterID)
+					mv = oneCh.Move()
+				}
+				mv.IDs = append(mv.IDs, getID(it))
+				delete(delMap, id)
+			} else { // insert new
+				add := oneCh.Add()
+				if add == nil {
+					if oneCh.Len() > 0 {
+						result = append(result, oneCh)
+					}
+					oneCh = MakeChangeAdd[T](nil, afterID)
+					add = oneCh.Add()
+				}
+				add.Items = append(add.Items, it)
+			}
+			afterID = id
+		}
+
+		if oneCh.Len() > 0 {
+			result = append(result, oneCh)
+		}
+
 	}
 
 	if len(delMap) > 0 { // remove
@@ -231,15 +235,7 @@ func findPos[T any](s []T, getID func(T) string, id string) int {
 }
 
 func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) []T {
-	// Preallocate maybe even more than needed to reduce number of allocations
-	estimatedCap := len(origin)
-	for _, c := range changes {
-		if c.Add() != nil {
-			estimatedCap += len(c.Add().Items)
-		}
-	}
-
-	res := make([]T, len(origin), estimatedCap)
+	res := make([]T, len(origin))
 	copy(res, origin)
 
 	itemsMap := make(map[string]T, len(origin))
@@ -250,7 +246,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 	for _, ch := range changes {
 		if add := ch.Add(); add != nil {
 			pos := findPos(res, getID, add.AfterId)
-			res = InsertFast(res, pos+1, add.Items...)
+			res = Insert(res, pos+1, add.Items...)
 		}
 
 		if move := ch.Move(); move != nil {
@@ -267,7 +263,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 				}
 				items = append(items, v)
 			}
-			res = InsertFast(res, pos+1, items...)
+			res = Insert(res, pos+1, items...)
 		}
 
 		if rm := ch.Remove(); rm != nil {

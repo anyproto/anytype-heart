@@ -81,38 +81,6 @@ func Insert[T any](s []T, pos int, v ...T) []T {
 	return append(s[:pos], append(v, s[pos:]...)...)
 }
 
-func InsertFast[T any](s []T, pos int, v ...T) []T {
-	if len(s) <= pos {
-		return append(s, v...)
-	}
-
-	// Try to reuse capacity provided by `s` slice. Otherwise, allocate new memory
-	var res []T
-	if cap(s) < len(s)+len(v) {
-		res = make([]T, len(s)+len(v))
-	} else {
-		res = s
-	}
-	res = res[:len(s)+len(v)]
-
-	if pos == 0 {
-		copy(res, v)
-		copy(res[len(v):], s[pos:])
-		return res
-	}
-
-	// copy one part after another then reorder according to desired position
-	copy(res, s)
-	copy(res[len(s):], v)
-
-	for i := 0; i < len(v); i++ {
-		right := len(s) + i
-		left := pos + i
-		res[right], res[left] = res[left], res[right]
-	}
-	return res
-}
-
 // Remove reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
 func Remove[T comparable](s []T, v T) []T {
 	var n int

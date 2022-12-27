@@ -156,9 +156,6 @@ BenchmarkApplyChanges-8             4134            346602 ns/op           90448
 
 Remove dropping items in Move operations if afterID is not found (can cause data loss)
 BenchmarkApplyChanges-8             2691            421134 ns/op          236785 B/op        385 allocs/op
-
-Faster insert and preallocations
-BenchmarkApplyChanges-8             3098            426538 ns/op            7480 B/op        129 allocs/op
 */
 func BenchmarkApplyChanges(b *testing.B) {
 	const itemsCount = 100
