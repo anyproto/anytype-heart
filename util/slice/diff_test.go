@@ -2,7 +2,9 @@ package slice
 
 import (
 	"math/rand"
+	"reflect"
 	"testing"
+	"testing/quick"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -13,7 +15,7 @@ func Test_Diff(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
 	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004"}
 
-	chs := Diff(origin, changed, Identity[string], Equal[string])
+	chs := Diff(origin, changed, StringIdentity[string], Equal[string])
 
 	assert.Equal(t, chs, []Change[string]{
 		MakeChangeMove[string]([]string{"008"}, "000"),
@@ -62,35 +64,38 @@ func Test_ChangesApply(t *testing.T) {
 	origin := []string{"000", "001", "002", "003", "004", "005", "006", "007", "008", "009"}
 	changed := []string{"000", "008", "001", "002", "003", "005", "006", "007", "009", "004", "new"}
 
-	chs := Diff(origin, changed, Identity[string], Equal[string])
+	chs := Diff(origin, changed, StringIdentity[string], Equal[string])
 
-	res := ApplyChanges(origin, chs, Identity[string])
+	res := ApplyChanges(origin, chs, StringIdentity[string])
 
 	assert.Equal(t, changed, res)
 }
 
+type uniqueID string
+
+func (id uniqueID) Generate(rand *rand.Rand, size int) reflect.Value {
+	return reflect.ValueOf(uniqueID(bson.NewObjectId().Hex()))
+}
+
 func Test_SameLength(t *testing.T) {
-	// TODO use quickcheck here
-	for i := 0; i < 1; i++ {
-		l := randNum(5, 200)
-		origin := getRandArray(l)
-		changed := make([]string, len(origin))
+	f := func(origin []uniqueID) bool {
+		changed := make([]uniqueID, len(origin))
 		copy(changed, origin)
 		rand.Shuffle(len(changed),
 			func(i, j int) { changed[i], changed[j] = changed[j], changed[i] })
 
-		chs := Diff(origin, changed, Identity[string], Equal[string])
-		res := ApplyChanges(origin, chs, Identity[string])
+		chs := Diff(origin, changed, StringIdentity[uniqueID], Equal[uniqueID])
+		res := ApplyChanges(origin, chs, StringIdentity[uniqueID])
 
-		assert.Equal(t, res, changed)
+		return assert.Equal(t, res, changed)
 	}
+
+	assert.NoError(t, quick.Check(f, nil))
 }
 
 func Test_DifferentLength(t *testing.T) {
-	for i := 0; i < 10000; i++ {
-		l := randNum(5, 200)
-		origin := getRandArray(l)
-		changed := make([]string, len(origin))
+	f := func(origin []uniqueID) bool {
+		changed := make([]uniqueID, len(origin))
 		copy(changed, origin)
 		rand.Shuffle(len(changed),
 			func(i, j int) { changed[i], changed[j] = changed[j], changed[i] })
@@ -112,16 +117,19 @@ func Test_DifferentLength(t *testing.T) {
 				continue
 			}
 			insIdx := randNum(0, l)
-			changed = Insert(changed, insIdx, []string{bson.NewObjectId().Hex()}...)
+			changed = Insert(changed, insIdx, []uniqueID{uniqueID(bson.NewObjectId().Hex())}...)
 		}
 
-		chs := Diff(origin, changed, Identity[string], Equal[string])
-		res := ApplyChanges(origin, chs, Identity[string])
+		chs := Diff(origin, changed, StringIdentity[uniqueID], Equal[uniqueID])
+		res := ApplyChanges(origin, chs, StringIdentity[uniqueID])
 
-		assert.Equal(t, res, changed)
+		return assert.Equal(t, res, changed)
 	}
+
+	assert.NoError(t, quick.Check(f, nil))
 }
 
+// nolint:gosec
 func randNum(min, max int) int {
 	if max <= min {
 		return max
@@ -130,14 +138,7 @@ func randNum(min, max int) int {
 	return rand.Intn(max-min) + min
 }
 
-func getRandArray(len int) []string {
-	res := make([]string, len)
-	for i := 0; i < len; i++ {
-		res[i] = bson.NewObjectId().Hex()
-	}
-	return res
-}
-
+// nolint:gosec
 func genTestItems(count int) []*testItem {
 	items := make([]*testItem, count)
 	for i := 0; i < count; i++ {

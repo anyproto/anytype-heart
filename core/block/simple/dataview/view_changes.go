@@ -303,7 +303,7 @@ func unwrapChanges[T, R any](
 }
 
 func diffViewObjectOrder(a, b *model.BlockContentDataviewObjectOrder) []*pb.EventBlockDataviewSliceChange {
-	diff := slice.Diff(a.ObjectIds, b.ObjectIds, slice.Identity[string], slice.Equal[string])
+	diff := slice.Diff(a.ObjectIds, b.ObjectIds, slice.StringIdentity[string], slice.Equal[string])
 	if len(diff) == 0 {
 		return nil
 	}
@@ -363,7 +363,7 @@ func (l *Dataview) ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderU
 		changes = append(changes, ch)
 	}
 
-	changedIds := slice.ApplyChanges(existOrder, changes, slice.Identity[string])
+	changedIds := slice.ApplyChanges(existOrder, changes, slice.StringIdentity[string])
 
 	l.SetViewObjectOrder([]*model.BlockContentDataviewObjectOrder{
 		{ViewId: upd.ViewId, GroupId: upd.GroupId, ObjectIds: changedIds},

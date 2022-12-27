@@ -82,7 +82,7 @@ func Insert[T any](s []T, pos int, v ...T) []T {
 }
 
 // Remove reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
-func Remove(s []string, v string) []string {
+func Remove[T comparable](s []T, v T) []T {
 	var n int
 	for _, x := range s {
 		if x != v {

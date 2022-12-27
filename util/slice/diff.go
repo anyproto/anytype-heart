@@ -6,8 +6,8 @@ import (
 	"github.com/mb0/diff"
 )
 
-func Identity[T any](x T) T {
-	return x
+func StringIdentity[T ~string](x T) string {
+	return string(x)
 }
 
 func Equal[T comparable](a, b T) bool {
@@ -73,21 +73,6 @@ func (c Change[T]) Len() int {
 		return 1
 	}
 	return 0
-}
-
-func (c *Change[T]) Match(add func(*ChangeAdd[T]), remove func(*ChangeRemove), move func(*ChangeMove), replace func(*ChangeReplace[T])) {
-	if c.changeAdd != nil {
-		add(c.changeAdd)
-	}
-	if c.changeRemove != nil {
-		remove(c.changeRemove)
-	}
-	if c.changeMove != nil {
-		move(c.changeMove)
-	}
-	if c.changeReplace != nil {
-		replace(c.changeReplace)
-	}
 }
 
 func (c *Change[T]) Add() *ChangeAdd[T] {
@@ -256,13 +241,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 
 	for _, ch := range changes {
 		if add := ch.Add(); add != nil {
-			pos := -1
-			if add.AfterId != "" {
-				pos = findPos(res, getID, add.AfterId)
-				if pos < 0 {
-					continue
-				}
-			}
+			pos := findPos(res, getID, add.AfterId)
 			res = Insert(res, pos+1, add.Items...)
 		}
 
@@ -271,14 +250,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 				return FindPos(move.IDs, getID(id)) < 0
 			})
 
-			pos := -1
-			if move.AfterID != "" {
-				pos = findPos(res, getID, move.AfterID)
-				if pos < 0 {
-					continue
-				}
-			}
-
+			pos := findPos(res, getID, move.AfterID)
 			items := make([]T, 0, len(move.IDs))
 			for _, id := range move.IDs {
 				v, ok := itemsMap[id]
