@@ -16680,6 +16680,7 @@ sent when the view have been changed or added
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
+| pageLimit | [int32](#int32) |  |  |
 
 
 
@@ -19636,6 +19637,7 @@ Bookmark is to keep a web-link and to preview a content.
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
+| pageLimit | [int32](#int32) |  |  |
 
 
 

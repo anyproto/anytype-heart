@@ -349,6 +349,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.CardSize = view.CardSize
 	v.GroupRelationKey = view.GroupRelationKey
 	v.GroupBackgroundColors = view.GroupBackgroundColors
+	v.PageLimit = view.PageLimit
 
 	return nil
 }
@@ -368,6 +369,7 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	v.CardSize = view.CardSize
 	v.GroupRelationKey = view.GroupRelationKey
 	v.GroupBackgroundColors = view.GroupBackgroundColors
+	v.PageLimit = view.PageLimit
 
 	return nil
 }

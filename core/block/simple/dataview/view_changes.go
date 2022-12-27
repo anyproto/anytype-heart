@@ -16,7 +16,8 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		a.CardSize == b.CardSize &&
 		a.CoverFit == b.CoverFit &&
 		a.GroupRelationKey == b.GroupRelationKey &&
-		a.GroupBackgroundColors == b.GroupBackgroundColors
+		a.GroupBackgroundColors == b.GroupBackgroundColors &&
+		a.PageLimit == b.PageLimit
 
 	if isEqual {
 		return nil
@@ -30,6 +31,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		CoverFit:              b.CoverFit,
 		GroupRelationKey:      b.GroupRelationKey,
 		GroupBackgroundColors: b.GroupBackgroundColors,
+		PageLimit:             b.PageLimit,
 	}
 }
 
@@ -228,6 +230,7 @@ func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		view.CoverFit = f.CoverFit
 		view.GroupRelationKey = f.GroupRelationKey
 		view.GroupBackgroundColors = f.GroupBackgroundColors
+		view.PageLimit = f.PageLimit
 	}
 
 	{

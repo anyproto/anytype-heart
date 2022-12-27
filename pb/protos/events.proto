@@ -700,6 +700,7 @@ message Event {
                     bool coverFit = 6; // Image fits container
                     string groupRelationKey = 7; // Group view by this relationKey
                     bool groupBackgroundColors = 8; // Enable backgrounds in groups
+                    int32 pageLimit = 9;
                 }
 
                 message Filter {

@@ -330,6 +330,7 @@ message Block {
                 bool coverFit = 10; // Image fits container
                 string groupRelationKey = 11; // Group view by this relationKey
 				        bool groupBackgroundColors = 12; // Enable backgrounds in groups
+                int32 pageLimit = 13;
 
                 enum Type {
                     Table = 0;
