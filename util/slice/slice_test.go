@@ -27,6 +27,20 @@ func Test_Insert(t *testing.T) {
 	assert.Equal(t, []string{"0", "1", "2", "2.1", "2.2", "2.3", "3"}, s)
 }
 
+func Test_InsertMut(t *testing.T) {
+	var s []string
+	s = InsertFast(s, 0, "1")
+	assert.Equal(t, []string{"1"}, s)
+	s = InsertFast(s, 0, "0")
+	assert.Equal(t, []string{"0", "1"}, s)
+	s = InsertFast(s, 2, "3")
+	assert.Equal(t, []string{"0", "1", "3"}, s)
+	s = InsertFast(s, 2, "2")
+	assert.Equal(t, []string{"0", "1", "2", "3"}, s)
+	s = InsertFast(s, 3, "2.1", "2.2", "2.3")
+	assert.Equal(t, []string{"0", "1", "2", "2.1", "2.2", "2.3", "3"}, s)
+}
+
 func Test_Remove(t *testing.T) {
 	var ids = []string{"1", "2", "3"}
 	assert.Equal(t, []string{"1", "3"}, Remove(ids, "2"))

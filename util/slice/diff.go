@@ -231,7 +231,15 @@ func findPos[T any](s []T, getID func(T) string, id string) int {
 }
 
 func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) []T {
-	res := make([]T, len(origin))
+	// Preallocate maybe even more than needed to reduce number of allocations
+	estimatedCap := len(origin)
+	for _, c := range changes {
+		if c.Add() != nil {
+			estimatedCap += len(c.Add().Items)
+		}
+	}
+
+	res := make([]T, len(origin), estimatedCap)
 	copy(res, origin)
 
 	itemsMap := make(map[string]T, len(origin))
@@ -242,7 +250,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 	for _, ch := range changes {
 		if add := ch.Add(); add != nil {
 			pos := findPos(res, getID, add.AfterId)
-			res = Insert(res, pos+1, add.Items...)
+			res = InsertFast(res, pos+1, add.Items...)
 		}
 
 		if move := ch.Move(); move != nil {
@@ -259,7 +267,7 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 				}
 				items = append(items, v)
 			}
-			res = Insert(res, pos+1, items...)
+			res = InsertFast(res, pos+1, items...)
 		}
 
 		if rm := ch.Remove(); rm != nil {
