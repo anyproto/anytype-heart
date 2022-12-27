@@ -146,7 +146,7 @@ func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) boo
 	var result []Change[T]
 
 	changes := diff.Diff(len(m.A), len(m.B), m)
-	delMap := make(map[string]T)
+	delMap := make(map[string]struct{})
 
 	changedMap := make(map[string]T)
 	for _, c := range changed {
@@ -166,8 +166,8 @@ func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) boo
 		if c.Del <= 0 {
 			continue
 		}
-		for _, id := range m.A[c.A : c.A+c.Del] {
-			delMap[getID(id)] = id
+		for _, it := range m.A[c.A : c.A+c.Del] {
+			delMap[getID(it)] = struct{}{}
 		}
 	}
 
@@ -184,7 +184,10 @@ func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) boo
 		var oneCh Change[T]
 		for _, it := range inserts {
 			id := getID(it)
-			if _, ok := delMap[id]; ok { // move
+
+			// If inserted item is found in deleted map then it is a Move operation
+			// nolint:nestif
+			if _, ok := delMap[id]; ok {
 				mv := oneCh.Move()
 				if mv == nil {
 					if oneCh.Len() > 0 {
