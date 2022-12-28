@@ -278,7 +278,7 @@ func (d *sdataview) CreateView(ctx *session.Context, id string, view model.Block
 	}
 
 	if len(source) == 0 {
-		source = pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeySetOf.String())
+		source = pbtypes.GetStringList(s.Details(), bundle.RelationKeySetOf.String())
 		if len(source) == 0 {
 			return nil, fmt.Errorf("source not found")
 		}

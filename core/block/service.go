@@ -642,6 +642,14 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
 }
 
+func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		st := b.NewStateCtx(ctx)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		return b.Apply(st, smartblock.NoRestrictions)
+	})
+}
+
 func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil

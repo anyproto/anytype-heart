@@ -76,6 +76,11 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
 		setOf := dvBlock.Model().GetDataview().GetSource()
+
+		if len(pbtypes.GetStringList(p.Details(), bundle.RelationKeySetOf.String())) > 0 {
+			setOf = pbtypes.GetStringList(p.Details(), bundle.RelationKeySetOf.String())
+		}
+
 		if len(setOf) == 0 {
 			log.With("thread", p.Id()).With("sbType", p.SmartBlock.Type().String()).Errorf("dataview has an empty source")
 		} else {
