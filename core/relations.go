@@ -178,6 +178,13 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
+		if req.Details == nil {
+			req.Details = &types.Struct{}
+		}
+		if req.Details.Fields == nil {
+			req.Details.Fields = map[string]*types.Value{}
+		}
+		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
 		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeySet)
 		return err
 	})
