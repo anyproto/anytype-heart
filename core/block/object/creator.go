@@ -251,7 +251,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, nil, newState)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, nil, nil, newState)
 }
 
 // TODO: it must be in another component
