@@ -290,7 +290,7 @@ func unwrapChanges[T, R any](
 	res := make([]R, 0, len(changes))
 	for _, c := range changes {
 		if v := c.Add(); v != nil {
-			res = append(res, add(v.AfterId, v.Items))
+			res = append(res, add(v.AfterID, v.Items))
 		}
 		if v := c.Remove(); v != nil {
 			res = append(res, remove(v.IDs))
@@ -317,7 +317,7 @@ func diffViewObjectOrder(a, b *model.BlockContentDataviewObjectOrder) []*pb.Even
 			res = append(res, &pb.EventBlockDataviewSliceChange{
 				Op:      pb.EventBlockDataview_SliceOperationAdd,
 				Ids:     add.Items,
-				AfterId: add.AfterId,
+				AfterId: add.AfterID,
 			})
 		}
 		if move := sliceCh.Move(); move != nil {

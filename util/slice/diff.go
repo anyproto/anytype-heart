@@ -93,11 +93,11 @@ func (c *Change[T]) Replace() *ChangeReplace[T] {
 
 type ChangeAdd[T any] struct {
 	Items   []T
-	AfterId string
+	AfterID string
 }
 
 func (c ChangeAdd[T]) String() string {
-	return fmt.Sprintf("add %v after %s", c.Items, c.AfterId)
+	return fmt.Sprintf("add %v after %s", c.Items, c.AfterID)
 }
 
 type ChangeMove struct {
@@ -248,7 +248,10 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 
 	for _, ch := range changes {
 		if add := ch.Add(); add != nil {
-			pos := findPos(res, getID, add.AfterId)
+			pos := -1
+			if add.AfterID != "" {
+				pos = findPos(res, getID, add.AfterID)
+			}
 			res = Insert(res, pos+1, add.Items...)
 		}
 
@@ -257,7 +260,10 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 				return FindPos(move.IDs, getID(id)) < 0
 			})
 
-			pos := findPos(res, getID, move.AfterID)
+			pos := -1
+			if move.AfterID != "" {
+				pos = findPos(res, getID, move.AfterID)
+			}
 			items := make([]T, 0, len(move.IDs))
 			for _, id := range move.IDs {
 				v, ok := itemsMap[id]
