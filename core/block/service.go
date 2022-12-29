@@ -646,6 +646,7 @@ func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceReque
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		st.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(req.Source))
 		return b.Apply(st, smartblock.NoRestrictions)
 	})
 }
