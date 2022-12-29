@@ -214,6 +214,9 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
+	if len(req.Source) == 0 {
+		req.Source = []string{bundle.TypeKeyPage.URL()}
+	}
 	if len(req.Source) != 0 {
 		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
 			return
