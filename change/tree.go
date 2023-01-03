@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -64,7 +65,7 @@ func (t *Tree) AddFast(changes ...*Change) {
 		}
 		t.add(c)
 	}
-	t.updateHeads()
+	t.updateHeads(changes)
 }
 
 func (t *Tree) Add(changes ...*Change) (mode Mode) {
@@ -85,7 +86,7 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 	if !attached {
 		return Nothing
 	}
-	t.updateHeads()
+	t.updateHeads(changes)
 	if empty {
 		return Rebuild
 	}
@@ -184,20 +185,40 @@ func (t *Tree) after(id1, id2 string) (found bool) {
 	return
 }
 
-func (t *Tree) updateHeads() {
+func (t *Tree) updateHeads(chs []*Change) {
 	var newHeadIds, newMetaHeadIds []string
-	t.iterate(t.root, func(c *Change) (isContinue bool) {
-		if len(c.Next) == 0 {
-			newHeadIds = append(newHeadIds, c.Id)
-		}
-		if c.HasMeta() {
-			for _, prevDetId := range c.PreviousMetaIds {
-				newMetaHeadIds = slice.Remove(newMetaHeadIds, prevDetId)
+	if len(chs) == 1 && slice.UnsortedEquals(chs[0].PreviousIds, t.headIds) {
+		// shortcut when adding to the top of the tree
+		// only cover edge case when adding one change, otherwise it's not worth it
+		newHeadIds = []string{chs[0].Id}
+	}
+	if len(chs) == 1 && chs[0].HasMeta() && slice.UnsortedEquals(chs[0].PreviousMetaIds, t.metaHeadIds) {
+		// shortcut when adding to the top of the tree
+		// only cover edge case when adding one change, otherwise it's not worth it
+		newMetaHeadIds = []string{chs[0].Id}
+	}
+
+	total := 0
+	start := time.Now()
+	if len(newHeadIds) == 0 {
+		// otherwise do the full iterate to make sure we have the correct changes order
+		t.iterate(t.root, func(c *Change) (isContinue bool) {
+			total++
+			if len(c.Next) == 0 {
+				newHeadIds = append(newHeadIds, c.Id)
 			}
-			newMetaHeadIds = append(newMetaHeadIds, c.Id)
-		}
-		return true
-	})
+			if c.HasMeta() {
+				for _, prevDetId := range c.PreviousMetaIds {
+					newMetaHeadIds = slice.Remove(newMetaHeadIds, prevDetId)
+				}
+				newMetaHeadIds = append(newMetaHeadIds, c.Id)
+			}
+			return true
+		})
+	}
+	if time.Since(start) > time.Millisecond*100 {
+		log.Errorf("updateHeads took %s for %d changes", time.Since(start), total)
+	}
 	t.headIds = newHeadIds
 	t.metaHeadIds = newMetaHeadIds
 	sort.Strings(t.headIds)
