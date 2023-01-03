@@ -185,6 +185,29 @@ func (t *Tree) after(id1, id2 string) (found bool) {
 	return
 }
 
+func (t *Tree) recalculateHeads() (heads []string, metaHeads []string) {
+	start := time.Now()
+	total := 0
+	t.iterate(t.root, func(c *Change) (isContinue bool) {
+		total++
+		if len(c.Next) == 0 {
+			heads = append(heads, c.Id)
+		}
+		if c.HasMeta() {
+			for _, prevDetId := range c.PreviousMetaIds {
+				metaHeads = slice.Remove(metaHeads, prevDetId)
+			}
+			metaHeads = append(metaHeads, c.Id)
+		}
+		return true
+	})
+	if time.Since(start) > time.Millisecond*100 {
+		log.Errorf("recalculateHeads took %s for %d changes", time.Since(start), total)
+	}
+
+	return
+}
+
 func (t *Tree) updateHeads(chs []*Change) {
 	var newHeadIds, newMetaHeadIds []string
 	if len(chs) == 1 && slice.UnsortedEquals(chs[0].PreviousIds, t.headIds) {
@@ -198,31 +221,18 @@ func (t *Tree) updateHeads(chs []*Change) {
 		newMetaHeadIds = []string{chs[0].Id}
 	}
 
-	total := 0
-	start := time.Now()
-	if len(newHeadIds) == 0 {
-		// otherwise do the full iterate to make sure we have the correct changes order
-		t.iterate(t.root, func(c *Change) (isContinue bool) {
-			total++
-			if len(c.Next) == 0 {
-				newHeadIds = append(newHeadIds, c.Id)
-			}
-			if c.HasMeta() {
-				for _, prevDetId := range c.PreviousMetaIds {
-					newMetaHeadIds = slice.Remove(newMetaHeadIds, prevDetId)
-				}
-				newMetaHeadIds = append(newMetaHeadIds, c.Id)
-			}
-			return true
-		})
+	if newHeadIds == nil {
+		newHeadIds, newMetaHeadIds = t.recalculateHeads()
 	}
-	if time.Since(start) > time.Millisecond*100 {
-		log.Errorf("updateHeads took %s for %d changes", time.Since(start), total)
+	if newHeadIds != nil {
+		t.headIds = newHeadIds
+		sort.Strings(t.headIds)
 	}
-	t.headIds = newHeadIds
-	t.metaHeadIds = newMetaHeadIds
-	sort.Strings(t.headIds)
-	sort.Strings(t.metaHeadIds)
+
+	if newMetaHeadIds != nil {
+		t.metaHeadIds = newMetaHeadIds
+		sort.Strings(t.metaHeadIds)
+	}
 }
 
 func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
