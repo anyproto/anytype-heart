@@ -136,6 +136,7 @@ type source struct {
 	sb                       core.SmartBlock
 	tree                     *change.Tree
 	lastSnapshotId           string
+	changesSinceSnapshot     int
 	logHeads                 map[string]*change.Change
 	receiver                 ChangeReceiver
 	unsubscribe              func()
@@ -314,10 +315,11 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	s.lastSnapshotId = root.Id
 	doc = state.NewDocFromSnapshot(s.id, root.GetSnapshot()).(*state.State)
 	doc.(*state.State).SetChangeId(root.Id)
-	st, err := change.BuildStateSimpleCRDT(doc.(*state.State), s.tree)
+	st, changesApplied, err := change.BuildStateSimpleCRDT(doc.(*state.State), s.tree)
 	if err != nil {
 		return
 	}
+	s.changesSinceSnapshot = changesApplied
 
 	if s.sb.Type() != smartblock.SmartBlockTypeArchive && !s.Virtual() {
 		if verr := st.Validate(); verr != nil {
@@ -418,8 +420,10 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	s.logHeads[s.logId] = ch
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
+		s.changesSinceSnapshot = 0
 		log.Infof("%s: pushed snapshot", s.id)
 	} else {
+		s.changesSinceSnapshot++
 		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
 	}
 	return
@@ -444,13 +448,31 @@ func (v *source) ListIds() ([]string, error) {
 	return ids, nil
 }
 
+func snapshotChance(changesSinceSnapshot int) bool {
+	v := 2000
+	if changesSinceSnapshot <= 100 {
+		return false
+	}
+
+	d := changesSinceSnapshot/50 + 1
+
+	min := (v / 2) - d
+	max := (v / 2) + d
+
+	r := rand.Intn(v)
+	if r >= min && r <= max {
+		return true
+	}
+
+	return false
+}
+
 func (s *source) needSnapshot() bool {
 	if s.tree.Len() == 0 {
 		// starting tree with snapshot
 		return true
 	}
-	// TODO: think about a more smart way
-	return rand.Intn(500) == 42
+	return snapshotChance(s.changesSinceSnapshot)
 }
 
 func (s *source) changeListener(batch *mb.MB) {
@@ -515,11 +537,17 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	case change.Append:
 		changesContent := make([]*pb.ChangeContent, 0, len(changes))
 		for _, ch := range changes {
+			if ch.Snapshot != nil {
+				s.changesSinceSnapshot = 0
+			} else {
+				s.changesSinceSnapshot++
+			}
 			changesContent = append(changesContent, ch.Content...)
 		}
 		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
-			return change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
+			st, _, err := change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
+			return st, err
 		}, changesContent)
 	case change.Rebuild:
 		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
