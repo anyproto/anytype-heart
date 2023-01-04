@@ -2,11 +2,15 @@ package source
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
 func Test_snapshotChance(t *testing.T) {
-	return
+	if os.Getenv("ANYTYPE_TEST_SNAPSHOT_CHANCE") == "" {
+		t.Skip()
+		return
+	}
 	for i := 0; i <= 500; i++ {
 		for s := 0; s <= 10000; s++ {
 			if snapshotChance(s) {
@@ -21,7 +25,10 @@ func Test_snapshotChance(t *testing.T) {
 }
 
 func Test_snapshotChance2(t *testing.T) {
-	return
+	if os.Getenv("ANYTYPE_TEST_SNAPSHOT_CHANCE") == "" {
+		t.Skip()
+		return
+	}
 	for s := 0; s <= 10000; s++ {
 		total := 0
 		for i := 0; i <= 50000; i++ {
