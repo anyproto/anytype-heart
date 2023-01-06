@@ -539,7 +539,7 @@
     - [Rpc.Object.Import](#anytype-Rpc-Object-Import)
     - [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams)
-    - [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams)
+    - [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams)
     - [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot)
     - [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response)
     - [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error)
@@ -9232,7 +9232,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams) |  |  |
+| MarkdownParams | [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams) |  |  |
 | bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  | for internal use |
 | snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot) | repeated | optional, for external developers usage |
 | updateExistingObjects | [bool](#bool) |  |  |
@@ -9259,9 +9259,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-Object-Import-Request-NotionParams"></a>
+<a name="anytype-Rpc-Object-Import-Request-MarkdownParams"></a>
 
-### Rpc.Object.Import.Request.NotionParams
+### Rpc.Object.Import.Request.MarkdownParams
 
 
 

@@ -39,7 +39,7 @@ type Markdown struct {
 	blockConverter *mdConverter
 }
 
-const Name = "Notion"
+const Name = "Markdown"
 
 func New(s core.Service) converter.Converter {
 	return &Markdown{blockConverter: newMDConverter(s)}
@@ -50,8 +50,8 @@ func (m *Markdown) Name() string {
 }
 
 func (m *Markdown) GetParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
-	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfNotionParams); ok {
-		return p.NotionParams.GetPath(), nil
+	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfMarkdownParams); ok {
+		return p.MarkdownParams.GetPath(), nil
 	}
 	return "", errors.Wrap(errors.New("wrong parameters format"), "Markdown: GetParams")
 }
@@ -222,6 +222,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 	}
 
 	// process file blocks
+	childBlocks := make([]string, 0)
 	for _, file := range files {
 		if file.PageID == "" {
 			// not a page
@@ -229,6 +230,9 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		}
 
 		for _, b := range file.ParsedBlocks {
+			if len(b.ChildrenIds) != 0 {
+				childBlocks = append(childBlocks, b.ChildrenIds...)
+			}
 			if b.Id == "" {
 				b.Id = bson.NewObjectId().Hex()
 			}
@@ -264,6 +268,9 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 
 		var childrenIds = make([]string, len(file.ParsedBlocks))
 		for _, b := range file.ParsedBlocks {
+			if isChildBlock(childBlocks, b) {
+				continue
+			}
 			childrenIds = append(childrenIds, b.Id)
 		}
 
@@ -298,6 +305,15 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		return &converter.Response{Snapshots: snapshots}
 	}
 	return &converter.Response{Snapshots: snapshots, Error: allErrors}
+}
+
+func isChildBlock(blocks []string, b *model.Block) bool {
+	for _, block := range blocks {
+		if b.Id == block {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Markdown) convertCsvToLinks(csvFileName string, files map[string]*FileInfo) (blocks []*model.Block) {

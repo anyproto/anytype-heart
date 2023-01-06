@@ -304,7 +304,7 @@ func (t *Editor) RowDuplicate(s *state.State, req pb.RpcBlockTableRowDuplicateRe
 		}
 
 		newCell := cell.Copy()
-		newCell.Model().Id = makeCellID(newRow.Model().Id, colID)
+		newCell.Model().Id = MakeCellID(newRow.Model().Id, colID)
 		if !s.Add(newCell) {
 			return "", fmt.Errorf("add new cell %s", newCell.Model().Id)
 		}
@@ -334,7 +334,7 @@ func (t *Editor) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequ
 
 		newIDs := make([]string, 0, len(columns))
 		for _, colID := range columns {
-			id := makeCellID(rowID, colID)
+			id := MakeCellID(rowID, colID)
 			newIDs = append(newIDs, id)
 
 			if !s.Exists(id) {
@@ -407,7 +407,7 @@ func (t *Editor) ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFi
 
 	for _, colID := range req.BlockIds {
 		for _, rowID := range rows {
-			id := makeCellID(rowID, colID)
+			id := MakeCellID(rowID, colID)
 			if s.Exists(id) {
 				continue
 			}
@@ -531,7 +531,7 @@ func (t *Editor) cloneColumnStyles(s *state.State, srcColID, targetColID string)
 		}
 
 		if protoBlock != nil && protoBlock.Model().BackgroundColor != "" {
-			targetCellID := makeCellID(rowID, targetColID)
+			targetCellID := MakeCellID(rowID, targetColID)
 
 			if !s.Exists(targetCellID) {
 				_, err := addCell(s, rowID, targetColID)
@@ -613,7 +613,7 @@ func (t *Editor) ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDupli
 			return "", fmt.Errorf("cell %s is not found", cellID)
 		}
 		cell = cell.Copy()
-		cell.Model().Id = makeCellID(rowID, newCol.Model().Id)
+		cell.Model().Id = MakeCellID(rowID, newCol.Model().Id)
 
 		if !s.Add(cell) {
 			return "", fmt.Errorf("add cell block")
@@ -826,7 +826,7 @@ func pickColumn(s *state.State, id string) (simple.Block, error) {
 	return b, nil
 }
 
-func makeCellID(rowID, colID string) string {
+func MakeCellID(rowID, colID string) string {
 	return fmt.Sprintf("%s-%s", rowID, colID)
 }
 
@@ -840,7 +840,7 @@ func ParseCellID(id string) (rowID string, colID string, err error) {
 
 func addCell(s *state.State, rowID, colID string) (string, error) {
 	c := simple.New(&model.Block{
-		Id: makeCellID(rowID, colID),
+		Id: MakeCellID(rowID, colID),
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{},
 		},

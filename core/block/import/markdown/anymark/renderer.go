@@ -22,9 +22,9 @@ type Renderer struct {
 }
 
 // NewRenderer returns a new Renderer with given options.
-func NewRenderer(baseFilepath string, allFileShortPaths []string) *Renderer {
+func NewRenderer(br *blocksRenderer) *Renderer {
 	return &Renderer{
-		blocksRenderer: newBlocksRenderer(baseFilepath, allFileShortPaths),
+		blocksRenderer: br,
 	}
 }
 

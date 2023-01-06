@@ -42,7 +42,7 @@ func Test_ImportSuccess(t *testing.T) {
 	i.oc = creator
 
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -67,7 +67,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	i.oc = creator
 
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -103,7 +103,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -141,7 +141,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -179,7 +179,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -268,9 +268,8 @@ func Test_ListImports(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 	assert.Len(t, res, 1)
-	assert.True(t,  res[0].Type == pb.RpcObjectImportListImportResponseType(0) || res[1].Type == pb.RpcObjectImportListImportResponseType(0))
+	assert.True(t, res[0].Type == pb.RpcObjectImportListImportResponseType(0) || res[1].Type == pb.RpcObjectImportListImportResponseType(0))
 }
-
 
 func Test_ImportWebNoParser(t *testing.T) {
 	i := Import{}
@@ -283,7 +282,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 	i.oc = creator
 
 	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 
@@ -311,7 +310,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	parsers.RegisterFunc(new)
 
 	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 
@@ -347,8 +346,8 @@ func Test_ImportWebSuccess(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	id,_, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+	id, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 
@@ -386,7 +385,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	parsers.RegisterFunc(new)
 
 	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 

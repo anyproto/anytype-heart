@@ -1758,7 +1758,7 @@ message Rpc {
         message Import {
             message Request {
                 oneof params {
-                    NotionParams notionParams = 1;
+                    MarkdownParams markdownParams = 1;
                     BookmarksParams bookmarksParams = 2; //for internal use
                 }
                 repeated Snapshot snapshots = 3; // optional, for external developers usage
@@ -1766,7 +1766,7 @@ message Rpc {
                 Type type = 5;
                 Mode mode = 6;
 
-                message NotionParams {
+                message MarkdownParams {
                     string path = 1;
                 }
 
@@ -1784,7 +1784,7 @@ message Rpc {
                     anytype.model.SmartBlockSnapshotBase snapshot = 2;
                 };
                 enum Type {
-                    Notion = 0;
+                    Markdown = 0;
                     External = 1; // external developers use it
                 };
 
@@ -1829,7 +1829,7 @@ message Rpc {
             message ImportResponse {
                 Type type = 1; 
                 enum Type {
-                    Notion = 0;
+                    Markdown = 0;
                 };
             }
         }

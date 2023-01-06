@@ -33,7 +33,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	p := &Pb{}
 
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: wr.Path()}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: wr.Path()}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -59,7 +59,7 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 	p := &Pb{}
 
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "not exists"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "not exists"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -84,7 +84,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 	p := &Pb{}
 
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "notexist.zip"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "notexist.zip"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -118,7 +118,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	// ALL_OR_NOTHING mode
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: wr.Path()}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: wr.Path()}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -130,7 +130,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	// IGNORE_ERRORS mode
 	res = p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: wr.Path()}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: wr.Path()}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
