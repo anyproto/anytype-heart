@@ -36,7 +36,7 @@ func Test_ImportSuccess(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: nil}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
@@ -62,7 +62,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 		Error: e,
 	}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 
@@ -97,7 +97,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: nil}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
@@ -135,7 +135,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: e}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
@@ -173,7 +173,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: e}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
@@ -259,7 +259,7 @@ func Test_ListImports(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = pbc.New(nil)
+	i.converters["Markdown"] = pbc.New(nil)
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 
