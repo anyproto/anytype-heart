@@ -4241,6 +4241,7 @@ message Rpc {
                     string contextId = 1;
                     string blockId = 2; // id of dataview block to insert the new block
                     anytype.model.Block.Content.Dataview.View view = 4;
+                    repeated string source = 5;
                 }
 
                 message Response {

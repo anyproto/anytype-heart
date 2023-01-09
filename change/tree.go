@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -64,7 +65,7 @@ func (t *Tree) AddFast(changes ...*Change) {
 		}
 		t.add(c)
 	}
-	t.updateHeads()
+	t.updateHeads(changes)
 }
 
 func (t *Tree) Add(changes ...*Change) (mode Mode) {
@@ -85,7 +86,7 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 	if !attached {
 		return Nothing
 	}
-	t.updateHeads()
+	t.updateHeads(changes)
 	if empty {
 		return Rebuild
 	}
@@ -184,24 +185,54 @@ func (t *Tree) after(id1, id2 string) (found bool) {
 	return
 }
 
-func (t *Tree) updateHeads() {
-	var newHeadIds, newMetaHeadIds []string
+func (t *Tree) recalculateHeads() (heads []string, metaHeads []string) {
+	start := time.Now()
+	total := 0
 	t.iterate(t.root, func(c *Change) (isContinue bool) {
+		total++
 		if len(c.Next) == 0 {
-			newHeadIds = append(newHeadIds, c.Id)
+			heads = append(heads, c.Id)
 		}
 		if c.HasMeta() {
 			for _, prevDetId := range c.PreviousMetaIds {
-				newMetaHeadIds = slice.Remove(newMetaHeadIds, prevDetId)
+				metaHeads = slice.Remove(metaHeads, prevDetId)
 			}
-			newMetaHeadIds = append(newMetaHeadIds, c.Id)
+			metaHeads = append(metaHeads, c.Id)
 		}
 		return true
 	})
-	t.headIds = newHeadIds
-	t.metaHeadIds = newMetaHeadIds
-	sort.Strings(t.headIds)
-	sort.Strings(t.metaHeadIds)
+	if time.Since(start) > time.Millisecond*100 {
+		log.Errorf("recalculateHeads took %s for %d changes", time.Since(start), total)
+	}
+
+	return
+}
+
+func (t *Tree) updateHeads(chs []*Change) {
+	var newHeadIds, newMetaHeadIds []string
+	if len(chs) == 1 && slice.UnsortedEquals(chs[0].PreviousIds, t.headIds) {
+		// shortcut when adding to the top of the tree
+		// only cover edge case when adding one change, otherwise it's not worth it
+		newHeadIds = []string{chs[0].Id}
+	}
+	if len(chs) == 1 && chs[0].HasMeta() && slice.UnsortedEquals(chs[0].PreviousMetaIds, t.metaHeadIds) {
+		// shortcut when adding to the top of the tree
+		// only cover edge case when adding one change, otherwise it's not worth it
+		newMetaHeadIds = []string{chs[0].Id}
+	}
+
+	if newHeadIds == nil {
+		newHeadIds, newMetaHeadIds = t.recalculateHeads()
+	}
+	if newHeadIds != nil {
+		t.headIds = newHeadIds
+		sort.Strings(t.headIds)
+	}
+
+	if newMetaHeadIds != nil {
+		t.metaHeadIds = newMetaHeadIds
+		sort.Strings(t.metaHeadIds)
+	}
 }
 
 func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {

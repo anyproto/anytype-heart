@@ -214,6 +214,9 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
+	if len(req.Source) == 0 {
+		req.Source = []string{bundle.TypeKeyPage.URL()}
+	}
 	if len(req.Source) != 0 {
 		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
 			return
@@ -251,7 +254,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, nil, newState)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, nil, nil, newState)
 }
 
 // TODO: it must be in another component
@@ -280,7 +283,7 @@ func (c *Creator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []st
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
 func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
-	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
+	u, err := uri.NormalizeURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("process uri: %w", err)
 	}

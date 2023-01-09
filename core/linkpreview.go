@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"net/url"
+	"fmt"
 	"strings"
 	"time"
 
@@ -15,22 +15,12 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	urlStr, err := uri.ProcessURI(req.Url)
+	u, err := uri.NormalizeAndParseURI(req.Url)
 	if err != nil {
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	u, err := url.Parse(urlStr)
-	if err != nil {
-		return &pb.RpcLinkPreviewResponse{
-			Error: &pb.RpcLinkPreviewResponseError{
-				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
-				Description: "failed to parse url",
+				Description: fmt.Sprintf("failed to parse url: %v", err),
 			},
 		}
 	}

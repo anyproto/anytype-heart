@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"net/url"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 type FileNamer interface {
@@ -217,7 +217,7 @@ func (h *MD) renderBookmark(buf writer, in *renderState, b *model.Block) {
 	bm := b.GetBookmark()
 	if bm != nil && bm.Url != "" {
 		buf.WriteString(in.indent)
-		url, e := url.Parse(bm.Url)
+		url, e := uri.ParseURI(bm.Url)
 		if e == nil {
 			fmt.Fprintf(buf, "[%s](%s)    \n", escape.MarkdownCharacters(html.EscapeString(bm.Title)), url.String())
 		}
@@ -411,7 +411,7 @@ func (mw *marksWriter) writeMarks(buf writer, pos int) {
 			if start {
 				buf.WriteString("[")
 			} else {
-				urlP, e := url.Parse(m.Param)
+				urlP, e := uri.ParseURI(m.Param)
 				urlS := m.Param
 				if e == nil {
 					urlS = urlP.String()

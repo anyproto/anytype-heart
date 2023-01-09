@@ -3,9 +3,6 @@ package mill
 import (
 	"bytes"
 	"fmt"
-	"github.com/disintegration/imaging"
-	"github.com/dsoprea/go-exif/v3"
-	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"image"
 	"image/color/palette"
 	"image/draw"
@@ -15,7 +12,16 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/chai2010/webp"
+	"github.com/disintegration/imaging"
+	"github.com/dsoprea/go-exif/v3"
+	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
+	"golang.org/x/exp/slices"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
+
+	// Import for image.DecodeConfig to support .webp format
+	_ "golang.org/x/image/webp"
 )
 
 // Format enumerates the type of images currently supported
@@ -30,6 +36,7 @@ const (
 	PNG  Format = "png"
 	GIF  Format = "gif"
 	ICO  Format = "ico"
+	WEBP Format = "webp"
 )
 
 type ImageSize struct {
@@ -150,7 +157,7 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 			r2 = r
 		}
 		// here is an optimisation
-		// lets return the original picture in case it has not been resized or normilised
+		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
 			File: r2,
 			Meta: map[string]interface{}{
@@ -160,32 +167,36 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		}, nil
 	}
 
-	if format == JPEG || format == PNG || format == ICO {
-		if format == JPEG && img == nil {
+	if slices.Contains([]Format{JPEG, PNG, ICO, WEBP}, format) {
+		switch {
+		case format == JPEG && img == nil:
 			// we already have img decoded if we have orientation <= 1
 			img, err = jpeg.Decode(r)
-			if err != nil {
-				return nil, err
-			}
-		} else if format != JPEG {
+		case format == WEBP:
+			img, err = webp.Decode(r)
+		case format != JPEG:
 			img, err = png.Decode(r)
-			if err != nil {
-				return nil, err
-			}
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		resized := imaging.Resize(img, width, 0, imaging.Lanczos)
 		width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
 		buff := &bytes.Buffer{}
-		if format == JPEG {
-			if err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}); err != nil {
-				return nil, err
-			}
-		} else {
-			if err = png.Encode(buff, resized); err != nil {
-				return nil, err
-			}
+		switch format {
+		case JPEG:
+			err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality})
+		case WEBP:
+			err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)})
+		default:
+			err = png.Encode(buff, resized)
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		return &Result{
@@ -195,7 +206,9 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 				"height": height,
 			},
 		}, nil
-	} else if format == GIF {
+	}
+
+	if format == GIF {
 		gifImg, err := gif.DecodeAll(r)
 		if err != nil {
 			return nil, err

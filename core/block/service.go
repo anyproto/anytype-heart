@@ -644,9 +644,9 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 
 func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		s := b.NewStateCtx(ctx)
-		s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-		return b.Apply(s, smartblock.NoRestrictions)
+		st := b.NewStateCtx(ctx)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		return b.Apply(st, smartblock.NoRestrictions)
 	})
 }
 
@@ -1203,7 +1203,7 @@ func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	url, err := uri.ProcessURI(req.Url)
+	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}

@@ -220,7 +220,7 @@ func (s *Service) CreateDataviewView(
 		if req.View == nil {
 			req.View = &model.BlockContentDataviewView{}
 		}
-		view, e := b.CreateView(ctx, req.BlockId, *req.View)
+		view, e := b.CreateView(ctx, req.BlockId, *req.View, req.Source)
 		if e != nil {
 			return e
 		}
