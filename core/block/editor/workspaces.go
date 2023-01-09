@@ -958,14 +958,14 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 }
 
 // RemoveSubObjects removes sub objects from the workspace collection
-// if allowGC is true, then relations that are not used by any object in the workspace will be removed as well
-func (w *Workspaces) RemoveSubObjects(objectIds []string, allowDependentsGC bool) (err error) {
+// if orphansGC is true, then relations that are not used by any object in the workspace will be removed as well
+func (w *Workspaces) RemoveSubObjects(objectIds []string, orphansGC bool) (err error) {
 	st := w.NewState()
 	var idsToRemove []string
 	for _, id := range objectIds {
 		// special case for object types
 		idsToRemove = nil
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) && allowDependentsGC {
+		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) && orphansGC {
 			idsToRemove, err = w.objectTypeRelationsForGC(id)
 			if err != nil {
 				log.Errorf("objectTypeRelationsForGC failed: %s", err.Error())
@@ -981,7 +981,7 @@ func (w *Workspaces) RemoveSubObjects(objectIds []string, allowDependentsGC bool
 			log.Errorf("failed to remove sub object: %s", err.Error())
 			continue
 		}
-		if allowDependentsGC && len(idsToRemove) > 0 {
+		if orphansGC && len(idsToRemove) > 0 {
 			for _, relId := range idsToRemove {
 				err = w.removeObject(st, relId)
 				if err != nil {

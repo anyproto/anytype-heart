@@ -184,8 +184,7 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		allowDependentGC := true // may be added as a parameter later
-		err = bs.RemoveSubObjectsInWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account, allowDependentGC)
+		err = bs.RemoveSubObjectsInWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account, true)
 		return
 	})
 

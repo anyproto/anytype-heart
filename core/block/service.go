@@ -436,13 +436,13 @@ func (s *Service) AddSubObjectsToWorkspace(
 	return
 }
 
-func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string, allowDependentsGC bool) (err error) {
+func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string, orphansGC bool) (err error) {
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")
 		}
-		err = ws.RemoveSubObjects(objectIds, allowDependentsGC)
+		err = ws.RemoveSubObjects(objectIds, orphansGC)
 		return err
 	})
 
