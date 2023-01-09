@@ -150,8 +150,6 @@ func (b *bulkMigration) Commit() error {
 type service struct {
 	objectStore     objectstore.ObjectStore
 	relationCreator subObjectCreator
-
-	mu sync.RWMutex
 }
 
 func (s *service) MigrateRelations(relations []*model.Relation) error {
@@ -190,8 +188,6 @@ func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations relationuti
 }
 
 func (s *service) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.fetchKeys(keys...)
 }
 
@@ -215,8 +211,6 @@ func (s *service) fetchKeys(keys ...string) (relations []*relationutils.Relation
 }
 
 func (s *service) ListAll(opts ...FetchOption) (relations relationutils.Relations, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.listAll(opts...)
 }
 
@@ -266,8 +260,6 @@ func WithWorkspaceId(id string) FetchOption {
 }
 
 func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.fetchKey(key, opts...)
 }
 
