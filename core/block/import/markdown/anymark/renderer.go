@@ -64,12 +64,18 @@ func (r *Renderer) writeLines(source []byte, n ast.Node) {
 	}
 }
 
-func (r *Renderer) renderDocument(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderDocument(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	// nothing to do
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderHeading(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderHeading(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Heading)
 
 	var style model.BlockContentTextStyle
@@ -97,7 +103,10 @@ func (r *Renderer) renderHeading(_ util.BufWriter, source []byte, node ast.Node,
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderBlockquote(_ util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderBlockquote(_ util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	if entering {
 		r.OpenNewTextBlock(model.BlockContentText_Quote)
 	} else {
@@ -106,7 +115,10 @@ func (r *Renderer) renderBlockquote(_ util.BufWriter, source []byte, n ast.Node,
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderCodeBlock(_ util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderCodeBlock(_ util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	if entering {
 		r.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
@@ -115,7 +127,10 @@ func (r *Renderer) renderCodeBlock(_ util.BufWriter, source []byte, n ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.FencedCodeBlock)
 	if entering {
 		r.OpenNewTextBlock(model.BlockContentText_Code)
@@ -126,12 +141,18 @@ func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter, source []byte, node a
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderHTMLBlock(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderHTMLBlock(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	// Do not render
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderList(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderList(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.List)
 
 	r.SetListState(entering, n.IsOrdered())
@@ -139,7 +160,10 @@ func (r *Renderer) renderList(_ util.BufWriter, source []byte, node ast.Node, en
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderListItem(_ util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderListItem(_ util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	tag := model.BlockContentText_Marked
 
 	if r.GetIsNumberedList() {
@@ -154,7 +178,10 @@ func (r *Renderer) renderListItem(_ util.BufWriter, source []byte, n ast.Node, e
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderParagraph(_ util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderParagraph(_ util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	if entering {
 		r.OpenNewTextBlock(model.BlockContentText_Paragraph)
 	} else {
@@ -163,7 +190,10 @@ func (r *Renderer) renderParagraph(_ util.BufWriter, source []byte, n ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderTextBlock(_ util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderTextBlock(_ util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		// TODO: check it
 		// r.CloseTextBlock(model.BlockContentText_Paragraph)
@@ -171,7 +201,10 @@ func (r *Renderer) renderTextBlock(_ util.BufWriter, source []byte, n ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderThematicBreak(_ util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderThematicBreak(_ util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	if entering {
 		r.ForceCloseTextBlock()
 	} else {
@@ -181,7 +214,10 @@ func (r *Renderer) renderThematicBreak(_ util.BufWriter, source []byte, n ast.No
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderAutoLink(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderAutoLink(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.AutoLink)
 	if !entering {
 		return ast.WalkContinue, nil
@@ -201,7 +237,8 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter, source []byte, node ast.Node
 	}
 
 	// add basefilepath
-	if !strings.HasPrefix(strings.ToLower(linkPath), "http://") && !strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+	if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
+		!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
 		linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 	}
 
@@ -214,7 +251,10 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter, source []byte, node ast.Node
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderCodeSpan(_ util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderCodeSpan(_ util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	if entering {
 		r.SetMarkStart()
 
@@ -242,7 +282,10 @@ func (r *Renderer) renderCodeSpan(_ util.BufWriter, source []byte, n ast.Node, e
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderEmphasis(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderEmphasis(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Emphasis)
 	tag := model.BlockContentTextMark_Italic
 	if n.Level == 2 {
@@ -262,7 +305,10 @@ func (r *Renderer) renderEmphasis(_ util.BufWriter, source []byte, node ast.Node
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderLink(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderLink(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Link)
 
 	destination := n.Destination
@@ -277,7 +323,8 @@ func (r *Renderer) renderLink(_ util.BufWriter, source []byte, node ast.Node, en
 			linkPath = string(destination)
 		}
 
-		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") && !strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
+			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 		}
 
@@ -292,7 +339,10 @@ func (r *Renderer) renderLink(_ util.BufWriter, source []byte, node ast.Node, en
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderImage(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderImage(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
@@ -303,7 +353,10 @@ func (r *Renderer) renderImage(_ util.BufWriter, source []byte, node ast.Node, e
 	return ast.WalkSkipChildren, nil
 }
 
-func (r *Renderer) renderRawHTML(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderRawHTML(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 	n, ok := node.(*ast.RawHTML)
 	if !ok {
 		return ast.WalkSkipChildren, nil
@@ -332,7 +385,10 @@ func (r *Renderer) renderRawHTML(_ util.BufWriter, source []byte, node ast.Node,
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderText(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderText(_ util.BufWriter,
+	source []byte,
+	node ast.Node,
+	entering bool) (ast.WalkStatus, error) {
 
 	if !entering {
 		return ast.WalkContinue, nil
