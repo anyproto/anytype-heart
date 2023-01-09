@@ -408,6 +408,9 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}
+		if s.tree.Len() > 0 {
+			log.With("thread", s.id).With("len", s.tree.Len(), "lenSnap", s.changesSinceSnapshot, "changes", len(params.Changes), "doSnap", params.DoSnapshot).Warnf("do the snapshot")
+		}
 	}
 	c.Content = params.Changes
 	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
