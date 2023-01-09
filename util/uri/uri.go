@@ -2,11 +2,10 @@ package uri
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var (
@@ -17,65 +16,72 @@ var (
 	noPrefixHttpRegex      = regexp.MustCompile(`^[\pL\d.-]+(?:\.[\pL\\d.-]+)+[\pL\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.\/\d]+$`)
 	haveUriSchemeRegex     = regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
+
+	// errors
+	errURLEmpty             = fmt.Errorf("url is empty")
+	errFilepathNotSupported = fmt.Errorf("filepath not supported")
 )
 
-func ValidateEmail(email string) bool {
-	if len(email) == 0 {
-		return false
+func excludePathAndEmptyURIs(uri string) error {
+	switch {
+	case len(uri) == 0:
+		return errURLEmpty
+	case winFilepathPrefixRegex.MatchString(uri):
+		return errFilepathNotSupported
+	case strings.HasPrefix(uri, string(os.PathSeparator)):
+		return errFilepathNotSupported
+	case strings.HasPrefix(uri, "."):
+		return errFilepathNotSupported
 	}
 
-	return noPrefixEmailRegexp.MatchString(email)
+	return nil
 }
 
-func ValidatePhone(phone string) bool {
-	if len(phone) == 0 {
-		return false
+func normalizeURI(uri string) string {
+	switch {
+	case noPrefixEmailRegexp.MatchString(uri):
+		return "mailto:" + uri
+	case noPrefixTelRegexp.MatchString(uri):
+		return "tel:" + uri
+	case noPrefixHttpRegex.MatchString(uri):
+		return "http://" + uri
 	}
 
-	return noPrefixTelRegexp.MatchString(phone)
+	return uri
 }
 
-// ProcessURI tries to verify the web URI and return the normalized URI
-func ProcessURI(url string) (urlOut string, err error) {
-	if len(url) == 0 {
-		return url, fmt.Errorf("url is empty")
-
-	} else if noPrefixEmailRegexp.MatchString(url) {
-		return "mailto:" + url, nil
-
-	} else if noPrefixTelRegexp.MatchString(url) {
-		return "tel:" + url, nil
-
-	} else if winFilepathPrefixRegex.MatchString(url) {
-		return "", fmt.Errorf("filepath not supported")
-
-	} else if strings.HasPrefix(url, string(os.PathSeparator)) || strings.HasPrefix(url, ".") {
-		return "", fmt.Errorf("filepath not supported")
-
-	} else if noPrefixHttpRegex.MatchString(url) {
-		return "http://" + url, nil
-
-	} else if haveUriSchemeRegex.MatchString(url) {
-		return url, nil
+func ValidateURI(uri string) error {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return err
 	}
 
-	return url, fmt.Errorf("not a uri")
+	_, err := url.Parse(uri)
+	return err
 }
 
-func ProcessAllURI(blocks []*model.Block) []*model.Block {
-	for bI := range blocks {
-		if blocks[bI].GetText() != nil && blocks[bI].GetText().Marks != nil && len(blocks[bI].GetText().Marks.Marks) > 0 {
-			marks := blocks[bI].GetText().Marks.Marks
-
-			for mI := range marks {
-				if marks[mI].Type == model.BlockContentTextMark_Link {
-					marks[mI].Param, _ = ProcessURI(marks[mI].Param)
-				}
-			}
-
-			blocks[bI].GetText().Marks.Marks = marks
-		}
+func ParseURI(uri string) (*url.URL, error) {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return nil, err
 	}
 
-	return blocks
+	return url.Parse(uri)
+}
+
+func NormalizeURI(uri string) (string, error) {
+	if err := ValidateURI(uri); err != nil {
+		return "", err
+	}
+
+	return normalizeURI(uri), nil
+}
+
+func NormalizeAndParseURI(uri string) (*url.URL, error) {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return nil, err
+	}
+
+	return url.Parse(normalizeURI(uri))
 }

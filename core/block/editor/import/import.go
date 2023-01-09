@@ -29,6 +29,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 var (
@@ -691,7 +692,7 @@ func (imp *importImpl) convertTextToPageLink(block *model.Block) {
 }
 
 func (imp *importImpl) convertTextToBookmark(block *model.Block) {
-	if _, err := url.Parse(block.GetText().Marks.Marks[0].Param); err != nil {
+	if err := uri.ValidateURI(block.GetText().Marks.Marks[0].Param); err != nil {
 		return
 	}
 

@@ -42,13 +42,12 @@ func (sc *stateCache) Get(id string) *state.State {
 }
 
 // Simple implementation hopes for CRDT and ignores errors. No merge
-func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error) {
+func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, changesApplied int, err error) {
 	var (
 		startId    string
 		applyRoot  bool
 		st         = time.Now()
 		lastChange *Change
-		count      int
 	)
 	if startId = root.ChangeId(); startId == "" {
 		startId = t.RootId()
@@ -56,7 +55,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 	}
 
 	t.Iterate(startId, func(c *Change) (isContinue bool) {
-		count++
+		changesApplied++
 		lastChange = c
 		if startId == c.Id {
 			s = root.NewState()
@@ -78,14 +77,14 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 		return true
 	})
 	if err != nil {
-		return nil, err
+		return nil, changesApplied, err
 	}
 	if lastChange != nil {
 		s.SetLastModified(lastChange.Timestamp, lastChange.Account)
 	}
 
-	log.Infof("build state (crdt): changes: %d; dur: %v;", count, time.Since(st))
-	return s, err
+	log.Infof("build state (crdt): changes: %d; dur: %v;", changesApplied, time.Since(st))
+	return s, changesApplied, err
 }
 
 // Full version found parallel branches and proposes to resolve conflicts

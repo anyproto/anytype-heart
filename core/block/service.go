@@ -436,13 +436,13 @@ func (s *Service) AddSubObjectsToWorkspace(
 	return
 }
 
-func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string) (err error) {
+func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string, orphansGC bool) (err error) {
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")
 		}
-		err = ws.RemoveSubObjects(objectIds)
+		err = ws.RemoveSubObjects(objectIds, orphansGC)
 		return err
 	})
 
@@ -1195,7 +1195,7 @@ func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	url, err := uri.ProcessURI(req.Url)
+	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}

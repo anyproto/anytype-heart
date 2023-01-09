@@ -9,10 +9,11 @@ import (
 )
 
 type subscription struct {
-	ids    []string
-	quit   chan struct{}
-	closed bool
-	ch     chan *types.Struct
+	ids        []string
+	quit       chan struct{}
+	closed     bool
+	closedOnce sync.Once
+	ch         chan *types.Struct
 	sync.RWMutex
 }
 
@@ -29,21 +30,21 @@ func (sub *subscription) RecordChan() chan *types.Struct {
 }
 
 func (sub *subscription) Close() {
-	sub.Lock()
-	defer sub.Unlock()
-	if sub.closed {
-		return
-	}
-
-	close(sub.quit)
-	close(sub.ch)
-
-	sub.closed = true
+	sub.closedOnce.Do(func() {
+		close(sub.quit)
+		close(sub.ch)
+		sub.Lock()
+		sub.closed = true
+		sub.Unlock()
+	})
 }
 
 func (sub *subscription) Subscribe(ids []string) (added []string) {
 	sub.Lock()
 	defer sub.Unlock()
+	if sub.closed {
+		return nil
+	}
 loop:
 	for _, id := range ids {
 		for _, idEx := range sub.ids {
