@@ -899,6 +899,11 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.StringList(relIds),
 			},
+			{
+				RelationKey: bundle.RelationKeyWorkspaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(w.Id()),
+			},
 		},
 	})
 	if err != nil {
@@ -961,10 +966,9 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 // if orphansGC is true, then relations that are not used by any object in the workspace will be removed as well
 func (w *Workspaces) RemoveSubObjects(objectIds []string, orphansGC bool) (err error) {
 	st := w.NewState()
-	var idsToRemove []string
 	for _, id := range objectIds {
 		// special case for object types
-		idsToRemove = nil
+		var idsToRemove []string
 		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) && orphansGC {
 			idsToRemove, err = w.objectTypeRelationsForGC(id)
 			if err != nil {
