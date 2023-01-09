@@ -1195,7 +1195,7 @@ func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	url, err := uri.ProcessURI(req.Url)
+	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
