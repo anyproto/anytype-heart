@@ -230,6 +230,7 @@ service ClientCommands {
     rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
     rpc DebugExportLocalstore (anytype.Rpc.Debug.ExportLocalstore.Request) returns (anytype.Rpc.Debug.ExportLocalstore.Response);
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
+    rpc DebugObjectsEvents (anytype.Rpc.Debug.ObjectsEvent.Request) returns (anytype.Rpc.Debug.ObjectsEvent.Response);
 
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 

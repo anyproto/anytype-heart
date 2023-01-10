@@ -164,6 +164,31 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 	return response(path, err)
 }
 
+func (mw *Middleware) DebugObjectEvents(_ context.Context, req *pb.RpcDebugObjectsEventRequest) *pb.RpcDebugObjectsEventResponse {
+	response := func(events []*pb.Change, err error) *pb.RpcDebugObjectsEventResponse {
+		rpcErr := &pb.RpcDebugObjectsEventResponseError{
+			Code: pb.RpcDebugObjectsEventResponseError_NULL,
+		}
+		if err != nil {
+			rpcErr.Code = pb.RpcDebugObjectsEventResponseError_UNKNOWN_ERROR
+			rpcErr.Description = err.Error()
+		}
+		return &pb.RpcDebugObjectsEventResponse{
+			Error: rpcErr,
+			Event: nil, //change
+		}
+	}
+
+	app := mw.GetApp()
+	if app == nil {
+		return response(nil, ErrNotLoggedIn)
+	}
+
+	dbg := app.MustComponent(debug.CName).(debug.Debug)
+	events, err := dbg.DumpObjectsEvents(req.GetAccountId())
+	return response(events, err)
+}
+
 func getThreadInfo(ipfs ipfs.IPFS, t threads.Service, id thread.ID, ownDeviceId string, cafePeer peer.ID, skipEmptyLogs bool, downloadRemoteRecords bool) pb.RpcDebugthreadInfo {
 	tinfo := pb.RpcDebugthreadInfo{Id: id.String()}
 	thrd, err := t.Logstore().GetThread(id)

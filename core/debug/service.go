@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/change"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -28,11 +29,22 @@ type Debug interface {
 	app.Component
 	DumpTree(blockId, path string, anonymize bool, withSvg bool) (filename string, err error)
 	DumpLocalstore(objectIds []string, path string) (filename string, err error)
+	DumpObjectsEvents(accountID string) (events []*pb.Change, err error)
 }
 
 type debug struct {
 	core  core.Service
 	store objectstore.ObjectStore
+}
+
+func (d *debug) DumpObjectsEvents(accountID string) (events []*pb.Change, err error) {
+	if err != nil {
+		logger.Fatal("failed to get objects ids:", err)
+		return nil, err
+	}
+
+	d.DumpTree(accountID, "", true, false)
+	return nil, nil
 }
 
 func (d *debug) Init(a *app.App) (err error) {

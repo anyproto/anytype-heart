@@ -104,6 +104,24 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 	return
 }
 
+func (b *treeBuilder) BuildObjectEvents() (event []*pb.Event, err error) {
+
+	logBuf := bytes.NewBuffer(nil)
+	b.log = log.New(io.MultiWriter(logBuf, os.Stderr), "", log.LstdFlags)
+
+	logs, err := b.b.GetLogs()
+	if err != nil {
+		b.log.Printf("block.GetLogs() error: %v", err)
+		return
+	}
+	// write changes
+	st := time.Now()
+	b.log.Printf("write changes...")
+	b.writeChanges(logs)
+	b.log.Printf("wrote %d changes for a %v", len(b.changes), time.Since(st))
+	return
+}
+
 func (b *treeBuilder) writeChanges(logs []core.SmartblockLog) (err error) {
 	b.changes = make(map[string]struct{})
 	var q1, buf []string
