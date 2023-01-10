@@ -9,7 +9,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	editor "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -54,8 +53,7 @@ func NewRelationCreator(service *block.Service,
 func (rc *RelationService) CreateRelations(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	pageID string,
-	relations []*converter.Relation,
-	relationsLinks pbtypes.RelationLinks) ([]string, map[string]*model.Block, error) {
+	relations []*converter.Relation) ([]string, map[string]*model.Block, error) {
 	notExistedRelations := make([]*converter.Relation, 0)
 	existedRelations := make(map[string]*converter.Relation, 0)
 	for _, r := range relations {
@@ -86,38 +84,37 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 			},
 			Limit: 1,
 		})
-		if err == nil {
-			if len(records) > 0 {
-				id := records[0].Details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
-				existedRelations[id] = r
-				continue
-			}
+		if err == nil && len(records) > 0 {
+			id := pbtypes.GetString(records[0].Details, bundle.RelationKeyRelationKey.String())
+			existedRelations[id] = r
+			continue
 		}
 		notExistedRelations = append(notExistedRelations, r)
 	}
 
-	filesToDelete, oldRelationBlockToNew, failedRelations, err := rc.update(ctx, snapshot, existedRelations, pageID)
+	filesToDelete, oldRelationBlockToNewUpdate, failedRelations, err := rc.update(ctx, snapshot, existedRelations, pageID)
 	if err != nil {
 		return nil, nil, err
 	}
 	notExistedRelations = append(notExistedRelations, failedRelations...)
-	createfilesToDelete, relationsBlocks, err := rc.create(ctx, snapshot, notExistedRelations, pageID)
+	createfilesToDelete, oldRelationBlockToNewCreate, err := rc.create(ctx, snapshot, notExistedRelations, pageID)
 	if err != nil {
 		return nil, nil, err
 	}
 	filesToDelete = append(filesToDelete, createfilesToDelete...)
-	relationBlocks := make(map[string]*model.Block, len(relationsBlocks)+len(oldRelationBlockToNew))
-	if len(oldRelationBlockToNew) == 0 {
-		for k, b := range oldRelationBlockToNew {
-			relationBlocks[k] = b
+	totalNumberOfRelationBlocks := len(oldRelationBlockToNewCreate) + len(oldRelationBlockToNewUpdate)
+	oldRelationBlockToNewTotal := make(map[string]*model.Block, totalNumberOfRelationBlocks)
+	if len(oldRelationBlockToNewUpdate) == 0 {
+		for k, b := range oldRelationBlockToNewUpdate {
+			oldRelationBlockToNewTotal[k] = b
 		}
 	}
-	if len(relationsBlocks) == 0 {
-		for k, b := range relationsBlocks {
-			relationBlocks[k] = b
+	if len(oldRelationBlockToNewCreate) == 0 {
+		for k, b := range oldRelationBlockToNewCreate {
+			oldRelationBlockToNewTotal[k] = b
 		}
 	}
-	return filesToDelete, relationBlocks, nil
+	return filesToDelete, oldRelationBlockToNewTotal, nil
 }
 
 // Create read relations link from snaphot and create according relations in anytype,
@@ -276,35 +273,33 @@ func (rc *RelationService) update(ctx *session.Context,
 }
 
 func (rc *RelationService) ReplaceRelationBlock(ctx *session.Context,
-	st *state.State,
 	oldRelationBlocksToNew map[string]*model.Block,
 	pageID string) {
-	if err := st.Iterate(func(b simple.Block) (isContinue bool) {
-		if b.Model().GetRelation() == nil {
-			return true
-		}
-		bl, ok := oldRelationBlocksToNew[b.Model().GetId()]
-		if !ok {
-			return true
-		}
-		if sbErr := rc.service.Do(pageID, func(sb editor.SmartBlock) error {
-			s := sb.NewStateCtx(ctx)
+	if sbErr := rc.service.Do(pageID, func(sb editor.SmartBlock) error {
+		s := sb.NewStateCtx(ctx)
+		if err := s.Iterate(func(b simple.Block) (isContinue bool) {
+			if b.Model().GetRelation() == nil {
+				return true
+			}
+			bl, ok := oldRelationBlocksToNew[b.Model().GetId()]
+			if !ok {
+				return true
+			}
 			simpleBlock := simple.New(bl)
 			s.Add(simpleBlock)
 			if err := s.InsertTo(b.Model().GetId(), model.Block_Replace, simpleBlock.Model().GetId()); err != nil {
-				return err
+				log.With(zap.String("object id", pageID)).Errorf("failed to insert: %w", err)
 			}
 			if err := sb.Apply(s); err != nil {
-				return err
+				log.With(zap.String("object id", pageID)).Errorf("failed to apply state: %w", err)
 			}
-			return nil
-		}); sbErr != nil {
-			log.With(zap.String("object id", pageID)).Errorf("failed to replace relation block: %w", sbErr)
+			return true
+		}); err != nil {
+			return err
 		}
-
-		return true
-	}); err != nil {
-		log.With(zap.String("object id", pageID)).Errorf("failed to replace relation block: %w", err)
+		return nil
+	}); sbErr != nil {
+		log.With(zap.String("object id", pageID)).Errorf("failed to replace relation block: %w", sbErr)
 	}
 }
 
@@ -330,7 +325,7 @@ func (rc *RelationService) handleListValue(ctx *session.Context,
 	r *converter.Relation,
 	relationID string) {
 	var (
-		optionsIds     = make([]string, 0)
+		optionIDs      = make([]string, 0)
 		id             string
 		err            error
 		existedOptions = make(map[string]string, 0)
@@ -343,8 +338,8 @@ func (rc *RelationService) handleListValue(ctx *session.Context,
 		existedOptions[ro.Text] = ro.Id
 	}
 	for _, tag := range r.SelectDict {
-		if optionID, ok := existedOptions[tag]; ok {
-			optionsIds = append(optionsIds, optionID)
+		if optionID, ok := existedOptions[tag.Text]; ok {
+			optionIDs = append(optionIDs, optionID)
 			continue
 		}
 		if id, _, err = rc.objCreator.CreateSubObjectInWorkspace(&types.Struct{
@@ -358,9 +353,9 @@ func (rc *RelationService) handleListValue(ctx *session.Context,
 		}, rc.core.PredefinedBlocks().Account); err != nil {
 			log.Errorf("add extra relation %s", err)
 		}
-		optionsIds = append(optionsIds, id)
+		optionIDs = append(optionIDs, id)
 	}
-	snapshot.Details.Fields[r.Name] = pbtypes.StringList(optionsIds)
+	snapshot.Details.Fields[r.Name] = pbtypes.StringList(optionIDs)
 }
 
 func (rc *RelationService) handleFileRelation(ctx *session.Context,

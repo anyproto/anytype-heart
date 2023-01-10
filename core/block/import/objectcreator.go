@@ -72,10 +72,8 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		if details, filesToDelete, err = oc.updater.Update(ctx, snapshot, relations, pageID); err == nil {
 			return details, nil
 		}
-		if err != nil {
-			for _, hash := range filesToDelete {
-				oc.deleteFile(hash)
-			}
+		for _, hash := range filesToDelete {
+			oc.deleteFile(hash)
 		}
 		log.Warn("failed to update existing object: %s", err)
 	}
@@ -121,7 +119,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.CreateRelations(ctx, snapshot, pageID, relations, nil)
+	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.CreateRelations(ctx, snapshot, pageID, relations)
 	if err != nil {
 		return nil, fmt.Errorf("relation create '%s'", err)
 	}
@@ -134,7 +132,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 
-	oc.relationCreator.ReplaceRelationBlock(ctx, st, oldRelationBlocksToNew, pageID)
+	oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, pageID)
 
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
