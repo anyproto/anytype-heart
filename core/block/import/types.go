@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
 	// import plugins
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
@@ -32,11 +31,14 @@ type Creator interface {
 
 // Updater is interface for updating existing objects
 type Updater interface {
-	Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string) (*types.Struct, error)
+	//nolint: lll
+	Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, relations []*converter.Relation, pageID string) (*types.Struct, []string, error)
 }
 
 // RelationCreator incapsulates logic for creation of relations
 type RelationCreator interface {
 	//nolint: lll
-	Create(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, relations []*converter.Relation, pageID string) ([]string, map[string]*model.Block, error)
+	ReplaceRelationBlock(ctx *session.Context, oldRelationBlocksToNew map[string]*model.Block, pageID string)
+	//nolint: lll
+	CreateRelations(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, relations []*converter.Relation) ([]string, map[string]*model.Block, error)
 }
