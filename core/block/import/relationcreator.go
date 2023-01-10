@@ -290,11 +290,12 @@ func (rc *RelationService) ReplaceRelationBlock(ctx *session.Context,
 			if err := s.InsertTo(b.Model().GetId(), model.Block_Replace, simpleBlock.Model().GetId()); err != nil {
 				log.With(zap.String("object id", pageID)).Errorf("failed to insert: %w", err)
 			}
-			if err := sb.Apply(s); err != nil {
-				log.With(zap.String("object id", pageID)).Errorf("failed to apply state: %w", err)
-			}
 			return true
 		}); err != nil {
+			return err
+		}
+		if err := sb.Apply(s); err != nil {
+			log.With(zap.String("object id", pageID)).Errorf("failed to apply state: %w", err)
 			return err
 		}
 		return nil

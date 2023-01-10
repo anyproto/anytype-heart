@@ -57,7 +57,7 @@ func (ou *ObjectUpdater) Update(ctx *session.Context,
 		})
 		if err == nil {
 			if len(records) > 0 {
-				filesToDelete, err := ou.update(ctx, snapshot, records[0], relations, pageID)
+				filesToDelete, err := ou.update(ctx, snapshot, records[0].Details, relations, pageID)
 				return records[0].Details, filesToDelete, err
 			}
 		}
@@ -76,7 +76,7 @@ func (ou *ObjectUpdater) Update(ctx *session.Context,
 		})
 		if err == nil {
 			if len(records) > 0 {
-				filesToDelete, err := ou.update(ctx, snapshot, records[0], relations, pageID)
+				filesToDelete, err := ou.update(ctx, snapshot, records[0].Details, relations, pageID)
 				return records[0].Details, filesToDelete, err
 			}
 		}
@@ -86,7 +86,7 @@ func (ou *ObjectUpdater) Update(ctx *session.Context,
 
 func (ou *ObjectUpdater) update(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
-	details database.Record,
+	details *types.Struct,
 	relations []*converter.Relation,
 	pageID string) ([]string, error) {
 	simpleBlocks := make([]simple.Block, 0)
@@ -94,7 +94,7 @@ func (ou *ObjectUpdater) update(ctx *session.Context,
 		filesToDelete         = make([]string, 0)
 		oldRelationBlockToNew = make(map[string]*model.Block, 0)
 	)
-	id := details.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+	id := details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	allBlocksIds := make([]string, 0)
 	if err := ou.service.Do(id, func(b sb.SmartBlock) error {
 		s := b.NewStateCtx(ctx)
