@@ -71,7 +71,11 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 	// write changes
 	st := time.Now()
 	b.log.Printf("write changes...")
-	b.writeChanges(changes)
+	err = b.writeChanges(changes)
+	if err != nil {
+		b.log.Printf("writeChanges: %v", err)
+		return
+	}
 	b.log.Printf("wrote %d changes for a %v", len(b.changes), time.Since(st))
 
 	b.log.Printf("write localstore data...")
@@ -106,26 +110,6 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 		return
 	}
 	io.Copy(logW, logBuf)
-	return
-}
-
-func (b *treeBuilder) GetChanges() (pbChanges []*pb.Change, err error) {
-	logBuf := bytes.NewBuffer(nil)
-	b.log = log.New(io.MultiWriter(logBuf, os.Stderr), "", log.LstdFlags)
-
-	logs, err := b.b.GetLogs()
-	if err != nil {
-		b.log.Printf("block.GetLogs() error: %v", err)
-		return
-	}
-	changes, err := b.getChangesFromLogs(logs)
-	if err != nil {
-		b.log.Printf("failed to get changes: %v", err)
-		return
-	}
-	for _, c := range changes {
-		pbChanges = append(pbChanges, c.Change)
-	}
 	return
 }
 
