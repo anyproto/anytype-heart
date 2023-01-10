@@ -18,13 +18,21 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
+type objectCreator interface {
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
+	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+}
+
 type ObjectCreator struct {
 	service         *block.Service
+	objCreator      objectCreator
 	core            core.Service
 	updater         Updater
 	relationCreator RelationCreator
@@ -32,13 +40,13 @@ type ObjectCreator struct {
 }
 
 func NewCreator(service *block.Service,
-	core core.Service,
+	objCreator objectCreator,
 	updater Updater,
 	syncFactory *syncer.Factory,
 	relationCreator RelationCreator) Creator {
 	return &ObjectCreator{
 		service:         service,
-		core:            core,
+		objCreator:      objCreator,
 		updater:         updater,
 		syncFactory:     syncFactory,
 		relationCreator: relationCreator,
@@ -107,14 +115,13 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}()
 
-	newId, details, err := oc.createSmartBlock(sbType, st)
+	newID, details, err := oc.objCreator.CreateSmartBlockFromState(context.TODO(), sbType, nil, nil, st)
 	if err != nil {
 		return nil, fmt.Errorf("create object '%s'", st.RootId())
 	}
 
 	var oldRelationBlocksToNew map[string]*model.Block
 	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.CreateRelations(ctx, snapshot, pageID, relations, nil)
-
 	if err != nil {
 		return nil, fmt.Errorf("relation create '%s'", err)
 	}
@@ -132,20 +139,14 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
-			s.Sync(ctx, newId, bl)
+			if serr := s.Sync(ctx, newID, bl); serr != nil {
+				log.With(zap.String("object id", pageID)).Errorf("sync: %s", serr)
+			}
 		}
 		return true
 	})
 
 	return details, nil
-}
-
-func (oc *ObjectCreator) createSmartBlock(sbType smartblock.SmartBlockType, st *state.State) (string, *types.Struct, error) {
-	newId, details, err := oc.service.CreateSmartBlockFromState(context.TODO(), sbType, nil, nil, st)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed create smartblock %s", err)
-	}
-	return newId, details, nil
 }
 
 func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {

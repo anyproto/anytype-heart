@@ -192,7 +192,11 @@ func (v *threadDB) listenToChanges() (err error) {
 				// we don't have new messages for at least deadline and we have something to flush
 				processBuffer()
 
-			case c := <-listenerCh:
+			case c, ok := <-listenerCh:
+				if !ok {
+					processBuffer()
+					return
+				}
 				log.With("thread id", c.ID.String()).
 					Debugf("received new thread through channel")
 				// as per docs the timer should be stopped or expired with drained channel

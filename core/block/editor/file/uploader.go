@@ -176,7 +176,10 @@ func (u *uploader) AddOptions(options ...files.AddOption) Uploader {
 }
 
 func (u *uploader) SetUrl(url string) Uploader {
-	url, _ = uri.ProcessURI(url)
+	url, err := uri.NormalizeURI(url)
+	if err != nil {
+		// do nothing
+	}
 	u.name = strings.Split(filepath.Base(url), "?")[0]
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

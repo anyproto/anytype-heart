@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -397,12 +398,19 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
+	rs := mw.app.MustComponent(relation.CName).(relation.Service)
 
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:          req.Filters,
 		Limit:            int(req.Limit),
 		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
+
+	if err != nil {
+		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
+	}
+
+	relations, err := rs.ListAll(relation.WithWorkspaceId(at.PredefinedBlocks().Account))
 	if err != nil {
 		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
 	}
@@ -440,10 +448,8 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 			if list := pbtypes.GetStringListValue(v); len(list) == 0 {
 				continue
 			} else {
-
-				rel, err := at.ObjectStore().GetRelationByKey(k)
-				if err != nil {
-					log.Errorf("ObjectGraph failed to get relation %s: %s", k, err.Error())
+				rel := relations.GetByKey(k)
+				if rel == nil {
 					continue
 				}
 
@@ -459,6 +465,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 					if rel.Hidden ||
 						rel.Key == bundle.RelationKeyId.String() ||
 						rel.Key == bundle.RelationKeyCreator.String() ||
+						rel.Key == bundle.RelationKeyWorkspaceId.String() ||
 						rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 						continue
 					}
@@ -701,22 +708,19 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 
-	id, details, err := mw.objectCreateBookmark(req)
-	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", details, err)
-	}
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, details, nil)
-}
-
-func (mw *Middleware) objectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (string, *types.Struct, error) {
-	var id string
-	var details *types.Struct
+	var (
+		id         string
+		newDetails *types.Struct
+	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, details, err = bs.ObjectCreateBookmark(*req)
+		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyBookmark)
 		return err
 	})
-	return id, details, err
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
+	}
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {

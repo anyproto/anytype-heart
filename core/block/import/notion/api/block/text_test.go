@@ -124,8 +124,10 @@ func Test_GetTextBlocksDateMention(t *testing.T) {
 
 	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
 	assert.Len(t, bl.Blocks, 1)
-	assert.NotNil(t, bl.Blocks[0].GetRelation())
-	assert.Len(t, bl.Relations, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Mention)
+	assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Param, "_date_2022-11-14")
 }
 
 func Test_GetTextBlocksLinkPreview(t *testing.T) {

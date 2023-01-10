@@ -112,8 +112,10 @@ func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.External.URL)
 			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
 			relation = &converter.Relation{
-				Name:   bundle.RelationKeyCoverId.String(),
-				Format: model.RelationFormat_file,
+				Relation: &model.Relation{
+					Name:   bundle.RelationKeyCoverId.String(),
+					Format: model.RelationFormat_file,
+				},
 			}
 		}
 
@@ -121,8 +123,10 @@ func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.File.URL)
 			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
 			relation = &converter.Relation{
-				Name:   bundle.RelationKeyCoverId.String(),
-				Format: model.RelationFormat_file,
+				Relation: &model.Relation{
+					Name:   bundle.RelationKeyCoverId.String(),
+					Format: model.RelationFormat_file,
+				},
 			}
 		}
 

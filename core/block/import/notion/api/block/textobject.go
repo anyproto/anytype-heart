@@ -5,12 +5,10 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	textUtil "github.com/anytypeio/go-anytype-middleware/util/text"
 )
 
@@ -31,30 +29,13 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 	allBlocks := make([]*model.Block, 0)
 	allIds := make([]string, 0)
 	var (
-		text      strings.Builder
-		relations []*converter.Relation
-		details   map[string]*types.Value
+		text strings.Builder
 	)
 	for _, rt := range t.RichText {
 		if rt.Type == api.Text {
 			marks = append(marks, t.handleTextType(rt, &text, req.NotionPageIdsToAnytype, req.NotionDatabaseIdsToAnytype)...)
 		}
 		if rt.Type == api.Mention {
-			// Return Relation block for Date mention
-			if rt.Mention.Type == api.Date {
-				var (
-					relationBlock   *model.Block
-					relationBlockID string
-					relation        *converter.Relation
-				)
-				relationBlock, relation, details, relationBlockID = t.handleDateMention(rt, &text)
-				if relationBlock != nil {
-					allBlocks = append(allBlocks, relationBlock)
-					allIds = append(allIds, relationBlockID)
-					relations = append(relations, relation)
-				}
-				continue
-			}
 			marks = append(marks, t.handleMentionType(rt, &text, req)...)
 		}
 		if rt.Type == api.Equation {
@@ -72,10 +53,8 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 
 	if t.isNotTextBlocks() {
 		return &MapResponse{
-			Blocks:    allBlocks,
-			Relations: relations,
-			Details:   details,
-			BlockIDs:  allIds,
+			Blocks:   allBlocks,
+			BlockIDs: allIds,
 		}
 	}
 	allBlocks = append(allBlocks, &model.Block{
@@ -96,10 +75,8 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 		allIds = append(allIds, b.Id)
 	}
 	return &MapResponse{
-		Blocks:    allBlocks,
-		Relations: relations,
-		Details:   details,
-		BlockIDs:  allIds,
+		Blocks:   allBlocks,
+		BlockIDs: allIds,
 	}
 }
 
@@ -150,6 +127,9 @@ func (t *TextObject) handleMentionType(rt api.RichText,
 	}
 	if rt.Mention.Type == api.LinkPreview {
 		return t.handleLinkPreviewMention(rt, text)
+	}
+	if rt.Mention.Type == api.Date {
+		return t.handleDateMention(rt, text)
 	}
 	return nil
 }
@@ -204,33 +184,30 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 }
 
 func (t *TextObject) handleDateMention(rt api.RichText,
-	text *strings.Builder) (*model.Block, *converter.Relation, map[string]*types.Value, string) {
+	text *strings.Builder) []*model.BlockContentTextMark {
 	var textDate string
 	if rt.Mention.Date.Start != "" {
 		textDate = rt.Mention.Date.Start
 	}
 	if rt.Mention.Date.End != "" {
-		textDate += " " + rt.Mention.Date.End
+		textDate = rt.Mention.Date.End
 	}
 	date, err := time.Parse(DateMentionTimeFormat, textDate)
 	if err != nil {
-		return nil, nil, nil, ""
+		return nil
 	}
-	rel := converter.Relation{
-		BlockID: bson.NewObjectId().Hex(),
-		Name:    "Date",
-		Format:  model.RelationFormat_date,
-	}
-	id := bson.NewObjectId().Hex()
-	details := map[string]*types.Value{rel.Name: pbtypes.Int64(date.Unix())}
-	return &model.Block{
-		Id: id,
-		Content: &model.BlockContentOfRelation{
-			Relation: &model.BlockContentRelation{
-				Key: rel.BlockID,
+	from := textUtil.UTF16RuneCountString(text.String())
+	to := textUtil.UTF16RuneCountString(text.String())
+	return []*model.BlockContentTextMark{
+		{
+			Range: &model.Range{
+				From: int32(from),
+				To:   int32(to),
 			},
+			Type:  model.BlockContentTextMark_Mention,
+			Param: addr.TimeToID(date),
 		},
-	}, &rel, details, id
+	}
 }
 
 func (t *TextObject) handleLinkPreviewMention(rt api.RichText, text *strings.Builder) []*model.BlockContentTextMark {
@@ -249,8 +226,7 @@ func (t *TextObject) handleLinkPreviewMention(rt api.RichText, text *strings.Bui
 }
 
 func (t *TextObject) isNotTextBlocks() bool {
-	return (len(t.RichText) == 1 && t.RichText[0].Type == api.Mention && t.RichText[0].Mention.Type == api.Date) ||
-		len(t.RichText) == 1 && t.RichText[0].Type == api.Equation
+	return len(t.RichText) == 1 && t.RichText[0].Type == api.Equation
 }
 
 type TextObjectWithChildren struct {

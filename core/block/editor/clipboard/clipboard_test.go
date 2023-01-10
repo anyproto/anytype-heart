@@ -3,17 +3,19 @@ package clipboard
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 )
 
 func TestCommonSmart_pasteHtml(t *testing.T) {
@@ -477,7 +479,7 @@ func TestCommonSmart_TextSlot_CommonCases(t *testing.T) {
 	t.Run("should paste when all blocks selected", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
 		pasteText(t, sb, "", model.Range{From: 0, To: 0}, []string{"1", "2", "3", "4", "5"}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{ "aaaaa\nbbbbb"})
+		checkBlockText(t, sb, []string{"aaaaa\nbbbbb"})
 	})
 
 	t.Run("paste single to empty block", func(t *testing.T) {
@@ -573,14 +575,14 @@ func TestClipboard_TitleOps(t *testing.T) {
 
 	t.Run("single to empty title", func(t *testing.T) {
 		st := withTitle(t, "")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		_, _, _, _, err := cb.Paste(nil, singleBlockReq, "")
 		require.NoError(t, err)
 		assert.Equal(t, "single", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
 	})
 	t.Run("single to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		req := singleBlockReq
 		req.SelectedTextRange = &model.Range{From: 1, To: 4}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -590,7 +592,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("single to not empty title - select all", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		req := singleBlockReq
 		req.SelectedTextRange = &model.Range{From: 0, To: 5}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -600,7 +602,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to empty title", func(t *testing.T) {
 		st := withTitle(t, "")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		_, _, _, _, err := cb.Paste(nil, multiBlockReq, "")
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
@@ -610,7 +612,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		_, _, _, _, err := cb.Paste(nil, multiBlockReq, "")
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
@@ -621,7 +623,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to not empty title with range", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		req := multiBlockReq
 		req.SelectedTextRange = &model.Range{From: 1, To: 4}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -635,7 +637,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 	t.Run("multi to end of title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		req := multiBlockReq
 		req.SelectedTextRange = &model.Range{From: 5, To: 5}
 		_, _, _, _, err := cb.Paste(nil, req, "")
@@ -649,7 +651,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 
 	t.Run("cut from title", func(t *testing.T) {
 		st := withTitle(t, "title")
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		req := pb.RpcBlockCutRequest{
 			Blocks: []*model.Block{
 				st.Doc.NewState().Get("title").Model(),
@@ -675,7 +677,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			result           = text + "\n"
 		)
 		st := withBookmark(t, text, "", url)
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		textBlock := newTextBlock(text).Model()
 		textBlock.Id = firstTextBlockId
 		bookmark := newBookmark(url).Model()
@@ -705,7 +707,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			result           = firstText + "\n" + secondText + "\n"
 		)
 		st := withBookmark(t, firstText, secondText, url)
-		cb := NewClipboard(st, nil)
+		cb := NewClipboard(st, nil, nil)
 		textBlock := newTextBlock(firstText).Model()
 		textBlock.Id = firstTextBlockId
 		bookmark := newBookmark(url).Model()
@@ -746,7 +748,7 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 	s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
 	require.NoError(t, sb.Apply(s))
 
-	cb := NewClipboard(sb, nil)
+	cb := NewClipboard(sb, nil, nil)
 	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    codeBlock.Model().Id,
 		SelectedTextRange: &model.Range{4, 5},
@@ -782,7 +784,7 @@ func Test_PasteText(t *testing.T) {
 	s.Add(b2)
 	s.InsertTo("", model.Block_Inner, b2.Model().Id)
 	require.NoError(t, sb.Apply(s))
-	cb := NewClipboard(sb, nil)
+	cb := NewClipboard(sb, nil, nil)
 	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 		SelectedBlockIds: []string{"1", "2"},
 		TextSlot:         "One string",

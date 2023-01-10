@@ -17,16 +17,19 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 var (
@@ -44,13 +47,25 @@ type Import interface {
 	ImportMarkdown(ctx *session.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error)
 }
 
-func NewImport(sb smartblock.SmartBlock, ctrl Services) Import {
-	return &importImpl{SmartBlock: sb, ctrl: ctrl}
+func NewImport(
+	sb smartblock.SmartBlock,
+	ctrl Services,
+	creator ObjectCreator,
+	anytype core.Service,
+) Import {
+	return &importImpl{
+		SmartBlock: sb,
+		ctrl:       ctrl,
+		creator:    creator,
+		anytype:    anytype,
+	}
 }
 
 type importImpl struct {
 	smartblock.SmartBlock
-	ctrl Services
+	ctrl    Services
+	creator ObjectCreator
+	anytype core.Service
 }
 
 type fileInfo struct {
@@ -63,8 +78,11 @@ type fileInfo struct {
 	parsedBlocks    []*model.Block
 }
 
+type ObjectCreator interface {
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+}
+
 type Services interface {
-	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *session.Context, req pb.RpcBlockUploadRequest) error
@@ -79,7 +97,7 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 	progress.SetProgressMessage("read dir")
 	s := imp.NewStateCtx(ctx)
 	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
-	tempDir := imp.Anytype().TempDir()
+	tempDir := imp.anytype.TempDir()
 
 	files, close, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
 	defer func() {
@@ -87,6 +105,9 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			_ = close()
 		}
 	}()
+	if err != nil {
+		return nil, err
+	}
 
 	filesCount := len(files)
 	log.Debug("FILES COUNT:", filesCount)
@@ -135,12 +156,13 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			continue
 		}
 
-		pageID, _, err := imp.ctrl.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, nil, nil)
+		var objectID string
+		objectID, _, err = imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 		if err != nil {
 			log.Errorf("failed to create smartblock: %s", err.Error())
 			continue
 		}
-		file.pageID = pageID
+		file.pageID = objectID
 		pagesCreated++
 	}
 
@@ -269,7 +291,8 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 		// wrap root-level csv files with page
 		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
 			// fixme: move initial details into CreateSmartBlock
-			pageID, _, err := imp.ctrl.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, nil, nil)
+			var objectID string
+			objectID, _, err = imp.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, nil)
 			if err != nil {
 				log.Errorf("failed to create smartblock: %s", err.Error())
 				continue
@@ -290,11 +313,11 @@ func (imp *importImpl) ImportMarkdown(ctx *session.Context, req pb.RpcObjectImpo
 			}
 
 			err = imp.ctrl.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-				ContextId: pageID,
+				ContextId: objectID,
 				Details:   details,
 			})
 
-			file.pageID = pageID
+			file.pageID = objectID
 			file.parsedBlocks = imp.convertCsvToLinks(name, files)
 		}
 
@@ -669,7 +692,7 @@ func (imp *importImpl) convertTextToPageLink(block *model.Block) {
 }
 
 func (imp *importImpl) convertTextToBookmark(block *model.Block) {
-	if _, err := url.Parse(block.GetText().Marks.Marks[0].Param); err != nil {
+	if err := uri.ValidateURI(block.GetText().Marks.Marks[0].Param); err != nil {
 		return
 	}
 
@@ -823,7 +846,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, files map[
 			}
 			shortPath := ""
 			id := imp.getIdFromPath(potentialFileName)
-			for name, _ := range files {
+			for name := range files {
 				if imp.getIdFromPath(name) == id {
 					shortPath = name
 					break
