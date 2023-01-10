@@ -38,7 +38,10 @@ jobs:
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64 jq FiloSottile/musl-cross/musl-cross
+          HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64
+          brew tap filosottile/musl-cross
+          brew install filosottile/musl-cross/musl-cross -h
+          brew install filosottile/musl-cross/musl-cross --with-aarch64
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
@@ -72,9 +75,11 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-g++" gox -cgo -osarch="linux/amd64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CC="aarch64-linux-musl-gcc" CXX="aarch64-linux-musl-g++" gox -cgo -osarch="linux/arm64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
-          CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS" -osarch="windows/amd64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           ls -lha .
       - name: Make JS protos
         run: |
