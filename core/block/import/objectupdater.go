@@ -2,9 +2,9 @@ package importer
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
