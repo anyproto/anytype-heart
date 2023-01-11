@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -397,12 +398,19 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
+	rs := mw.app.MustComponent(relation.CName).(relation.Service)
 
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:          req.Filters,
 		Limit:            int(req.Limit),
 		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
+
+	if err != nil {
+		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
+	}
+
+	relations, err := rs.ListAll(relation.WithWorkspaceId(at.PredefinedBlocks().Account))
 	if err != nil {
 		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
 	}
@@ -440,10 +448,8 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 			if list := pbtypes.GetStringListValue(v); len(list) == 0 {
 				continue
 			} else {
-
-				rel, err := at.ObjectStore().GetRelationByKey(k)
-				if err != nil {
-					log.Errorf("ObjectGraph failed to get relation %s: %s", k, err.Error())
+				rel := relations.GetByKey(k)
+				if rel == nil {
 					continue
 				}
 

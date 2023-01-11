@@ -846,7 +846,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, files map[
 			}
 			shortPath := ""
 			id := imp.getIdFromPath(potentialFileName)
-			for name, _ := range files {
+			for name := range files {
 				if imp.getIdFromPath(name) == id {
 					shortPath = name
 					break

@@ -543,6 +543,7 @@
     - [Rpc.Object.Import](#anytype-Rpc-Object-Import)
     - [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams)
+    - [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams)
     - [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams)
     - [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot)
     - [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response)
@@ -9310,6 +9311,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams) |  |  |
 | bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  | for internal use |
+| markdownParams | [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams) |  |  |
 | snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot) | repeated | optional, for external developers usage |
 | updateExistingObjects | [bool](#bool) |  |  |
 | type | [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type) |  |  |
@@ -9335,6 +9337,21 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-Import-Request-MarkdownParams"></a>
+
+### Rpc.Object.Import.Request.MarkdownParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Import-Request-NotionParams"></a>
 
 ### Rpc.Object.Import.Request.NotionParams
@@ -9343,7 +9360,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  |  |
+| apiKey | [string](#string) |  |  |
 
 
 
@@ -14636,7 +14653,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Notion | 0 |  |
-| External | 1 | external developers use it |
+| Markdown | 1 |  |
+| External | 2 | external developers use it |
 
 
 
@@ -14662,6 +14680,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Notion | 0 |  |
+| Markdown | 1 |  |
 
 
 
@@ -19263,8 +19282,8 @@ stored |
 | LessOrEqual | 6 |  |
 | Like | 7 |  |
 | NotLike | 8 |  |
-| In | 9 |  |
-| NotIn | 10 |  |
+| In | 9 | &#34;at least one value(from the provided list) is IN&#34; |
+| NotIn | 10 | &#34;none of provided values are IN&#34; |
 | Empty | 11 |  |
 | NotEmpty | 12 |  |
 | AllIn | 13 |  |

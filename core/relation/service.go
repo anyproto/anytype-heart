@@ -39,6 +39,8 @@ func New() Service {
 type Service interface {
 	FetchKeys(keys ...string) (relations relationutils.Relations, err error)
 	FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
+	ListAll(opts ...FetchOption) (relations relationutils.Relations, err error)
+
 	FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	CreateBulkMigration() BulkMigration
 	MigrateRelations(relations []*model.Relation) error
@@ -148,8 +150,6 @@ func (b *bulkMigration) Commit() error {
 type service struct {
 	objectStore     objectstore.ObjectStore
 	relationCreator subObjectCreator
-
-	mu sync.RWMutex
 }
 
 func (s *service) MigrateRelations(relations []*model.Relation) error {
@@ -188,8 +188,6 @@ func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations relationuti
 }
 
 func (s *service) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.fetchKeys(keys...)
 }
 
@@ -212,6 +210,43 @@ func (s *service) fetchKeys(keys ...string) (relations []*relationutils.Relation
 	return
 }
 
+func (s *service) ListAll(opts ...FetchOption) (relations relationutils.Relations, err error) {
+	return s.listAll(opts...)
+}
+
+func (s *service) listAll(opts ...FetchOption) (relations relationutils.Relations, err error) {
+	filters := []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
+		},
+	}
+	o := &fetchOptions{}
+	for _, apply := range opts {
+		apply(o)
+	}
+	if o.workspaceId != nil {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyWorkspaceId.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(*o.workspaceId),
+		})
+	}
+
+	relations2, _, err := s.objectStore.Query(nil, database.Query{
+		Filters: filters,
+	})
+	if err != nil {
+		return
+	}
+
+	for _, rec := range relations2 {
+		relations = append(relations, relationutils.RelationFromStruct(rec.Details))
+	}
+	return
+}
+
 type fetchOptions struct {
 	workspaceId *string
 }
@@ -225,8 +260,6 @@ func WithWorkspaceId(id string) FetchOption {
 }
 
 func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.fetchKey(key, opts...)
 }
 

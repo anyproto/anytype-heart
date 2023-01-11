@@ -80,7 +80,6 @@ type Query struct {
 	WithSystemObjects bool
 	ObjectTypeFilter  []string
 	WorkspaceId       string
-	SearchInWorkspace bool
 }
 
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
