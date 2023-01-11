@@ -144,7 +144,6 @@ func (r *TableRenderer) renderTable(_ util.BufWriter, _ []byte, node ast.Node, e
 	return ast.WalkContinue, nil
 }
 
-// TODO need to somehow send in targetID id of tableID and rowID in SetHeader
 func (r *TableRenderer) renderTableHeader(_ util.BufWriter,
 	_ []byte,
 	_ ast.Node,
