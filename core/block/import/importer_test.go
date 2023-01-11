@@ -44,7 +44,7 @@ func Test_ImportSuccess(t *testing.T) {
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  0,
 	})
 
@@ -67,7 +67,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  0,
 	})
 
@@ -103,7 +103,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  0,
 	})
 
@@ -141,7 +141,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  1,
 	})
 
@@ -179,7 +179,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  1,
 	})
 
