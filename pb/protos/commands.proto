@@ -1812,8 +1812,8 @@ message Rpc {
                 }
             }
 
-            message NotionToken {
-                message Validate {
+            message Notion {
+                message TokenValidate {
                     message Request {
                         string apiKey = 1;
                     }

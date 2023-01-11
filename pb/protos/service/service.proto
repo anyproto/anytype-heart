@@ -83,7 +83,7 @@ service ClientCommands {
     rpc ObjectToBookmark (anytype.Rpc.Object.ToBookmark.Request) returns (anytype.Rpc.Object.ToBookmark.Response);
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
-    rpc ValidateNotionToken (anytype.Rpc.Object.Import.NotionToken.Validate.Request) returns (anytype.Rpc.Object.Import.NotionToken.Validate.Response);
+    rpc ValidateNotionToken (anytype.Rpc.Object.Import.Notion.TokenValidate.Request) returns (anytype.Rpc.Object.Import.Notion.TokenValidate.Response);
 
     // Relations
     // ***
