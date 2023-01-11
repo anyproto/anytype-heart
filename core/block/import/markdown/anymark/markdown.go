@@ -2,6 +2,7 @@ package anymark
 
 import (
 	"bytes"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"regexp"
 	"strings"
 
@@ -39,7 +40,8 @@ func MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPa
 
 	r := NewRenderer(br)
 
-	tr := NewTableRenderer(br)
+	te := table.NewEditor(nil)
+	tr := NewTableRenderer(br, te)
 	// allFileShortPaths,
 	err = convertBlocks(markdownSource, r, tr)
 	if err != nil {
