@@ -111,7 +111,6 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	progress.SetProgressMessage("Start creating file blocks")
 
-
 	childBlocks, cancelErr := m.fillEmptyBlocks(files, progress)
 
 	if cancelErr != nil {
@@ -409,11 +408,13 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 	return snapshots, nil
 }
 
-func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress *process.Progress, childBlocks []string) converter.ConvertError {
+func (m *Markdown) addChildBlocks(files map[string]*FileInfo,
+	progress *process.Progress,
+	childBlocks []string) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			cancelError := converter.NewFromError(name, err)
+			return cancelError
 		}
 
 		if file.PageID == "" {
@@ -494,7 +495,8 @@ func (m *Markdown) createMarkdownForLink(files map[string]*FileInfo,
 	return nil
 }
 
-func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress *process.Progress) ([]string, converter.ConvertError) {
+func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
+	progress *process.Progress) ([]string, converter.ConvertError) {
 	// process file blocks
 	childBlocks := make([]string, 0)
 	for name, file := range files {

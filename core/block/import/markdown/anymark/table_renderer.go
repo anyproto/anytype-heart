@@ -2,19 +2,22 @@ package anymark
 
 import (
 	"bytes"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	table "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/renderer"
+	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	te "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
+// rowState is necessary because we don't know, for which column we create cell in renderTableCell function
 type rowState struct {
 	currTableRow string
 }
@@ -27,28 +30,78 @@ func (r *rowState) setRowID(id string) {
 	r.currTableRow = id
 }
 
+// columnState is necessary because we don't know anything about number of columns in table and we can't handle them,
+// because goldmark doesn't have according function. So we create them in renderTableCell
+type columnState struct {
+	columnsIDs          []string
+	currColumnID        string
+	needToCreateColumns bool
+}
+
+func (c *columnState) addColumnID(id string) {
+	c.columnsIDs = append(c.columnsIDs, id)
+}
+
+func (c *columnState) needToCreateColumn() bool {
+	return c.needToCreateColumns
+}
+
+func (c *columnState) getCurrColumnID() string {
+	if c.currColumnID == "" && len(c.columnsIDs) != 0 {
+		c.currColumnID = c.columnsIDs[0]
+		return c.currColumnID
+	}
+
+	var nextColIndex int
+	for i, col := range c.columnsIDs {
+		if col == c.currColumnID {
+			nextColIndex = i + 1
+			break
+		}
+	}
+	if nextColIndex == len(c.columnsIDs) {
+		nextColIndex = 0
+	}
+
+	c.currColumnID = c.columnsIDs[nextColIndex]
+	return c.currColumnID
+}
+
+func (c *columnState) setNeedToCreateColumn(needToCreateColumns bool) {
+	c.needToCreateColumns = needToCreateColumns
+}
+
 type tableState struct {
 	listRenderFunctions map[ast.NodeKind]renderer.NodeRendererFunc
 	rowState            rowState
+	columnState         columnState
+	tableID             string
 }
 
 func (s *tableState) setRenderFunction(kind ast.NodeKind, rendererFunc renderer.NodeRendererFunc) {
 	s.listRenderFunctions[kind] = rendererFunc
 }
 
+func (s *tableState) resetState() {
+	s.rowState = rowState{}
+	s.columnState = columnState{columnsIDs: make([]string, 0), needToCreateColumns: true}
+	s.tableID = ""
+}
+
 type TableRenderer struct {
 	blockRenderer *blocksRenderer
-	tableState    *tableState
+	tableState    tableState
 	tableEditor   te.TableEditor
-	state         *state.State
+	blocksState   *state.State
 }
 
 func NewTableRenderer(br *blocksRenderer, tableEditor te.TableEditor) *TableRenderer {
 	return &TableRenderer{
 		blockRenderer: br,
-		tableState: &tableState{
+		tableState: tableState{
 			listRenderFunctions: make(map[ast.NodeKind]renderer.NodeRendererFunc, 0),
 			rowState:            rowState{},
+			columnState:         columnState{columnsIDs: make([]string, 0), needToCreateColumns: true},
 		},
 		tableEditor: tableEditor,
 	}
@@ -71,50 +124,69 @@ func (r *TableRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 
 func (r *TableRenderer) renderTable(_ util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		r.state = state.NewDoc("root", nil).NewState()
-		_, err := r.tableEditor.TableCreate(r.state, pb.RpcBlockTableCreateRequest{})
+		r.blocksState = state.NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Content: &model.BlockContentOfSmartblock{
+					Smartblock: &model.BlockContentSmartblock{},
+				},
+			}),
+		}).NewState()
+		id, err := r.tableEditor.TableCreate(r.blocksState, pb.RpcBlockTableCreateRequest{})
+		r.tableState.tableID = id
 		if err != nil {
 			return ast.WalkContinue, err
 		}
 		return ast.WalkContinue, nil
-	} else {
-		r.blockRenderer.blocks = append(r.blockRenderer.blocks, r.state.Blocks()...)
-		r.state = nil
 	}
+	r.blockRenderer.blocks = append(r.blockRenderer.blocks, r.blocksState.Blocks()...)
+	r.blocksState = nil
+	r.tableState.resetState()
 	return ast.WalkContinue, nil
 }
 
+// TODO need to somehow send in targetID id of tableID and rowID in SetHeader
 func (r *TableRenderer) renderTableHeader(_ util.BufWriter,
 	_ []byte,
 	_ ast.Node,
 	entering bool) (ast.WalkStatus, error) {
 	if entering {
-		id, err := r.tableEditor.RowCreate(r.state, pb.RpcBlockTableRowCreateRequest{
-			Position: model.Block_Bottom,
+		id, err := r.tableEditor.RowCreate(r.blocksState, pb.RpcBlockTableRowCreateRequest{
+			Position: model.Block_Inner,
+			TargetId: r.tableState.tableID,
 		})
 		if err != nil {
 			return ast.WalkContinue, err
 		}
 		r.tableState.rowState.setRowID(id)
-		err = r.tableEditor.RowSetHeader(r.state, pb.RpcBlockTableRowSetHeaderRequest{
+		err = r.tableEditor.RowSetHeader(r.blocksState, pb.RpcBlockTableRowSetHeaderRequest{
 			IsHeader: true,
+			TargetId: id,
 		})
 		if err != nil {
 			return ast.WalkContinue, err
 		}
+	} else {
+		// this calls after we create cells for according row. After that we don't need to create columns,
+		// because we've already created them in renderTableCells
+		r.tableState.columnState.setNeedToCreateColumn(false)
 	}
 	return ast.WalkContinue, nil
 }
 
 func (r *TableRenderer) renderTableRow(_ util.BufWriter, _ []byte, _ ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		id, err := r.tableEditor.RowCreate(r.state, pb.RpcBlockTableRowCreateRequest{
-			Position: model.Block_Bottom,
+		id, err := r.tableEditor.RowCreate(r.blocksState, pb.RpcBlockTableRowCreateRequest{
+			Position: model.Block_Inner,
+			TargetId: r.tableState.tableID,
 		})
 		r.tableState.rowState.setRowID(id)
 		if err != nil {
 			return ast.WalkContinue, err
 		}
+	} else {
+		// this calls after we create cells for according row. After that we don't need to create columns,
+		// because we've already created them in renderTableCells
+		r.tableState.columnState.setNeedToCreateColumn(false)
 	}
 	return ast.WalkContinue, nil
 }
@@ -131,27 +203,57 @@ func (r *TableRenderer) renderTableCell(_ util.BufWriter,
 				renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(ren, 100))),
 			))
 			n := node.Lines()
-			for i := 0; i < n.Len(); i++ {
-				seg := n.At(i)
-				err := gm.Convert(seg.Value(source), &bytes.Buffer{})
-				if err != nil {
-					return ast.WalkContinue, err
-				}
 
-				colID, err := r.tableEditor.ColumnCreate(r.state, pb.RpcBlockTableColumnCreateRequest{
-					Position: model.Block_Right,
-				})
-				if err != nil {
-					return ast.WalkContinue, err
-				}
-				if len(ren.GetBlocks()) != 0 {
-					_, err = r.tableEditor.CellCreate(r.state, r.tableState.rowState.getRowID(), colID, ren.GetBlocks()[0])
-					if err != nil {
-						return ast.WalkContinue, err
-					}
-				}
+			status, err := r.createCell(n, gm, source, ren)
+			if err != nil {
+				return status, err
 			}
 		}
 	}
 	return ast.WalkContinue, nil
+}
+
+func (r *TableRenderer) createCell(n *text.Segments,
+	gm goldmark.Markdown,
+	source []byte, ren *Renderer) (ast.WalkStatus, error) {
+	for i := 0; i < n.Len(); i++ {
+		seg := n.At(i)
+		err := gm.Convert(seg.Value(source), &bytes.Buffer{})
+		if err != nil {
+			return ast.WalkContinue, err
+		}
+
+		colID, err := r.getColumnID()
+		if err != nil {
+			return ast.WalkContinue, err
+		}
+		if len(ren.GetBlocks()) != 0 {
+			_, err = r.tableEditor.CellCreate(r.blocksState, r.tableState.rowState.getRowID(), colID, ren.GetBlocks()[0])
+			if err != nil {
+				return ast.WalkContinue, err
+			}
+		}
+	}
+	return 0, nil
+}
+
+func (r *TableRenderer) getColumnID() (string, error) {
+	var (
+		colID string
+		err   error
+	)
+	// we create columns only once, then we use saved columns ids to create cells.
+	if r.tableState.columnState.needToCreateColumn() {
+		colID, err = r.tableEditor.ColumnCreate(r.blocksState, pb.RpcBlockTableColumnCreateRequest{
+			Position: model.Block_Inner,
+			TargetId: r.tableState.tableID,
+		})
+		if err != nil {
+			return "", err
+		}
+		r.tableState.columnState.addColumnID(colID)
+	} else {
+		colID = r.tableState.columnState.getCurrColumnID()
+	}
+	return colID, nil
 }

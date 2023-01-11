@@ -2,7 +2,6 @@ package anymark
 
 import (
 	"bytes"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"regexp"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
