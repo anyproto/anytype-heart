@@ -35,7 +35,9 @@ func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
 	return gm.Convert(source, &bytes.Buffer{})
 }
 
-func MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
+func MarkdownToBlocks(markdownSource []byte,
+	baseFilepath string,
+	allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	br := newBlocksRenderer(baseFilepath, allFileShortPaths)
 
 	r := NewRenderer(br)

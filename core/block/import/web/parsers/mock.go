@@ -7,8 +7,9 @@ package parsers
 import (
 	reflect "reflect"
 
-	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	gomock "github.com/golang/mock/gomock"
+
+	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 // MockParser is a mock of Parser interface.

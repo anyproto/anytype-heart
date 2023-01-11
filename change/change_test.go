@@ -88,7 +88,7 @@ func Test_Issue605Tree(t *testing.T) {
 	}
 	doc := state.NewDocFromSnapshot("bafyba6akblqzapgdmlu3swkrsb62mgrvgdv2g72eqvtufuis4vxhgcgl", root.GetSnapshot()).(*state.State)
 	doc.SetChangeId(root.Id)
-	st, err := BuildStateSimpleCRDT(doc, tree)
+	st, _, err := BuildStateSimpleCRDT(doc, tree)
 	if err != nil {
 		return
 	}
@@ -132,7 +132,7 @@ func Test_Home_ecz5pu(t *testing.T) {
 	doc := state.NewDocFromSnapshot("", root.GetSnapshot()).(*state.State)
 	doc.SetChangeId(root.Id)
 	doc.RootId()
-	st, err := BuildStateSimpleCRDT(doc, tree)
+	st, _, err := BuildStateSimpleCRDT(doc, tree)
 	if err != nil {
 		return
 	}

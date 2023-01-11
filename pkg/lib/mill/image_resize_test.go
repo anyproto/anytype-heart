@@ -3,9 +3,6 @@ package mill
 import (
 	"bytes"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	exif2 "github.com/dsoprea/go-exif/v3"
-	"github.com/stretchr/testify/require"
 	"image"
 	"image/jpeg"
 	"io"
@@ -13,7 +10,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
+	exif2 "github.com/dsoprea/go-exif/v3"
 	"github.com/rwcarlsen/goexif/exif"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/testdata"
 )

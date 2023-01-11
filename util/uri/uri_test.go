@@ -6,95 +6,115 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestURI_ProcessURI(t *testing.T) {
+func TestURI_NormalizeURI(t *testing.T) {
 	t.Run("should process mailto uri", func(t *testing.T) {
 		uri := "john@doe.com"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "mailto:"+uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, "mailto:"+uri, processedURI)
 	})
 
 	t.Run("should process tel uri", func(t *testing.T) {
 		uri := "+491234567"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "tel:"+uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, "tel:"+uri, processedURI)
 	})
 
 	t.Run("should process url", func(t *testing.T) {
 		uri := "website.com"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "http://"+uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
 	t.Run("should process url with additional content 1", func(t *testing.T) {
 		uri := "website.com/123/456"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "http://"+uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
 	t.Run("should process url with additional content 2", func(t *testing.T) {
 		uri := "website.com?content=11"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "http://"+uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
 	t.Run("should process url with additional content and numbers", func(t *testing.T) {
 		uri := "webs1te.com/123/456"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "http://"+uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, "http://"+uri, processedURI)
 	})
 
-	t.Run("should return error if it is not a uri", func(t *testing.T) {
-		uri := "website"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, uri, processedUri)
-		assert.Error(t, err)
-	})
-
-	t.Run("should not process url with http://", func(t *testing.T) {
+	t.Run("should not modify url with http://", func(t *testing.T) {
 		uri := "http://website.com"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, uri, processedURI)
 	})
 
-	t.Run("should not process url with https://", func(t *testing.T) {
+	t.Run("should not modify url with https://", func(t *testing.T) {
 		uri := "https://website.com"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
 		assert.NoError(t, err)
+		assert.Equal(t, uri, processedURI)
 	})
 
-	t.Run("should not process non url/tel/mailto uri", func(t *testing.T) {
+	t.Run("should not modify non url/tel/mailto uri", func(t *testing.T) {
 		uri := "type:content"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, uri, processedUri)
+		processedURI, err := NormalizeURI(uri)
+		assert.NoError(t, err)
+		assert.Equal(t, uri, processedURI)
+	})
+}
+
+func TestURI_ValidateURI(t *testing.T) {
+	t.Run("should return error on empty string", func(t *testing.T) {
+		uri := ""
+		err := ValidateURI(uri)
+		assert.Error(t, err)
+		assert.Equal(t, err, errURLEmpty)
+	})
+
+	t.Run("should return error on win filepath", func(t *testing.T) {
+		uri := "D://folder//file.txt"
+		err := ValidateURI(uri)
+		assert.Error(t, err)
+		assert.Equal(t, err, errFilepathNotSupported)
+	})
+
+	t.Run("should return error on unix abs filepath", func(t *testing.T) {
+		uri := "/folder/file.txt"
+		err := ValidateURI(uri)
+		assert.Error(t, err)
+		assert.Equal(t, err, errFilepathNotSupported)
+	})
+
+	t.Run("should return error on unix rel filepath", func(t *testing.T) {
+		uri := "../folder/file.txt"
+		err := ValidateURI(uri)
+		assert.Error(t, err)
+		assert.Equal(t, err, errFilepathNotSupported)
+	})
+
+	t.Run("should not return error if url is surrounded by whitespaces", func(t *testing.T) {
+		uri := " \t\n\v\r\f https://brutal-site.org \t\n\v\r\f "
+		err := ValidateURI(uri)
 		assert.NoError(t, err)
 	})
 
-	t.Run("should gives error on win filepath", func(t *testing.T) {
-		uri := "D://folder//file.txt"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "", processedUri)
-		assert.NotNil(t, err)
+	t.Run("should not return error if url has spaces inside", func(t *testing.T) {
+		uri := "I do love enough space.org"
+		err := ValidateURI(uri)
+		assert.NoError(t, err)
 	})
 
-	t.Run("should gives error on unix abs filepath", func(t *testing.T) {
-		uri := "/folder/file.txt"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "", processedUri)
-		assert.NotNil(t, err)
-	})
-
-	t.Run("should gives error on unix rel filepath", func(t *testing.T) {
-		uri := "../folder/file.txt"
-		processedUri, err := ProcessURI(uri)
-		assert.Equal(t, "", processedUri)
-		assert.NotNil(t, err)
+	t.Run("should not return error if url contains emojis", func(t *testing.T) {
+		uri := "merry 🎄 and a happy 🎁.kevin.blog"
+		err := ValidateURI(uri)
+		assert.NoError(t, err)
 	})
 }

@@ -1758,13 +1758,18 @@ message Rpc {
         message Import {
             message Request {
                 oneof params {
-                    MarkdownParams markdownParams = 1;
+                    NotionParams notionParams = 1;
                     BookmarksParams bookmarksParams = 2; //for internal use
+                    MarkdownParams markdownParams = 3;
                 }
-                repeated Snapshot snapshots = 3; // optional, for external developers usage
-                bool updateExistingObjects = 4;
-                Type type = 5;
-                Mode mode = 6;
+                repeated Snapshot snapshots = 4; // optional, for external developers usage
+                bool updateExistingObjects = 5;
+                Type type = 6;
+                Mode mode = 7;
+
+                message NotionParams {
+                    string apiKey = 1;
+                }
 
                 message MarkdownParams {
                     string path = 1;
@@ -1784,8 +1789,9 @@ message Rpc {
                     anytype.model.SmartBlockSnapshotBase snapshot = 2;
                 };
                 enum Type {
-                    Markdown = 0;
-                    External = 1; // external developers use it
+                    Notion = 0;
+                    Markdown = 1; 
+                    External = 2; // external developers use it
                 };
 
             }
@@ -1829,7 +1835,8 @@ message Rpc {
             message ImportResponse {
                 Type type = 1; 
                 enum Type {
-                    Markdown = 0;
+                    Notion = 0;
+                    Markdown = 1;
                 };
             }
         }

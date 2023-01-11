@@ -1,11 +1,13 @@
 package process
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/globalsign/mgo/bson"
+
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 func NewProgress(pType pb.ModelProcessType) *Progress {
@@ -105,4 +107,16 @@ func (p *Progress) Info() pb.ModelProcess {
 
 func (p *Progress) Done() chan struct{} {
 	return p.done
+}
+
+func (p *Progress) TryStep(delta int64) error {
+	select {
+	case <-p.Canceled():
+		return fmt.Errorf("cancelled import")
+	default:
+	}
+
+	p.AddDone(delta)
+
+	return nil
 }

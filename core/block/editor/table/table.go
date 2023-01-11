@@ -332,10 +332,10 @@ func (t *Editor) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequ
 			return fmt.Errorf("get row %s: %w", rowID, err)
 		}
 
-		newIDs := make([]string, 0, len(columns))
+		newIds := make([]string, 0, len(columns))
 		for _, colID := range columns {
 			id := MakeCellID(rowID, colID)
-			newIDs = append(newIDs, id)
+			newIds = append(newIds, id)
 
 			if !s.Exists(id) {
 				_, err := addCell(s, rowID, colID)
@@ -344,7 +344,7 @@ func (t *Editor) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequ
 				}
 			}
 		}
-		row.Model().ChildrenIds = newIDs
+		row.Model().ChildrenIds = newIds
 	}
 	return nil
 }
