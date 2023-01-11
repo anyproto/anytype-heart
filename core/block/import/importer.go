@@ -1,14 +1,15 @@
 package importer
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -106,7 +107,8 @@ func (s *Import) Name() string {
 }
 
 // ListImports return all registered import types
-func (i *Import) ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
+func (i *Import) ListImports(_ *session.Context,
+	_ *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
 	res := make([]*pb.RpcObjectImportListImportResponse, len(i.converters))
 	var idx int
 	for _, c := range i.converters {
@@ -114,6 +116,13 @@ func (i *Import) ListImports(ctx *session.Context, req *pb.RpcObjectImportListRe
 		idx++
 	}
 	return res, nil
+}
+
+// ValidateNotionToken return all registered import types
+func (i *Import) ValidateNotionToken(ctx context.Context,
+	req *pb.RpcObjectImportNotionTokenValidateRequest) pb.RpcObjectImportNotionTokenValidateResponseErrorCode {
+	tv := notion.NewTokenValidator()
+	return tv.Validate(ctx, req.GetApiKey())
 }
 
 func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {

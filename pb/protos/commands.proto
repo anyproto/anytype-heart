@@ -1811,6 +1811,31 @@ message Rpc {
                     }
                 }
             }
+
+            message NotionToken {
+                message Validate {
+                    message Request {
+                        string apiKey = 1;
+                    }
+
+                    message Response {
+                        Error error = 1;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                INTERNAL_ERROR = 1;
+                                UNAUTHORIZED = 2;
+                                UNKNOWN_ERROR = 3;
+                                BAD_INPUT = 4;
+                            }
+                        }
+                    }
+                }
+            }
         }
         message ImportList {
             message Request {}
