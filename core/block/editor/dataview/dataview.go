@@ -637,7 +637,7 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 	res = model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			RelationLinks: relations,
-			Source:        source,
+			//Source:        source,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   bson.NewObjectId().Hex(),

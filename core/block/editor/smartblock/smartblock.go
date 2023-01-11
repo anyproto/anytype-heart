@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -385,36 +384,36 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
-	if sb.Type() == model.SmartBlockType_Set {
-		// add the object type from the dataview source
-		if b := sb.Doc.Pick("dataview"); b != nil {
-			if dv := b.Model().GetDataview(); dv != nil {
-				if len(dv.Source) == 0 || dv.Source[0] == "" {
-					panic("empty dv source")
-				}
-				uniqueObjTypes = append(uniqueObjTypes, dv.Source...)
-				for _, rel := range dv.Relations {
-					if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
-						if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
-							continue
-						}
-						for _, ot := range rel.ObjectTypes {
-							if slice.FindPos(uniqueObjTypes, ot) == -1 {
-								if ot == "" {
-									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
-								} else {
-									if strings.HasPrefix(ot, "http") {
-										log.Errorf("dv rels has http source")
-									}
-									uniqueObjTypes = append(uniqueObjTypes, ot)
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+	//if sb.Type() == model.SmartBlockType_Set {
+	//	// add the object type from the dataview source
+	//	if b := sb.Doc.Pick("dataview"); b != nil {
+	//		if dv := b.Model().GetDataview(); dv != nil {
+	//			if len(dv.Source) == 0 || dv.Source[0] == "" {
+	//				panic("empty dv source")
+	//			}
+	//			uniqueObjTypes = append(uniqueObjTypes, dv.Source...)
+	//			for _, rel := range dv.Relations {
+	//				if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
+	//					if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
+	//						continue
+	//					}
+	//					for _, ot := range rel.ObjectTypes {
+	//						if slice.FindPos(uniqueObjTypes, ot) == -1 {
+	//							if ot == "" {
+	//								log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
+	//							} else {
+	//								if strings.HasPrefix(ot, "http") {
+	//									log.Errorf("dv rels has http source")
+	//								}
+	//								uniqueObjTypes = append(uniqueObjTypes, ot)
+	//							}
+	//						}
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 
 	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
 	go sb.metaListener(recordsCh)
