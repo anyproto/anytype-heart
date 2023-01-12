@@ -196,7 +196,7 @@ jobs:
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
       - name: install protoc
         run: |
-          make setup-protoc
+          HAS_SYSTEM_PROTOBUF=false make setup-protoc
       - name: setup go
         run: |
           make setup-go
