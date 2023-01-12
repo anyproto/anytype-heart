@@ -3,12 +3,14 @@ package web
 import (
 	"fmt"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 const name = "web"
@@ -29,28 +31,37 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest,
+	progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
+
+	progress.SetTotal(1)
+
 	if err != nil {
 		we.Add(url, err)
-		return &converter.Response{Error: we}
+		return nil, we
 	}
 	p := c.GetParser(url)
 	if p == nil {
 		we.Add(url, fmt.Errorf("unknown url format"))
-		return &converter.Response{Error: we}
+		return nil, we
 	}
+
+	progress.SetProgressMessage("Start parsing url to snapshot")
 	snapshots, err := p.ParseUrl(url)
+
+	progress.AddDone(1)
+
 	if err != nil {
 		we.Add(url, err)
-		return &converter.Response{Error: we}
+		return nil, we
 	}
 
 	tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	if err != nil {
 		we.Add(url, err)
-		return &converter.Response{Error: we}
+		return nil, we
 	}
 	s := &converter.Snapshot{
 		Id:       tid.String(),
@@ -58,10 +69,10 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 		Snapshot: snapshots,
 	}
 	res := &converter.Response{
-		Snapshots:      []*converter.Snapshot{s},
-		Error:          nil,
+		Snapshots: []*converter.Snapshot{s},
 	}
-	return res
+
+	return res, nil
 }
 
 func (p *Converter) Name() string {

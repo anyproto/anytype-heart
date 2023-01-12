@@ -14,13 +14,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/h2non/filetype"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
-	"github.com/h2non/filetype"
 )
 
 var (
@@ -175,7 +176,10 @@ func (u *uploader) AddOptions(options ...files.AddOption) Uploader {
 }
 
 func (u *uploader) SetUrl(url string) Uploader {
-	url, _ = uri.ProcessURI(url)
+	url, err := uri.NormalizeURI(url)
+	if err != nil {
+		// do nothing
+	}
 	u.name = strings.Split(filepath.Base(url), "?")[0]
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -183,7 +187,11 @@ func (u *uploader) SetUrl(url string) Uploader {
 			return nil, err
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		// setting timeout to avoid locking for a long time
+		cl := http.DefaultClient
+		cl.Timeout = time.Second * 20
+
+		resp, err := cl.Do(req)
 		if err != nil {
 			return nil, err
 		}

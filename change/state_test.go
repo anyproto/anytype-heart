@@ -43,7 +43,7 @@ func BenchmarkOpenDoc(b *testing.B) {
 	root := tree.Root()
 	doc := state.NewDocFromSnapshot("bafybapt3aap3tmkbs7mkj5jao3vhjblijkiwqq37wxlylx5nn7cqokgk", root.GetSnapshot()).(*state.State)
 	doc.SetChangeId(root.Id)
-	_, err = BuildStateSimpleCRDT(doc, tree)
+	_, _, err = BuildStateSimpleCRDT(doc, tree)
 	require.NoError(b, err)
 	b.Log("build state:", time.Since(st))
 
@@ -57,7 +57,7 @@ func BenchmarkOpenDoc(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			doc := state.NewDocFromSnapshot("bafybapt3aap3tmkbs7mkj5jao3vhjblijkiwqq37wxlylx5nn7cqokgk", root.GetSnapshot()).(*state.State)
 			doc.SetChangeId(root.Id)
-			_, err := BuildStateSimpleCRDT(doc, tree)
+			_, _, err := BuildStateSimpleCRDT(doc, tree)
 			require.NoError(b, err)
 		}
 	})

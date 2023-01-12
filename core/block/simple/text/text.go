@@ -234,7 +234,7 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 	} else {
 		for mI, _ := range marks.Marks {
 			if marks.Marks[mI].Type == model.BlockContentTextMark_Link {
-				m, err := uri.ProcessURI(marks.Marks[mI].Param)
+				m, err := uri.NormalizeURI(marks.Marks[mI].Param)
 				if err == nil {
 					marks.Marks[mI].Param = m
 				}
@@ -700,9 +700,9 @@ func (t *Text) IsEmpty() bool {
 	return false
 }
 
-func isIncompatibleType(firstType, secondType model.BlockContentTextMarkType ) bool {
-	if (firstType == model.BlockContentTextMark_Link && secondType == model.BlockContentTextMark_Object) || 
-	(secondType == model.BlockContentTextMark_Link && firstType == model.BlockContentTextMark_Object) {
+func isIncompatibleType(firstType, secondType model.BlockContentTextMarkType) bool {
+	if (firstType == model.BlockContentTextMark_Link && secondType == model.BlockContentTextMark_Object) ||
+		(secondType == model.BlockContentTextMark_Link && firstType == model.BlockContentTextMark_Object) {
 		return true
 	}
 	return false

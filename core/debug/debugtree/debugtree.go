@@ -213,7 +213,7 @@ func (r *debugTree) BuildStateByTree(t *change.Tree) (*state.State, error) {
 	}
 	s := state.NewDocFromSnapshot("", root.GetSnapshot()).(*state.State)
 	s.SetChangeId(root.Id)
-	st, err := change.BuildStateSimpleCRDT(s, t)
+	st, _, err := change.BuildStateSimpleCRDT(s, t)
 	if err != nil {
 		return nil, err
 	}

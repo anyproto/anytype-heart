@@ -218,7 +218,7 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 	}
 	s = state.NewDocFromSnapshot(pageId, root.GetSnapshot()).(*state.State)
 	s.SetChangeId(root.Id)
-	st, err := change.BuildStateSimpleCRDT(s, tree)
+	st, _, err := change.BuildStateSimpleCRDT(s, tree)
 	if err != nil {
 		return
 	}

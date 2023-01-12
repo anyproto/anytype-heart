@@ -248,18 +248,19 @@ build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build&install into ../js-anytype"
 
 install-linter:
+	@go install github.com/daixiang0/gci@latest
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --timeout 15m
+	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m --fix
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m --fix
 endif

@@ -21,7 +21,7 @@ func Test_ImportSuccess(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	converter := NewMockConverter(ctrl)
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
@@ -34,15 +34,15 @@ func Test_ImportSuccess(t *testing.T) {
 			},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: nil}).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, cv.ConvertError{}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -58,23 +58,21 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	converter := NewMockConverter(ctrl)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{
-		Error: e,
-	}).Times(1)
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
 	})
 
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "converter error")
+	assert.Contains(t, err.Error(), "no files to import")
 }
 
 func Test_ImportErrorFromObjectCreator(t *testing.T) {
@@ -82,7 +80,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	converter := NewMockConverter(ctrl)
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
@@ -95,15 +93,15 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 			},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: nil}).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, cv.ConvertError{}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -120,7 +118,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	converter := NewMockConverter(ctrl)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
@@ -133,15 +131,15 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 			},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: e}).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -158,7 +156,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	converter := NewMockConverter(ctrl)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
@@ -171,15 +169,15 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 			},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: e}).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
 
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -198,7 +196,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 
 	snapshots := make([]*pb.RpcObjectImportRequestSnapshot, 0)
@@ -226,7 +224,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		Params:                nil,
 		Snapshots:             snapshots,
 		UpdateExistingObjects: false,
-		Type:                  1,
+		Type:                  2,
 		Mode:                  2,
 	})
 	assert.Nil(t, res)
@@ -246,7 +244,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Params:                nil,
 		Snapshots:             nil,
 		UpdateExistingObjects: false,
-		Type:                  1,
+		Type:                  2,
 		Mode:                  2,
 	})
 	assert.NotNil(t, res)
@@ -268,9 +266,8 @@ func Test_ListImports(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 	assert.Len(t, res, 1)
-	assert.True(t,  res[0].Type == pb.RpcObjectImportListImportResponseType(0) || res[1].Type == pb.RpcObjectImportListImportResponseType(0))
+	assert.True(t, res[0].Type == pb.RpcObjectImportListImportResponseType(0) || res[1].Type == pb.RpcObjectImportListImportResponseType(0))
 }
-
 
 func Test_ImportWebNoParser(t *testing.T) {
 	i := Import{}
@@ -283,7 +280,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 	i.oc = creator
 
 	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 
@@ -311,7 +308,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	parsers.RegisterFunc(new)
 
 	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 
@@ -327,7 +324,7 @@ func Test_ImportWebSuccess(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 
 	parser := parsers.NewMockParser(ctrl)
@@ -347,8 +344,8 @@ func Test_ImportWebSuccess(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	id,_, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+	id, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 
@@ -365,7 +362,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error")).Times(1)
 	i.oc = creator
 
 	parser := parsers.NewMockParser(ctrl)
@@ -386,7 +383,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	parsers.RegisterFunc(new)
 
 	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:  &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
 

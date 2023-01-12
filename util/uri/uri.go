@@ -2,6 +2,7 @@ package uri
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -15,31 +16,62 @@ var (
 	noPrefixHttpRegex      = regexp.MustCompile(`^[\pL\d.-]+(?:\.[\pL\\d.-]+)+[\pL\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.\/\d]+$`)
 	haveUriSchemeRegex     = regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
+
+	// errors
+	errURLEmpty             = fmt.Errorf("url is empty")
+	errFilepathNotSupported = fmt.Errorf("filepath not supported")
 )
 
-// ProcessURI tries to verify the web URI and return the normalized URI
-func ProcessURI(url string) (urlOut string, err error) {
-	if len(url) == 0 {
-		return url, fmt.Errorf("url is empty")
-
-	} else if noPrefixEmailRegexp.MatchString(url) {
-		return "mailto:" + url, nil
-
-	} else if noPrefixTelRegexp.MatchString(url) {
-		return "tel:" + url, nil
-
-	} else if winFilepathPrefixRegex.MatchString(url) {
-		return "", fmt.Errorf("filepath not supported")
-
-	} else if strings.HasPrefix(url, string(os.PathSeparator)) || strings.HasPrefix(url, ".") {
-		return "", fmt.Errorf("filepath not supported")
-
-	} else if noPrefixHttpRegex.MatchString(url) {
-		return "http://" + url, nil
-
-	} else if haveUriSchemeRegex.MatchString(url) {
-		return url, nil
+func excludePathAndEmptyURIs(uri string) error {
+	switch {
+	case len(uri) == 0:
+		return errURLEmpty
+	case winFilepathPrefixRegex.MatchString(uri):
+		return errFilepathNotSupported
+	case strings.HasPrefix(uri, string(os.PathSeparator)):
+		return errFilepathNotSupported
+	case strings.HasPrefix(uri, "."):
+		return errFilepathNotSupported
 	}
 
-	return url, fmt.Errorf("not a uri")
+	return nil
+}
+
+func normalizeURI(uri string) string {
+	switch {
+	case noPrefixEmailRegexp.MatchString(uri):
+		return "mailto:" + uri
+	case noPrefixTelRegexp.MatchString(uri):
+		return "tel:" + uri
+	case noPrefixHttpRegex.MatchString(uri):
+		return "http://" + uri
+	}
+
+	return uri
+}
+
+func ParseURI(uri string) (*url.URL, error) {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return nil, err
+	}
+
+	return url.Parse(uri)
+}
+
+func NormalizeURI(uri string) (string, error) {
+	if err := ValidateURI(uri); err != nil {
+		return "", err
+	}
+
+	return normalizeURI(uri), nil
+}
+
+func NormalizeAndParseURI(uri string) (*url.URL, error) {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return nil, err
+	}
+
+	return url.Parse(normalizeURI(uri))
 }

@@ -801,7 +801,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	}
 
 	indexDetails, indexLinks := sbType.Indexable()
-	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace {
+	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace && sbType != smartblock.SmartBlockTypeBreadcrumbs {
 		// avoid recursions
 
 		if pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
