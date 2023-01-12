@@ -17,6 +17,9 @@ import (
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
+
+	// Import for image.DecodeConfig to support .webp format
+	_ "golang.org/x/image/webp"
 )
 
 // Format enumerates the type of images currently supported
@@ -71,6 +74,32 @@ func (m *ImageResize) AcceptMedia(media string) error {
 
 func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(m.Opts, add)
+}
+
+func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
+	imgConfig, formatStr, err := image.DecodeConfig(r)
+	if err != nil {
+		return nil, err
+	}
+	format := Format(formatStr)
+
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	switch format {
+	case JPEG:
+		return m.resizeJPEG(&imgConfig, r)
+	case ICO, PNG:
+		return m.resizePNG(&imgConfig, r)
+	case WEBP:
+		return m.resizeWEBP(&imgConfig, r)
+	case GIF:
+		return m.resizeGIF(&imgConfig, r)
+	}
+
+	return nil, fmt.Errorf("unknown format")
 }
 
 func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {

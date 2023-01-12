@@ -12,36 +12,7 @@ import (
 
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
-
-	// Import for image.DecodeConfig to support .webp format
-	_ "golang.org/x/image/webp"
 )
-
-func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
-	imgConfig, formatStr, err := image.DecodeConfig(r)
-	if err != nil {
-		return nil, err
-	}
-	format := Format(formatStr)
-
-	_, err = r.Seek(0, io.SeekStart)
-	if err != nil {
-		return nil, err
-	}
-
-	switch format {
-	case JPEG:
-		return m.resizeJPEG(&imgConfig, r)
-	case ICO, PNG:
-		return m.resizePNG(&imgConfig, r)
-	case WEBP:
-		return m.resizeWEBP(&imgConfig, r)
-	case GIF:
-		return m.resizeGIF(&imgConfig, r)
-	}
-
-	return nil, fmt.Errorf("unknown format")
-}
 
 func (m *ImageResize) resizeWEBP(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
 	var height int
