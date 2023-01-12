@@ -1,5 +1,4 @@
-//go:build webpresize
-// +build webpresize
+//go:build !webpresize
 
 package mill
 
@@ -15,16 +14,12 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
-
-	// Import for image.DecodeConfig to support .webp format
-	_ "golang.org/x/image/webp"
 )
 
 // Format enumerates the type of images currently supported
@@ -39,7 +34,6 @@ const (
 	PNG  Format = "png"
 	GIF  Format = "gif"
 	ICO  Format = "ico"
-	WEBP Format = "webp"
 )
 
 type ImageSize struct {
@@ -170,13 +164,11 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		}, nil
 	}
 
-	if slices.Contains([]Format{JPEG, PNG, ICO, WEBP}, format) {
+	if slices.Contains([]Format{JPEG, PNG, ICO}, format) {
 		switch {
 		case format == JPEG && img == nil:
 			// we already have img decoded if we have orientation <= 1
 			img, err = jpeg.Decode(r)
-		case format == WEBP:
-			img, err = webp.Decode(r)
 		case format != JPEG:
 			img, err = png.Decode(r)
 		}
@@ -192,8 +184,6 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		switch format {
 		case JPEG:
 			err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality})
-		case WEBP:
-			err = webp.Encode(buff, resized, &webp.Options{Quality: float32(quality)})
 		default:
 			err = png.Encode(buff, resized)
 		}
