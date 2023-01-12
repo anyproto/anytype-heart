@@ -126,7 +126,9 @@ func (b *treeBuilder) getChangesFromLogs(logs []core.SmartblockLog) (changes []*
 		buf = buf[:0]
 		for _, id := range q1 {
 			ch, nextIDs := b.getChange(id)
-			changes = append(changes, ch)
+			if ch != nil {
+				changes = append(changes, ch)
+			}
 			buf = append(buf, nextIDs...)
 		}
 		q1, buf = buf, q1
