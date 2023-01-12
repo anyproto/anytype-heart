@@ -52,11 +52,12 @@ type Dataview interface {
 
 	// GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
-	GetDataview(blockId string) (*model.BlockContentDataview, error)
+	GetDataview(blockID string) (*model.BlockContentDataview, error)
 
 	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
-	CreateView(ctx *session.Context, blockId string, view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
+	CreateView(ctx *session.Context, blockID string,
+		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
 	AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
 	DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
@@ -175,9 +176,9 @@ func (d *sdataview) GetDataviewRelations(blockId string) ([]*model.Relation, err
 	return tb.Model().GetDataview().GetRelations(), nil
 }
 
-func (d *sdataview) GetDataview(blockId string) (*model.BlockContentDataview, error) {
+func (d *sdataview) GetDataview(blockID string) (*model.BlockContentDataview, error) {
 	st := d.NewState()
-	tb, err := getDataviewBlock(st, blockId)
+	tb, err := getDataviewBlock(st, blockID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +281,8 @@ func (d *sdataview) SetViewPosition(ctx *session.Context, blockId string, viewId
 	return d.Apply(s)
 }
 
-func (d *sdataview) CreateView(ctx *session.Context, id string, view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error) {
+func (d *sdataview) CreateView(ctx *session.Context, id string,
+	view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error) {
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, id)
@@ -644,7 +646,7 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 					Name: "All",
 					Sorts: []*model.BlockContentDataviewSort{
 						{
-							RelationKey: "name", 
+							RelationKey: "name",
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},

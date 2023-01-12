@@ -215,7 +215,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
 
-	//TODO remove it, when schema will be refactored
+	// TODO remove it, when schema will be refactored
 	if len(req.Source) == 0 {
 		req.Source = []string{bundle.TypeKeyPage.URL()}
 	}
