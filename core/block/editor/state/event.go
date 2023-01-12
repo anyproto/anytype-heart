@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -255,26 +254,26 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		event := o.BlockDataViewObjectOrderUpdate
 		if err = apply(event.Id, func(b simple.Block) error {
 			if dvBlock, ok := b.(dataview.Block); ok {
-				var existOrder []string
-				for _, order := range dvBlock.Model().GetDataview().ObjectOrders {
-					if order.ViewId == event.ViewId && order.GroupId == event.GroupId {
-						existOrder = order.ObjectIds
-					}
-				}
-
-				changes := o.BlockDataViewObjectOrderUpdate.GetSliceChanges()
-				changedIds := slice.ApplyChanges(existOrder, pbtypes.EventsToSliceChange(changes))
-
-				dvBlock.SetViewObjectOrder([]*model.BlockContentDataviewObjectOrder{
-					{ViewId: event.ViewId, GroupId: event.GroupId, ObjectIds: changedIds},
-				})
-
+				dvBlock.ApplyObjectOrderUpdate(event)
 				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
 			return
 		}
+
+	case *pb.EventMessageValueOfBlockDataviewViewUpdate:
+		ev := o.BlockDataviewViewUpdate
+		if err = apply(ev.Id, func(b simple.Block) error {
+			if dvBlock, ok := b.(dataview.Block); ok {
+				dvBlock.ApplyViewUpdate(ev)
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+
 	case *pb.EventMessageValueOfBlockSetWidget:
 		if err = apply(o.BlockSetWidget.Id, func(b simple.Block) error {
 			if tr, ok := b.(widget.Block); ok {

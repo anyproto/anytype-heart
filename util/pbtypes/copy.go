@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -209,38 +208,4 @@ func StructNotNilKeys(st *types.Struct) (keys []string) {
 		}
 	}
 	return
-}
-
-func EventsToSliceChange(changes []*pb.EventBlockDataviewSliceChange) []slice.Change {
-	sliceOpMap := map[pb.EventBlockDataviewSliceOperation]slice.DiffOperation{
-		pb.EventBlockDataview_SliceOperationNone:    slice.OperationNone,
-		pb.EventBlockDataview_SliceOperationAdd:     slice.OperationAdd,
-		pb.EventBlockDataview_SliceOperationMove:    slice.OperationMove,
-		pb.EventBlockDataview_SliceOperationRemove:  slice.OperationRemove,
-		pb.EventBlockDataview_SliceOperationReplace: slice.OperationReplace,
-	}
-
-	var res []slice.Change
-	for _, eventCh := range changes {
-		res = append(res, slice.Change{Op: sliceOpMap[eventCh.Op], Ids: eventCh.Ids, AfterId: eventCh.AfterId})
-	}
-
-	return res
-}
-
-func SliceChangeToEvents(changes []slice.Change) []*pb.EventBlockDataviewSliceChange {
-	eventsOpMap := map[slice.DiffOperation]pb.EventBlockDataviewSliceOperation{
-		slice.OperationNone:    pb.EventBlockDataview_SliceOperationNone,
-		slice.OperationAdd:     pb.EventBlockDataview_SliceOperationAdd,
-		slice.OperationMove:    pb.EventBlockDataview_SliceOperationMove,
-		slice.OperationRemove:  pb.EventBlockDataview_SliceOperationRemove,
-		slice.OperationReplace: pb.EventBlockDataview_SliceOperationReplace,
-	}
-
-	var res []*pb.EventBlockDataviewSliceChange
-	for _, sliceCh := range changes {
-		res = append(res, &pb.EventBlockDataviewSliceChange{Op: eventsOpMap[sliceCh.Op], Ids: sliceCh.Ids, AfterId: sliceCh.AfterId})
-	}
-
-	return res
 }

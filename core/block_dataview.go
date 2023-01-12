@@ -278,3 +278,291 @@ func (mw *Middleware) BlockDataviewSetSource(cctx context.Context, req *pb.RpcBl
 
 	return resp(err)
 }
+
+func (mw *Middleware) BlockDataviewFilterAdd(cctx context.Context, req *pb.RpcBlockDataviewFilterAddRequest) *pb.RpcBlockDataviewFilterAddResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterAddResponse {
+		r := &pb.RpcBlockDataviewFilterAddResponse{
+			Error: &pb.RpcBlockDataviewFilterAddResponseError{
+				Code: pb.RpcBlockDataviewFilterAddResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterAddResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.AddDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.RpcBlockDataviewFilterRemoveRequest) *pb.RpcBlockDataviewFilterRemoveResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterRemoveResponse {
+		r := &pb.RpcBlockDataviewFilterRemoveResponse{
+			Error: &pb.RpcBlockDataviewFilterRemoveResponseError{
+				Code: pb.RpcBlockDataviewFilterRemoveResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterRemoveResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewFilterReplace(cctx context.Context, req *pb.RpcBlockDataviewFilterReplaceRequest) *pb.RpcBlockDataviewFilterReplaceResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterReplaceResponse {
+		r := &pb.RpcBlockDataviewFilterReplaceResponse{
+			Error: &pb.RpcBlockDataviewFilterReplaceResponseError{
+				Code: pb.RpcBlockDataviewFilterReplaceResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterReplaceResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterId, req.Filter)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewFilterSort(cctx context.Context, req *pb.RpcBlockDataviewFilterSortRequest) *pb.RpcBlockDataviewFilterSortResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewFilterSortResponse {
+		r := &pb.RpcBlockDataviewFilterSortResponse{
+			Error: &pb.RpcBlockDataviewFilterSortResponseError{
+				Code: pb.RpcBlockDataviewFilterSortResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewFilterSortResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewSortAdd(cctx context.Context, req *pb.RpcBlockDataviewSortAddRequest) *pb.RpcBlockDataviewSortAddResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewSortAddResponse {
+		r := &pb.RpcBlockDataviewSortAddResponse{
+			Error: &pb.RpcBlockDataviewSortAddResponseError{
+				Code: pb.RpcBlockDataviewSortAddResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewSortAddResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.AddDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.Sort)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewSortRemove(cctx context.Context, req *pb.RpcBlockDataviewSortRemoveRequest) *pb.RpcBlockDataviewSortRemoveResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewSortRemoveResponse {
+		r := &pb.RpcBlockDataviewSortRemoveResponse{
+			Error: &pb.RpcBlockDataviewSortRemoveResponseError{
+				Code: pb.RpcBlockDataviewSortRemoveResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewSortRemoveResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.RemoveDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewSortReplace(cctx context.Context, req *pb.RpcBlockDataviewSortReplaceRequest) *pb.RpcBlockDataviewSortReplaceResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewSortReplaceResponse {
+		r := &pb.RpcBlockDataviewSortReplaceResponse{
+			Error: &pb.RpcBlockDataviewSortReplaceResponseError{
+				Code: pb.RpcBlockDataviewSortReplaceResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewSortReplaceResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ReplaceDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKey, req.Sort)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewSortSort(cctx context.Context, req *pb.RpcBlockDataviewSortSortRequest) *pb.RpcBlockDataviewSortSortResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewSortSortResponse {
+		r := &pb.RpcBlockDataviewSortSortResponse{
+			Error: &pb.RpcBlockDataviewSortSortResponseError{
+				Code: pb.RpcBlockDataviewSortSortResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewSortSortResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ReorderDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewViewRelationAdd(cctx context.Context, req *pb.RpcBlockDataviewViewRelationAddRequest) *pb.RpcBlockDataviewViewRelationAddResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewViewRelationAddResponse {
+		r := &pb.RpcBlockDataviewViewRelationAddResponse{
+			Error: &pb.RpcBlockDataviewViewRelationAddResponseError{
+				Code: pb.RpcBlockDataviewViewRelationAddResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewViewRelationAddResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.AddDataviewViewRelation(ctx, req.ContextId, req.BlockId, req.ViewId, req.Relation)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewViewRelationRemove(cctx context.Context, req *pb.RpcBlockDataviewViewRelationRemoveRequest) *pb.RpcBlockDataviewViewRelationRemoveResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewViewRelationRemoveResponse {
+		r := &pb.RpcBlockDataviewViewRelationRemoveResponse{
+			Error: &pb.RpcBlockDataviewViewRelationRemoveResponseError{
+				Code: pb.RpcBlockDataviewViewRelationRemoveResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewViewRelationRemoveResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.RemoveDataviewViewRelations(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewViewRelationReplace(cctx context.Context, req *pb.RpcBlockDataviewViewRelationReplaceRequest) *pb.RpcBlockDataviewViewRelationReplaceResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewViewRelationReplaceResponse {
+		r := &pb.RpcBlockDataviewViewRelationReplaceResponse{
+			Error: &pb.RpcBlockDataviewViewRelationReplaceResponseError{
+				Code: pb.RpcBlockDataviewViewRelationReplaceResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewViewRelationReplaceResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ReplaceDataviewViewRelation(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKey, req.Relation)
+	})
+
+	return resp(err)
+}
+
+func (mw *Middleware) BlockDataviewViewRelationSort(cctx context.Context, req *pb.RpcBlockDataviewViewRelationSortRequest) *pb.RpcBlockDataviewViewRelationSortResponse {
+	ctx := mw.newContext(cctx)
+	resp := func(err error) *pb.RpcBlockDataviewViewRelationSortResponse {
+		r := &pb.RpcBlockDataviewViewRelationSortResponse{
+			Error: &pb.RpcBlockDataviewViewRelationSortResponseError{
+				Code: pb.RpcBlockDataviewViewRelationSortResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewViewRelationSortResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ReorderDataviewViewRelations(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+	})
+
+	return resp(err)
+}

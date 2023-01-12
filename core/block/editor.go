@@ -177,7 +177,7 @@ func (s *Service) GetAggregatedRelations(
 
 func (s *Service) UpdateDataviewView(ctx *session.Context, req pb.RpcBlockDataviewViewUpdateRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateView(ctx, req.BlockId, req.ViewId, *req.View, true)
+		return b.UpdateView(ctx, req.BlockId, req.ViewId, req.View, true)
 	})
 }
 
