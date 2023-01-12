@@ -17,7 +17,6 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
-	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
 )
@@ -87,7 +86,19 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return nil, err
 	}
 
-	var height int
+	switch format {
+	case JPEG:
+		return m.resizeJPEG(&imgConfig, r)
+	case ICO, PNG:
+		return m.resizePNG(&imgConfig, r)
+	case GIF:
+		return m.resizeGIF(&imgConfig, r)
+	}
+
+	return nil, fmt.Errorf("unknown format")
+}
+
+func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
 		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
@@ -97,47 +108,46 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
 	}
 
-	var (
-		img         image.Image
-		orientation int
-	)
+	var exifData []byte
+	exifData, err = getExifData(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get exif data %s", err.Error())
+	}
 
-	if format == JPEG {
-		var exifData []byte
-		exifData, err = getExifData(r)
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	var orientation int
+	var img image.Image
+
+	if exifData != nil {
+		orientation, err = getJpegOrientation(exifData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get exif data %s", err.Error())
+			return nil, fmt.Errorf("failed to get jpeg orientation: %s", err.Error())
 		}
-
 		_, err = r.Seek(0, io.SeekStart)
 		if err != nil {
 			return nil, err
 		}
-		if exifData != nil {
-			orientation, err = getJpegOrientation(exifData)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get jpeg orientation: %s", err.Error())
-			}
-			_, err = r.Seek(0, io.SeekStart)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if orientation > 1 {
-			img, err = jpeg.Decode(r)
-			if err != nil {
-				return nil, err
-			}
-
-			img = reverseOrientation(img, orientation)
-			if err != nil {
-				err = fmt.Errorf("failed to fix img orientation: %s", err.Error())
-				return nil, err
-			}
-			imgConfig.Width, imgConfig.Height = img.Bounds().Max.X, img.Bounds().Max.Y
-		}
 	}
 
+	if orientation > 1 {
+		img, err = jpeg.Decode(r)
+		if err != nil {
+			return nil, err
+		}
+
+		img = reverseOrientation(img, orientation)
+		if err != nil {
+			err = fmt.Errorf("failed to fix img orientation: %s", err.Error())
+			return nil, err
+		}
+		imgConfig.Width, imgConfig.Height = img.Bounds().Max.X, img.Bounds().Max.Y
+	}
+
+	var height int
 	if imgConfig.Width <= width || width == 0 {
 		// we will not do the upscale
 		width, height = imgConfig.Width, imgConfig.Height
@@ -145,15 +155,11 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 
 	if orientation <= 1 && width == imgConfig.Width {
 		var r2 io.Reader
-		if format == JPEG {
-			r2, err = patchReaderRemoveExif(r)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			r2 = r
+		r2, err = patchReaderRemoveExif(r)
+		if err != nil {
+			return nil, err
 		}
-		// here is an optimisation
+		// here is an optimization
 		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
 			File: r2,
@@ -164,73 +170,125 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		}, nil
 	}
 
-	if slices.Contains([]Format{JPEG, PNG, ICO}, format) {
-		switch {
-		case format == JPEG && img == nil:
-			// we already have img decoded if we have orientation <= 1
-			img, err = jpeg.Decode(r)
-		case format != JPEG:
-			img, err = png.Decode(r)
-		}
-
-		if err != nil {
+	if img == nil {
+		if img, err = jpeg.Decode(r); err != nil {
 			return nil, err
 		}
+	}
 
-		resized := imaging.Resize(img, width, 0, imaging.Lanczos)
-		width, height = resized.Rect.Max.X, resized.Rect.Max.Y
+	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
+	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
-		buff := &bytes.Buffer{}
-		switch format {
-		case JPEG:
-			err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality})
-		default:
-			err = png.Encode(buff, resized)
-		}
+	buff := &bytes.Buffer{}
+	if jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}) != nil {
+		return nil, err
+	}
 
-		if err != nil {
-			return nil, err
-		}
+	return &Result{
+		File: buff,
+		Meta: map[string]interface{}{
+			"width":  width,
+			"height": height,
+		},
+	}, nil
+}
 
+func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
+	var height int
+	width, err := strconv.Atoi(m.Opts.Width)
+	if err != nil {
+		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+	}
+
+	if imgConfig.Width <= width || width == 0 {
+		// we will not do the upscale
+		width, height = imgConfig.Width, imgConfig.Height
+	}
+
+	if width == imgConfig.Width {
+		// here is an optimization
+		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
-			File: buff,
+			File: r,
 			Meta: map[string]interface{}{
-				"width":  width,
-				"height": height,
+				"width":  imgConfig.Width,
+				"height": imgConfig.Height,
 			},
 		}, nil
 	}
 
-	if format == GIF {
-		gifImg, err := gif.DecodeAll(r)
-		if err != nil {
-			return nil, err
-		}
-		rect := image.Rect(0, 0, imgConfig.Width, imgConfig.Height)
-		rgba := image.NewRGBA(rect)
-		for index, frame := range gifImg.Image {
-			bounds := frame.Bounds()
-			draw.Draw(rgba, bounds, frame, bounds.Min, draw.Over)
-			gifImg.Image[index] = imageToPaletted(imaging.Resize(rgba, width, 0, imaging.Lanczos))
-		}
-		gifImg.Config.Width, gifImg.Config.Height = gifImg.Image[0].Bounds().Dx(), gifImg.Image[0].Bounds().Dy()
+	img, err := png.Decode(r)
+	if err != nil {
+		return nil, err
+	}
 
-		buff := bytes.NewBuffer(make([]byte, 0))
+	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
+	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
-		if err = gif.EncodeAll(buff, gifImg); err != nil {
-			return nil, err
-		}
+	buff := &bytes.Buffer{}
+	if png.Encode(buff, resized) != nil {
+		return nil, err
+	}
 
+	return &Result{
+		File: buff,
+		Meta: map[string]interface{}{
+			"width":  width,
+			"height": height,
+		},
+	}, nil
+}
+
+func (m *ImageResize) resizeGIF(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
+	width, err := strconv.Atoi(m.Opts.Width)
+	if err != nil {
+		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+	}
+
+	if imgConfig.Width <= width || width == 0 {
+		// we will not do the upscale
+		width = imgConfig.Width
+	}
+
+	if width == imgConfig.Width {
+		// here is an optimization
+		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
-			File: buff,
+			File: r,
 			Meta: map[string]interface{}{
-				"width":  gifImg.Config.Width,
-				"height": gifImg.Config.Height,
+				"width":  imgConfig.Width,
+				"height": imgConfig.Height,
 			},
 		}, nil
 	}
 
-	return nil, fmt.Errorf("unknown format")
+	gifImg, err := gif.DecodeAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	rect := image.Rect(0, 0, imgConfig.Width, imgConfig.Height)
+	rgba := image.NewRGBA(rect)
+
+	for index, frame := range gifImg.Image {
+		bounds := frame.Bounds()
+		draw.Draw(rgba, bounds, frame, bounds.Min, draw.Over)
+		gifImg.Image[index] = imageToPaletted(imaging.Resize(rgba, width, 0, imaging.Lanczos))
+	}
+	gifImg.Config.Width, gifImg.Config.Height = gifImg.Image[0].Bounds().Dx(), gifImg.Image[0].Bounds().Dy()
+
+	buff := bytes.NewBuffer(make([]byte, 0))
+	if gif.EncodeAll(buff, gifImg) != nil {
+		return nil, err
+	}
+
+	return &Result{
+		File: buff,
+		Meta: map[string]interface{}{
+			"width":  gifImg.Config.Width,
+			"height": gifImg.Config.Height,
+		},
+	}, nil
 }
 
 func getExifData(r io.ReadSeeker) (data []byte, err error) {
@@ -302,7 +360,10 @@ func patchReaderRemoveExif(r io.ReadSeeker) (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _ = r.Seek(0, io.SeekStart)
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		// do nothing
+	}
 
 	buff := bytes.NewBuffer(make([]byte, 0, size))
 	intfc, err := jmp.Parse(r, int(size))
