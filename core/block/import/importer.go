@@ -122,7 +122,7 @@ func (i *Import) ListImports(_ *session.Context,
 func (i *Import) ValidateNotionToken(ctx context.Context,
 	req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
 	tv := notion.NewTokenValidator()
-	return tv.Validate(ctx, req.GetApiKey())
+	return tv.Validate(ctx, req.GetToken())
 }
 
 func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {

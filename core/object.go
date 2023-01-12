@@ -833,7 +833,7 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 	return response(res, pb.RpcObjectImportListResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ImportNotionValidateToken(ctx context.Context,
+func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	request *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
 	//nolint: lll
 	response := func(code pb.RpcObjectImportNotionValidateTokenResponseErrorCode) *pb.RpcObjectImportNotionValidateTokenResponse {
