@@ -1,11 +1,10 @@
-un:
+run:
   deadline: 15m
   timeout:  15m
   # didn't run linter on tests
   tests: false
   # don't check generated protobuf files
   skip-dirs:
-    - pb/external_libs
     - pkg/lib/pb
   go: '1.18'
 

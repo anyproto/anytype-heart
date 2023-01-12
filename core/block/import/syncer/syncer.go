@@ -5,10 +5,11 @@ import "github.com/anytypeio/go-anytype-middleware/core/block/simple"
 type Factory struct {
 	fs Syncer
 	bs Syncer
+	is Syncer
 }
 
-func New(fs *FileSyncer, bs *BookmarkSyncer) *Factory {
-	return &Factory{fs:fs, bs: bs}
+func New(fs *FileSyncer, bs *BookmarkSyncer, is *IconSyncer) *Factory {
+	return &Factory{fs: fs, bs: bs, is: is}
 }
 
 func (f *Factory) GetSyncer(b simple.Block) Syncer {
@@ -17,6 +18,9 @@ func (f *Factory) GetSyncer(b simple.Block) Syncer {
 	}
 	if file := b.Model().GetFile(); file != nil {
 		return f.fs
+	}
+	if b.Model().GetText() != nil && b.Model().GetText().GetIconImage() != "" {
+		return f.is
 	}
 	return nil
 }

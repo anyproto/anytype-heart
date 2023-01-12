@@ -150,8 +150,7 @@ func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (er
 		return err
 	}
 	if len(links) > 0 {
-		// todo: return the error to user?
-		log.Errorf("workspace removeObject: found inbound links: %v", links)
+		log.With("id", objectId).With("total", len(links)).Debugf("workspace removeObject: found inbound links: %v", links)
 	}
 	st.RemoveFromStore([]string{collection, key})
 	if v, exists := c.collections[collection]; exists {

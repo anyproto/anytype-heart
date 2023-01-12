@@ -10,6 +10,7 @@ require (
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.6
+	github.com/chai2010/webp v1.1.1
 	github.com/cheggaaa/mb v1.0.3
 	github.com/dave/jennifer v1.4.1
 	github.com/davecgh/go-spew v1.1.1
@@ -87,6 +88,7 @@ require (
 	github.com/yuin/goldmark v1.4.13
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
+	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 	golang.org/x/text v0.5.0
 	google.golang.org/grpc v1.47.0
@@ -275,7 +277,6 @@ require (
 	go.uber.org/fx v1.18.2 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/image v0.0.0-20200119044424-58c23975cae1 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.3.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
