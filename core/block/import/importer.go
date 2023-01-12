@@ -120,7 +120,7 @@ func (i *Import) ListImports(_ *session.Context,
 
 // ValidateNotionToken return all registered import types
 func (i *Import) ValidateNotionToken(ctx context.Context,
-	req *pb.RpcObjectImportNotionTokenValidateRequest) pb.RpcObjectImportNotionTokenValidateResponseErrorCode {
+	req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
 	tv := notion.NewTokenValidator()
 	return tv.Validate(ctx, req.GetApiKey())
 }

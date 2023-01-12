@@ -24,7 +24,7 @@ type Importer interface {
 	ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 	//nolint: lll
-	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionTokenValidateRequest) pb.RpcObjectImportNotionTokenValidateResponseErrorCode
+	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode
 }
 
 // Creator incapsulate logic with creation of given smartblocks

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/ping"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -23,12 +22,12 @@ func Test_ValidateTokenNotValid(t *testing.T) {
 	c := client.NewClient()
 	c.BasePath = s.URL
 
-	p := ping.New(c)
+	p := NewPingService(c)
 	tv := NewTokenValidator()
 	tv.ping = p
 
 	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionTokenValidateResponseError_UNAUTHORIZED)
+	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED)
 }
 
 func Test_ValidateTokenSuccess(t *testing.T) {
@@ -38,12 +37,12 @@ func Test_ValidateTokenSuccess(t *testing.T) {
 	c := client.NewClient()
 	c.BasePath = s.URL
 
-	p := ping.New(c)
+	p := NewPingService(c)
 	tv := NewTokenValidator()
 	tv.ping = p
 
 	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionTokenValidateResponseError_NULL)
+	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_NULL)
 }
 
 func Test_ValidateTokenInternalError(t *testing.T) {
@@ -56,10 +55,10 @@ func Test_ValidateTokenInternalError(t *testing.T) {
 	c := client.NewClient()
 	c.BasePath = s.URL
 
-	p := ping.New(c)
+	p := NewPingService(c)
 	tv := NewTokenValidator()
 	tv.ping = p
 
 	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionTokenValidateResponseError_INTERNAL_ERROR)
+	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR)
 }

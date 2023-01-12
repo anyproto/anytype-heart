@@ -1813,7 +1813,7 @@ message Rpc {
             }
 
             message Notion {
-                message TokenValidate {
+                message ValidateToken {
                     message Request {
                         string apiKey = 1;
                     }

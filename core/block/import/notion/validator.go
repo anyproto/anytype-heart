@@ -82,13 +82,13 @@ func NewTokenValidator() *TokenValidator {
 
 // Validate calls Notion API with given api key and check, if error is unauthorized
 func (v TokenValidator) Validate(ctx context.Context,
-	apiKey string) pb.RpcObjectImportNotionTokenValidateResponseErrorCode {
+	apiKey string) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
 	err := v.ping.Ping(ctx, apiKey)
 	if errors.Is(err, ErrorInternal) {
-		return pb.RpcObjectImportNotionTokenValidateResponseError_INTERNAL_ERROR
+		return pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR
 	}
 	if errors.Is(err, ErrorUnauthorized) {
-		return pb.RpcObjectImportNotionTokenValidateResponseError_UNAUTHORIZED
+		return pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED
 	}
-	return pb.RpcObjectImportNotionTokenValidateResponseError_NULL
+	return pb.RpcObjectImportNotionValidateTokenResponseError_NULL
 }
