@@ -182,7 +182,8 @@ jobs:
           go install github.com/mitchellh/gox
       - name: Apt install and node deps
         run: |
-          apt update && apt install -y protobuf-compiler libprotoc-dev
+          sudo apt update
+          sudo apt install -y protobuf-compiler libprotoc-dev
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
