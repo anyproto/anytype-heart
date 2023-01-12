@@ -183,7 +183,7 @@ jobs:
       - name: Apt install and node deps
         run: |
           sudo apt update
-          sudo apt install -y protobuf-compiler libprotoc-dev
+          sudo apt install -y protobuf-compiler libprotoc-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
@@ -211,11 +211,12 @@ jobs:
       - name: Go mod download
         run: |
           go mod download
-      - name: Cross-compile library mac/win
+      - name: Cross-compile library for linux amd64/arm64
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -cgo -osarch="linux/amd64 linux/arm64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CC=aarch64-linux-gnu-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
       - name: Make JS protos
         run: |
