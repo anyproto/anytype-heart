@@ -249,6 +249,12 @@ type fetchOptions struct {
 
 type FetchOption func(options *fetchOptions)
 
+func WithWorkspaceId(id string) FetchOption {
+	return func(options *fetchOptions) {
+		options.workspaceId = &id
+	}
+}
+
 func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
 	return s.fetchKey(key, opts...)
 }

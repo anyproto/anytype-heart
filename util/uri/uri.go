@@ -50,6 +50,16 @@ func normalizeURI(uri string) string {
 	return uri
 }
 
+func ValidateURI(uri string) error {
+	uri = strings.TrimSpace(uri)
+	if err := excludePathAndEmptyURIs(uri); err != nil {
+		return err
+	}
+
+	_, err := url.Parse(uri)
+	return err
+}
+
 func ParseURI(uri string) (*url.URL, error) {
 	uri = strings.TrimSpace(uri)
 	if err := excludePathAndEmptyURIs(uri); err != nil {

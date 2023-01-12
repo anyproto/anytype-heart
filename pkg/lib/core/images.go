@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
