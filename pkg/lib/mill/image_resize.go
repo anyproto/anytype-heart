@@ -1,6 +1,3 @@
-//go:build webpresize
-// +build webpresize
-
 package mill
 
 import (
@@ -15,15 +12,11 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
-
-	// Import for image.DecodeConfig to support .webp format
-	_ "golang.org/x/image/webp"
 )
 
 // Format enumerates the type of images currently supported
@@ -78,32 +71,6 @@ func (m *ImageResize) AcceptMedia(media string) error {
 
 func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(m.Opts, add)
-}
-
-func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
-	imgConfig, formatStr, err := image.DecodeConfig(r)
-	if err != nil {
-		return nil, err
-	}
-	format := Format(formatStr)
-
-	_, err = r.Seek(0, io.SeekStart)
-	if err != nil {
-		return nil, err
-	}
-
-	switch format {
-	case JPEG:
-		return m.resizeJPEG(&imgConfig, r)
-	case ICO, PNG:
-		return m.resizePNG(&imgConfig, r)
-	case WEBP:
-		return m.resizeWEBP(&imgConfig, r)
-	case GIF:
-		return m.resizeGIF(&imgConfig, r)
-	}
-
-	return nil, fmt.Errorf("unknown format")
 }
 
 func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
@@ -235,52 +202,6 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 
 	buff := &bytes.Buffer{}
 	if png.Encode(buff, resized) != nil {
-		return nil, err
-	}
-
-	return &Result{
-		File: buff,
-		Meta: map[string]interface{}{
-			"width":  width,
-			"height": height,
-		},
-	}, nil
-}
-
-func (m *ImageResize) resizeWEBP(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
-	var height int
-	width, err := strconv.Atoi(m.Opts.Width)
-	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
-	}
-
-	if imgConfig.Width <= width || width == 0 {
-		// we will not do the upscale
-		width, height = imgConfig.Width, imgConfig.Height
-	}
-
-	if width == imgConfig.Width {
-		// here is an optimization
-		// lets return the original picture in case it has not been resized or normalized
-		return &Result{
-			File: r,
-			Meta: map[string]interface{}{
-				"width":  imgConfig.Width,
-				"height": imgConfig.Height,
-			},
-		}, nil
-	}
-
-	img, err := webp.Decode(r)
-	if err != nil {
-		return nil, err
-	}
-
-	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
-	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
-
-	buff := &bytes.Buffer{}
-	if webp.Encode(buff, resized) != nil {
 		return nil, err
 	}
 
