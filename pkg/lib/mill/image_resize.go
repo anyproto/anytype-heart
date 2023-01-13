@@ -2,6 +2,7 @@ package mill
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	"image/color/palette"
@@ -36,6 +37,8 @@ const (
 	ICO  Format = "ico"
 	WEBP Format = "webp"
 )
+
+var ErrWEBPNotSupported = errors.New("webp image format is not supported")
 
 type ImageSize struct {
 	Width  int
