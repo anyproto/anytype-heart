@@ -651,6 +651,7 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 						},
 					},
 					Filters:   nil,
+					Relations: viewRelations,
 				},
 			},
 		},
