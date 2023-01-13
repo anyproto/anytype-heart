@@ -129,7 +129,7 @@ func (b *block) Duplicate(s *state.State) (newID string, visitedIds []string, bl
 			visitedIds = append(visitedIds, cellID)
 			cell := s.Pick(cellID)
 			cell = cell.Copy()
-			cell.Model().Id = makeCellID(row.Model().Id, newColID)
+			cell.Model().Id = MakeCellID(row.Model().Id, newColID)
 			blocks = append(blocks, cell)
 
 			row.Model().ChildrenIds[j] = cell.Model().Id

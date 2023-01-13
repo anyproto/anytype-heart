@@ -184,7 +184,7 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.RemoveSubObjectsInWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account)
+		err = bs.RemoveSubObjectsInWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account, true)
 		return
 	})
 

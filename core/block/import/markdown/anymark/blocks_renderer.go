@@ -306,7 +306,8 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	}
 
 	if parentBlock != nil {
-		if parentText := parentBlock.GetText(); parentText != nil && parentText.Text == "" && !isBlockCanHaveChild(closingBlock.Block) && t.Text != "" {
+		if parentText := parentBlock.GetText(); parentText != nil && parentText.Text == "" &&
+			!isBlockCanHaveChild(closingBlock.Block) && t.Text != "" {
 			parentText.Marks = t.Marks
 			parentText.Checked = t.Checked
 			parentText.Color = t.Color

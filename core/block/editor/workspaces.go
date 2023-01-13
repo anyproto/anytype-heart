@@ -841,13 +841,158 @@ func (w *Workspaces) CreateSubObjects(details []*types.Struct) (ids []string, ob
 	return
 }
 
-func (w *Workspaces) RemoveSubObjects(objectIds []string) (err error) {
+// objectTypeRelationsForGC returns the list of relation IDs that are safe to remove alongside with the provided object type
+// - they were installed from the marketplace(not custom by the user)
+// - they are not used as recommended in other installed/custom object types
+// - they are not used directly in some object
+func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string, err error) {
+	obj, err := w.objectStore.GetDetails(objectTypeID)
+	if err != nil {
+		return nil, err
+	}
+
+	source := pbtypes.GetString(obj.Details, bundle.RelationKeySourceObject.String())
+	if source == "" {
+		// type was not installed from marketplace
+		return nil, nil
+	}
+
+	var skipIDs = map[string]struct{}{}
+	for _, rel := range bundle.SystemRelations {
+		skipIDs[addr.RelationKeyToIdPrefix+rel.String()] = struct{}{}
+	}
+
+	relIds := pbtypes.GetStringList(obj.Details, bundle.RelationKeyRecommendedRelations.String())
+
+	// find relations that are custom(was not installed from somewhere)
+	records, _, err := w.objectStore.Query(nil, database2.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(relIds),
+			},
+			{
+				RelationKey: bundle.RelationKeySourceObject.String(),
+				Condition:   model.BlockContentDataviewFilter_Empty,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, rec := range records {
+		skipIDs[pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())] = struct{}{}
+	}
+
+	// check if this relation is used in some other installed object types
+	records, _, err = w.objectStore.Query(nil, database2.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyObjectType.URL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyRecommendedRelations.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(relIds),
+			},
+			{
+				RelationKey: bundle.RelationKeyWorkspaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(w.Id()),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, rec := range records {
+		recId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		if recId == objectTypeID {
+			continue
+		}
+		rels := pbtypes.GetStringList(rec.Details, bundle.RelationKeyRecommendedRelations.String())
+		for _, rel := range rels {
+			if slice.FindPos(relIds, rel) > -1 {
+				skipIDs[rel] = struct{}{}
+			}
+		}
+	}
+
+	for _, relId := range relIds {
+		if _, exists := skipIDs[relId]; exists {
+			continue
+		}
+		relKey, err := pbtypes.RelationIdToKey(relId)
+		if err != nil {
+			log.Errorf("failed to get relation key from id %s: %s", relId, err.Error())
+			continue
+		}
+		records, _, err := w.objectStore.Query(nil, database2.Query{
+			Limit: 1,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					// exclude installed templates that we don't remove yet and they may depend on the relation
+					RelationKey: bundle.RelationKeyTargetObjectType.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String(objectTypeID),
+				},
+				{
+					RelationKey: bundle.RelationKeyWorkspaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(w.Id()),
+				},
+				{
+					RelationKey: relKey,
+					Condition:   model.BlockContentDataviewFilter_NotEmpty,
+				},
+			},
+		})
+		if len(records) > 0 {
+			skipIDs[relId] = struct{}{}
+		}
+	}
+	return slice.Filter(relIds, func(s string) bool {
+		_, exists := skipIDs[s]
+		return !exists
+	}), nil
+}
+
+// RemoveSubObjects removes sub objects from the workspace collection
+// if orphansGC is true, then relations that are not used by any object in the workspace will be removed as well
+func (w *Workspaces) RemoveSubObjects(objectIds []string, orphansGC bool) (err error) {
 	st := w.NewState()
 	for _, id := range objectIds {
+		// special case for object types
+		var idsToRemove []string
+		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) && orphansGC {
+			idsToRemove, err = w.objectTypeRelationsForGC(id)
+			if err != nil {
+				log.Errorf("objectTypeRelationsForGC failed: %s", err.Error())
+				continue
+			}
+			if len(idsToRemove) > 0 {
+				log.Debugf("objectTypeRelationsForGC, relations to remove: %v", idsToRemove)
+			}
+		}
+
 		err = w.removeObject(st, id)
 		if err != nil {
 			log.Errorf("failed to remove sub object: %s", err.Error())
 			continue
+		}
+		if orphansGC && len(idsToRemove) > 0 {
+			for _, relId := range idsToRemove {
+				err = w.removeObject(st, relId)
+				if err != nil {
+					log.Errorf("failed to remove dependent sub object: %s", err.Error())
+					continue
+				}
+			}
 		}
 	}
 

@@ -11,6 +11,14 @@ func NewError() ConvertError {
 	return ConvertError{}
 }
 
+func NewFromError(name string, initialError error) ConvertError {
+	ce := ConvertError{}
+
+	ce.Add(name, initialError)
+
+	return ce
+}
+
 func (ce ConvertError) Add(objectName string, err error) {
 	ce[objectName] = err
 }
@@ -26,13 +34,13 @@ func (ce ConvertError) IsEmpty() bool {
 }
 
 func (ce ConvertError) Error() error {
-	var pattern = "file: %s, error: %s" + "\n"
+	var pattern = "source: %s, error: %s" + "\n"
 	var errorString bytes.Buffer
 	if ce.IsEmpty() {
 		return nil
 	}
 	for name, err := range ce {
-		errorString.WriteString(fmt.Sprintf(pattern, name, err))
+		errorString.WriteString(fmt.Sprintf(pattern, name, err.Error()))
 	}
 	return fmt.Errorf(errorString.String())
 }
