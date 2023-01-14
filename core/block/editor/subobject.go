@@ -2,9 +2,6 @@ package editor
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -23,9 +20,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 type SubObject struct {
+	forcedObjectType bundle.TypeKey
+
 	smartblock.SmartBlock
 
 	basic.AllOperations
@@ -40,6 +40,7 @@ func NewSubObject(
 	fileBlockService file.BlockService,
 	anytype core.Service,
 	relationService relation2.Service,
+	forcedObjectType bundle.TypeKey,
 ) *SubObject {
 	sb := smartblock.New()
 	return &SubObject{
@@ -65,32 +66,28 @@ func NewSubObject(
 			objectStore,
 			relationService,
 		),
+		forcedObjectType: forcedObjectType,
 	}
 }
 
 func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
+	if o.forcedObjectType == "" {
+		return fmt.Errorf("missing forced object type")
+	}
+
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	ot := pbtypes.GetString(ctx.State.CombinedDetails(), bundle.RelationKeyType.String())
 
-	if strings.HasPrefix(ot, addr.BundledObjectTypeURLPrefix) {
-		ot = addr.ObjectTypeKeyToIdPrefix + strings.TrimPrefix(ot, addr.BundledObjectTypeURLPrefix)
-	}
-
-	if strings.HasPrefix(ot, addr.BundledRelationURLPrefix) {
-		ot = addr.RelationKeyToIdPrefix + strings.TrimPrefix(ot, addr.BundledRelationURLPrefix)
-	}
-
-	switch ot {
-	case addr.ObjectTypeKeyToIdPrefix + bundle.TypeKeyRelation.String():
+	switch o.forcedObjectType {
+	case bundle.TypeKeyRelation:
 		return o.initRelation(ctx.State)
-	case addr.ObjectTypeKeyToIdPrefix + bundle.TypeKeyObjectType.String():
+	case bundle.TypeKeyObjectType:
 		panic("not implemented") // should never happen because objectType case proceed by ObjectType implementation
-	case addr.ObjectTypeKeyToIdPrefix + bundle.TypeKeyRelationOption.String():
+	case bundle.TypeKeyRelationOption:
 		return o.initRelationOption(ctx.State)
 	default:
-		return fmt.Errorf("unknown subobject type %s", ot)
+		return fmt.Errorf("unknown subobject type %s", o.forcedObjectType)
 	}
 
 }
@@ -160,6 +157,7 @@ func (o *SubObject) initRelation(st *state.State) error {
 		template.WithAllBlocksEditsRestricted,
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation))),
 		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(false)),
+		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeyRelation.URL())),
 		template.WithAddedFeaturedRelation(bundle.RelationKeySourceObject),
 		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject),
 		template.WithTitle,
@@ -170,15 +168,6 @@ func (o *SubObject) initRelation(st *state.State) error {
 }
 
 func (o *SubObject) initRelationOption(st *state.State) error {
-	// temp fix for our internal accounts with inconsistent types (should be removed later)
-	// todo: remove after release
-	fixTypes := func(s *state.State) {
-		if list := pbtypes.GetStringList(s.Details(), bundle.RelationKeyRelationFormatObjectTypes.String()); list != nil {
-			list, _ = relationutils.MigrateObjectTypeIds(list)
-			s.SetDetail(bundle.RelationKeyRelationFormatObjectTypes.String(), pbtypes.StringList(list))
-		}
-	}
-
 	relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
@@ -209,8 +198,8 @@ func (o *SubObject) initRelationOption(st *state.State) error {
 		template.WithAllBlocksEditsRestricted,
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relationOption))),
 		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(false)),
+		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeyRelationOption.URL())),
 		template.WithTitle,
-		fixTypes,
 		template.WithDefaultFeaturedRelations,
 		template.WithDataview(dataview, false))
 }

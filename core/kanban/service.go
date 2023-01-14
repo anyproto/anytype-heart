@@ -4,6 +4,8 @@ import (
 	"crypto/md5" //nolint:all
 	"encoding/hex"
 	"errors"
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -52,7 +54,8 @@ func (s *service) Name() (name string) {
 func (s *service) Grouper(key string) (Grouper, error) {
 	rel, err := s.objectStore.GetRelationByKey(key)
 	if err != nil {
-		return nil, err
+
+		return nil, fmt.Errorf("can't get relation %s: %v", key, err)
 	}
 
 	grouper, ok := s.groupColumns[rel.Format]

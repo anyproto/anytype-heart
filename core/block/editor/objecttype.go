@@ -230,8 +230,15 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
+	var objectType string
+	if isBundled {
+		objectType = bundle.TypeKeyObjectType.BundledURL()
+	} else {
+		objectType = bundle.TypeKeyObjectType.URL()
+	}
 	return smartblock.ObjectApplyTemplate(t, ctx.State,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}, model.ObjectType_objectType),
+		template.WithForcedObjectTypes([]string{objectType}),
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType))),
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,

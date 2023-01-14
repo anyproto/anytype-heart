@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -25,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -285,7 +284,11 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	case collectionKeyObjectTypes:
 		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)
 	default:
-		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService)
+		ot, ok := collectionKeyToObjectType(collection)
+		if !ok {
+			return fmt.Errorf("unknown collection '%s'", collection)
+		}
+		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService, ot)
 	}
 
 	var fullId string

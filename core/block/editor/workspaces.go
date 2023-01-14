@@ -1012,3 +1012,12 @@ func collectionKeyIsSupported(collKey string) bool {
 	}
 	return false
 }
+
+func collectionKeyToObjectType(collKey string) (bundle.TypeKey, bool) {
+	for ot, v := range objectTypeToCollection {
+		if v == collKey {
+			return ot, true
+		}
+	}
+	return "", false
+}

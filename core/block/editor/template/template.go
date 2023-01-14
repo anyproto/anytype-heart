@@ -54,6 +54,9 @@ var WithObjectTypes = func(otypes []string) StateTransformer {
 
 var WithForcedObjectTypes = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
+		if slice.SortedEquals(s.ObjectTypes(), otypes) {
+			return
+		}
 		s.SetObjectTypes(otypes)
 	}
 }
