@@ -33,7 +33,6 @@ const (
 
 	HeaderLayoutID           = "header"
 	TitleBlockID             = "title"
-	DescriptionBlockID       = "description"
 	DataviewBlockID          = "dataview"
 	DataviewTemplatesBlockID = "templates"
 	FeaturedRelationsID      = "featuredRelations"
@@ -285,13 +284,6 @@ func (s *State) IsChild(parentId, childId string) bool {
 		}
 		childId = parent.Model().Id
 	}
-}
-
-func (s *State) PickOriginParentOf(id string) (res simple.Block) {
-	if s.parent != nil {
-		return s.parent.PickParentOf(id)
-	}
-	return
 }
 
 func (s *State) getStringBuf() []string {
