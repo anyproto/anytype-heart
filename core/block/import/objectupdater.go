@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -119,7 +120,10 @@ func (ou *ObjectUpdater) update(ctx *session.Context,
 		for _, b := range simpleBlocks {
 			s := ou.syncFactory.GetSyncer(b)
 			if s != nil {
-				s.Sync(ctx, id, b)
+				err := s.Sync(ctx, id, b)
+				if err != nil {
+					log.With(zap.String("method", "update")).Errorf("failed to sync files %v", err)
+				}
 			}
 		}
 	}
