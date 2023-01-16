@@ -4,12 +4,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 
@@ -35,8 +37,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -117,6 +117,11 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
+		if sbt == smartblock.SmartBlockTypeSubObject {
+			newId := bson.NewObjectId().Hex()
+			b.idsMap[id] = newId
+			continue
+		}
 		tid, err := threads.ThreadCreateID(thread.AccessControlled, sbt)
 		if err != nil {
 			return err
@@ -165,13 +170,16 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	}
 	m.Fields = &types.Struct{Fields: f}
 	f["analyticsContext"] = pbtypes.String(analyticsContext)
-	f["analyticsOriginalId"] = pbtypes.String(oldId)
+	if f["analyticsOriginalId"] == nil {
+		// in case we already have analyticsOriginalId do not update it
+		f["analyticsOriginalId"] = pbtypes.String(oldId)
+	}
 
 	st.Set(simple.New(m))
 	rels := relationutils.MigrateRelationModels(st.OldExtraRelations())
 	st.AddRelationLinks(rels...)
 
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
+	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String(), bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyLinks.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
@@ -225,7 +233,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 			log.With("object", oldId).Errorf("failed to find relation %s: %s", k, err.Error())
 			continue
 		}
-		if rel.Format != model.RelationFormat_object {
+		if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
 			continue
 		}
 
