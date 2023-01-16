@@ -124,6 +124,14 @@ func (o *SubObject) initRelation(st *state.State) error {
 		}
 	}
 
+	maxCountForStatus := func(s *state.State) {
+		if f := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyRelationFormat.String()); int32(f) == int32(model.RelationFormat_status) {
+			if maxCount := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyRelationMaxCount.String()); maxCount == 0 {
+				s.SetDetail(bundle.RelationKeyRelationMaxCount.String(), pbtypes.Int64(1))
+			}
+		}
+	}
+
 	relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
@@ -164,6 +172,7 @@ func (o *SubObject) initRelation(st *state.State) error {
 		template.WithTitle,
 		template.WithDescription,
 		fixTypes,
+		maxCountForStatus,
 		template.WithDefaultFeaturedRelations,
 		template.WithDataview(dataview, false))
 }
