@@ -1,9 +1,11 @@
 package time
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 	"time"
+
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func CutValueToDay(val *types.Value) *types.Value {
