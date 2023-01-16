@@ -209,6 +209,10 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	fixMissingSmartblockTypes := func(s *state.State) {
+		if isBundled {
+			return
+		}
+
 		// we have a bug in internal release that was not adding smartblocktype to newly created custom types
 		currTypes := pbtypes.GetIntList(s.Details(), bundle.RelationKeySmartblockTypes.String())
 		sourceObject := pbtypes.GetString(s.Details(), bundle.RelationKeySourceObject.String())
