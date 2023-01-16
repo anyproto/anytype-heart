@@ -300,8 +300,13 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		details = internalflag.PutToDetails(details, internalFlags)
 	}
 
+	var templateID string
+	if v, ok := req.(block.TemplateIDGetter); ok {
+		templateID = v.GetTemplateId()
+	}
+
 	objectType, err := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	if err != nil && forcedType == "" {
+	if err != nil && forcedType == "" && templateID == "" {
 		return "", nil, fmt.Errorf("invalid type in details: %w", err)
 	}
 	if forcedType != "" {
@@ -337,9 +342,5 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
-	var templateID string
-	if v, ok := req.(block.TemplateIDGetter); ok {
-		templateID = v.GetTemplateId()
-	}
 	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateID)
 }
