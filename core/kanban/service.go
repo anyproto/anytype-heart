@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
-import "github.com/anytypeio/go-anytype-middleware/app"
 
 const (
 	CName = "kanban"
