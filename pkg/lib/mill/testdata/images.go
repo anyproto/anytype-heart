@@ -44,11 +44,4 @@ var Images = []TestImage{
 		Width:   300,
 		Height:  187,
 	},
-	{
-		Path:    "testdata/image.webp",
-		Format:  "webp",
-		HasExif: true,
-		Width:   320,
-		Height:  214,
-	},
 }

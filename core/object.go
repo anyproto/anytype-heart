@@ -832,3 +832,27 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 	}
 	return response(res, pb.RpcObjectImportListResponseError_NULL, nil)
 }
+
+func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
+	request *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
+	//nolint: lll
+	response := func(code pb.RpcObjectImportNotionValidateTokenResponseErrorCode) *pb.RpcObjectImportNotionValidateTokenResponse {
+		err := &pb.RpcObjectImportNotionValidateTokenResponseError{Code: code}
+		switch code {
+		case pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED:
+			err.Description = "Sorry, token not found. Please check Notion integrations."
+		case pb.RpcObjectImportNotionValidateTokenResponseError_NULL:
+			err.Description = ""
+		default:
+			err.Description = "Internal error"
+		}
+		return &pb.RpcObjectImportNotionValidateTokenResponse{Error: err}
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
+	errCode := importer.ValidateNotionToken(ctx, request)
+	return response(errCode)
+}

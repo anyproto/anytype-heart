@@ -23,9 +23,9 @@ require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-shiori/go-readability v0.0.0-20220215145315-dd6828d2f09b
 	github.com/gobwas/glob v0.2.3
-	github.com/goccy/go-graphviz v0.0.9
+	github.com/goccy/go-graphviz v0.1.0
 	github.com/gogo/protobuf v1.3.2
-	github.com/gogo/status v1.1.0
+	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
@@ -44,7 +44,6 @@ require (
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger v0.3.1-0.20211203181443-9205b3779632
 	github.com/ipfs/go-ipfs-blockstore v1.2.0
-	github.com/ipfs/go-ipfs-files v0.2.0
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-ipns v0.3.0
@@ -52,7 +51,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-merkledag v0.8.1
 	github.com/ipfs/go-path v0.3.0
-	github.com/ipfs/go-unixfs v0.4.1
+	github.com/ipfs/go-unixfs v0.4.2
 	github.com/ipfs/interface-go-ipfs-core v0.8.1
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -192,6 +191,7 @@ require (
 	github.com/ipfs/go-ipfs-provider v0.8.1 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
+	github.com/ipfs/go-libipfs v0.1.0 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.0 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
