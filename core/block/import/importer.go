@@ -106,7 +106,8 @@ func (s *Import) Name() string {
 }
 
 // ListImports return all registered import types
-func (i *Import) ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
+func (i *Import) ListImports(_ *session.Context,
+	_ *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
 	res := make([]*pb.RpcObjectImportListImportResponse, len(i.converters))
 	var idx int
 	for _, c := range i.converters {

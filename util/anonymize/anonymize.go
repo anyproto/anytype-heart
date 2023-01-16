@@ -81,9 +81,7 @@ func ChangeContent(chc *pb.ChangeContent) (res *pb.ChangeContent) {
 	case *pb.ChangeContentValueOfObjectTypeRemove:
 	case *pb.ChangeContentValueOfStoreKeySet:
 		v.StoreKeySet.Value = StructValue(v.StoreKeySet.Value)
-		v.StoreKeySet.Path = StringListValue(v.StoreKeySet.Path)
 	case *pb.ChangeContentValueOfStoreKeyUnset:
-		v.StoreKeyUnset.Path = StringListValue(v.StoreKeyUnset.Path)
 	}
 	return
 }

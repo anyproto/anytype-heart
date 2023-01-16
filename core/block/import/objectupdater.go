@@ -32,7 +32,9 @@ func NewObjectUpdater(service *block.Service, core core.Service, syncFactory *sy
 	}
 }
 
-func (ou *ObjectUpdater) Update(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string) (*types.Struct, error) {
+func (ou *ObjectUpdater) Update(ctx *session.Context,
+	snapshot *model.SmartBlockSnapshotBase,
+	pageID string) (*types.Struct, error) {
 	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeySource.String()] != nil {
 		source := snapshot.Details.Fields[bundle.RelationKeySource.String()].GetStringValue()
 		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{

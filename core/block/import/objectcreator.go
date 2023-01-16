@@ -66,7 +66,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	var err error
 
 	if updateExisting {
-		if details, err := oc.updater.Update(ctx, snapshot, pageID); err == nil {
+		if details, uErr := oc.updater.Update(ctx, snapshot, pageID); uErr == nil {
 			return details, nil
 		}
 		log.Warn("failed to update existing object: %s", err)
