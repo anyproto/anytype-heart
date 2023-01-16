@@ -279,6 +279,8 @@ var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
 		layout, _ := s.Layout()
 		if layout == model.ObjectType_basic || layout == model.ObjectType_note {
 			fr = []string{bundle.RelationKeyType.String()}
+		} else if layout == model.ObjectType_set {
+			fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()}
 		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
