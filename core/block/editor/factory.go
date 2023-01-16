@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -23,8 +22,6 @@ type ObjectFactory struct {
 	bookmarkService      bookmark.BookmarkService
 	detailsModifier      DetailsModifier
 	fileBlockService     file.BlockService
-	importerCtrl         _import.Services
-	objectCreator        _import.ObjectCreator
 	objectStore          objectstore.ObjectStore
 	relationService      relation2.Service
 	sourceService        source.Service
@@ -44,8 +41,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
-	f.importerCtrl = app.MustComponent[_import.Services](a)
-	f.objectCreator = app.MustComponent[_import.ObjectCreator](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.relationService = app.MustComponent[relation2.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
@@ -85,8 +80,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
 		return NewPage(
 			f.objectStore,
-			f.importerCtrl,
-			f.objectCreator,
 			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,
@@ -102,8 +95,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 		return NewDashboard(
 			f.detailsModifier,
 			f.objectStore,
-			f.importerCtrl,
-			f.objectCreator,
 			f.anytype,
 		)
 	case model.SmartBlockType_Set:
@@ -159,8 +150,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 	case model.SmartBlockType_Template:
 		return NewTemplate(
 			f.objectStore,
-			f.importerCtrl,
-			f.objectCreator,
 			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,
@@ -170,8 +159,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
 			f.objectStore,
-			f.importerCtrl,
-			f.objectCreator,
 			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,

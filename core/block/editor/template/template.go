@@ -295,26 +295,6 @@ var WithAddedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
 	}
 }
 
-var WithAddedFeaturedRelations = func(keys ...string) StateTransformer {
-	return func(s *state.State) {
-		currentVal := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
-
-		keys = slice.Filter(keys, func(key string) bool {
-			if slice.FindPos(currentVal, key) > -1 {
-				return false
-			} else {
-				return true
-			}
-		})
-
-		if len(keys) > 0 {
-			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(append(currentVal, keys...)))
-		}
-
-		return
-	}
-}
-
 var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 

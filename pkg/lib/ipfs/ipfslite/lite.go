@@ -287,10 +287,6 @@ func (ln *liteNet) Close() (err error) {
 	return nil
 }
 
-func (ln *liteNet) WaitBootstrapFinish() (success bool) {
-	panic("implement me")
-}
-
 func (i *liteNet) Session(ctx context.Context) ipld.NodeGetter {
 	return i.Peer.Session(ctx)
 }

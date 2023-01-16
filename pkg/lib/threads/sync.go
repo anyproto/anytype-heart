@@ -13,9 +13,6 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-var ErrFailedToPullThread = fmt.Errorf("failed to pull thread")
-var ErrFailedToProcessNewHead = fmt.Errorf("failed to process new page head")
-
 func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bool, err error) {
 	thrd, err := s.t.GetThread(context.Background(), id)
 	if err != nil {

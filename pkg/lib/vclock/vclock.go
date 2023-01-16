@@ -34,12 +34,6 @@ type VClock struct {
 
 var Undef = VClock{}
 
-// New returns a new vector clock
-// VClock is thread safe
-func New() VClock {
-	return VClock{mutex: &sync.RWMutex{}, m: make(map[string]uint64)}
-}
-
 func NewFromMap(m map[string]uint64) VClock {
 	if m == nil {
 		return Undef
@@ -51,8 +45,8 @@ func (vc VClock) IsNil() bool {
 	return vc.m == nil
 }
 
-//Merge takes the max of all clock values in other and updates the
-//values of the callee
+// Merge takes the max of all clock values in other and updates the
+// values of the callee
 func (vc VClock) Merge(other VClock) {
 	if vc.IsNil() {
 		// Undef is used only for indicating of non-set vclock
@@ -72,7 +66,7 @@ func (vc VClock) Merge(other VClock) {
 	}
 }
 
-//MarshalBinary returns an encoded vector clock
+// MarshalBinary returns an encoded vector clock
 func (vc VClock) MarshalBinary() ([]byte, error) {
 	if vc.IsNil() {
 		// vclock is Undef
@@ -88,16 +82,6 @@ func (vc VClock) MarshalBinary() ([]byte, error) {
 		return nil, err
 	}
 	return b.Bytes(), nil
-}
-
-//UnmarshalBinary decodes a vector clock
-func UnmarshalBinary(data []byte) (vc VClock, err error) {
-	b := new(bytes.Buffer)
-	b.Write(data)
-	clock := New()
-	dec := gob.NewDecoder(b)
-	err = dec.Decode(&clock)
-	return clock, err
 }
 
 func (vc VClock) String() string {

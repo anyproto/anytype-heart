@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/ipfs/go-cid"
-	"io"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -164,12 +163,4 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 	}
 
 	return f, nil
-}
-
-func (a *Anytype) FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) {
-	return a.FileAdd(ctx, files.WithReader(content), files.WithName(filename))
-}
-
-func (a *Anytype) FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error) {
-	return a.FileAdd(ctx, files.WithBytes(content), files.WithName(filename))
 }
