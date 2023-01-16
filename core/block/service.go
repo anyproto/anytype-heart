@@ -25,7 +25,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -66,17 +65,11 @@ const (
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
-	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
-
-var (
-	blockCacheTTL       = time.Minute
-	blockCleanupTimeout = time.Second * 30
-)
 
 var (
 	// quick fix for limiting file upload goroutines
@@ -1027,21 +1020,6 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 		return apply(bb)
 	}
 	return fmt.Errorf("undo operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoImport(id string, apply func(b _import.Import) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(_import.Import); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-
-	return fmt.Errorf("import operation not available for this block type: %T", sb)
 }
 
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {

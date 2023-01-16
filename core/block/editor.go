@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -287,48 +286,6 @@ func (s *Service) Export(req pb.RpcBlockExportRequest) (path string, err error) 
 		return err
 	})
 	return path, err
-}
-
-func (s *Service) ImportMarkdown(
-	ctx *session.Context,
-	req pb.RpcObjectImportMarkdownRequest,
-) (rootLinkIds []string, err error) {
-	var rootLinks []*model.Block
-	err = s.DoImport(req.ContextId, func(imp _import.Import) error {
-		rootLinks, err = imp.ImportMarkdown(ctx, req)
-		return err
-	})
-	if err != nil {
-		return rootLinkIds, err
-	}
-
-	if len(rootLinks) == 1 {
-		err = s.SimplePaste(req.ContextId, rootLinks)
-
-		if err != nil {
-			return rootLinkIds, err
-		}
-	} else {
-		var objectID string
-		_, objectID, err = s.CreateLinkToTheNewObject(ctx, &pb.RpcBlockLinkCreateWithObjectRequest{
-			ContextId: req.ContextId,
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				"name":      pbtypes.String("Import from Notion"),
-				"iconEmoji": pbtypes.String("📁"),
-			}},
-		})
-		if err != nil {
-			return rootLinkIds, err
-		}
-
-		err = s.SimplePaste(objectID, rootLinks)
-	}
-
-	for _, r := range rootLinks {
-		rootLinkIds = append(rootLinkIds, r.Id)
-	}
-
-	return rootLinkIds, err
 }
 
 func (s *Service) SetTextText(ctx *session.Context, req pb.RpcBlockTextSetTextRequest) error {
