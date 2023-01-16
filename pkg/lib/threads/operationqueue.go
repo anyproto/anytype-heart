@@ -7,7 +7,6 @@ import (
 const (
 	DefaultPriority = iota
 	HighPriority
-	MaxPriority
 )
 
 type Operation interface {

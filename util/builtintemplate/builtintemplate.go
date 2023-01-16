@@ -21,7 +21,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -31,8 +30,6 @@ const CName = "builtintemplate"
 
 //go:embed data/bundled_templates.zip
 var templatesZip []byte
-
-var log = logging.Logger("anytype-mw-builtintemplate")
 
 func New() BuiltinTemplate {
 	return new(builtinTemplate)

@@ -238,39 +238,6 @@ func HasRelationLink(rels []*model.RelationLink, key string) bool {
 	return false
 }
 
-func MergeRelations(rels1 []*model.Relation, rels2 []*model.Relation) []*model.Relation {
-	if rels1 == nil {
-		return rels2
-	}
-	if rels2 == nil {
-		return rels1
-	}
-
-	rels := make([]*model.Relation, 0, len(rels2)+len(rels1))
-	for _, rel := range rels2 {
-		rels = append(rels, rel)
-	}
-
-	for _, rel := range rels1 {
-		if HasRelation(rels, rel.Key) {
-			continue
-		}
-		rels = append(rels, rel)
-	}
-
-	return rels
-}
-
-func GetObjectType(ots []*model.ObjectType, url string) *model.ObjectType {
-	for i, ot := range ots {
-		if ot.Url == url {
-			return ots[i]
-		}
-	}
-
-	return nil
-}
-
 func GetRelation(rels []*model.Relation, key string) *model.Relation {
 	for i, rel := range rels {
 		if rel.Key == key {
@@ -279,26 +246,6 @@ func GetRelation(rels []*model.Relation, key string) *model.Relation {
 	}
 
 	return nil
-}
-
-func GetOption(opts []*model.RelationOption, id string) *model.RelationOption {
-	for i, opt := range opts {
-		if opt.Id == id {
-			return opts[i]
-		}
-	}
-
-	return nil
-}
-
-func HasOption(opts []*model.RelationOption, id string) bool {
-	for _, opt := range opts {
-		if opt.Id == id {
-			return true
-		}
-	}
-
-	return false
 }
 
 func Get(st *types.Struct, keys ...string) *types.Value {
@@ -315,15 +262,6 @@ func Get(st *types.Struct, keys ...string) *types.Value {
 	return nil
 }
 
-func GetRelationKeys(rels []*model.Relation) []string {
-	var keys []string
-	for _, rel := range rels {
-		keys = append(keys, rel.Key)
-	}
-
-	return keys
-}
-
 func GetRelationListKeys(rels []*model.RelationLink) []string {
 	var keys []string
 	for _, rel := range rels {
@@ -331,60 +269,6 @@ func GetRelationListKeys(rels []*model.RelationLink) []string {
 	}
 
 	return keys
-}
-
-func GetOptionIds(opts []*model.RelationOption) []string {
-	var keys []string
-	for _, opt := range opts {
-		keys = append(keys, opt.Id)
-	}
-
-	return keys
-}
-
-func MergeRelationsDicts(rels1 []*model.Relation, rels2 []*model.Relation) []*model.Relation {
-	rels := CopyRelations(rels1)
-	for _, rel2 := range rels2 {
-		var found bool
-
-		for i, rel := range rels {
-			if rel.Key == rel2.Key {
-				rel2Copy := CopyRelation(rel2)
-				rels[i].SelectDict = rel2Copy.SelectDict
-				rels[i].Name = rel2Copy.Name
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			rels = append(rels, CopyRelation(rel2))
-		}
-	}
-	return rels
-}
-
-// MergeOptionsPreserveScope adds and updates options from opts2 into opts1 based on the ID
-// in case opts2 doesn't have id that opts1 have it doesn't remove the existing one
-// in case opts2 has the key that opts1 already have it updates everything except scope
-func MergeOptionsPreserveScope(opts1 []*model.RelationOption, opts2 []*model.RelationOption) []*model.RelationOption {
-	opts := CopyOptions(opts1)
-	for _, opt2 := range opts2 {
-		var found bool
-		for i, opt := range opts {
-			if opt.Id == opt2.Id {
-				opts[i].Text = opt2.Text
-				opts[i].Color = opt2.Color
-				found = true
-				break
-			}
-		}
-		if !found {
-			opt2Copy := *opt2
-			opts = append(opts, &opt2Copy)
-		}
-	}
-	return opts
 }
 
 // StructToMap converts a types.Struct to a map from strings to Go types.
@@ -398,59 +282,6 @@ func StructToMap(s *types.Struct) map[string]interface{} {
 		m[k] = ValueToInterface(v)
 	}
 	return m
-}
-
-func StructIsEmpty(s *types.Struct) bool {
-	return s == nil || len(s.Fields) == 0
-}
-
-func GetMapOfKeysAndValuesFromStruct(collection *types.Struct) map[string]*types.Value {
-	keyMap := map[string]*types.Value{}
-	if collection == nil {
-		return keyMap
-	}
-	keyStack := []string{""}
-	collStack := []*types.Struct{collection}
-
-	for len(collStack) != 0 {
-		coll := collStack[len(collStack)-1]
-		lastKey := keyStack[len(keyStack)-1]
-		keyStack = keyStack[:len(keyStack)-1]
-		collStack = collStack[:len(collStack)-1]
-		for k, v := range coll.Fields {
-			subColl, ok := v.Kind.(*types.Value_StructValue)
-			updatedKey := lastKey
-			if updatedKey != "" {
-				updatedKey += "/"
-			}
-			updatedKey += k
-			if !ok {
-				keyMap[updatedKey] = v
-				continue
-			}
-			collStack = append(collStack, subColl.StructValue)
-			keyStack = append(keyStack, updatedKey)
-		}
-	}
-	return keyMap
-}
-
-func CompareKeyMaps(before map[string]*types.Value, after map[string]*types.Value) (keysSet []string, keysRemoved []string) {
-	for k, afterValue := range after {
-		beforeValue, exists := before[k]
-		if exists && afterValue.Equal(beforeValue) {
-			continue
-		}
-		keysSet = append(keysSet, k)
-	}
-
-	for k := range before {
-		if _, exists := after[k]; exists {
-			continue
-		}
-		keysRemoved = append(keysRemoved, k)
-	}
-	return
 }
 
 func ValueToInterface(v *types.Value) interface{} {
@@ -476,18 +307,6 @@ func ValueToInterface(v *types.Value) interface{} {
 	}
 }
 
-func RelationFormatCanHaveListValue(format model.RelationFormat) bool {
-	switch format {
-	case model.RelationFormat_tag,
-		model.RelationFormat_file,
-		model.RelationFormat_object,
-		model.RelationFormat_number:
-		return true
-	default:
-		return false
-	}
-}
-
 func RelationIdToKey(id string) (string, error) {
 	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
@@ -499,16 +318,6 @@ func RelationIdToKey(id string) (string, error) {
 		return strings.TrimPrefix(id, addr.OldIndexedRelationURLPrefix), nil
 	}
 	return "", fmt.Errorf("incorrect id format")
-}
-
-func Delete(st *types.Struct, key string) (ok bool) {
-	if st != nil && st.Fields != nil {
-		if _, ok := st.Fields[key]; ok {
-			delete(st.Fields, key)
-			return true
-		}
-	}
-	return false
 }
 
 type Getter interface {

@@ -16,9 +16,6 @@ import (
 
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
-const MetaCollectionName = "meta"
-const CreatorCollectionName = "creator"
-const HighlightedCollectionName = "highlighted"
 
 type ThreadDBInfo struct {
 	ID    db.InstanceID `json:"_id"`
