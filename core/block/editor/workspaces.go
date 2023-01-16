@@ -587,7 +587,9 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	id = addr.RelationKeyToIdPrefix + key
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-
+	if pbtypes.GetInt64(details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_status) {
+		object.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(1)
+	}
 	objectTypes := pbtypes.GetStringList(object, bundle.RelationKeyRelationFormatObjectTypes.String())
 	if len(objectTypes) > 0 {
 		var objectTypesToMigrate []string
