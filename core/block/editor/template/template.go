@@ -44,6 +44,23 @@ var WithEmpty = StateTransformer(func(s *state.State) {
 
 })
 
+var WithObjectTypes = func(otypes []string) StateTransformer {
+	return func(s *state.State) {
+		if len(s.ObjectTypes()) == 0 {
+			s.SetObjectTypes(otypes)
+		}
+	}
+}
+
+var WithForcedObjectTypes = func(otypes []string) StateTransformer {
+	return func(s *state.State) {
+		if slice.SortedEquals(s.ObjectTypes(), otypes) {
+			return
+		}
+		s.SetObjectTypes(otypes)
+	}
+}
+
 // WithNoObjectTypes is a special case used only for Archive
 var WithNoObjectTypes = func() StateTransformer {
 	return func(s *state.State) {
