@@ -17,52 +17,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-// columnState is necessary because we don't know anything about number of columns in table and we can't handle them,
-// because goldmark doesn't have according function. So we create them in renderTableCell
-type columnState struct {
-	columnsIDs          []string
-	currColumnID        string
-	needToCreateColumns bool
-}
-
-func (c *columnState) addColumnID(id string) {
-	c.columnsIDs = append(c.columnsIDs, id)
-}
-
-func (c *columnState) needToCreateColumn() bool {
-	return c.needToCreateColumns
-}
-
-func (c *columnState) getCurrColumnID() string {
-	if c.currColumnID == "" && len(c.columnsIDs) != 0 {
-		c.currColumnID = c.columnsIDs[0]
-		return c.currColumnID
-	}
-
-	var nextColIndex int
-	for i, col := range c.columnsIDs {
-		if col == c.currColumnID {
-			nextColIndex = i + 1
-			break
-		}
-	}
-	if nextColIndex == len(c.columnsIDs) {
-		nextColIndex = 0
-	}
-
-	c.currColumnID = c.columnsIDs[nextColIndex]
-	return c.currColumnID
-}
-
-func (c *columnState) setNeedToCreateColumn(needToCreateColumns bool) {
-	c.needToCreateColumns = needToCreateColumns
-}
-
 type tableState struct {
 	listRenderFunctions map[ast.NodeKind]renderer.NodeRendererFunc
-	columnState         columnState
 	tableID             string
 	currTableRow        string
+	columnsIDs          []string
+	currColumnIDIndex   int
 }
 
 func (s *tableState) setRenderFunction(kind ast.NodeKind, rendererFunc renderer.NodeRendererFunc) {
@@ -70,7 +30,6 @@ func (s *tableState) setRenderFunction(kind ast.NodeKind, rendererFunc renderer.
 }
 
 func (s *tableState) resetState() {
-	s.columnState = columnState{columnsIDs: make([]string, 0), needToCreateColumns: true}
 	s.tableID = ""
 }
 
@@ -86,7 +45,6 @@ func NewTableRenderer(br *blocksRenderer, tableEditor te.TableEditor) *TableRend
 		blockRenderer: br,
 		tableState: tableState{
 			listRenderFunctions: make(map[ast.NodeKind]renderer.NodeRendererFunc, 0),
-			columnState:         columnState{columnsIDs: make([]string, 0), needToCreateColumns: true},
 		},
 		tableEditor: tableEditor,
 	}
@@ -152,7 +110,7 @@ func (r *TableRenderer) renderTableHeader(_ util.BufWriter,
 	} else {
 		// this calls after we create cells for according row. After that we don't need to create columns,
 		// because we've already created them in renderTableCells
-		r.tableState.columnState.setNeedToCreateColumn(false)
+		r.tableState.currColumnIDIndex = 0
 	}
 	return ast.WalkContinue, nil
 }
@@ -170,7 +128,7 @@ func (r *TableRenderer) renderTableRow(_ util.BufWriter, _ []byte, _ ast.Node, e
 	} else {
 		// this calls after we create cells for according row. After that we don't need to create columns,
 		// because we've already created them in renderTableCells
-		r.tableState.columnState.setNeedToCreateColumn(false)
+		r.tableState.currColumnIDIndex = 0
 	}
 	return ast.WalkContinue, nil
 }
@@ -228,7 +186,7 @@ func (r *TableRenderer) getColumnID() (string, error) {
 		err   error
 	)
 	// we create columns only once, then we use saved columns ids to create cells.
-	if r.tableState.columnState.needToCreateColumn() {
+	if r.tableState.currColumnIDIndex >= len(r.tableState.columnsIDs) {
 		colID, err = r.tableEditor.ColumnCreate(r.blocksState, pb.RpcBlockTableColumnCreateRequest{
 			Position: model.Block_Inner,
 			TargetId: r.tableState.tableID,
@@ -236,9 +194,10 @@ func (r *TableRenderer) getColumnID() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		r.tableState.columnState.addColumnID(colID)
+		r.tableState.columnsIDs = append(r.tableState.columnsIDs, colID)
 	} else {
-		colID = r.tableState.columnState.getCurrColumnID()
+		colID = r.tableState.columnsIDs[r.tableState.currColumnIDIndex]
 	}
+	r.tableState.currColumnIDIndex++
 	return colID, nil
 }
