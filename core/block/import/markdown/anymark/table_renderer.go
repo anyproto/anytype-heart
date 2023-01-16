@@ -17,19 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-// rowState is necessary because we don't know, for which column we create cell in renderTableCell function
-type rowState struct {
-	currTableRow string
-}
-
-func (r *rowState) getRowID() string {
-	return r.currTableRow
-}
-
-func (r *rowState) setRowID(id string) {
-	r.currTableRow = id
-}
-
 // columnState is necessary because we don't know anything about number of columns in table and we can't handle them,
 // because goldmark doesn't have according function. So we create them in renderTableCell
 type columnState struct {
@@ -73,9 +60,9 @@ func (c *columnState) setNeedToCreateColumn(needToCreateColumns bool) {
 
 type tableState struct {
 	listRenderFunctions map[ast.NodeKind]renderer.NodeRendererFunc
-	rowState            rowState
 	columnState         columnState
 	tableID             string
+	currTableRow        string
 }
 
 func (s *tableState) setRenderFunction(kind ast.NodeKind, rendererFunc renderer.NodeRendererFunc) {
@@ -83,7 +70,6 @@ func (s *tableState) setRenderFunction(kind ast.NodeKind, rendererFunc renderer.
 }
 
 func (s *tableState) resetState() {
-	s.rowState = rowState{}
 	s.columnState = columnState{columnsIDs: make([]string, 0), needToCreateColumns: true}
 	s.tableID = ""
 }
@@ -100,7 +86,6 @@ func NewTableRenderer(br *blocksRenderer, tableEditor te.TableEditor) *TableRend
 		blockRenderer: br,
 		tableState: tableState{
 			listRenderFunctions: make(map[ast.NodeKind]renderer.NodeRendererFunc, 0),
-			rowState:            rowState{},
 			columnState:         columnState{columnsIDs: make([]string, 0), needToCreateColumns: true},
 		},
 		tableEditor: tableEditor,
@@ -156,7 +141,7 @@ func (r *TableRenderer) renderTableHeader(_ util.BufWriter,
 		if err != nil {
 			return ast.WalkContinue, err
 		}
-		r.tableState.rowState.setRowID(id)
+		r.tableState.currTableRow = id
 		err = r.tableEditor.RowSetHeader(r.blocksState, pb.RpcBlockTableRowSetHeaderRequest{
 			IsHeader: true,
 			TargetId: id,
@@ -178,7 +163,7 @@ func (r *TableRenderer) renderTableRow(_ util.BufWriter, _ []byte, _ ast.Node, e
 			Position: model.Block_Inner,
 			TargetId: r.tableState.tableID,
 		})
-		r.tableState.rowState.setRowID(id)
+		r.tableState.currTableRow = id
 		if err != nil {
 			return ast.WalkContinue, err
 		}
@@ -194,19 +179,20 @@ func (r *TableRenderer) renderTableCell(_ util.BufWriter,
 	source []byte,
 	node ast.Node,
 	entering bool) (ast.WalkStatus, error) {
-	if entering {
-		if node != nil {
-			// recursive handler of markdown inside table cell
-			ren := NewRenderer(newBlocksRenderer("", nil))
-			gm := goldmark.New(goldmark.WithRenderer(
-				renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(ren, 100))),
-			))
-			n := node.Lines()
+	if !entering || node == nil {
+		return ast.WalkContinue, nil
+	}
+	if node != nil {
+		// recursive handler of markdown inside table cell
+		ren := NewRenderer(newBlocksRenderer("", nil))
+		gm := goldmark.New(goldmark.WithRenderer(
+			renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(ren, 100))),
+		))
+		n := node.Lines()
 
-			status, err := r.createCell(n, gm, source, ren)
-			if err != nil {
-				return status, err
-			}
+		status, err := r.createCell(n, gm, source, ren)
+		if err != nil {
+			return status, err
 		}
 	}
 	return ast.WalkContinue, nil
@@ -227,7 +213,7 @@ func (r *TableRenderer) createCell(n *text.Segments,
 			return ast.WalkContinue, err
 		}
 		if len(ren.GetBlocks()) != 0 {
-			_, err = r.tableEditor.CellCreate(r.blocksState, r.tableState.rowState.getRowID(), colID, ren.GetBlocks()[0])
+			_, err = r.tableEditor.CellCreate(r.blocksState, r.tableState.currTableRow, colID, ren.GetBlocks()[0])
 			if err != nil {
 				return ast.WalkContinue, err
 			}
