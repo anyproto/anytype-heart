@@ -1,6 +1,8 @@
 package importer
 
 import (
+	"context"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -21,6 +23,8 @@ type Importer interface {
 	Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error
 	ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
+	//nolint: lll
+	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode
 }
 
 // Creator incapsulate logic with creation of given smartblocks
