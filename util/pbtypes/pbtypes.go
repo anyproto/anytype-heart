@@ -66,7 +66,7 @@ func IntList(ints ...int) *types.Value {
 }
 
 func NilToNullWrapper(v *types.Value) *types.Value {
-	if v == nil {
+	if v == nil || v.Kind == nil {
 		return Null()
 	}
 	return v
