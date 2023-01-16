@@ -65,6 +65,13 @@ func IntList(ints ...int) *types.Value {
 	}
 }
 
+func NilToNullWrapper(v *types.Value) *types.Value {
+	if v == nil {
+		return Null()
+	}
+	return v
+}
+
 func Bool(v bool) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_BoolValue{BoolValue: v},
