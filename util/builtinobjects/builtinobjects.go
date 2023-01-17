@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 
@@ -118,8 +117,8 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			return err
 		}
 		if sbt == smartblock.SmartBlockTypeSubObject {
-			newId := bson.NewObjectId().Hex()
-			b.idsMap[id] = newId
+			// preserve original id for subobjects, it makes no sense to replace them and also it breaks the grouping
+			b.idsMap[id] = id
 			continue
 		}
 		tid, err := threads.ThreadCreateID(thread.AccessControlled, sbt)
