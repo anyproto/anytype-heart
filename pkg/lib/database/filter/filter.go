@@ -401,7 +401,10 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 	if val == nil {
 		return false
 	}
-	list := val.GetListValue()
+	list, err := pbtypes.ValueListWrapper(val)
+	if err != nil {
+		return false
+	}
 	if list == nil {
 		return false
 	}
