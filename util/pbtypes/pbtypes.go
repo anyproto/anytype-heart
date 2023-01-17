@@ -428,3 +428,15 @@ func StructCompareIgnoreKeys(st1 *types.Struct, st2 *types.Struct, ignoreKeys []
 	}
 	return true
 }
+
+// ValueListWrapper wraps single value into the list. If value is already a list, it is returned as is.
+// Null and struct values are not supported
+func ValueListWrapper(value *types.Value) (*types.ListValue, error) {
+	switch v := value.Kind.(type) {
+	case *types.Value_ListValue:
+		return v.ListValue, nil
+	case *types.Value_StringValue, *types.Value_NumberValue, *types.Value_BoolValue:
+		return &types.ListValue{Values: []*types.Value{value}}, nil
+	}
+	return nil, fmt.Errorf("not supported type")
+}
