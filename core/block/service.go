@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"net/url"
 	"strings"
 	"time"
