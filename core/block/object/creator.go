@@ -131,17 +131,23 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID()))
 
-	ev := &metrics.CreateObjectEvent{
-		SetDetailsMs: time.Since(startTime).Milliseconds(),
-	}
-	ctx = context.WithValue(ctx, eventCreate, ev)
 	var tid = thread.Undef
-	if raw := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); raw != "" {
-		tid, err = thread.Decode(raw)
+	id = pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String())
+	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	if sbt == coresb.SmartBlockTypeSubObject {
+		return c.CreateSubObjectInWorkspace(createState.CombinedDetails(), workspaceID)
+	} else if id != "" {
+		tid, err = thread.Decode(id)
 		if err != nil {
 			log.Errorf("failed to decode thread id from the state: %s", err.Error())
 		}
 	}
+
+	ev := &metrics.CreateObjectEvent{
+		SetDetailsMs: time.Since(startTime).Milliseconds(),
+	}
+	ctx = context.WithValue(ctx, eventCreate, ev)
+
 	csm, err := c.CreateObjectInWorkspace(ctx, workspaceID, tid, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -158,6 +164,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		RelationIds:    relationIds,
 	}
 	var sb smartblock.SmartBlock
+
 	if sb, err = c.objectFactory.InitObject(id, initCtx); err != nil {
 		return id, nil, err
 	}

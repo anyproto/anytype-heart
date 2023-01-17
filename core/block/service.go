@@ -88,7 +88,12 @@ type SmartblockOpener interface {
 
 func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 	var ob = openedBlock{SmartBlock: sb}
-	if sb.Type() != model.SmartBlockType_Breadcrumbs {
+	if sb.Type() != model.SmartBlockType_Breadcrumbs &&
+		sb.Type() != model.SmartBlockType_SubObject &&
+		sb.Type() != model.SmartBlockType_Date &&
+		sb.Type() != model.SmartBlockType_BundledRelation &&
+		sb.Type() != model.SmartBlockType_BundledObjectType &&
+		sb.Type() != model.SmartBlockType_BundledTemplate {
 		// decode and store corresponding threadID for appropriate block
 		if tid, err := thread.Decode(sb.Id()); err != nil {
 			log.With("thread", sb.Id()).Warnf("can't restore thread ID: %v", err)

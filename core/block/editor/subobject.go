@@ -72,15 +72,23 @@ func NewSubObject(
 }
 
 func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
-	if o.forcedObjectType == "" {
-		return fmt.Errorf("missing forced object type")
+	objectType := o.forcedObjectType
+	if objectType == "" {
+		if len(ctx.ObjectTypeUrls) == 1 {
+			objectType, err = bundle.TypeKeyFromUrl(ctx.ObjectTypeUrls[0])
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("missing object type for subobject")
+		}
 	}
 
 	if err = o.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 
-	switch o.forcedObjectType {
+	switch objectType {
 	case bundle.TypeKeyRelation:
 		return o.initRelation(ctx.State)
 	case bundle.TypeKeyObjectType:
@@ -88,7 +96,7 @@ func (o *SubObject) Init(ctx *smartblock.InitContext) (err error) {
 	case bundle.TypeKeyRelationOption:
 		return o.initRelationOption(ctx.State)
 	default:
-		return fmt.Errorf("unknown subobject type %s", o.forcedObjectType)
+		return fmt.Errorf("unknown subobject type %s", objectType)
 	}
 
 }

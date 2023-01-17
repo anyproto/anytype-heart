@@ -66,7 +66,7 @@ func IntList(ints ...int) *types.Value {
 }
 
 func NilToNullWrapper(v *types.Value) *types.Value {
-	if v == nil {
+	if v == nil || v.Kind == nil {
 		return Null()
 	}
 	return v
@@ -204,7 +204,7 @@ func GetStringListValue(v *types.Value) []string {
 			return nil
 		}
 		for _, v := range list.ListValue.Values {
-			if _, ok = v.GetKind().(*types.Value_StringValue); ok {
+			if str, ok := v.GetKind().(*types.Value_StringValue); ok && str.StringValue != "" {
 				stringsSlice = append(stringsSlice, v.GetStringValue())
 			}
 		}
