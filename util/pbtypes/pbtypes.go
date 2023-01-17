@@ -204,7 +204,7 @@ func GetStringListValue(v *types.Value) []string {
 			return nil
 		}
 		for _, v := range list.ListValue.Values {
-			if _, ok = v.GetKind().(*types.Value_StringValue); ok {
+			if str, ok := v.GetKind().(*types.Value_StringValue); ok && str.StringValue != "" {
 				stringsSlice = append(stringsSlice, v.GetStringValue())
 			}
 		}
