@@ -240,15 +240,6 @@ func (s *Service) OpenBlock(
 	if err != nil {
 		return nil, err
 	}
-
-	if ob.Type() == model.SmartBlockType_Set {
-		sbSet := ob.SmartBlock.(*editor.Set)
-		dvContent, _ := sbSet.Dataview.GetDataview(template.DataviewBlockId)
-		fmt.Println("-------------------------------DATAVIEW-------------------------------------------")
-		fmt.Printf("DATAVIEW: %+v \n", dvContent)
-		fmt.Println("----------------------------------------------------------------------------------")
-	}
-
 	if includeRelationsAsDependentObjects {
 		ob.EnabledRelationAsDependentObjects()
 	}
