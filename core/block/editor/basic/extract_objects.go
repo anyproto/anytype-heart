@@ -19,7 +19,7 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, objectID string)
 }
 
@@ -72,7 +72,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 		det := &types.Struct{Fields: fields}
 
 		s.InjectWorkspaceID(det, req.ContextId)
-		objectID, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, det, nil, objState)
+		objectID, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, det, objState)
 		if err != nil {
 			return nil, fmt.Errorf("create child object: %w", err)
 		}

@@ -30,7 +30,7 @@ func (s *Service) TemplateCreateFromObject(id string) (templateID string, err er
 		return
 	}
 
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
 	}
@@ -56,7 +56,7 @@ func (s *Service) TemplateClone(id string) (templateID string, err error) {
 	}); err != nil {
 		return
 	}
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
 	}
@@ -81,7 +81,7 @@ func (s *Service) ObjectDuplicate(id string) (objectID string, err error) {
 		return
 	}
 
-	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
+	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), sbt, nil, st)
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (s *Service) TemplateCreateFromObjectByObjectType(otID string) (templateID 
 	var st = state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otID))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otID})
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
 	}
@@ -103,13 +103,12 @@ func (s *Service) TemplateCreateFromObjectByObjectType(otID string) (templateID 
 }
 
 func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceID string, err error) {
-	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeWorkspace,
-		&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
-			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
-			bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
-			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
-		}}, nil, nil)
+	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeWorkspace, &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():      pbtypes.String(req.Name),
+		bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
+		bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
+		bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
+	}}, nil)
 	return id, err
 }
 
