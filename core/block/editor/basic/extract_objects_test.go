@@ -26,7 +26,7 @@ func (t testExtractObjects) Add(object *smarttest.SmartTest) {
 	t.objects[object.Id()] = object
 }
 
-func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	id = bson.NewObjectId().Hex()
 	object := smarttest.New(id)
 	t.objects[id] = object

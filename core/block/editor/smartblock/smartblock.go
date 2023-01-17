@@ -131,7 +131,7 @@ type SmartBlock interface {
 type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
-	RelationIds    []string
+	RelationKeys   []string
 	State          *state.State
 	Relations      []*model.Relation
 	Restriction    restriction.Service
@@ -256,7 +256,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			return err
 		}
 	}
-	if err = sb.addRelations(ctx.State, ctx.RelationIds...); err != nil {
+	if err = sb.addRelations(ctx.State, ctx.RelationKeys...); err != nil {
 		return
 	}
 

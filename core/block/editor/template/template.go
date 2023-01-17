@@ -562,7 +562,21 @@ var WithDataviewRelationMigrationRelation = func(id string, source string, from 
 
 var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
+		found := false
+		for _, r := range bundle.SystemRelations {
+			if r.String() == key.String() {
+				found = true
+				break
+			}
+		}
 		rel := bundle.MustGetRelation(key)
+		if rel == nil {
+			return
+		}
+		if !found {
+			log.Errorf("WithDataviewRequiredRelation got not system relation %s; ignore", key)
+			return
+		}
 		b := s.Get(id)
 		if b == nil {
 			return
@@ -576,10 +590,11 @@ var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) State
 			if dv == nil {
 				return
 			}
-			if exRel := pbtypes.GetRelation(dv.Relations, key.String()); exRel == nil {
-				dv.Relations = append(dv.Relations, rel)
+			if slice.FindPos(pbtypes.GetRelationListKeys(dv.RelationLinks), key.String()) == -1 {
+				dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{Key: key.String(), Format: rel.Format})
 				blockNeedToUpdate = true
 			}
+
 			for i, view := range dv.Views {
 				if view.Relations == nil {
 					continue
