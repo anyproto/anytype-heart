@@ -58,7 +58,7 @@ type BuiltinObjects interface {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 type builtinObjects struct {
@@ -257,7 +257,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 		return err
 	}
 
-	_, _, err = b.objectCreator.CreateSmartBlockFromState(ctx, sbt, nil, nil, st)
+	_, _, err = b.objectCreator.CreateSmartBlockFromState(ctx, sbt, nil, st)
 	if isFavorite {
 		err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
 		if err != nil {
