@@ -1,7 +1,6 @@
 package files
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -29,33 +28,9 @@ func WithReader(r io.ReadSeeker) AddOption {
 	}
 }
 
-func WithBytes(b []byte) AddOption {
-	return func(args *AddOptions) {
-		args.Reader = bytes.NewReader(b)
-	}
-}
-
-func WithCid(cid string) AddOption {
-	return func(args *AddOptions) {
-		args.Use = cid
-	}
-}
-
-func WithMedia(media string) AddOption {
-	return func(args *AddOptions) {
-		args.Media = media
-	}
-}
-
 func WithName(name string) AddOption {
 	return func(args *AddOptions) {
 		args.Name = name
-	}
-}
-
-func WithPlaintext(plaintext bool) AddOption {
-	return func(args *AddOptions) {
-		args.Plaintext = plaintext
 	}
 }
 

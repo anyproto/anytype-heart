@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -17,8 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
-
-var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
 type Set struct {
 	smartblock.SmartBlock

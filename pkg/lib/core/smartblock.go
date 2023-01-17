@@ -22,11 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 )
 
-const (
-	snippetMinSize = 50
-	snippetMaxSize = 300
-)
-
 type ProfileThreadEncryptionKeys struct {
 	ServiceKey []byte
 	ReadKey    []byte
@@ -77,12 +72,6 @@ type SmartBlockChange struct {
 	Meta    *SmartBlockMetaChange
 }
 
-type SmartBlockVersion struct {
-	State    vclock.VClock
-	Snapshot SmartBlockSnapshot
-	Changes  []SmartBlockChange
-}
-
 type SmartBlock interface {
 	ID() string
 	Type() smartblock.SmartBlockType
@@ -114,24 +103,6 @@ func NewSmartBlock(thread thread.Info, node Service) SmartBlock {
 
 func (block *smartBlock) Creator() (string, error) {
 	return "", fmt.Errorf("to be implemented")
-}
-
-func (block *smartBlock) GetLastDownloadedVersion() (*SmartBlockVersion, error) {
-	snapshot, err := block.GetLastSnapshot()
-	if err != nil {
-		return nil, err
-	}
-
-	return &SmartBlockVersion{
-		State:    snapshot.State(),
-		Snapshot: snapshot,
-		Changes:  []SmartBlockChange{},
-	}, nil
-}
-
-func (block *smartBlock) PushChanges(changes []*SmartBlockChange) (state vclock.VClock, err error) {
-	// todo: to be implemented
-	return vclock.Undef, fmt.Errorf("to be implemented")
 }
 
 func (block *smartBlock) GetThread() thread.Info {
@@ -328,13 +299,6 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 	}()
 
 	return cancel, nil
-}
-
-func (block *smartBlock) SubscribeForChanges(since vclock.VClock, ch chan SmartBlockChange) (cancel func(), err error) {
-	chCloseFn := func() { close(ch) }
-
-	// todo: to be implemented
-	return chCloseFn, nil
 }
 
 func (block *smartBlock) SubscribeClientEvents(events chan<- proto.Message) (cancelFunc func(), err error) {

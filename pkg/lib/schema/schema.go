@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"strings"
 )
-
-var log = logging.Logger("anytype-core-schema")
 
 // Schema used to subset compatible objects by some common relations
 type Schema interface {

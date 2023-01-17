@@ -1,9 +1,6 @@
 package text
 
 import (
-	"crypto/md5"
-	"fmt"
-	"strings"
 	"unicode"
 	"unicode/utf16"
 )
@@ -53,10 +50,4 @@ func StrToUTF16(str string) []uint16 {
 
 func UTF16ToStr(b []uint16) string {
 	return string(utf16.Decode(b))
-}
-
-func SliceHash(keys []string) string {
-	s := strings.Join(keys, "_")
-	sum := md5.Sum([]byte(s))
-	return fmt.Sprintf("%x", sum)
 }

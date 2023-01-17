@@ -42,8 +42,6 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
-	ErrRelationOptionNotFound                      = errors.New("relation option not found")
-	ErrRelationNotFound                            = errors.New("relation not found")
 	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
@@ -1164,41 +1162,6 @@ func (sb *smartBlock) AddHook(f HookCallback, events ...Hook) {
 	for _, e := range events {
 		sb.hooks[e] = append(sb.hooks[e], f)
 	}
-}
-
-func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []*model.Relation, aggregatedRelations []*model.Relation, details *types.Struct) []*model.Relation {
-	var m = make(map[string]int, len(extraRelations))
-	var rels = make([]*model.Relation, 0, len(objTypeRelations)+len(extraRelations))
-
-	for i, rel := range extraRelations {
-		m[rel.Key] = i
-		rels = append(rels, pbtypes.CopyRelation(rel))
-	}
-
-	for _, rel := range objTypeRelations {
-		if _, exists := m[rel.Key]; exists {
-			continue
-		}
-		rels = append(rels, pbtypes.CopyRelation(rel))
-		m[rel.Key] = len(rels) - 1
-	}
-
-	for _, rel := range aggregatedRelations {
-		if i, exists := m[rel.Key]; exists {
-			// overwrite name that we've got from DS
-			if rels[i].Name != rel.Name {
-				rels[i].Name = rel.Name
-			}
-			continue
-		}
-		rels = append(rels, pbtypes.CopyRelation(rel))
-		m[rel.Key] = len(rels) - 1
-	}
-
-	if details == nil || details.Fields == nil {
-		return rels
-	}
-	return rels
 }
 
 func (sb *smartBlock) baseRelations() []*model.Relation {

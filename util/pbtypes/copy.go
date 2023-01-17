@@ -6,7 +6,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var bytesPool = &sync.Pool{
@@ -25,23 +24,6 @@ func CopyBlock(in *model.Block) (out *model.Block) {
 	out = &model.Block{}
 	_ = out.Unmarshal(buf[:size])
 	bytesPool.Put(buf)
-	return
-}
-
-// CopyStructMap copies pb struct map, while reusing map values' pointers
-func CopyStructMap(in *types.Struct) (out *types.Struct) {
-	if in == nil {
-		return nil
-	}
-	if in.Fields == nil {
-		return &types.Struct{}
-	}
-
-	out = &types.Struct{Fields: make(map[string]*types.Value, len(in.Fields))}
-	for k, v := range in.Fields {
-		out.Fields[k] = v
-	}
-
 	return
 }
 
@@ -79,13 +61,6 @@ func CopyVal(in *types.Value) (out *types.Value) {
 
 	bytesPool.Put(buf)
 	return
-}
-
-func CopyRelationLink(in *model.RelationLink) (out *model.RelationLink) {
-	return &model.RelationLink{
-		Key:    in.Key,
-		Format: in.Format,
-	}
 }
 
 func CopyRelation(in *model.Relation) (out *model.Relation) {
@@ -153,28 +128,6 @@ func CopyRelations(in []*model.Relation) (out []*model.Relation) {
 	return outWrapped.Relations
 }
 
-func CopyOptions(in []*model.RelationOption) (out []*model.RelationOption) {
-	if in == nil {
-		return nil
-	}
-
-	for _, inO := range in {
-		inCopy := *inO
-		out = append(out, &inCopy)
-	}
-	return
-}
-
-func CopyRelationsToMap(in []*model.Relation) (out map[string]*model.Relation) {
-	out = make(map[string]*model.Relation, len(in))
-	rels := CopyRelations(in)
-	for _, rel := range rels {
-		out[rel.Key] = rel
-	}
-
-	return
-}
-
 func CopyFilter(in *model.BlockContentDataviewFilter) (out *model.BlockContentDataviewFilter) {
 	buf := bytesPool.Get().([]byte)
 	size := in.Size()
@@ -185,27 +138,5 @@ func CopyFilter(in *model.BlockContentDataviewFilter) (out *model.BlockContentDa
 	out = &model.BlockContentDataviewFilter{}
 	_ = out.Unmarshal(buf[:size])
 	bytesPool.Put(buf)
-	return
-}
-
-func RelationsFilterKeys(in []*model.Relation, keys []string) (out []*model.Relation) {
-	for i, inRel := range in {
-		if slice.FindPos(keys, inRel.Key) >= 0 {
-			out = append(out, in[i])
-		}
-	}
-	return
-}
-
-func StructNotNilKeys(st *types.Struct) (keys []string) {
-	if st == nil || st.Fields == nil {
-		return nil
-	}
-
-	for k, v := range st.Fields {
-		if v != nil {
-			keys = append(keys, k)
-		}
-	}
 	return
 }

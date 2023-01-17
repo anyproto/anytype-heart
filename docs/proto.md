@@ -592,6 +592,11 @@
     - [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response)
     - [Rpc.Object.GroupsSubscribe.Response.Error](#anytype-Rpc-Object-GroupsSubscribe-Response-Error)
     - [Rpc.Object.Import](#anytype-Rpc-Object-Import)
+    - [Rpc.Object.Import.Notion](#anytype-Rpc-Object-Import-Notion)
+    - [Rpc.Object.Import.Notion.ValidateToken](#anytype-Rpc-Object-Import-Notion-ValidateToken)
+    - [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request)
+    - [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response)
+    - [Rpc.Object.Import.Notion.ValidateToken.Response.Error](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error)
     - [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams)
     - [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams)
@@ -604,10 +609,6 @@
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
     - [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error)
-    - [Rpc.Object.ImportMarkdown](#anytype-Rpc-Object-ImportMarkdown)
-    - [Rpc.Object.ImportMarkdown.Request](#anytype-Rpc-Object-ImportMarkdown-Request)
-    - [Rpc.Object.ImportMarkdown.Response](#anytype-Rpc-Object-ImportMarkdown-Response)
-    - [Rpc.Object.ImportMarkdown.Response.Error](#anytype-Rpc-Object-ImportMarkdown-Response-Error)
     - [Rpc.Object.ListDelete](#anytype-Rpc-Object-ListDelete)
     - [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request)
     - [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response)
@@ -982,12 +983,12 @@
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
     - [Rpc.Object.GroupsSubscribe.Response.Error.Code](#anytype-Rpc-Object-GroupsSubscribe-Response-Error-Code)
+    - [Rpc.Object.Import.Notion.ValidateToken.Response.Error.Code](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error-Code)
     - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
     - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
-    - [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype-Rpc-Object-ImportMarkdown-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
     - [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format)
@@ -1412,12 +1413,12 @@
 | ObjectSetBreadcrumbs | [Rpc.Object.SetBreadcrumbs.Request](#anytype-Rpc-Object-SetBreadcrumbs-Request) | [Rpc.Object.SetBreadcrumbs.Response](#anytype-Rpc-Object-SetBreadcrumbs-Response) |  |
 | ObjectUndo | [Rpc.Object.Undo.Request](#anytype-Rpc-Object-Undo-Request) | [Rpc.Object.Undo.Response](#anytype-Rpc-Object-Undo-Response) |  |
 | ObjectRedo | [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request) | [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response) |  |
-| ObjectImportMarkdown | [Rpc.Object.ImportMarkdown.Request](#anytype-Rpc-Object-ImportMarkdown-Request) | [Rpc.Object.ImportMarkdown.Response](#anytype-Rpc-Object-ImportMarkdown-Response) |  |
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
 | ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
+| ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
 | ObjectCreateRelation | [Rpc.Object.CreateRelation.Request](#anytype-Rpc-Object-CreateRelation-Request) | [Rpc.Object.CreateRelation.Response](#anytype-Rpc-Object-CreateRelation-Response) | Relations *** |
 | ObjectCreateRelationOption | [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request) | [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response) |  |
 | RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response) |  |
@@ -10146,6 +10147,72 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-Import-Notion"></a>
+
+### Rpc.Object.Import.Notion
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Notion-ValidateToken"></a>
+
+### Rpc.Object.Import.Notion.ValidateToken
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Notion-ValidateToken-Request"></a>
+
+### Rpc.Object.Import.Notion.ValidateToken.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Notion-ValidateToken-Response"></a>
+
+### Rpc.Object.Import.Notion.ValidateToken.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Import.Notion.ValidateToken.Response.Error](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error"></a>
+
+### Rpc.Object.Import.Notion.ValidateToken.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Import.Notion.ValidateToken.Response.Error.Code](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Import-Request"></a>
 
 ### Rpc.Object.Import.Request
@@ -10319,65 +10386,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ImportMarkdown"></a>
-
-### Rpc.Object.ImportMarkdown
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ImportMarkdown-Request"></a>
-
-### Rpc.Object.ImportMarkdown.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| importPath | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ImportMarkdown-Response"></a>
-
-### Rpc.Object.ImportMarkdown.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.ImportMarkdown.Response.Error](#anytype-Rpc-Object-ImportMarkdown-Response-Error) |  |  |
-| rootLinkIds | [string](#string) | repeated |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ImportMarkdown-Response-Error"></a>
-
-### Rpc.Object.ImportMarkdown.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype-Rpc-Object-ImportMarkdown-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -15634,6 +15642,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error-Code"></a>
+
+### Rpc.Object.Import.Notion.ValidateToken.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| INTERNAL_ERROR | 1 |  |
+| UNAUTHORIZED | 2 |  |
+| UNKNOWN_ERROR | 3 |  |
+| BAD_INPUT | 4 |  |
+
+
+
 <a name="anytype-Rpc-Object-Import-Request-Mode"></a>
 
 ### Rpc.Object.Import.Request.Mode
@@ -15696,19 +15719,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INTERNAL_ERROR | 1 |  |
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
-
-
-
-<a name="anytype-Rpc-Object-ImportMarkdown-Response-Error-Code"></a>
-
-### Rpc.Object.ImportMarkdown.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 

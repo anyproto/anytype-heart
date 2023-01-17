@@ -23,7 +23,6 @@ var (
 	ErrRelationExists   = fmt.Errorf("relation exists")
 	ErrViewNotFound     = errors.New("view not found")
 	ErrRelationNotFound = fmt.Errorf("relation not found")
-	ErrOptionNotExists  = errors.New("option not exists")
 )
 
 func init() {
@@ -392,15 +391,6 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	return nil
 }
 
-func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
-	for i, view := range l.GetDataview().Views {
-		if view.Id == l.content.ActiveView {
-			return l.GetDataview().Views[i]
-		}
-	}
-	return nil
-}
-
 func (l *Dataview) FillSmartIds(ids []string) []string {
 	for _, rl := range l.content.RelationLinks {
 		ids = append(ids, addr.RelationKeyToIdPrefix+rl.Key)
@@ -594,14 +584,4 @@ func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) err
 	}
 
 	return nil
-}
-
-func (l *Dataview) relationsWithObjectFormat() []string {
-	var relationsWithObjFormat []string
-	for _, rel := range l.GetDataview().Relations {
-		if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
-			relationsWithObjFormat = append(relationsWithObjFormat, rel.Key)
-		}
-	}
-	return relationsWithObjFormat
 }

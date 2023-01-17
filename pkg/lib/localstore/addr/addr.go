@@ -43,11 +43,6 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 	return 0, fmt.Errorf("sb type '%s' not found", sbTypeName)
 }
 
-// returns the
-func GetVirtualCollectionObjectId(collectionName, key string) string {
-	return collectionName + SubObjectCollectionIdSeparator + key
-}
-
 func ConvertBundledObjectIdToInstalledId(bundledId string) (string, error) {
 	if strings.HasPrefix(bundledId, BundledRelationURLPrefix) {
 		return RelationKeyToIdPrefix + strings.TrimPrefix(bundledId, BundledRelationURLPrefix), nil
