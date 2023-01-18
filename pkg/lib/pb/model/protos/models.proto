@@ -375,6 +375,8 @@ message Block {
                 string RelationKey = 1;
                 Type type = 2;
                 repeated google.protobuf.Value customOrder = 3;
+                RelationFormat format = 4;
+                bool includeTime = 5;
 
                 enum Type {
                     Asc = 0;

@@ -126,12 +126,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.relationService,
 		)
 	case model.SmartBlockType_SubObject:
-		return NewSubObject(
-			f.objectStore,
-			f.fileBlockService,
-			f.anytype,
-			f.relationService,
-		)
+		panic("subobject not supported via factory")
 	case model.SmartBlockType_File:
 		return NewFiles()
 	case model.SmartBlockType_MarketplaceType:

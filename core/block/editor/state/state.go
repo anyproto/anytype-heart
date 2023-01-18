@@ -1259,37 +1259,24 @@ func (s *State) Copy() *State {
 	objTypesToMigrate := make([]string, len(s.ObjectTypesToMigrate()))
 	copy(objTypesToMigrate, s.ObjectTypesToMigrate())
 
-	agOptsCopy := make(map[string][]*model.RelationOption, len(s.AggregatedOptionsByRelation()))
-	for k, v := range s.AggregatedOptionsByRelation() {
-		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
-	}
-	relationLinks := make([]*model.RelationLink, len(s.relationLinks))
-	for i, rl := range s.relationLinks {
-		relationLinks[i] = &model.RelationLink{
-			Format: rl.Format,
-			Key:    rl.Key,
-		}
-	}
-
 	storeKeyRemoved := s.StoreKeysRemoved()
 	storeKeyRemovedCopy := make(map[string]struct{}, len(storeKeyRemoved))
 	for i := range storeKeyRemoved {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
-		ctx:                         s.ctx,
-		blocks:                      blocks,
-		rootId:                      s.rootId,
-		details:                     pbtypes.CopyStruct(s.Details()),
-		localDetails:                pbtypes.CopyStruct(s.LocalDetails()),
-		relationLinks:               relationLinks,
-		extraRelations:              pbtypes.CopyRelations(s.OldExtraRelations()),
-		aggregatedOptionsByRelation: agOptsCopy,
-		objectTypes:                 objTypes,
-		objectTypesToMigrate:        objTypesToMigrate,
-		noObjectType:                s.noObjectType,
-		store:                       pbtypes.CopyStruct(s.Store()),
-		storeKeyRemoved:             storeKeyRemovedCopy,
+		ctx:                  s.ctx,
+		blocks:               blocks,
+		rootId:               s.rootId,
+		details:              pbtypes.CopyStruct(s.Details()),
+		localDetails:         pbtypes.CopyStruct(s.LocalDetails()),
+		relationLinks:        s.GetRelationLinks(), // Get methods copy inside
+		extraRelations:       pbtypes.CopyRelations(s.OldExtraRelations()),
+		objectTypes:          objTypes,
+		objectTypesToMigrate: objTypesToMigrate,
+		noObjectType:         s.noObjectType,
+		store:                pbtypes.CopyStruct(s.Store()),
+		storeKeyRemoved:      storeKeyRemovedCopy,
 	}
 	return copy
 }

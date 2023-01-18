@@ -13,7 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type Set struct {
@@ -53,21 +52,12 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		return err
 	}
 
-	var featuredRelations []string
-	if ctx.State != nil {
-		featuredRelations = pbtypes.GetStringList(ctx.State.Details(), bundle.RelationKeyFeaturedRelations.String())
-	}
-	// Add missing required featured relations
-	featuredRelations = slice.Union(featuredRelations, []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()})
-	featuredRelations = slice.Remove(featuredRelations, bundle.RelationKeyCreator.String())
-
 	templates := []template.StateTransformer{
 		template.WithDataviewRelationMigrationRelation(template.DataviewBlockId, bundle.TypeKeyBookmark.URL(), bundle.RelationKeyUrl, bundle.RelationKeySource),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}, model.ObjectType_set),
 		template.WithRelations([]bundle.RelationKey{bundle.RelationKeySetOf}),
 		template.WithDescription,
-		template.WithDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList(featuredRelations)),
-		template.WithFeaturedRelations,
+		template.WithDefaultFeaturedRelations,
 		template.WithBlockEditRestricted(p.Id()),
 	}
 	if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
