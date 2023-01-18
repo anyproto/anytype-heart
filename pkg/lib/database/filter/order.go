@@ -1,10 +1,10 @@
 package filter
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	time_util "github.com/anytypeio/go-anytype-middleware/util/time"
 	"github.com/gogo/protobuf/types"
 	"strings"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type Order interface {
@@ -32,14 +32,22 @@ func (so SetOrder) String() (s string) {
 }
 
 type KeyOrder struct {
-	Key       string
-	Type      model.BlockContentDataviewSortType
-	EmptyLast bool // consider empty strings as the last, not first
+	Key            string
+	Type           model.BlockContentDataviewSortType
+	EmptyLast      bool // consider empty strings as the last, not first
+	RelationFormat model.RelationFormat
+	IncludeTime    bool
 }
 
 func (ko KeyOrder) Compare(a, b Getter) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
+
+	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
+		av = time_util.CutValueToDay(av)
+		bv = time_util.CutValueToDay(bv)
+	}
+
 	comp := 0
 	_, aString := av.GetKind().(*types.Value_StringValue)
 	_, bString := bv.GetKind().(*types.Value_StringValue)
