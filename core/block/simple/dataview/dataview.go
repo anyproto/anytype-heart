@@ -351,7 +351,7 @@ func (s *Dataview) DeleteView(viewID string) error {
 func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) error {
 	v, err := s.GetView(viewID)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	v.Relations = view.Relations
