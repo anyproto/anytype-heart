@@ -43,6 +43,7 @@ type Block interface {
 	simple.Block
 	GetView(viewID string) (*model.BlockContentDataviewView, error)
 	SetView(viewID string, view model.BlockContentDataviewView) error
+	SetViewFields(viewID string, view *model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
@@ -55,6 +56,7 @@ type Block interface {
 	GetSource() []string
 	SetSource(source []string) error
 	SetActiveView(activeView string)
+	SetTargetObjectID(targetObjectID string)
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -65,6 +67,24 @@ type Block interface {
 	UpdateRelationOld(relationKey string, relation model.Relation) error
 	// DeleteRelationOld DEPRECATED
 	DeleteRelationOld(relationKey string) error
+
+	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
+	ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate)
+
+	AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error
+	RemoveFilters(viewID string, filterIDs []string) error
+	ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error
+	ReorderFilters(viewID string, ids []string) error
+
+	AddSort(viewID string, sort *model.BlockContentDataviewSort) error
+	RemoveSorts(viewID string, relationKeys []string) error
+	ReplaceSort(viewID string, relationKey string, sort *model.BlockContentDataviewSort) error
+	ReorderSorts(viewID string, relationKeys []string) error
+
+	AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error
+	RemoveViewRelations(viewID string, relationKeys []string) error
+	ReplaceViewRelation(viewID string, relationKey string, relation *model.BlockContentDataviewRelation) error
+	ReorderViewRelations(viewID string, relationKeys []string) error
 }
 
 type Dataview struct {
@@ -82,6 +102,12 @@ func (d *Dataview) Copy() simple.Block {
 
 // Validate TODO: add validation rules
 func (d *Dataview) Validate() error {
+	for _, view := range d.content.Views {
+		if view.Id == "" {
+			view.Id = bson.NewObjectId().String()
+		}
+	}
+
 	return nil
 }
 
@@ -118,11 +144,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 	for _, order2 := range dv.content.ObjectOrders {
 		var found bool
-		var changes []slice.Change
+		var changes []*pb.EventBlockDataviewSliceChange
 		for _, order1 := range d.content.ObjectOrders {
 			if order1.ViewId == order2.ViewId && order1.GroupId == order2.GroupId {
 				found = true
-				changes = slice.Diff(order1.ObjectIds, order2.ObjectIds)
+				changes = diffViewObjectOrder(order1, order2)
 				break
 			}
 		}
@@ -147,7 +173,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 							Id:           dv.Id,
 							ViewId:       order2.ViewId,
 							GroupId:      order2.GroupId,
-							SliceChanges: pbtypes.SliceChangeToEvents(changes),
+							SliceChanges: changes,
 						}}}})
 		}
 	}
@@ -155,16 +181,42 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	// @TODO: rewrite for optimised compare
 	for _, view2 := range dv.content.Views {
 		var found bool
-		var changed bool
+		var (
+			viewFilterChanges   []*pb.EventBlockDataviewViewUpdateFilter
+			viewRelationChanges []*pb.EventBlockDataviewViewUpdateRelation
+			viewSortChanges     []*pb.EventBlockDataviewViewUpdateSort
+			viewFieldsChange    *pb.EventBlockDataviewViewUpdateFields
+		)
+
 		for _, view1 := range d.content.Views {
 			if view1.Id == view2.Id {
 				found = true
-				changed = !proto.Equal(view1, view2)
+
+				viewFieldsChange = diffViewFields(view1, view2)
+				viewFilterChanges = diffViewFilters(view1, view2)
+				viewRelationChanges = diffViewRelations(view1, view2)
+				viewSortChanges = diffViewSorts(view1, view2)
+
 				break
 			}
 		}
 
-		if !found || changed {
+		if len(viewFilterChanges) > 0 || len(viewRelationChanges) > 0 || len(viewSortChanges) > 0 || viewFieldsChange != nil {
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
+						BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+							Id:       dv.Id,
+							ViewId:   view2.Id,
+							Fields:   viewFieldsChange,
+							Filter:   viewFilterChanges,
+							Relation: viewRelationChanges,
+							Sort:     viewSortChanges,
+						},
+					}}})
+		}
+
+		if !found {
 			msgs = append(msgs,
 				simple.EventMessage{
 					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewSet{
@@ -240,6 +292,17 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 					ViewIds: viewIds2,
 				}}}})
 	}
+
+	if dv.content.TargetObjectId != d.content.TargetObjectId {
+		msgs = append(msgs,
+			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewTargetObjectIdSet{
+				BlockDataviewTargetObjectIdSet: &pb.EventBlockDataviewTargetObjectIdSet{
+					Id:             dv.Id,
+					TargetObjectId: dv.content.TargetObjectId,
+				}},
+			}})
+	}
+
 	return
 }
 
@@ -247,6 +310,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	if view.Id == "" {
 		view.Id = uuid.New().String()
+	}
+	for _, f := range view.Filters {
+		if f.Id == "" {
+			f.Id = bson.NewObjectId().Hex()
+		}
 	}
 
 	s.content.Views = append(s.content.Views, &view)
@@ -281,30 +349,44 @@ func (s *Dataview) DeleteView(viewID string) error {
 }
 
 func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) error {
-	var found bool
-	for _, v := range s.content.Views {
-		if v.Id == viewID {
-			found = true
-
-			v.Relations = view.Relations
-			v.Sorts = view.Sorts
-			v.Filters = view.Filters
-			v.Name = view.Name
-			v.Type = view.Type
-			v.CoverRelationKey = view.CoverRelationKey
-			v.HideIcon = view.HideIcon
-			v.CoverFit = view.CoverFit
-			v.CardSize = view.CardSize
-			v.GroupRelationKey = view.GroupRelationKey
-			v.GroupBackgroundColors = view.GroupBackgroundColors
-
-			break
-		}
+	v, err := s.GetView(viewID)
+	if err != nil {
+		return err
 	}
 
-	if !found {
-		return ErrViewNotFound
+	v.Relations = view.Relations
+	v.Sorts = view.Sorts
+	v.Filters = view.Filters
+
+	v.Name = view.Name
+	v.Type = view.Type
+	v.CoverRelationKey = view.CoverRelationKey
+	v.HideIcon = view.HideIcon
+	v.CoverFit = view.CoverFit
+	v.CardSize = view.CardSize
+	v.GroupRelationKey = view.GroupRelationKey
+	v.GroupBackgroundColors = view.GroupBackgroundColors
+	v.PageLimit = view.PageLimit
+
+	return nil
+}
+
+// SetViewFields updates only simple fields of a view. It doesn't update filters, relations, sorts.
+func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataviewView) error {
+	v, err := d.GetView(viewID)
+	if err != nil {
+		return err
 	}
+
+	v.Name = view.Name
+	v.Type = view.Type
+	v.CoverRelationKey = view.CoverRelationKey
+	v.HideIcon = view.HideIcon
+	v.CoverFit = view.CoverFit
+	v.CardSize = view.CardSize
+	v.GroupRelationKey = view.GroupRelationKey
+	v.GroupBackgroundColors = view.GroupBackgroundColors
+	v.PageLimit = view.PageLimit
 
 	return nil
 }
@@ -313,11 +395,15 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	for _, rl := range l.content.RelationLinks {
 		ids = append(ids, addr.RelationKeyToIdPrefix+rl.Key)
 	}
+
+	if l.content.TargetObjectId != "" {
+		ids = append(ids, l.content.TargetObjectId)
+	}
 	return ids
 }
 
 func (l *Dataview) HasSmartIds() bool {
-	return len(l.content.RelationLinks) > 0
+	return len(l.content.RelationLinks) > 0 || l.content.TargetObjectId != ""
 }
 
 func (d *Dataview) AddRelation(relation *model.RelationLink) error {
@@ -418,6 +504,10 @@ func (d *Dataview) DeleteRelationOld(relationKey string) error {
 
 func (d *Dataview) SetActiveView(activeView string) {
 	d.content.ActiveView = activeView
+}
+
+func (d *Dataview) SetTargetObjectID(targetObjectID string) {
+	d.content.TargetObjectId = targetObjectID
 }
 
 func (d *Dataview) SetViewOrder(viewIds []string) {

@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	types2 "github.com/gogo/protobuf/types"
+
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	types2 "github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -59,6 +60,7 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeyIsReadonly,
 	RelationKeyIsDeleted,
 	RelationKeyIsHidden,
+	RelationKeyDone,
 	RelationKeyIsArchived,
 	RelationKeyTemplateIsBundled,
 	RelationKeyTag,

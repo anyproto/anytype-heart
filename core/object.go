@@ -612,6 +612,27 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
 }
 
+func (mw *Middleware) ObjectSetSource(cctx context.Context,
+	req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
+		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetSource(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcObjectSetSourceResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {

@@ -187,7 +187,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
 	buff := &bytes.Buffer{}
-	if jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}) != nil {
+	if err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, err
 	}
 
@@ -233,7 +233,7 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
 	buff := &bytes.Buffer{}
-	if png.Encode(buff, resized) != nil {
+	if err = png.Encode(buff, resized); err != nil {
 		return nil, err
 	}
 
@@ -285,7 +285,7 @@ func (m *ImageResize) resizeGIF(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 	gifImg.Config.Width, gifImg.Config.Height = gifImg.Image[0].Bounds().Dx(), gifImg.Image[0].Bounds().Dy()
 
 	buff := bytes.NewBuffer(make([]byte, 0))
-	if gif.EncodeAll(buff, gifImg) != nil {
+	if err = gif.EncodeAll(buff, gifImg); err != nil {
 		return nil, err
 	}
 

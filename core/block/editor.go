@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -175,7 +176,7 @@ func (s *Service) GetAggregatedRelations(
 
 func (s *Service) UpdateDataviewView(ctx *session.Context, req pb.RpcBlockDataviewViewUpdateRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateView(ctx, req.BlockId, req.ViewId, *req.View, true)
+		return b.UpdateView(ctx, req.BlockId, req.ViewId, req.View, true)
 	})
 }
 
@@ -218,7 +219,7 @@ func (s *Service) CreateDataviewView(
 		if req.View == nil {
 			req.View = &model.BlockContentDataviewView{}
 		}
-		view, e := b.CreateView(ctx, req.BlockId, *req.View)
+		view, e := b.CreateView(ctx, req.BlockId, *req.View, req.Source)
 		if e != nil {
 			return e
 		}
@@ -885,4 +886,40 @@ func (s *Service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreate
 		return err
 	})
 	return id, err
+}
+
+func (s *Service) CopyDataviewToBlock(ctx *session.Context,
+	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) ([]*model.BlockContentDataviewView, error) {
+
+	var targetDvContent *model.BlockContentDataview
+
+	err := s.DoDataview(req.TargetObjectId, func(d dataview.Dataview) error {
+		var err error
+		targetDvContent, err = d.GetDataview(template.DataviewBlockId)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		st := b.NewStateCtx(ctx)
+		block := st.Get(req.BlockId)
+
+		dvContent, ok := block.Model().Content.(*model.BlockContentOfDataview)
+		if !ok {
+			return fmt.Errorf("block must contain dataView content")
+		}
+
+		dvContent.Dataview.Views = targetDvContent.Views
+		dvContent.Dataview.RelationLinks = targetDvContent.RelationLinks
+		dvContent.Dataview.TargetObjectId = req.TargetObjectId
+
+		return b.Apply(st)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return targetDvContent.Views, err
 }

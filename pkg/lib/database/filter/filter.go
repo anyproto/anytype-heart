@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 var (
-	ErrValueMustBeList = errors.New("value must be list")
+	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
 func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, error) {
@@ -78,18 +79,18 @@ func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
 			Value: proto.Value,
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
-		list := proto.Value.GetListValue()
-		if list == nil {
-			return nil, ErrValueMustBeList
+		list, err := pbtypes.ValueListWrapper(proto.Value)
+		if err != nil {
+			return nil, ErrValueMustBeListSupporting
 		}
 		return In{
 			Key:   proto.RelationKey,
 			Value: list,
 		}, nil
 	case model.BlockContentDataviewFilter_NotIn:
-		list := proto.Value.GetListValue()
-		if list == nil {
-			return nil, ErrValueMustBeList
+		list, err := pbtypes.ValueListWrapper(proto.Value)
+		if err != nil {
+			return nil, ErrValueMustBeListSupporting
 		}
 		return Not{In{
 			Key:   proto.RelationKey,
@@ -104,36 +105,36 @@ func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
 			Key: proto.RelationKey,
 		}}, nil
 	case model.BlockContentDataviewFilter_AllIn:
-		list := proto.Value.GetListValue()
-		if list == nil {
-			return nil, ErrValueMustBeList
+		list, err := pbtypes.ValueListWrapper(proto.Value)
+		if err != nil {
+			return nil, ErrValueMustBeListSupporting
 		}
 		return AllIn{
 			Key:   proto.RelationKey,
 			Value: list,
 		}, nil
 	case model.BlockContentDataviewFilter_NotAllIn:
-		list := proto.Value.GetListValue()
-		if list == nil {
-			return nil, ErrValueMustBeList
+		list, err := pbtypes.ValueListWrapper(proto.Value)
+		if err != nil {
+			return nil, ErrValueMustBeListSupporting
 		}
 		return Not{AllIn{
 			Key:   proto.RelationKey,
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_ExactIn:
-		list := proto.Value.GetListValue()
-		if list == nil {
-			return nil, ErrValueMustBeList
+		list, err := pbtypes.ValueListWrapper(proto.Value)
+		if err != nil {
+			return nil, ErrValueMustBeListSupporting
 		}
 		return ExactIn{
 			Key:   proto.RelationKey,
 			Value: list,
 		}, nil
 	case model.BlockContentDataviewFilter_NotExactIn:
-		list := proto.Value.GetListValue()
-		if list == nil {
-			return nil, ErrValueMustBeList
+		list, err := pbtypes.ValueListWrapper(proto.Value)
+		if err != nil {
+			return nil, ErrValueMustBeListSupporting
 		}
 		return Not{ExactIn{
 			Key:   proto.RelationKey,
@@ -362,12 +363,16 @@ func (l AllIn) FilterObject(g Getter) bool {
 	if val == nil {
 		return false
 	}
-	list := val.GetListValue()
+
+	list, err := pbtypes.ValueListWrapper(val)
+	if err != nil {
+		return false
+	}
 	if list == nil {
 		return false
 	}
 	exist := func(v *types.Value) bool {
-		for _, lv := range list.Values {
+		for _, lv := range list.GetValues() {
 			if v.Equal(lv) {
 				return true
 			}
@@ -396,7 +401,10 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 	if val == nil {
 		return false
 	}
-	list := val.GetListValue()
+	list, err := pbtypes.ValueListWrapper(val)
+	if err != nil {
+		return false
+	}
 	if list == nil {
 		return false
 	}

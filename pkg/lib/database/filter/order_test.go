@@ -3,6 +3,7 @@ package filter
 import (
 	"github.com/gogo/protobuf/types"
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -137,4 +138,41 @@ func TestCustomOrder_Compare(t *testing.T) {
 		b := testGetter{"ID": pbtypes.String("y")}
 		assert.Equal(t, 1, co.Compare(a, b))
 	})
+}
+
+func TestIncludeTime_Compare(t *testing.T) {
+	date := time.Unix(1672012800, 0)
+
+	t.Run("date only eq", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Add(time.Second * 5).Unix())}
+		b := testGetter{"k": pbtypes.Int64(date.Add(time.Second * 10).Unix())}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc,
+			IncludeTime: false, RelationFormat: model.RelationFormat_date}
+		assert.Equal(t, 0, asc.Compare(a, b))
+	})
+
+	t.Run("only date lt", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Unix())}
+		b := testGetter{"k": pbtypes.Int64(date.Add(time.Hour * 24).Unix())}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc,
+			IncludeTime: false, RelationFormat: model.RelationFormat_date}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("date includeTime eq", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Add(time.Second * 10).Unix())}
+		b := testGetter{"k": pbtypes.Int64(date.Add(time.Second * 10).Unix())}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc,
+			IncludeTime: true, RelationFormat: model.RelationFormat_date}
+		assert.Equal(t, 0, asc.Compare(a, b))
+	})
+
+	t.Run("date includeTime lt", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Add(time.Second * 5).Unix())}
+		b := testGetter{"k": pbtypes.Int64(date.Add(time.Second * 10).Unix())}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc,
+			IncludeTime: true, RelationFormat: model.RelationFormat_date}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
 }

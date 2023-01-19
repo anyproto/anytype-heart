@@ -65,6 +65,13 @@ func IntList(ints ...int) *types.Value {
 	}
 }
 
+func NilToNullWrapper(v *types.Value) *types.Value {
+	if v == nil || v.Kind == nil {
+		return Null()
+	}
+	return v
+}
+
 func Bool(v bool) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_BoolValue{BoolValue: v},
@@ -197,11 +204,11 @@ func GetStringListValue(v *types.Value) []string {
 			return nil
 		}
 		for _, v := range list.ListValue.Values {
-			if _, ok = v.GetKind().(*types.Value_StringValue); ok {
+			if _, ok := v.GetKind().(*types.Value_StringValue); ok {
 				stringsSlice = append(stringsSlice, v.GetStringValue())
 			}
 		}
-	} else if val, ok := v.Kind.(*types.Value_StringValue); ok {
+	} else if val, ok := v.Kind.(*types.Value_StringValue); ok && val.StringValue != "" {
 		return []string{val.StringValue}
 	}
 
@@ -420,4 +427,16 @@ func StructCompareIgnoreKeys(st1 *types.Struct, st2 *types.Struct, ignoreKeys []
 		}
 	}
 	return true
+}
+
+// ValueListWrapper wraps single value into the list. If value is already a list, it is returned as is.
+// Null and struct values are not supported
+func ValueListWrapper(value *types.Value) (*types.ListValue, error) {
+	switch v := value.Kind.(type) {
+	case *types.Value_ListValue:
+		return v.ListValue, nil
+	case *types.Value_StringValue, *types.Value_NumberValue, *types.Value_BoolValue:
+		return &types.ListValue{Values: []*types.Value{value}}, nil
+	}
+	return nil, fmt.Errorf("not supported type")
 }

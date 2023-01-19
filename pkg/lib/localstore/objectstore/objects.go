@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
 
-	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -1901,17 +1902,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 
 	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
 		return nil
-	}
-
-	for k, v := range newDetails.GetDetails().GetFields() {
-		// todo: remove null cleanup(should be done when receiving from client)
-		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
-				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
-			} else {
-				log.Warnf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
-			}
-		}
 	}
 
 	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())

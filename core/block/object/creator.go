@@ -21,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -75,7 +76,7 @@ type BlockService interface {
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
 }
 
-func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
 		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -84,10 +85,10 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return c.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
+	return c.CreateSmartBlockFromState(ctx, sbType, details, createState)
 }
 
-func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -107,11 +108,18 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		}
 	}
 
+	var relationKeys []string
 	var workspaceID string
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
+			relId := addr.RelationKeyToIdPrefix + k
+			if _, err2 := c.objectStore.GetRelationById(relId); err != nil {
+				// check if installed
+				err = fmt.Errorf("failed to get installed relation %s: %w", relId, err2)
+				return
+			}
+			relationKeys = append(relationKeys, k)
 			createState.SetDetail(k, v)
-			// TODO: add relations to relationIds
 		}
 
 		detailsWorkspaceID := details.Fields[bundle.RelationKeyWorkspaceId.String()]
@@ -131,17 +139,23 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID()))
 
-	ev := &metrics.CreateObjectEvent{
-		SetDetailsMs: time.Since(startTime).Milliseconds(),
-	}
-	ctx = context.WithValue(ctx, eventCreate, ev)
 	var tid = thread.Undef
-	if raw := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); raw != "" {
-		tid, err = thread.Decode(raw)
+	id = pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String())
+	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	if sbt == coresb.SmartBlockTypeSubObject {
+		return c.CreateSubObjectInWorkspace(createState.CombinedDetails(), workspaceID)
+	} else if id != "" {
+		tid, err = thread.Decode(id)
 		if err != nil {
 			log.Errorf("failed to decode thread id from the state: %s", err.Error())
 		}
 	}
+
+	ev := &metrics.CreateObjectEvent{
+		SetDetailsMs: time.Since(startTime).Milliseconds(),
+	}
+	ctx = context.WithValue(ctx, eventCreate, ev)
+
 	csm, err := c.CreateObjectInWorkspace(ctx, workspaceID, tid, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -155,9 +169,10 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	initCtx := &smartblock.InitContext{
 		ObjectTypeUrls: objectTypes,
 		State:          createState,
-		RelationIds:    relationIds,
+		RelationKeys:   relationKeys,
 	}
 	var sb smartblock.SmartBlock
+
 	if sb, err = c.objectFactory.InitObject(id, initCtx); err != nil {
 		return id, nil, err
 	}
@@ -214,6 +229,11 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
+
+	// TODO remove it, when schema will be refactored
+	if len(req.Source) == 0 {
+		req.Source = []string{bundle.TypeKeyPage.URL()}
+	}
 	if len(req.Source) != 0 {
 		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
 			return
@@ -241,7 +261,6 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 			}
 		}
 		tmpls = append(tmpls,
-			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
 			template.WithDataview(*blockContent, false),
 		)
 	}
@@ -251,7 +270,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, nil, nil, newState)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, nil, newState)
 }
 
 // TODO: it must be in another component
@@ -300,8 +319,13 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		details = internalflag.PutToDetails(details, internalFlags)
 	}
 
+	var templateID string
+	if v, ok := req.(block.TemplateIDGetter); ok {
+		templateID = v.GetTemplateId()
+	}
+
 	objectType, err := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	if err != nil && forcedType == "" {
+	if err != nil && forcedType == "" && templateID == "" {
 		return "", nil, fmt.Errorf("invalid type in details: %w", err)
 	}
 	if forcedType != "" {
@@ -337,9 +361,5 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
-	var templateID string
-	if v, ok := req.(block.TemplateIDGetter); ok {
-		templateID = v.GetTemplateId()
-	}
-	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateID)
+	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, templateID)
 }
