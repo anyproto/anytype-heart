@@ -239,6 +239,14 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &v)
+	case Audio:
+		var v AudioBlock
+		err := json.Unmarshal(buffer, &v)
+		if err != nil {
+			logger.With(zap.String("method", "getBlocks")).Error(err)
+			return blocks
+		}
+		blocks = append(blocks, &v)
 	case Pdf:
 		var p PdfBlock
 		err := json.Unmarshal(buffer, &p)

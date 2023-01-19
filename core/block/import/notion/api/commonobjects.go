@@ -56,7 +56,7 @@ type Link struct {
 }
 
 func (rt *RichText) BuildMarkdownFromAnnotations(from, to int32) []*model.BlockContentTextMark {
-	marks := []*model.BlockContentTextMark{}
+	var marks []*model.BlockContentTextMark
 	if rt.Annotations == nil {
 		return marks
 	}
@@ -179,7 +179,7 @@ const (
 	PinkBackGround   string = "pink_background"
 	RedBackGround    string = "red_background"
 
-	AnytypeGray    string = "gray"
+	AnytypeGray    string = "grey"
 	AnytypeOrange  string = "orange"
 	AnytypeYellow  string = "yellow"
 	AnytypeGreen   string = "lime"
