@@ -52,16 +52,20 @@ type Dataview interface {
 
 	// GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
+	GetDataview(blockID string) (*model.BlockContentDataview, error)
 
 	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
-	CreateView(ctx *session.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
+	CreateView(ctx *session.Context, blockID string,
+		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
 	AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
 	DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
-	UpdateView(ctx *session.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
+	UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
 	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
+
+	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
 func NewDataview(
@@ -85,6 +89,10 @@ type sdataview struct {
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
 	relationService relation2.Service
+}
+
+func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
+	return getDataviewBlock(s, blockID)
 }
 
 func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []string) (err error) {
@@ -174,6 +182,16 @@ func (d *sdataview) GetDataviewRelations(blockId string) ([]*model.Relation, err
 	return tb.Model().GetDataview().GetRelations(), nil
 }
 
+func (d *sdataview) GetDataview(blockID string) (*model.BlockContentDataview, error) {
+	st := d.NewState()
+	tb, err := getDataviewBlock(st, blockID)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Model().GetDataview(), nil
+}
+
 func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
@@ -194,14 +212,14 @@ func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) UpdateView(ctx *session.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
+func (d *sdataview) UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
-	dvBlock, err := getDataviewBlock(s, blockId)
+	dvBlock, err := getDataviewBlock(s, blockID)
 	if err != nil {
 		return err
 	}
 
-	if err = dvBlock.SetView(viewId, view); err != nil {
+	if err = dvBlock.SetViewFields(viewID, view); err != nil {
 		return err
 	}
 
@@ -269,7 +287,8 @@ func (d *sdataview) SetViewPosition(ctx *session.Context, blockId string, viewId
 	return d.Apply(s)
 }
 
-func (d *sdataview) CreateView(ctx *session.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
+func (d *sdataview) CreateView(ctx *session.Context, id string,
+	view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error) {
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, id)
@@ -277,7 +296,14 @@ func (d *sdataview) CreateView(ctx *session.Context, id string, view model.Block
 		return nil, err
 	}
 
-	sch, err := d.getSchema(tb)
+	if len(source) == 0 {
+		source = pbtypes.GetStringList(s.Details(), bundle.RelationKeySetOf.String())
+		if len(source) == 0 {
+			return nil, fmt.Errorf("source not found")
+		}
+	}
+
+	sch, err := d.getSchema(tb, source)
 	if err != nil {
 		return nil, err
 	}
@@ -432,8 +458,8 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 	return nil, fmt.Errorf("relation or type not found")
 }
 
-func (d *sdataview) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
-	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
+func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
+	return SchemaBySources(source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -619,7 +645,6 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 	res = model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			RelationLinks: relations,
-			Source:        source,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   bson.NewObjectId().Hex(),

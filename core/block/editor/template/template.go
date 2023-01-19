@@ -1,6 +1,7 @@
 package template
 
 import (
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -555,6 +556,27 @@ var WithDataviewRelationMigrationRelation = func(id string, source string, from 
 			}
 			if blockNeedToUpdate {
 				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
+			}
+		}
+	}
+}
+
+var WithDataviewAddIDsToFilters = func(id string) StateTransformer {
+	return func(s *state.State) {
+		b := s.Get(id)
+		if b == nil {
+			return
+		}
+		dv := b.Model().GetDataview()
+		if dv == nil {
+			return
+		}
+
+		for _, view := range dv.Views {
+			for _, f := range view.Filters {
+				if f.Id == "" {
+					f.Id = bson.NewObjectId().Hex()
+				}
 			}
 		}
 	}

@@ -229,6 +229,11 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
+
+	// TODO remove it, when schema will be refactored
+	if len(req.Source) == 0 {
+		req.Source = []string{bundle.TypeKeyPage.URL()}
+	}
 	if len(req.Source) != 0 {
 		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
 			return
@@ -256,7 +261,6 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 			}
 		}
 		tmpls = append(tmpls,
-			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
 			template.WithDataview(*blockContent, false),
 		)
 	}

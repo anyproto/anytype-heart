@@ -62,6 +62,11 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
 		setOf := dvBlock.Model().GetDataview().GetSource()
+
+		if len(pbtypes.GetStringList(p.Details(), bundle.RelationKeySetOf.String())) > 0 {
+			setOf = pbtypes.GetStringList(p.Details(), bundle.RelationKeySetOf.String())
+		}
+
 		if len(setOf) == 0 {
 			log.With("thread", p.Id()).With("sbType", p.SmartBlock.Type().String()).Errorf("dataview has an empty source")
 		} else {
@@ -94,6 +99,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		}
 		// add missing done relation
 		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))
+		templates = append(templates, template.WithDataviewAddIDsToFilters(template.DataviewBlockId))
 	}
 	templates = append(templates, template.WithTitle)
 	return smartblock.ObjectApplyTemplate(p, ctx.State, templates...)

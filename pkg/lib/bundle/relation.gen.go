@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "f5c7d5db3c6f88a59fe345425922e9e5898f4557d2cbb454e4c2e1eb5d7a120b"
+const RelationChecksum = "47980e2ed93f7ed22d3c6f22facaf03a60bc1f5aa7fbe959baf94ee4509dadc7"
 
 type RelationKey string
 
@@ -1921,7 +1921,7 @@ var (
 		},
 		RelationKeySetOf: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "Point to the object types or realtions used to aggregate the set. Empty means object of all types will be aggregated ",
 			Format:           model.RelationFormat_object,
 			Id:               "_brsetOf",
