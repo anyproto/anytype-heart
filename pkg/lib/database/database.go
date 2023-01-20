@@ -202,7 +202,7 @@ func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *tim
 				emptyLast = true
 			}
 
-			keyOrd := filter.KeyOrder{
+			keyOrd := &filter.KeyOrder{
 				Key:       s.RelationKey,
 				Type:      s.Type,
 				EmptyLast: emptyLast,
@@ -212,7 +212,7 @@ func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *tim
 			}
 
 			if s.Type == model.BlockContentDataviewSort_Custom && len(s.CustomOrder) > 0 {
-				ord = append(ord, filter.NewCustomOrder(s.RelationKey, s.CustomOrder, keyOrd))
+				ord = append(ord, filter.NewCustomOrder(s.RelationKey, s.CustomOrder, *keyOrd))
 				continue
 			}
 

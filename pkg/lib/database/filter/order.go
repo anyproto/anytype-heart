@@ -49,7 +49,7 @@ type KeyOrder struct {
 	Options        map[string]string
 }
 
-func (ko KeyOrder) Compare(a, b Getter) int {
+func (ko *KeyOrder) Compare(a, b Getter) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 
@@ -58,7 +58,7 @@ func (ko KeyOrder) Compare(a, b Getter) int {
 		bv = time_util.CutValueToDay(bv)
 	}
 
-	if true || ko.RelationFormat == model.RelationFormat_tag {
+	if ko.RelationFormat == model.RelationFormat_tag {
 		av = ko.GetOptionValue(av)
 		bv = ko.GetOptionValue(bv)
 	}
@@ -109,7 +109,7 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 	return pbtypes.String(res)
 }
 
-func (ko KeyOrder) String() (s string) {
+func (ko *KeyOrder) String() (s string) {
 	s = ko.Key
 	if ko.Type == model.BlockContentDataviewSort_Desc {
 		s += " DESC"
