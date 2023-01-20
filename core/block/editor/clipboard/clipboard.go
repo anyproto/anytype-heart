@@ -325,7 +325,11 @@ type duplicatable interface {
 	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
-func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteAny(
+	ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string,
+) (
+	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
+) {
 	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
 
 	destState := state.NewDoc("", nil).(*state.State)
@@ -390,7 +394,12 @@ func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest
 
 	destState.BlocksInit(destState)
 	state.CleanupLayouts(destState)
-	destState.Normalize(false)
+	missingRelationKeys, _ := destState.Normalize(false)
+
+	err = cb.SmartBlock.AddRelationLinks(ctx, missingRelationKeys...)
+	if err != nil {
+		return
+	}
 
 	ctrl := &pasteCtrl{s: s, ps: destState}
 	if err = ctrl.Exec(req); err != nil {

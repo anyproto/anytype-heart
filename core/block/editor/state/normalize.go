@@ -15,7 +15,7 @@ var (
 	maxChildrenThreshold = 40
 )
 
-func (s *State) Normalize(withLayouts bool) (err error) {
+func (s *State) Normalize(withLayouts bool) (missingRelationKeys []string, err error) {
 	s.removeDuplicates()
 	return s.normalize(withLayouts)
 }
@@ -24,11 +24,11 @@ type Normalizable interface {
 	Normalize(s *State) error
 }
 
-func (s *State) normalize(withLayouts bool) (err error) {
+func (s *State) normalize(withLayouts bool) (missingRelationKeys []string, err error) {
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		return true
 	}); err != nil {
-		return err
+		return nil, err
 	}
 	// remove invalid children
 	for _, b := range s.blocks {
@@ -38,7 +38,7 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	for _, b := range s.blocks {
 		if n, ok := b.(Normalizable); ok {
 			if err := n.Normalize(s); err != nil {
-				return fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
+				return nil, fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
 			}
 		}
 	}
@@ -60,8 +60,17 @@ func (s *State) normalize(withLayouts bool) (err error) {
 		}
 	}
 	if withLayouts {
-		return s.normalizeTree()
+		return nil, s.normalizeTree()
 	}
+	// collect missing relation keys to add it to state
+	for _, b := range s.blocks {
+		if r, ok := b.Model().Content.(*model.BlockContentOfRelation); ok {
+			if !s.relationLinks.Has(r.Relation.Key) {
+				missingRelationKeys = append(missingRelationKeys, r.Relation.Key)
+			}
+		}
+	}
+
 	return
 }
 

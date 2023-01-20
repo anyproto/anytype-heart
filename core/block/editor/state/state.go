@@ -403,7 +403,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	st := time.Now()
 	if !fast {
-		if err = s.normalize(withLayouts); err != nil {
+		if _, err = s.normalize(withLayouts); err != nil {
 			return
 		}
 	}
