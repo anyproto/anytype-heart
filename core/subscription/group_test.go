@@ -48,7 +48,7 @@ func TestGroupTag(t *testing.T) {
 	q := database.Query{
 	}
 
-	f, err := database.NewFilters(q, nil, time.Now().Location())
+	f, err := database.NewFilters(q, nil, nil, time.Now().Location())
 	require.NoError(t, err)
 
 	t.Run("change existing groups", func(t *testing.T) {

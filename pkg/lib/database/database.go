@@ -85,7 +85,7 @@ type Query struct {
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	qq.Limit = q.Limit
 	qq.Offset = q.Offset
-	f, err := NewFilters(q, sch, nil)
+	f, err := NewFilters(q, sch, nil, nil)
 	if err != nil {
 		return
 	}
@@ -131,7 +131,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
-func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err error) {
+func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *time.Location) (f *Filters, err error) {
 	q.Filters = injectDefaultFilters(q.Filters)
 
 	f = new(Filters)
@@ -208,6 +208,7 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 				EmptyLast: emptyLast,
 				IncludeTime: s.IncludeTime,
 				RelationFormat: s.Format,
+				Store: store,
 			}
 
 			if s.Type == model.BlockContentDataviewSort_Custom && len(s.CustomOrder) > 0 {

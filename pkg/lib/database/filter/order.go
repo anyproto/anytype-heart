@@ -1,15 +1,23 @@
 package filter
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	time_util "github.com/anytypeio/go-anytype-middleware/util/time"
 	"github.com/gogo/protobuf/types"
 	"strings"
 )
 
+var log = logging.Logger("anytype-order")
+
 type Order interface {
 	Compare(a, b Getter) int
 	String() string
+}
+
+type OptionsGetter interface {
+	GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error)
 }
 
 type SetOrder []Order
@@ -37,6 +45,8 @@ type KeyOrder struct {
 	EmptyLast      bool // consider empty strings as the last, not first
 	RelationFormat model.RelationFormat
 	IncludeTime    bool
+	Store          OptionsGetter
+	Options        map[string]string
 }
 
 func (ko KeyOrder) Compare(a, b Getter) int {
@@ -46,6 +56,11 @@ func (ko KeyOrder) Compare(a, b Getter) int {
 	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
 		av = time_util.CutValueToDay(av)
 		bv = time_util.CutValueToDay(bv)
+	}
+
+	if true || ko.RelationFormat == model.RelationFormat_tag {
+		av = ko.GetOptionValue(av)
+		bv = ko.GetOptionValue(bv)
 	}
 
 	comp := 0
@@ -68,6 +83,30 @@ func (ko KeyOrder) Compare(a, b Getter) int {
 		comp = -comp
 	}
 	return comp
+}
+
+func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
+	if ko.Options == nil {
+		ko.Options = make(map[string]string)
+	}
+
+	if len(ko.Options) == 0 &&  ko.Store != nil {
+		options, err := ko.Store.GetAggregatedOptions("tag")
+		if err != nil {
+			log.Warn("nil objectStore for getting options")
+			return pbtypes.String("")
+		}
+		for _, opt := range options {
+			ko.Options[opt.Id] = opt.Text
+		}
+	}
+
+	res := ""
+	for _, optID := range pbtypes.GetStringListValue(value) {
+		res += ko.Options[optID]
+	}
+
+	return pbtypes.String(res)
 }
 
 func (ko KeyOrder) String() (s string) {
