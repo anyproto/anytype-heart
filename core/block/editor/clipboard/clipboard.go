@@ -326,11 +326,11 @@ type duplicatable interface {
 }
 
 func (cb *clipboard) pasteAny(
-	ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string,
+	ctx *session.Context, req *pb.RpcBlockPasteRequest, groupID string,
 ) (
 	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
 ) {
-	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
+	s := cb.NewStateCtx(ctx).SetGroupId(groupID)
 
 	destState := state.NewDoc("", nil).(*state.State)
 
@@ -394,7 +394,11 @@ func (cb *clipboard) pasteAny(
 
 	destState.BlocksInit(destState)
 	state.CleanupLayouts(destState)
-	missingRelationKeys, _ := destState.Normalize(false)
+	missingRelationKeys, err := destState.Normalize(false)
+
+	if err != nil {
+		return
+	}
 
 	ctrl := &pasteCtrl{s: s, ps: destState}
 	if err = ctrl.Exec(req); err != nil {
