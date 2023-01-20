@@ -231,13 +231,12 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	var dvSchema schema.Schema
 
 	// TODO remove it, when schema will be refactored
-	if len(req.Source) == 0 {
-		req.Source = []string{bundle.TypeKeyPage.URL()}
+	source := req.Source
+	if len(source) == 0 {
+		source = []string{bundle.TypeKeyPage.URL()}
 	}
-	if len(req.Source) != 0 {
-		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
-			return
-		}
+	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, source); err != nil {
+		return
 	}
 
 	newState := state.NewDoc("", nil).NewState()
@@ -263,6 +262,11 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 		tmpls = append(tmpls,
 			template.WithDataview(*blockContent, false),
 		)
+		if len(req.Source) > 0 {
+			tmpls = append(tmpls,
+				template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(req.Source)),
+			)
+		}
 	}
 
 	if err = template.InitTemplate(newState, tmpls...); err != nil {
