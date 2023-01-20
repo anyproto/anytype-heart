@@ -101,6 +101,7 @@ type SmartBlock interface {
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
 	AddRelationLinks(ctx *session.Context, relationIds ...string) (err error)
+	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
@@ -775,6 +776,10 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 func (sb *smartBlock) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
+	return sb.AddRelationLinksToState(s, relationKeys...)
+}
+
+func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
 	if err = sb.addRelations(s, relationKeys...); err != nil {
 		return
 	}

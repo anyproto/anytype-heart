@@ -396,18 +396,20 @@ func (cb *clipboard) pasteAny(
 	state.CleanupLayouts(destState)
 	missingRelationKeys, _ := destState.Normalize(false)
 
-	err = cb.SmartBlock.AddRelationLinks(ctx, missingRelationKeys...)
-	if err != nil {
-		return
-	}
-
 	ctrl := &pasteCtrl{s: s, ps: destState}
 	if err = ctrl.Exec(req); err != nil {
 		return
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
-	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
+
+	if len(missingRelationKeys) > 0 {
+		err = cb.AddRelationLinksToState(s, missingRelationKeys...)
+	} else {
+		err = cb.Apply(s)
+	}
+
+	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 }
 
 func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
