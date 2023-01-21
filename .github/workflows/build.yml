@@ -18,7 +18,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.18.8
+          go-version: 1.18.10
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -38,7 +38,9 @@ jobs:
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64 jq FiloSottile/musl-cross/musl-cross
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
+          brew tap filosottile/musl-cross
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
@@ -72,9 +74,9 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
-          CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS" -osarch="windows/amd64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           ls -lha .
       - name: Make JS protos
         run: |
@@ -104,7 +106,7 @@ jobs:
           done
       - name: Pack server unix
         run: |
-          declare -a arr=("darwin-amd64" "darwin-arm64" "linux-amd64")
+          declare -a arr=("darwin-amd64" "darwin-arm64")
           for i in "${arr[@]}"
           do
           OSARCH=${i%.*}
@@ -149,6 +151,99 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: ${{ contains(github.ref, '-rc') }}
+          fail_on_unmatched_files: true
+          files: '.release/*'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build_linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.18.10
+      - name: Setup GO
+        run: |
+          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
+          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
+          echo $(go env GOPATH)/bin >> $GITHUB_PATH
+      - name: Install patched gox
+        run: |
+          mkdir -p $GOPATH/src/github.com/mitchellh
+          cd $GOPATH/src/github.com/mitchellh
+          git clone https://github.com/aslakhellesoy/gox
+          cd gox
+          git fetch
+          git checkout db6184738b77fbd5089e5fa1112177f391c91b24
+          go install github.com/mitchellh/gox
+      - name: Apt install and node deps
+        run: |
+          sudo apt update
+          sudo apt install -y protobuf-compiler libprotoc-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          npm i -g node-gyp
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set env vars
+        run: |
+          export COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
+          export GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
+          export DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
+          export GIT_BRANCH=$(git branch --show-current)
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
+          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
+      - name: install protoc
+        run: |
+          HAS_SYSTEM_PROTOBUF=false make setup-protoc
+      - name: setup go
+        run: |
+          make setup-go
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
+      - name: Go mod download
+        run: |
+          go mod download
+      - name: Cross-compile library for linux amd64/arm64
+        run: |
+          echo $FLAGS
+          mkdir -p .release
+          gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CC=aarch64-linux-gnu-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          make protos-server
+      - name: Make JS protos
+        run: |
+          make protos-js
+          mv dist/js/pb protobuf
+          mkdir -p protobuf/protos
+          cp pb/protos/*.proto ./protobuf/protos
+          cp pb/protos/service/*.proto ./protobuf/protos
+          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+      - name: Upload protobuf artifact for linux build
+        uses: actions/upload-artifact@v2
+        with:
+          name: libs
+          path: |
+            protobuf
+          if-no-files-found: error
+          retention-days: 1
+      - name: Pack server unix
+        run: |
+          declare -a arr=("linux-amd64" "linux-arm64")
+          for i in "${arr[@]}"
+          do
+          OSARCH=${i%.*}
+          cp ./${i}* ./grpc-server
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf
+          mv js_${VERSION}_${OSARCH}.tar.gz .release/
+          done
       - name: Release
         uses: softprops/action-gh-release@v1
         with:

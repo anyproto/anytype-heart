@@ -106,6 +106,22 @@ func Test_BuildMarkdownFromAnnotationsColor(t *testing.T) {
 	assert.Equal(t, marks[0].Param, "red")
 }
 
+func Test_BuildMarkdownFromAnnotationsColorGrey(t *testing.T) {
+	rt := &RichText{
+		Annotations: &Annotations{
+			Bold:          false,
+			Italic:        false,
+			Strikethrough: false,
+			Underline:     false,
+			Code:          false,
+			Color:         "gray",
+		},
+	}
+	marks := rt.BuildMarkdownFromAnnotations(0, 5)
+	assert.Len(t, marks, 1)
+	assert.Equal(t, marks[0].Param, "grey")
+}
+
 func Test_GetFileBlockImage(t *testing.T) {
 	f := &FileObject{
 		Name: "file",

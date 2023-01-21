@@ -57,3 +57,16 @@ func (p *VideoBlock) GetBlocks(*MapRequest) *MapResponse {
 		BlockIDs: []string{id},
 	}
 }
+
+type AudioBlock struct {
+	Block
+	File api.FileObject `json:"audio"`
+}
+
+func (p *AudioBlock) GetBlocks(*MapRequest) *MapResponse {
+	block, id := p.File.GetFileBlock(model.BlockContentFile_Audio)
+	return &MapResponse{
+		Blocks:   []*model.Block{block},
+		BlockIDs: []string{id},
+	}
+}

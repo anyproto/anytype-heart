@@ -1,7 +1,6 @@
 package clipboard
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -29,10 +28,8 @@ import (
 )
 
 var (
-	ErrAllSlotsEmpty        = errors.New("all slots are empty")
-	ErrTitlePasteRestricted = errors.New("paste to title restricted")
-	ErrOutOfRange           = errors.New("out of range")
-	log                     = logging.Logger("anytype-clipboard")
+	ErrAllSlotsEmpty = errors.New("all slots are empty")
+	log              = logging.Logger("anytype-clipboard")
 )
 
 type Clipboard interface {
@@ -234,28 +231,6 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 		return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block")
 	}
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
-}
-
-func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[string][]byte, err error) {
-	for _, b := range blocks {
-		if file := b.GetFile(); file != nil {
-			if file.Type == model.BlockContentFile_Image {
-				fh, err := cb.anytype.FileByHash(context.TODO(), file.Hash)
-				if err != nil {
-					return images, err
-				}
-
-				reader, err := fh.Reader()
-				if err != nil {
-					return images, err
-				}
-
-				reader.Read(images[file.Hash])
-			}
-		}
-	}
-
-	return images, nil
 }
 
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {

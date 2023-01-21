@@ -25,7 +25,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -66,17 +65,11 @@ const (
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
-	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
-
-var (
-	blockCacheTTL       = time.Minute
-	blockCleanupTimeout = time.Second * 30
-)
 
 var (
 	// quick fix for limiting file upload goroutines
@@ -95,7 +88,12 @@ type SmartblockOpener interface {
 
 func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 	var ob = openedBlock{SmartBlock: sb}
-	if sb.Type() != model.SmartBlockType_Breadcrumbs {
+	if sb.Type() != model.SmartBlockType_Breadcrumbs &&
+		sb.Type() != model.SmartBlockType_SubObject &&
+		sb.Type() != model.SmartBlockType_Date &&
+		sb.Type() != model.SmartBlockType_BundledRelation &&
+		sb.Type() != model.SmartBlockType_BundledObjectType &&
+		sb.Type() != model.SmartBlockType_BundledTemplate {
 		// decode and store corresponding threadID for appropriate block
 		if tid, err := thread.Decode(sb.Id()); err != nil {
 			log.With("thread", sb.Id()).Warnf("can't restore thread ID: %v", err)
@@ -116,7 +114,7 @@ func New() *Service {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, objectID string)
 
 	CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
@@ -642,6 +640,14 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
 }
 
+func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		st := b.NewStateCtx(ctx)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		return b.Apply(st, smartblock.NoRestrictions)
+	})
+}
+
 func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil
@@ -1027,21 +1033,6 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 		return apply(bb)
 	}
 	return fmt.Errorf("undo operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoImport(id string, apply func(b _import.Import) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if bb, ok := sb.(_import.Import); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-
-	return fmt.Errorf("import operation not available for this block type: %T", sb)
 }
 
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {

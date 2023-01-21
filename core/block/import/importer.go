@@ -1,14 +1,15 @@
 package importer
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -45,10 +46,10 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[converter.Name()] = converter
 	}
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
-	ou := NewObjectUpdater(i.s, core, factory)
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	objCreator := a.MustComponent(object.CName).(objectCreator)
 	relationCreator := NewRelationCreator(i.s, objCreator, fs, core)
+	ou := NewObjectUpdater(i.s, core, factory, relationCreator)
 	i.oc = NewCreator(i.s, objCreator, ou, factory, relationCreator)
 	return nil
 }
@@ -115,6 +116,13 @@ func (i *Import) ListImports(_ *session.Context,
 		idx++
 	}
 	return res, nil
+}
+
+// ValidateNotionToken return all registered import types
+func (i *Import) ValidateNotionToken(ctx context.Context,
+	req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
+	tv := notion.NewTokenValidator()
+	return tv.Validate(ctx, req.GetToken())
 }
 
 func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {

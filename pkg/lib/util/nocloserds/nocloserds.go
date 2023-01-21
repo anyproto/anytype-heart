@@ -33,10 +33,6 @@ func NewTxnBatch(ds DatastoreTxnBatching) DatastoreTxnBatching {
 	return &NoCloserDatastoreTxnBatching{ds}
 }
 
-func NewTxnExtended(ds keytransform.TxnDatastoreExtended) keytransform.TxnDatastoreExtended {
-	return &NoCloserDatastoreExtended{ds}
-}
-
 func (ncd NoCloserDatastoreBatching) Close() error {
 	return nil
 }

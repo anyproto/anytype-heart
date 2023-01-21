@@ -1521,7 +1521,7 @@
       "objectType"
     ],
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "status",

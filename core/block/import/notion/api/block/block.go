@@ -27,6 +27,7 @@ const (
 	Embed           Type = "embed"
 	Image           Type = "image"
 	Video           Type = "video"
+	Audio           Type = "audio"
 	File            Type = "file"
 	Pdf             Type = "pdf"
 	Bookmark        Type = "bookmark"

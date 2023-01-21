@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
@@ -29,7 +28,6 @@ type Page struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 
-	_import.Import
 	dataview.Dataview
 	table.TableEditor
 
@@ -38,8 +36,6 @@ type Page struct {
 
 func NewPage(
 	objectStore objectstore.ObjectStore,
-	importerCtrl _import.Services,
-	objectCreator _import.ObjectCreator,
 	anytype core.Service,
 	fileBlockService file.BlockService,
 	bookmarkBlockService bookmark.BlockService,
@@ -71,12 +67,6 @@ func NewPage(
 			bookmarkBlockService,
 			bookmarkService,
 			objectStore,
-		),
-		Import: _import.NewImport(
-			sb,
-			importerCtrl,
-			objectCreator,
-			anytype,
 		),
 		Dataview: dataview.NewDataview(
 			sb,

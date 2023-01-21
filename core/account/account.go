@@ -5,12 +5,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 const CName = "account"
-
-var log = logging.Logger("anytype-account")
 
 type Service interface {
 	app.Component

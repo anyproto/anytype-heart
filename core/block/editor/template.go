@@ -5,7 +5,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -23,8 +22,6 @@ type Template struct {
 
 func NewTemplate(
 	objectStore objectstore.ObjectStore,
-	importerCtrl _import.Services,
-	objectCreator _import.ObjectCreator,
 	anytype core.Service,
 	fileBlockService file.BlockService,
 	bookmarkBlockService bookmark.BlockService,
@@ -33,8 +30,6 @@ func NewTemplate(
 ) *Template {
 	return &Template{Page: NewPage(
 		objectStore,
-		importerCtrl,
-		objectCreator,
 		anytype,
 		fileBlockService,
 		bookmarkBlockService,

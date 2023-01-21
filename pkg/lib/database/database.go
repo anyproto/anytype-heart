@@ -206,6 +206,8 @@ func NewFilters(q Query, sch schema.Schema, loc *time.Location) (f *Filters, err
 				Key:       s.RelationKey,
 				Type:      s.Type,
 				EmptyLast: emptyLast,
+				IncludeTime: s.IncludeTime,
+				RelationFormat: s.Format,
 			}
 
 			if s.Type == model.BlockContentDataviewSort_Custom && len(s.CustomOrder) > 0 {
