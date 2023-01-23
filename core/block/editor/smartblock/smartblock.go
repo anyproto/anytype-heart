@@ -100,6 +100,7 @@ type SmartBlock interface {
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
 	AddRelationLinks(ctx *session.Context, relationIds ...string) (err error)
+	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
@@ -255,7 +256,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			return err
 		}
 	}
-	if err = sb.addRelations(ctx.State, ctx.RelationKeys...); err != nil {
+	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return
 	}
 
@@ -743,13 +744,13 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 func (sb *smartBlock) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
-	if err = sb.addRelations(s, relationKeys...); err != nil {
+	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
 		return
 	}
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) addRelations(s *state.State, relationKeys ...string) (err error) {
+func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
 	if len(relationKeys) == 0 {
 		return
 	}
