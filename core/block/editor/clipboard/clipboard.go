@@ -408,12 +408,12 @@ func (cb *clipboard) pasteAny(
 	uploadArr = ctrl.uploadArr
 
 	if len(missingRelationKeys) > 0 {
-		err = cb.AddRelationLinksToState(s, missingRelationKeys...)
-	} else {
-		err = cb.Apply(s)
+		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
+			return
+		}
 	}
 
-	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
+	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
 }
 
 func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {

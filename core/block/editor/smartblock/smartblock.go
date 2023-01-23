@@ -257,7 +257,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			return err
 		}
 	}
-	if err = sb.addRelations(ctx.State, ctx.RelationIds...); err != nil {
+	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationIds...); err != nil {
 		return
 	}
 
@@ -776,17 +776,13 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 func (sb *smartBlock) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
-	return sb.AddRelationLinksToState(s, relationKeys...)
-}
-
-func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
-	if err = sb.addRelations(s, relationKeys...); err != nil {
+	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
 		return
 	}
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) addRelations(s *state.State, relationKeys ...string) (err error) {
+func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
 	if len(relationKeys) == 0 {
 		return
 	}
