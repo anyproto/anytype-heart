@@ -90,7 +90,7 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 		ko.Options = make(map[string]string)
 	}
 
-	if len(ko.Options) == 0 &&  ko.Store != nil {
+	if len(ko.Options) == 0 && ko.Store != nil {
 		options, err := ko.Store.GetAggregatedOptions("tag")
 		if err != nil {
 			log.Warn("nil objectStore for getting options")
