@@ -282,7 +282,8 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		}
 		s.subscriptions[sub.id] = sub
 
-		records, err := s.objectStore.GetAggregatedOptions(bundle.RelationKeyTag.String())
+		// add empty groups with single tags
+		records, err := s.objectStore.GetAggregatedOptions(req.RelationKey)
 		if err != nil {
 			return nil, fmt.Errorf("fail to get tags records: %v", err)
 		}
