@@ -32,7 +32,7 @@ func tagEntriesToGroups(entries []*entry) []*model.BlockContentDataviewGroup {
 	for _, e := range entries {
 		recs = append(recs, database.Record{Details: e.data})
 	}
-	tags := kanban.GroupTag{Records: recs}
+	tags := kanban.GroupTag{Key: bundle.RelationKeyTag.String(), Records: recs}
 	groups, err := tags.MakeDataViewGroups()
 	if err != nil {
 		panic(err)
