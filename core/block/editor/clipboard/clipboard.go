@@ -394,7 +394,19 @@ func (cb *clipboard) pasteAny(
 
 	destState.BlocksInit(destState)
 	state.CleanupLayouts(destState)
-	missingRelationKeys, err := destState.Normalize(false)
+	err = destState.Normalize(false)
+
+	relationLinks := destState.GetRelationLinks()
+	var missingRelationKeys []string
+
+	// collect missing relation keys to add it to state
+	for _, b := range s.Blocks() {
+		if r, ok := b.Content.(*model.BlockContentOfRelation); ok {
+			if !relationLinks.Has(r.Relation.Key) {
+				missingRelationKeys = append(missingRelationKeys, r.Relation.Key)
+			}
+		}
+	}
 
 	if err != nil {
 		return

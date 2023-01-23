@@ -330,7 +330,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	st.InjectDerivedDetails()
 
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
-	if _, err = st.Normalize(false); err != nil {
+	if err = st.Normalize(false); err != nil {
 		return
 	}
 

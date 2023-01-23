@@ -256,7 +256,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			return err
 		}
 	}
-	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationIds...); err != nil {
+	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return
 	}
 
