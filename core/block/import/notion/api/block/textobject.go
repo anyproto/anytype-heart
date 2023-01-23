@@ -24,7 +24,7 @@ type TextObject struct {
 }
 
 func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds []string, req *MapRequest) *MapResponse {
-	marks := []*model.BlockContentTextMark{}
+	var marks []*model.BlockContentTextMark
 	id := bson.NewObjectId().Hex()
 	allBlocks := make([]*model.Block, 0)
 	allIds := make([]string, 0)
@@ -84,7 +84,7 @@ func (t *TextObject) handleTextType(rt api.RichText,
 	text *strings.Builder,
 	notionPageIdsToAnytype,
 	notionDatabaseIdsToAnytype map[string]string) []*model.BlockContentTextMark {
-	marks := []*model.BlockContentTextMark{}
+	var marks []*model.BlockContentTextMark
 	from := textUtil.UTF16RuneCountString(text.String())
 	if rt.Text != nil && rt.Text.Link != nil && rt.Text.Link.URL != "" {
 		text.WriteString(rt.Text.Content)
@@ -148,7 +148,11 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 		return nil
 	}
 	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(databaseNameToID[rt.Mention.Database.ID])
+	if p, ok := databaseNameToID[rt.Mention.Database.ID]; ok {
+		text.WriteString(p)
+	} else {
+		text.WriteString(notFoundPageMessage)
+	}
 	to := textUtil.UTF16RuneCountString(text.String())
 	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	marks = append(marks, &model.BlockContentTextMark{
@@ -169,7 +173,11 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 		return nil
 	}
 	from := textUtil.UTF16RuneCountString(text.String())
-	text.WriteString(pageNameToID[rt.Mention.Page.ID])
+	if p, ok := pageNameToID[rt.Mention.Page.ID]; ok {
+		text.WriteString(p)
+	} else {
+		text.WriteString(notFoundPageMessage)
+	}
 	to := textUtil.UTF16RuneCountString(text.String())
 	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	marks = append(marks, &model.BlockContentTextMark{

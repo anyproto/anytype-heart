@@ -1,6 +1,7 @@
 package template
 
 import (
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -560,9 +561,44 @@ var WithDataviewRelationMigrationRelation = func(id string, source string, from 
 	}
 }
 
+var WithDataviewAddIDsToFilters = func(id string) StateTransformer {
+	return func(s *state.State) {
+		b := s.Get(id)
+		if b == nil {
+			return
+		}
+		dv := b.Model().GetDataview()
+		if dv == nil {
+			return
+		}
+
+		for _, view := range dv.Views {
+			for _, f := range view.Filters {
+				if f.Id == "" {
+					f.Id = bson.NewObjectId().Hex()
+				}
+			}
+		}
+	}
+}
+
 var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
+		found := false
+		for _, r := range bundle.SystemRelations {
+			if r.String() == key.String() {
+				found = true
+				break
+			}
+		}
 		rel := bundle.MustGetRelation(key)
+		if rel == nil {
+			return
+		}
+		if !found {
+			log.Errorf("WithDataviewRequiredRelation got not system relation %s; ignore", key)
+			return
+		}
 		b := s.Get(id)
 		if b == nil {
 			return
@@ -576,10 +612,11 @@ var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) State
 			if dv == nil {
 				return
 			}
-			if exRel := pbtypes.GetRelation(dv.Relations, key.String()); exRel == nil {
-				dv.Relations = append(dv.Relations, rel)
+			if slice.FindPos(pbtypes.GetRelationListKeys(dv.RelationLinks), key.String()) == -1 {
+				dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{Key: key.String(), Format: rel.Format})
 				blockNeedToUpdate = true
 			}
+
 			for i, view := range dv.Views {
 				if view.Relations == nil {
 					continue
@@ -597,7 +634,6 @@ var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) State
 				}
 			}
 			if blockNeedToUpdate {
-				log.Errorf("add missing done relation for set")
 				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
 			}
 		}
@@ -619,12 +655,12 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) ||
 					forceViews && !pbtypes.DataviewViewsEqualSorted(dvBlock.Model().GetDataview().Views, dataview.Dataview.Views) {
 
-					log.With("thread", s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",
-						len(dvBlock.Model().GetDataview().Relations) == 0,
-						!slice.UnsortedEquals(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source),
-						len(dvBlock.Model().GetDataview().Views) == 0,
-						forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
-							forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations))
+					/* log.With("thread", s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",
+					len(dvBlock.Model().GetDataview().Relations) == 0,
+					!slice.UnsortedEquals(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source),
+					len(dvBlock.Model().GetDataview().Views) == 0,
+					forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
+						forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations)) */
 					blockNeedToUpdate = true
 					return false
 				}

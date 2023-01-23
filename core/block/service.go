@@ -88,7 +88,12 @@ type SmartblockOpener interface {
 
 func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 	var ob = openedBlock{SmartBlock: sb}
-	if sb.Type() != model.SmartBlockType_Breadcrumbs {
+	if sb.Type() != model.SmartBlockType_Breadcrumbs &&
+		sb.Type() != model.SmartBlockType_SubObject &&
+		sb.Type() != model.SmartBlockType_Date &&
+		sb.Type() != model.SmartBlockType_BundledRelation &&
+		sb.Type() != model.SmartBlockType_BundledObjectType &&
+		sb.Type() != model.SmartBlockType_BundledTemplate {
 		// decode and store corresponding threadID for appropriate block
 		if tid, err := thread.Decode(sb.Id()); err != nil {
 			log.With("thread", sb.Id()).Warnf("can't restore thread ID: %v", err)
@@ -109,7 +114,7 @@ func New() *Service {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, objectID string)
 
 	CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
@@ -633,6 +638,14 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 		return err
 	}
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
+}
+
+func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		st := b.NewStateCtx(ctx)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		return b.Apply(st, smartblock.NoRestrictions)
+	})
 }
 
 func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {

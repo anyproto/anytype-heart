@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -25,6 +26,7 @@ type Profile struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
+	table.TableEditor
 
 	sendEvent func(e *pb.Event)
 }
@@ -64,6 +66,7 @@ func NewProfile(
 			bookmarkService,
 			objectStore,
 		),
+		TableEditor: table.NewEditor(sb),
 	}
 }
 

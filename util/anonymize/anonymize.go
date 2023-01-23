@@ -46,6 +46,7 @@ func ChangeContent(chc *pb.ChangeContent) (res *pb.ChangeContent) {
 	resB, _ := chc.Marshal()
 	res = &pb.ChangeContent{}
 	res.Unmarshal(resB)
+
 	switch v := res.Value.(type) {
 	case *pb.ChangeContentValueOfBlockCreate:
 		for i, b := range v.BlockCreate.Blocks {
@@ -65,8 +66,19 @@ func ChangeContent(chc *pb.ChangeContent) (res *pb.ChangeContent) {
 	case *pb.ChangeContentValueOfRelationRemove:
 	case *pb.ChangeContentValueOfObjectTypeAdd:
 	case *pb.ChangeContentValueOfObjectTypeRemove:
+	case *pb.ChangeContentValueOfStoreKeySet:
+		v.StoreKeySet.Value = StructValue(v.StoreKeySet.Value)
+	case *pb.ChangeContentValueOfStoreKeyUnset:
 	}
 	return
+}
+
+func StringListValue(list []string) []string {
+	anonymizeList := make([]string, 0, len(list))
+	for _, s := range list {
+		anonymizeList = append(anonymizeList, Text(s))
+	}
+	return anonymizeList
 }
 
 func Event(e *pb.EventMessage) (res *pb.EventMessage) {
@@ -148,6 +160,9 @@ func Struct(in *types.Struct) (res *types.Struct) {
 }
 
 func StructValue(in *types.Value) (res *types.Value) {
+	if in == nil {
+		return
+	}
 	res = pbtypes.CopyVal(in)
 	switch val := res.Kind.(type) {
 	case *types.Value_StringValue:
