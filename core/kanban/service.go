@@ -17,7 +17,7 @@ const (
 )
 
 func New() Service {
-	return &service{groupColumns: make(map[model.RelationFormat]func(key string)Grouper)}
+	return &service{groupColumns: make(map[model.RelationFormat]func(key string) Grouper)}
 }
 
 type Grouper interface {

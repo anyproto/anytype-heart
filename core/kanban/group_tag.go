@@ -13,8 +13,8 @@ import (
 )
 
 type GroupTag struct {
-	Key string
-	store objectstore.ObjectStore
+	Key     string
+	store   objectstore.ObjectStore
 	Records []database.Record
 }
 

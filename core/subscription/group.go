@@ -79,7 +79,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 			}
 		}
 
-		tag := kanban.GroupTag{Records: records}
+		tag := kanban.GroupTag{Key: gs.relKey, Records: records}
 
 		newGroups, err := tag.MakeDataViewGroups()
 		if err != nil {

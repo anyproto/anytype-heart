@@ -9,7 +9,6 @@ import (
 )
 
 type GroupStatus struct {
-	key     string
 	store   objectstore.ObjectStore
 	Options []*model.RelationOption
 }
