@@ -394,7 +394,9 @@ func (cb *clipboard) pasteAny(
 
 	destState.BlocksInit(destState)
 	state.CleanupLayouts(destState)
-	err = destState.Normalize(false)
+	if err = destState.Normalize(false); err != nil {
+		return
+	}
 
 	relationLinks := destState.GetRelationLinks()
 	var missingRelationKeys []string
@@ -406,10 +408,6 @@ func (cb *clipboard) pasteAny(
 				missingRelationKeys = append(missingRelationKeys, r.Relation.Key)
 			}
 		}
-	}
-
-	if err != nil {
-		return
 	}
 
 	ctrl := &pasteCtrl{s: s, ps: destState}
