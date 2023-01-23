@@ -403,9 +403,9 @@ func (cb *clipboard) pasteAny(
 
 	// collect missing relation keys to add it to state
 	for _, b := range s.Blocks() {
-		if r, ok := b.Content.(*model.BlockContentOfRelation); ok {
-			if !relationLinks.Has(r.Relation.Key) {
-				missingRelationKeys = append(missingRelationKeys, r.Relation.Key)
+		if r := b.GetRelation(); r != nil {
+			if !relationLinks.Has(r.Key) {
+				missingRelationKeys = append(missingRelationKeys, r.Key)
 			}
 		}
 	}
