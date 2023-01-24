@@ -339,29 +339,29 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 	var sbType = coresb.SmartBlockTypePage
 
 	switch objectType {
-	case bundle.TypeKeyBookmark.String():
+	case bundle.TypeKeyBookmark.URL():
 		return c.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
-	case bundle.TypeKeySet.String():
+	case bundle.TypeKeySet.URL():
 		return c.CreateSet(&pb.RpcObjectCreateSetRequest{
 			Details:       details,
 			InternalFlags: internalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 		})
-	case bundle.TypeKeyObjectType.String():
+	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelation.String():
+	case bundle.TypeKeyRelation.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelationOption.String():
+	case bundle.TypeKeyRelationOption.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyTemplate.String():
+	case bundle.TypeKeyTemplate.URL():
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
