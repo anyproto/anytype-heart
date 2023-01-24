@@ -1,5 +1,8 @@
 package service
 
+// #cgo LDFLAGS: -static-libstdc++
+import "C"
+
 import (
 	ma "github.com/multiformats/go-multiaddr"
 )
