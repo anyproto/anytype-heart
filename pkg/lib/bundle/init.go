@@ -323,7 +323,7 @@ func TypeKeyFromUrl(url string) (TypeKey, error) {
 		return TypeKey(strings.TrimPrefix(url, addr.ObjectTypeKeyToIdPrefix)), nil
 	}
 
-	return TypeKey(url), nil
+	return "", fmt.Errorf("invalid type url: no prefix found")
 }
 
 func FilterRelationKeys(keys []RelationKey, cond func(RelationKey) bool) []RelationKey {
