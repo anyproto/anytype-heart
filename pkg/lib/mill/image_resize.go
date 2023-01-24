@@ -75,6 +75,7 @@ func (m *ImageResize) AcceptMedia(media string) error {
 		"image/png",
 		"image/gif",
 		"image/x-icon",
+		"image/webp",
 	}, media)
 }
 
