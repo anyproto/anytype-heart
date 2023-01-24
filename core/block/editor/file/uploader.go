@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
@@ -341,7 +342,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 
 	if u.fileType == model.BlockContentFile_Image {
 		im, e := u.anytype.ImageAdd(ctx, opts...)
-		if e == image.ErrFormat {
+		if e == image.ErrFormat || e == mill.ErrWEBPNotSupported {
 			log.Infof("can't add file '%s' as image: add as file", u.name)
 			e = nil
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)

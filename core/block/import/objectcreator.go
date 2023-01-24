@@ -25,7 +25,7 @@ import (
 )
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
 	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
@@ -113,7 +113,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}()
 
-	newID, details, err := oc.objCreator.CreateSmartBlockFromState(context.TODO(), sbType, nil, nil, st)
+	newID, details, err := oc.objCreator.CreateSmartBlockFromState(context.TODO(), sbType, nil, st)
 	if err != nil {
 		return nil, fmt.Errorf("create object '%s'", st.RootId())
 	}

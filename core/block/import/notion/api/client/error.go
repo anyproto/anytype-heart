@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
@@ -13,7 +12,7 @@ type NotionErrorResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-// and creates error based on NotionErrorResponse
+// TransformHTTPCodeToError creates error based on NotionErrorResponse
 func TransformHTTPCodeToError(response []byte) error {
 	var notionErr NotionErrorResponse
 	if err := json.Unmarshal(response, &notionErr); err != nil {

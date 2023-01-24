@@ -187,8 +187,19 @@ func (t *ToDoBlock) GetBlocks(req *MapRequest) *MapResponse {
 		childResp = mapper.MapChildren(req)
 	}
 	resp := t.ToDo.GetTextBlocks(model.BlockContentText_Checkbox, childResp.BlockIDs, req)
+	t.setChecked(resp)
 	resp.Merge(childResp)
 	return resp
+}
+
+func (t *ToDoBlock) setChecked(resp *MapResponse) {
+	for _, block := range resp.Blocks {
+		if c, ok := block.Content.(*model.BlockContentOfText); ok {
+			if c.Text != nil {
+				c.Text.Checked = t.ToDo.Checked
+			}
+		}
+	}
 }
 
 func (t *ToDoBlock) HasChild() bool {

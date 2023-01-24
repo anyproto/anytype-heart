@@ -72,7 +72,6 @@ func New() *Service {
 	return &Service{}
 }
 
-var ErrMissingMetaLink = fmt.Errorf("meta link not in node")
 var ErrMissingContentLink = fmt.Errorf("content link not in node")
 
 const MetaLinkName = "meta"

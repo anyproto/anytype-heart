@@ -63,10 +63,19 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 	}
 	b.log.Printf("block_logs.json wrote")
 
+	changes, err := b.getChangesFromLogs(logs)
+	if err != nil {
+		b.log.Printf("get changes: %v", err)
+		return
+	}
 	// write changes
 	st := time.Now()
 	b.log.Printf("write changes...")
-	b.writeChanges(logs)
+	err = b.writeChanges(changes)
+	if err != nil {
+		b.log.Printf("writeChanges: %v", err)
+		return
+	}
 	b.log.Printf("wrote %d changes for a %v", len(b.changes), time.Since(st))
 
 	b.log.Printf("write localstore data...")
@@ -104,7 +113,7 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 	return
 }
 
-func (b *treeBuilder) writeChanges(logs []core.SmartblockLog) (err error) {
+func (b *treeBuilder) getChangesFromLogs(logs []core.SmartblockLog) (changes []*change.Change, err error) {
 	b.changes = make(map[string]struct{})
 	var q1, buf []string
 	for _, l := range logs {
@@ -116,29 +125,21 @@ func (b *treeBuilder) writeChanges(logs []core.SmartblockLog) (err error) {
 	for len(q1) > 0 {
 		buf = buf[:0]
 		for _, id := range q1 {
-			buf = append(buf, b.writeChange(id)...)
+			ch, nextIDs := b.getChange(id)
+			if ch != nil {
+				changes = append(changes, ch)
+			}
+			buf = append(buf, nextIDs...)
 		}
 		q1, buf = buf, q1
 	}
 	return
 }
 
-func createFileWithDateInZip(zw *zip.Writer, name string, modified time.Time) (io.Writer, error) {
-	header := &zip.FileHeader{
-		Name:     name,
-		Method:   zip.Deflate,
-		Modified: modified,
-	}
-
-	return zw.CreateHeader(header)
-}
-
-func (b *treeBuilder) writeChange(id string) (nextIds []string) {
+func (b *treeBuilder) getChange(id string) (ch *change.Change, nextIds []string) {
 	if _, ok := b.changes[id]; ok {
 		return
 	}
-	b.log.Printf("write change: %v", id)
-	st := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	rec, err := b.b.GetRecord(ctx, id)
@@ -150,7 +151,7 @@ func (b *treeBuilder) writeChange(id string) (nextIds []string) {
 	if err = rec.Unmarshal(chp); err != nil {
 		return
 	}
-	ch := &change.Change{
+	ch = &change.Change{
 		Id:      id,
 		Account: rec.AccountID,
 		Device:  rec.LogID,
@@ -160,23 +161,31 @@ func (b *treeBuilder) writeChange(id string) (nextIds []string) {
 	} else {
 		ch.Change = chp
 	}
-	chw, err := b.zw.CreateHeader(&zip.FileHeader{
-		Name:     id + ".json",
-		Method:   zip.Deflate,
-		Modified: time.Unix(ch.Timestamp, 0),
-	})
-
-	if err != nil {
-		b.log.Printf("create file in zip error: %v", err)
-		return
-	}
-	enc := json.NewEncoder(chw)
-	enc.SetIndent("", "\t")
-	if err = enc.Encode(ch); err != nil {
-		b.log.Printf("can't write json: %v", err)
-		return
-	}
 	b.changes[id] = struct{}{}
-	b.log.Printf("%v wrote for a %v", id, time.Since(st))
-	return chp.PreviousIds
+	return ch, chp.PreviousIds
+}
+
+func (b *treeBuilder) writeChanges(changes []*change.Change) error {
+	for _, ch := range changes {
+		st := time.Now()
+		chw, err := b.zw.CreateHeader(&zip.FileHeader{
+			Name:     ch.Id + ".json",
+			Method:   zip.Deflate,
+			Modified: time.Unix(ch.Timestamp, 0),
+		})
+
+		if err != nil {
+			b.log.Printf("create file in zip error: %v", err)
+			return err
+		}
+		enc := json.NewEncoder(chw)
+		enc.SetIndent("", "\t")
+		if err = enc.Encode(ch); err != nil {
+			b.log.Printf("can't write json: %v", err)
+			return err
+		}
+		b.changes[ch.Id] = struct{}{}
+		b.log.Printf("%v wrote for a %v", ch.Id, time.Since(st))
+	}
+	return nil
 }

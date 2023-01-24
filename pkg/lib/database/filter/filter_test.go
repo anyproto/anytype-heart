@@ -3,11 +3,12 @@ package filter
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type testGetter map[string]*types.Value
@@ -227,6 +228,22 @@ func TestAllIn_FilterObject(t *testing.T) {
 		g := testGetter{"k": pbtypes.StringList([]string{"2", "3", "4"})}
 		assert.False(t, allIn.FilterObject(g))
 	})
+
+	t.Run("ok string in Object", func(t *testing.T) {
+		allIn := AllIn{Key: "k", Value: pbtypes.StringList([]string{"1"}).GetListValue()}
+		g := testGetter{"k": pbtypes.String("1")}
+		assert.True(t, allIn.FilterObject(g))
+	})
+
+	t.Run("ok string in Filter", func(t *testing.T) {
+		v, err := pbtypes.ValueListWrapper(pbtypes.String("1"))
+		assert.NoError(t, err)
+
+		allIn := AllIn{Key: "k", Value: v}
+
+		g := testGetter{"k": pbtypes.StringList([]string{"1", "2", "3"})}
+		assert.True(t, allIn.FilterObject(g))
+	})
 }
 
 func TestMakeAndFilter(t *testing.T) {
@@ -313,9 +330,9 @@ func TestMakeAndFilter(t *testing.T) {
 			model.BlockContentDataviewFilter_NotAllIn,
 		} {
 			_, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
-				{Condition: cond, Value: pbtypes.String("not list")},
+				{Condition: cond, Value: pbtypes.Null()},
 			})
-			assert.Equal(t, ErrValueMustBeList, err)
+			assert.Equal(t, ErrValueMustBeListSupporting, err)
 		}
 
 	})

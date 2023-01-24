@@ -285,7 +285,11 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	case collectionKeyObjectTypes:
 		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)
 	default:
-		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService)
+		ot, ok := collectionKeyToObjectType(collection)
+		if !ok {
+			return fmt.Errorf("unknown collection '%s'", collection)
+		}
+		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService, ot)
 	}
 
 	var fullId string

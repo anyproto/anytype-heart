@@ -81,6 +81,30 @@ func Test_GetTextBlocksTextPageMention(t *testing.T) {
 	assert.Equal(t, bl.Blocks[0].GetText().Text, "Page")
 }
 
+func Test_GetTextBlocksTextPageMentionNotFound(t *testing.T) {
+	to := &TextObject{
+		RichText: []api.RichText{
+			{
+				Type: api.Mention,
+				Mention: &api.MentionObject{
+					Type: api.Page,
+					Page: &api.PageMention{
+						ID: "notionID",
+					},
+				},
+			},
+		},
+	}
+
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+		NotionPageIdsToAnytype: map[string]string{},
+		PageNameToID:           map[string]string{},
+	})
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, notFoundPageMessage)
+}
+
 func Test_GetTextBlocksDatabaseMention(t *testing.T) {
 	to := &TextObject{
 		RichText: []api.RichText{
@@ -97,14 +121,12 @@ func Test_GetTextBlocksDatabaseMention(t *testing.T) {
 	}
 
 	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
-		NotionDatabaseIdsToAnytype: map[string]string{"notionID": "anytypeID"},
-		DatabaseNameToID:           map[string]string{"notionID": "Database"},
+		NotionDatabaseIdsToAnytype: map[string]string{},
+		DatabaseNameToID:           map[string]string{},
 	})
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
-	assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Mention)
-	assert.Equal(t, bl.Blocks[0].GetText().Text, "Database")
+	assert.Equal(t, bl.Blocks[0].GetText().Text, notFoundPageMessage)
 }
 
 func Test_GetTextBlocksDateMention(t *testing.T) {

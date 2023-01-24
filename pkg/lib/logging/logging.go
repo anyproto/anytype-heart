@@ -103,22 +103,6 @@ func Logger(system string) *LWrapper {
 	return &LWrapper{logger.SugaredLogger}
 }
 
-func SetLoggingFilepath(logPath string) {
-	cfg := defaultCfg
-
-	cfg.Format = logging.PlaintextOutput
-	cfg.File = filepath.Join(logPath, "anytype.log")
-
-	logging.SetupLogging(cfg)
-}
-
-func SetLoggingFormat(format logging.LogFormat) {
-	cfg := getLoggingConfig()
-	cfg.Format = format
-
-	logging.SetupLogging(cfg)
-}
-
 func ApplyLevels(str string) {
 	m.Lock()
 	logLevelsStr = str

@@ -48,7 +48,7 @@ type Service interface {
 }
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, s *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, s *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 type DetailsSetter interface {
@@ -120,7 +120,7 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
-		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil, nil)
+		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil)
 		if err != nil {
 			return "", nil, fmt.Errorf("create bookmark object: %w", err)
 		}

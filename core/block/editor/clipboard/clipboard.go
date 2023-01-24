@@ -1,7 +1,6 @@
 package clipboard
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -29,10 +28,8 @@ import (
 )
 
 var (
-	ErrAllSlotsEmpty        = errors.New("all slots are empty")
-	ErrTitlePasteRestricted = errors.New("paste to title restricted")
-	ErrOutOfRange           = errors.New("out of range")
-	log                     = logging.Logger("anytype-clipboard")
+	ErrAllSlotsEmpty = errors.New("all slots are empty")
+	log              = logging.Logger("anytype-clipboard")
 )
 
 type Clipboard interface {
@@ -236,28 +233,6 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
 }
 
-func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[string][]byte, err error) {
-	for _, b := range blocks {
-		if file := b.GetFile(); file != nil {
-			if file.Type == model.BlockContentFile_Image {
-				fh, err := cb.anytype.FileByHash(context.TODO(), file.Hash)
-				if err != nil {
-					return images, err
-				}
-
-				reader, err := fh.Reader()
-				if err != nil {
-					return images, err
-				}
-
-				reader.Read(images[file.Hash])
-			}
-		}
-	}
-
-	return images, nil
-}
-
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	s := cb.blocksToState(req.Blocks)
 	htmlData := html.NewHTMLConverter(cb.anytype, s).Export()
@@ -350,8 +325,12 @@ type duplicatable interface {
 	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
-func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
-	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
+func (cb *clipboard) pasteAny(
+	ctx *session.Context, req *pb.RpcBlockPasteRequest, groupID string,
+) (
+	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
+) {
+	s := cb.NewStateCtx(ctx).SetGroupId(groupID)
 
 	destState := state.NewDoc("", nil).(*state.State)
 
@@ -415,7 +394,21 @@ func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest
 
 	destState.BlocksInit(destState)
 	state.CleanupLayouts(destState)
-	destState.Normalize(false)
+	if err = destState.Normalize(false); err != nil {
+		return
+	}
+
+	relationLinks := destState.GetRelationLinks()
+	var missingRelationKeys []string
+
+	// collect missing relation keys to add it to state
+	for _, b := range s.Blocks() {
+		if r := b.GetRelation(); r != nil {
+			if !relationLinks.Has(r.Key) {
+				missingRelationKeys = append(missingRelationKeys, r.Key)
+			}
+		}
+	}
 
 	ctrl := &pasteCtrl{s: s, ps: destState}
 	if err = ctrl.Exec(req); err != nil {
@@ -423,6 +416,13 @@ func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+
+	if len(missingRelationKeys) > 0 {
+		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
+			return
+		}
+	}
+
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
 }
 

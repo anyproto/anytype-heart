@@ -209,6 +209,10 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	fixMissingSmartblockTypes := func(s *state.State) {
+		if isBundled {
+			return
+		}
+
 		// we have a bug in internal release that was not adding smartblocktype to newly created custom types
 		currTypes := pbtypes.GetIntList(s.Details(), bundle.RelationKeySmartblockTypes.String())
 		sourceObject := pbtypes.GetString(s.Details(), bundle.RelationKeySourceObject.String())
@@ -230,8 +234,15 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
+	var objectType string
+	if isBundled {
+		objectType = bundle.TypeKeyObjectType.BundledURL()
+	} else {
+		objectType = bundle.TypeKeyObjectType.URL()
+	}
 	return smartblock.ObjectApplyTemplate(t, ctx.State,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}, model.ObjectType_objectType),
+		template.WithForcedObjectTypes([]string{objectType}),
+		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType))),
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
