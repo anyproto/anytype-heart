@@ -5037,7 +5037,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to update |
 | viewId | [string](#string) |  | id of view to update |
-| relationKeys | [string](#string) | repeated |  |
+| ids | [string](#string) | repeated |  |
 
 
 
@@ -5097,7 +5097,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to update |
 | viewId | [string](#string) |  | id of view to update |
-| relationKey | [string](#string) |  |  |
+| id | [string](#string) |  |  |
 | sort | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) |  |  |
 
 
@@ -5158,7 +5158,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to update |
 | viewId | [string](#string) |  | id of view to update |
-| relationKeys | [string](#string) | repeated | new order of sorts |
+| ids | [string](#string) | repeated | new order of sorts |
 
 
 
@@ -19785,6 +19785,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | RelationKey | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |

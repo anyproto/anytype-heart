@@ -78,30 +78,34 @@ func (l *Dataview) AddSort(viewID string, sort *model.BlockContentDataviewSort) 
 		return err
 	}
 
+	if sort.Id == "" {
+		sort.Id = bson.NewObjectId().Hex()
+	}
+
 	view.Sorts = append(view.Sorts, sort)
 	return nil
 }
 
-func (l *Dataview) RemoveSorts(viewID string, relationKeys []string) error {
+func (l *Dataview) RemoveSorts(viewID string, ids []string) error {
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
 
 	view.Sorts = slice.Filter(view.Sorts, func(f *model.BlockContentDataviewSort) bool {
-		return slice.FindPos(relationKeys, getViewSortID(f)) == -1
+		return slice.FindPos(ids, getViewSortID(f)) == -1
 	})
 	return nil
 }
 
-func (l *Dataview) ReplaceSort(viewID string, relationKey string, sort *model.BlockContentDataviewSort) error {
+func (l *Dataview) ReplaceSort(viewID string, id string, sort *model.BlockContentDataviewSort) error {
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
 	}
 
 	idx := slice.Find(view.Sorts, func(f *model.BlockContentDataviewSort) bool {
-		return getViewSortID(f) == relationKey
+		return getViewSortID(f) == id
 	})
 	if idx < 0 {
 		return l.AddSort(viewID, sort)
@@ -112,7 +116,7 @@ func (l *Dataview) ReplaceSort(viewID string, relationKey string, sort *model.Bl
 	return nil
 }
 
-func (l *Dataview) ReorderSorts(viewID string, relationKeys []string) error {
+func (l *Dataview) ReorderSorts(viewID string, ids []string) error {
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
@@ -124,7 +128,7 @@ func (l *Dataview) ReorderSorts(viewID string, relationKeys []string) error {
 	}
 
 	view.Sorts = view.Sorts[:0]
-	for _, id := range relationKeys {
+	for _, id := range ids {
 		if f, ok := sortsMap[id]; ok {
 			view.Sorts = append(view.Sorts, f)
 		}
