@@ -71,6 +71,9 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 	files := make(map[string]*FileInfo, 0)
 	zipName := strings.TrimSuffix(importPath, filepath.Ext(importPath))
 	for _, f := range r.File {
+		if strings.HasPrefix(f.Name, "__MACOSX/") {
+			continue
+		}
 		shortPath := filepath.Clean(f.Name)
 		// remove zip root folder if exists
 		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
