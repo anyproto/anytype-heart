@@ -1760,11 +1760,12 @@ message Rpc {
                     NotionParams notionParams = 1;
                     BookmarksParams bookmarksParams = 2; //for internal use
                     MarkdownParams markdownParams = 3;
+                    HtmlParams htmlParams = 5;
                 }
-                repeated Snapshot snapshots = 4; // optional, for external developers usage
-                bool updateExistingObjects = 5;
-                Type type = 6;
-                Mode mode = 7;
+                repeated Snapshot snapshots = 6; // optional, for external developers usage
+                bool updateExistingObjects = 7;
+                Type type = 8;
+                Mode mode = 9;
 
                 message NotionParams {
                     string apiKey = 1;
@@ -1776,6 +1777,10 @@ message Rpc {
 
                 message BookmarksParams {
                     string url = 1;
+                }
+
+                message HtmlParams {
+                    repeated string path = 1;
                 }
 
                 enum Mode {
@@ -1791,6 +1796,7 @@ message Rpc {
                     Notion = 0;
                     Markdown = 1; 
                     External = 2; // external developers use it
+                    Html = 3; // external developers use it
                 };
 
             }
@@ -1861,6 +1867,7 @@ message Rpc {
                 enum Type {
                     Notion = 0;
                     Markdown = 1;
+                    Html = 2;
                 };
             }
         }

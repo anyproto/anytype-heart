@@ -52,7 +52,6 @@ type Relation struct {
 type Response struct {
 	Snapshots []*Snapshot
 	Relations map[string][]*Relation // object id to its relations
-	Error     ConvertError
 }
 
 func GetConverters() []func(s core.Service) Converter {
