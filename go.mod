@@ -100,6 +100,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/RoaringBitmap/roaring v0.9.4 // indirect
+	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect

@@ -44,4 +44,11 @@ var Images = []TestImage{
 		Width:   300,
 		Height:  187,
 	},
+	{
+		Path:    "testdata/image.heic",
+		Format:  "heic",
+		HasExif: false,
+		Width:   1440,
+		Height:  960,
+	},
 }
