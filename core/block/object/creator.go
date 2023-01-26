@@ -244,6 +244,17 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
 	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
 
+	if req.Details != nil && req.Details.Fields != nil {
+		for k, v := range req.Details.Fields {
+			relId := addr.RelationKeyToIdPrefix + k
+			if _, err2 := c.objectStore.GetRelationById(relId); err != nil {
+				err = fmt.Errorf("failed to get installed relation %s: %w", relId, err2)
+				return
+			}
+			newState.SetDetail(k, v)
+		}
+	}
+
 	tmpls := []template.StateTransformer{
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
