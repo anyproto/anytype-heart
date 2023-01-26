@@ -94,7 +94,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 		if len(removedIds) > 0 || len(addedIds) > 0 {
 			for _, removedGroup := range removedIds {
 				for _, g := range gs.groups {
-					if removedGroup == g.Id {
+					if len(g.GetTag().Ids) > 1 && removedGroup == g.Id {
 						ctx.groups = append(ctx.groups, opGroup{subId: gs.id,  group: g, remove: true})
 					}
 				}
