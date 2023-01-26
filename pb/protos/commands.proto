@@ -1760,12 +1760,12 @@ message Rpc {
                     NotionParams notionParams = 1;
                     BookmarksParams bookmarksParams = 2; //for internal use
                     MarkdownParams markdownParams = 3;
-                    HtmlParams htmlParams = 5;
+                    HtmlParams htmlParams = 4;
                 }
-                repeated Snapshot snapshots = 6; // optional, for external developers usage
-                bool updateExistingObjects = 7;
-                Type type = 8;
-                Mode mode = 9;
+                repeated Snapshot snapshots = 5; // optional, for external developers usage
+                bool updateExistingObjects = 6;
+                Type type = 7;
+                Mode mode = 8;
 
                 message NotionParams {
                     string apiKey = 1;
