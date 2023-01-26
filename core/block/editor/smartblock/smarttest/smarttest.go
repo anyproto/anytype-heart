@@ -146,6 +146,10 @@ func (st *SmartTest) AddRelationLinks(ctx *session.Context, relationKeys ...stri
 	return nil
 }
 
+func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
+	return st.AddRelationLinks(nil, relationKeys...)
+}
+
 func (st *SmartTest) CheckSubscriptions() (changed bool) {
 	return false
 }

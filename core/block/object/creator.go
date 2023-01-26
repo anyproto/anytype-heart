@@ -328,40 +328,40 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		templateID = v.GetTemplateId()
 	}
 
-	objectType, err := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	if err != nil && forcedType == "" && templateID == "" {
-		return "", nil, fmt.Errorf("invalid type in details: %w", err)
-	}
+	var objectType string
 	if forcedType != "" {
-		objectType = forcedType
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
+		objectType = forcedType.URL()
+	} else if objectType = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectType == "" {
+		return "", nil, fmt.Errorf("missing type in details or in forcedType")
 	}
+
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
 	var sbType = coresb.SmartBlockTypePage
 
 	switch objectType {
-	case bundle.TypeKeyBookmark:
+	case bundle.TypeKeyBookmark.URL():
 		return c.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
-	case bundle.TypeKeySet:
+	case bundle.TypeKeySet.URL():
 		return c.CreateSet(&pb.RpcObjectCreateSetRequest{
 			Details:       details,
 			InternalFlags: internalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 		})
-	case bundle.TypeKeyObjectType:
+	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelation:
+	case bundle.TypeKeyRelation.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelationOption:
+	case bundle.TypeKeyRelationOption.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyTemplate:
+	case bundle.TypeKeyTemplate.URL():
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 

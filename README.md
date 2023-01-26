@@ -18,7 +18,7 @@ Instructions to setup environment for android [here](https://github.com/anytypei
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
 
 ### Rebuild protobuf generated files
-First, you need to install [protobuf](https://github.com/protocolbuffers/protobuf) pkg using your preferred package manager.
+First, you need to install [protobuf](https://github.com/anytypeio/go-anytype-middleware#install-local-deps-mac) pkg using your preferred package manager.
 This repo uses custom protoc located at [anytypeio/protobuf](https://github.com/anytypeio/protobuf/tree/master/protoc-gen-gogo). It adds `gomobile` plugin and some env-controlled options to control the generated code style.
 This protobuf generator will replace your `protoc` binary, BTW it doesn't have any breaking changes for other protobuf and grpc code
 
@@ -110,3 +110,15 @@ https://github.com/njpatel/grpcc
     - **Threads gRPC server** for go-threads server metrics(when other nodes make requests to you)
     - **MW** internal middleware metrics such as changes, added and created threads histograms
     - **MW commands server** metrics for clients commands. Works only in grpc-server mode
+    
+    
+### Install local deps(Mac)
+As of 16.01.23 last protobuf version(21.12) broke the JS plugin support, so you can use the v3 branch
+```
+brew install protobuf@3
+```
+
+To generate Swift protobuf:
+```
+brew install swift-protobuf
+```
