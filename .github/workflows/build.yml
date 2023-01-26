@@ -219,10 +219,8 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          echo $PATH
-          ls -lha $HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-g++
-          CXX=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-g++ CC=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags='$FLAGS -linkmode external -extldflags="-static"' --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
-          CXX=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++ CC=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc gox -cgo -osarch="linux/arm64" -ldflags='$FLAGS -linkmode external -extldflags="-static"' --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CXX=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-g++ CC=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CXX=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++ CC=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
       - name: Make JS protos
         run: |
