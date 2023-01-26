@@ -322,7 +322,7 @@ func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.Rp
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+		return bs.RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	})
 
 	return resp(err)
@@ -346,7 +346,7 @@ func (mw *Middleware) BlockDataviewFilterReplace(cctx context.Context, req *pb.R
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterId, req.Filter)
+		return bs.ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Filter)
 	})
 
 	return resp(err)
@@ -370,7 +370,7 @@ func (mw *Middleware) BlockDataviewFilterSort(cctx context.Context, req *pb.RpcB
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+		return bs.ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	})
 
 	return resp(err)
