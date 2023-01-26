@@ -160,7 +160,6 @@ func (ModelProcessState) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{2, 0, 1}
 }
 
-//
 // Event – type of message, that could be sent from a middleware to the corresponding front-end.
 type Event struct {
 	Messages  []*EventMessage `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
@@ -1040,7 +1039,7 @@ func (m *EventAccount) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_EventAccount proto.InternalMessageInfo
 
-//*
+// *
 // Message, that will be sent to the front on each account found after an AccountRecoverRequest
 type EventAccountShow struct {
 	Index   int32          `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
@@ -2208,7 +2207,6 @@ func (m *EventBlock) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_EventBlock proto.InternalMessageInfo
 
-//
 // Event to show internal blocks on a client.
 // Example Scenarios
 // A. Block Creation
@@ -2263,7 +2261,7 @@ func (m *EventBlockAdd) GetBlocks() []*model.Block {
 	return nil
 }
 
-//*
+// *
 // Middleware to front end event message, that will be sent on one of this scenarios:
 // Precondition: user A opened a block
 // 1. User A drops a set of files/pictures/videos
@@ -2320,8 +2318,6 @@ func (m *EventBlockFilesUpload) GetFilePath() []string {
 	return nil
 }
 
-//
-//
 type EventBlockDelete struct {
 	BlockIds []string `protobuf:"bytes,1,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
 }
@@ -7117,6 +7113,7 @@ func (m *EventBlockDataviewViewUpdateFields) GetPageLimit() int32 {
 
 type EventBlockDataviewViewUpdateFilter struct {
 	// Types that are valid to be assigned to Operation:
+	//
 	//	*EventBlockDataviewViewUpdateFilterOperationOfAdd
 	//	*EventBlockDataviewViewUpdateFilterOperationOfRemove
 	//	*EventBlockDataviewViewUpdateFilterOperationOfUpdate
@@ -7438,6 +7435,7 @@ func (m *EventBlockDataviewViewUpdateFilterMove) GetIds() []string {
 
 type EventBlockDataviewViewUpdateRelation struct {
 	// Types that are valid to be assigned to Operation:
+	//
 	//	*EventBlockDataviewViewUpdateRelationOperationOfAdd
 	//	*EventBlockDataviewViewUpdateRelationOperationOfRemove
 	//	*EventBlockDataviewViewUpdateRelationOperationOfUpdate
@@ -7765,6 +7763,7 @@ func (m *EventBlockDataviewViewUpdateRelationMove) GetIds() []string {
 
 type EventBlockDataviewViewUpdateSort struct {
 	// Types that are valid to be assigned to Operation:
+	//
 	//	*EventBlockDataviewViewUpdateSortOperationOfAdd
 	//	*EventBlockDataviewViewUpdateSortOperationOfRemove
 	//	*EventBlockDataviewViewUpdateSortOperationOfUpdate
@@ -8760,8 +8759,10 @@ func (m *EventUserBlock) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_EventUserBlock proto.InternalMessageInfo
 
-//*
-//  Middleware to front end event message, that will be sent in this scenario:
+// *
+//
+//	Middleware to front end event message, that will be sent in this scenario:
+//
 // Precondition: user A opened a block
 // 1. User B opens the same block
 // 2. User A receives a message about p.1
@@ -8809,8 +8810,10 @@ func (m *EventUserBlockJoin) GetAccount() *EventAccount {
 	return nil
 }
 
-//*
-//  Middleware to front end event message, that will be sent in this scenario:
+// *
+//
+//	Middleware to front end event message, that will be sent in this scenario:
+//
 // Precondition: user A and user B opened the same block
 // 1. User B closes the block
 // 2. User A receives a message about p.1
@@ -8858,7 +8861,7 @@ func (m *EventUserBlockLeft) GetAccount() *EventAccount {
 	return nil
 }
 
-//*
+// *
 // Middleware to front end event message, that will be sent in this scenario:
 // Precondition: user A and user B opened the same block
 // 1. User B sets cursor or selects a text region into a text block
@@ -8923,7 +8926,7 @@ func (m *EventUserBlockTextRange) GetRange() *model.Range {
 	return nil
 }
 
-//*
+// *
 // Middleware to front end event message, that will be sent in this scenario:
 // Precondition: user A and user B opened the same block
 // 1. User B selects some inner blocks

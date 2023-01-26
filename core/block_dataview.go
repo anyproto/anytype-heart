@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -321,7 +322,7 @@ func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.Rp
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+		return bs.RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	})
 
 	return resp(err)
@@ -345,7 +346,7 @@ func (mw *Middleware) BlockDataviewFilterReplace(cctx context.Context, req *pb.R
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterId, req.Filter)
+		return bs.ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Filter)
 	})
 
 	return resp(err)
@@ -369,7 +370,7 @@ func (mw *Middleware) BlockDataviewFilterSort(cctx context.Context, req *pb.RpcB
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.FilterIds)
+		return bs.ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	})
 
 	return resp(err)
@@ -417,7 +418,7 @@ func (mw *Middleware) BlockDataviewSortRemove(cctx context.Context, req *pb.RpcB
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.RemoveDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+		return bs.RemoveDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	})
 
 	return resp(err)
@@ -441,7 +442,7 @@ func (mw *Middleware) BlockDataviewSortReplace(cctx context.Context, req *pb.Rpc
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReplaceDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKey, req.Sort)
+		return bs.ReplaceDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Sort)
 	})
 
 	return resp(err)
@@ -465,7 +466,7 @@ func (mw *Middleware) BlockDataviewSortSort(cctx context.Context, req *pb.RpcBlo
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ReorderDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+		return bs.ReorderDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	})
 
 	return resp(err)

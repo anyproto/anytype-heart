@@ -77,9 +77,9 @@ type Block interface {
 	ReorderFilters(viewID string, ids []string) error
 
 	AddSort(viewID string, sort *model.BlockContentDataviewSort) error
-	RemoveSorts(viewID string, relationKeys []string) error
-	ReplaceSort(viewID string, relationKey string, sort *model.BlockContentDataviewSort) error
-	ReorderSorts(viewID string, relationKeys []string) error
+	RemoveSorts(viewID string, ids []string) error
+	ReplaceSort(viewID string, id string, sort *model.BlockContentDataviewSort) error
+	ReorderSorts(viewID string, ids []string) error
 
 	AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error
 	RemoveViewRelations(viewID string, relationKeys []string) error
@@ -306,7 +306,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	return
 }
 
-// AddView adds a view to the dataview. It doesn't fills any missing field excepting id
+// AddView adds a view to the dataview. It doesn't fill any missing field except id
 func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	if view.Id == "" {
 		view.Id = uuid.New().String()
@@ -314,6 +314,11 @@ func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	for _, f := range view.Filters {
 		if f.Id == "" {
 			f.Id = bson.NewObjectId().Hex()
+		}
+	}
+	for _, s := range view.Sorts {
+		if s.Id == "" {
+			s.Id = bson.NewObjectId().Hex()
 		}
 	}
 

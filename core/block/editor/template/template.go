@@ -582,6 +582,27 @@ var WithDataviewAddIDsToFilters = func(id string) StateTransformer {
 	}
 }
 
+var WithDataviewAddIDsToSorts = func(id string) StateTransformer {
+	return func(s *state.State) {
+		b := s.Get(id)
+		if b == nil {
+			return
+		}
+		dv := b.Model().GetDataview()
+		if dv == nil {
+			return
+		}
+
+		for _, view := range dv.Views {
+			for _, s := range view.Sorts {
+				if s.Id == "" {
+					s.Id = bson.NewObjectId().Hex()
+				}
+			}
+		}
+	}
+}
+
 var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		found := false
