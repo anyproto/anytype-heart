@@ -7,6 +7,6 @@ import (
 	"io"
 )
 
-func (m *ImageResize) resizeWEBP(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
+func (m *ImageResize) resizeWEBP(_ *image.Config, _ io.ReadSeeker) (*Result, error) {
 	return nil, ErrFormatSupportNotEnabled
 }

@@ -7,6 +7,18 @@ import (
 	"io"
 )
 
-func (m *ImageResize) resizeHEIC(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
+func init() {
+	image.RegisterFormat("heic", "????ftyp", noHEICDecode, noHEICDecodeConfig)
+}
+
+func noHEICDecode(io.Reader) (image.Image, error) {
+	return nil, ErrFormatSupportNotEnabled
+}
+
+func noHEICDecodeConfig(io.Reader) (image.Config, error) {
+	return image.Config{}, ErrFormatSupportNotEnabled
+}
+
+func (m *ImageResize) resizeHEIC(_ *image.Config, _ io.ReadSeeker) (*Result, error) {
 	return nil, ErrFormatSupportNotEnabled
 }
