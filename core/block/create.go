@@ -171,7 +171,6 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 		return "", err
 	}
 
-	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
 	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateSetRequest{
 		Source:  source,
 		Details: details,
