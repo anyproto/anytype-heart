@@ -1,8 +1,10 @@
 package linkpreview
 
 import (
+	"bytes"
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
+	"github.com/go-shiori/go-readability"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -13,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/mauidude/go-readability"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/otiai10/opengraph/v2"
 )
@@ -101,11 +102,12 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 			// ignore possible panic while html parsing
 		}
 	}()
-	doc, err := readability.NewDocument(string(data))
+
+	article, err := readability.FromReader(bytes.NewReader(data), nil)
 	if err != nil {
 		return
 	}
-	content = doc.Content()
+	content = article.TextContent
 	content = strings.TrimSpace(l.bmPolicy.Sanitize(content))
 	content = strings.Join(strings.Fields(content), " ") // removes repetitive whitespaces
 	if text.UTF16RuneCountString(content) > maxDescriptionSize {

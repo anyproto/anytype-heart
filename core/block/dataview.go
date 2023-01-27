@@ -98,7 +98,7 @@ func (s *Service) RemoveDataviewSorts(
 	contextID string,
 	blockID string,
 	viewID string,
-	relationKeys []string,
+	ids []string,
 ) (err error) {
 	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
@@ -106,7 +106,7 @@ func (s *Service) RemoveDataviewSorts(
 			return err
 		}
 
-		return dv.RemoveSorts(viewID, relationKeys)
+		return dv.RemoveSorts(viewID, ids)
 	})
 }
 
@@ -115,7 +115,7 @@ func (s *Service) ReplaceDataviewSort(
 	contextID string,
 	blockID string,
 	viewID string,
-	relationKey string,
+	id string,
 	sort *model.BlockContentDataviewSort,
 ) (err error) {
 	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
@@ -124,7 +124,7 @@ func (s *Service) ReplaceDataviewSort(
 			return err
 		}
 
-		return dv.ReplaceSort(viewID, relationKey, sort)
+		return dv.ReplaceSort(viewID, id, sort)
 	})
 }
 
@@ -133,7 +133,7 @@ func (s *Service) ReorderDataviewSorts(
 	contextID string,
 	blockID string,
 	viewID string,
-	relationKeys []string,
+	ids []string,
 ) (err error) {
 	return DoStateCtx(s, ctx, contextID, func(s *state.State, d dataview.Dataview) error {
 		dv, err := d.GetDataviewBlock(s, blockID)
@@ -141,7 +141,7 @@ func (s *Service) ReorderDataviewSorts(
 			return err
 		}
 
-		return dv.ReorderSorts(viewID, relationKeys)
+		return dv.ReorderSorts(viewID, ids)
 	})
 }
 
