@@ -1,4 +1,4 @@
-//go:build !nowebpresize
+//go:build cgo && !nowebp
 
 package mill
 
