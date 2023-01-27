@@ -39,7 +39,7 @@ const (
 	HEIC Format = "heic"
 )
 
-var ErrWEBPNotSupported = errors.New("webp image format is not supported")
+var ErrFormatSupportNotEnabled = errors.New("this image format support is not enabled in this build")
 
 type ImageSize struct {
 	Width  int

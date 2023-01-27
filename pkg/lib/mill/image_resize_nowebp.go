@@ -8,5 +8,5 @@ import (
 )
 
 func (m *ImageResize) resizeWEBP(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
-	return nil, ErrWEBPNotSupported
+	return nil, ErrFormatSupportNotEnabled
 }
