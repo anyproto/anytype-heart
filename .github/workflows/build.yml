@@ -216,7 +216,7 @@ jobs:
           echo $FLAGS
           mkdir -p .release
           gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
-          CC=aarch64-linux-gnu-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CXX=aarch64-linux-gnu-g++ CC=aarch64-linux-gnu-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
       - name: Make JS protos
         run: |
