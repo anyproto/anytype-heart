@@ -170,9 +170,13 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	}); err != nil {
 		return "", err
 	}
+	// pass layout in case it was provided by client in the RPC
+	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
+	// cleanup details
+	delete(details.Fields, bundle.RelationKeyLayout.String())
+	delete(details.Fields, bundle.RelationKeyType.String())
 
-	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateSetRequest{
-		Source:  source,
+	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateRequest{
 		Details: details,
 	}, bundle.TypeKeySet)
 	if err != nil {
