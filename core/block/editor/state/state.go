@@ -411,7 +411,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		inUse          = make(map[string]struct{})
 		affectedIds    = make([]string, 0, len(s.blocks))
 		newBlocks      []*model.Block
-		chmsgs         []simple.EventMessage
 		detailsChanged bool
 	)
 
@@ -497,7 +496,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 	flushNewBlocks()
-	msgs = append(msgs, chmsgs...)
 
 	// removed blocks
 	var (
@@ -557,6 +555,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			})...)
 		}
 	}
+
+	msgs = s.processTrailingDuplicatedEvents(msgs)
 
 	// generate changes
 	s.fillChanges(msgs)
@@ -694,6 +694,20 @@ func (s *State) intermediateApply() {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
+	return
+}
+
+func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (filtered []simple.EventMessage) {
+	var prev []byte
+	for _, e := range msgs {
+		curr, _ := e.Msg.Marshal()
+		if bytes.Equal(prev, curr) {
+			log.With("thread", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
+			continue
+		}
+		prev = curr
+		filtered = append(filtered, e)
+	}
 	return
 }
 
