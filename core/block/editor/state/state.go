@@ -700,7 +700,10 @@ func (s *State) intermediateApply() {
 func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (filtered []simple.EventMessage) {
 	var prev []byte
 	for _, e := range msgs {
-		curr, _ := e.Msg.Marshal()
+		curr, err := e.Msg.Marshal()
+		if err != nil {
+			continue
+		}
 		if bytes.Equal(prev, curr) {
 			log.With("thread", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
 			continue
