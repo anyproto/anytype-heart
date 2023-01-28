@@ -32,7 +32,7 @@ func tagEntriesToGroups(entries []*entry) []*model.BlockContentDataviewGroup {
 	for _, e := range entries {
 		recs = append(recs, database.Record{Details: e.data})
 	}
-	tags := kanban.GroupTag{Records: recs}
+	tags := kanban.GroupTag{Key: bundle.RelationKeyTag.String(), Records: recs}
 	groups, err := tags.MakeDataViewGroups()
 	if err != nil {
 		panic(err)
@@ -91,7 +91,7 @@ func TestGroupTag(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "id_one", data: &types.Struct{Fields: map[string]*types.Value{
+			id: "id_three", data: &types.Struct{Fields: map[string]*types.Value{
 				bundle.RelationKeyTag.String(): pbtypes.StringList([]string{}),
 			}}})
 		sub.onChange(ctx)
@@ -99,7 +99,23 @@ func TestGroupTag(t *testing.T) {
 		assertCtxGroup(t, ctx, 0, 1)
 	})
 
-	t.Run("remove existing group by removing", func(t *testing.T) {
+	t.Run("remove existing group by removing record", func(t *testing.T) {
+		entries := genTagEntries()
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+
+		require.NoError(t, sub.init(entries))
+
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, &entry{
+			id: "id_three", data: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyIsArchived.String(): pbtypes.Bool(true),
+			}}})
+		sub.onChange(ctx)
+
+		assertCtxGroup(t, ctx, 0, 1)
+	})
+
+	t.Run("remove from group with single tag", func(t *testing.T) {
 		entries := genTagEntries()
 		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
@@ -108,10 +124,10 @@ func TestGroupTag(t *testing.T) {
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
 			id: "id_one", data: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyIsArchived.String(): pbtypes.Bool(true),
+				bundle.RelationKeyTag.String(): pbtypes.StringList([]string{}),
 			}}})
 		sub.onChange(ctx)
 
-		assertCtxGroup(t, ctx, 0, 1)
+		assertCtxGroup(t, ctx, 0, 0)
 	})
 }

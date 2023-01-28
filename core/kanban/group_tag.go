@@ -2,7 +2,6 @@ package kanban
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -14,12 +13,13 @@ import (
 )
 
 type GroupTag struct {
-	store objectstore.ObjectStore
+	Key     string
+	store   objectstore.ObjectStore
 	Records []database.Record
 }
 
 func (t *GroupTag) InitGroups(f *database.Filters) error {
-	filterTag := filter.Not{Filter: filter.Empty{Key: string(bundle.RelationKeyTag)}}
+	filterTag := filter.Not{Filter: filter.Empty{Key: t.Key}}
 	if f == nil {
 		f = &database.Filters{FilterObj: filterTag}
 	} else {
@@ -44,7 +44,7 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 	uniqMap := make(map[string]bool)
 
 	for _, v := range t.Records {
-		if tags := pbtypes.GetStringList(v.Details, bundle.RelationKeyTag.String()); len(tags) > 0 {
+		if tags := pbtypes.GetStringList(v.Details, t.Key); len(tags) > 0 {
 			sort.Strings(tags)
 			hash := strings.Join(tags, "")
 			if !uniqMap[hash] {
