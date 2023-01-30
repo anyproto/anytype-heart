@@ -102,7 +102,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	return fmt.Errorf("unknown import type %s", req.Type)
 }
 
-func (s *Import) Name() string {
+func (i *Import) Name() string {
 	return CName
 }
 

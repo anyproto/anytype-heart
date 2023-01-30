@@ -1,8 +1,6 @@
 package whitespace
 
 import (
-	"strings"
-
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -89,58 +87,10 @@ func normalizeString(in string, spaceTbl, ditchTbl map[rune]struct{}) string {
 	return string(result)
 }
 
-// Normalize string.
-//
-// Normalizes the string to NFC and ditches any zero-width whitespace.
-func NormalizeString(in string) string {
-	return normalizeString(in, map[rune]struct{}{}, unicodeWhitespaceDitch)
-}
-
 // Whitespace normalize string.
 //
 // Normalizes the string to NFC and replaces all non-line-breaking Unicode
 // whitespace characters with regular spaces, and ditches any carriage returns.
 func WhitespaceNormalizeString(in string) string {
 	return normalizeString(in, unicodeWhitespaceRepl, unicodeWhitespaceDitch)
-}
-
-// Whitespace normalize line.
-//
-// Normalizes the string to NFC and replaces all Unicode whitespace characters
-// with regular spaces.
-func WhitespaceNormalizeLine(in string) string {
-	return normalizeString(in, unicodeWhitespaceLineRepl, unicodeWhitespaceDitch)
-}
-
-// Trim whitespace normalize line.
-//
-// Normalizes the string to NFC and replaces all Unicode whitespace characters
-// with regular spaces, trimming the final result.
-func TrimWhitespaceNormalizeLine(in string) string {
-	return strings.TrimSpace(WhitespaceNormalizeLine(in))
-}
-
-// Trim single-whitespace normalize line.
-//
-// Normalizes the string to NFC and replaces all Unicode whitespace characters
-// with regular spaces, trimming the final result. Multiple whitespaces are
-// combined into one whitespace.
-func TrimSingleWhitespaceNormalizeLine(in string) string {
-	norm := TrimWhitespaceNormalizeLine(in)
-	result := make([]rune, 0, len(norm))
-
-	lastWs := false
-	for _, r := range norm {
-		if r == ' ' {
-			if !lastWs {
-				result = append(result, r)
-				lastWs = true
-			}
-		} else {
-			lastWs = false
-			result = append(result, r)
-		}
-	}
-
-	return string(result)
 }
