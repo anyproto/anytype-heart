@@ -252,4 +252,8 @@ service ClientCommands {
 
     // used only for lib-server via grpc
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);
+
+    // Migration
+    rpc UserDataDump (anytype.Rpc.UserData.Dump.Request) returns (anytype.Rpc.UserData.Dump.Response);
+//    rpc UserDataImport (anytype.Rpc.UserData.Import.Request) returns (anytype.Rpc.UserData.Import.Response);
 }
