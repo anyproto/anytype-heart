@@ -285,7 +285,7 @@ func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationu
 			Value:       pbtypes.String(*o.workspaceId),
 		})
 	}
-	f, err := database.NewFilters(q, nil, nil)
+	f, err := database.NewFilters(q, nil, s.objectStore, nil)
 	if err != nil {
 		return
 	}

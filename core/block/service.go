@@ -846,7 +846,7 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 					},
 				},
 			}
-			f, err := database.NewFilters(q, nil, nil)
+			f, err := database.NewFilters(q, nil, s.objectStore, nil)
 			if err != nil {
 				return nil
 			}
