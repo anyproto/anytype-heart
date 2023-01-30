@@ -1,5 +1,4 @@
-//go:build webpresize
-// +build webpresize
+//go:build !nowebpresize
 
 package mill
 

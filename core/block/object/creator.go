@@ -88,6 +88,8 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 	return c.CreateSmartBlockFromState(ctx, sbType, details, createState)
 }
 
+// CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
+// It will return error if some of the relation keys in `details` not installed in the workspace.
 func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
@@ -241,17 +243,15 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 
 	newState := state.NewDoc("", nil).NewState()
 
-	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
-	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
-
 	tmpls := []template.StateTransformer{
-		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
-		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
 		template.WithRequiredRelations(),
 	}
 	var blockContent *model.BlockContentOfDataview
 	if dvSchema != nil {
 		blockContent = &dvContent
+	}
+	if len(req.Source) > 0 {
+		req.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.StringList(req.Source)
 	}
 	if blockContent != nil {
 		for i, view := range blockContent.Dataview.Views {
@@ -262,11 +262,6 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 		tmpls = append(tmpls,
 			template.WithDataview(*blockContent, false),
 		)
-		if len(req.Source) > 0 {
-			tmpls = append(tmpls,
-				template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(req.Source)),
-			)
-		}
 	}
 
 	if err = template.InitTemplate(newState, tmpls...); err != nil {
@@ -274,7 +269,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, nil, newState)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, newState)
 }
 
 // TODO: it must be in another component
@@ -328,40 +323,41 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		templateID = v.GetTemplateId()
 	}
 
-	objectType, err := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	if err != nil && forcedType == "" && templateID == "" {
-		return "", nil, fmt.Errorf("invalid type in details: %w", err)
-	}
+	var objectType string
 	if forcedType != "" {
-		objectType = forcedType
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
+		objectType = forcedType.URL()
+	} else if objectType = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectType == "" {
+		return "", nil, fmt.Errorf("missing type in details or in forcedType")
 	}
+
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
 	var sbType = coresb.SmartBlockTypePage
 
 	switch objectType {
-	case bundle.TypeKeyBookmark:
+	case bundle.TypeKeyBookmark.URL():
 		return c.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
-	case bundle.TypeKeySet:
+	case bundle.TypeKeySet.URL():
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
 		return c.CreateSet(&pb.RpcObjectCreateSetRequest{
 			Details:       details,
 			InternalFlags: internalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 		})
-	case bundle.TypeKeyObjectType:
+	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelation:
+	case bundle.TypeKeyRelation.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelationOption:
+	case bundle.TypeKeyRelationOption.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyTemplate:
+	case bundle.TypeKeyTemplate.URL():
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 

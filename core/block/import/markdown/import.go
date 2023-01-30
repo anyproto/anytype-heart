@@ -525,14 +525,14 @@ func (m *Markdown) createThreadObject(files map[string]*FileInfo,
 
 			file.PageID = tid.String()
 
-			m.setTitleAndEmoji(file, name, details)
+			m.setDetails(file, name, details)
 		}
 	}
 
 	return nil
 }
 
-func (m *Markdown) setTitleAndEmoji(file *FileInfo, name string, details map[string]*types.Struct) {
+func (m *Markdown) setDetails(file *FileInfo, name string, details map[string]*types.Struct) {
 	var title, emoji string
 	if len(file.ParsedBlocks) > 0 {
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
@@ -551,9 +551,10 @@ func (m *Markdown) setTitleAndEmoji(file *FileInfo, name string, details map[str
 	file.Title = title
 	// FIELD-BLOCK
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():      pbtypes.String(title),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String(emoji),
-		bundle.RelationKeySource.String():    pbtypes.String(file.Source),
+		bundle.RelationKeyName.String():       pbtypes.String(title),
+		bundle.RelationKeyIconEmoji.String():  pbtypes.String(emoji),
+		bundle.RelationKeySource.String():     pbtypes.String(file.Source),
+		bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(true),
 	}
 	details[name] = &types.Struct{Fields: fields}
 }

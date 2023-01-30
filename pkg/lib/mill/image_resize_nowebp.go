@@ -1,4 +1,4 @@
-//go:build !webpresize
+//go:build nowebpresize
 
 package mill
 

@@ -325,8 +325,12 @@ type duplicatable interface {
 	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
-func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
-	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
+func (cb *clipboard) pasteAny(
+	ctx *session.Context, req *pb.RpcBlockPasteRequest, groupID string,
+) (
+	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
+) {
+	s := cb.NewStateCtx(ctx).SetGroupId(groupID)
 
 	destState := state.NewDoc("", nil).(*state.State)
 
@@ -390,7 +394,21 @@ func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest
 
 	destState.BlocksInit(destState)
 	state.CleanupLayouts(destState)
-	destState.Normalize(false)
+	if err = destState.Normalize(false); err != nil {
+		return
+	}
+
+	relationLinks := destState.GetRelationLinks()
+	var missingRelationKeys []string
+
+	// collect missing relation keys to add it to state
+	for _, b := range s.Blocks() {
+		if r := b.GetRelation(); r != nil {
+			if !relationLinks.Has(r.Key) {
+				missingRelationKeys = append(missingRelationKeys, r.Key)
+			}
+		}
+	}
 
 	ctrl := &pasteCtrl{s: s, ps: destState}
 	if err = ctrl.Exec(req); err != nil {
@@ -398,6 +416,13 @@ func (cb *clipboard) pasteAny(ctx *session.Context, req *pb.RpcBlockPasteRequest
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+
+	if len(missingRelationKeys) > 0 {
+		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
+			return
+		}
+	}
+
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
 }
 
