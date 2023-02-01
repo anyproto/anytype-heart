@@ -3,9 +3,8 @@ package anytype;
 option go_package = "pb";
 
 import "pkg/lib/pb/model/protos/models.proto";
-import "pb/protos/changes.proto";
 
 message MigrationObject {
   anytype.model.SmartBlockType sbType = 1;
-  anytype.Change.Snapshot snapshot = 2;
+  anytype.model.SmartBlockSnapshotBase snapshot = 2;
 }

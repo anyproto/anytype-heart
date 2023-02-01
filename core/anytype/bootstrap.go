@@ -2,6 +2,7 @@ package anytype
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/dump"
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -139,6 +140,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(decorator.New()).
 		Register(object.NewCreator()).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory())
+		Register(editor.NewObjectFactory()).
+		Register(dump.NewService())
 	return
 }
