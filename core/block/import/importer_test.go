@@ -36,7 +36,7 @@ func Test_ImportSuccess(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, cv.ConvertError{}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
@@ -44,7 +44,7 @@ func Test_ImportSuccess(t *testing.T) {
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  0,
 	})
 
@@ -60,14 +60,14 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	e.Add("error", fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  0,
 	})
 
@@ -95,7 +95,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, cv.ConvertError{}).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
@@ -103,7 +103,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  0,
 	})
 
@@ -133,7 +133,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
@@ -141,7 +141,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  1,
 	})
 
@@ -171,7 +171,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = converter
+	i.converters["Markdown"] = converter
 	creator := NewMockCreator(ctrl)
 	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
@@ -179,7 +179,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfMarkdownParams{MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: "test"}},
 		UpdateExistingObjects: false,
-		Type:                  0,
+		Type:                  1,
 		Mode:                  1,
 	})
 
@@ -257,7 +257,7 @@ func Test_ListImports(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = pbc.New(nil)
+	i.converters["Markdown"] = pbc.New(nil)
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 

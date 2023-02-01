@@ -124,10 +124,16 @@ func (h *HTML) render(rs *renderState, b *model.Block) {
 
 func (h *HTML) renderChildren(parent *model.Block) {
 	var rs = &renderState{h: h}
-	for _, chId := range parent.ChildrenIds {
-		b := h.s.Pick(chId)
+	for index, chID := range parent.ChildrenIds {
+		b := h.s.Pick(chID)
 		if b == nil {
 			continue
+		}
+		if index == 0 {
+			rs.isFirst = true
+		}
+		if index == len(parent.ChildrenIds)-1 {
+			rs.isLast = true
 		}
 		h.render(rs, b.Model())
 	}
@@ -282,17 +288,27 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	case model.BlockContentText_Marked:
-		rs.OpenUL()
+		if rs.isFirst {
+			rs.OpenUL()
+		}
 		h.buf.WriteString(`<li>`)
 		renderText()
 		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
+		if rs.isLast {
+			rs.Close()
+		}
 	case model.BlockContentText_Numbered:
-		rs.OpenOL()
+		if rs.isFirst {
+			rs.OpenOL()
+		}
 		h.buf.WriteString(`<li>`)
 		renderText()
 		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
+		if rs.isLast {
+			rs.Close()
+		}
 	case model.BlockContentText_Toggle:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleToggle + `" class="toggle">`)
@@ -528,6 +544,7 @@ func (h *HTML) getImageBase64(hash string) (res string) {
 
 type renderState struct {
 	ulOpened, olOpened bool
+	isFirst, isLast    bool
 
 	h *HTML
 }

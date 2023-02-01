@@ -152,7 +152,7 @@ func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDat
 }
 
 func getViewSortID(f *model.BlockContentDataviewSort) string {
-	return f.RelationKey
+	return f.Id
 }
 
 func isViewSortsEqual(a, b *model.BlockContentDataviewSort) bool {

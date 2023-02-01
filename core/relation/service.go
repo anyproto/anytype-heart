@@ -285,7 +285,7 @@ func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationu
 			Value:       pbtypes.String(*o.workspaceId),
 		})
 	}
-	f, err := database.NewFilters(q, nil, nil)
+	f, err := database.NewFilters(q, nil, s.objectStore, nil)
 	if err != nil {
 		return
 	}
@@ -380,9 +380,12 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
-		err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
-		if err != nil {
-			return fmt.Errorf("failed to parse URL: %s", err.Error())
+		s := strings.TrimSpace(v.GetStringValue())
+		if s != "" {
+			err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
+			if err != nil {
+				return fmt.Errorf("failed to parse URL: %s", err.Error())
+			}
 		}
 		// todo: should we allow schemas other than http/https?
 		// if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {

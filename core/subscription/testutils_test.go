@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testOrder = filter.KeyOrder{
+var testOrder = &filter.KeyOrder{
 	Key: "order",
 }
 

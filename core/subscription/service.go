@@ -106,7 +106,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, nil, time.Now().Location())
+	f, err := database.NewFilters(q, nil, s.objectStore, time.Now().Location())
 	if err != nil {
 		return
 	}
@@ -230,7 +230,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		Filters: req.Filters,
 	}
 
-	f, err := database.NewFilters(q, nil, time.Now().Location())
+	f, err := database.NewFilters(q, nil, s.objectStore, time.Now().Location())
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,8 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		}
 		s.subscriptions[sub.id] = sub
 
-		records, err := s.objectStore.GetAggregatedOptions(bundle.RelationKeyTag.String())
+		// add empty groups with single tags
+		records, err := s.objectStore.GetAggregatedOptions(req.RelationKey)
 		if err != nil {
 			return nil, fmt.Errorf("fail to get tags records: %v", err)
 		}

@@ -62,8 +62,8 @@ func TestKeyOrder_Compare(t *testing.T) {
 
 func TestSetOrder_Compare(t *testing.T) {
 	so := SetOrder{
-		KeyOrder{Key: "a", Type: model.BlockContentDataviewSort_Asc},
-		KeyOrder{Key: "b", Type: model.BlockContentDataviewSort_Desc},
+		&KeyOrder{Key: "a", Type: model.BlockContentDataviewSort_Asc},
+		&KeyOrder{Key: "b", Type: model.BlockContentDataviewSort_Desc},
 	}
 	t.Run("eq", func(t *testing.T) {
 		a := testGetter{"a": pbtypes.String("a"), "b": pbtypes.String("b")}

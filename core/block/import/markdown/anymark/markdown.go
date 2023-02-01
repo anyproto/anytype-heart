@@ -8,9 +8,11 @@ import (
 	htmlconverter "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -22,20 +24,28 @@ var (
 	reWikiWbr = regexp.MustCompile(`<wbr[^>]*>`)
 )
 
-func convertBlocks(source []byte, r renderer.NodeRenderer) error {
+func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
+	nodeRenderers := make([]util.PrioritizedValue, 0, len(r))
+	for _, nodeRenderer := range r {
+		nodeRenderers = append(nodeRenderers, util.Prioritized(nodeRenderer, 100))
+	}
 	gm := goldmark.New(goldmark.WithRenderer(
-		renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(r, 1000))),
-	))
+		renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...)),
+	), goldmark.WithExtensions(extension.Table))
 	return gm.Convert(source, &bytes.Buffer{})
 }
 
 func MarkdownToBlocks(markdownSource []byte,
 	baseFilepath string,
 	allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
-	r := NewRenderer(baseFilepath, allFileShortPaths)
+	br := newBlocksRenderer(baseFilepath, allFileShortPaths)
 
+	r := NewRenderer(br)
+
+	te := table.NewEditor(nil)
+	tr := NewTableRenderer(br, te)
 	// allFileShortPaths,
-	err = convertBlocks(markdownSource, r)
+	err = convertBlocks(markdownSource, r, tr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -115,7 +125,7 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
-	r := NewRenderer("", nil)
+	r := NewRenderer(newBlocksRenderer("", nil))
 	err = convertBlocks([]byte(md), r)
 	if err != nil {
 		return nil, nil, err
