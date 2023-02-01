@@ -246,15 +246,15 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 
 		dataToSave := cleanSubObjectDetails(p.State.CombinedDetails())
 
-		var notOnlyLocalDetailsChanged bool
+		onlyLocalDetailsChanged := true
 		for k, _ := range dataToSave.Fields {
 			if slice.FindPos(localDetailsAllowedToBeStored, k) == -1 {
-				notOnlyLocalDetailsChanged = true
+				onlyLocalDetailsChanged = false
 				break
 			}
 		}
 
-		if !notOnlyLocalDetailsChanged {
+		if onlyLocalDetailsChanged {
 			// todo: it shouldn't be done here, we have a place for it in the state, but it's not possible to set the virtual changes there
 			// revert lastModifiedDate details
 			prev := p.State.ParentState().LocalDetails().GetFields()
@@ -263,11 +263,8 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 			}
 		}
 
-		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), []string{bundle.RelationKeyLastModifiedDate.String()}) {
-			return "", nil
-		}
-
-		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), localDetailsAllowedToBeStored) {
+		prevSubState := pbtypes.GetStruct(st.GetCollection(collection), subId)
+		if pbtypes.StructCompareIgnoreKeys(dataToSave, prevSubState, localDetailsAllowedToBeStored) {
 			return "", nil
 		}
 
