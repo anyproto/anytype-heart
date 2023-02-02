@@ -197,7 +197,7 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 		if system {
 			rest := t.Restrictions()
-			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Blocks, model.Restrictions_Details, model.Restrictions_Delete}...)
+			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Details, model.Restrictions_Delete}...)
 			dv := rest.Dataview.Copy()
 			if internal {
 				// internal mean not possible to create the object using the standard ObjectCreate flow

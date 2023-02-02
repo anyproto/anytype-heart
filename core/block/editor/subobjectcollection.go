@@ -246,28 +246,27 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 
 		dataToSave := cleanSubObjectDetails(p.State.CombinedDetails())
 
-		var notOnlyLocalDetailsChanged bool
+		var hasPersistentDetails bool
 		for k, _ := range dataToSave.Fields {
-			if slice.FindPos(localDetailsAllowedToBeStored, k) == -1 {
-				notOnlyLocalDetailsChanged = true
+			if slice.FindPos(append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...), k) == -1 ||
+				slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
+				hasPersistentDetails = true
 				break
 			}
 		}
+		prevSubState := pbtypes.GetStruct(st.GetCollection(collection), subId)
 
-		if !notOnlyLocalDetailsChanged {
+		if !hasPersistentDetails {
 			// todo: it shouldn't be done here, we have a place for it in the state, but it's not possible to set the virtual changes there
 			// revert lastModifiedDate details
-			prev := p.State.ParentState().LocalDetails().GetFields()
-			if prev != nil && prev[bundle.RelationKeyLastModifiedDate.String()] != nil {
-				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prev[bundle.RelationKeyLastModifiedDate.String()]
+			if prevSubState.GetFields() != nil && prevSubState.Fields[bundle.RelationKeyLastModifiedDate.String()] != nil {
+				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevSubState.Fields[bundle.RelationKeyLastModifiedDate.String()]
 			}
 		}
 
-		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), []string{bundle.RelationKeyLastModifiedDate.String()}) {
-			return "", nil
-		}
-
-		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), localDetailsAllowedToBeStored) {
+		// ignore lastModifiedDate if this is the only thing that has changed
+		if pbtypes.StructCompareIgnoreKeys(dataToSave, prevSubState, []string{bundle.RelationKeyLastModifiedDate.String()}) {
+			// nothing changed
 			return "", nil
 		}
 
