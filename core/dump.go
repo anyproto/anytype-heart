@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/dump"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 func (mw *Middleware) UserDataDump(ctx context.Context, req *pb.RpcUserDataDumpRequest) *pb.RpcUserDataDumpResponse {
@@ -16,7 +17,13 @@ func (mw *Middleware) UserDataDump(ctx context.Context, req *pb.RpcUserDataDumpR
 	}
 
 	dumpService := mw.app.MustComponent(dump.Name).(*dump.Service)
-	err := dumpService.Dump(req.Path)
+	anytype := mw.app.MustComponent(core.CName).(*core.Anytype)
+
+	profile, err := anytype.LocalProfile()
+	if err != nil {
+		return response(pb.RpcUserDataDumpResponseError_UNKNOWN_ERROR, err)
+	}
+	err = dumpService.Dump(req.Path, mw.mnemonic, profile)
 	if err != nil {
 		return response(pb.RpcUserDataDumpResponseError_UNKNOWN_ERROR, err)
 	}

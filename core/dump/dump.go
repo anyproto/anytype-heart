@@ -3,6 +3,8 @@ package dump
 import (
 	"archive/zip"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/gogo/protobuf/proto"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,6 +22,8 @@ import (
 )
 
 const Name = "dump"
+
+const profileFile = "profile"
 
 type Service struct {
 	objectStore  objectstore.ObjectStore
@@ -41,7 +45,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *Service) Dump(path string) error {
+func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error {
 	objectIDs, _, err := s.objectStore.QueryObjectIds(database.Query{}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to QueryObjectIds: %v", err)
@@ -58,6 +62,16 @@ func (s *Service) Dump(path string) error {
 			os.Remove(fullPath)
 		}
 	}()
+
+	pr := &pb.Profile{
+		Mnemonic: mnemonic,
+		Name:     profile.Name,
+		Avatar:   profile.IconImage,
+	}
+	wErr := s.writeSnapshotToFile(zw, profileFile, pr)
+	if wErr != nil {
+		return wErr
+	}
 	for i, id := range objectIDs {
 		if err = s.blockService.Do(id, func(b smartblock.SmartBlock) error {
 			mo, err := s.getMigrationObject(b)
@@ -103,12 +117,12 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 	return mo, nil
 }
 
-func (s *Service) writeSnapshotToFile(zw *zip.Writer, name string, mo *pb.MigrationObject) error {
+func (s *Service) writeSnapshotToFile(zw *zip.Writer, name string, ob proto.Marshaler) error {
 	wr, err := zw.Create(name)
 	if err != nil {
 		return fmt.Errorf("failed create file with snapshot: %v", err)
 	}
-	data, err := mo.Marshal()
+	data, err := ob.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal snapshot: %v", err)
 	}
