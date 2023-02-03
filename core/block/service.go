@@ -98,7 +98,7 @@ func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 		if tid, err := thread.Decode(sb.Id()); err != nil {
 			log.With("thread", sb.Id()).Warnf("can't restore thread ID: %v", err)
 		} else {
-			ob.statusWatchId = tid
+			ob.statusWatchID = tid
 		}
 	}
 	return &ob
@@ -106,7 +106,7 @@ func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 
 type openedBlock struct {
 	smartblock.SmartBlock
-	statusWatchId thread.ID
+	statusWatchID thread.ID
 }
 
 func New() *Service {
@@ -267,7 +267,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	if tid := ob.statusWatchId; tid != thread.Undef && s.status != nil {
+	if tid := ob.statusWatchID; tid != thread.Undef && s.status != nil {
 		var (
 			fList = func() []string {
 				ob.Lock()
@@ -1282,9 +1282,9 @@ func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		if sb, err = sbOpener.Open(id); err != nil {
 			return
 		}
-		// in case of subObject, we need to set the statusWatchId to the workspaceId
+		// in case of subObject, we need to set the statusWatchID to the workspaceId
 		ob = newOpenedBlock(sb)
-		ob.statusWatchId, _ = thread.Decode(workspaceId)
+		ob.statusWatchID, _ = thread.Decode(workspaceId)
 		return ob, nil
 	}
 
