@@ -1,4 +1,5 @@
-// +build gomobile windows nographviz
+//go:build gomobile || windows || nographviz || ignore || !cgo
+// +build gomobile windows nographviz ignore !cgo
 
 package dot
 
