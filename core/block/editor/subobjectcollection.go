@@ -280,6 +280,11 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 
 func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string, justCreated bool) (err error) {
 	var subObj SubObjectImpl
+	if len(strings.Split(subId, addr.SubObjectCollectionIdSeparator)) > 1 {
+		// handle invalid cases for our own accounts
+		return fmt.Errorf("invalid id: %s", subId)
+	}
+
 	switch collection {
 	case collectionKeyObjectTypes:
 		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)
