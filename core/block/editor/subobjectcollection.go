@@ -133,13 +133,11 @@ func (c *SubObjectCollection) Open(subId string) (sb smartblock.SmartBlock, err 
 
 func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
 	st := c.NewState()
-	collection, key := c.getCollectionAndKeyFromId(objectId)
-	err := c.objectStore.DeleteObject(objectId)
+	err := c.removeObject(st, objectId)
 	if err != nil {
-		log.Errorf("error deleting subobject from store %s %s %v", objectId, c.Id(), err.Error())
+		return err
 	}
-	st.RemoveFromStore([]string{collection, key})
-	return c.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+	return c.Apply(st, smartblock.NoEvent, smartblock.NoHistory, smartblock.NoHooks)
 }
 
 func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (err error) {
@@ -156,7 +154,6 @@ func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (er
 	if v, exists := c.collections[collection]; exists {
 		if o, exists := v[key]; exists {
 			o.SetIsDeleted()
-			o.Close()
 			delete(v, key)
 		}
 	}
