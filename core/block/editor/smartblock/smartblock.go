@@ -146,9 +146,14 @@ type linkSource interface {
 	HasSmartIds() bool
 }
 
+type Locker interface {
+	TryLock() bool
+	sync.Locker
+}
+
 type smartBlock struct {
 	state.Doc
-	sync.Locker
+	Locker
 	depIds              []string // slice must be sorted
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
@@ -458,7 +463,9 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (sb *smartBlock) Locked() bool {
-	sb.Lock()
+	if !sb.TryLock() {
+		return false
+	}
 	defer sb.Unlock()
 	return sb.IsLocked()
 }
