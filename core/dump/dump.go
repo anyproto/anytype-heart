@@ -74,6 +74,13 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	}
 	for i, id := range objectIDs {
 		if err = s.blockService.Do(id, func(b smartblock.SmartBlock) error {
+			sbType, err := smartblocktype.SmartBlockTypeFromID(b.RootId())
+			if err != nil {
+				return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
+			}
+			if isBundledObject(sbType) {
+				return nil
+			}
 			mo, err := s.getMigrationObject(b)
 			if err != nil {
 				return err
@@ -141,4 +148,10 @@ func buildPath(path string) string {
 	sb.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
 	sb.WriteString(".zip")
 	return sb.String()
+}
+
+func isBundledObject(objectType smartblocktype.SmartBlockType) bool {
+	return objectType == smartblocktype.SmartBlockTypeBundledObjectType ||
+		objectType == smartblocktype.SmartBlockTypeBundledTemplate ||
+		objectType == smartblocktype.SmartBlockTypeBundledRelation
 }
