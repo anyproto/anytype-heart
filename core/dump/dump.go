@@ -153,5 +153,12 @@ func buildPath(path string) string {
 func isBundledObject(objectType smartblocktype.SmartBlockType) bool {
 	return objectType == smartblocktype.SmartBlockTypeBundledObjectType ||
 		objectType == smartblocktype.SmartBlockTypeBundledTemplate ||
-		objectType == smartblocktype.SmartBlockTypeBundledRelation
+		objectType == smartblocktype.SmartBlockTypeBundledRelation ||
+		objectType == smartblocktype.SmartBlockTypeWorkspaceOld ||
+		objectType == smartblocktype.SmartBlockTypeWorkspace ||
+		objectType == smartblocktype.SmartBlockTypeArchive ||
+		objectType == smartblocktype.SmartBlockTypeHome ||
+		objectType == smartblocktype.SmartblockTypeMarketplaceRelation ||
+		objectType == smartblocktype.SmartblockTypeMarketplaceTemplate ||
+		objectType == smartblocktype.SmartblockTypeMarketplaceType
 }
