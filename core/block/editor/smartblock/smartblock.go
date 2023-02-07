@@ -464,7 +464,7 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 
 func (sb *smartBlock) Locked() bool {
 	if !sb.TryLock() {
-		return false
+		return true
 	}
 	defer sb.Unlock()
 	return sb.IsLocked()
