@@ -72,7 +72,7 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	if wErr != nil {
 		return wErr
 	}
-	for i, id := range objectIDs {
+	for _, id := range objectIDs {
 		if err = s.blockService.Do(id, func(b smartblock.SmartBlock) error {
 			sbType, err := smartblocktype.SmartBlockTypeFromID(b.RootId())
 			if err != nil {
@@ -85,7 +85,7 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 			if err != nil {
 				return err
 			}
-			wErr := s.writeSnapshotToFile(zw, strconv.FormatInt(int64(i), 10), mo)
+			wErr := s.writeSnapshotToFile(zw, id, mo)
 			if wErr != nil {
 				return wErr
 			}
