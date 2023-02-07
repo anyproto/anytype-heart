@@ -32,9 +32,9 @@ func (sub *subscription) RecordChan() chan *types.Struct {
 func (sub *subscription) Close() {
 	sub.closedOnce.Do(func() {
 		close(sub.quit)
-		close(sub.ch)
 		sub.Lock()
 		sub.closed = true
+		close(sub.ch)
 		sub.Unlock()
 	})
 }
