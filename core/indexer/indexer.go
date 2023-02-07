@@ -654,6 +654,9 @@ func extractOldRelationsFromState(s *state.State) []*model.Relation {
 }
 
 func (i *indexer) migrateRelations(rels []*model.Relation) {
+	if len(rels) == 0 {
+		return
+	}
 	i.relationMigratorMu.Lock()
 	defer i.relationMigratorMu.Unlock()
 
