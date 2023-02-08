@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -215,8 +216,9 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				Position:  pos,
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{
-						"name":      pbtypes.String(entry.name),
-						"iconEmoji": pbtypes.String("📁"),
+						bundle.RelationKeyName.String():      pbtypes.String(entry.name),
+						bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeyPage.URL()),
+						bundle.RelationKeyIconEmoji.String(): pbtypes.String("📁"),
 					},
 				},
 			})
