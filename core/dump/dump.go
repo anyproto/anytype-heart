@@ -3,7 +3,9 @@ package dump
 import (
 	"archive/zip"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/proto"
 	"os"
 	"path/filepath"
@@ -50,6 +52,27 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	if err != nil {
 		return fmt.Errorf("failed to QueryObjectIds: %v", err)
 	}
+
+	deletedObjects, _, err := s.objectStore.QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyIsDeleted.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Bool(true),
+		},
+		},
+	}, nil)
+
+	archivedObjects, _, err := s.objectStore.QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyIsArchived.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Bool(true),
+		},
+		},
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to QueryObjectIds: %v", err)
+	}
 	fullPath := buildPath(path)
 	f, err := os.Create(fullPath)
 	if err != nil {
@@ -72,6 +95,45 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	if wErr != nil {
 		return wErr
 	}
+
+	for _, object := range deletedObjects {
+		sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
+		if err != nil {
+			return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
+		}
+		sn := &model.SmartBlockSnapshotBase{
+			Details:     object.GetDetails(),
+			ObjectTypes: object.GetObjectTypeUrls(),
+		}
+		mo := &pb.MigrationObject{
+			SbType:   sbType.ToProto(),
+			Snapshot: sn,
+		}
+		wErr := s.writeSnapshotToFile(zw, object.Id, mo)
+		if wErr != nil {
+			return wErr
+		}
+	}
+
+	for _, object := range archivedObjects {
+		sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
+		if err != nil {
+			return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
+		}
+		sn := &model.SmartBlockSnapshotBase{
+			Details:     object.GetDetails(),
+			ObjectTypes: object.GetObjectTypeUrls(),
+		}
+		mo := &pb.MigrationObject{
+			SbType:   sbType.ToProto(),
+			Snapshot: sn,
+		}
+		wErr := s.writeSnapshotToFile(zw, object.Id, mo)
+		if wErr != nil {
+			return wErr
+		}
+	}
+
 	for _, id := range objectIDs {
 		if err = s.blockService.Do(id, func(b smartblock.SmartBlock) error {
 			sbType, err := smartblocktype.SmartBlockTypeFromID(b.RootId())
