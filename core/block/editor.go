@@ -906,6 +906,8 @@ func (s *Service) CopyDataviewToBlock(ctx *session.Context,
 
 		dvContent.Dataview.Views = targetDvContent.Views
 		dvContent.Dataview.RelationLinks = targetDvContent.RelationLinks
+		dvContent.Dataview.GroupOrders = targetDvContent.GroupOrders
+		dvContent.Dataview.ObjectOrders = targetDvContent.ObjectOrders
 		dvContent.Dataview.TargetObjectId = req.TargetObjectId
 
 		return b.Apply(st)
