@@ -43,7 +43,7 @@ const (
 	// ### Increasing counters below will trigger existing account to reindex their
 
 	// ForceThreadsObjectsReindexCounter reindex thread-based objects
-	ForceThreadsObjectsReindexCounter int32 = 7
+	ForceThreadsObjectsReindexCounter int32 = 8
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 7 //
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
@@ -812,6 +812,20 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
 		}
 	}
+	if !indexDetails {
+		d, _ := i.store.GetDetails()
+		if d != nil {
+			i.store.DeleteDetails(info.Id)
+		}
+	}
+
+	if !indexLinks {
+		d, _ := i.store.GetOutboundLinksById(info.Id)
+		if d != nil {
+			i.store.UpdateObjectLinks(info.Id, nil)
+		}
+	}
+	
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
 		return nil
