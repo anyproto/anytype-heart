@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -18,6 +17,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/gogo/status"
 	cp "github.com/otiai10/copy"
@@ -197,19 +198,16 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 
 	pBlocks := at.PredefinedBlocks()
 	return &model.AccountInfo{
-		HomeObjectId:                pBlocks.Home,
-		ArchiveObjectId:             pBlocks.Archive,
-		ProfileObjectId:             pBlocks.Profile,
-		MarketplaceTypeObjectId:     pBlocks.MarketplaceType,
-		MarketplaceRelationObjectId: pBlocks.MarketplaceRelation,
-		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
-		MarketplaceWorkspaceId:      addr.AnytypeMarketplaceWorkspace,
-		AccountSpaceId:              pBlocks.Account,
-		WidgetsId:                   pBlocks.Widgets,
-		GatewayUrl:                  gwAddr,
-		DeviceId:                    deviceId,
-		LocalStoragePath:            cfg.IPFSStorageAddr,
-		TimeZone:                    cfg.TimeZone,
+		HomeObjectId:           pBlocks.Home,
+		ArchiveObjectId:        pBlocks.Archive,
+		ProfileObjectId:        pBlocks.Profile,
+		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
+		AccountSpaceId:         pBlocks.Account,
+		WidgetsId:              pBlocks.Widgets,
+		GatewayUrl:             gwAddr,
+		DeviceId:               deviceId,
+		LocalStoragePath:       cfg.IPFSStorageAddr,
+		TimeZone:               cfg.TimeZone,
 	}
 }
 
