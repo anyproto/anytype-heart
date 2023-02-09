@@ -173,7 +173,7 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 	}
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:                st.Blocks(),
-		Details:               st.Details(),
+		Details:               st.CombinedDetails(),
 		ObjectTypes:           st.ObjectTypes(),
 		RelationLinks:         st.GetRelationLinks(),
 		Collections:           st.Store(),
