@@ -764,15 +764,8 @@ func (s *Service) MoveBlocksToNewPage(
 }
 
 func (s *Service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
-	if req.ContextId == req.TargetContextId {
-		return DoState(s, req.ContextId, func(st *state.State, b basic.Movable) error {
-			return b.Move(st, st, req.DropTargetId, req.Position, req.BlockIds)
-		})
-	}
-	return DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
-		return DoState(s, req.TargetContextId, func(destState *state.State, tb basic.Movable) error {
-			return sb.Move(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
-		})
+	return DoState2(s, req.ContextId, req.TargetContextId, func(srcState, destState *state.State, sb, tb basic.Movable) error {
+		return sb.Move(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
 	})
 }
 
@@ -913,6 +906,8 @@ func (s *Service) CopyDataviewToBlock(ctx *session.Context,
 
 		dvContent.Dataview.Views = targetDvContent.Views
 		dvContent.Dataview.RelationLinks = targetDvContent.RelationLinks
+		dvContent.Dataview.GroupOrders = targetDvContent.GroupOrders
+		dvContent.Dataview.ObjectOrders = targetDvContent.ObjectOrders
 		dvContent.Dataview.TargetObjectId = req.TargetObjectId
 
 		return b.Apply(st)

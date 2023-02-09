@@ -133,13 +133,11 @@ func (c *SubObjectCollection) Open(subId string) (sb smartblock.SmartBlock, err 
 
 func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
 	st := c.NewState()
-	collection, key := c.getCollectionAndKeyFromId(objectId)
-	err := c.objectStore.DeleteObject(objectId)
+	err := c.removeObject(st, objectId)
 	if err != nil {
-		log.Errorf("error deleting subobject from store %s %s %v", objectId, c.Id(), err.Error())
+		return err
 	}
-	st.RemoveFromStore([]string{collection, key})
-	return c.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
+	return c.Apply(st, smartblock.NoEvent, smartblock.NoHistory, smartblock.NoHooks)
 }
 
 func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (err error) {
@@ -156,7 +154,6 @@ func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (er
 	if v, exists := c.collections[collection]; exists {
 		if o, exists := v[key]; exists {
 			o.SetIsDeleted()
-			o.Close()
 			delete(v, key)
 		}
 	}
@@ -246,28 +243,27 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 
 		dataToSave := cleanSubObjectDetails(p.State.CombinedDetails())
 
-		var notOnlyLocalDetailsChanged bool
+		var hasPersistentDetails bool
 		for k, _ := range dataToSave.Fields {
-			if slice.FindPos(localDetailsAllowedToBeStored, k) == -1 {
-				notOnlyLocalDetailsChanged = true
+			if slice.FindPos(append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...), k) == -1 ||
+				slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
+				hasPersistentDetails = true
 				break
 			}
 		}
+		prevSubState := pbtypes.GetStruct(st.GetCollection(collection), subId)
 
-		if !notOnlyLocalDetailsChanged {
+		if !hasPersistentDetails {
 			// todo: it shouldn't be done here, we have a place for it in the state, but it's not possible to set the virtual changes there
 			// revert lastModifiedDate details
-			prev := p.State.ParentState().LocalDetails().GetFields()
-			if prev != nil && prev[bundle.RelationKeyLastModifiedDate.String()] != nil {
-				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prev[bundle.RelationKeyLastModifiedDate.String()]
+			if prevSubState.GetFields() != nil && prevSubState.Fields[bundle.RelationKeyLastModifiedDate.String()] != nil {
+				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevSubState.Fields[bundle.RelationKeyLastModifiedDate.String()]
 			}
 		}
 
-		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), []string{bundle.RelationKeyLastModifiedDate.String()}) {
-			return "", nil
-		}
-
-		if !pbtypes.StructCompareIgnoreKeys(dataToSave, st.Store(), localDetailsAllowedToBeStored) {
+		// ignore lastModifiedDate if this is the only thing that has changed
+		if pbtypes.StructCompareIgnoreKeys(dataToSave, prevSubState, []string{bundle.RelationKeyLastModifiedDate.String()}) {
+			// nothing changed
 			return "", nil
 		}
 
@@ -281,6 +277,11 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 
 func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string, justCreated bool) (err error) {
 	var subObj SubObjectImpl
+	if len(strings.Split(subId, addr.SubObjectCollectionIdSeparator)) > 1 {
+		// handle invalid cases for our own accounts
+		return fmt.Errorf("invalid id: %s", subId)
+	}
+
 	switch collection {
 	case collectionKeyObjectTypes:
 		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)

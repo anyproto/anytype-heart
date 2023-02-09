@@ -111,7 +111,9 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	progress.SetProgressMessage("Start creating file blocks")
 
-	if cancelErr := m.fillEmptyBlocks(files, progress); cancelErr != nil {
+	childBlocks, cancelErr := m.fillEmptyBlocks(files, progress)
+
+	if cancelErr != nil {
 		return nil, cancelErr
 	}
 
@@ -123,7 +125,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	progress.SetProgressMessage("Start creating root blocks")
 
-	if cancellErr := m.addChildBlocks(files, progress); cancellErr != nil {
+	if cancellErr := m.addChildBlocks(files, progress, childBlocks); cancellErr != nil {
 		return nil, cancellErr
 	}
 
@@ -147,6 +149,15 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 	}
 
 	return &converter.Response{Snapshots: snapshots}, allErrors
+}
+
+func isChildBlock(blocks []string, b *model.Block) bool {
+	for _, block := range blocks {
+		if b.Id == block {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Markdown) convertCsvToLinks(csvFileName string, files map[string]*FileInfo) (blocks []*model.Block) {
@@ -397,11 +408,13 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 	return snapshots, nil
 }
 
-func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress *process.Progress) converter.ConvertError {
+func (m *Markdown) addChildBlocks(files map[string]*FileInfo,
+	progress *process.Progress,
+	childBlocks []string) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			cancelError := converter.NewFromError(name, err)
+			return cancelError
 		}
 
 		if file.PageID == "" {
@@ -411,6 +424,9 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress *process.
 
 		var childrenIds = make([]string, len(file.ParsedBlocks))
 		for _, b := range file.ParsedBlocks {
+			if isChildBlock(childBlocks, b) {
+				continue
+			}
 			childrenIds = append(childrenIds, b.Id)
 		}
 
@@ -420,7 +436,6 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress *process.
 			Content:     &model.BlockContentOfSmartblock{},
 		})
 	}
-
 	return nil
 }
 
@@ -480,26 +495,30 @@ func (m *Markdown) createMarkdownForLink(files map[string]*FileInfo,
 	return nil
 }
 
-func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress *process.Progress) converter.ConvertError {
+func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
+	progress *process.Progress) ([]string, converter.ConvertError) {
+	// process file blocks
+	childBlocks := make([]string, 0)
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			return nil, cancellError
 		}
 
 		if file.PageID == "" {
-			// not a page
 			continue
 		}
 
 		for _, b := range file.ParsedBlocks {
+			if len(b.ChildrenIds) != 0 {
+				childBlocks = append(childBlocks, b.ChildrenIds...)
+			}
 			if b.Id == "" {
 				b.Id = bson.NewObjectId().Hex()
 			}
 		}
 	}
-
-	return nil
+	return childBlocks, nil
 }
 
 func (m *Markdown) createThreadObject(files map[string]*FileInfo,

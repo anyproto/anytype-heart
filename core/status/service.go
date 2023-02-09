@@ -47,8 +47,8 @@ type LogTime struct {
 }
 
 type Service interface {
-	Watch(thread.ID, func() []string) (new bool)
-	Unwatch(thread.ID)
+	Watch(objID string, tid thread.ID, fileList func() []string) (new bool)
+	Unwatch(objID string, tid thread.ID)
 	UpdateTimeline(thread.ID, []LogTime)
 
 	app.ComponentRunnable
@@ -63,8 +63,9 @@ type service struct {
 	ownDeviceID string
 	cafeID      string
 
-	watchers map[thread.ID]func()
-	threads  map[thread.ID]*threadStatus
+	subobjectToThread map[string]thread.ID
+	watchers          map[thread.ID]func()
+	threads           map[thread.ID]*threadStatus
 
 	// deviceID => { thread.ID }
 	devThreads map[string]hashset.HashSet
@@ -85,6 +86,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.watchers = make(map[thread.ID]func())
+	s.subobjectToThread = make(map[string]thread.ID)
 	s.threads = make(map[thread.ID]*threadStatus)
 	s.devThreads = make(map[string]hashset.HashSet)
 	s.devAccount = make(map[string]string)
@@ -136,9 +138,13 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) Watch(tid thread.ID, fList func() []string) bool {
+func (s *service) Watch(objID string, tid thread.ID, fList func() []string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if tid.String() != objID {
+		s.subobjectToThread[objID] = tid
+	}
 
 	if _, exist := s.watchers[tid]; exist {
 		// send current status to init stateless caller
@@ -195,13 +201,17 @@ func (s *service) Watch(tid thread.ID, fList func() []string) bool {
 	return true
 }
 
-func (s *service) Unwatch(tid thread.ID) {
+func (s *service) Unwatch(objID string, tid thread.ID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if stop, found := s.watchers[tid]; found {
-		delete(s.watchers, tid)
-		stop()
+	if objID != tid.String() {
+		delete(s.subobjectToThread, objID)
+	} else {
+		if stop, found := s.watchers[tid]; found {
+			delete(s.watchers, tid)
+			stop()
+		}
 	}
 }
 
@@ -306,9 +316,18 @@ func (s *service) startSendingThreadStatus() {
 		var ts = make(map[thread.ID]*threadStatus, len(is))
 
 		s.mu.Lock()
+		threadToSubObjects := make(map[thread.ID][]string)
 		for i := 0; i < len(is); i++ {
 			id := is[i].(thread.ID)
 			ts[id] = s.getThreadStatus(id)
+		}
+		for objID, tid := range s.subobjectToThread {
+			v, exists := threadToSubObjects[tid]
+			if !exists {
+				v = make([]string, 0, 1)
+			}
+			v = append(v, objID)
+			threadToSubObjects[tid] = v
 		}
 		s.mu.Unlock()
 
@@ -323,6 +342,14 @@ func (s *service) startSendingThreadStatus() {
 
 		for id, t := range ts {
 			event := s.constructEvent(t, profile)
+
+			for _, obj := range threadToSubObjects[id] {
+				s.sendEvent(
+					obj,
+					&pb.EventMessageValueOfThreadStatus{ThreadStatus: &event},
+				)
+			}
+
 			s.sendEvent(
 				id.String(),
 				&pb.EventMessageValueOfThreadStatus{ThreadStatus: &event},

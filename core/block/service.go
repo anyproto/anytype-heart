@@ -98,7 +98,7 @@ func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 		if tid, err := thread.Decode(sb.Id()); err != nil {
 			log.With("thread", sb.Id()).Warnf("can't restore thread ID: %v", err)
 		} else {
-			ob.threadId = tid
+			ob.statusWatchID = tid
 		}
 	}
 	return &ob
@@ -106,7 +106,7 @@ func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 
 type openedBlock struct {
 	smartblock.SmartBlock
-	threadId thread.ID
+	statusWatchID thread.ID
 }
 
 func New() *Service {
@@ -267,7 +267,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
+	if tid := ob.statusWatchID; tid != thread.Undef && s.status != nil {
 		var (
 			fList = func() []string {
 				ob.Lock()
@@ -277,9 +277,9 @@ func (s *Service) OpenBlock(
 			}
 		)
 
-		if newWatcher := s.status.Watch(tid, fList); newWatcher {
+		if newWatcher := s.status.Watch(ob.Id(), tid, fList); newWatcher {
 			ob.AddHook(func(_ smartblock.ApplyInfo) error {
-				s.status.Unwatch(tid)
+				s.status.Unwatch(ob.Id(), tid)
 				return nil
 			}, smartblock.HookOnClose)
 		}
@@ -846,7 +846,7 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 					},
 				},
 			}
-			f, err := database.NewFilters(q, nil, nil)
+			f, err := database.NewFilters(q, nil, s.objectStore, nil)
 			if err != nil {
 				return nil
 			}
@@ -1106,6 +1106,34 @@ func DoState[t any](p Picker, id string, apply func(s *state.State, sb t) error,
 	return DoStateCtx(p, nil, id, apply, flags...)
 }
 
+// DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
+// It correctly handles the case when two ids are the same.
+func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
+	if firstID == secondID {
+		return DoState(s, firstID, func(st *state.State, b t1) error {
+			// Check that b satisfies t2
+			b2, ok := any(b).(t2)
+			if !ok {
+				var dummy t2
+				return fmt.Errorf("block %s is not of type %T", firstID, dummy)
+			}
+			return f(st, st, b, b2)
+		})
+	}
+	if firstID < secondID {
+		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
+			return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
+				return f(firstState, secondState, firstBlock, secondBlock)
+			})
+		})
+	}
+	return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
+			return f(firstState, secondState, firstBlock, secondBlock)
+		})
+	})
+}
+
 func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	sb, release, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
@@ -1254,7 +1282,10 @@ func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		if sb, err = sbOpener.Open(id); err != nil {
 			return
 		}
-		return newOpenedBlock(sb), nil
+		// in case of subObject, we need to set the statusWatchID to the workspaceId
+		ob = newOpenedBlock(sb)
+		ob.statusWatchID, _ = thread.Decode(workspaceId)
+		return ob, nil
 	}
 
 	sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{

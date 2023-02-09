@@ -384,11 +384,6 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
-	if events := s.tree.GetDuplicateEvents(); events > 30 {
-		params.DoSnapshot = true
-		log.With("thread", s.id).Errorf("found %d duplicate events: do the snapshot", events)
-		s.tree.ResetDuplicateEvents()
-	}
 	var c = &pb.Change{
 		PreviousIds:     s.tree.Heads(),
 		LastSnapshotId:  s.lastSnapshotId,
@@ -432,20 +427,20 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	return
 }
 
-func (v *source) ListIds() ([]string, error) {
-	ids, err := v.Anytype().ThreadsIds()
+func (s *source) ListIds() ([]string, error) {
+	ids, err := s.Anytype().ThreadsIds()
 	if err != nil {
 		return nil, err
 	}
 	ids = slice.Filter(ids, func(id string) bool {
-		if v.Anytype().PredefinedBlocks().IsAccount(id) {
+		if s.Anytype().PredefinedBlocks().IsAccount(id) {
 			return false
 		}
 		t, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
 			return false
 		}
-		return t == v.smartblockType
+		return t == s.smartblockType
 	})
 	// exclude account thread id
 	return ids, nil

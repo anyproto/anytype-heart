@@ -253,14 +253,14 @@ install-linter:
 
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m --skip-files ".*_test.go"
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m
+	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m --skip-files ".*_test.go"
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m --fix --skip-files ".*_test.go"
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m --fix --skip-files ".*_test.go"
 endif
