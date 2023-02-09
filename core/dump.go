@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/core/dump"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"

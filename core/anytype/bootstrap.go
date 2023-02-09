@@ -2,7 +2,6 @@ package anytype
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/core/dump"
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -21,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
+	"github.com/anytypeio/go-anytype-middleware/core/dump"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"

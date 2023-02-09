@@ -3,24 +3,25 @@ package dump
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/proto"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	smartblocktype "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const Name = "dump"
@@ -97,9 +98,9 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	}
 
 	for _, object := range deletedObjects {
-		mo, err := s.getMigrationObjectFromObjectInfo(object)
-		if err != nil {
-			return err
+		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
+		if mErr != nil {
+			return mErr
 		}
 		wErr := s.writeSnapshotToFile(zw, object.Id, mo)
 		if wErr != nil {
@@ -108,9 +109,9 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	}
 
 	for _, object := range archivedObjects {
-		mo, err := s.getMigrationObjectFromObjectInfo(object)
-		if err != nil {
-			return err
+		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
+		if mErr != nil {
+			return mErr
 		}
 		wErr := s.writeSnapshotToFile(zw, object.Id, mo)
 		if wErr != nil {
@@ -120,16 +121,16 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 
 	for _, id := range objectIDs {
 		if err = s.blockService.Do(id, func(b smartblock.SmartBlock) error {
-			sbType, err := smartblocktype.SmartBlockTypeFromID(b.RootId())
-			if err != nil {
+			sbType, sErr := smartblocktype.SmartBlockTypeFromID(b.RootId())
+			if sErr != nil {
 				return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
 			}
 			if isBundledObject(sbType) {
 				return nil
 			}
-			mo, err := s.getMigrationObject(b)
-			if err != nil {
-				return err
+			mo, mErr := s.getMigrationObject(b)
+			if mErr != nil {
+				return mErr
 			}
 			wErr := s.writeSnapshotToFile(zw, id, mo)
 			if wErr != nil {
