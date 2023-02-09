@@ -97,17 +97,9 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	}
 
 	for _, object := range deletedObjects {
-		sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
+		mo, err := s.getMigrationObjectFromObjectInfo(object)
 		if err != nil {
-			return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
-		}
-		sn := &model.SmartBlockSnapshotBase{
-			Details:     object.GetDetails(),
-			ObjectTypes: object.GetObjectTypeUrls(),
-		}
-		mo := &pb.MigrationObject{
-			SbType:   sbType.ToProto(),
-			Snapshot: sn,
+			return err
 		}
 		wErr := s.writeSnapshotToFile(zw, object.Id, mo)
 		if wErr != nil {
@@ -116,17 +108,9 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	}
 
 	for _, object := range archivedObjects {
-		sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
+		mo, err := s.getMigrationObjectFromObjectInfo(object)
 		if err != nil {
-			return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
-		}
-		sn := &model.SmartBlockSnapshotBase{
-			Details:     object.GetDetails(),
-			ObjectTypes: object.GetObjectTypeUrls(),
-		}
-		mo := &pb.MigrationObject{
-			SbType:   sbType.ToProto(),
-			Snapshot: sn,
+			return err
 		}
 		wErr := s.writeSnapshotToFile(zw, object.Id, mo)
 		if wErr != nil {
@@ -157,6 +141,22 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 		}
 	}
 	return err
+}
+
+func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*pb.MigrationObject, error) {
+	sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
+	if err != nil {
+		return nil, fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
+	}
+	sn := &model.SmartBlockSnapshotBase{
+		Details:     object.GetDetails(),
+		ObjectTypes: object.GetObjectTypeUrls(),
+	}
+	mo := &pb.MigrationObject{
+		SbType:   sbType.ToProto(),
+		Snapshot: sn,
+	}
+	return mo, nil
 }
 
 func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObject, error) {
