@@ -255,5 +255,4 @@ service ClientCommands {
 
     // Migration
     rpc UserDataDump (anytype.Rpc.UserData.Dump.Request) returns (anytype.Rpc.UserData.Dump.Response);
-//    rpc UserDataImport (anytype.Rpc.UserData.Import.Request) returns (anytype.Rpc.UserData.Import.Response);
 }
