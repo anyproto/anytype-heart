@@ -62,7 +62,9 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 		},
 		},
 	}, nil)
-
+	if err != nil {
+		return fmt.Errorf("failed to QueryObjectIds: %v", err)
+	}
 	archivedObjects, _, err := s.objectStore.QueryObjectInfo(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{{
 			RelationKey: bundle.RelationKeyIsArchived.String(),
