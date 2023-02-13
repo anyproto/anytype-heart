@@ -77,12 +77,26 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest,
 		return nil, ce
 	}
 
+	var (
+		pgs    []*converter.Snapshot
+		dbs    []*converter.Snapshot
+		pgRels map[string][]*converter.Relation
+	)
+	if pgSnapshots != nil {
+		pgs = pgSnapshots.Snapshots
+		pgRels = pgSnapshots.Relations
+	}
+
+	if dbSnapshots != nil {
+		dbs = dbSnapshots.Snapshots
+	}
+
 	page.SetPageLinksInDatabase(dbSnapshots, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
 
-	allSnaphots := make([]*converter.Snapshot, 0, len(pgSnapshots.Snapshots)+len(dbSnapshots.Snapshots))
-	allSnaphots = append(allSnaphots, pgSnapshots.Snapshots...)
-	allSnaphots = append(allSnaphots, dbSnapshots.Snapshots...)
-	relations := mergeMaps(dbSnapshots.Relations, pgSnapshots.Relations)
+	allSnaphots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
+	allSnaphots = append(allSnaphots, pgs...)
+	allSnaphots = append(allSnaphots, dbs...)
+	relations := mergeMaps(dbSnapshots.Relations, pgRels)
 
 	if pgErr != nil {
 		ce.Merge(pgErr)
