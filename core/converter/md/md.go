@@ -24,7 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
-var logger = logging.Logger("markdown renderer")
+var logger = logging.Logger("markdownRenderer")
 
 type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
