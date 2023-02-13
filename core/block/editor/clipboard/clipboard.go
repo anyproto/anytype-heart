@@ -262,7 +262,7 @@ func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteReques
 	if focused := cb.Pick(req.FocusedBlockId); focused != nil {
 		if focusedTxt := focused.Model().GetText(); focusedTxt != nil && focusedTxt.Style != model.BlockContentText_Paragraph {
 			for _, b := range blocks {
-				if txt := b.GetText(); txt.Style == model.BlockContentText_Paragraph {
+				if txt := b.GetText(); txt != nil && txt.Style == model.BlockContentText_Paragraph {
 					txt.Style = focusedTxt.Style
 				} else {
 					break
