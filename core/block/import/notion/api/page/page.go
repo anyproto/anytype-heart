@@ -115,6 +115,7 @@ func (ds *Service) GetPages(ctx context.Context,
 					}
 				}
 				t.Title = title
+				pageNameToID[p.ID] = t.GetTitle()
 			}
 		}
 	}
