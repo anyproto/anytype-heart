@@ -179,7 +179,7 @@ func (rc *RelationService) create(ctx *session.Context,
 			continue
 		}
 		if snapshot.Details != nil && snapshot.Details.Fields != nil {
-			if snapshot.Details.Fields[r.Name].GetListValue() != nil {
+			if snapshot.Details.Fields[r.Name].GetListValue() != nil && r.Format != model.RelationFormat_object {
 				rc.handleListValue(ctx, snapshot, r, relationID)
 			}
 			if r.Format == model.RelationFormat_file {
@@ -234,7 +234,7 @@ func (rc *RelationService) update(ctx *session.Context,
 			continue
 		}
 		if snapshot.Details != nil && snapshot.Details.Fields != nil {
-			if snapshot.Details.Fields[r.Name].GetListValue() != nil {
+			if snapshot.Details.Fields[r.Name].GetListValue() != nil && r.Format != model.RelationFormat_object {
 				rc.handleListValue(ctx, snapshot, r, key)
 			}
 			if r.Format == model.RelationFormat_file {

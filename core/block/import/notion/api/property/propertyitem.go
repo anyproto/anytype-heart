@@ -58,15 +58,19 @@ type TitleItem struct {
 	Title  []*api.RichText `json:"title"`
 }
 
-func (t *TitleItem) SetDetail(key string, details map[string]*types.Value) {
+func (t *TitleItem) GetTitle() string {
 	var richText strings.Builder
-	for i, title := range t.Title {
-		richText.WriteString(title.PlainText)
+	for i, ti := range t.Title {
+		richText.WriteString(ti.PlainText)
 		if i != len(t.Title)-1 {
 			richText.WriteString("\n")
 		}
 	}
-	details[bundle.RelationKeyName.String()] = pbtypes.String(richText.String())
+	return richText.String()
+}
+
+func (t *TitleItem) SetDetail(key string, details map[string]*types.Value) {
+	details[bundle.RelationKeyName.String()] = pbtypes.String(t.GetTitle())
 }
 
 func (t *TitleItem) GetPropertyType() ConfigType {

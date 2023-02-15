@@ -32,9 +32,9 @@ const (
 
 	threadDerivedIndexSetPages threadDerivedIndex = 20 // deprecated
 
-	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30
-	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31
-	threadDerivedIndexMarketplaceTemplate threadDerivedIndex = 32
+	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30 // deprecated
+	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31 // deprecated
+	threadDerivedIndexMarketplaceTemplate threadDerivedIndex = 32 // deprecated
 
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
@@ -48,15 +48,12 @@ const (
 )
 
 type DerivedSmartblockIds struct {
-	AccountOld          string
-	Account             string
-	Profile             string
-	Home                string
-	Archive             string
-	MarketplaceType     string
-	MarketplaceRelation string
-	MarketplaceTemplate string
-	Widgets             string
+	AccountOld string
+	Account    string
+	Profile    string
+	Home       string
+	Archive    string
+	Widgets    string
 }
 
 func (d DerivedSmartblockIds) IsAccount(id string) bool {
@@ -102,29 +99,14 @@ func (s *service) DerivePredefinedThreadIds() (DerivedSmartblockIds, error) {
 	if err != nil {
 		return DerivedSmartblockIds{}, err
 	}
-	mpType, err := s.derivedThreadIdByIndex(threadDerivedIndexMarketplaceType)
-	if err != nil {
-		return DerivedSmartblockIds{}, err
-	}
-	mpRelation, err := s.derivedThreadIdByIndex(threadDerivedIndexMarketplaceRelation)
-	if err != nil {
-		return DerivedSmartblockIds{}, err
-	}
-	mpTemplate, err := s.derivedThreadIdByIndex(threadDerivedIndexMarketplaceTemplate)
-	if err != nil {
-		return DerivedSmartblockIds{}, err
-	}
 
 	return DerivedSmartblockIds{
-		AccountOld:          accountOld.String(),
-		Account:             account.String(),
-		Profile:             profile.String(),
-		Home:                home.String(),
-		Archive:             archive.String(),
-		MarketplaceType:     mpType.String(),
-		MarketplaceRelation: mpRelation.String(),
-		MarketplaceTemplate: mpTemplate.String(),
-		Widgets:             widgets.String(),
+		AccountOld: accountOld.String(),
+		Account:    account.String(),
+		Profile:    profile.String(),
+		Home:       home.String(),
+		Archive:    archive.String(),
+		Widgets:    widgets.String(),
 	}, nil
 }
 
@@ -207,27 +189,6 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return accountIds, err
 	}
 	accountIds.Archive = archive.ID.String()
-
-	// marketplace
-	marketplace, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceType, newAccount, true)
-	if err != nil {
-		return accountIds, err
-	}
-	accountIds.MarketplaceType = marketplace.ID.String()
-
-	// marketplace library
-	marketplaceLib, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceRelation, newAccount, true)
-	if err != nil {
-		return accountIds, err
-	}
-	accountIds.MarketplaceRelation = marketplaceLib.ID.String()
-
-	// marketplace template
-	marketplaceTemplate, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceTemplate, newAccount, true)
-	if err != nil {
-		return accountIds, err
-	}
-	accountIds.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
 	return accountIds, nil
 }

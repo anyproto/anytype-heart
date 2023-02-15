@@ -115,6 +115,7 @@ func (ds *Service) GetPages(ctx context.Context,
 					}
 				}
 				t.Title = title
+				pageNameToID[p.ID] = t.GetTitle()
 			}
 		}
 	}
@@ -293,7 +294,8 @@ func isPropertyPaginated(pr property.Object) bool {
 func isPropertyTag(pr property.Object) bool {
 	return pr.GetPropertyType() == property.PropertyConfigTypeMultiSelect ||
 		pr.GetPropertyType() == property.PropertyConfigTypeSelect ||
-		pr.GetPropertyType() == property.PropertyConfigStatus
+		pr.GetPropertyType() == property.PropertyConfigStatus ||
+		pr.GetPropertyType() == property.PropertyConfigTypePeople
 }
 
 func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
@@ -309,6 +311,11 @@ func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
 		for _, so := range property.MultiSelect {
 			text = append(text, so.Name)
 			color = append(color, api.NotionColorToAnytype[so.Color])
+		}
+	case *property.PeopleItem:
+		for _, so := range property.People {
+			text = append(text, so.Name)
+			color = append(color, api.DefaultColor)
 		}
 	}
 

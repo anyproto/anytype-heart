@@ -21,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -188,6 +189,20 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch a := bl.(type) {
+		case dataview.Block:
+			target := a.Model().GetDataview().TargetObjectId
+			if target == "" {
+				return true
+			}
+			newTarget := b.idsMap[target]
+			if newTarget == "" {
+				// maybe we should panic here?
+				log.With("object", st.RootId()).Errorf("cant find target id for dataview: %s", a.Model().GetDataview().TargetObjectId)
+				return true
+			}
+
+			a.Model().GetDataview().TargetObjectId = newTarget
+			st.Set(simple.New(a.Model()))
 		case link.Block:
 			newTarget := b.idsMap[a.Model().GetLink().TargetBlockId]
 			if newTarget == "" {
