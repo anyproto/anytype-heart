@@ -94,6 +94,7 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 		Mnemonic: mnemonic,
 		Name:     profile.Name,
 		Avatar:   profile.IconImage,
+		Address:  profile.AccountAddr,
 	}
 	wErr := s.writeSnapshotToFile(zw, profileFile, pr)
 	if wErr != nil {
