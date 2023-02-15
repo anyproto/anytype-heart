@@ -3,6 +3,7 @@ package dump
 import (
 	"archive/zip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,7 +49,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error {
+func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootPath string) error {
 	objectIDs, _, err := s.objectStore.QueryObjectIds(database.Query{}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to QueryObjectIds: %v", err)
@@ -98,6 +99,10 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 	if wErr != nil {
 		return wErr
 	}
+	err = s.writeAccountDir(rootPath, profile, zw)
+	if err != nil {
+		return err
+	}
 
 	for _, object := range deletedObjects {
 		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
@@ -144,6 +149,34 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile) error
 		}
 	}
 	return err
+}
+
+func (s *Service) writeAccountDir(rootPath string, profile core.Profile, zw *zip.Writer) error {
+	return filepath.Walk(filepath.Join(rootPath, profile.AccountAddr), func(file string, fi os.FileInfo, err error) error {
+		// generate tar header
+		header, err := zip.FileInfoHeader(fi)
+		if err != nil {
+			return err
+		}
+
+		header.Name = strings.TrimPrefix(filepath.ToSlash(file), rootPath)
+
+		var wr io.Writer
+		if wr, err = zw.CreateHeader(header); err != nil {
+			return err
+		}
+		// if not a dir, write file content
+		if !fi.IsDir() {
+			data, err := os.Open(file)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(wr, data); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*pb.MigrationObject, error) {

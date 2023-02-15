@@ -24,7 +24,7 @@ func (mw *Middleware) UserDataDump(ctx context.Context, req *pb.RpcUserDataDumpR
 	if err != nil {
 		return response(pb.RpcUserDataDumpResponseError_UNKNOWN_ERROR, err)
 	}
-	err = dumpService.Dump(req.Path, mw.mnemonic, profile)
+	err = dumpService.Dump(req.Path, mw.mnemonic, profile, mw.rootPath)
 	if err != nil {
 		return response(pb.RpcUserDataDumpResponseError_UNKNOWN_ERROR, err)
 	}
