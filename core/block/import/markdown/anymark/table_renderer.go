@@ -171,6 +171,7 @@ func (r *TableRenderer) createCell(n *text.Segments,
 			return ast.WalkContinue, err
 		}
 		if len(ren.GetBlocks()) != 0 {
+			// if it's not text block - skip it, as we don't support non text blocks in tables
 			if _, ok := ren.GetBlocks()[0].Content.(*model.BlockContentOfText); !ok {
 				ren.GetBlocks()[0].Content = &model.BlockContentOfText{Text: &model.BlockContentText{}}
 			}
