@@ -122,3 +122,20 @@ To generate Swift protobuf:
 ```
 brew install swift-protobuf
 ```
+
+### Run local gRPC server in docker from prebuild images in registry
+1. Creating a personal access token - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
+2. login in ghcr.io:
+        ```
+        echo <you token>| docker login ghcr.io -u <github username> --password-stdin
+        ```
+3. run gRPC server in docker:
+        latest version
+        ```
+        make docker-run
+        ```
+        or run specific version
+        ```
+        make docker-run version=v0.25.0
+        ```
+
