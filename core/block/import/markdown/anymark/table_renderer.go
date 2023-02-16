@@ -171,6 +171,9 @@ func (r *TableRenderer) createCell(n *text.Segments,
 			return ast.WalkContinue, err
 		}
 		if len(ren.GetBlocks()) != 0 {
+			if _, ok := ren.GetBlocks()[0].Content.(*model.BlockContentOfText); !ok {
+				ren.GetBlocks()[0].Content = &model.BlockContentOfText{Text: &model.BlockContentText{}}
+			}
 			_, err = r.tableEditor.CellCreate(r.blocksState, r.tableState.currTableRow, colID, ren.GetBlocks()[0])
 			if err != nil {
 				return ast.WalkContinue, err
