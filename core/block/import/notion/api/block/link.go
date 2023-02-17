@@ -149,6 +149,7 @@ func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 	if l.LinkToPage.DatabaseID != "" {
 		anytypeID = req.NotionDatabaseIdsToAnytype[l.LinkToPage.DatabaseID]
 	}
+
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id:          id,
@@ -158,6 +159,20 @@ func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 				TargetBlockId: anytypeID,
 			},
 		}}
+	if anytypeID == "" {
+		bl = &model.Block{
+			Id:          id,
+			ChildrenIds: nil,
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: notFoundPageMessage,
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{},
+					},
+				},
+			},
+		}
+	}
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{id},
