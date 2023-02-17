@@ -152,6 +152,8 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 		text.WriteString(p)
 	} else {
 		text.WriteString(notFoundPageMessage)
+		to := textUtil.UTF16RuneCountString(text.String())
+		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	}
 	to := textUtil.UTF16RuneCountString(text.String())
 	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
@@ -177,6 +179,8 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 		text.WriteString(p)
 	} else {
 		text.WriteString(notFoundPageMessage)
+		to := textUtil.UTF16RuneCountString(text.String())
+		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	}
 	to := textUtil.UTF16RuneCountString(text.String())
 	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
