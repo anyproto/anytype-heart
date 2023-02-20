@@ -1801,7 +1801,7 @@ message Rpc {
                     Notion = 0;
                     Markdown = 1; 
                     External = 2; // external developers use it
-                    Html = 3; // external developers use it
+                    Html = 3;
                 };
 
             }
