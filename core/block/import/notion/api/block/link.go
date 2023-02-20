@@ -159,6 +159,8 @@ func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 				TargetBlockId: anytypeID,
 			},
 		}}
+	// notion page has link to page/database which isn't added to notion integration,
+	// so we don't create anytype page for it
 	if anytypeID == "" {
 		bl = &model.Block{
 			Id:          id,
