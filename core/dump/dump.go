@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -154,20 +155,18 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 
 func (s *Service) writeAccountDir(rootPath string, profile core.Profile, zw *zip.Writer) error {
 	return filepath.Walk(filepath.Join(rootPath, profile.AccountAddr), func(file string, fi os.FileInfo, err error) error {
-		// generate tar header
 		header, err := zip.FileInfoHeader(fi)
 		if err != nil {
 			return err
 		}
+		if strings.Contains(file, wallet.KeyFileDevice) || strings.Contains(file, wallet.KeyFileAccount) {
+			header.Name = strings.TrimPrefix(filepath.ToSlash(file), rootPath)
 
-		header.Name = strings.TrimPrefix(filepath.ToSlash(file), rootPath)
-
-		var wr io.Writer
-		if wr, err = zw.CreateHeader(header); err != nil {
-			return err
-		}
-		// if not a dir, write file content
-		if !fi.IsDir() {
+			var wr io.Writer
+			if wr, err = zw.CreateHeader(header); err != nil {
+				return err
+			}
+			// if not a dir, write file content
 			data, err := os.Open(file)
 			if err != nil {
 				return err
