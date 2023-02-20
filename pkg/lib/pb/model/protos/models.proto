@@ -505,6 +505,7 @@ message Block {
             enum Layout {
                 Link = 0;
                 Tree = 1;
+                List = 2;
             }
         }
     }

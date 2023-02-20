@@ -236,6 +236,7 @@ func (m *AuthGetTokenRequest) GetSignature() *WithSignature {
 
 type AuthGetTokenResponse struct {
 	// Types that are valid to be assigned to TwoStepFlow:
+	//
 	//	*AuthGetTokenResponseTwoStepFlowOfAuthCode
 	//	*AuthGetTokenResponseTwoStepFlowOfToken
 	TwoStepFlow IsAuthGetTokenResponseTwoStepFlow `protobuf_oneof:"twoStepFlow"`
