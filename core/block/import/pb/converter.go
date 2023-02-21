@@ -117,8 +117,8 @@ func (p *Pb) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (p *Pb) GetParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
-	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfMarkdownParams); ok {
-		return p.MarkdownParams.GetPath(), nil
+	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfPbParams); ok {
+		return p.PbParams.GetPath(), nil
 	}
 	return "", errors.New("PB: GetParams wrong parameters format")
 }

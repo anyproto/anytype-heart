@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/pkg/errors"
 
 	ce "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
@@ -43,7 +42,7 @@ func newMDConverter(s Service) *mdConverter {
 	return &mdConverter{Service: s}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*FileInfo, ce.ConvertError) {
+func (m *mdConverter) markdownToBlocks(importPath string, mode string) (map[string]*FileInfo, ce.ConvertError) {
 	allErrors := ce.NewError()
 	files := m.processFiles(importPath, mode, allErrors)
 
@@ -52,13 +51,22 @@ func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*Fil
 	return files, allErrors
 }
 
-func (m *mdConverter) processFiles(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
+	fileInfo := make(map[string]*FileInfo, 0)
 	ext := filepath.Ext(importPath)
 	if strings.EqualFold(ext, ".zip") {
-		return m.processZipFile(importPath, mode, allErrors)
+		fileInfo = m.processZipFile(importPath, mode, allErrors)
+	} else if strings.EqualFold(ext, ".md") {
+		m.processFile(importPath, fileInfo, allErrors)
 	} else {
-		return m.processDirectory(importPath, mode, allErrors)
+		fileInfo = m.processDirectory(importPath, allErrors)
 	}
+	for _, file := range fileInfo {
+		for _, b := range file.ParsedBlocks {
+			m.processFileBlock(b, fileInfo)
+		}
+	}
+	return fileInfo
 }
 
 func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
@@ -78,14 +86,6 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 		// remove zip root folder if exists
 		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
 
-		if err != nil {
-			allErrors.Add(shortPath, err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
-				return nil
-			}
-			log.Errorf("failed to read file %s: %s", shortPath, err.Error())
-			continue
-		}
 		rc, err := f.Open()
 		if err != nil {
 			allErrors.Add(shortPath, err)
@@ -105,24 +105,15 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 			log.Errorf("failed to create blocks from file %s: %s", shortPath, err.Error())
 		}
 	}
-	for _, file := range files {
-		for _, b := range file.ParsedBlocks {
-			m.processFileBlock(b, files)
-		}
-	}
 
 	return files
 }
 
-func (m *mdConverter) processDirectory(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processDirectory(importPath string, allErrors ce.ConvertError) map[string]*FileInfo {
 	files := make(map[string]*FileInfo)
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return errors.Wrap(err, "markdown import: processDirectory")
-			}
-
-			if !info.IsDir() {
+			if info != nil && !info.IsDir() {
 				shortPath, err := filepath.Rel(importPath+string(filepath.Separator), path)
 				if err != nil {
 					return fmt.Errorf("failed to get relative path %s", err)
@@ -385,4 +376,21 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 	targetFile.Close()
 	tmpFile.Close()
 	f.Name = newFile
+}
+
+func (m *mdConverter) processFile(fName string, files map[string]*FileInfo, allErrors ce.ConvertError) {
+	shortPath := filepath.Clean(fName)
+
+	f, err := os.Open(fName)
+	if err != nil {
+		allErrors.Add(shortPath, err)
+		log.Errorf("failed to read file %s: %s", shortPath, err.Error())
+		return
+	}
+	files[shortPath] = &FileInfo{}
+	files[shortPath].Source = ce.GetSourceDetail(fName, fName)
+	if err = m.createBlocksFromFile(shortPath, f, files); err != nil {
+		allErrors.Add(shortPath, err)
+		log.Errorf("failed to create block from file %s: %s", shortPath, err.Error())
+	}
 }
