@@ -150,6 +150,10 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 	from := textUtil.UTF16RuneCountString(text.String())
 	if p, ok := databaseNameToID[rt.Mention.Database.ID]; ok {
 		text.WriteString(p)
+	} else if rt.PlainText != "" {
+		text.WriteString(rt.PlainText)
+		to := textUtil.UTF16RuneCountString(text.String())
+		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	} else {
 		text.WriteString(notFoundPageMessage)
 		to := textUtil.UTF16RuneCountString(text.String())
@@ -177,6 +181,10 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 	from := textUtil.UTF16RuneCountString(text.String())
 	if p, ok := pageNameToID[rt.Mention.Page.ID]; ok {
 		text.WriteString(p)
+	} else if rt.PlainText != "" {
+		text.WriteString(rt.PlainText)
+		to := textUtil.UTF16RuneCountString(text.String())
+		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	} else {
 		text.WriteString(notFoundPageMessage)
 		to := textUtil.UTF16RuneCountString(text.String())

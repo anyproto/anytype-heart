@@ -129,6 +129,31 @@ func Test_GetTextBlocksDatabaseMention(t *testing.T) {
 	assert.Equal(t, bl.Blocks[0].GetText().Text, notFoundPageMessage)
 }
 
+func Test_GetTextBlocksDatabaseMentionWithoutSource(t *testing.T) {
+	to := &TextObject{
+		RichText: []api.RichText{
+			{
+				Type: api.Mention,
+				Mention: &api.MentionObject{
+					Type: api.Database,
+					Database: &api.DatabaseMention{
+						ID: "notionID",
+					},
+				},
+				PlainText: "Database name",
+			},
+		},
+	}
+
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+		NotionDatabaseIdsToAnytype: map[string]string{},
+		DatabaseNameToID:           map[string]string{},
+	})
+	assert.Len(t, bl.Blocks, 1)
+	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, "Database name")
+}
+
 func Test_GetTextBlocksDateMention(t *testing.T) {
 	to := &TextObject{
 		RichText: []api.RichText{
