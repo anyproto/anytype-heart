@@ -198,7 +198,7 @@ func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*p
 	}
 	mo := &pb.MigrationObject{
 		SbType:   sbType.ToProto(),
-		Snapshot: sn,
+		Snapshot: &pb.ChangeSnapshot{Data: sn},
 	}
 	return mo, nil
 }
@@ -221,9 +221,15 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 		RemovedCollectionKeys: removedCollectionKeys,
 		ExtraRelations:        st.OldExtraRelations(),
 	}
+
+	stFileKeys := st.GetAndUnsetFileKeys()
+	fileKeys := make([]*pb.ChangeFileKeys, 0, len(stFileKeys))
+	for _, key := range stFileKeys {
+		fileKeys = append(fileKeys, &key)
+	}
 	mo := &pb.MigrationObject{
 		SbType:   sbType.ToProto(),
-		Snapshot: sn,
+		Snapshot: &pb.ChangeSnapshot{Data: sn, FileKeys: fileKeys},
 	}
 	return mo, nil
 }
