@@ -3,6 +3,7 @@ package dump
 import (
 	"archive/zip"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io"
 	"os"
 	"path/filepath"
@@ -130,6 +131,13 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 
 	for _, id := range objectIDs {
 		if err = s.blockService.Do(id, func(b smartblock.SmartBlock) error {
+			details := b.CombinedDetails()
+			if sourceObject := pbtypes.GetString(details, bundle.RelationKeySourceObject.String()); sourceObject != "" {
+				if strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) ||
+					strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) {
+					return nil
+				}
+			}
 			sbType, sErr := smartblocktype.SmartBlockTypeFromID(b.RootId())
 			if sErr != nil {
 				return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
@@ -256,6 +264,5 @@ func skipObject(objectType smartblocktype.SmartBlockType) bool {
 		objectType == smartblocktype.SmartblockTypeMarketplaceRelation ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceTemplate ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceType ||
-		objectType == smartblocktype.SmartBlockTypeSubObject ||
 		objectType == smartblocktype.SmartBlockTypeFile
 }
