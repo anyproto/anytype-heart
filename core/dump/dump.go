@@ -222,7 +222,7 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 		ExtraRelations:        st.OldExtraRelations(),
 	}
 
-	stFileKeys := st.GetAndUnsetFileKeys()
+	stFileKeys := b.GetAndUnsetFileKeys()
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(stFileKeys))
 	for _, key := range stFileKeys {
 		fileKeys = append(fileKeys, &key)
