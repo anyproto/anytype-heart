@@ -134,7 +134,7 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 			if sErr != nil {
 				return fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
 			}
-			if isBundledObject(sbType) {
+			if skipObject(sbType) {
 				return nil
 			}
 			mo, mErr := s.getMigrationObject(b)
@@ -203,9 +203,7 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 		return nil, fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
 	}
 	removedCollectionKeys := make([]string, 0, len(st.StoreKeysRemoved()))
-	for key := range st.StoreKeysRemoved() {
-		removedCollectionKeys = append(removedCollectionKeys, key)
-	}
+
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:                st.Blocks(),
 		Details:               st.CombinedDetails(),
@@ -248,15 +246,16 @@ func buildPath(path string) string {
 	return sb.String()
 }
 
-func isBundledObject(objectType smartblocktype.SmartBlockType) bool {
+func skipObject(objectType smartblocktype.SmartBlockType) bool {
 	return objectType == smartblocktype.SmartBlockTypeBundledObjectType ||
 		objectType == smartblocktype.SmartBlockTypeBundledTemplate ||
 		objectType == smartblocktype.SmartBlockTypeBundledRelation ||
 		objectType == smartblocktype.SmartBlockTypeWorkspaceOld ||
-		objectType == smartblocktype.SmartBlockTypeWorkspace ||
 		objectType == smartblocktype.SmartBlockTypeArchive ||
 		objectType == smartblocktype.SmartBlockTypeHome ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceRelation ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceTemplate ||
-		objectType == smartblocktype.SmartblockTypeMarketplaceType
+		objectType == smartblocktype.SmartblockTypeMarketplaceType ||
+		objectType == smartblocktype.SmartBlockTypeSubObject ||
+		objectType == smartblocktype.SmartBlockTypeFile
 }
