@@ -131,7 +131,7 @@ func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	case SmartblockTypeMarketplaceType, SmartblockTypeMarketplaceRelation,
 		SmartblockTypeMarketplaceTemplate, SmartBlockTypeDate, SmartBlockTypeBreadcrumbs, SmartBlockTypeAccountOld, SmartBlockTypeWorkspaceOld:
 		return false, false
-	case SmartBlockTypeArchive:
+	case SmartBlockTypeArchive, SmartBlockTypeHome:
 		return false, true
 	default:
 		return true, true
