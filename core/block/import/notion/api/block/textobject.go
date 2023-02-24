@@ -14,6 +14,10 @@ import (
 
 const DateMentionTimeFormat = "2006-01-02"
 
+// notExistingName is used in mention, when pages/database mentions is not existing in integration. We show such pages
+// in anytype as "Not found"
+const notExistingName = "Untitled"
+
 type ChildrenMapper interface {
 	MapChildren(req *MapRequest) *MapResponse
 }
@@ -150,7 +154,7 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 	from := textUtil.UTF16RuneCountString(text.String())
 	if p, ok := databaseNameToID[rt.Mention.Database.ID]; ok {
 		text.WriteString(p)
-	} else if rt.PlainText != "" {
+	} else if rt.PlainText != "" && rt.PlainText != notExistingName {
 		text.WriteString(rt.PlainText)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
@@ -181,7 +185,7 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 	from := textUtil.UTF16RuneCountString(text.String())
 	if p, ok := pageNameToID[rt.Mention.Page.ID]; ok {
 		text.WriteString(p)
-	} else if rt.PlainText != "" {
+	} else if rt.PlainText != "" && rt.PlainText != notExistingName {
 		text.WriteString(rt.PlainText)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
