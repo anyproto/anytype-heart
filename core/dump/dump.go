@@ -3,7 +3,6 @@ package dump
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	smartblocktype "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -225,6 +225,7 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 	stFileKeys := b.GetAndUnsetFileKeys()
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(stFileKeys))
 	for _, key := range stFileKeys {
+		key := key
 		fileKeys = append(fileKeys, &key)
 	}
 	mo := &pb.MigrationObject{
