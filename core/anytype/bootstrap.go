@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
+	"github.com/anytypeio/go-anytype-middleware/core/dump"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -139,6 +140,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(decorator.New()).
 		Register(object.NewCreator()).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory())
+		Register(editor.NewObjectFactory()).
+		Register(dump.NewService())
 	return
 }

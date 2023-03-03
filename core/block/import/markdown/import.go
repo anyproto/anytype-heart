@@ -51,12 +51,12 @@ func (m *Markdown) Name() string {
 	return Name
 }
 
-func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) string {
+func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) []string {
 	if p := req.GetMarkdownParams(); p != nil {
 		return p.Path
 	}
 
-	return ""
+	return nil
 }
 
 func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
@@ -67,19 +67,53 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	path := m.GetParams(req)
 
-	files, allErrors := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
-	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if len(path) == 0 {
+		return nil, converter.NewFromError("", fmt.Errorf("no path to files were provided"))
+	}
+
+	var (
+		allSnapshots []*converter.Snapshot
+		allErrors    = converter.NewError()
+	)
+	for _, p := range path {
+		sn, cancelError := m.processImportPath(req, progress, p, allErrors)
+		if !cancelError.IsEmpty() {
+			return nil, cancelError
+		}
+		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, allErrors
+		}
+		allSnapshots = append(allSnapshots, sn...)
+	}
+
+	if len(allSnapshots) == 0 {
+		allErrors.Add("", fmt.Errorf("failed to get snaphots from path, no md files"))
+	}
+
+	if allErrors.IsEmpty() {
+		return &converter.Response{Snapshots: allSnapshots}, nil
+	}
+
+	return &converter.Response{Snapshots: allSnapshots}, allErrors
+}
+
+func (m *Markdown) processImportPath(req *pb.RpcObjectImportRequest,
+	progress *process.Progress,
+	p string,
+	allErrors converter.ConvertError) ([]*converter.Snapshot, converter.ConvertError) {
+	files, err := m.blockConverter.markdownToBlocks(p, req.GetMode().String())
+	if !err.IsEmpty() {
+		allErrors.Merge(err)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, nil
 		}
 	}
 
-	progress.SetTotal(int64(numberOfStages * len(files)))
-
 	if len(files) == 0 {
-		allErrors.Add(path, fmt.Errorf("couldn't found md files"))
-		return nil, allErrors
+		log.Errorf("couldn't found md files, path: %s", p)
+		return nil, nil
 	}
+	progress.SetTotal(int64(numberOfStages * len(files)))
 
 	progress.SetProgressMessage("Start linking database file with pages")
 
@@ -125,30 +159,16 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	progress.SetProgressMessage("Start creating root blocks")
 
-	if cancellErr := m.addChildBlocks(files, progress, childBlocks); cancellErr != nil {
-		return nil, cancellErr
+	if cancelErr = m.addChildBlocks(files, progress, childBlocks); cancelErr != nil {
+		return nil, cancelErr
 	}
-
 	progress.SetProgressMessage("Start creating snaphots")
 
-	var (
-		snapshots  []*converter.Snapshot
-		cancellErr converter.ConvertError
-	)
-
-	if snapshots, cancellErr = m.createSnapshots(files, progress, details); cancellErr != nil {
-		return nil, cancellErr
+	var snapshots []*converter.Snapshot
+	if snapshots, cancelErr = m.createSnapshots(files, progress, details); cancelErr != nil {
+		return nil, cancelErr
 	}
-
-	if len(snapshots) == 0 {
-		allErrors.Add(path, fmt.Errorf("failed to get snaphots from path, no md files"))
-	}
-
-	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: snapshots}, nil
-	}
-
-	return &converter.Response{Snapshots: snapshots}, allErrors
+	return snapshots, nil
 }
 
 func isChildBlock(blocks []string, b *model.Block) bool {

@@ -43,8 +43,26 @@ type Heading1Block struct {
 	Heading1 HeadingObject `json:"heading_1"`
 }
 
+func (h *Heading1Block) SetChildren(children []interface{}) {
+	h.Heading1.Children = children
+}
+
+func (h *Heading1Block) HasChild() bool {
+	return h.Heading1.IsToggleable
+}
+
+func (h *Heading1Block) GetID() string {
+	return h.ID
+}
+
 func (h *Heading1Block) GetBlocks(req *MapRequest) *MapResponse {
-	return h.Heading1.GetTextBlocks(model.BlockContentText_Header1, nil, req)
+	resp := h.Heading1.GetTextBlocks(model.BlockContentText_Header3, nil, req)
+	if h.Heading1.IsToggleable {
+		mapper := ChildrenMapper(&h.Heading1)
+		childResp := mapper.MapChildren(req)
+		resp.Merge(childResp)
+	}
+	return resp
 }
 
 type Heading2Block struct {
@@ -52,8 +70,26 @@ type Heading2Block struct {
 	Heading2 HeadingObject `json:"heading_2"`
 }
 
+func (h *Heading2Block) SetChildren(children []interface{}) {
+	h.Heading2.Children = children
+}
+
+func (h *Heading2Block) HasChild() bool {
+	return h.Heading2.IsToggleable
+}
+
+func (h *Heading2Block) GetID() string {
+	return h.ID
+}
+
 func (h *Heading2Block) GetBlocks(req *MapRequest) *MapResponse {
-	return h.Heading2.GetTextBlocks(model.BlockContentText_Header2, nil, req)
+	resp := h.Heading2.GetTextBlocks(model.BlockContentText_Header3, nil, req)
+	if h.Heading2.IsToggleable {
+		mapper := ChildrenMapper(&h.Heading2)
+		childResp := mapper.MapChildren(req)
+		resp.Merge(childResp)
+	}
+	return resp
 }
 
 type Heading3Block struct {
@@ -61,12 +97,30 @@ type Heading3Block struct {
 	Heading3 HeadingObject `json:"heading_3"`
 }
 
-func (p *Heading3Block) GetBlocks(req *MapRequest) *MapResponse {
-	return p.Heading3.GetTextBlocks(model.BlockContentText_Header3, nil, req)
+func (h *Heading3Block) GetBlocks(req *MapRequest) *MapResponse {
+	resp := h.Heading3.GetTextBlocks(model.BlockContentText_Header3, nil, req)
+	if h.Heading3.IsToggleable {
+		mapper := ChildrenMapper(&h.Heading3)
+		childResp := mapper.MapChildren(req)
+		resp.Merge(childResp)
+	}
+	return resp
+}
+
+func (h *Heading3Block) SetChildren(children []interface{}) {
+	h.Heading3.Children = children
+}
+
+func (h *Heading3Block) HasChild() bool {
+	return h.Heading3.IsToggleable
+}
+
+func (h *Heading3Block) GetID() string {
+	return h.ID
 }
 
 type HeadingObject struct {
-	TextObject
+	TextObjectWithChildren
 	IsToggleable bool `json:"is_toggleable"`
 }
 

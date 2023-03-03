@@ -49,6 +49,10 @@
     - [Rpc.Account.Delete.Request](#anytype.Rpc.Account.Delete.Request)
     - [Rpc.Account.Delete.Response](#anytype.Rpc.Account.Delete.Response)
     - [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error)
+    - [Rpc.Account.Export](#anytype.Rpc.Account.Export)
+    - [Rpc.Account.Export.Request](#anytype.Rpc.Account.Export.Request)
+    - [Rpc.Account.Export.Response](#anytype.Rpc.Account.Export.Response)
+    - [Rpc.Account.Export.Response.Error](#anytype.Rpc.Account.Export.Response.Error)
     - [Rpc.Account.GetConfig](#anytype.Rpc.Account.GetConfig)
     - [Rpc.Account.GetConfig.Get](#anytype.Rpc.Account.GetConfig.Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype.Rpc.Account.GetConfig.Get.Request)
@@ -599,8 +603,10 @@
     - [Rpc.Object.Import.Notion.ValidateToken.Response.Error](#anytype.Rpc.Object.Import.Notion.ValidateToken.Response.Error)
     - [Rpc.Object.Import.Request](#anytype.Rpc.Object.Import.Request)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype.Rpc.Object.Import.Request.BookmarksParams)
+    - [Rpc.Object.Import.Request.HtmlParams](#anytype.Rpc.Object.Import.Request.HtmlParams)
     - [Rpc.Object.Import.Request.MarkdownParams](#anytype.Rpc.Object.Import.Request.MarkdownParams)
     - [Rpc.Object.Import.Request.NotionParams](#anytype.Rpc.Object.Import.Request.NotionParams)
+    - [Rpc.Object.Import.Request.PbParams](#anytype.Rpc.Object.Import.Request.PbParams)
     - [Rpc.Object.Import.Request.Snapshot](#anytype.Rpc.Object.Import.Request.Snapshot)
     - [Rpc.Object.Import.Response](#anytype.Rpc.Object.Import.Response)
     - [Rpc.Object.Import.Response.Error](#anytype.Rpc.Object.Import.Response.Error)
@@ -852,6 +858,7 @@
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype.Rpc.Account.ConfigUpdate.Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code)
+    - [Rpc.Account.Export.Response.Error.Code](#anytype.Rpc.Account.Export.Response.Error.Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype.Rpc.Account.Move.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
@@ -1226,6 +1233,10 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
+- [pb/protos/migration.proto](#pb/protos/migration.proto)
+    - [MigrationObject](#anytype.MigrationObject)
+    - [Profile](#anytype.Profile)
+  
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -1381,6 +1392,7 @@
 | AccountStop | [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request) | [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype.Rpc.Account.Move.Request) | [Rpc.Account.Move.Response](#anytype.Rpc.Account.Move.Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype.Rpc.Account.ConfigUpdate.Request) | [Rpc.Account.ConfigUpdate.Response](#anytype.Rpc.Account.ConfigUpdate.Response) |  |
+| AccountExport | [Rpc.Account.Export.Request](#anytype.Rpc.Account.Export.Request) | [Rpc.Account.Export.Response](#anytype.Rpc.Account.Export.Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype.Rpc.Object.Open.Request) | [Rpc.Object.Open.Response](#anytype.Rpc.Object.Open.Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype.Rpc.Object.Close.Request) | [Rpc.Object.Close.Response](#anytype.Rpc.Object.Close.Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype.Rpc.Object.Show.Request) | [Rpc.Object.Show.Response](#anytype.Rpc.Object.Show.Response) |  |
@@ -1567,6 +1579,7 @@ the element of change tree used to store and internal apply smartBlock history
 | snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the Content will be ignored |
 | fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | file keys related to changes content |
 | timestamp | [int64](#int64) |  | creation timestamp |
+| version | [string](#string) |  |  |
 
 
 
@@ -2188,6 +2201,62 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Export"></a>
+
+### Rpc.Account.Export
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Export.Request"></a>
+
+### Rpc.Account.Export.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Export.Response"></a>
+
+### Rpc.Account.Export.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Export.Response.Error](#anytype.Rpc.Account.Export.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Export.Response.Error"></a>
+
+### Rpc.Account.Export.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Export.Response.Error.Code](#anytype.Rpc.Account.Export.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10224,6 +10293,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype.Rpc.Object.Import.Request.NotionParams) |  |  |
 | bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype.Rpc.Object.Import.Request.BookmarksParams) |  | for internal use |
 | markdownParams | [Rpc.Object.Import.Request.MarkdownParams](#anytype.Rpc.Object.Import.Request.MarkdownParams) |  |  |
+| htmlParams | [Rpc.Object.Import.Request.HtmlParams](#anytype.Rpc.Object.Import.Request.HtmlParams) |  |  |
+| pbParams | [Rpc.Object.Import.Request.PbParams](#anytype.Rpc.Object.Import.Request.PbParams) |  |  |
 | snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype.Rpc.Object.Import.Request.Snapshot) | repeated | optional, for external developers usage |
 | updateExistingObjects | [bool](#bool) |  |  |
 | type | [Rpc.Object.Import.Request.Type](#anytype.Rpc.Object.Import.Request.Type) |  |  |
@@ -10249,6 +10320,21 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object.Import.Request.HtmlParams"></a>
+
+### Rpc.Object.Import.Request.HtmlParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.Import.Request.MarkdownParams"></a>
 
 ### Rpc.Object.Import.Request.MarkdownParams
@@ -10257,7 +10343,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  |  |
+| path | [string](#string) | repeated |  |
 
 
 
@@ -10273,6 +10359,21 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | apiKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Import.Request.PbParams"></a>
+
+### Rpc.Object.Import.Request.PbParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
 
 
 
@@ -13897,6 +13998,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Account.Export.Response.Error.Code"></a>
+
+### Rpc.Account.Export.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Account.Move.Response.Error.Code"></a>
 
 ### Rpc.Account.Move.Response.Error.Code
@@ -15679,6 +15793,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Notion | 0 |  |
 | Markdown | 1 |  |
 | External | 2 | external developers use it |
+| Html | 3 |  |
 
 
 
@@ -15705,6 +15820,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | Notion | 0 |  |
 | Markdown | 1 |  |
+| Html | 2 |  |
 
 
 
@@ -19301,6 +19417,56 @@ Precondition: user A and user B opened the same block
 
 
 
+<a name="pb/protos/migration.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## pb/protos/migration.proto
+
+
+
+<a name="anytype.MigrationObject"></a>
+
+### MigrationObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sbType | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
+| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  |  |
+
+
+
+
+
+
+<a name="anytype.Profile"></a>
+
+### Profile
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mnemonic | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| avatar | [string](#string) |  |  |
+| address | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
 <a name="pkg/lib/pb/model/protos/localstore.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -20872,6 +21038,7 @@ stored |
 | ---- | ------ | ----------- |
 | Link | 0 |  |
 | Tree | 1 |  |
+| List | 2 |  |
 
 
 

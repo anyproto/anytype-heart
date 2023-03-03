@@ -38,6 +38,7 @@ service ClientCommands {
     rpc AccountStop (anytype.Rpc.Account.Stop.Request) returns (anytype.Rpc.Account.Stop.Response);
     rpc AccountMove (anytype.Rpc.Account.Move.Request) returns (anytype.Rpc.Account.Move.Response);
     rpc AccountConfigUpdate (anytype.Rpc.Account.ConfigUpdate.Request) returns (anytype.Rpc.Account.ConfigUpdate.Response);
+    rpc AccountExport (anytype.Rpc.Account.Export.Request) returns (anytype.Rpc.Account.Export.Response);
 
     // Object
     // ***

@@ -23,6 +23,8 @@ message Change {
     // creation timestamp
     int64 timestamp = 7;
 
+    string version = 8;
+
     message Snapshot {
         // logId -> lastChangeId
         map<string, string> logHeads = 1;

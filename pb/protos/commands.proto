@@ -521,6 +521,28 @@ message Rpc {
 
             }
         }
+
+        message Export {
+            message Request {
+                string path = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
     }
 
     message Workspace {
@@ -1761,18 +1783,19 @@ message Rpc {
                     BookmarksParams bookmarksParams = 2; //for internal use
                     MarkdownParams markdownParams = 3;
                     HtmlParams htmlParams = 4;
+                    PbParams pbParams = 5;
                 }
-                repeated Snapshot snapshots = 5; // optional, for external developers usage
-                bool updateExistingObjects = 6;
-                Type type = 7;
-                Mode mode = 8;
+                repeated Snapshot snapshots = 6; // optional, for external developers usage
+                bool updateExistingObjects = 7;
+                Type type = 8;
+                Mode mode = 9;
 
                 message NotionParams {
                     string apiKey = 1;
                 }
 
                 message MarkdownParams {
-                    string path = 1;
+                    repeated string path = 1;
                 }
 
                 message BookmarksParams {
@@ -1781,6 +1804,10 @@ message Rpc {
 
                 message HtmlParams {
                     repeated string path = 1;
+                }
+
+                message PbParams {
+                    string path = 1;
                 }
 
                 enum Mode {
@@ -1796,7 +1823,7 @@ message Rpc {
                     Notion = 0;
                     Markdown = 1; 
                     External = 2; // external developers use it
-                    Html = 3; // external developers use it
+                    Html = 3;
                 };
 
             }
@@ -5146,6 +5173,7 @@ message Rpc {
             }
         }
     }
+
 }
 
 message Empty {
