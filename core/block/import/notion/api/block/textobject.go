@@ -14,9 +14,12 @@ import (
 
 const DateMentionTimeFormat = "2006-01-02"
 
-// notExistingName is used in mention, when pages/database mentions is not existing in integration. We show such pages
-// in anytype as "Not found"
-const notExistingName = "Untitled"
+const (
+	// notExistingName is used in mention, when pages/database mentions is not existing in integration. We show such pages
+	// in anytype as "Not found"
+	notExistingName          = "Untitled"
+	notExistingObjectMessage = "Can't access object from Notion"
+)
 
 type ChildrenMapper interface {
 	MapChildren(req *MapRequest) *MapResponse
@@ -159,7 +162,7 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	} else {
-		text.WriteString(notFoundPageMessage)
+		text.WriteString(notExistingObjectMessage)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	}
@@ -190,7 +193,7 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	} else {
-		text.WriteString(notFoundPageMessage)
+		text.WriteString(notExistingObjectMessage)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
 	}
