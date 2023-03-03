@@ -102,7 +102,7 @@ func Test_GetTextBlocksTextPageMentionNotFound(t *testing.T) {
 	})
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Equal(t, bl.Blocks[0].GetText().Text, notFoundPageMessage)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, notExistingObjectMessage)
 }
 
 func Test_GetTextBlocksDatabaseMention(t *testing.T) {
@@ -126,7 +126,7 @@ func Test_GetTextBlocksDatabaseMention(t *testing.T) {
 	})
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
-	assert.Equal(t, bl.Blocks[0].GetText().Text, notFoundPageMessage)
+	assert.Equal(t, bl.Blocks[0].GetText().Text, notExistingObjectMessage)
 }
 
 func Test_GetTextBlocksDatabaseMentionWithoutSource(t *testing.T) {
