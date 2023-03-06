@@ -18,31 +18,28 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/dump"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-
 	"github.com/gogo/status"
 	cp "github.com/otiai10/copy"
 
-	"github.com/anytypeio/go-anytype-middleware/core/account"
-	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
-
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	"github.com/anytypeio/go-anytype-middleware/core/dump"
+	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
