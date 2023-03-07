@@ -83,7 +83,7 @@ require (
 	github.com/textileio/go-ds-badger v0.2.7-0.20211028235339-0e5e9267e2f5
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
-	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
+	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/yuin/goldmark v1.4.13
 	go.uber.org/zap v1.24.0
