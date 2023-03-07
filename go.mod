@@ -79,7 +79,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/textileio/go-ds-badger v0.2.7-0.20211028235339-0e5e9267e2f5
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
