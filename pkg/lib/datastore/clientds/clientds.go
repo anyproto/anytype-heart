@@ -510,6 +510,10 @@ func New() datastore.Datastore {
 	return &clientds{}
 }
 
+func (r *clientds) GetBlockStorePath() string {
+	return r.getRepoPath(liteDSDir)
+}
+
 func (r *clientds) getRepoPath(dir string) string {
 	if dirsForMoving[dir] {
 		return filepath.Join(r.dynamicRepoPath, dir)

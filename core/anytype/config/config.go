@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -16,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 )
 
 var log = logging.Logger("anytype-config")
@@ -40,6 +40,7 @@ type Config struct {
 	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	Offline                  bool
 	DisableThreadsSyncEvents bool
+	LegacyFileStorePath      string `json:",omitempty"`
 
 	RepoPath string
 

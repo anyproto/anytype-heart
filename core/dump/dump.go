@@ -2,6 +2,7 @@ package dump
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -34,7 +36,13 @@ const profileFile = "profile"
 type Service struct {
 	objectStore  objectstore.ObjectStore
 	blockService *block.Service
+	config       *config.Config
+	pathProvider pathProvider
 	app.Component
+}
+
+type pathProvider interface {
+	GetBlockStorePath() string
 }
 
 func NewService() *Service {
@@ -48,6 +56,8 @@ func (s *Service) Name() string {
 func (s *Service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.blockService = a.MustComponent(block.CName).(*block.Service)
+	s.config = app.MustComponent[*config.Config](a)
+	s.pathProvider = app.MustComponent[pathProvider](a)
 	return nil
 }
 
@@ -92,13 +102,18 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 		}
 	}()
 
+	wErr := s.writeConfig(zw)
+	if wErr != nil {
+		return wErr
+	}
+
 	pr := &pb.Profile{
 		Mnemonic: mnemonic,
 		Name:     profile.Name,
 		Avatar:   profile.IconImage,
 		Address:  profile.AccountAddr,
 	}
-	wErr := s.writeSnapshotToFile(zw, profileFile, pr)
+	wErr = s.writeSnapshotToFile(zw, profileFile, pr)
 	if wErr != nil {
 		return wErr
 	}
@@ -159,6 +174,20 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 		}
 	}
 	return err
+}
+
+func (s *Service) writeConfig(zw *zip.Writer) error {
+	cfg := struct {
+		LegacyFileStorePath string
+	}{
+		LegacyFileStorePath: s.pathProvider.GetBlockStorePath(),
+	}
+
+	wr, err := zw.Create(config.ConfigFileName)
+	if err != nil {
+		return fmt.Errorf("failed to create config file: %v", err)
+	}
+	return json.NewEncoder(wr).Encode(cfg)
 }
 
 func (s *Service) writeAccountDir(rootPath string, profile core.Profile, zw *zip.Writer) error {
