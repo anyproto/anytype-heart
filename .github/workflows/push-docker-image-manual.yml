@@ -1,0 +1,15 @@
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: name of release to push on docker registry
+        required: true
+        default: v0.0.1
+
+name: push-docker-image-manual
+
+jobs:
+  push-docker-image-manual:
+    uses: ./.github/workflows/push-docker-image-reusable.yml
+    with:
+      release: ${{ github.event.inputs.release }}
