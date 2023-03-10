@@ -52,7 +52,7 @@ const (
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceIdxRebuildCounter int32 = 34
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
-	ForceFulltextIndexCounter int32 = 3
+	ForceFulltextIndexCounter int32 = 4
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
 	ForceFilestoreKeysReindexCounter int32 = 1
 )
@@ -402,7 +402,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		if err != nil {
 			log.Errorf("reindex failed to erase indexes: %v", err.Error())
 		} else {
-			log.Infof("all store indexes succesfully erased")
+			log.Infof("all store indexes successfully erased")
 			// store this flag because underlying localstore needs to now if it needs to amend indexes based on the prev value
 			indexesWereRemoved = true
 		}
