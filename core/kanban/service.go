@@ -41,7 +41,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 
 	s.groupColumns[model.RelationFormat_status] = func(key string) Grouper {
-		return &GroupStatus{store: s.objectStore}
+		return &GroupStatus{key: key, store: s.objectStore}
 	}
 	s.groupColumns[model.RelationFormat_tag] = func(key string) Grouper {
 		return &GroupTag{Key: key, store: s.objectStore}

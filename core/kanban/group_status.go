@@ -1,20 +1,21 @@
 package kanban
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"sort"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"sort"
 )
 
 type GroupStatus struct {
+	key     string
 	store   objectstore.ObjectStore
 	Options []*model.RelationOption
 }
 
 func (gs *GroupStatus) InitGroups(f *database.Filters) error {
-	options, err := gs.store.GetAggregatedOptions(bundle.RelationKeyStatus.String())
+	options, err := gs.store.GetAggregatedOptions(gs.key)
 	if err != nil {
 		return err
 	}
