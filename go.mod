@@ -60,7 +60,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.20.0
 	github.com/libp2p/go-libp2p-record v0.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/magiconair/properties v1.8.4
+	github.com/magiconair/properties v1.8.7
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.9
 	github.com/miolini/datacounter v1.0.2
