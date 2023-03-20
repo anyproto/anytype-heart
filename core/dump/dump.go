@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -117,10 +115,6 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 	if wErr != nil {
 		return wErr
 	}
-	err = s.writeAccountDir(rootPath, profile, zw)
-	if err != nil {
-		return err
-	}
 
 	for _, object := range deletedObjects {
 		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
@@ -188,32 +182,6 @@ func (s *Service) writeConfig(zw *zip.Writer) error {
 		return fmt.Errorf("failed to create config file: %v", err)
 	}
 	return json.NewEncoder(wr).Encode(cfg)
-}
-
-func (s *Service) writeAccountDir(rootPath string, profile core.Profile, zw *zip.Writer) error {
-	return filepath.Walk(filepath.Join(rootPath, profile.AccountAddr), func(file string, fi os.FileInfo, err error) error {
-		header, err := zip.FileInfoHeader(fi)
-		if err != nil {
-			return err
-		}
-		if strings.Contains(file, wallet.KeyFileDevice) || strings.Contains(file, wallet.KeyFileAccount) {
-			header.Name = strings.TrimPrefix(filepath.ToSlash(file), rootPath)
-
-			var wr io.Writer
-			if wr, err = zw.CreateHeader(header); err != nil {
-				return err
-			}
-			// if not a dir, write file content
-			data, err := os.Open(file)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(wr, data); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
 }
 
 func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*pb.MigrationObject, error) {
