@@ -13,7 +13,7 @@ require (
 	github.com/blevesearch/bleve/v2 v2.3.7
 	github.com/chai2010/webp v1.1.1
 	github.com/cheggaaa/mb v1.0.3
-	github.com/dave/jennifer v1.4.1
+	github.com/dave/jennifer v1.6.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger v1.6.2
 	github.com/dgtony/collections v0.1.6
