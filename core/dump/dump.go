@@ -59,7 +59,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootPath string) error {
+func (s *Service) Dump(path string, profile core.Profile) error {
 	objectIDs, _, err := s.objectStore.QueryObjectIds(database.Query{}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to QueryObjectIds: %v", err)
@@ -106,10 +106,9 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 	}
 
 	pr := &pb.Profile{
-		Mnemonic: mnemonic,
-		Name:     profile.Name,
-		Avatar:   profile.IconImage,
-		Address:  profile.AccountAddr,
+		Name:    profile.Name,
+		Avatar:  profile.IconImage,
+		Address: profile.AccountAddr,
 	}
 	wErr = s.writeSnapshotToFile(zw, profileFile, pr)
 	if wErr != nil {
