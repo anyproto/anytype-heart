@@ -116,7 +116,7 @@ func (s *Service) Dump(path string, profile core.Profile) error {
 	}
 
 	for _, object := range deletedObjects {
-		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
+		mo, mErr := s.getSnapshot(object)
 		if mErr != nil {
 			return mErr
 		}
@@ -127,7 +127,7 @@ func (s *Service) Dump(path string, profile core.Profile) error {
 	}
 
 	for _, object := range archivedObjects {
-		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
+		mo, mErr := s.getSnapshot(object)
 		if mErr != nil {
 			return mErr
 		}
@@ -153,11 +153,12 @@ func (s *Service) Dump(path string, profile core.Profile) error {
 			if skipObject(sbType) {
 				return nil
 			}
-			mo, mErr := s.getMigrationObject(b)
+			mo, mErr := s.getSnapshotWithType(b)
 			if mErr != nil {
 				return mErr
 			}
-			wErr := s.writeSnapshotToFile(zw, id, mo)
+			name := id + ".pb"
+			wErr := s.writeSnapshotToFile(zw, name, mo)
 			if wErr != nil {
 				return wErr
 			}
@@ -183,7 +184,7 @@ func (s *Service) writeConfig(zw *zip.Writer) error {
 	return json.NewEncoder(wr).Encode(cfg)
 }
 
-func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*pb.SnapshotWithType, error) {
+func (s *Service) getSnapshot(object *model.ObjectInfo) (*pb.SnapshotWithType, error) {
 	sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
 	if err != nil {
 		return nil, fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
@@ -199,7 +200,7 @@ func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*p
 	return mo, nil
 }
 
-func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.SnapshotWithType, error) {
+func (s *Service) getSnapshotWithType(b smartblock.SmartBlock) (*pb.SnapshotWithType, error) {
 	st := b.NewState()
 	rootID := st.RootId()
 	sbType, err := smartblocktype.SmartBlockTypeFromID(rootID)
@@ -267,5 +268,6 @@ func skipObject(objectType smartblocktype.SmartBlockType) bool {
 		objectType == smartblocktype.SmartblockTypeMarketplaceRelation ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceTemplate ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceType ||
-		objectType == smartblocktype.SmartBlockTypeFile
+		objectType == smartblocktype.SmartBlockTypeFile ||
+		objectType == smartblocktype.SmartBlockTypeAnytypeProfile
 }
