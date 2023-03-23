@@ -183,7 +183,7 @@ func (s *Service) writeConfig(zw *zip.Writer) error {
 	return json.NewEncoder(wr).Encode(cfg)
 }
 
-func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*pb.MigrationObject, error) {
+func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*pb.SnapshotWithType, error) {
 	sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
 	if err != nil {
 		return nil, fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
@@ -192,14 +192,14 @@ func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*p
 		Details:     object.GetDetails(),
 		ObjectTypes: object.GetObjectTypeUrls(),
 	}
-	mo := &pb.MigrationObject{
+	mo := &pb.SnapshotWithType{
 		SbType:   sbType.ToProto(),
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 	}
 	return mo, nil
 }
 
-func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObject, error) {
+func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.SnapshotWithType, error) {
 	st := b.NewState()
 	rootID := st.RootId()
 	sbType, err := smartblocktype.SmartBlockTypeFromID(rootID)
@@ -224,7 +224,7 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 		key := key
 		fileKeys = append(fileKeys, &key)
 	}
-	mo := &pb.MigrationObject{
+	mo := &pb.SnapshotWithType{
 		SbType:   sbType.ToProto(),
 		Snapshot: &pb.ChangeSnapshot{Data: sn, FileKeys: fileKeys},
 	}

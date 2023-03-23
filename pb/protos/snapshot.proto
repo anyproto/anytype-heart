@@ -5,7 +5,7 @@ option go_package = "pb";
 import "pkg/lib/pb/model/protos/models.proto";
 import "pb/protos/changes.proto";
 
-message MigrationObject {
+message SnapshotWithType {
   anytype.model.SmartBlockType sbType = 1;
   anytype.Change.Snapshot snapshot = 2;
 }
