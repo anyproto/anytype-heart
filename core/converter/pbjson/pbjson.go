@@ -17,7 +17,7 @@ type pbj struct {
 	s state.Doc
 }
 
-func (p *pbj) Convert() []byte {
+func (p *pbj) Convert(model.SmartBlockType) []byte {
 	st := p.s.NewState()
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{

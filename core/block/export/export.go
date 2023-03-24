@@ -162,31 +162,6 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 }
 
 func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, includeDeleted bool) (docs map[string]*types.Struct, err error) {
-	var getNested func(id string)
-	getNested = func(id string) {
-		links, err := e.a.ObjectStore().GetOutboundLinksById(id)
-		if err != nil {
-			log.Errorf("export failed to get outbound links for id: %s", err.Error())
-			return
-		}
-		for _, link := range links {
-			if _, exists := docs[link]; !exists {
-				sbt, err2 := smartblock.SmartBlockTypeFromID(link)
-				if err2 != nil {
-					log.Errorf("failed to get smartblocktype of id %s", link)
-					continue
-				}
-				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
-					continue
-				}
-				rec, _ := e.a.ObjectStore().QueryById(links)
-				if len(rec) > 0 {
-					docs[link] = rec[0].Details
-					getNested(link)
-				}
-			}
-		}
-	}
 	if len(reqIds) == 0 {
 		return e.getAllObjects(includeArchived, includeDeleted, includeNested)
 	}
@@ -369,7 +344,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert())); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
 		return 0, err
 	}
 
@@ -416,7 +391,7 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
-		result := conv.Convert()
+		result := conv.Convert(b.Type())
 		filename := docId + conv.Ext()
 		if format == pb.RpcObjectListExport_Markdown {
 			s := b.NewState()
