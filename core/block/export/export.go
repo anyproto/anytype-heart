@@ -3,6 +3,8 @@ package export
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -14,6 +16,7 @@ import (
 	"github.com/gosimple/slug"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -28,6 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -35,6 +39,8 @@ import (
 )
 
 const CName = "export"
+
+const profileFile = "profile"
 
 var log = logging.Logger("anytype-mw-export")
 
@@ -47,14 +53,20 @@ type Export interface {
 	app.Component
 }
 
+type pathProvider interface {
+	GetBlockStorePath() string
+}
+
 type export struct {
-	bs *block.Service
-	a  core.Service
+	bs           *block.Service
+	a            core.Service
+	pathProvider pathProvider
 }
 
 func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
+	e.pathProvider = app.MustComponent[pathProvider](a)
 	return
 }
 
@@ -75,7 +87,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested)
+	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived, req.IncludeDeleted)
 	if err != nil {
 		return
 	}
@@ -113,6 +125,19 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
+		if req.Format == pb.RpcObjectListExport_Protobuf {
+			if len(req.ObjectIds) == 0 {
+				if err = e.createProfileFile(wr); err != nil {
+					log.Errorf("failed to create profile file: %s", err.Error())
+				}
+			}
+			if req.IncludeConfig {
+				wErr := e.writeConfig(wr)
+				if wErr != nil {
+					log.Errorf("failed to create profile file: %s", wErr.Error())
+				}
+			}
+		}
 		for docId := range docs {
 			did := docId
 			if err = queue.Wait(func() {
@@ -136,38 +161,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	return wr.Path(), succeed, nil
 }
 
-func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[string]*types.Struct, err error) {
-	docs = make(map[string]*types.Struct)
-	if len(reqIds) == 0 {
-		var res []*model.ObjectInfo
-		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-			},
-		}, []smartblock.SmartBlockType{
-			smartblock.SmartBlockTypeHome,
-			smartblock.SmartBlockTypeProfilePage,
-			smartblock.SmartBlockTypePage,
-		})
-		if err != nil {
-			return
-		}
-
-		for _, r := range res {
-			docs[r.Id] = r.Details
-		}
-		return docs, nil
-	}
-
+func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, includeDeleted bool) (docs map[string]*types.Struct, err error) {
 	var getNested func(id string)
 	getNested = func(id string) {
 		links, err := e.a.ObjectStore().GetOutboundLinksById(id)
@@ -193,42 +187,168 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 			}
 		}
 	}
+	if len(reqIds) == 0 {
+		return e.getAllObjects(includeArchived, includeDeleted, includeNested)
+	}
+
 	if len(reqIds) > 0 {
-		var res []*model.ObjectInfo
-		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       pbtypes.StringList(reqIds),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
+		return e.getObjectsByIDs(reqIds, includeNested)
+	}
+	return
+}
+
+func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
+	var res []*model.ObjectInfo
+	docs := make(map[string]*types.Struct)
+	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(reqIds),
 			},
-		}, nil)
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	for _, r := range res {
+		docs[r.Id] = r.Details
+		ids = append(ids, r.Id)
+	}
+	if includeNested {
+		for _, id := range ids {
+			e.getNested(id, docs)
+		}
+	}
+	return docs, err
+}
+
+func (e *export) getAllObjects(includeArchived bool, includeDeleted bool, includeNested bool) (map[string]*types.Struct, error) {
+	var res []*model.ObjectInfo
+	docs := make(map[string]*types.Struct)
+
+	if includeArchived {
+		delObjects, err := e.getDeletedObjects()
 		if err != nil {
-			return
+			return nil, err
 		}
-		var ids []string
-		for _, r := range res {
-			docs[r.Id] = r.Details
-			ids = append(ids, r.Id)
+		res = append(res, delObjects...)
+	}
+	if includeDeleted {
+		archivedObjects, err := e.getArchivedObjects()
+		if err != nil {
+			return nil, err
 		}
-		if includeNested {
-			for _, id := range ids {
-				getNested(id)
+		res = append(res, archivedObjects...)
+	}
+	res, err := e.getExistedObjects()
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range res {
+		if !e.objectValid(r) {
+			continue
+		}
+		docs[r.Id] = r.Details
+	}
+	return docs, nil
+}
+
+func (e *export) getNested(id string, docs map[string]*types.Struct) {
+	links, err := e.a.ObjectStore().GetOutboundLinksById(id)
+	if err != nil {
+		log.Errorf("export failed to get outbound links for id: %s", err.Error())
+		return
+	}
+	for _, link := range links {
+		if _, exists := docs[link]; !exists {
+			sbt, err2 := smartblock.SmartBlockTypeFromID(link)
+			if err2 != nil {
+				log.Errorf("failed to get smartblocktype of id %s", link)
+				continue
+			}
+			if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
+				continue
+			}
+			rec, _ := e.a.ObjectStore().QueryById(links)
+			if len(rec) > 0 {
+				docs[link] = rec[0].Details
+				e.getNested(link, docs)
 			}
 		}
 	}
-	return
+}
+
+func (e *export) getExistedObjects() ([]*model.ObjectInfo, error) {
+	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	}, []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeProfilePage,
+		smartblock.SmartBlockTypePage,
+		smartblock.SmartBlockTypeSubObject,
+		smartblock.SmartBlockTypeTemplate,
+		smartblock.SmartBlockTypeDate,
+		smartblock.SmartBlockTypeObjectType,
+		smartblock.SmartBlockTypeSet,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (e *export) getArchivedObjects() ([]*model.ObjectInfo, error) {
+	archivedObjects, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyIsArchived.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Bool(true),
+		},
+		},
+	}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to QueryObjectIds: %v", err)
+	}
+	return archivedObjects, nil
+}
+
+func (e *export) getDeletedObjects() ([]*model.ObjectInfo, error) {
+	deletedObjects, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyIsDeleted.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Bool(true),
+		},
+		},
+	}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to QueryObjectIds: %v", err)
+	}
+	return deletedObjects, nil
 }
 
 func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
@@ -369,6 +489,55 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 		return
 	}
 	return wr.WriteFile(filename, rd)
+}
+
+func (e *export) createProfileFile(wr writer) error {
+	localProfile, err := e.a.LocalProfile()
+	if err != nil {
+		return err
+	}
+	profile := &pb.Profile{
+		Name:    localProfile.Name,
+		Avatar:  localProfile.IconImage,
+		Address: localProfile.AccountAddr,
+	}
+	data, err := profile.Marshal()
+	if err != nil {
+		return err
+	}
+	err = wr.WriteFile(profileFile, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("account predefined block not found")
+}
+
+func (e *export) writeConfig(wr writer) error {
+	cfg := struct {
+		LegacyFileStorePath string
+	}{
+		LegacyFileStorePath: e.pathProvider.GetBlockStorePath(),
+	}
+
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	err = wr.WriteFile(config.ConfigFileName, bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("failed to create config file: %v", err)
+	}
+	return nil
+}
+
+func (e *export) objectValid(r *model.ObjectInfo) bool {
+	if sourceObject := pbtypes.GetString(r.Details, bundle.RelationKeySourceObject.String()); sourceObject != "" {
+		if strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) ||
+			strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) {
+			return false
+		}
+	}
+	return true
 }
 
 func newNamer() *namer {

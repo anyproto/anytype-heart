@@ -27,7 +27,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
-	"github.com/anytypeio/go-anytype-middleware/core/dump"
 	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -833,29 +832,6 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 	}
 
 	return nil
-}
-
-func (mw *Middleware) AccountExport(ctx context.Context, req *pb.RpcAccountExportRequest) *pb.RpcAccountExportResponse {
-	response := func(code pb.RpcAccountExportResponseErrorCode, err error) *pb.RpcAccountExportResponse {
-		m := &pb.RpcAccountExportResponse{Error: &pb.RpcAccountExportResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
-	dumpService := mw.app.MustComponent(dump.Name).(*dump.Service)
-	anytype := mw.app.MustComponent(core.CName).(*core.Anytype)
-
-	profile, err := anytype.LocalProfile()
-	if err != nil {
-		return response(pb.RpcAccountExportResponseError_UNKNOWN_ERROR, err)
-	}
-	err = dumpService.Dump(req.Path, mw.mnemonic, profile, mw.rootPath)
-	if err != nil {
-		return response(pb.RpcAccountExportResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcAccountExportResponseError_NULL, nil)
 }
 
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {
