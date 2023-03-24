@@ -1754,8 +1754,6 @@ message Rpc {
                 bool includeDeleted = 8;
                 // for migration
                 bool includeArchived = 9;
-                // for migration
-                bool includeConfig = 10;
             }
 
             message Response {

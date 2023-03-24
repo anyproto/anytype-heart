@@ -3,7 +3,6 @@ package export
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -51,16 +49,11 @@ type Export interface {
 	app.Component
 }
 
-type pathProvider interface {
-	GetBlockStorePath() string
-}
-
 type export struct {
-	bs           *block.Service
-	objectStore  objectstore.ObjectStore
-	a            core.Service
-	sbtProvider  typeprovider.SmartBlockTypeProvider
-	pathProvider pathProvider
+	bs          *block.Service
+	objectStore objectstore.ObjectStore
+	a           core.Service
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
@@ -72,7 +65,6 @@ func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
 func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
-	e.pathProvider = app.MustComponent[pathProvider](a)
 	return
 }
 
@@ -135,12 +127,6 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 			if len(req.ObjectIds) == 0 {
 				if err = e.createProfileFile(e.a.PredefinedBlocks().Account, wr, docs); err != nil {
 					log.Errorf("failed to create profile file: %s", err.Error())
-				}
-			}
-			if req.IncludeConfig {
-				wErr := e.writeConfig(wr)
-				if wErr != nil {
-					log.Errorf("failed to create profile file: %s", wErr.Error())
 				}
 			}
 		}
@@ -514,24 +500,6 @@ func (e *export) createProfileFile(account string, wr writer, docs map[string]*t
 		}
 	}
 	return fmt.Errorf("account predefined block not found")
-}
-
-func (e *export) writeConfig(wr writer) error {
-	cfg := struct {
-		LegacyFileStorePath string
-	}{
-		LegacyFileStorePath: e.pathProvider.GetBlockStorePath(),
-	}
-
-	data, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-	err = wr.WriteFile(config.ConfigFileName, bytes.NewReader(data))
-	if err != nil {
-		return fmt.Errorf("failed to create config file: %v", err)
-	}
-	return nil
 }
 
 func (e *export) objectValid(r *model.ObjectInfo) bool {
