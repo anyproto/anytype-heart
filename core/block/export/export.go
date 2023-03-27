@@ -163,7 +163,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 
 func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, includeDeleted bool) (docs map[string]*types.Struct, err error) {
 	if len(reqIds) == 0 {
-		return e.getAllObjects(includeArchived, includeDeleted, includeNested)
+		return e.getAllObjects(includeArchived, includeDeleted)
 	}
 
 	if len(reqIds) > 0 {
@@ -197,7 +197,7 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	if err != nil {
 		return nil, err
 	}
-	var ids []string
+	ids := make([]string, 0, len(res))
 	for _, r := range res {
 		docs[r.Id] = r.Details
 		ids = append(ids, r.Id)
@@ -210,7 +210,7 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	return docs, err
 }
 
-func (e *export) getAllObjects(includeArchived bool, includeDeleted bool, includeNested bool) (map[string]*types.Struct, error) {
+func (e *export) getAllObjects(includeArchived bool, includeDeleted bool) (map[string]*types.Struct, error) {
 	var res []*model.ObjectInfo
 	docs := make(map[string]*types.Struct)
 
@@ -249,15 +249,19 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 	for _, link := range links {
 		if _, exists := docs[link]; !exists {
-			sbt, err2 := smartblock.SmartBlockTypeFromID(link)
-			if err2 != nil {
+			sbt, sbtErr := smartblock.SmartBlockTypeFromID(link)
+			if sbtErr != nil {
 				log.Errorf("failed to get smartblocktype of id %s", link)
 				continue
 			}
 			if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
 				continue
 			}
-			rec, _ := e.a.ObjectStore().QueryById(links)
+			rec, qErr := e.a.ObjectStore().QueryById(links)
+			if qErr != nil {
+				log.Errorf("failed to query object with id %s, err: %s", link, err.Error())
+				continue
+			}
 			if len(rec) > 0 {
 				docs[link] = rec[0].Details
 				e.getNested(link, docs)
@@ -507,6 +511,10 @@ func (e *export) writeConfig(wr writer) error {
 
 func (e *export) objectValid(r *model.ObjectInfo) bool {
 	if sourceObject := pbtypes.GetString(r.Details, bundle.RelationKeySourceObject.String()); sourceObject != "" {
+		// Export such objects, so we can delete them from library during migration import
+		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
+			return true
+		}
 		if strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) ||
 			strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) {
 			return false
