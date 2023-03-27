@@ -851,7 +851,7 @@ func (mw *Middleware) AccountExport(ctx context.Context, req *pb.RpcAccountExpor
 	if err != nil {
 		return response(pb.RpcAccountExportResponseError_UNKNOWN_ERROR, err)
 	}
-	err = dumpService.Dump(req.Path, mw.mnemonic, profile, mw.rootPath)
+	err = dumpService.Dump(req.Path, profile)
 	if err != nil {
 		return response(pb.RpcAccountExportResponseError_UNKNOWN_ERROR, err)
 	}

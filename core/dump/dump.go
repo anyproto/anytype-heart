@@ -59,7 +59,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootPath string) error {
+func (s *Service) Dump(path string, profile core.Profile) error {
 	objectIDs, _, err := s.objectStore.QueryObjectIds(database.Query{}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to QueryObjectIds: %v", err)
@@ -106,10 +106,9 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 	}
 
 	pr := &pb.Profile{
-		Mnemonic: mnemonic,
-		Name:     profile.Name,
-		Avatar:   profile.IconImage,
-		Address:  profile.AccountAddr,
+		Name:    profile.Name,
+		Avatar:  profile.IconImage,
+		Address: profile.AccountAddr,
 	}
 	wErr = s.writeSnapshotToFile(zw, profileFile, pr)
 	if wErr != nil {
@@ -117,7 +116,7 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 	}
 
 	for _, object := range deletedObjects {
-		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
+		mo, mErr := s.getSnapshot(object)
 		if mErr != nil {
 			return mErr
 		}
@@ -128,7 +127,7 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 	}
 
 	for _, object := range archivedObjects {
-		mo, mErr := s.getMigrationObjectFromObjectInfo(object)
+		mo, mErr := s.getSnapshot(object)
 		if mErr != nil {
 			return mErr
 		}
@@ -154,11 +153,12 @@ func (s *Service) Dump(path string, mnemonic string, profile core.Profile, rootP
 			if skipObject(sbType) {
 				return nil
 			}
-			mo, mErr := s.getMigrationObject(b)
+			mo, mErr := s.getSnapshotWithType(b)
 			if mErr != nil {
 				return mErr
 			}
-			wErr := s.writeSnapshotToFile(zw, id, mo)
+			name := id + ".pb"
+			wErr := s.writeSnapshotToFile(zw, name, mo)
 			if wErr != nil {
 				return wErr
 			}
@@ -184,7 +184,7 @@ func (s *Service) writeConfig(zw *zip.Writer) error {
 	return json.NewEncoder(wr).Encode(cfg)
 }
 
-func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*pb.MigrationObject, error) {
+func (s *Service) getSnapshot(object *model.ObjectInfo) (*pb.SnapshotWithType, error) {
 	sbType, err := smartblocktype.SmartBlockTypeFromID(object.Id)
 	if err != nil {
 		return nil, fmt.Errorf("failed SmartBlockTypeFromID: %v", err)
@@ -193,14 +193,14 @@ func (s *Service) getMigrationObjectFromObjectInfo(object *model.ObjectInfo) (*p
 		Details:     object.GetDetails(),
 		ObjectTypes: object.GetObjectTypeUrls(),
 	}
-	mo := &pb.MigrationObject{
+	mo := &pb.SnapshotWithType{
 		SbType:   sbType.ToProto(),
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 	}
 	return mo, nil
 }
 
-func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObject, error) {
+func (s *Service) getSnapshotWithType(b smartblock.SmartBlock) (*pb.SnapshotWithType, error) {
 	st := b.NewState()
 	rootID := st.RootId()
 	sbType, err := smartblocktype.SmartBlockTypeFromID(rootID)
@@ -225,7 +225,7 @@ func (s *Service) getMigrationObject(b smartblock.SmartBlock) (*pb.MigrationObje
 		key := key
 		fileKeys = append(fileKeys, &key)
 	}
-	mo := &pb.MigrationObject{
+	mo := &pb.SnapshotWithType{
 		SbType:   sbType.ToProto(),
 		Snapshot: &pb.ChangeSnapshot{Data: sn, FileKeys: fileKeys},
 	}
@@ -268,5 +268,6 @@ func skipObject(objectType smartblocktype.SmartBlockType) bool {
 		objectType == smartblocktype.SmartblockTypeMarketplaceRelation ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceTemplate ||
 		objectType == smartblocktype.SmartblockTypeMarketplaceType ||
-		objectType == smartblocktype.SmartBlockTypeFile
+		objectType == smartblocktype.SmartBlockTypeFile ||
+		objectType == smartblocktype.SmartBlockTypeAnytypeProfile
 }
