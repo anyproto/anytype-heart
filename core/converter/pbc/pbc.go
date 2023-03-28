@@ -35,7 +35,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
 
-	mo := &pb.MigrationObject{
+	mo := &pb.SnapshotWithType{
 		SbType:   sbType,
 		Snapshot: snapshot,
 	}

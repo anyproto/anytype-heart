@@ -212,33 +212,31 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 
 func (e *export) getAllObjects(includeArchived bool, includeDeleted bool) (map[string]*types.Struct, error) {
 	var res []*model.ObjectInfo
-	docs := make(map[string]*types.Struct)
-
-	if includeArchived {
+	if includeDeleted {
 		delObjects, err := e.getDeletedObjects()
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, delObjects...)
 	}
-	if includeDeleted {
+	if includeArchived {
 		archivedObjects, err := e.getArchivedObjects()
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, archivedObjects...)
 	}
-	res, err := e.getExistedObjects()
+	objectDetails, err := e.getExistedObjects()
 	if err != nil {
 		return nil, err
 	}
-	for _, r := range res {
-		if !e.objectValid(r) {
+	for _, re := range res {
+		if !e.objectValid(re.Id, re) {
 			continue
 		}
-		docs[r.Id] = r.Details
+		objectDetails[re.Id] = re.Details
 	}
-	return docs, nil
+	return objectDetails, nil
 }
 
 func (e *export) getNested(id string, docs map[string]*types.Struct) {
@@ -270,34 +268,30 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 }
 
-func (e *export) getExistedObjects() ([]*model.ObjectInfo, error) {
-	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-		},
-	}, []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeHome,
-		smartblock.SmartBlockTypeProfilePage,
-		smartblock.SmartBlockTypePage,
-		smartblock.SmartBlockTypeSubObject,
-		smartblock.SmartBlockTypeTemplate,
-		smartblock.SmartBlockTypeDate,
-		smartblock.SmartBlockTypeObjectType,
-		smartblock.SmartBlockTypeSet,
-	})
+func (e *export) getExistedObjects() (map[string]*types.Struct, error) {
+	res, err := e.a.ObjectStore().ListIds()
 	if err != nil {
 		return nil, err
 	}
-	return res, nil
+	objectDetails := make(map[string]*types.Struct, len(res))
+	for _, id := range res {
+		details, storeErr := e.a.ObjectStore().GetWithLinksInfoByID(id)
+		if storeErr != nil {
+			continue
+		}
+		if details == nil {
+			continue
+		}
+		if !e.objectValid(id, details.Info) {
+			continue
+		}
+		objectDetails[id] = details.Info.Details
+
+	}
+	if err != nil {
+		return nil, err
+	}
+	return objectDetails, nil
 }
 
 func (e *export) getArchivedObjects() ([]*model.ObjectInfo, error) {
@@ -509,16 +503,21 @@ func (e *export) writeConfig(wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(r *model.ObjectInfo) bool {
+func (e *export) objectValid(id string, r *model.ObjectInfo) bool {
+	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
+		return false
+	}
 	if sourceObject := pbtypes.GetString(r.Details, bundle.RelationKeySourceObject.String()); sourceObject != "" {
-		// Export such objects, so we can delete them from library during migration import
 		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
 			return true
 		}
-		if strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) ||
-			strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) {
-			return false
+		return false
+	}
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
+			return true
 		}
+		return false
 	}
 	return true
 }
@@ -561,4 +560,17 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 		n := int64(i * b)
 		gname = filepath.Join(path, name+"_"+strconv.FormatInt(rand.Int63n(n), b)+ext)
 	}
+}
+
+func validType(sbType smartblock.SmartBlockType) bool {
+	return sbType == smartblock.SmartBlockTypeHome ||
+		sbType == smartblock.SmartBlockTypeProfilePage ||
+		sbType == smartblock.SmartBlockTypePage ||
+		sbType == smartblock.SmartBlockTypeSubObject ||
+		sbType == smartblock.SmartBlockTypeTemplate ||
+		sbType == smartblock.SmartBlockTypeDate ||
+		sbType == smartblock.SmartBlockTypeObjectType ||
+		sbType == smartblock.SmartBlockTypeSet ||
+		sbType == smartblock.SmartBlockTypeWorkspace ||
+		sbType == smartblock.SmartBlockTypeWidget
 }
