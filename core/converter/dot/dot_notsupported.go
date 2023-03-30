@@ -6,6 +6,8 @@ package dot
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+
 	"github.com/gogo/protobuf/types"
 )
 
@@ -44,7 +46,7 @@ func (d *dot) Add(st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert() []byte {
+func (d *dot) Convert(model.SmartBlockType) []byte {
 	panic("not supported on windows")
 	return nil
 }

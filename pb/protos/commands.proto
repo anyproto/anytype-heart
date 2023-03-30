@@ -1745,6 +1745,12 @@ message Rpc {
                 bool includeNested = 5;
                 // include all files
                 bool includeFiles = 6;
+                // for migration
+                bool includeDeleted = 7;
+                // for migration
+                bool includeArchived = 8;
+                // for migration
+                bool includeConfig = 9;
             }
 
             message Response {
