@@ -269,23 +269,16 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 }
 
 func (e *export) getExistedObjects() (map[string]*types.Struct, error) {
-	res, err := e.a.ObjectStore().ListIds()
+	res, err := e.a.ObjectStore().List()
 	if err != nil {
 		return nil, err
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
-	for _, id := range res {
-		details, storeErr := e.a.ObjectStore().GetWithLinksInfoByID(id)
-		if storeErr != nil {
+	for _, r := range res {
+		if !e.objectValid(r.Id, r) {
 			continue
 		}
-		if details == nil {
-			continue
-		}
-		if !e.objectValid(id, details.Info) {
-			continue
-		}
-		objectDetails[id] = details.Info.Details
+		objectDetails[r.Id] = r.Details
 
 	}
 	if err != nil {
@@ -571,6 +564,5 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
 		sbType == smartblock.SmartBlockTypeSet ||
-		sbType == smartblock.SmartBlockTypeWorkspace ||
-		sbType == smartblock.SmartBlockTypeWidget
+		sbType == smartblock.SmartBlockTypeWorkspace
 }
