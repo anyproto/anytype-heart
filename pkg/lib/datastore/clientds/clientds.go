@@ -32,15 +32,20 @@ const (
 	liteDSDir        = "ipfslite_v3"
 	logstoreOldDSDir = "logstore" // used for migration to the localstoreDSDir and then removed
 	localstoreDSDir  = "localstore"
+	spaceStoreDir    = "spacestore" // used in new infrastructure
 	threadsDbDSDir   = "collection" + string(os.PathSeparator) + "eventstore"
 
 	valueLogExtenderKey  = "_extend"
 	valueLogExtenderSize = 1024
 )
 
-var dirsForMoving = map[string]bool{liteOldDSDir: true, liteDSDir: true}
+var (
+	dirsForMoving = map[string]bool{liteOldDSDir: true, liteDSDir: true}
 
-var log = logging.Logger("anytype-clientds")
+	log = logging.Logger("anytype-clientds")
+
+	newRepoFoundError = fmt.Errorf("cannot open account of newer version")
+)
 
 type clientds struct {
 	running        bool
@@ -173,6 +178,12 @@ func (r *clientds) Init(a *app.App) (err error) {
 			migrationKey:  ds.NewKey("/migration/logstore/badgerv3"),
 		},
 	}
+
+	_, err = os.Stat(r.getRepoPath(spaceStoreDir))
+	if !os.IsNotExist(err) {
+		return newRepoFoundError
+	}
+
 	return nil
 }
 
