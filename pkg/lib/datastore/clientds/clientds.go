@@ -44,7 +44,7 @@ var (
 
 	log = logging.Logger("anytype-clientds")
 
-	newRepoFoundError = fmt.Errorf("cannot open account of newer version")
+	errNewRepoFound = fmt.Errorf("cannot open account of newer version")
 )
 
 type clientds struct {
@@ -181,7 +181,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 	_, err = os.Stat(r.getRepoPath(spaceStoreDir))
 	if !os.IsNotExist(err) {
-		return newRepoFoundError
+		return errNewRepoFound
 	}
 
 	return nil
