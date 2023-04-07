@@ -88,9 +88,6 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 	}
 
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
-	if url == "" {
-		return "", nil, fmt.Errorf("source field is empty or not provided")
-	}
 
 	records, _, err := s.store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
@@ -126,13 +123,15 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		}
 	}
 
-	go func() {
-		if err := s.UpdateBookmarkObject(objectId, getContent); err != nil {
+	if url != "" {
+		go func() {
+			if err := s.UpdateBookmarkObject(objectId, getContent); err != nil {
 
-			log.Errorf("update bookmark object %s: %s", objectId, err)
-			return
-		}
-	}()
+				log.Errorf("update bookmark object %s: %s", objectId, err)
+				return
+			}
+		}()
+	}
 
 	return objectId, newDetails, nil
 }
