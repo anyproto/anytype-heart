@@ -299,11 +299,19 @@ func (c *Creator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []st
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
 func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
-	u, err := uri.NormalizeURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
-	if err != nil {
-		return "", nil, fmt.Errorf("process uri: %w", err)
+	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
+	var res bookmark.ContentFuture
+	if source != "" {
+		u, err := uri.NormalizeURI(source)
+		if err != nil {
+			return "", nil, fmt.Errorf("process uri: %w", err)
+		}
+		res = c.bookmark.FetchBookmarkContent(u)
+	} else {
+		res = func() *model.BlockContentBookmark {
+			return nil
+		}
 	}
-	res := c.bookmark.FetchBookmarkContent(u)
 	return c.bookmark.CreateBookmarkObject(req.Details, res)
 }
 
