@@ -498,6 +498,9 @@ func (e *export) writeConfig(wr writer) error {
 }
 
 func (e *export) objectValid(id string, r *model.ObjectInfo) bool {
+	if r.Id == addr.AnytypeProfileId {
+		return false
+	}
 	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
 		return false
 	}
