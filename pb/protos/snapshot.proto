@@ -14,4 +14,5 @@ message Profile {
   string name = 1;
   string avatar = 2;
   string address = 4;
+  string profileId = 5;
 }
