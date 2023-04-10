@@ -463,9 +463,10 @@ func (e *export) createProfileFile(wr writer) error {
 		return err
 	}
 	profile := &pb.Profile{
-		Name:    localProfile.Name,
-		Avatar:  localProfile.IconImage,
-		Address: localProfile.AccountAddr,
+		Name:      localProfile.Name,
+		Avatar:    localProfile.IconImage,
+		Address:   localProfile.AccountAddr,
+		ProfileId: e.a.ProfileID(), // save profile id to restore user profile during import
 	}
 	data, err := profile.Marshal()
 	if err != nil {
@@ -497,6 +498,9 @@ func (e *export) writeConfig(wr writer) error {
 }
 
 func (e *export) objectValid(id string, r *model.ObjectInfo) bool {
+	if r.Id == addr.AnytypeProfileId {
+		return false
+	}
 	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
 		return false
 	}
