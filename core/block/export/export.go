@@ -87,7 +87,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived, req.IncludeDeleted)
+	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived)
 	if err != nil {
 		return
 	}
@@ -161,9 +161,9 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	return wr.Path(), succeed, nil
 }
 
-func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, includeDeleted bool) (docs map[string]*types.Struct, err error) {
+func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool) (docs map[string]*types.Struct, err error) {
 	if len(reqIds) == 0 {
-		return e.getAllObjects(includeArchived, includeDeleted)
+		return e.getAllObjects(includeArchived)
 	}
 
 	if len(reqIds) > 0 {
@@ -210,15 +210,8 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	return docs, err
 }
 
-func (e *export) getAllObjects(includeArchived bool, includeDeleted bool) (map[string]*types.Struct, error) {
+func (e *export) getAllObjects(includeArchived bool) (map[string]*types.Struct, error) {
 	var res []*model.ObjectInfo
-	if includeDeleted {
-		delObjects, err := e.getDeletedObjects()
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, delObjects...)
-	}
 	if includeArchived {
 		archivedObjects, err := e.getArchivedObjects()
 		if err != nil {
@@ -366,9 +359,6 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 
 func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
-		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
-			return nil
-		}
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
