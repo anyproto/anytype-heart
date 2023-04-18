@@ -498,7 +498,11 @@ func (e *export) objectValid(id string, r *model.ObjectInfo) bool {
 		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
 			return true
 		}
-		return false
+		if strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) ||
+			strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) {
+			return false
+		}
+		return true
 	}
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
