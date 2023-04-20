@@ -14,6 +14,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -534,6 +535,16 @@ func (e *export) objectValid(id string, r *model.ObjectInfo, store *types.Struct
 func installedSubObject(id string, objectType model.SmartBlockType, store *types.Struct) bool {
 	if objectType == model.SmartBlockType_SubObject {
 		if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+			key, err := pbtypes.RelationIdToKey(id)
+			if err != nil {
+				return false
+			}
+			if slices.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
+				return false
+			}
+			if slices.Contains(bundle.RequiredInternalRelations, bundle.RelationKey(key)) {
+				return false
+			}
 			relations := pbtypes.GetStruct(store, editor.CollectionKeyRelations)
 			str := pbtypes.GetStruct(relations, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
 			return str != nil
@@ -542,6 +553,12 @@ func installedSubObject(id string, objectType model.SmartBlockType, store *types
 			objectTypes := pbtypes.GetStruct(store, editor.CollectionKeyObjectTypes)
 			tk, err := bundle.TypeKeyFromUrl(id)
 			if err != nil {
+				return false
+			}
+			if slices.Contains(bundle.InternalTypes, tk) {
+				return false
+			}
+			if slices.Contains(bundle.SystemTypes, tk) {
 				return false
 			}
 			str := pbtypes.GetStruct(objectTypes, tk.String())
