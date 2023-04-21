@@ -535,37 +535,45 @@ func (e *export) objectValid(id string, r *model.ObjectInfo, store *types.Struct
 func installedSubObject(id string, objectType model.SmartBlockType, store *types.Struct) bool {
 	if objectType == model.SmartBlockType_SubObject {
 		if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			key, err := pbtypes.RelationIdToKey(id)
-			if err != nil {
-				return false
-			}
-			if slices.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
-				return false
-			}
-			if slices.Contains(bundle.RequiredInternalRelations, bundle.RelationKey(key)) {
-				return false
-			}
-			relations := pbtypes.GetStruct(store, editor.CollectionKeyRelations)
-			str := pbtypes.GetStruct(relations, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
-			return str != nil
+			return isRelationInstalled(id, store)
 		}
 		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			objectTypes := pbtypes.GetStruct(store, editor.CollectionKeyObjectTypes)
-			tk, err := bundle.TypeKeyFromUrl(id)
-			if err != nil {
-				return false
-			}
-			if slices.Contains(bundle.InternalTypes, tk) {
-				return false
-			}
-			if slices.Contains(bundle.SystemTypes, tk) {
-				return false
-			}
-			str := pbtypes.GetStruct(objectTypes, tk.String())
-			return str != nil
+			return isObjectTypeInstalled(id, store)
 		}
 	}
 	return false
+}
+
+func isObjectTypeInstalled(id string, store *types.Struct) bool {
+	objectTypes := pbtypes.GetStruct(store, editor.CollectionKeyObjectTypes)
+	tk, err := bundle.TypeKeyFromUrl(id)
+	if err != nil {
+		return false
+	}
+	if slices.Contains(bundle.InternalTypes, tk) {
+		return false
+	}
+	if slices.Contains(bundle.SystemTypes, tk) {
+		return false
+	}
+	str := pbtypes.GetStruct(objectTypes, tk.String())
+	return str != nil
+}
+
+func isRelationInstalled(id string, store *types.Struct) bool {
+	key, err := pbtypes.RelationIdToKey(id)
+	if err != nil {
+		return false
+	}
+	if slices.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
+		return false
+	}
+	if slices.Contains(bundle.RequiredInternalRelations, bundle.RelationKey(key)) {
+		return false
+	}
+	relations := pbtypes.GetStruct(store, editor.CollectionKeyRelations)
+	str := pbtypes.GetStruct(relations, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
+	return str != nil
 }
 
 func newNamer() *namer {
