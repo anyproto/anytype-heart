@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -99,8 +100,12 @@ func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
 }
 
 func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (filename string, err error) {
-	// 0 - get first block
-	tree, err := d.block.GetAccountTree(context.Background(), blockId)
+	// 0 - get space and tree
+	spc, err := d.clientService.AccountSpace(context.Background())
+	if err != nil {
+		return
+	}
+	tree, err := spc.BuildHistoryTree(context.Background(), blockId, commonspace.HistoryTreeOpts{})
 	if err != nil {
 		return
 	}
