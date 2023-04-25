@@ -134,11 +134,16 @@ func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartbl
 	}
 	return v.(smartblock.SmartBlock), func() {
 		sbt, _ := coresb.SmartBlockTypeFromID(id)
+		// TODO: [MR] check if this is correct
 		if sbt == coresb.SmartBlockTypeSubObject {
 			s.cache.Release(s.anytype.PredefinedBlocks().Account)
 		}
 		s.cache.Release(id)
 	}, nil
+}
+
+func (s *Service) GetAccountTree(ctx context.Context, id string) (tr objecttree.ObjectTree, err error) {
+	return s.GetTree(ctx, s.clientService.AccountId(), id)
 }
 
 func (s *Service) GetAccountObject(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {

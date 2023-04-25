@@ -1,16 +1,17 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"os/exec"
 	"runtime"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/debug/debugtree"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -33,49 +34,57 @@ func main() {
 		return
 	}
 	fmt.Println("opening file...")
+	st := time.Now()
 	dt, err := debugtree.Open(*file)
 	if err != nil {
 		log.Fatal("can't open debug file:", err)
 	}
 	defer dt.Close()
+	fmt.Printf("open tree done in %.1fs\n", time.Since(st).Seconds())
 	fmt.Println(dt.Stats().MlString())
-
-	fmt.Println("build tree...")
-	st := time.Now()
-	t, _, err := change.BuildTree(context.TODO(), dt)
-	if err != nil {
-		log.Fatal("build tree error:", err)
-	}
-	fmt.Printf("build tree done in %.1fs\n", time.Since(st).Seconds())
 
 	if *changeIdx != -1 {
 		id := ""
 		i := 0
-		t.Iterate(t.RootId(), func(c *change.Change) (isContinue bool) {
-			if i == *changeIdx {
-				id = c.Id
-				fmt.Println("Change:")
-				fmt.Println(pbtypes.Sprint(c.Change))
-				return false
-			} else {
-				i++
-			}
-			return true
-		})
-		if id != "" {
-			if t, err = change.BuildTreeBefore(context.TODO(), dt, id, true); err != nil {
-				log.Fatal("build tree before error:", err)
-			}
-		}
+
+		dt.IterateFrom(dt.Root().Id,
+			func(decrypted []byte) (any, error) {
+				ch := &pb.Change{}
+				err = proto.Unmarshal(decrypted, ch)
+				if err != nil {
+					return nil, err
+				}
+				return ch, nil
+			}, func(change *objecttree.Change) bool {
+				if change.Id == dt.Id() {
+					return true
+				}
+				model := change.Model.(*pb.Change)
+				if i == *changeIdx {
+					id = change.Id
+					fmt.Println("Change:")
+					fmt.Println(pbtypes.Sprint(model))
+					return false
+				} else {
+					i++
+				}
+				return true
+			})
+		// TODO: [MR] Add full tree
+		//if id != "" {
+		//	if t, err = change.BuildTreeBefore(context.TODO(), dt, id, true); err != nil {
+		//		log.Fatal("build tree before error:", err)
+		//	}
+		//}
 	}
 
-	fmt.Printf("Tree len:\t%d\n", t.Len())
+	//fmt.Printf("Tree len:\t%d\n", .Len())
 	fmt.Printf("Tree root:\t%s\n", t.RootId())
 
 	if *printState {
 		fmt.Println("Building state...")
 		stt := time.Now()
-		s, err := dt.BuildStateByTree(t)
+		s, err := dt.BuildState()
 		if err != nil {
 			log.Fatal("can't build state:", err)
 		}

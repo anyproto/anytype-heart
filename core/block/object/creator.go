@@ -121,7 +121,6 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 	// if we don't have anything in details then check the object store
 	if workspaceID == "" {
-		// TODO: [MR] think about predefined ids, how should we create them in current circumstances
 		workspaceID = c.anytype.PredefinedBlocks().Account
 	}
 
