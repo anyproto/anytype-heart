@@ -76,28 +76,8 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
 	index := len(mw.foundAccounts)
 	var account wallet.Keypair
-	for {
-		account, err = core.WalletAccountAt(mw.mnemonic, index, "")
-		if err != nil {
-			return err
-		}
-		path := filepath.Join(mw.rootPath, account.Address())
-		// additional check if we found the repo already exists on local disk
-		if _, err = os.Stat(path); os.IsNotExist(err) {
-			break
-		}
-
-		log.Warnf("Account already exists locally, but doesn't exist in the foundAccounts list")
-		index++
-		continue
-	}
-
-	seedRaw, err := account.Raw()
+	account, err = core.WalletAccountAt(mw.mnemonic, index, "")
 	if err != nil {
-		return err
-	}
-
-	if err = core.WalletInitRepo(mw.rootPath, seedRaw); err != nil {
 		return err
 	}
 
