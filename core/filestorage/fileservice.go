@@ -5,6 +5,8 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
+	"github.com/anytypeio/any-sync/commonfile/fileproto"
+	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -29,12 +31,14 @@ type fileStorage struct {
 	syncerCancel context.CancelFunc
 	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
+	handler      *rpcHandler
 }
 
 func (f *fileStorage) Init(a *app.App) (err error) {
 	f.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
-	return
+	f.handler = &rpcHandler{}
+	return fileproto.DRPCRegisterFile(a.MustComponent(server.CName).(server.DRPCServer), f.handler)
 }
 
 func (f *fileStorage) Name() (name string) {
@@ -47,7 +51,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 		return
 	}
 	bs := badgerfilestore.NewBadgerStorage(db)
-	// TODO: rpcHandler
+	f.handler.store = bs
 	ps := &proxyStore{
 		cache:  bs,
 		origin: f.rpcStore.NewStore(),

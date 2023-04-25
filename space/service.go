@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/streampool"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
@@ -52,6 +53,7 @@ type service struct {
 	account              accountservice.Service
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
+	filePeers            rpcstore.Service
 	poolManager          PoolManager
 	streamHandler        *streamHandler
 	dialer               dialer.Dialer
@@ -65,6 +67,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.dialer = a.MustComponent(dialer.CName).(dialer.Dialer)
+	s.filePeers = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{s: s}
@@ -198,6 +201,7 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
 	if len(is) == 0 {
 		return
 	}
+	s.filePeers.AddLocalPeer(peer.PeerId, is)
 	streamPeer, err := s.poolManager.StreamPeerPool().Get(ctx, peer.PeerId)
 	if err != nil {
 		return

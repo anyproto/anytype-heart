@@ -3,6 +3,7 @@ package badgerfilestore
 import (
 	"context"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
+	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -11,7 +12,12 @@ import (
 
 const keyPrefix = "files/blocks/"
 
-func NewBadgerStorage(db *badger.DB) fileblockstore.BlockStoreLocal {
+type FileStore interface {
+	fileblockstore.BlockStoreLocal
+	BlockAvailability(ctx context.Context, ks []cid.Cid) (availability []*fileproto.BlockAvailability, err error)
+}
+
+func NewBadgerStorage(db *badger.DB) FileStore {
 	return &badgerStorage{db: db}
 }
 
@@ -84,6 +90,29 @@ func (f *badgerStorage) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []
 				exists = append(exists, k)
 			} else if e != badger.ErrKeyNotFound {
 				return e
+			}
+		}
+		return nil
+	})
+	return
+}
+
+func (f *badgerStorage) BlockAvailability(ctx context.Context, ks []cid.Cid) (availability []*fileproto.BlockAvailability, err error) {
+	err = f.db.View(func(txn *badger.Txn) error {
+		for _, k := range ks {
+			_, e := txn.Get(key(k))
+			if e == nil {
+				availability = append(availability, &fileproto.BlockAvailability{
+					Cid:    k.Bytes(),
+					Status: fileproto.AvailabilityStatus_Exists,
+				})
+			} else if e != badger.ErrKeyNotFound {
+				return e
+			} else {
+				availability = append(availability, &fileproto.BlockAvailability{
+					Cid:    k.Bytes(),
+					Status: fileproto.AvailabilityStatus_NotExists,
+				})
 			}
 		}
 		return nil
