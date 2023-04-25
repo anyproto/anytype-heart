@@ -294,12 +294,12 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	}
 
 	switch {
-	case len(t.Text) >= 3 && t.Text[:3] == "[ ]":
-		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, 3)
-	case len(t.Text) >= 2 && t.Text[:2] == "[]":
-		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, 2)
-	case len(t.Text) >= 3 && t.Text[:3] == "[x]":
-		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, 3)
+	case len(t.Text) >= 3 && strings.HasPrefix(t.Text[:3], "[ ]"):
+		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, "[ ]")
+	case len(t.Text) >= 2 && strings.HasPrefix(t.Text[:2], "[]"):
+		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, "[]")
+	case len(t.Text) >= 3 && strings.HasPrefix(t.Text[:3], "[x]"):
+		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, "[x]")
 		t.Checked = true
 	}
 
@@ -329,20 +329,21 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	}
 }
 
-func (r *blocksRenderer) normalizeCheckboxBlock(t *model.BlockContentText, parentBlock *textBlock, checkboxLength int) *textBlock {
-	r.adjustMarkdownRange(t, checkboxLength)
-	t.Text = strings.TrimLeft(t.Text[checkboxLength:], " ")
+func (r *blocksRenderer) normalizeCheckboxBlock(t *model.BlockContentText, parentBlock *textBlock, checkboxPattern string) *textBlock {
+	textBefore := t.Text
+	t.Text = strings.TrimLeft(strings.TrimPrefix(textBefore, checkboxPattern), " ")
+	r.adjustMarkdownRange(t, len(textBefore)-len(t.Text))
 	t.Style = model.BlockContentText_Checkbox
-	if len(r.openedTextBlocks) > 0 {
-		parentBlock = r.removeMarkedBlock(parentBlock)
-	}
-	return parentBlock
+	return r.removeMarkedBlock(parentBlock)
 }
 
 // removeMarkedBlock removes unnecessary marked block because goldmark parses notion checkbox as marked block,
 // because of "-" before checkbox (-[x]/-[]), so we remove this block and makes parent block nil
 // if parent block is the removed block
 func (r *blocksRenderer) removeMarkedBlock(parentBlock *textBlock) *textBlock {
+	if len(r.openedTextBlocks) == 0 {
+		return parentBlock
+	}
 	markedBlock := r.openedTextBlocks[len(r.openedTextBlocks)-1]
 	if markedBlock != nil && r.isEmptyMarkedBlock(markedBlock) {
 		r.openedTextBlocks = r.openedTextBlocks[:len(r.openedTextBlocks)-1]
@@ -359,11 +360,10 @@ func (r *blocksRenderer) isEmptyMarkedBlock(markedBlock *textBlock) bool {
 }
 
 func (r *blocksRenderer) adjustMarkdownRange(t *model.BlockContentText, adjustNumber int) {
-	removedSpaceCount := len(t.Text[adjustNumber:]) - len(strings.TrimLeft(t.Text[adjustNumber:], " "))
 	for _, mark := range t.Marks.Marks {
 		if mark.Range != nil {
-			mark.Range.To -= int32(adjustNumber + removedSpaceCount)
-			mark.Range.From -= int32(adjustNumber + removedSpaceCount)
+			mark.Range.To -= int32(adjustNumber)
+			mark.Range.From -= int32(adjustNumber)
 			if mark.Range.From < 0 {
 				mark.Range.From = 0
 			}
