@@ -28,6 +28,15 @@ type widget struct {
 	smartblock.SmartBlock
 }
 
+func IsPredefinedWidgetTargetId(targetID string) bool {
+	switch targetID {
+	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecent:
+		return true
+	default:
+		return false
+	}
+}
+
 func NewWidget(sb smartblock.SmartBlock) Widget {
 	return &widget{
 		SmartBlock: sb,

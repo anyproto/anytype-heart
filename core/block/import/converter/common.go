@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -136,6 +137,9 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	targetBlockID := block.Model().GetLink().TargetBlockId
 	newTarget := oldIDtoNew[targetBlockID]
 	if newTarget == "" {
+		if widget.IsPredefinedWidgetTargetId(targetBlockID) {
+			return
+		}
 		if isBundledObjects(targetBlockID) {
 			return
 		}
