@@ -725,7 +725,6 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 
 func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
 	mw.m.Lock()
-
 	defer mw.m.Unlock()
 	err := mw.stop()
 	if err != nil {
@@ -736,7 +735,6 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	if err != nil {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
-
 	if address == "" || profile.Address != address {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
 	}
@@ -747,7 +745,6 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 	mw.accountSearchCancel()
-
 	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) && account != nil {
 		seedRaw, seedRrr := account.Raw()
 		if seedRrr != nil {
@@ -757,34 +754,19 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 			return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr
 		}
 	}
-
-	archive, err := zip.OpenReader(req.Path)
+	cfg, err := mw.getBootstrapConfig(err, req)
 	if err != nil {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
-	oldCfg, err := extractConfig(archive)
+
+	err = mw.startApp(cfg, address, err)
 	if err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to extract config: %w", err)
-	}
-
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
-	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
-	// todo: parse config.json from legacy export
-
-	comps := []app.Component{
-		cfg,
-		anytype.BootstrapWallet(mw.rootPath, address),
-		mw.EventSender,
-	}
-
-	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
-	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	code, err := mw.setDetails(profile, err)
+	err = mw.setDetails(profile, err)
 	if err != nil {
-		return code, err
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
 	if newAccount {
@@ -795,7 +777,36 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	return pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
 }
 
-func (mw *Middleware) setDetails(profile *pb.Profile, err error) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
+func (mw *Middleware) startApp(cfg *config.Config, address string, err error) error {
+	comps := []app.Component{
+		cfg,
+		anytype.BootstrapWallet(mw.rootPath, address),
+		mw.EventSender,
+	}
+
+	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
+	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (mw *Middleware) getBootstrapConfig(err error, req *pb.RpcAccountRecoverFromLegacyExportRequest) (*config.Config, error) {
+	archive, err := zip.OpenReader(req.Path)
+	if err != nil {
+		return nil, err
+	}
+	oldCfg, err := extractConfig(archive)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract config: %w", err)
+	}
+
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
+	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
+	return cfg, nil
+}
+
+func (mw *Middleware) setDetails(profile *pb.Profile, err error) error {
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
 	details = append(details, &pb.RpcObjectSetDetailsDetail{
 		Key:   "iconImage",
@@ -808,30 +819,30 @@ func (mw *Middleware) setDetails(profile *pb.Profile, err error) (pb.RpcAccountR
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return err
 	}
-	return pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
+	return nil
 }
 
 func (mw *Middleware) getAccountID(profile *pb.Profile) (string, wallet.Keypair, bool, error) {
 	var (
-		address    string
-		account    wallet.Keypair
-		err        error
-		newAccount bool
+		address      string
+		newAccount   bool
+		index        int
+		foundAccount *model.Account
 	)
-	if len(mw.foundAccounts) > 0 {
-		for _, foundAccount := range mw.foundAccounts {
-			if profile.Address == foundAccount.GetId() {
-				address = foundAccount.GetId()
-				break
-			}
+	for index, foundAccount = range mw.foundAccounts {
+		if profile.Address == foundAccount.GetId() {
+			address = foundAccount.GetId()
+			break
 		}
-	} else {
-		account, err = core.WalletAccountAt(mw.mnemonic, 0, "")
-		if err != nil {
-			return "", nil, false, err
-		}
+
+	}
+	account, err := core.WalletAccountAt(mw.mnemonic, index, "")
+	if err != nil {
+		return "", nil, false, err
+	}
+	if len(mw.foundAccounts) == 0 {
 		address = account.Address()
 		newAccount = true
 	}
