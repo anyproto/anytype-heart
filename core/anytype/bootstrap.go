@@ -156,7 +156,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(export.New(sbtProvider)).
 		Register(linkpreview.New()).
 		Register(unsplash.New(tempDirService)).
-		Register(restriction.New(sbtProvider)).
+		Register(restriction.New(sbtProvider, objectStore)).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
 		Register(collectionService).

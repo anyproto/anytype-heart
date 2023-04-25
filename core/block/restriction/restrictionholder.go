@@ -34,5 +34,5 @@ func (s *restrictionHolder) Type() model.SmartBlockType {
 }
 
 func (s *restrictionHolder) Layout() (model.ObjectTypeLayout, bool) {
-	return s.layout, s.layout != -1
+	return s.layout, s.layout != noLayout
 }

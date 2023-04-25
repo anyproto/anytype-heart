@@ -2,6 +2,7 @@ package restriction
 
 import (
 	"fmt"
+	"github.com/samber/lo"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -85,7 +86,7 @@ var (
 		model.ObjectType_relationOption: objRestrictEdit,
 	}
 
-	objectRestrictionsByPbType = map[model.SmartBlockType]ObjectRestrictions{
+	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
 		model.SmartBlockType_ProfilePage:    {model.Restrictions_LayoutChange, model.Restrictions_TypeChange, model.Restrictions_Delete},
 		model.SmartBlockType_AnytypeProfile: objRestrictAll,
 		model.SmartBlockType_Home: {
@@ -175,7 +176,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	}
 
 	var ok bool
-	if r, ok = objectRestrictionsByPbType[rh.Type()]; ok {
+	if r, ok = objectRestrictionsBySBType[rh.Type()]; ok {
 		return
 	}
 
@@ -190,33 +191,19 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 }
 
 func (s *service) getObjectRestrictionsForObjectType(id string) (r ObjectRestrictions) {
-	r, _ = objectRestrictionsByPbType[model.SmartBlockType_SubObject]
+	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		return
 	}
-	var system bool
-	for _, st := range bundle.SystemTypes {
-		if st.URL() == id {
-			system = true
-			break
-		}
-	}
-	if !system {
+	if !lo.Contains(bundle.SystemTypes, bundle.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))) {
 		return
 	}
 	return sysTypesRestrictions
 }
 
 func (s *service) getObjectRestrictionsForRelation(id string) (r ObjectRestrictions) {
-	r, _ = objectRestrictionsByPbType[model.SmartBlockType_SubObject]
-	var system bool
-	for _, sr := range bundle.SystemRelations {
-		if sr.URL() == id {
-			system = true
-			break
-		}
-	}
-	if !system {
+	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
+	if !lo.Contains(bundle.SystemRelations, bundle.RelationKey(strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))) {
 		return
 	}
 	return sysRelationsRestrictions

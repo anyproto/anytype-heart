@@ -14,7 +14,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-const CName = "restriction"
+const (
+	CName    = "restriction"
+	noLayout = -1
+)
 
 var (
 	ErrRestricted = errors.New("restricted")
@@ -33,14 +36,14 @@ type service struct {
 	store       objectstore.ObjectStore
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
+func New(sbtProvider typeprovider.SmartBlockTypeProvider, objectStore objectstore.ObjectStore) Service {
 	return &service{
 		sbtProvider: sbtProvider,
+		store:       objectStore,
 	}
 }
 
-func (s *service) Init(a *app.App) (err error) {
-	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+func (s *service) Init(*app.App) (err error) {
 	return
 }
 
@@ -71,7 +74,7 @@ func (s *service) getRestrictionsById(id string) (r Restrictions, err error) {
 	if err != nil {
 		return Restrictions{}, fmt.Errorf("get smartblock type: %w", err)
 	}
-	layout := model.ObjectTypeLayout(-1)
+	layout := model.ObjectTypeLayout(noLayout)
 	d, err := s.store.GetDetails(id)
 	if err == nil {
 		if pbtypes.HasField(d.GetDetails(), bundle.RelationKeyLayout.String()) {

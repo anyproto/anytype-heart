@@ -1,6 +1,7 @@
 package restriction
 
 import (
+	"github.com/samber/lo"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -17,7 +18,7 @@ var (
 		},
 	}
 
-	dataviewRestrictionsByPb = map[model.SmartBlockType]DataviewRestrictions{
+	dataviewRestrictionsBySBType = map[model.SmartBlockType]DataviewRestrictions{
 		model.SmartBlockType_Page: dvRestrictNo,
 	}
 )
@@ -96,25 +97,18 @@ func (s *service) getDataviewRestrictions(rh RestrictionHolder) DataviewRestrict
 		return s.getDataviewRestrictionsForObjectType(rh.Id())
 	}
 
-	if dr, ok := dataviewRestrictionsByPb[rh.Type()]; ok {
+	if dr, ok := dataviewRestrictionsBySBType[rh.Type()]; ok {
 		return dr
 	}
 	return nil
 }
 
 func (s *service) getDataviewRestrictionsForObjectType(id string) (r DataviewRestrictions) {
-	r, _ = dataviewRestrictionsByPb[model.SmartBlockType_SubObject]
+	r, _ = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		return
 	}
-	var internal bool
-	for _, st := range bundle.InternalTypes {
-		if st.URL() == id {
-			internal = true
-			break
-		}
-	}
-	if !internal {
+	if !lo.Contains(bundle.InternalTypes, bundle.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))) {
 		return
 	}
 	return append(r.Copy(), model.RestrictionsDataviewRestrictions{
