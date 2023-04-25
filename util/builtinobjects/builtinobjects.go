@@ -25,6 +25,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -51,6 +52,10 @@ var log = logging.Logger("anytype-mw-builtinobjects")
 const (
 	analyticsContext         = "get-started"
 	builtInDashboardObjectID = "bafybajhnav5nrikgey5hb6rwiq6j6mulyon3my4ehg3riia37cape4ru"
+	bookmarkSetObjectID      = "bafyecaocfyfix22kzhfqt42r5xk2ngzwwmxchnhzcsz6akx4pqd6evez"
+	everythingSetObjectID    = "bafyedkxh25dd4ij7nlyogawdc6bsmj7skiqcjiwbckovqzqnacxx57mo"
+	videosViewID             = "c9e117ea-f101-491c-9622-524ec2a4d529"
+	mediaViewID              = "e83e70ab-0601-4ab7-abd9-d4dc09b9e703"
 
 	injectionTimeout = 30 * time.Second
 )
@@ -265,6 +270,9 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 				a.Model().GetText().GetMarks().GetMarks()[i].Param = newTarget
 			}
 			st.Set(simple.New(a.Model()))
+		case dataview.Block:
+			// TODO: temporary solution of GO-1034, will be removed after GO-948 merge
+			b.putFirstRelationInViews(st, oldId, &a)
 		}
 		return true
 	})
@@ -344,6 +352,37 @@ func (b *builtinObjects) Close(ctx context.Context) (err error) {
 		b.cancel()
 	}
 	return
+}
+
+func (b *builtinObjects) putFirstRelationInViews(st *state.State, oldID string, bl *dataview.Block) {
+	var viewID string
+
+	switch oldID {
+	case bookmarkSetObjectID:
+		viewID = videosViewID
+	case everythingSetObjectID:
+		viewID = mediaViewID
+		(*bl).AddRelation(&model.RelationLink{
+			Key:    bundle.RelationKeySource.String(),
+			Format: model.RelationFormat_url,
+		})
+	default:
+		return
+	}
+
+	if err := (*bl).RemoveViewRelations(viewID, []string{bundle.RelationKeySource.String()}); err != nil {
+		return
+	}
+	v, err := (*bl).GetView(viewID)
+	if err != nil {
+		return
+	}
+
+	v.Relations = append([]*model.BlockContentDataviewRelation{{
+		Key:       bundle.RelationKeySource.String(),
+		IsVisible: true,
+	}}, v.Relations...)
+	st.Set(simple.New((*bl).Model()))
 }
 
 func SmartBlockTypeFromThreadID(id string) (coresb.SmartBlockType, error) {

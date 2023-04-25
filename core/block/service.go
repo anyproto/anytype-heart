@@ -974,7 +974,7 @@ func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("text operation not available for this block type: %T", sb)
+	return fmt.Errorf("dataview operation not available for this block type: %T", sb)
 }
 
 func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
