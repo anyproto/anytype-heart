@@ -9,6 +9,7 @@ import (
 )
 
 func (f *fileSync) RemoveFile(spaceId, fileId string) (err error) {
+	log.Info("add file to removing queue", zap.String("fileID", fileId))
 	defer func() {
 		if err == nil {
 			select {
@@ -67,5 +68,6 @@ func (f *fileSync) tryToRemove() (string, error) {
 }
 
 func (f *fileSync) removeFile(ctx context.Context, spaceId, fileId string) (err error) {
+	log.Info("removing file", zap.String("fileID", fileId))
 	return f.rpcStore.DeleteFiles(ctx, spaceId, fileId)
 }

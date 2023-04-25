@@ -45,20 +45,30 @@ func (s *fileSyncStore) QueueDiscarded(spaceId, fileId string) (err error) {
 
 func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
+		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
+			return err
+		}
 		return txn.Set(removeKey(spaceId, fileId), binTime())
 	})
 }
 
 func (s *fileSyncStore) DoneUpload(spaceId, fileId string) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
-		if err = txn.Delete(uploadKey(spaceId, fileId)); err != nil {
-			return err
-		}
-		if err = txn.Delete(discardedKey(spaceId, fileId)); err != nil {
+		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
 			return err
 		}
 		return txn.Set(doneKey(spaceId, fileId), binTime())
 	})
+}
+
+func removeFromUploadingQueue(txn *badger.Txn, spaceID string, fileID string) error {
+	if err := txn.Delete(uploadKey(spaceID, fileID)); err != nil {
+		return fmt.Errorf("remove from uploading queue: %w", err)
+	}
+	if err := txn.Delete(discardedKey(spaceID, fileID)); err != nil {
+		return fmt.Errorf("remove from discarded uploading queue: %w", err)
+	}
+	return nil
 }
 
 func (s *fileSyncStore) DoneDiscarded(spaceId, fileId string) (err error) {

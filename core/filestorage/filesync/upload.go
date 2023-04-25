@@ -18,7 +18,7 @@ import (
 )
 
 func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
-	log.Info("add file to queue", zap.String("fileID", fileId))
+	log.Info("add file to uploading queue", zap.String("fileID", fileId))
 	defer func() {
 		if err == nil {
 			select {
