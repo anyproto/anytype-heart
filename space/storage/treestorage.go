@@ -117,6 +117,19 @@ func (t *treeStorage) AddRawChange(change *treechangeproto.RawTreeChangeWithId) 
 	return putDB(t.db, t.keys.RawChangeKey(change.Id), change.RawChange)
 }
 
+func (t *treeStorage) TransactionAdd(changes []*treechangeproto.RawTreeChangeWithId, heads []string) error {
+	return t.db.Update(func(txn *badger.Txn) error {
+		for _, ch := range changes {
+			err := txn.Set(t.keys.RawChangeKey(ch.Id), ch.RawChange)
+			if err != nil {
+				return err
+			}
+		}
+		payload := treestorage.CreateHeadsPayload(heads)
+		return txn.Set(t.keys.HeadsKey(), payload)
+	})
+}
+
 func (t *treeStorage) GetRawChange(ctx context.Context, id string) (raw *treechangeproto.RawTreeChangeWithId, err error) {
 	res, err := getDB(t.db, t.keys.RawChangeKey(id))
 	if err != nil {
