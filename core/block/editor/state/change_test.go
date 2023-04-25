@@ -90,7 +90,122 @@ func TestState_ChangesCreate_Collection_Unset(t *testing.T) {
 	}).String(), changes[0].String())
 }
 
-// TODO tests for atomic changes
+func TestState_ChangesCreate_StoreSlice(t *testing.T) {
+	const key = "key"
+	for _, tc := range []struct {
+		before  []string
+		after   []string
+		changes []pb.IsChangeContentValue
+	}{
+		{
+			before: nil,
+			after:  []string{"1", "2", "3"},
+			changes: []pb.IsChangeContentValue{
+				&pb.ChangeContentValueOfStoreSliceUpdate{
+					StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+						Key: key,
+						Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{
+							Add: &pb.ChangeStoreSliceUpdateAdd{
+								AfterId: "",
+								Ids:     []string{"1", "2", "3"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			before: []string{"1", "2", "3"},
+			after:  []string{"2"},
+			changes: []pb.IsChangeContentValue{
+				&pb.ChangeContentValueOfStoreSliceUpdate{
+					StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+						Key: key,
+						Operation: &pb.ChangeStoreSliceUpdateOperationOfRemove{
+							Remove: &pb.ChangeStoreSliceUpdateRemove{
+								Ids: []string{"1", "3"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			before: []string{"1", "2", "3"},
+			after:  []string{"1", "3", "2"},
+			changes: []pb.IsChangeContentValue{
+				&pb.ChangeContentValueOfStoreSliceUpdate{
+					StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+						Key: key,
+						Operation: &pb.ChangeStoreSliceUpdateOperationOfMove{
+							Move: &pb.ChangeStoreSliceUpdateMove{
+								AfterId: "1",
+								Ids:     []string{"3"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			before: []string{"1", "2", "3"},
+			after:  []string{"3", "2", "4"},
+			changes: []pb.IsChangeContentValue{
+				&pb.ChangeContentValueOfStoreSliceUpdate{
+					StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+						Key: key,
+						Operation: &pb.ChangeStoreSliceUpdateOperationOfMove{
+							Move: &pb.ChangeStoreSliceUpdateMove{
+								AfterId: "",
+								Ids:     []string{"3"},
+							},
+						},
+					},
+				},
+				&pb.ChangeContentValueOfStoreSliceUpdate{
+					StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+						Key: key,
+						Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{
+							Add: &pb.ChangeStoreSliceUpdateAdd{
+								AfterId: "2",
+								Ids:     []string{"4"},
+							},
+						},
+					},
+				},
+				&pb.ChangeContentValueOfStoreSliceUpdate{
+					StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+						Key: key,
+						Operation: &pb.ChangeStoreSliceUpdateOperationOfRemove{
+							Remove: &pb.ChangeStoreSliceUpdateRemove{
+								Ids: []string{"1"},
+							},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(fmt.Sprintf("%s -> %s", tc.before, tc.after), func(t *testing.T) {
+			doc := NewDoc("root", nil)
+			doc.(*State).StoreSlice(key, tc.before)
+
+			newState := doc.NewState()
+			newState.StoreSlice(key, tc.after)
+
+			_, _, err := ApplyState(newState, false)
+			require.NoError(t, err)
+
+			got := doc.(*State).GetChanges()
+			gotContent := make([]pb.IsChangeContentValue, 0, len(got))
+			for _, c := range got {
+				gotContent = append(gotContent, c.Value)
+			}
+
+			assert.Equal(t, tc.changes, gotContent)
+		})
+	}
+}
 
 func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
 	d := NewDoc("root", map[string]simple.Block{
