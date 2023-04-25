@@ -1,11 +1,11 @@
 package block
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	textUtil "github.com/anytypeio/go-anytype-middleware/util/text"
@@ -69,7 +69,11 @@ func (b *LinkToWeb) GetBlocks(*MapRequest) *MapResponse {
 
 type ChildPageBlock struct {
 	Block
-	ChildPage Child `json:"child_page"`
+	ChildPage ChildPG `json:"child_page"`
+}
+
+type ChildPG struct {
+	Title string `json:"title"`
 }
 
 func (b *ChildPageBlock) GetBlocks(req *MapRequest) *MapResponse {
@@ -80,9 +84,49 @@ func (b *ChildPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 	}
 }
 
+func (p ChildPG) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) (*model.Block, string) {
+	var (
+		targetBlockID string
+		ok            bool
+	)
+	for id, name := range idToName {
+		if strings.EqualFold(name, p.Title) {
+			if len(notionIdsToAnytype) > 0 {
+				targetBlockID, ok = notionIdsToAnytype[id]
+			}
+			break
+		}
+	}
+
+	id := bson.NewObjectId().Hex()
+	if !ok {
+		return &model.Block{
+			Id:          id,
+			ChildrenIds: nil,
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: notFoundPageMessage,
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{},
+					},
+				},
+			},
+		}, id
+	}
+
+	return &model.Block{
+		Id:          id,
+		ChildrenIds: nil,
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetBlockID,
+			},
+		}}, id
+}
+
 type ChildDatabaseBlock struct {
 	Block
-	ChildDatabase Child `json:"child_database"`
+	ChildDatabase ChildDB `json:"child_database"`
 }
 
 func (b *ChildDatabaseBlock) GetBlocks(req *MapRequest) *MapResponse {
@@ -93,11 +137,11 @@ func (b *ChildDatabaseBlock) GetBlocks(req *MapRequest) *MapResponse {
 	}
 }
 
-type Child struct {
+type ChildDB struct {
 	Title string `json:"title"`
 }
 
-func (c *Child) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) (*model.Block, string) {
+func (c *ChildDB) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) (*model.Block, string) {
 	var (
 		targetBlockID string
 	)

@@ -42,7 +42,7 @@ func Test_GetBookmarkBlock(t *testing.T) {
 }
 
 func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
-	c := &Child{Title: "title"}
+	c := &ChildPG{Title: "title"}
 	nameToID := map[string]string{"id": "title"}
 	notionIdsToAnytype := map[string]string{"id": "anytypeId"}
 	bl, _ := c.GetLinkToObjectBlock(notionIdsToAnytype, nameToID)
@@ -53,7 +53,7 @@ func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
 }
 
 func Test_GetLinkToObjectBlockFail(t *testing.T) {
-	c := &Child{Title: "title"}
+	c := &ChildPG{Title: "title"}
 	bl, _ := c.GetLinkToObjectBlock(nil, nil)
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfText)
@@ -66,4 +66,24 @@ func Test_GetLinkToObjectBlockFail(t *testing.T) {
 	content, ok = bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
 	assert.Equal(t, content.Text.Text, notFoundPageMessage)
+}
+
+func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
+	c := &ChildDB{Title: "title"}
+	nameToID := map[string]string{"id": "title"}
+	notionIdsToAnytype := map[string]string{"id": "anytypeId"}
+	bl, _ := c.GetLinkToObjectBlock(notionIdsToAnytype, nameToID)
+	assert.NotNil(t, bl)
+	content, ok := bl.Content.(*model.BlockContentOfDataview)
+	assert.True(t, ok)
+	assert.Equal(t, content.Dataview.TargetObjectId, "anytypeId")
+}
+
+func Test_GetLinkToObjectBlockInlineCollectionEmpty(t *testing.T) {
+	c := &ChildDB{Title: "title"}
+	bl, _ := c.GetLinkToObjectBlock(nil, nil)
+	assert.NotNil(t, bl)
+	content, ok := bl.Content.(*model.BlockContentOfDataview)
+	assert.True(t, ok)
+	assert.Equal(t, content.Dataview.TargetObjectId, "")
 }
