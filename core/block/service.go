@@ -778,14 +778,17 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 	return nil
 }
 
+// TODO: remove proxy
 func (s *Service) Process() process.Service {
 	return s.process
 }
 
+// TODO: remove proxy
 func (s *Service) ProcessAdd(p process.Process) (err error) {
 	return s.process.Add(p)
 }
 
+// TODO: remove proxy
 func (s *Service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
 }

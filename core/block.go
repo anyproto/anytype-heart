@@ -2,21 +2,15 @@ package core
 
 import (
 	"context"
-	"os"
-	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/miolini/datacounter"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
 )
 
 func (mw *Middleware) BlockCreate(cctx context.Context, req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
@@ -1061,83 +1055,17 @@ func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownload
 		}
 		return m
 	}
-
-	if req.Path == "" {
-		req.Path = mw.GetAnytype().TempDir() + string(os.PathSeparator) + "anytype-download"
-	}
-
-	err := os.MkdirAll(req.Path, 0755)
-	if err != nil {
-		return response("", pb.RpcFileDownloadResponseError_BAD_INPUT, err)
-	}
-	progress := process.NewProgress(pb.ModelProcess_SaveFile)
-	defer progress.Finish()
-
-	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ProcessAdd(progress)
+	var path string
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		path, err = bs.DownloadFile(req)
+		return
 	})
 	if err != nil {
-		return response("", pb.RpcFileDownloadResponseError_BAD_INPUT, err)
-	}
-
-	progress.SetProgressMessage("saving file")
-	var countReader *datacounter.ReaderCounter
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-progress.Canceled():
-				cancel()
-			case <-time.After(time.Second):
-				if countReader != nil {
-					progress.SetDone(int64(countReader.Count()))
-				}
-			}
-		}
-	}()
-
-	f, err := mw.getFileOrLargestImage(ctx, req.Hash)
-	if err != nil {
-		return response("", pb.RpcFileDownloadResponseError_BAD_INPUT, err)
-	}
-
-	progress.SetTotal(f.Meta().Size)
-
-	r, err := f.Reader()
-	if err != nil {
-		return response("", pb.RpcFileDownloadResponseError_BAD_INPUT, err)
-	}
-	countReader = datacounter.NewReaderCounter(r)
-	fileName := f.Meta().Name
-	if fileName == "" {
-		fileName = f.Info().Name
-	}
-
-	path, err := files.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, countReader)
-	if err != nil {
+		// TODO Maybe use the appropriate error code?
 		return response("", pb.RpcFileDownloadResponseError_UNKNOWN_ERROR, err)
 	}
 
-	progress.SetDone(f.Meta().Size)
-
 	return response(path, pb.RpcFileDownloadResponseError_NULL, nil)
-}
-
-func (mw *Middleware) getFileOrLargestImage(ctx context.Context, hash string) (core.File, error) {
-	image, err := mw.GetAnytype().ImageByHash(ctx, hash)
-	if err != nil {
-		return mw.GetAnytype().FileByHash(ctx, hash)
-	}
-
-	f, err := image.GetOriginalFile(ctx)
-	if err != nil {
-		return mw.GetAnytype().FileByHash(ctx, hash)
-	}
-
-	return f, nil
 }
 
 func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {

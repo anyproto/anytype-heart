@@ -161,7 +161,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(gateway.New()).
 		Register(export.New()).
 		Register(linkpreview.New()).
-		Register(unsplash.New()).
+		Register(unsplash.New(tempDirService)).
 		Register(restriction.New()).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).

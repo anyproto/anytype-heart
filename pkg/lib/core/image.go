@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 	"math"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -16,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -213,7 +214,7 @@ func (i *image) Details() (*types.Struct, error) {
 		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(exif.Description)
 	}
 	if exif.Artist != "" {
-		artistName, artistUrl := unsplash.UnpackArtist(exif.Artist)
+		artistName, artistUrl := unpackArtist(exif.Artist)
 		details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistName)
 
 		if artistUrl != "" {
@@ -222,6 +223,19 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	return details, nil
+}
+
+// exifArtistWithUrl matches and extracts additional information we store in the Artist field – the URL of the author page.
+// We use it within the Unsplash integration
+var exifArtistWithUrl = regexp.MustCompile(`(.*?); (http.*)`)
+
+func unpackArtist(packed string) (name, url string) {
+	artistParts := exifArtistWithUrl.FindStringSubmatch(packed)
+	if len(artistParts) == 3 {
+		return artistParts[1], artistParts[2]
+	}
+
+	return packed, ""
 }
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {

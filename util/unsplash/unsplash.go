@@ -3,25 +3,27 @@ package unsplash
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/hbagdi/go-unsplash/unsplash"
 	"golang.org/x/oauth2"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 var log = logging.Logger("unsplash")
@@ -40,23 +42,18 @@ type Unsplash interface {
 	app.Component
 }
 
-type tempDirGetter interface {
-	TempDir() string
-}
-
 type unsplashService struct {
-	mu            sync.Mutex
-	cache         ocache.OCache
-	client        *unsplash.Unsplash
-	limit         int
-	config        configfetcher.ConfigFetcher
-	tempDirGetter tempDirGetter
+	mu              sync.Mutex
+	cache           ocache.OCache
+	client          *unsplash.Unsplash
+	limit           int
+	config          configfetcher.ConfigFetcher
+	tempDirProvider core.TempDirProvider
 }
 
 func (l *unsplashService) Init(app *app.App) (err error) {
 	l.cache = ocache.New(l.search, ocache.WithTTL(cacheTTL), ocache.WithGCPeriod(cacheGCPeriod))
 	l.config = app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	l.tempDirGetter = app.MustComponent("anytype").(tempDirGetter)
 	return
 }
 
@@ -64,13 +61,9 @@ func (l *unsplashService) Name() (name string) {
 	return CName
 }
 
-func New() Unsplash {
-	return &unsplashService{}
+func New(tempDirProvider core.TempDirProvider) Unsplash {
+	return &unsplashService{tempDirProvider: tempDirProvider}
 }
-
-// exifArtistWithUrl matches and extracts additional information we store in the Artist field – the URL of the author page.
-// We use it within the Unsplash integration
-var exifArtistWithUrl = regexp.MustCompile(`(.*?); (http.*)`)
 
 type Result struct {
 	ID              string
@@ -111,8 +104,8 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 		fUrl := v.Urls.Regular.String()
 		// hack to have full hd instead of 1080w,
 		// in case unsplash will change the URL format it will not break things
-		u, _ := url.Parse(fUrl)
-		if u != nil {
+		u, err := uri.ParseURI(fUrl)
+		if err == nil {
 			if q := u.Query(); q.Get("w") != "" {
 				q.Set("w", "1920")
 				u.RawQuery = q.Encode()
@@ -240,7 +233,7 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 		return "", fmt.Errorf("failed to download file from unsplash: %s", err.Error())
 	}
 	defer resp.Body.Close()
-	tmpfile, err := ioutil.TempFile(l.tempDirGetter.TempDir(), picture.ID)
+	tmpfile, err := ioutil.TempFile(l.tempDirProvider.TempDir(), picture.ID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %s", err.Error())
 	}
@@ -269,15 +262,6 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 
 func PackArtistNameAndURL(name, url string) string {
 	return fmt.Sprintf("%s; %s", name, url)
-}
-
-func UnpackArtist(packed string) (name, url string) {
-	artistParts := exifArtistWithUrl.FindStringSubmatch(packed)
-	if len(artistParts) == 3 {
-		return artistParts[1], artistParts[2]
-	}
-
-	return packed, ""
 }
 
 func injectIntoExif(filePath, artistName, artistUrl, description string) error {
