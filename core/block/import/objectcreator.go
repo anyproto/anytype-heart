@@ -141,7 +141,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return b.SetDetails(ctx, details, true)
 	})
 	if err != nil {
-		return nil, err
+		log.With(zap.String("object id", newID)).Errorf("failed to resset state %s: %s", newID, err.Error())
 	}
 
 	if isFavorite {
