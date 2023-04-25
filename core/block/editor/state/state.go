@@ -66,7 +66,7 @@ type Doc interface {
 	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
-	GetFirstTextBlock() (*model.BlockContentOfText, error)
+	GetFirstTextBlock() (simple.Block, error)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -370,11 +370,11 @@ func (s *State) SearchText() (text string) {
 	return
 }
 
-func (s *State) GetFirstTextBlock() (*model.BlockContentOfText, error) {
-	var firstTextBlock *model.BlockContentOfText
+func (s *State) GetFirstTextBlock() (simple.Block, error) {
+	var res simple.Block
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
-		if content, ok := b.Model().Content.(*model.BlockContentOfText); ok {
-			firstTextBlock = content
+		if b.Model().GetText() != nil {
+			res = b
 			return false
 		}
 		return true
@@ -382,8 +382,7 @@ func (s *State) GetFirstTextBlock() (*model.BlockContentOfText, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return firstTextBlock, nil
+	return res, nil
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {

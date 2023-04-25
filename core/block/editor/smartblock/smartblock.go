@@ -983,16 +983,16 @@ func (sb *smartBlock) SetObjectTypes(ctx *session.Context, objectTypes []string)
 				return err
 			}
 			if textBlock != nil {
-				s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
-				if err := s.Iterate(func(b simple.Block) (isContinue bool) {
-					if b.Model().Content == textBlock {
-						s.Unlink(b.Model().Id)
-						return false
-					}
-					return true
-				}); err != nil {
-					return err
+				s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
+
+				for _, id := range textBlock.Model().ChildrenIds {
+					s.Unlink(id)
 				}
+				err = s.InsertTo(textBlock.Model().Id, model.Block_Bottom, textBlock.Model().ChildrenIds...)
+				if err != nil {
+					return fmt.Errorf("insert children: %w", err)
+				}
+				s.Unlink(textBlock.Model().Id)
 			}
 		}
 	}

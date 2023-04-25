@@ -162,7 +162,7 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 				return err
 			}
 			if textBlock != nil {
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Model().GetText().GetText())
 			}
 		}
 

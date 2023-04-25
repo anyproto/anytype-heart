@@ -1106,7 +1106,7 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 				return err
 			}
 			if textBlock != nil {
-				orig.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+				orig.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
 			}
 		}
 
