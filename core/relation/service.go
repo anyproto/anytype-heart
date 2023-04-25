@@ -62,7 +62,6 @@ var errSubobjectAlreadyExists = fmt.Errorf("subobject already exists in the coll
 type bulkMigration struct {
 	cache     map[string]struct{}
 	s         subObjectCreator
-	skipIds   map[string]struct{}
 	relations []*types.Struct
 	options   []*types.Struct
 	types     []*types.Struct
