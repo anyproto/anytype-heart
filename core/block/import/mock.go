@@ -12,7 +12,6 @@ import (
 	session "github.com/anytypeio/go-anytype-middleware/core/session"
 	pb "github.com/anytypeio/go-anytype-middleware/pb"
 	smartblock "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	types "github.com/gogo/protobuf/types"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -137,18 +136,18 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, oldIDtoNew map[string]string, existing bool, workspaceID string) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, oldIDtoNew, existing)
+	ret := m.ctrl.Call(m, "Create", ctx, snapshot, oldIDtoNew, existing)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockCreatorMockRecorder) Create(ctx, cs, pageID, oldIDtoNew, existing interface{}) *gomock.Call {
+func (mr *MockCreatorMockRecorder) Create(ctx, cs, oldIDtoNew, existing interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, pageID, oldIDtoNew, existing)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, oldIDtoNew, existing)
 }
 
 // MockIDGetter is a mock of IDGetter interface.
@@ -175,7 +174,7 @@ func (m *MockIDGetter) EXPECT() *MockIDGetterMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockIDGetter) Get(ctx *session.Context, cs *model.SmartBlockSnapshotBase, sbType smartblock.SmartBlockType, updateExisting bool) (string, bool, error) {
+func (m *MockIDGetter) Get(ctx *session.Context, cs *converter.Snapshot, sbType smartblock.SmartBlockType, updateExisting bool) (string, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx, cs, sbType, updateExisting)
 	ret0, _ := ret[0].(string)
