@@ -3,16 +3,17 @@ package export
 import (
 	"bytes"
 	"context"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/gosimple/slug"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/anytypeio/any-sync/app"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/gosimple/slug"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
