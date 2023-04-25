@@ -53,30 +53,18 @@ func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeSt
 		return
 	}
 	err = db.Update(func(txn *badger.Txn) error {
-		heads := treestorage.CreateHeadsPayload(payload.Heads)
-
-		for _, ch := range payload.Changes {
-			err = txn.Set(keys.RawChangeKey(ch.Id), ch.GetRawChange())
-			if err != nil {
-				return err
-			}
-		}
-
 		err = txn.Set(keys.RawChangeKey(payload.RootRawChange.Id), payload.RootRawChange.GetRawChange())
 		if err != nil {
 			return err
 		}
-
-		err = txn.Set(keys.HeadsKey(), heads)
-		if err != nil {
-			return err
-		}
-
 		err = txn.Set(keys.RootIdKey(), nil)
 		if err != nil {
 			return err
 		}
-
+		err = txn.Set(keys.HeadsKey(), treestorage.CreateHeadsPayload([]string{payload.RootRawChange.Id}))
+		if err != nil {
+			return err
+		}
 		ts = &treeStorage{
 			db:   db,
 			keys: keys,
@@ -85,6 +73,10 @@ func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeSt
 		}
 		return nil
 	})
+	if err != nil {
+		return
+	}
+	err = ts.AddRawChangesSetHeads(payload.Changes, payload.Heads)
 	return
 }
 
