@@ -65,43 +65,43 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
 	dataview := block.Model().GetDataview()
 	target := dataview.TargetObjectId
-	if target == "" {
-		return
+	if target != "" {
+		newTarget := oldIDtoNew[target]
+		if newTarget == "" {
+			newTarget = addr.MissingObject
+		}
+		dataview.TargetObjectId = newTarget
+		st.Set(simple.New(block.Model()))
 	}
-	newTarget := oldIDtoNew[target]
-	if newTarget == "" {
-		newTarget = addr.MissingObject
-	}
-
-	dataview.TargetObjectId = newTarget
-	st.Set(simple.New(block.Model()))
 
 	for _, view := range dataview.GetViews() {
 		for _, filter := range view.GetFilters() {
-			if filter.Format != model.RelationFormat_object &&
-				filter.Format != model.RelationFormat_tag &&
-				filter.Format != model.RelationFormat_status {
-				continue
+			updateObjectIDsInFilter(filter, oldIDtoNew)
+		}
+	}
+}
+
+func updateObjectIDsInFilter(filter *model.BlockContentDataviewFilter, oldIDtoNew map[string]string) {
+	if filter.Format != model.RelationFormat_object &&
+		filter.Format != model.RelationFormat_tag &&
+		filter.Format != model.RelationFormat_status {
+		return
+	}
+	if objectIDs := pbtypes.GetStringListValue(filter.Value); objectIDs != nil {
+		var newIDs []string
+		for _, objectID := range objectIDs {
+			if newID := oldIDtoNew[objectID]; newID != "" {
+				newIDs = append(newIDs, newID)
 			}
-			if objectIDs := pbtypes.GetStringListValue(filter.Value); objectIDs != nil {
-				var newIDs []string
-				for _, objectID := range objectIDs {
-					newID := oldIDtoNew[objectID]
-					if newID == "" {
-						newID = addr.MissingObject
-					}
-					newIDs = append(newIDs, newID)
-				}
-				filter.Value = pbtypes.StringList(newIDs)
-				continue
-			}
-			if objectID := filter.Value.GetStringValue(); objectID != "" {
-				newID := oldIDtoNew[objectID]
-				if newID == "" {
-					newID = addr.MissingObject
-				}
-				filter.Value = pbtypes.String(newID)
-			}
+		}
+		if len(newIDs) != 0 {
+			filter.Value = pbtypes.StringList(newIDs)
+		}
+		return
+	}
+	if objectID := filter.Value.GetStringValue(); objectID != "" {
+		if newID := oldIDtoNew[objectID]; newID != "" {
+			filter.Value = pbtypes.String(newID)
 		}
 	}
 }
