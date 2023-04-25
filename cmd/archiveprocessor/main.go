@@ -26,19 +26,18 @@ type relationWithFormat interface {
 	GetFormat() model.RelationFormat
 }
 
-type idsCollection struct {
+type useCaseInfo struct {
 	ids      map[string]struct{}
 	relsIds  map[string]struct{}
 	typesIds map[string]struct{}
+	
+	useCase          string
+	profileFileFound bool
 }
 
 const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 
 var (
-	idsInfo          idsCollection
-	useCase          string
-	profileFileFound bool
-
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 
 	sbTypesToBeExcluded = map[model.SmartBlockType]struct{}{
@@ -61,7 +60,6 @@ func run() error {
 	}
 	path := os.Args[1]
 	fileName := filepath.Base(path)
-	useCase = strings.TrimSuffix(fileName, filepath.Ext(fileName))
 	pathToNewZip := strings.TrimSuffix(path, filepath.Ext(fileName)) + "_new.zip"
 
 	r, err := zip.OpenReader(path)
@@ -70,8 +68,15 @@ func run() error {
 	}
 	defer r.Close()
 
-	collectSmartBlockIDs(r.File)
-	if !profileFileFound {
+	info := &useCaseInfo{
+		useCase:          strings.TrimSuffix(fileName, filepath.Ext(fileName)),
+		ids:              make(map[string]struct{}, len(r.File)-1),
+		relsIds:          make(map[string]struct{}, len(r.File)-1),
+		typesIds:         make(map[string]struct{}, len(r.File)-1),
+		profileFileFound: false,
+	}
+	collectUseCaseInfo(r.File, info)
+	if !info.profileFileFound {
 		return fmt.Errorf("profile file does not present in archive")
 	}
 
@@ -84,7 +89,7 @@ func run() error {
 	writer := zip.NewWriter(zf)
 	defer writer.Close()
 
-	if err := processFiles(r.File, writer); err != nil {
+	if err := processFiles(r.File, writer, info); err != nil {
 		if err == errIncorrectFileFound {
 			fmt.Println("Provided zip contains some incorrect data. " +
 				"Please examine errors above. You can change object in editor or add some rules to rules.json")
@@ -99,30 +104,24 @@ func run() error {
 	return nil
 }
 
-func collectSmartBlockIDs(files []*zip.File) {
-	idsInfo = idsCollection{
-		ids:      make(map[string]struct{}, len(files)-1),
-		relsIds:  make(map[string]struct{}, len(files)-1),
-		typesIds: make(map[string]struct{}, len(files)-1),
-	}
-	profileFileFound = false
+func collectUseCaseInfo(files []*zip.File, info *useCaseInfo) {
 	for _, f := range files {
 		if f.Name == constant.ProfileFile {
-			profileFileFound = true
+			info.profileFileFound = true
 			continue
 		}
 		id := strings.TrimSuffix(f.Name, filepath.Ext(f.Name))
-		idsInfo.ids[id] = struct{}{}
+		info.ids[id] = struct{}{}
 		if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			idsInfo.relsIds[strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)] = struct{}{}
+			info.relsIds[strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)] = struct{}{}
 		}
 		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			idsInfo.typesIds[strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix)] = struct{}{}
+			info.typesIds[strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix)] = struct{}{}
 		}
 	}
 }
 
-func processFiles(files []*zip.File, zw *zip.Writer) error {
+func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo) error {
 	var incorrectFileFound bool
 	for _, f := range files {
 		rd, err := f.Open()
@@ -134,7 +133,7 @@ func processFiles(files []*zip.File, zw *zip.Writer) error {
 			rd.Close()
 			continue
 		}
-		data, err := processFile(rd, f.Name)
+		data, err := processFile(rd, f.Name, info)
 		if err != nil {
 			incorrectFileFound = true
 			continue
@@ -153,7 +152,7 @@ func processFiles(files []*zip.File, zw *zip.Writer) error {
 	return nil
 }
 
-func processFile(r io.ReadCloser, name string) ([]byte, error) {
+func processFile(r io.ReadCloser, name string, info *useCaseInfo) ([]byte, error) {
 	defer r.Close()
 
 	id := strings.TrimSuffix(name, filepath.Ext(name))
@@ -163,7 +162,7 @@ func processFile(r io.ReadCloser, name string) ([]byte, error) {
 	}
 
 	if name == constant.ProfileFile {
-		return processProfile(data)
+		return processProfile(data, info)
 	}
 
 	snapshot, sbType, isOldAccount, err := extractSnapshotAndType(data, name)
@@ -182,7 +181,7 @@ func processFile(r io.ReadCloser, name string) ([]byte, error) {
 		return nil, fmt.Errorf("object %s has isArchived == true", id)
 	}
 
-	if err = processAndValidate(snapshot); err != nil {
+	if err = processAndValidate(snapshot, info); err != nil {
 		return nil, err
 	}
 
@@ -216,10 +215,10 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.ChangeSnapshot, sbt
 	return s, sbt, isOldAccount, nil
 }
 
-func processAndValidate(snapshot *pb.ChangeSnapshot) error {
+func processAndValidate(snapshot *pb.ChangeSnapshot, info *useCaseInfo) error {
 	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
 
-	processRootBlock(snapshot, id)
+	processRootBlock(snapshot, info)
 	processExtraRelations(snapshot)
 	processAccountRelatedDetails(snapshot)
 	processRules(snapshot)
@@ -227,7 +226,7 @@ func processAndValidate(snapshot *pb.ChangeSnapshot) error {
 	if !strings.HasPrefix(id, addr.RelationKeyToIdPrefix) && !strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
 		isValid := true
 		for _, v := range validators {
-			if err := v(snapshot); err != nil {
+			if err := v(snapshot, info); err != nil {
 				isValid = false
 			}
 		}
@@ -238,15 +237,16 @@ func processAndValidate(snapshot *pb.ChangeSnapshot) error {
 	return nil
 }
 
-func processRootBlock(s *pb.ChangeSnapshot, id string) {
+func processRootBlock(s *pb.ChangeSnapshot, info *useCaseInfo) {
 	root := s.Data.Blocks[0]
+	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 	f := root.GetFields().GetFields()
 
 	if f == nil {
 		f = make(map[string]*types.Value)
 	}
 	root.Fields = &types.Struct{Fields: f}
-	f["analyticsContext"] = pbtypes.String(useCase)
+	f["analyticsContext"] = pbtypes.String(info.useCase)
 	if f["analyticsOriginalId"] == nil {
 		f["analyticsOriginalId"] = pbtypes.String(id)
 	}
@@ -274,7 +274,7 @@ func processAccountRelatedDetails(s *pb.ChangeSnapshot) {
 	}
 }
 
-func processProfile(data []byte) ([]byte, error) {
+func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
 	profile := &pb.Profile{}
 	if err := profile.Unmarshal(data); err != nil {
 		e := fmt.Errorf("cannot unmarshal profile: %v", err)
@@ -283,7 +283,7 @@ func processProfile(data []byte) ([]byte, error) {
 	}
 	profile.Name = ""
 	profile.ProfileId = ""
-	if _, found := idsInfo.ids[profile.SpaceDashboardId]; !found {
+	if _, found := info.ids[profile.SpaceDashboardId]; !found {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
 		fmt.Println(err)
 		return nil, err

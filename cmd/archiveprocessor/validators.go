@@ -19,15 +19,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-type validator func(snapshot *pb.ChangeSnapshot) error
+type validator func(snapshot *pb.ChangeSnapshot, info *useCaseInfo) error
 
 var validators = []validator{
 	// Validate relation links
-	func(s *pb.ChangeSnapshot) error {
+	func(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 		id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 		invalidRelationFound := false
 		for _, rel := range s.Data.RelationLinks {
-			if _, found := idsInfo.relsIds[rel.Key]; !bundle.HasRelation(rel.Key) && !found {
+			if _, found := info.relsIds[rel.Key]; !bundle.HasRelation(rel.Key) && !found {
 				invalidRelationFound = true
 				fmt.Printf("object '%s' contains link to unknown relation: %s(%s)\n", id,
 					rel.Key, pbtypes.GetString(s.Data.Details, bundle.RelationKeyName.String()))
@@ -40,7 +40,7 @@ var validators = []validator{
 	},
 
 	// Validate Relation blocks
-	func(s *pb.ChangeSnapshot) error {
+	func(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 		id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 		invalidRelationFound := false
 		var relKeys []string
@@ -63,7 +63,7 @@ var validators = []validator{
 	},
 
 	// Validate object details
-	func(s *pb.ChangeSnapshot) error {
+	func(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 		var invalidDetailFound bool
 		id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 		for k, v := range s.Data.Details.Fields {
@@ -94,7 +94,7 @@ var validators = []validator{
 					bundle.HasObjectType(strings.TrimPrefix(val, addr.ObjectTypeKeyToIdPrefix)) || val == addr.AnytypeProfileId {
 					continue
 				}
-				_, found := idsInfo.ids[val]
+				_, found := info.ids[val]
 				if !found {
 					invalidDetailFound = true
 					fmt.Printf("failed to find target id for detail '%s: %s' of object %s\n", k, val, id)
@@ -108,7 +108,7 @@ var validators = []validator{
 	},
 
 	// Validate object custom types
-	func(s *pb.ChangeSnapshot) error {
+	func(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 		id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 		customObjectFound := false
 		for _, ot := range s.Data.ObjectTypes {
@@ -124,20 +124,20 @@ var validators = []validator{
 	},
 
 	// Validate links in blocks
-	func(s *pb.ChangeSnapshot) error {
+	func(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 		id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 		invalidBlockFound := false
 		for _, b := range s.Data.Blocks {
 			switch a := simple.New(b).(type) {
 			case link.Block:
-				_, found := idsInfo.ids[a.Model().GetLink().TargetBlockId]
+				_, found := info.ids[a.Model().GetLink().TargetBlockId]
 				if !found {
 					invalidBlockFound = true
 					fmt.Printf("failed to find target id for link '%s' in block '%s' of object '%s'\n",
 						a.Model().GetLink().TargetBlockId, a.Model().Id, id)
 				}
 			case bookmark.Block:
-				_, found := idsInfo.ids[a.Model().GetBookmark().TargetObjectId]
+				_, found := info.ids[a.Model().GetBookmark().TargetObjectId]
 				if !found {
 					invalidBlockFound = true
 					fmt.Printf("failed to find target id for bookmark '%s' in block '%s' of object '%s'\n",
@@ -148,7 +148,7 @@ var validators = []validator{
 					if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 						continue
 					}
-					_, found := idsInfo.ids[mark.Param]
+					_, found := info.ids[mark.Param]
 					if !found {
 						invalidBlockFound = true
 						fmt.Printf("failed to find target id for mention '%s' in block '%s' of object '%s'\n",
@@ -159,7 +159,7 @@ var validators = []validator{
 				if a.Model().GetDataview().TargetObjectId == "" {
 					continue
 				}
-				_, found := idsInfo.ids[a.Model().GetDataview().TargetObjectId]
+				_, found := info.ids[a.Model().GetDataview().TargetObjectId]
 				if !found {
 					invalidBlockFound = true
 					fmt.Printf("failed to find target id for dataview '%s' in block '%s' of object '%s'\n",
