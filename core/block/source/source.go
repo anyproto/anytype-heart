@@ -18,7 +18,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -77,7 +76,6 @@ type sourceDeps struct {
 	ot  objecttree.ObjectTree
 
 	coreService    core.Service
-	statusService  status.Service
 	accountService accountservice.Service
 	spaceService   space.Service
 	sbtProvider    typeprovider.SmartBlockTypeProvider
@@ -90,7 +88,6 @@ func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
 		id:             id,
 		coreService:    deps.coreService,
 		spaceService:   deps.spaceService,
-		statusService:  deps.statusService,
 		openedAt:       time.Now(),
 		smartblockType: deps.sbt,
 		accountService: deps.accountService,
@@ -117,7 +114,6 @@ type source struct {
 	openedAt             time.Time
 
 	coreService    core.Service
-	statusService  status.Service
 	fileService    files.Service
 	accountService accountservice.Service
 	spaceService   space.Service

@@ -6,6 +6,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/session"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -36,6 +38,18 @@ func detectFileType(mime string) model.BlockContentFileType {
 	}
 
 	return model.BlockContentFile_File
+}
+
+func (p *Files) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) error {
+	st := p.NewStateCtx(ctx)
+	det := pbtypes.CopyStruct(st.Details())
+	for _, d := range details {
+		if d.Key == bundle.RelationKeyFileSyncStatus.String() {
+			det.Fields[d.Key] = d.Value
+		}
+	}
+	st.SetDetails(det)
+	return p.Apply(st)
 }
 
 func (p *Files) Init(ctx *smartblock.InitContext) (err error) {

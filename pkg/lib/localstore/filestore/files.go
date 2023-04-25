@@ -25,6 +25,7 @@ var (
 	filesInfoBase   = dsCtx.NewKey("/" + filesPrefix + "/info")
 	filesKeysBase   = dsCtx.NewKey("/" + filesPrefix + "/keys")
 	chunksCountBase = dsCtx.NewKey("/" + filesPrefix + "/chunks_count")
+	syncStatusBase  = dsCtx.NewKey("/" + filesPrefix + "/sync_status")
 
 	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
@@ -102,6 +103,8 @@ type FileStore interface {
 
 	GetChunksCount(hash string) (int, error)
 	SetChunksCount(hash string, chunksCount int) error
+	GetSyncStatus(hash string) (int, error)
+	SetSyncStatus(hash string, syncStatus int) error
 }
 
 func New() FileStore {
@@ -627,23 +630,40 @@ func (m *dsFileStore) DeleteByTarget(targetHash string) error {
 	return nil
 }
 
-func (m *dsFileStore) GetChunksCount(hash string) (int, error) {
-	key := chunksCountBase.ChildString(hash)
-	b, err := m.ds.Get(key)
+func (m *dsFileStore) getInt(key dsCtx.Key) (int, error) {
+	val, err := m.ds.Get(key)
 	if err != nil {
 		if err == dsCtx.ErrNotFound {
 			return 0, localstore.ErrNotFound
 		}
 		return 0, err
 	}
-	val := binary.LittleEndian.Uint64(b)
-	return int(val), nil
+	return int(binary.LittleEndian.Uint64(val)), nil
+}
+
+func (m *dsFileStore) setInt(key dsCtx.Key, val int) error {
+	raw := binary.LittleEndian.AppendUint64(nil, uint64(val))
+	return m.ds.Put(key, raw)
+}
+
+func (m *dsFileStore) GetChunksCount(hash string) (int, error) {
+	key := chunksCountBase.ChildString(hash)
+	return m.getInt(key)
 }
 
 func (m *dsFileStore) SetChunksCount(hash string, chunksCount int) error {
 	key := chunksCountBase.ChildString(hash)
-	val := binary.LittleEndian.AppendUint64(nil, uint64(chunksCount))
-	return m.ds.Put(key, val)
+	return m.setInt(key, chunksCount)
+}
+
+func (m *dsFileStore) GetSyncStatus(hash string) (int, error) {
+	key := syncStatusBase.ChildString(hash)
+	return m.getInt(key)
+}
+
+func (m *dsFileStore) SetSyncStatus(hash string, status int) error {
+	key := syncStatusBase.ChildString(hash)
+	return m.setInt(key, status)
 }
 
 func (ls *dsFileStore) Close(ctx context.Context) (err error) {

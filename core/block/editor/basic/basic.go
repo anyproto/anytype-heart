@@ -38,6 +38,8 @@ type AllOperations interface {
 }
 
 type CommonOperations interface {
+	DetailsSettable
+
 	SetFields(ctx *session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	SetDivStyle(ctx *session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
@@ -55,6 +57,9 @@ type CommonOperations interface {
 	SetObjectTypesInState(s *state.State, objectTypes []string) (err error)
 	SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
+}
+
+type DetailsSettable interface {
 	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 }
 

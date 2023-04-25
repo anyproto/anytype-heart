@@ -1349,5 +1349,15 @@
     "name": "Source file path",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "File sync status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileSyncStatus",
+    "maxCount": 1,
+    "name": "File sync status",
+    "readonly": true,
+    "source": "derived"
   }
 ]

@@ -97,9 +97,33 @@ func (s *statusWatcher) run() {
 
 	s.checkFiles(ctx)
 	t := time.NewTicker(s.updateInterval)
-	for range t.C {
-		s.checkFiles(ctx)
+	defer t.Stop()
+	for {
+		select {
+		case <-s.closeCh:
+			return
+		case <-t.C:
+			s.checkFiles(ctx)
+		}
 	}
+}
+
+func (s *statusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
+	status, err := s.registry.GetFileStatus(ctx, key.spaceID, key.fileID)
+	if err != nil {
+		return fmt.Errorf("get file status: %w", err)
+	}
+	// Files are immutable, so we can stop watching status updates after file is synced
+	if status == syncstatus.StatusSynced {
+		go s.Unwatch(key.spaceID, key.fileID)
+	}
+	go func() {
+		err = s.updateReceiver.UpdateTree(context.Background(), key.fileID, status)
+		if err != nil {
+			log.Error("send sync status update", zap.Error(err))
+		}
+	}()
+	return nil
 }
 
 func (s *statusWatcher) checkFiles(ctx context.Context) {
@@ -111,18 +135,6 @@ func (s *statusWatcher) checkFiles(ctx context.Context) {
 	}
 }
 
-func (s *statusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
-	status, err := s.registry.GetFileStatus(ctx, key.spaceID, key.fileID)
-	if err != nil {
-		return fmt.Errorf("get file status: %w", err)
-	}
-	// Files are immutable, so we can stop watching status updates after file is synced
-	if status == syncstatus.StatusSynced {
-		s.Unwatch(key.spaceID, key.fileID)
-	}
-	return s.updateReceiver.UpdateTree(context.Background(), key.fileID, status)
-}
-
 func (s *statusWatcher) Watch(spaceID, fileID string) {
 	s.filesToWatchLock.Lock()
 	defer s.filesToWatchLock.Unlock()
@@ -132,9 +144,7 @@ func (s *statusWatcher) Watch(spaceID, fileID string) {
 		s.filesToWatch[key] = struct{}{}
 	}
 
-	go func() {
-		s.updateCh <- key
-	}()
+	s.updateCh <- key
 }
 
 func (s *statusWatcher) Unwatch(spaceID, fileID string) {

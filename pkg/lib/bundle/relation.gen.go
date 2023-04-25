@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "4a90e6d43e04243d30f1cb5b912349ebf11ae7bcaf8d2524b6a7de33d2822105"
+const RelationChecksum = "d70a343f0d99ab1216c0b0383197054635ed30184092de714cedc0ef258dd9f8"
 
 type RelationKey string
 
@@ -161,6 +161,7 @@ const (
 	RelationKeyIconOption                RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        RelationKey = "spaceAccessibility"
 	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
+	RelationKeyFileSyncStatus            RelationKey = "fileSyncStatus"
 )
 
 var (
@@ -710,6 +711,20 @@ var (
 			MaxCount:         1,
 			Name:             "Mime type",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileSyncStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "File sync status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileSyncStatus",
+			Key:              "fileSyncStatus",
+			MaxCount:         1,
+			Name:             "File sync status",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

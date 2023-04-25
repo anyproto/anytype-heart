@@ -138,7 +138,7 @@ func (s *Service) SetFields(ctx *session.Context, req pb.RpcBlockSetFieldsReques
 }
 
 func (s *Service) SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error) {
-	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
+	return Do(s, req.ContextId, func(b basic.DetailsSettable) error {
 		return b.SetDetails(ctx, req.Details, true)
 	})
 }

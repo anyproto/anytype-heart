@@ -63,13 +63,24 @@ type Service interface {
 	app.Component
 }
 
+type StatusWatcher interface {
+	Watch(spaceID, fileID string)
+}
+
 type service struct {
-	fileStore    filestore.FileStore
-	commonFile   fileservice.FileService
-	fileSync     filesync.FileSync
-	dagService   ipld.DAGService
-	spaceService space.Service
-	fileStorage  filestorage.FileStorage
+	fileStore     filestore.FileStore
+	commonFile    fileservice.FileService
+	fileSync      filesync.FileSync
+	dagService    ipld.DAGService
+	spaceService  space.Service
+	fileStorage   filestorage.FileStorage
+	statusWatcher StatusWatcher
+}
+
+func New(statusWatcher StatusWatcher) Service {
+	return &service{
+		statusWatcher: statusWatcher,
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -89,10 +100,6 @@ func (s *service) Name() (name string) {
 type FileKeys struct {
 	Hash string
 	Keys map[string]string
-}
-
-func New() Service {
-	return &service{}
 }
 
 var ErrMissingContentLink = fmt.Errorf("content link not in node")
@@ -809,7 +816,13 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 }
 
 func (s *service) addToSyncQueue(fileID string) error {
-	return s.fileSync.AddFile(s.spaceService.AccountId(), fileID)
+	spaceID := s.spaceService.AccountId()
+
+	if err := s.fileSync.AddFile(spaceID, fileID); err != nil {
+		return err
+	}
+	s.statusWatcher.Watch(spaceID, fileID)
+	return nil
 }
 
 // looksLikeFileNode returns whether a node appears to

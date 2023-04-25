@@ -13,7 +13,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -41,13 +40,12 @@ type Service interface {
 }
 
 type service struct {
-	coreService   core.Service
-	statusService status.Service
-	sbtProvider   typeprovider.SmartBlockTypeProvider
-	account       accountservice.Service
-	fileStore     filestore.FileStore
-	spaceService  space.Service
-	fileService   files.Service
+	coreService  core.Service
+	sbtProvider  typeprovider.SmartBlockTypeProvider
+	account      accountservice.Service
+	fileStore    filestore.FileStore
+	spaceService space.Service
+	fileService  files.Service
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -56,7 +54,6 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]Source)
 	s.coreService = a.MustComponent(core.CName).(core.Service)
-	s.statusService = a.MustComponent(status.CName).(status.Service)
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
@@ -113,7 +110,6 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 	}
 	deps := sourceDeps{
 		coreService:    s.coreService,
-		statusService:  s.statusService,
 		accountService: s.account,
 		sbt:            sbt,
 		ot:             ot,

@@ -121,9 +121,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
 	fileSyncService := filesync.New()
+	fileStore := filestore.New()
+
+	syncStatusIndexer := filesyncstatus.NewSyncStatusIndexer(blockService)
 
 	fileSyncUpdateInterval := 5 * time.Second
-	fileSyncStatusRegistry := filesyncstatus.NewRegistry(fileSyncService, fileSyncUpdateInterval)
+	fileSyncStatusRegistry := filesyncstatus.NewRegistry(fileSyncService, fileStore, syncStatusIndexer, fileSyncUpdateInterval)
 
 	linkedFilesStatusWatcher := status.NewLinkedFilesWatcher(spaceService, fileSyncStatusRegistry)
 	subObjectsStatusWatcher := status.NewSubObjectsWatcher()
@@ -134,6 +137,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	fileStatusWatcher := status.NewFileWatcher(spaceService, fileSyncStatusWatcher)
 
 	statusService := status.New(sbtProvider, coreService, fileStatusWatcher, objectStatusWatcher, subObjectsStatusWatcher, linkedFilesStatusWatcher)
+
+	fileService := files.New(fileSyncStatusWatcher)
 
 	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).
@@ -150,7 +155,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
-		Register(filestore.New()).
+		Register(fileStore).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(fileSyncService).
@@ -162,7 +167,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ftsearch.New()).
 		Register(objectStore).
 		Register(recordsbatcher.New()).
-		Register(files.New()).
+		Register(fileService).
 		Register(cafe.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
@@ -171,6 +176,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(builtintemplate.New()).
 		Register(blockService).
 		Register(indexerService).
+		Register(syncStatusIndexer).
 		Register(fileSyncStatusWatcher).
 		Register(linkedFilesStatusWatcher).
 		Register(statusService).
