@@ -63,7 +63,8 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID 
 }
 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
-	target := block.Model().GetDataview().TargetObjectId
+	dataview := block.Model().GetDataview()
+	target := dataview.TargetObjectId
 	if target == "" {
 		return
 	}
@@ -72,8 +73,37 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 		newTarget = addr.MissingObject
 	}
 
-	block.Model().GetDataview().TargetObjectId = newTarget
+	dataview.TargetObjectId = newTarget
 	st.Set(simple.New(block.Model()))
+
+	for _, view := range dataview.GetViews() {
+		for _, filter := range view.GetFilters() {
+			if filter.Format != model.RelationFormat_object &&
+				filter.Format != model.RelationFormat_tag &&
+				filter.Format != model.RelationFormat_status {
+				continue
+			}
+			if objectIDs := pbtypes.GetStringListValue(filter.Value); objectIDs != nil {
+				var newIDs []string
+				for _, objectID := range objectIDs {
+					newID := oldIDtoNew[objectID]
+					if newID == "" {
+						newID = addr.MissingObject
+					}
+					newIDs = append(newIDs, newID)
+				}
+				filter.Value = pbtypes.StringList(newIDs)
+				continue
+			}
+			if objectID := filter.Value.GetStringValue(); objectID != "" {
+				newID := oldIDtoNew[objectID]
+				if newID == "" {
+					newID = addr.MissingObject
+				}
+				filter.Value = pbtypes.String(newID)
+			}
+		}
+	}
 }
 
 func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
