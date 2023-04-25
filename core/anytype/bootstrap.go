@@ -2,12 +2,14 @@ package anytype
 
 import (
 	"context"
+	"github.com/anytypeio/any-sync/util/crypto"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"os"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
-	// nolint: misspell
+	//nolint: misspell
 	"github.com/anytypeio/any-sync/commonspace/credentialprovider"
 	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
 	"github.com/anytypeio/any-sync/net/dialer"
@@ -16,14 +18,12 @@ import (
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
 
-	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -32,9 +32,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -54,8 +52,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
-	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
@@ -70,30 +66,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
 
-func StartAccountRecoverApp(ctx context.Context, eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
-	a = new(app.App)
-	device, err := walletUtil.NewRandomKeypair(walletUtil.KeypairTypeDevice)
-	if err != nil {
-		return nil, err
-	}
-
-	a.Register(wallet.NewWithRepoPathAndKeys("", accountPrivKey, device)).
-		Register(config.New(
-			config.WithStagingCafe(os.Getenv("ANYTYPE_STAGING") == "1"),
-			config.DisableFileConfig(true), // do not load/save config to file because we don't have a libp2p node and repo in this mode
-		),
-		).
-		Register(cafe.New()).
-		Register(profilefinder.New()).
-		Register(eventSender)
-
-	if err = a.Start(ctx); err != nil {
-		return
-	}
-
-	return a, nil
-}
-
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects bool) *config.Config {
 	return config.New(
 		config.WithStagingCafe(isStaging),
@@ -103,8 +75,8 @@ func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects bool)
 	)
 }
 
-func BootstrapWallet(rootPath, accountId string) wallet.Wallet {
-	return wallet.NewWithAccountRepo(rootPath, accountId)
+func BootstrapWallet(rootPath string, accountKey crypto.PrivKey) wallet.Wallet {
+	return wallet.NewWithAccountRepo(rootPath, accountKey)
 }
 
 func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, err error) {
@@ -131,8 +103,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	sbtProvider := typeprovider.New(spaceService)
 	objectStore := objectstore.New(sbtProvider)
 	objectCreator := object.NewCreator(sbtProvider)
-	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
-	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
+	blockService := block.New(tempDirService, sbtProvider)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 
 	a.Register(clientds.New()).
@@ -162,7 +133,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(recordsbatcher.New()).
 		Register(files.New()).
 		Register(cafe.New()).
-		Register(account.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
@@ -188,6 +158,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(decorator.New()).
 		Register(objectCreator).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter))
+		Register(editor.NewObjectFactory(tempDirService, sbtProvider))
 	return
 }

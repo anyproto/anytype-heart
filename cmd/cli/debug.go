@@ -34,10 +34,10 @@ var dumpTree = &cobra.Command{
 		if debugThread == "" {
 			console.Fatal("please specify thread")
 		}
-
+		panic("add key for account")
 		comps := []app.Component{
 			anytype.BootstrapConfig(false, false, true),
-			anytype.BootstrapWallet(debugRepoPath, debugAccount),
+			//anytype.BootstrapWallet(debugRepoPath, debugAccount),
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
 
@@ -64,10 +64,10 @@ var dumpLocalstore = &cobra.Command{
 		if debugAccount == "" {
 			console.Fatal("please specify account")
 		}
-
+		panic("add key for account")
 		comps := []app.Component{
 			anytype.BootstrapConfig(false, false, true),
-			anytype.BootstrapWallet(debugRepoPath, debugAccount),
+			//anytype.BootstrapWallet(debugRepoPath, debugAccount),
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
 

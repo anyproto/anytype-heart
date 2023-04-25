@@ -88,7 +88,7 @@ func main() {
 		if err != nil {
 			return
 		}
-		sbt := smartblock.SmartBlockType(payload.ObjectType)
+		sbt := smartblock.SmartBlockType(payload.SmartBlockType)
 		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
 		if *fileHashes {
 			fmt.Println("File keys:")

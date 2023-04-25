@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/anytypeio/any-sync/util/crypto"
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 )
 
 const wordCount int = 12
@@ -49,11 +49,12 @@ func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreate
 
 func (mw *Middleware) setMnemonic(mnemonic string) error {
 	mw.mnemonic = mnemonic
-	acc, err := core.WalletAccountAt(mw.mnemonic, 0, "")
+	acc, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
 		return fmt.Errorf("derive private key: %w", err)
 	}
-	priv, err := acc.MarshalBinary()
+	// TODO: I guess we can use anything here, not necessary private key
+	priv, err := acc.GetPublic().Marshall()
 	if err != nil {
 		return fmt.Errorf("marshal private key: %w", err)
 	}
@@ -82,7 +83,7 @@ func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecov
 	}
 
 	// test if mnemonic is correct
-	_, err := core.WalletAccountAt(req.Mnemonic, 0, "")
+	_, err := core.WalletAccountAt(req.Mnemonic, 0)
 	if err != nil {
 		return response(pb.RpcWalletRecoverResponseError_BAD_INPUT, err)
 	}
@@ -117,14 +118,14 @@ func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConve
 			return response("", "", pb.RpcWalletConvertResponseError_BAD_INPUT, fmt.Errorf("invalid base64 format for entropy: %w", err))
 		}
 
-		w, err := wallet.WalletFromEntropy(b)
+		w, err := crypto.NewMnemonicGenerator().WithEntropy(b)
 		if err != nil {
 			return response("", "", pb.RpcWalletConvertResponseError_BAD_INPUT, fmt.Errorf("invalid entropy: %w", err))
 		}
-		return response(w.RecoveryPhrase, "", pb.RpcWalletConvertResponseError_NULL, nil)
+		return response(string(w), "", pb.RpcWalletConvertResponseError_NULL, nil)
 	} else if req.Entropy == "" && req.Mnemonic != "" {
-		w := wallet.WalletFromMnemonic(req.Mnemonic)
-		entropy, err := w.Entropy()
+		w := crypto.Mnemonic(req.Mnemonic)
+		entropy, err := w.Bytes()
 		if err != nil {
 			return response("", "", pb.RpcWalletConvertResponseError_BAD_INPUT, err)
 		}
@@ -147,7 +148,7 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	}
 
 	// test if mnemonic is correct
-	_, err := core.WalletAccountAt(req.Mnemonic, 0, "")
+	_, err := core.WalletAccountAt(req.Mnemonic, 0)
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_BAD_INPUT, err)
 	}

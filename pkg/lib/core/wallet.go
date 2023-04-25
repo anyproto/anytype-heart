@@ -6,69 +6,44 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/anytypeio/any-sync/util/crypto"
 )
 
 var ErrRepoExists = fmt.Errorf("repo not empty, reinitializing would overwrite your account")
 var ErrRepoCorrupted = fmt.Errorf("repo is corrupted")
 
 func WalletGenerateMnemonic(wordCount int) (string, error) {
-	w, err := wallet.WalletFromWordCount(wordCount)
+	m, err := crypto.NewMnemonicGenerator().WithWordCount(wordCount)
 	if err != nil {
 		return "", err
 	}
-	return w.RecoveryPhrase, nil
+	return string(m), nil
 }
 
-func WalletAccountAt(mnemonic string, index int, passphrase string) (wallet.Keypair, error) {
-	w := wallet.WalletFromMnemonic(mnemonic)
-	return w.AccountAt(index, passphrase)
+func WalletAccountAt(mnemonic string, index int) (crypto.PrivKey, error) {
+	return crypto.Mnemonic(mnemonic).DeriveEd25519Key(index)
 }
 
-func WalletInitRepo(rootPath string, seed []byte) error {
-	pk, err := crypto.UnmarshalEd25519PrivateKey(seed)
+func WalletInitRepo(rootPath string, pk crypto.PrivKey) error {
+	devicePriv, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return err
 	}
-
-	accountKP, err := wallet.NewKeypairFromPrivKey(wallet.KeypairTypeAccount, pk)
-	if err != nil {
-		return err
-	}
-
-	accountKPBinary, err := accountKP.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	deviceKP, err := wallet.NewRandomKeypair(wallet.KeypairTypeDevice)
-	if err != nil {
-		return err
-	}
-
-	deviceKPBinary, err := deviceKP.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	repoPath := filepath.Join(rootPath, accountKP.Address())
+	repoPath := filepath.Join(rootPath, pk.GetPublic().Account())
 	_, err = os.Stat(repoPath)
 	if !os.IsNotExist(err) {
 		return ErrRepoExists
 	}
 
 	os.MkdirAll(repoPath, 0700)
-	accountKeyPath := filepath.Join(repoPath, "account.key")
 	deviceKeyPath := filepath.Join(repoPath, "device.key")
-
-	if err = ioutil.WriteFile(accountKeyPath, accountKPBinary, 0400); err != nil {
+	proto, err := devicePriv.Marshall()
+	if err != nil {
 		return err
 	}
-
-	if err = ioutil.WriteFile(deviceKeyPath, deviceKPBinary, 0400); err != nil {
+	encProto, err := pk.GetPublic().Encrypt(proto)
+	if err != nil {
 		return err
 	}
-
-	return nil
+	return ioutil.WriteFile(deviceKeyPath, encProto, 0400)
 }

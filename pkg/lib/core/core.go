@@ -157,7 +157,7 @@ func (a *Anytype) Account() string {
 	if pk == nil {
 		return ""
 	}
-	return pk.Address()
+	return pk.GetPublic().Account()
 }
 
 // Deprecated, use wallet component directly
@@ -166,7 +166,7 @@ func (a *Anytype) Device() string {
 	if pk == nil {
 		return ""
 	}
-	return pk.Address()
+	return pk.GetPublic().PeerId()
 }
 
 func (a *Anytype) Run(ctx context.Context) (err error) {

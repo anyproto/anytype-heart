@@ -3,6 +3,7 @@ package cafe
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/any-sync/util/crypto"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"google.golang.org/grpc/connectivity"
@@ -14,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/mr-tron/base58"
 	"github.com/textileio/go-threads/core/thread"
 	"google.golang.org/grpc"
@@ -46,8 +46,8 @@ type Online struct {
 
 	limiter chan struct{}
 
-	device      walletUtil.Keypair
-	account     walletUtil.Keypair
+	device      crypto.PrivKey
+	account     crypto.PrivKey
 	apiInsecure bool
 	grpcAddress string
 
@@ -96,8 +96,8 @@ func (c *Online) getSignature(payload string) (*pb.WithSignature, error) {
 	}
 
 	return &pb.WithSignature{
-		AccountAddress:   c.account.Address(),
-		DeviceAddress:    c.device.Address(),
+		AccountAddress:   c.account.GetPublic().Account(),
+		DeviceAddress:    c.device.GetPublic().PeerId(),
 		AccountSignature: asB58,
 		DeviceSignature:  base58.Encode(ds),
 	}, nil

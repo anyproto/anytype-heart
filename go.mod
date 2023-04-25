@@ -7,9 +7,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.27
+	github.com/anytypeio/any-sync v0.0.28-0.20230327150459-9679bb3bf3bc
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
-	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.6
 	github.com/chai2010/webp v1.1.1
@@ -88,21 +87,27 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
-	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/yuin/goldmark v1.5.4
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20230129154200-a960b3787bd2
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 	golang.org/x/net v0.8.0
-	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
+	golang.org/x/oauth2 v0.3.0
 	golang.org/x/text v0.8.0
 	google.golang.org/grpc v1.47.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v2 v2.4.0
 	storj.io/drpc v0.0.32
 
+)
+
+require (
+	filippo.io/edwards25519 v1.0.0 // indirect
+	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 // indirect
+	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 // indirect
+	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 )
 
 require (
@@ -250,8 +255,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
-	github.com/prometheus/common v0.37.0 // indirect
-	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/prometheus/common v0.39.0 // indirect
+	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/pseudomuto/protokit v0.2.0 // indirect; indirectirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-19 v0.2.1 // indirect

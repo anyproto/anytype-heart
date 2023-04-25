@@ -203,11 +203,10 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 		return
 	}
 	payload := objecttree.ObjectTreeCreatePayload{
-		SignKey:       s.commonAccount.Account().SignKey,
+		PrivKey:       s.commonAccount.Account().SignKey,
 		ChangeType:    spaceservice.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       space.Id(),
-		Identity:      s.commonAccount.Account().Identity,
 		IsEncrypted:   true,
 	}
 	create, err := space.CreateTree(context.Background(), payload)
@@ -237,11 +236,10 @@ func (s *Service) DeriveTreeCreatePayload(
 		return nil, err
 	}
 	payload := objecttree.ObjectTreeCreatePayload{
-		SignKey:       s.commonAccount.Account().SignKey,
+		PrivKey:       s.commonAccount.Account().SignKey,
 		ChangeType:    spaceservice.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       space.Id(),
-		Identity:      s.commonAccount.Account().Identity,
 		IsEncrypted:   true,
 	}
 	create, err := space.DeriveTree(context.Background(), payload)
