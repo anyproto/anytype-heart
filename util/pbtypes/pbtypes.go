@@ -159,6 +159,20 @@ func GetStringList(s *types.Struct, name string) []string {
 	}
 }
 
+// UpdateStringList updates a string list field using modifier function and returns updated value
+func UpdateStringList(s *types.Struct, name string, modifier func([]string) []string) []string {
+	if s == nil {
+		return nil
+	}
+	list := GetStringList(s, name)
+	list = modifier(list)
+	if s.Fields == nil {
+		s.Fields = map[string]*types.Value{}
+	}
+	s.Fields[name] = StringList(list)
+	return list
+}
+
 func GetIntList(s *types.Struct, name string) []int {
 	if s == nil || s.Fields == nil {
 		return nil

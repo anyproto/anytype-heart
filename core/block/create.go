@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -172,6 +173,12 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	}
 	// pass layout in case it was provided by client in the RPC
 	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
+	pbtypes.UpdateStringList(details, bundle.RelationKeyFeaturedRelations.String(), func(fr []string) []string {
+		if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
+			fr = append(fr, bundle.RelationKeySetOf.String())
+		}
+		return fr
+	})
 	// cleanup details
 	delete(details.Fields, bundle.RelationKeyLayout.String())
 	delete(details.Fields, bundle.RelationKeyType.String())
