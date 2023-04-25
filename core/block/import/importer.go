@@ -2,8 +2,6 @@ package importer
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
-	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
@@ -12,6 +10,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -19,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
@@ -140,7 +140,6 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 func ImportUserProfile(ctx *session.Context, req *pb.RpcUserDataImportRequest) (*pb.Profile, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
-	progress.SetTotal(2)
 	progress.SetProgressMessage("Getting user data from path")
 	ni := newinfra.NewImporter()
 	profile, err := ni.GetUserProfile(req, progress)
@@ -160,12 +159,12 @@ func (i *Import) ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportR
 		return res.Error.Error()
 	}
 	if res.Snapshots == nil || len(res.Snapshots) == 0 {
-		return fmt.Errorf("snapshots are empty")
+		return fmt.Errorf("files are incorrect")
 	}
 	allErrors := converter.NewError()
 	i.createObjects(ctx, res, progress, &pb.RpcObjectImportRequest{
 		UpdateExistingObjects: true,
-		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, allErrors)
 	return allErrors.Error()
 }

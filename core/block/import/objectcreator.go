@@ -3,7 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
@@ -88,10 +89,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
 
-	//if err = oc.validate(st); err != nil {
-	//	return nil, fmt.Errorf("valdation failed '%s'", err)
-	//}
-
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		if err != nil {
@@ -125,21 +122,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	})
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
-			if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
-				err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID)
-				if err != nil {
-					log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
-				}
-			}
-		}
-		err = oc.service.Do(newID, func(b sb.SmartBlock) error {
-			return b.SetDetails(ctx, details, true)
-		})
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
-		}
-		return nil, nil
+		return oc.handleSubObject(ctx, snapshot, newID, workspaceID, details), nil
 	}
 
 	err = oc.service.Do(newID, func(b sb.SmartBlock) error {
@@ -155,7 +138,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 		return b.SetDetails(ctx, details, true)
 	})
 	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
+		return nil, err
 	}
 
 	if isFavorite {
@@ -187,6 +170,24 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	})
 
 	return nil, nil
+}
+
+func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, newID string, workspaceID string, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
+		if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
+			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID)
+			if err != nil {
+				log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
+			}
+		}
+	}
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+		return b.SetDetails(ctx, details, true)
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
+	}
+	return nil
 }
 
 func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]string) {

@@ -2,18 +2,19 @@ package newinfra
 
 import (
 	"archive/zip"
+	"io"
+
+	"github.com/google/uuid"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/google/uuid"
-	"io"
 )
 
 const profileFile = "profile"
 
-type NewInfra struct {
-}
+type NewInfra struct{}
 
 func NewImporter() *NewInfra {
 	return &NewInfra{}
