@@ -72,7 +72,7 @@ func (d *dirWriter) Close() (err error) {
 }
 
 func newZipWriter(path, name string) (writer, error) {
-	fileName := path + name
+	fileName := filepath.Join(path, name)
 	f, err := os.Create(fileName)
 	if err != nil {
 		return nil, err
