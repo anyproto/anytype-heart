@@ -109,6 +109,12 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 		req.SubId = bson.NewObjectId().Hex()
 	}
 
+	for i, dataviewFilter := range req.Filters {
+		if strings.EqualFold(dataviewFilter.RelationKey, bundle.RelationKeyWorkspaceId.String()) {
+			req.Filters = append(req.Filters[:i], req.Filters[i+1:]...)
+			break
+		}
+	}
 	q := database.Query{
 		Filters: req.Filters,
 		Sorts:   req.Sorts,
