@@ -43,7 +43,7 @@ type ObjectFactory struct {
 	templateCloner       templateCloner
 	fileService          files.Service
 
-	smartblockFactory smartblockFactory
+	subObjectFactory subObjectFactory
 }
 
 func NewObjectFactory(
@@ -71,13 +71,18 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 
-	f.smartblockFactory = smartblockFactory{
-		anytype:            f.anytype,
+	f.subObjectFactory = subObjectFactory{
+		coreService:        f.anytype,
+		fileBlockService:   f.fileBlockService,
 		fileService:        f.fileService,
 		indexer:            app.MustComponent[smartblock.Indexer](a),
+		layoutConverter:    f.layoutConverter,
 		objectStore:        f.objectStore,
 		relationService:    f.relationService,
 		restrictionService: app.MustComponent[restriction.Service](a),
+		sbtProvider:        f.sbtProvider,
+		sourceService:      f.sourceService,
+		tempDirProvider:    f.tempDirProvider,
 	}
 
 	return nil
@@ -146,7 +151,7 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 }
 
 func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb := f.smartblockFactory.Produce()
+	sb := f.subObjectFactory.produceSmartblock()
 	switch sbType {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType:
 		return NewPage(
@@ -228,11 +233,9 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.relationService,
 			f.sourceService,
 			f.detailsModifier,
-			f.fileBlockService,
-			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
-			f.smartblockFactory,
+			f.subObjectFactory,
 			f.templateCloner,
 		), nil
 	case model.SmartBlockType_MissingObject:

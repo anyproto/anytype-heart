@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -57,16 +56,10 @@ type SubObjectCollection struct {
 	defaultCollectionName string
 	collections           map[string]map[string]SubObjectImpl
 
-	sourceService    source.Service
-	objectStore      objectstore.ObjectStore
-	anytype          core.Service
-	relationService  relation2.Service
-	fileBlockService file.BlockService
-	tempDirProvider  core.TempDirProvider
-	sbtProvider      typeprovider.SmartBlockTypeProvider
-	layoutConverter  converter.LayoutConverter
+	sourceService source.Service
+	objectStore   objectstore.ObjectStore
 
-	smartblockFactory smartblockFactory
+	subObjectFactory subObjectFactory
 }
 
 func NewSubObjectCollection(
@@ -76,11 +69,9 @@ func NewSubObjectCollection(
 	anytype core.Service,
 	relationService relation2.Service,
 	sourceService source.Service,
-	fileBlockService file.BlockService,
-	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	smartblockFactory smartblockFactory,
+	subObjectFactory subObjectFactory,
 ) *SubObjectCollection {
 	return &SubObjectCollection{
 		SmartBlock:    sb,
@@ -100,14 +91,9 @@ func NewSubObjectCollection(
 
 		objectStore:           objectStore,
 		sourceService:         sourceService,
-		anytype:               anytype,
-		relationService:       relationService,
-		fileBlockService:      fileBlockService,
-		tempDirProvider:       tempDirProvider,
-		layoutConverter:       layoutConverter,
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
-		smartblockFactory:     smartblockFactory,
+		subObjectFactory:      subObjectFactory,
 	}
 }
 
@@ -379,7 +365,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		// inject the internal flag to the state
 	}
 
-	subObj, err := c.newSubObject(collection)
+	subObj, err := c.subObjectFactory.produce(collection)
 	if err != nil {
 		return fmt.Errorf("new sub-object: %w", err)
 	}
@@ -396,21 +382,6 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	}
 
 	return
-}
-
-// TODO Extract to subobject factory
-func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, error) {
-	sb := c.smartblockFactory.Produce()
-	switch collection {
-	case collectionKeyObjectTypes:
-		return NewObjectType(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter, c.smartblockFactory.fileService), nil
-	case collectionKeyRelations:
-		return NewRelation(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter, c.smartblockFactory.fileService), nil
-	case collectionKeyRelationOptions:
-		return NewRelationOption(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter, c.smartblockFactory.fileService), nil
-	default:
-		return nil, fmt.Errorf("unknown collection: %s", collection)
-	}
 }
 
 func SubState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {

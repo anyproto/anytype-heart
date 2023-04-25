@@ -10,7 +10,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -65,11 +64,9 @@ func NewWorkspace(
 	relationService relation.Service,
 	sourceService source.Service,
 	modifier DetailsModifier,
-	fileBlockService file.BlockService,
-	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	smartblockFactory smartblockFactory,
+	smartblockFactory subObjectFactory,
 	templateCloner templateCloner,
 ) *Workspaces {
 	return &Workspaces{
@@ -80,8 +77,6 @@ func NewWorkspace(
 			anytype,
 			relationService,
 			sourceService,
-			fileBlockService,
-			tempDirProvider,
 			sbtProvider,
 			layoutConverter,
 			smartblockFactory,
