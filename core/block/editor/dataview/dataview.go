@@ -296,13 +296,6 @@ func (d *sdataview) CreateView(ctx *session.Context, id string,
 		return nil, err
 	}
 
-	if len(source) == 0 {
-		source = pbtypes.GetStringList(s.Details(), bundle.RelationKeySetOf.String())
-		if len(source) == 0 {
-			return nil, fmt.Errorf("source not found")
-		}
-	}
-
 	if len(view.Relations) == 0 {
 		for _, rl := range tb.Model().GetDataview().GetRelationLinks() {
 			var isVisible bool
