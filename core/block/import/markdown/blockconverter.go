@@ -103,7 +103,7 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 		}
 	}
 	for name, file := range files {
-		m.processBlocks(name, files[name], files)
+		m.processBlocks(name, file, files)
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, files)
 		}
