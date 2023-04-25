@@ -53,9 +53,9 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 		return nil
 	}
 	supportedExtensions := []string{".md"}
-	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
-	videoFormats := []string{"mp4", "m4v"}
-	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
+	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
+	videoFormats := []string{".mp4", ".m4v"}
+	audioFormats := []string{".mp3", ".ogg", ".wav", ".m4a", ".flac"}
 
 	supportedExtensions = append(supportedExtensions, videoFormats...)
 	supportedExtensions = append(supportedExtensions, imageFormats...)

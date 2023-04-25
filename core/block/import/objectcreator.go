@@ -321,8 +321,10 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 		}
 	}
 	snapshot.Blocks = append(snapshot.Blocks, &model.Block{
-		Id:          pageID,
-		Content:     &model.BlockContentOfSmartblock{},
+		Id: pageID,
+		Content: &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		},
 		ChildrenIds: childrenIds,
 	})
 }
