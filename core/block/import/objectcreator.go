@@ -9,10 +9,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
@@ -83,6 +81,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	oc.updateRootBlock(snapshot, newID)
 
 	oc.setWorkspaceID(err, newID, snapshot)
+	oc.setRelationKeyID(snapshot, newID)
 
 	var oldRelationBlocksToNew map[string]*model.Block
 	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
@@ -96,7 +95,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(newID, sn, oldIDtoNew)
-		//return nil, newID, nil
 	}
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
@@ -118,7 +116,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 
-	respDetails := oc.resetState(ctx, newID, snapshot, st, details)
+	respDetails := oc.resetState(ctx, newID, st, details)
 
 	if isFavorite {
 		err = oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
@@ -147,9 +145,14 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	return respDetails, newID, nil
 }
 
+func (oc *ObjectCreator) setRelationKeyID(snapshot *model.SmartBlockSnapshotBase, newID string) {
+	if snapshot.Details != nil && snapshot.Details.Fields != nil {
+		snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(newID)
+	}
+}
+
 func (oc *ObjectCreator) getDetails(snapshot *model.SmartBlockSnapshotBase) []*pb.RpcObjectSetDetailsDetail {
 	var details []*pb.RpcObjectSetDetailsDetail
-	snapshot.Details = pbtypes.StructCutKeys(snapshot.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 	if snapshot.Details != nil {
 		for key, value := range snapshot.Details.Fields {
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
@@ -213,7 +216,7 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 func (oc *ObjectCreator) setSpaceDashboardID(newID string, sn *converter.Snapshot, oldIDtoNew map[string]string) {
 	spaceDashBoardID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
 	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
-		e := block.Do(oc.service, newID, func(ws basic.CommonOperations) error {
+		e := oc.service.Do(newID, func(ws sb.SmartBlock) error {
 			if err := ws.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 				{
 					Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -230,24 +233,14 @@ func (oc *ObjectCreator) setSpaceDashboardID(newID string, sn *converter.Snapsho
 	}
 }
 
-func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, snapshot *model.SmartBlockSnapshotBase, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return fmt.Errorf("common operations is not allowed for this object")
-		}
-		err := commonOperations.SetObjectTypes(ctx, snapshot.ObjectTypes)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set object types %s: %s", newID, err.Error())
-		}
-
-		err = history.ResetToVersion(b, st)
+		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
 		}
-
-		err = commonOperations.SetDetails(ctx, details, true)
+		err = b.SetDetails(ctx, details, true)
 		if err != nil {
 			return err
 		}
@@ -319,7 +312,7 @@ func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.S
 			}
 		}
 	}
-	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
 		return b.SetDetails(ctx, details, true)
 	})
 	if err != nil {
@@ -411,18 +404,18 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
 	var existedObjects []string
 	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
-		existedObjects = pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
+		existedObjects = pbtypes.GetStringList(s.Store(), sb.CollectionStoreKey)
 		return nil
 	})
 	if err != nil {
 		log.Errorf("failed to get existed objects in collection, %s", err)
 	}
-	objectsInCollections := pbtypes.GetStringList(st.Store(), template.CollectionStoreKey)
+	objectsInCollections := pbtypes.GetStringList(st.Store(), sb.CollectionStoreKey)
 	for i, id := range objectsInCollections {
 		if newID, ok := oldIDtoNew[id]; ok {
 			objectsInCollections[i] = newID
 		}
 	}
 	result := slice.Union(existedObjects, objectsInCollections)
-	st.StoreSlice(template.CollectionStoreKey, result)
+	st.StoreSlice(sb.CollectionStoreKey, result)
 }
