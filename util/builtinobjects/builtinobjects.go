@@ -206,15 +206,15 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 }
 
 func (b *builtinObjects) createSpaceDashboardWidget(id string) {
-	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
-	if err != nil || len(w.Blocks()) < 2 {
-		log.Errorf("Failed to get first block of Widget object: %s", err.Error())
+	targetID, err := b.getFirstWidgetBlockId()
+	if err != nil {
+		log.Errorf(err.Error())
 		return
 	}
 
 	if _, err := b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
 		ContextId:    b.coreService.PredefinedBlocks().Widgets,
-		TargetId:     w.Blocks()[1].Id,
+		TargetId:     targetID,
 		Position:     model.Block_Top,
 		WidgetLayout: widget.LayoutLink,
 		Block: &model.Block{
@@ -233,6 +233,20 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 	}); err != nil {
 		log.Errorf("Failed to link SpaceDashboard to Widget object: %s", err.Error())
 	}
+}
+
+func (b *builtinObjects) getFirstWidgetBlockId() (string, error) {
+	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
+	if err != nil || len(w.Blocks()) < 2 {
+		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
+	}
+	if len(w.Blocks()) < 2 {
+		return "", fmt.Errorf("failed to get first block of Widget object: %s", err.Error())
+	}
+	if w.Blocks()[1] == nil {
+		return "", fmt.Errorf("failed to get id of first block of Widget object: %s", err.Error())
+	}
+	return w.Blocks()[1].Id, nil
 }
 
 func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (err error) {
