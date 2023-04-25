@@ -98,7 +98,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	converter.UpdateRelationsIDs(st, newID, oldIDtoNew)
+	converter.UpdateRelationsIDs(st, oldIDtoNew)
 	details := oc.getDetails(st.Details())
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		return oc.handleSubObject(ctx, snapshot, newID, details), "", nil

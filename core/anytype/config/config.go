@@ -65,12 +65,12 @@ type Config struct {
 	DebugAddr       string
 	LocalServerAddr string
 
-	Threads              threads.Config
-	DS                   clientds.Config
-	FS                   FSConfig
-	DisableFileConfig    bool `ignored:"true"` // set in order to skip reading/writing config from/to file
-	CreateBuiltinObjects bool
-	CreateTemplates      bool
+	Threads                threads.Config
+	DS                     clientds.Config
+	FS                     FSConfig
+	DisableFileConfig      bool `ignored:"true"` // set in order to skip reading/writing config from/to file
+	CreateBuiltinObjects   bool
+	CreateBuiltinTemplates bool
 }
 
 type FSConfig struct {
@@ -144,9 +144,9 @@ func WithCreateBuiltinObjects(createBuiltinObjects bool) func(*Config) {
 	}
 }
 
-func WithCreateTemplates(createTemplates bool) func(*Config) {
+func WithCreateBuiltinTemplates(createBuiltinTemplates bool) func(*Config) {
 	return func(c *Config) {
-		c.CreateTemplates = createTemplates
+		c.CreateBuiltinTemplates = createBuiltinTemplates
 	}
 }
 

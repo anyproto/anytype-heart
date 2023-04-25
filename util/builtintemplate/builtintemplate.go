@@ -42,15 +42,15 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	source          source.Service
-	generatedHash   string
-	createTemplates bool
+	source                 source.Service
+	generatedHash          string
+	createBuiltinTemplates bool
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.makeGenHash(4)
-	b.createTemplates = a.MustComponent(config.CName).(*config.Config).CreateTemplates
+	b.createBuiltinTemplates = a.MustComponent(config.CName).(*config.Config).CreateBuiltinTemplates
 	return
 }
 
@@ -66,7 +66,7 @@ func (b *builtinTemplate) Name() (name string) {
 }
 
 func (b *builtinTemplate) Run(context.Context) (err error) {
-	if !b.createTemplates {
+	if !b.createBuiltinTemplates {
 		return nil
 	}
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))

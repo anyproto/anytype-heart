@@ -129,7 +129,7 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]string) {
+func UpdateRelationsIDs(st *state.State, oldIDtoNew map[string]string) {
 	rels := st.GetRelationLinks()
 	for k, v := range st.Details().GetFields() {
 		relLink := rels.Get(k)
@@ -141,30 +141,29 @@ func UpdateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]st
 			relLink.Format != model.RelationFormat_status {
 			continue
 		}
-		handleObjectRelation(st, pageID, oldIDtoNew, v, k)
+		handleObjectRelation(st, oldIDtoNew, v, k)
 	}
 }
 
-func handleObjectRelation(st *state.State, pageID string, oldIDtoNew map[string]string, v *types.Value, k string) {
+func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string) {
 	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
 		objectsID := v.GetStringValue()
-		newObjectIDs := getNewRelationsID([]string{objectsID}, oldIDtoNew, pageID)
+		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew)
 		if len(newObjectIDs) != 0 {
 			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
 		}
 		return
 	}
 	objectsIDs := pbtypes.GetStringListValue(v)
-	objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID)
+	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew)
 	st.SetDetail(k, pbtypes.StringList(objectsIDs))
 }
 
-func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID string) []string {
+func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string) []string {
 	for i, val := range objectsIDs {
 		newTarget := oldIDtoNew[val]
 		if newTarget == "" {
-			log.With("object", pageID).Errorf("cant find target id for relation: %s", val)
-			continue
+			newTarget = addr.MissingObject
 		}
 		objectsIDs[i] = newTarget
 	}
