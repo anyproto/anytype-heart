@@ -312,16 +312,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-
-	// TODO FIX FIRST
-	if sb.Id() == "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a" {
-		type collectionService interface {
-			RegisterCollection(sb SmartBlock)
-		}
-		colService := app.MustComponent[collectionService](ctx.App)
-		colService.RegisterCollection(sb)
-	}
-
 	return
 }
 
