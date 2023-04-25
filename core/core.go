@@ -31,7 +31,7 @@ type Middleware struct {
 	pin      string
 	mnemonic string
 	// memoized private key derived from mnemonic
-	privateKey          []byte
+	sessionKey          []byte
 	accountSearchCancel context.CancelFunc
 	EventSender         event.Sender
 

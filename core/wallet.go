@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"github.com/anytypeio/any-sync/util/crypto"
@@ -48,17 +49,12 @@ func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreate
 
 func (mw *Middleware) setMnemonic(mnemonic string) error {
 	mw.mnemonic = mnemonic
-	acc, err := core.WalletAccountAt(mw.mnemonic, 0)
-	if err != nil {
-		return fmt.Errorf("derive private key: %w", err)
+	// TODO: I guess we can use any random bytes here
+	buf := make([]byte, 0, 64)
+	if _, err := rand.Read(buf); err != nil {
+		return err
 	}
-	// TODO: I guess we can use anything here, not necessary private key
-	priv, err := acc.GetPublic().Marshall()
-	if err != nil {
-		return fmt.Errorf("marshal private key: %w", err)
-	}
-
-	mw.privateKey = priv
+	mw.sessionKey = buf
 	return nil
 }
 
@@ -145,12 +141,10 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	}
 
 	// test if mnemonic is correct
-	_, err := core.WalletAccountAt(req.Mnemonic, 0)
-	if err != nil {
-		return response("", pb.RpcWalletCreateSessionResponseError_BAD_INPUT, err)
+	if mw.mnemonic != req.Mnemonic {
+		return response("", pb.RpcWalletCreateSessionResponseError_BAD_INPUT, fmt.Errorf("incorrect mnemonic"))
 	}
-
-	tok, err := mw.sessions.StartSession(mw.privateKey)
+	tok, err := mw.sessions.StartSession(mw.sessionKey)
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}

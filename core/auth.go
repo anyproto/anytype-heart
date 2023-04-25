@@ -32,7 +32,7 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	}
 	tok := v[0]
 
-	err = mw.sessions.ValidateToken(mw.privateKey, tok)
+	err = mw.sessions.ValidateToken(mw.sessionKey, tok)
 	if err != nil {
 		return
 	}
