@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/space/clientcache"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -21,7 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -74,9 +74,10 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
+	Cache() clientcache.Cache
 }
 
-func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
 		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -85,12 +86,10 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return c.CreateSmartBlockFromState(ctx, sbType, details, createState)
+	return c.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
 }
 
-// CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
-// It will return error if some of the relation keys in `details` not installed in the workspace.
-func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -110,18 +109,11 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		}
 	}
 
-	var relationKeys []string
 	var workspaceID string
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
-			relId := addr.RelationKeyToIdPrefix + k
-			if _, err2 := c.objectStore.GetRelationById(relId); err != nil {
-				// check if installed
-				err = fmt.Errorf("failed to get installed relation %s: %w", relId, err2)
-				return
-			}
-			relationKeys = append(relationKeys, k)
 			createState.SetDetail(k, v)
+			// TODO: add relations to relationIds
 		}
 
 		detailsWorkspaceID := details.Fields[bundle.RelationKeyWorkspaceId.String()]
@@ -132,6 +124,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 	// if we don't have anything in details then check the object store
 	if workspaceID == "" {
+		// TODO: [MR] think about predefined ids, how should we create them in current circumstances
 		workspaceID = c.anytype.PredefinedBlocks().Account
 	}
 
@@ -141,48 +134,44 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID()))
 
-	var tid = thread.Undef
-	id = pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String())
-	sbt, _ := coresb.SmartBlockTypeFromID(id)
-	if sbt == coresb.SmartBlockTypeSubObject {
-		return c.CreateSubObjectInWorkspace(createState.CombinedDetails(), workspaceID)
-	} else if id != "" {
-		tid, err = thread.Decode(id)
-		if err != nil {
-			log.Errorf("failed to decode thread id from the state: %s", err.Error())
-		}
-	}
-
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
 	ctx = context.WithValue(ctx, eventCreate, ev)
+	// TODO: [MR] what should we do here with our current object creation?
+	//  in which situation we call this condition
+	//if raw := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); raw != "" {
+	//	tid, err = thread.Decode(raw)
+	//	if err != nil {
+	//		log.Errorf("failed to decode thread id from the state: %s", err.Error())
+	//	}
+	//}
+	//csm, err := c.CreateObjectInWorkspace(ctx, workspaceID, tid, sbType)
+	//if err != nil {
+	//	err = fmt.Errorf("anytype.CreateBlock error: %v", err)
+	//	return
+	//}
+	cache := c.blockService.Cache()
+	sb, release, err := cache.CreateTreeObject(sbType, func(id string) *smartblock.InitContext {
+		createState.SetRootId(id)
+		createState.SetObjectTypes(objectTypes)
+		createState.InjectDerivedDetails()
 
-	csm, err := c.CreateObjectInWorkspace(ctx, workspaceID, tid, sbType)
+		return &smartblock.InitContext{
+			ObjectTypeUrls: objectTypes,
+			State:          createState,
+			RelationIds:    relationIds,
+		}
+	})
 	if err != nil {
-		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
-	id = csm.ID()
-	createState.SetRootId(id)
-	createState.SetObjectTypes(objectTypes)
-	createState.InjectDerivedDetails()
-
-	initCtx := &smartblock.InitContext{
-		ObjectTypeUrls: objectTypes,
-		State:          createState,
-		RelationKeys:   relationKeys,
-	}
-	var sb smartblock.SmartBlock
-
-	if sb, err = c.objectFactory.InitObject(id, initCtx); err != nil {
-		return id, nil, err
-	}
+	defer release()
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
 	metrics.SharedClient.RecordEvent(*ev)
-	return id, sb.CombinedDetails(), sb.Close()
+	return id, sb.CombinedDetails(), nil
 }
 
 // todo: rewrite with options
@@ -231,29 +220,26 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
-
-	// TODO remove it, when schema will be refactored
-	source := req.Source
-	if len(req.Source) > 0 {
-		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-	}
-	if len(source) == 0 {
-		source = []string{bundle.TypeKeyPage.URL()}
-	}
-	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, source); err != nil {
-		return
+	if len(req.Source) != 0 {
+		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
+			return
+		}
 	}
 
 	newState := state.NewDoc("", nil).NewState()
 
+	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
+	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
+
 	tmpls := []template.StateTransformer{
+		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
+		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
 		template.WithRequiredRelations(),
 	}
 	var blockContent *model.BlockContentOfDataview
 	if dvSchema != nil {
 		blockContent = &dvContent
 	}
-
 	if blockContent != nil {
 		for i, view := range blockContent.Dataview.Views {
 			if view.Relations == nil {
@@ -261,6 +247,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 			}
 		}
 		tmpls = append(tmpls,
+			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
 			template.WithDataview(*blockContent, false),
 		)
 	}
@@ -270,7 +257,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, newState)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, nil, nil, newState)
 }
 
 // TODO: it must be in another component
@@ -299,19 +286,11 @@ func (c *Creator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []st
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
 func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
-	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
-	var res bookmark.ContentFuture
-	if source != "" {
-		u, err := uri.NormalizeURI(source)
-		if err != nil {
-			return "", nil, fmt.Errorf("process uri: %w", err)
-		}
-		res = c.bookmark.FetchBookmarkContent(u)
-	} else {
-		res = func() *model.BlockContentBookmark {
-			return nil
-		}
+	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
+	if err != nil {
+		return "", nil, fmt.Errorf("process uri: %w", err)
 	}
+	res := c.bookmark.FetchBookmarkContent(u)
 	return c.bookmark.CreateBookmarkObject(req.Details, res)
 }
 
@@ -327,48 +306,46 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		details = internalflag.PutToDetails(details, internalFlags)
 	}
 
-	var templateID string
-	if v, ok := req.(block.TemplateIDGetter); ok {
-		templateID = v.GetTemplateId()
+	objectType, err := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	if err != nil && forcedType == "" {
+		return "", nil, fmt.Errorf("invalid type in details: %w", err)
 	}
-
-	var objectType string
 	if forcedType != "" {
-		objectType = forcedType.URL()
-	} else if objectType = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectType == "" {
-		return "", nil, fmt.Errorf("missing type in details or in forcedType")
+		objectType = forcedType
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
 	}
-
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
 	var sbType = coresb.SmartBlockTypePage
 
 	switch objectType {
-	case bundle.TypeKeyBookmark.URL():
+	case bundle.TypeKeyBookmark:
 		return c.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
-	case bundle.TypeKeySet.URL():
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
+	case bundle.TypeKeySet:
 		return c.CreateSet(&pb.RpcObjectCreateSetRequest{
 			Details:       details,
 			InternalFlags: internalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 		})
-	case bundle.TypeKeyObjectType.URL():
+	case bundle.TypeKeyObjectType:
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelation.URL():
+	case bundle.TypeKeyRelation:
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelationOption.URL():
+	case bundle.TypeKeyRelationOption:
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyTemplate.URL():
+	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
-	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, templateID)
+	var templateID string
+	if v, ok := req.(block.TemplateIDGetter); ok {
+		templateID = v.GetTemplateId()
+	}
+	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateID)
 }

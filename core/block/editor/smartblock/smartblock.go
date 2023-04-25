@@ -231,9 +231,11 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	sb.source = ctx.Source
-	// TODO: [MR] rewrite this so it would be obvious
-	//  we are doing this because we expecting cache to have objectTrees inside for smartblocks
-	sb.ObjectTree = sb.source.(objecttree.ObjectTree)
+	if _, ok := sb.source.(objecttree.ObjectTree); ok {
+		// TODO: [MR] rewrite this so it would be obvious
+		//  we are doing this because we expecting cache to have objectTrees inside for smartblocks
+		sb.ObjectTree = sb.source.(objecttree.ObjectTree)
+	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)

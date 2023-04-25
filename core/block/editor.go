@@ -643,7 +643,7 @@ func (s *Service) ModifyLocalDetails(
 	// we set pending details if object is not in cache
 	// we do this under lock to prevent races if the object is created in parallel
 	// because in that case we can lose changes
-	err = s.cache.DoLockedIfNotExists(objectId, func() error {
+	err = s.cache.ObjectCache().DoLockedIfNotExists(objectId, func() error {
 		objectDetails, err := s.objectStore.GetPendingLocalDetails(objectId)
 		if err != nil && err != ds.ErrNotFound {
 			return err

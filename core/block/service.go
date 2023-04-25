@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
+	"github.com/anytypeio/go-anytype-middleware/space/clientcache"
 	"net/url"
 	"strings"
 	"time"
@@ -13,7 +15,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
@@ -124,11 +125,11 @@ type Service struct {
 	doc             doc.Service
 	app             *app.App
 	source          source.Service
-	cache           ocache.OCache
 	objectStore     objectstore.ObjectStore
 	restriction     restriction.Service
 	bookmark        bookmarksvc.Service
 	relationService relation.Service
+	cache           clientcache.Cache
 
 	objectCreator objectCreator
 	objectFactory *editor.ObjectFactory
@@ -152,8 +153,8 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
+	s.cache = a.MustComponent(treegetter.CName).(clientcache.Cache)
 	s.app = a
-	s.cache = ocache.New(s.loadSmartblock)
 	return
 }
 
@@ -224,7 +225,7 @@ func (s *Service) OpenBlock(
 	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
-	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
+	ob, release, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
 	if err != nil {
 		return nil, err
 	}
@@ -232,11 +233,11 @@ func (s *Service) OpenBlock(
 		ob.EnabledRelationAsDependentObjects()
 	}
 	afterSmartBlockTime := time.Now()
-	defer s.cache.Release(id)
+	defer release()
 	ob.Lock()
 	defer ob.Unlock()
 	ob.SetEventFunc(s.sendEvent)
-	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartObjectOpenListner); hasOpenListner {
+	if v, hasOpenListner := ob.(smartblock.SmartObjectOpenListner); hasOpenListner {
 		v.SmartObjectOpened(ctx)
 	}
 	afterDataviewTime := time.Now()
@@ -251,23 +252,24 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
-		var (
-			fList = func() []string {
-				ob.Lock()
-				defer ob.Unlock()
-				bs := ob.NewState()
-				return bs.GetAllFileHashes(ob.FileRelationKeys(bs))
-			}
-		)
-
-		if newWatcher := s.status.Watch(tid, fList); newWatcher {
-			ob.AddHook(func(_ smartblock.ApplyInfo) error {
-				s.status.Unwatch(tid)
-				return nil
-			}, smartblock.HookOnClose)
-		}
-	}
+	// TODO: [MR] add status logic somewhere
+	//if tid := ob.threadId; tid != thread.Undef && s.status != nil {
+	//	var (
+	//		fList = func() []string {
+	//			ob.Lock()
+	//			defer ob.Unlock()
+	//			bs := ob.NewState()
+	//			return bs.GetAllFileHashes(ob.FileRelationKeys(bs))
+	//		}
+	//	)
+	//
+	//	if newWatcher := s.status.Watch(tid, fList); newWatcher {
+	//		ob.AddHook(func(_ smartblock.ApplyInfo) error {
+	//			s.status.Unwatch(tid)
+	//			return nil
+	//		}, smartblock.HookOnClose)
+	//	}
+	//}
 	afterHashesTime := time.Now()
 	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
@@ -307,17 +309,14 @@ func (s *Service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectV
 	}); err != nil {
 		return
 	}
-	bs.Lock()
-	defer bs.Unlock()
-	bs.SetEventFunc(s.sendEvent)
-	ob := newOpenedBlock(bs)
-	s.cache.Add(bs.Id(), ob)
-
-	// workaround to increase ref counter
-	if _, err = s.cache.Get(context.Background(), bs.Id()); err != nil {
+	_, _, err = s.cache.PutObject(bs.Id(), bs)
+	if err != nil {
 		return
 	}
 
+	bs.Lock()
+	defer bs.Unlock()
+	bs.SetEventFunc(s.sendEvent)
 	obj, err = bs.Show(ctx)
 	if err != nil {
 		return
@@ -326,15 +325,12 @@ func (s *Service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectV
 }
 
 func (s *Service) CloseBlock(id string) error {
-	var (
-		isDraft     bool
-		workspaceId string
-	)
+	var isDraft bool
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose()
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
-		workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		//workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
 		return nil
 	})
 	if err != nil {
@@ -342,23 +338,30 @@ func (s *Service) CloseBlock(id string) error {
 	}
 
 	if isDraft {
-		_, _ = s.cache.Remove(id)
-		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
+		if err = s.cache.DeleteObject(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
 			s.sendOnRemoveEvent(id)
 		}
+		//
+		//_, _ = s.cache.Remove(id)
+		//if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
+		//	log.Errorf("error while block delete: %v", err)
+		//} else {
+		//	s.sendOnRemoveEvent(id)
+		//}
 	}
 	return nil
 }
 
 func (s *Service) CloseBlocks() {
-	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
-		ob := v.(*openedBlock)
+	// TODO: [MR] provide maybe new logic in clientcache to call ObjectClose()
+	s.cache.ObjectCache().ForEach(func(v ocache.Object) (isContinue bool) {
+		ob := v.(smartblock.SmartBlock)
 		ob.Lock()
 		ob.ObjectClose()
 		ob.Unlock()
-		s.cache.Reset(ob.Id())
+		s.cache.ObjectCache().Reset(ob.Id())
 		return true
 	})
 }
@@ -718,38 +721,43 @@ func (s *Service) AddCreatorInfoIfNeeded(workspaceId string) error {
 }
 
 func (s *Service) DeleteObject(id string) (err error) {
-	var (
-		fileHashes  []string
-		workspaceId string
-		isFavorite  bool
-	)
+	// TODO: [MR] Fix deletion logic
 
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
-		b.ObjectClose()
-		st := b.NewState()
-		fileHashes = st.GetAllFileHashes(b.FileRelationKeys(st))
-		workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
-		if workspaceId == "" {
-			workspaceId = s.anytype.PredefinedBlocks().Account
-		}
-		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
-		if isFavorite {
-			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
-		}
-		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
-			return err
-		}
-		b.SetIsDeleted()
 		return nil
 	})
+	if err != nil {
+		return
+	}
+	return s.cache.DeleteObject(id)
+}
 
-	if err != nil && err != ErrBlockNotFound {
+func (s *Service) OnDelete(b smartblock.SmartBlock) (err error) {
+	var (
+		fileHashes  []string
+		workspaceId string
+		isFavorite  bool
+		id          = b.Id()
+	)
+
+	b.ObjectClose()
+	st := b.NewState()
+	fileHashes = st.GetAllFileHashes(b.FileRelationKeys(st))
+	workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
+	if workspaceId == "" {
+		workspaceId = s.anytype.PredefinedBlocks().Account
+	}
+	isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
+	if isFavorite {
+		_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
+	}
+	if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
 		return err
 	}
-	_, _ = s.cache.Remove(id)
+	b.SetIsDeleted()
 
 	for _, fileHash := range fileHashes {
 		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
@@ -856,33 +864,17 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	return s.cache.Close()
+	//return s.cache.Close()
+	return
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
 func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
-	ob, err := s.getSmartblock(ctx, id)
-	if err != nil {
-		return
-	}
-	return ob.SmartBlock, func() {
-		s.cache.Release(id)
-	}, nil
+	return s.getSmartblock(ctx, id)
 }
 
-func (s *Service) getSmartblock(ctx context.Context, id string) (ob *openedBlock, err error) {
-	val, err := s.cache.Get(ctx, id)
-	if err != nil {
-		return
-	}
-	var ok bool
-	ob, ok = val.(*openedBlock)
-	if !ok {
-		return nil, fmt.Errorf("got unexpected object from cache: %t", val)
-	} else if ob == nil {
-		return nil, fmt.Errorf("got nil object from cache")
-	}
-	return ob, nil
+func (s *Service) getSmartblock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+	return s.cache.GetObject(ctx, id)
 }
 
 func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
@@ -1223,38 +1215,38 @@ func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	sbt, _ := coresb.SmartBlockTypeFromID(id)
-	if sbt == coresb.SmartBlockTypeSubObject {
-		workspaceId := s.anytype.PredefinedBlocks().Account
-		if value, err = s.cache.Get(ctx, workspaceId); err != nil {
-			return
-		}
-
-		var ok bool
-		var ob *openedBlock
-		if ob, ok = value.(*openedBlock); !ok {
-			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, workspaceId)
-		}
-
-		var sbOpener SmartblockOpener
-		if sbOpener, ok = ob.SmartBlock.(SmartblockOpener); !ok {
-			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, workspaceId)
-		}
-
-		var sb smartblock.SmartBlock
-		if sb, err = sbOpener.Open(id); err != nil {
-			return
-		}
-		return newOpenedBlock(sb), nil
-	}
-
-	sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{
-		Ctx: ctx,
-	})
-	if err != nil {
-		return
-	}
-	value = newOpenedBlock(sb)
+	//sbt, _ := coresb.SmartBlockTypeFromID(id)
+	//if sbt == coresb.SmartBlockTypeSubObject {
+	//	workspaceId := s.anytype.PredefinedBlocks().Account
+	//	if value, err = s.cache.Get(ctx, workspaceId); err != nil {
+	//		return
+	//	}
+	//
+	//	var ok bool
+	//	var ob *openedBlock
+	//	if ob, ok = value.(*openedBlock); !ok {
+	//		return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, workspaceId)
+	//	}
+	//
+	//	var sbOpener SmartblockOpener
+	//	if sbOpener, ok = ob.SmartBlock.(SmartblockOpener); !ok {
+	//		return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, workspaceId)
+	//	}
+	//
+	//	var sb smartblock.SmartBlock
+	//	if sb, err = sbOpener.Open(id); err != nil {
+	//		return
+	//	}
+	//	return newOpenedBlock(sb), nil
+	//}
+	//
+	//sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{
+	//	Ctx: ctx,
+	//})
+	//if err != nil {
+	//	return
+	//}
+	//value = newOpenedBlock(sb)
 	return
 }
 

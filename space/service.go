@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/accountservice"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/logger"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
@@ -32,6 +33,7 @@ type service struct {
 	conf                 commonspace.Config
 	spaceCache           ocache.OCache
 	commonSpace          commonspace.SpaceService
+	account              accountservice.Service
 	spaceStorageProvider spacestorage.SpaceStorageProvider
 	accountId            string
 }
@@ -39,14 +41,21 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.conf = a.MustComponent("config").(commonspace.ConfigGetter).GetSpace()
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
+	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(spacestorage.SpaceStorageProvider)
-	// TODO: add account id
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),
 		ocache.WithGCPeriod(time.Minute),
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
+	s.accountId, err = s.commonSpace.DeriveSpace(context.Background(), commonspace.SpaceDerivePayload{
+		SigningKey:    s.account.Account().SignKey,
+		EncryptionKey: s.account.Account().EncKey,
+	})
+	if err != nil {
+		return
+	}
 	return spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 }
 

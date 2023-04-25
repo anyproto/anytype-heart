@@ -126,7 +126,7 @@ func (mw *Middleware) doAccountService(f func(a account.Service) error) (err err
 // Stop stops the anytype node and HTTP gateway
 func (mw *Middleware) stop() error {
 	if mw != nil && mw.app != nil {
-		err := mw.app.Close()
+		err := mw.app.Close(context.Background())
 		if err != nil {
 			log.Warnf("error while stop anytype: %v", err)
 		}
