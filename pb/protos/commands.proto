@@ -1814,7 +1814,7 @@ message Rpc {
                 }
 
                 message MigrationParams {
-                    string address = 1;
+                    string accountId = 1;
                     string path = 2;
                 }
 

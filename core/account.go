@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -36,7 +35,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -750,10 +748,6 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	if err != nil {
 		return err
 	}
-	err = mw.extractAccountDirectory(archive, profile, req)
-	if err != nil {
-		return err
-	}
 	oldCfg, err := extractConfig(archive)
 	if err != nil {
 		return fmt.Errorf("failed to extract config: %w", err)
@@ -825,72 +819,6 @@ func extractConfig(archive *zip.ReadCloser) (*config.Config, error) {
 		}
 	}
 	return nil, fmt.Errorf("config.json not found in archive")
-}
-
-func (mw *Middleware) extractAccountDirectory(archive *zip.ReadCloser, profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) error {
-
-	path := filepath.Join(mw.rootPath, profile.Address)
-	_, err := os.Stat(path)
-	_, err2 := os.Stat(filepath.Join(path, clientds.SpaceDSDir))
-
-	if err2 == nil {
-		// rename existing directory only in case it was not already migrated before
-		return nil
-	}
-
-	if err == nil {
-		err = os.Rename(path, path+"_backup")
-		if err != nil {
-			return err
-		}
-	}
-	err = os.MkdirAll(path, 0700)
-	if err != nil {
-		return err
-	}
-	for _, file := range archive.File {
-		if strings.EqualFold(file.FileInfo().Name(), profile.Address) && file.FileInfo().IsDir() {
-			continue
-		}
-		fName := file.FileHeader.Name
-		if strings.Contains(fName, profile.Address) {
-			if err = mw.createAccountFile(fName, file); err != nil {
-				return err
-			}
-
-		}
-	}
-	return nil
-}
-
-func (mw *Middleware) createAccountFile(fName string, file *zip.File) error {
-	path := filepath.Join(mw.rootPath, fName)
-	if file.FileInfo().IsDir() {
-		err := os.MkdirAll(path, file.Mode())
-		return err
-	}
-	fileReader, err := file.Open()
-	if err != nil {
-		return err
-	}
-
-	defer fileReader.Close()
-	targetFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, file.Mode())
-	if err != nil {
-		return err
-	}
-
-	defer targetFile.Close()
-	for {
-		_, err := io.CopyN(targetFile, fileReader, 1024)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-	}
-	return nil
 }
 
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {

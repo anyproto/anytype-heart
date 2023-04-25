@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -32,16 +31,16 @@ func New(core.Service, *collection.Service) converter.Converter {
 	return &NewInfra{}
 }
 
-func (i *NewInfra) GetParams(params pb.IsRpcObjectImportRequestParams) (string, string, error) {
+func (i *NewInfra) GetParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
 	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfMigrationParams); ok {
-		return p.MigrationParams.GetPath(), p.MigrationParams.GetAddress(), nil
+		return p.MigrationParams.GetPath(), nil
 	}
-	return "", "", errors.New("NewInfra: GetParams wrong parameters format")
+	return "", errors.New("NewInfra: GetParams wrong parameters format")
 }
 
 func (i *NewInfra) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	importError := converter.NewError()
-	path, address, e := i.GetParams(req.Params)
+	path, e := i.GetParams(req.Params)
 	if e != nil {
 		importError.Add(path, e)
 		return nil, importError
@@ -62,10 +61,6 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcObjectImportRequest, progress *proces
 		if f.FileInfo().IsDir() {
 			continue
 		}
-		// skip files from account directory
-		if strings.Contains(f.FileHeader.Name, address) {
-			continue
-		}
 		oldIDToNew[f.Name] = uuid.New().String()
 
 	}
@@ -74,10 +69,6 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcObjectImportRequest, progress *proces
 			continue
 		}
 		if f.FileInfo().IsDir() {
-			continue
-		}
-		// skip files from account directory
-		if strings.Contains(f.FileHeader.Name, address) {
 			continue
 		}
 		// object files have no extension
