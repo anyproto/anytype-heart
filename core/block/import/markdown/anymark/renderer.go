@@ -105,10 +105,19 @@ func (r *Renderer) renderHeading(_ util.BufWriter,
 
 func (r *Renderer) renderBlockquote(_ util.BufWriter,
 	source []byte,
-	n ast.Node,
+	node ast.Node,
 	entering bool) (ast.WalkStatus, error) {
+	n := node.(*ast.Blockquote)
+
 	if entering {
 		r.OpenNewTextBlock(model.BlockContentText_Quote)
+		for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+			for i := 0; i < child.Lines().Len(); i++ {
+				at := child.Lines().At(i)
+				s := at.Value(source)
+				r.AddTextToBuffer(string(s))
+			}
+		}
 	} else {
 		r.CloseTextBlock(model.BlockContentText_Quote)
 	}

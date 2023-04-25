@@ -146,14 +146,14 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	blockquote := htmlconverter.Rule{
 		Filter: []string{"blockquote", "q"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			return htmlconverter.String("> " + content)
+			return htmlconverter.String("> " + strings.TrimSpace(content))
 		},
 	}
 
 	italic := htmlconverter.Rule{
 		Filter: []string{"cite", "dfn", "address"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			return htmlconverter.String("*" + content + "*")
+			return htmlconverter.String("*" + strings.TrimSpace(content) + "*")
 		},
 	}
 
