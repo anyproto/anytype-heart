@@ -229,7 +229,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 		return fmt.Errorf("collect file blocks: %w", err)
 	}
 
-	bytesToUpload, blocksToUpload, err := f.selectBlocksToUpload(ctx, spaceId, fileBlocks)
+	bytesToUpload, blocksToUpload, err := f.selectBlocksToUpload(ctx, spaceId, fileId, fileBlocks)
 	if err != nil {
 		return fmt.Errorf("select blocks to upload: %w", err)
 	}
@@ -276,7 +276,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 	return <-dagErr
 }
 
-func (f *fileSync) selectBlocksToUpload(ctx context.Context, spaceId string, fileBlocks []blocks.Block) (int, []blocks.Block, error) {
+func (f *fileSync) selectBlocksToUpload(ctx context.Context, spaceId string, fileId string, fileBlocks []blocks.Block) (int, []blocks.Block, error) {
 	fileCids := lo.Map(fileBlocks, func(b blocks.Block, _ int) cid.Cid {
 		return b.Cid()
 	})
@@ -288,14 +288,15 @@ func (f *fileSync) selectBlocksToUpload(ctx context.Context, spaceId string, fil
 	var (
 		bytesToUpload  int
 		blocksToUpload []blocks.Block
+		cidsToBind     []cid.Cid
 	)
 	for _, availability := range availabilities {
-		if availability.Status == fileproto.AvailabilityStatus_NotExists {
-			blockCid, err := cid.Cast(availability.Cid)
-			if err != nil {
-				return 0, nil, fmt.Errorf("cast cid: %w", err)
-			}
+		blockCid, err := cid.Cast(availability.Cid)
+		if err != nil {
+			return 0, nil, fmt.Errorf("cast cid: %w", err)
+		}
 
+		if availability.Status == fileproto.AvailabilityStatus_NotExists {
 			b, ok := lo.Find(fileBlocks, func(b blocks.Block) bool {
 				return b.Cid() == blockCid
 			})
@@ -305,8 +306,15 @@ func (f *fileSync) selectBlocksToUpload(ctx context.Context, spaceId string, fil
 
 			blocksToUpload = append(blocksToUpload, b)
 			bytesToUpload += len(b.RawData())
+		} else {
+			cidsToBind = append(cidsToBind, blockCid)
 		}
 	}
+
+	if bindErr := f.rpcStore.BindCids(ctx, spaceId, fileId, cidsToBind); bindErr != nil {
+		return 0, nil, fmt.Errorf("bind cids: %w", bindErr)
+	}
+
 	return bytesToUpload, blocksToUpload, nil
 }
 

@@ -27,6 +27,8 @@ type RpcStore interface {
 	fileblockstore.BlockStore
 
 	CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error)
+	BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error)
+
 	AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error)
 	DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) (err error)
 	SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error)
@@ -175,7 +177,7 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 
 	if len(excludeCids) > 0 {
 		// bind existing ids
-		if err = s.bindCids(ctx, spaceID, fileID, excludeCids); err != nil {
+		if err = s.BindCids(ctx, spaceID, fileID, excludeCids); err != nil {
 			return err
 		}
 
@@ -216,7 +218,7 @@ func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []ci
 	return
 }
 
-func (s *store) bindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error) {
+func (s *store) BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error) {
 	var ready = make(chan result, 1)
 	// check blocks availability
 	if err = s.cm.WriteOp(ctx, ready, func(c *client) (err error) {

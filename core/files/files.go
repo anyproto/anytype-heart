@@ -124,10 +124,6 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
-	if err = s.fileSync.AddFile(s.spaceService.AccountId(), nodeHash); err != nil {
-		return "", nil, err
-	}
-
 	if err = s.fileStore.AddFileKeys(filestore.FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
@@ -369,20 +365,23 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, data strin
 }
 
 // fileIndexNode walks a file node, indexing file links
-func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, data string) error {
-	links := inode.Links()
-
-	if looksLikeFileNode(inode) {
-		return s.fileIndexLink(ctx, inode, data)
+func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string) error {
+	if err := s.addToSyncQueue(fileID); err != nil {
+		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 	}
 
+	if looksLikeFileNode(inode) {
+		return s.fileIndexLink(ctx, inode, fileID)
+	}
+
+	links := inode.Links()
 	for _, link := range links {
 		n, err := helpers.NodeAtLink(ctx, s.dagService, link)
 		if err != nil {
 			return err
 		}
 
-		err = s.fileIndexLink(ctx, n, data)
+		err = s.fileIndexLink(ctx, n, fileID)
 		if err != nil {
 			return err
 		}
@@ -392,13 +391,12 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, data strin
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, data string) error {
+func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID string) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
 	}
-
-	return s.fileStore.AddTarget(dlink.Cid.String(), data)
+	return s.fileStore.AddTarget(dlink.Cid.String(), fileID)
 }
 
 func (s *service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
@@ -753,6 +751,10 @@ func (s *service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
+	if err := s.addToSyncQueue(hash); err != nil {
+		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
+	}
+
 	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
@@ -804,6 +806,10 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	}
 
 	return files, nil
+}
+
+func (s *service) addToSyncQueue(fileID string) error {
+	return s.fileSync.AddFile(s.spaceService.AccountId(), fileID)
 }
 
 // looksLikeFileNode returns whether a node appears to

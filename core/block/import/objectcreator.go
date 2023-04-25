@@ -61,8 +61,6 @@ func NewCreator(service *block.Service,
 	relationCreator RelationCreator,
 	objectStore objectstore.ObjectStore,
 	fileStore filestore.FileStore,
-	fileSync filesync.FileSync,
-	spaceService space.Service,
 ) Creator {
 	return &ObjectCreator{
 		service:         service,
@@ -72,8 +70,6 @@ func NewCreator(service *block.Service,
 		relationCreator: relationCreator,
 		objectStore:     objectStore,
 		fileStore:       fileStore,
-		fileSync:        fileSync,
-		spaceService:    spaceService,
 	}
 }
 
@@ -150,7 +146,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	oc.setArchived(snapshot, newID)
 
 	// we do not change relation ids during the migration
-	//oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
+	// oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
 
 	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
 	if syncErr != nil {
@@ -210,13 +206,6 @@ func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase,
 }
 
 func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
-	for _, fileID := range st.GetAllFileHashes(st.FileRelationKeys()) {
-		log.With(zap.String("fileID", fileID)).Info("sync file link")
-		if sErr := oc.fileSync.AddFile(oc.spaceService.AccountId(), fileID); sErr != nil {
-			log.With(zap.String("object id", newID)).Errorf("sync file link: %s", sErr)
-		}
-	}
-
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {

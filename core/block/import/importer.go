@@ -24,7 +24,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/workerpool"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object/objectcreator"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -33,7 +32,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -88,9 +86,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	spaceService := app.MustComponent[space.Service](a)
-	fileSyncService := app.MustComponent[filesync.FileSync](a)
-	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore, fileSyncService, spaceService)
+	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore)
 	return nil
 }
 
