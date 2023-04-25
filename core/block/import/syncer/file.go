@@ -23,6 +23,10 @@ func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	if b.Model().GetFile().GetHash() != "" {
 		return nil
 	}
+	if b.Model().GetFile().Name == "" {
+		return nil
+	}
+
 	params := pb.RpcBlockUploadRequest{
 		FilePath: b.Model().GetFile().Name,
 		BlockId:  b.Model().Id,
