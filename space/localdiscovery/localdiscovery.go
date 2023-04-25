@@ -47,6 +47,10 @@ type localDiscovery struct {
 	notifier Notifier
 }
 
+func New() LocalDiscovery {
+	return &localDiscovery{}
+}
+
 func (l *localDiscovery) SetNotifier(notifier Notifier) {
 	l.notifier = notifier
 }
@@ -88,8 +92,9 @@ func (l *localDiscovery) startServer() (err error) {
 		txts []string
 	)
 	for _, addr := range interfaceAddrs {
-		ips = append(ips, addr.String())
-		txts = append(txts, anytypePrefix+addr.String())
+		ip := strings.Split(addr.String(), "/")[0]
+		ips = append(ips, ip)
+		txts = append(txts, anytypePrefix+ip)
 	}
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
@@ -119,10 +124,14 @@ func (l *localDiscovery) readChannel(ch chan *zeroconf.ServiceEntry) {
 				log.Debug("incorrect prefix, text", zap.String("text", text))
 				continue
 			}
-			l.notifier.PeerDiscovered(DiscoveredPeer{
+			peer := DiscoveredPeer{
 				Addr:   text[len(anytypePrefix):],
 				PeerId: entry.Service,
-			})
+			}
+			log.Debug("discovered peer", zap.String("addr", peer.Addr), zap.String("peerId", peer.PeerId))
+			if l.notifier != nil {
+				l.notifier.PeerDiscovered(peer)
+			}
 		}
 	}
 }
