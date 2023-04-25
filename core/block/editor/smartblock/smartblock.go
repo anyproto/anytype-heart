@@ -165,6 +165,7 @@ type Locker interface {
 
 type Indexer interface {
 	Index(ctx context.Context, info DocInfo) error
+	app.ComponentRunnable
 }
 
 type smartBlock struct {

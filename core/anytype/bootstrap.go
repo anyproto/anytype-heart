@@ -106,7 +106,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	objectCreator := object.NewCreator(sbtProvider)
 	blockService := block.New(tempDirService, sbtProvider)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
-
+	indexerService := indexer.New(blockService, spaceService)
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
@@ -140,7 +140,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(builtintemplate.New()).
 		Register(blockService).
-		Register(indexer.New()).
+		Register(indexerService).
 		Register(status.New()).
 		Register(history.New()).
 		Register(gateway.New()).

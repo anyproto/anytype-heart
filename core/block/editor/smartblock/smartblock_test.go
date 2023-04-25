@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockIndexer"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
 
@@ -38,6 +37,7 @@ func TestSmartBlock_Init(t *testing.T) {
 func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.at.EXPECT().PredefinedBlocks()
 		defer fx.tearDown()
 
 		fx.init([]*model.Block{{Id: "1"}})
@@ -45,12 +45,13 @@ func TestSmartBlock_Apply(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
 		fx.source.EXPECT().ReadOnly()
-		fx.source.EXPECT().PushChange(gomock.Any())
 		var event *pb.Event
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e
 		})
-
+		fx.source.EXPECT().Heads()
+		fx.source.EXPECT().PushChange(gomock.Any())
+		fx.indexer.EXPECT().Index(gomock.Any(), gomock.Any())
 		err := fx.Apply(s)
 		require.NoError(t, err)
 		assert.Equal(t, 1, fx.History().Len())
@@ -85,18 +86,20 @@ func TestBasic_SetAlign(t *testing.T) {
 		st := fx.NewState()
 		require.NoError(t, st.SetAlign(model.Block_AlignRight))
 
-		assert.Equal(t, model.Block_AlignRight, st.NewState().Get("title").Model().Align)
-		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(fx.NewState().Details(), bundle.RelationKeyLayoutAlign.String()))
+		assert.Equal(t, model.Block_AlignRight, st.Get("title").Model().Align)
+		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayoutAlign.String()))
 	})
 
 }
 
 type fixture struct {
-	t      *testing.T
-	ctrl   *gomock.Controller
-	app    *app.App
-	source *mockSource.MockSource
-	store  *testMock.MockObjectStore
+	t       *testing.T
+	ctrl    *gomock.Controller
+	app     *app.App
+	source  *mockSource.MockSource
+	at      *testMock.MockService
+	store   *testMock.MockObjectStore
+	indexer *MockIndexer
 	SmartBlock
 }
 
@@ -106,15 +109,17 @@ func newFixture(t *testing.T) *fixture {
 	at := testMock.NewMockService(ctrl)
 	at.EXPECT().ProfileID().Return("").AnyTimes()
 	at.EXPECT().Account().Return("").AnyTimes()
-
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
 	source.EXPECT().Anytype().AnyTimes().Return(at)
 	source.EXPECT().Virtual().AnyTimes().Return(false)
 	store := testMock.NewMockObjectStore(ctrl)
+	store.EXPECT().GetDetails(gomock.Any()).AnyTimes()
+	store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
+
 	store.EXPECT().Name().Return(objectstore.CName).AnyTimes()
 
-	indexer := mockIndexer.NewMockIndexer(ctrl)
+	indexer := NewMockIndexer(ctrl)
 	indexer.EXPECT().Name().Return("indexer").AnyTimes()
 
 	a := testapp.New()
@@ -127,10 +132,12 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		SmartBlock: New(),
 		t:          t,
+		at:         at,
 		ctrl:       ctrl,
 		store:      store,
 		app:        a.App,
 		source:     source,
+		indexer:    indexer,
 	}
 }
 

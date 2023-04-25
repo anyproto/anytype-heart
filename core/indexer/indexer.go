@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/textileio/go-threads/core/thread"
 	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -65,17 +64,14 @@ var (
 	ftIndexForceMinInterval = time.Second * 10
 )
 
-func New() Indexer {
-	return &indexer{}
+func New(picker block.Picker, spaceService space.Service) Indexer {
+	return &indexer{picker: picker, spaceService: spaceService}
 }
 
 type Indexer interface {
 	ForceFTIndex()
+	Index(ctx context.Context, info smartblock2.DocInfo) error
 	app.ComponentRunnable
-}
-
-type ThreadLister interface {
-	Threads() (thread.IDSlice, error)
 }
 
 type Hasher interface {
@@ -114,9 +110,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
-	i.picker = app.MustComponent[block.Picker](a)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
-	i.spaceService = app.MustComponent[space.Service](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
 	i.quit = make(chan struct{})
@@ -643,7 +637,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 
 	// Touch the object to initiate indexing
 	return block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
-		return sb.Apply(sb.NewState(), smartblock2.NoHistory, smartblock2.NoEvent, smartblock2.NoRestrictions)
+		return i.Index(ctx, sb.GetDocInfo())
 	})
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDetailsModifier"
 )
 
 func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
@@ -18,12 +19,15 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
 	objectStore.EXPECT().Query(gomock.Any(), gomock.Any()).AnyTimes()
-
+	dm := mockDetailsModifier.NewMockDetailsModifier(ctrl)
+	dm.EXPECT().ModifyLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 	a := &Archive{
-		SmartBlock:  sb,
-		Collection:  collection.NewCollection(sb),
-		objectStore: objectStore,
+		SmartBlock:      sb,
+		DetailsModifier: dm,
+		Collection:      collection.NewCollection(sb),
+		objectStore:     objectStore,
 	}
+
 	initCtx := &smartblock.InitContext{IsNewObject: true}
 	if err := a.Init(initCtx); err != nil {
 		return nil, err

@@ -38,6 +38,15 @@ type eventKey int
 
 const eventCreate eventKey = 0
 
+type Service interface {
+	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error)
+	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
+	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+	app.Component
+}
+
 type Creator struct {
 	blockService      BlockService
 	blockPicker       block.Picker

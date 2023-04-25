@@ -1139,6 +1139,7 @@ func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 }
 
 func (m *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+	// todo: review this method. Any other way to do this?
 	for {
 		err := m.updatePendingLocalDetails(id, proc)
 		if errors.Is(err, badger.ErrConflict) {

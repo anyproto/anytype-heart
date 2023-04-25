@@ -1,5 +1,5 @@
-//go:build !gomobile && !windows && !nographviz
-// +build !gomobile,!windows,!nographviz
+//go:build !gomobile && !windows && !nographviz && cgo
+// +build !gomobile,!windows,!nographviz,cgo
 
 package dot
 

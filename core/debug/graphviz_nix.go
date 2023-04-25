@@ -1,9 +1,10 @@
-//go:build (linux || darwin) && !android && !ios && !nographviz && (amd64 || arm64)
+//go:build (linux || darwin) && !android && !ios && !nographviz && (amd64 || arm64) && cgo
 // +build linux darwin
 // +build !android
 // +build !ios
 // +build !nographviz
 // +build amd64 arm64
+// +build cgo
 
 package debug
 

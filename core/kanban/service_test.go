@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
@@ -22,17 +23,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
-
-func getId() string {
-	// TODO: [MR] fix this test
-	return "some id"
-	//thrdId, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//return thrdId.String()
-}
 
 func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
@@ -63,9 +53,9 @@ func Test_GrouperTags(t *testing.T) {
 		},
 	}, nil, ""))
 
-	id1 := getId()
-	id2 := getId()
-	id3 := getId()
+	id1 := bson.NewObjectId().String()
+	id2 := bson.NewObjectId().String()
+	id3 := bson.NewObjectId().String()
 	tp.RegisterStaticType(id1, smartblock2.SmartBlockTypePage)
 	tp.RegisterStaticType(id2, smartblock2.SmartBlockTypePage)
 	tp.RegisterStaticType(id3, smartblock2.SmartBlockTypePage)
