@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type Page struct {
@@ -113,15 +112,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 	tmpls := []template.StateTransformer{
 		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls, layout),
 		bookmarksvc.WithFixedBookmarks(p.Bookmark),
-	}
-
-	// TODO Introduce Converter module
-	// replace title to text block for note
-	if layout == model.ObjectType_note {
-		if name := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyName.String()); name != "" {
-			ctx.State.RemoveDetail(bundle.RelationKeyName.String())
-			tmpls = append(tmpls, template.WithFirstTextBlockContent(name))
-		}
 	}
 
 	return migration.Migration{
