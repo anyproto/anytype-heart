@@ -114,7 +114,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.handleWorkspace(newID, st, oldIDtoNew)
-		return nil, newID, nil
 	}
 
 	converter.UpdateObjectType(oldIDtoNew, st)
