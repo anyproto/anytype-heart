@@ -30,10 +30,6 @@ type Base struct {
 	*model.Block
 }
 
-type Normalizable interface {
-	Normalize() error
-}
-
 func (s *Base) Model() *model.Block {
 	return s.Block
 }
@@ -107,23 +103,6 @@ func (b *Base) Validate() error {
 
 func (b *Base) String() string {
 	return fmt.Sprintf("%s: %T (%d)", b.Id, b.Content, len(b.ChildrenIds))
-}
-
-func (b *Base) Normalize() error {
-	if isBlockEmpty(b) {
-		b.Content = &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		}
-	}
-	return nil
-}
-
-func isBlockEmpty(block *Base) bool {
-	if block.Content == nil {
-		return true
-	}
-	smartBlock := block.Content.(*model.BlockContentOfSmartblock)
-	return smartBlock == nil || smartBlock.Smartblock == nil
 }
 
 func stringSlicesEq(s1, s2 []string) bool {

@@ -2,8 +2,6 @@ package state
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
-
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -43,12 +41,7 @@ func (s *State) normalize(withLayouts bool) (err error) {
 			}
 		}
 		if b.Model().Id == s.RootId() {
-			if n, ok := b.(base.Normalizable); ok {
-				if err := n.Normalize(); err != nil {
-					return fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
-				}
-			}
-
+			s.normalizeSmartBlock(b)
 		}
 	}
 
@@ -289,6 +282,22 @@ func (s *State) removeDuplicates() {
 		handledBlocks[b.Model().Id] = struct{}{}
 		return true
 	})
+}
+
+func (s *State) normalizeSmartBlock(b simple.Block) {
+	if isBlockEmpty(b) {
+		b.Model().Content = &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		}
+	}
+}
+
+func isBlockEmpty(b simple.Block) bool {
+	if b.Model().Content == nil {
+		return true
+	}
+	smartBlock := b.Model().Content.(*model.BlockContentOfSmartblock)
+	return smartBlock == nil || smartBlock.Smartblock == nil
 }
 
 func CleanupLayouts(s *State) (removedCount int) {
