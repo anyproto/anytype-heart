@@ -106,8 +106,6 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		}
 	}
 
-	defer wr.Close()
-
 	queue.SetMessage("export docs")
 	if req.Format == pb.RpcObjectListExport_DOT || req.Format == pb.RpcObjectListExport_SVG {
 		var format = dot.ExportFormatDOT
@@ -164,6 +162,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 
 	queue.Finalize()
+	wr.Close()
 	zipName := getZipName(req.Path)
 	err = os.Rename(wr.Path(), zipName)
 	if err != nil {
