@@ -3,15 +3,15 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	te "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"io"
 )
 
 const (
@@ -30,8 +30,6 @@ func (r *Result) Merge(r2 *Result) {
 	r.snapshots = append(r.snapshots, r2.snapshots...)
 	r.relations = mergeRelationsMaps(r.relations, r2.relations)
 }
-
-var log = logging.Logger("csv-import")
 
 type CSV struct {
 	collectionService *collection.Service

@@ -2,13 +2,14 @@ package txt
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
-	"github.com/google/uuid"
 	"io"
+
+	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -115,7 +116,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 	}
 	snapshots := make([]*converter.Snapshot, 0, len(readers))
 	targetObjects := make([]string, 0, len(readers))
-	for _, rc := range readers {
+	for name, rc := range readers {
 		blocks, err := t.getBlocksForFile(rc)
 		if err != nil {
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -123,7 +124,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 			}
 			continue
 		}
-		sn, id := t.getSnapshot(blocks, p)
+		sn, id := t.getSnapshot(blocks, name)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}

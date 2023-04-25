@@ -121,7 +121,7 @@ func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([
 	}
 	snapshots := make([]*converter.Snapshot, 0, len(readers))
 	targetObjects := make([]string, 0, len(readers))
-	for _, rc := range readers {
+	for name, rc := range readers {
 		blocks, err := h.getBlocksForFile(rc)
 		if err != nil {
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -129,7 +129,7 @@ func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([
 			}
 			continue
 		}
-		sn, id := h.getSnapshot(blocks, p)
+		sn, id := h.getSnapshot(blocks, name)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}

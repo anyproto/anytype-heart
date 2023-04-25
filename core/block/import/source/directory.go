@@ -22,8 +22,8 @@ func (d *Directory) GetFileReaders(importPath string, expectedExt []string) (map
 					log.Errorf("failed to get relative path %s", err)
 					return nil
 				}
-				if isSupportedExtension(filepath.Ext(importPath), expectedExt) {
-					log.Errorf("not suppoted extensions")
+				if !isSupportedExtension(filepath.Ext(path), expectedExt) {
+					log.Errorf("not supported extensions")
 					return nil
 				}
 				f, err := os.Open(path)

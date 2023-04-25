@@ -12,7 +12,7 @@ import (
 
 var log = logging.Logger("source-import")
 
-var extensions = []string{".md", ".csv", ".txt", ".pb", ".json"}
+var extensions = []string{".md", ".csv", ".txt", ".pb", ".json", ".html"}
 
 type Source interface {
 	GetFileReaders(importPath string, ext []string) (map[string]io.ReadCloser, error)
@@ -20,14 +20,14 @@ type Source interface {
 
 func GetSource(importPath string) Source {
 	ext := filepath.Ext(importPath)
-	if strings.EqualFold(ext, ".zip") {
+	switch {
+	case strings.EqualFold(ext, ".zip"):
 		return NewZip()
-	} else if isSupportedExtension(ext, extensions) {
+	case isSupportedExtension(ext, extensions):
 		return NewFile()
-	} else {
+	default:
 		return NewDirectory()
 	}
-	return nil
 }
 
 func isSupportedExtension(ext string, expectedExt []string) bool {

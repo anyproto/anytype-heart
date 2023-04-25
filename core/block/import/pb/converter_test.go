@@ -25,11 +25,11 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	defer os.RemoveAll(path)
 	wr, err := newZipWriter(path)
 	assert.NoError(t, err)
-	f, err := os.Open("testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb")
+	f, err := os.Open("testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
 	reader := bufio.NewReader(f)
 
 	assert.NoError(t, err)
-	assert.NoError(t, wr.WriteFile("bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb", reader))
+	assert.NoError(t, wr.WriteFile("bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb", reader))
 	assert.NoError(t, wr.Close())
 
 	p := &Pb{}
@@ -58,7 +58,7 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 
 	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path: []string{"not exist"},
+			Path: []string{"not exist.zip"},
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -99,7 +99,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	p := &Pb{}
 
-	paths := []string{"testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb", "testdata/test.pb"}
+	paths := []string{"testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb", "testdata/test.pb"}
 	// ALL_OR_NOTHING mode
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
@@ -134,7 +134,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 	p := &Pb{}
 
-	path := "testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb"
+	path := "testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb"
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path:         []string{path},
@@ -151,7 +151,7 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 }
 
 func newZipWriter(path string) (*zipWriter, error) {
-	filename := filepath.Join(path, "Antype"+strconv.FormatInt(rand.Int63(), 10))
+	filename := filepath.Join(path, "Anytype"+strconv.FormatInt(rand.Int63(), 10)+".zip")
 	f, err := os.Create(filename)
 	if err != nil {
 		return nil, err

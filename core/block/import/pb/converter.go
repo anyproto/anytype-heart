@@ -2,9 +2,7 @@ package pb
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -51,9 +50,7 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	params, e := p.GetParams(req.Params)
 	if e != nil || params == nil {
-		errors := converter.NewError()
-		errors.Add("", fmt.Errorf("wrong parameters"))
-		return nil, errors
+		return nil, converter.NewFromError("", fmt.Errorf("wrong parameters"))
 	}
 	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath())
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -111,7 +108,10 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest, path string, allErrors c
 	if len(files) == 0 {
 		return nil, nil
 	}
-	var needToImportWidgets bool
+	var (
+		needToImportWidgets bool
+		profileID           string
+	)
 	profile, err := p.getProfileFromFiles(files)
 	if err != nil {
 		allErrors.Add(constant.ProfileFile, err)
@@ -128,8 +128,9 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest, path string, allErrors c
 			}
 		}
 		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
+		profileID = profile.ProfileId
 	}
-	snapshots, objects := p.getSnapshotsFromFiles(req, files, allErrors, path, profile.ProfileId, needToImportWidgets)
+	snapshots, objects := p.getSnapshotsFromFiles(req, files, allErrors, path, profileID, needToImportWidgets)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, nil
 	}
@@ -189,7 +190,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	for name, file := range pbFiles {
 		snapshot, err := p.getSnapshotForPbFile(name, file, needToCreateWidgets, profileID, path)
 		if err != nil {
-			allErrors.Add(snapshot.FileName, err)
+			allErrors.Add(name, err)
 			if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil
 			}
@@ -197,12 +198,12 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		}
 		if snapshot != nil {
 			allSnapshots = append(allSnapshots, snapshot)
+			// not add sub objects to root collection
+			if snapshot.SbType == smartblock.SmartBlockTypeSubObject {
+				continue
+			}
+			targetObjects = append(targetObjects, snapshot.Id)
 		}
-		// not add sub objects to root collection
-		if snapshot.SbType == smartblock.SmartBlockTypeSubObject {
-			continue
-		}
-		targetObjects = append(targetObjects, snapshot.Id)
 	}
 	return allSnapshots, targetObjects
 }
@@ -223,7 +224,7 @@ func (p *Pb) getSnapshotForPbFile(name string, file io.ReadCloser, needToCreateW
 	if mo.SbType == model.SmartBlockType_ProfilePage {
 		id = p.getIDForUserProfile(mo, profileID, id)
 	}
-	p.fillDetails(name, path, mo, id)
+	p.fillDetails(name, path, mo)
 	return &converter.Snapshot{
 		Id:       id,
 		SbType:   smartblock.SmartBlockType(mo.SbType),
@@ -240,12 +241,12 @@ func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id s
 	return id
 }
 
-func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType, id string) {
-	source := converter.GetSourceDetail(name, path)
+func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
+	sourceDetail := converter.GetSourceDetail(name, path)
 	if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
 		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
+	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(sourceDetail)
 	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
@@ -320,7 +321,7 @@ func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool)
 		}
 		return snapshot, nil
 	}
-	data, err := ioutil.ReadAll(rd)
+	data, err := io.ReadAll(rd)
 	if err != nil {
 		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
 	}
@@ -334,8 +335,9 @@ func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool)
 }
 
 func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
+	defer f.Close()
 	profile := &pb.Profile{}
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

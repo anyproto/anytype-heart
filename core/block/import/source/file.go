@@ -14,7 +14,7 @@ func NewFile() *File {
 
 func (f *File) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
 	shortPath := filepath.Clean(importPath)
-	if isSupportedExtension(filepath.Ext(importPath), expectedExt) {
+	if !isSupportedExtension(filepath.Ext(importPath), expectedExt) {
 		log.Errorf("not expected extension")
 		return nil, nil
 	}

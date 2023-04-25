@@ -2,10 +2,7 @@ package markdown
 
 import (
 	"bufio"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +11,8 @@ import (
 
 	ce "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
@@ -271,7 +270,7 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		files[shortPath].IsRootFile = true
 	}
 	if filepath.Ext(shortPath) == ".md" {
-		b, err := ioutil.ReadAll(f)
+		b, err := io.ReadAll(f)
 		if err != nil {
 			return err
 		}
