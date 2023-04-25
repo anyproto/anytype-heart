@@ -145,6 +145,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 			if err != nil && err != editor.ErrSubObjectAlreadyExists {
 				return nil, err
 			}
+			if id == "" {
+				id = oldIDtoNew[pageID]
+			}
 			newID = id
 			if subObjectDetails != nil {
 				for key, value := range subObjectDetails.GetFields() {

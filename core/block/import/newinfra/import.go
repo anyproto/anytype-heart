@@ -2,10 +2,8 @@ package newinfra
 
 import (
 	"archive/zip"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/google/uuid"
@@ -90,28 +88,15 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *proc
 			return &converter.Response{Error: importError}
 		}
 
-		blocks := convertBlocksToSimple(f.Name, mo)
-		st := state.NewDoc("root", blocks)
 		snapshot := &converter.Snapshot{
 			SbType:   sb.SmartBlockType(mo.SbType),
 			FileName: f.Name,
 			Snapshot: mo.Snapshot,
-			Id:       oldIDToNew[f.Name],
+			Id:       f.Name,
 		}
 
-		converter.UpdateLinksToObjects(st.(*state.State), oldIDToNew, f.Name)
 		res.Snapshots = append(res.Snapshots, snapshot)
 		progress.AddDone(1)
 	}
 	return res
-}
-
-func convertBlocksToSimple(id string, mo pb.MigrationObject) map[string]simple.Block {
-	blocks := make(map[string]simple.Block, 0)
-	if mo.Snapshot != nil {
-		for _, block := range mo.Snapshot.GetBlocks() {
-			blocks[id] = simple.New(block)
-		}
-	}
-	return blocks
 }
