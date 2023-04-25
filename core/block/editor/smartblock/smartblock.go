@@ -659,13 +659,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
-	sb.runIndexer(st)
-
 	changes := st.GetChanges()
+	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		return nil
 	}
-	pushChange := func() {
+	pushChange := func() error {
 		fileDetailsKeys := sb.FileRelationKeys(st)
 		fileDetailsKeysFiltered := fileDetailsKeys[:0]
 		for _, ch := range changes {
@@ -681,25 +680,38 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
 			DoSnapshot:        doSnapshot,
 		}
-		var id string
-		id, err = sb.source.PushChange(pushChangeParams)
+		changeId, err = sb.source.PushChange(pushChangeParams)
 		if err != nil {
-			return
+			return err
 		}
-		sb.Doc.(*state.State).SetChangeId(id)
+		if changeId != "" {
+			sb.Doc.(*state.State).SetChangeId(changeId)
+		}
+		return nil
 	}
 	if !act.IsEmpty() {
 		if len(changes) == 0 && !doSnapshot {
 			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
 		}
-		pushChange()
+		err = pushChange()
+		if err != nil {
+			return err
+		}
 		if sb.undo != nil && addHistory {
 			act.Group = s.GroupId()
 			sb.undo.Add(act)
 		}
 	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
-		pushChange()
+		err = pushChange()
+		if err != nil {
+			return err
+		}
+	}
+
+	if changeId != "" {
+		// if changeId is empty, it means that we didn't push any changes to the source
+		sb.runIndexer(st)
 	}
 	afterPushChangeTime := time.Now()
 	if sendEvent {

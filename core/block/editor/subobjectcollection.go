@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -18,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -250,6 +252,17 @@ func cleanSubObjectDetails(details *types.Struct) *types.Struct {
 
 func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p source.PushChangeParams) (string, error) {
 	return func(p source.PushChangeParams) (string, error) {
+		var hasDetailsChanges bool
+		// optimization as we already have the changes filled in the params
+		for _, ch := range p.Changes {
+			switch ch.Value.(type) {
+			case *pb.ChangeContentValueOfDetailsSet, *pb.ChangeContentValueOfDetailsUnset:
+				hasDetailsChanges = true
+			}
+		}
+		if !hasDetailsChanges {
+			return "", nil
+		}
 		st := c.NewState()
 
 		coll, exists := c.collections[collection]
@@ -291,7 +304,12 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 		if !changed {
 			return "", nil
 		}
-		return "", c.Apply(st, smartblock.NoHooks)
+		err := c.Apply(st, smartblock.NoHooks)
+		if err != nil {
+			return "", err
+		}
+
+		return c.NewState().ChangeId(), nil
 	}
 }
 
