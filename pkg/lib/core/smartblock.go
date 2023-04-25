@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -412,7 +413,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 			ctxProgress.IncrementMissingRecord()
 		}
 	}
-
+	start := time.Now()
 	rec, err := block.node.threadService.Threads().GetRecord(ctx, block.thread.ID, rid)
 	if err != nil {
 		if ctxProgress != nil {
@@ -421,7 +422,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 		return nil, err
 	}
 	if ctxProgress != nil {
-		ctxProgress.IncrementLoadedRecords()
+		ctxProgress.IncrementLoadedRecords(time.Since(start).Seconds())
 	}
 
 	return block.decodeRecord(ctx, rec, true)

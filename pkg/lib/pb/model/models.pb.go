@@ -1436,6 +1436,7 @@ type Block struct {
 	Align           BlockAlign         `protobuf:"varint,6,opt,name=align,proto3,enum=anytype.model.BlockAlign" json:"align,omitempty"`
 	VerticalAlign   BlockVerticalAlign `protobuf:"varint,7,opt,name=verticalAlign,proto3,enum=anytype.model.BlockVerticalAlign" json:"verticalAlign,omitempty"`
 	// Types that are valid to be assigned to Content:
+	//
 	//	*BlockContentOfSmartblock
 	//	*BlockContentOfText
 	//	*BlockContentOfFile
@@ -1875,7 +1876,6 @@ func (m *BlockContent) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_BlockContent proto.InternalMessageInfo
 
-//
 // Layout have no visual representation, but affects on blocks, that it contains.
 // Row/Column layout blocks creates only automatically, after some of a D&D operations, for example
 type BlockContentLayout struct {
@@ -1922,7 +1922,6 @@ func (m *BlockContentLayout) GetStyle() BlockContentLayoutStyle {
 	return BlockContentLayout_Row
 }
 
-//
 // Link: block to link some content from an external sources.
 type BlockContentLink struct {
 	TargetBlockId string                      `protobuf:"bytes,1,opt,name=targetBlockId,proto3" json:"targetBlockId,omitempty"`
@@ -2016,7 +2015,6 @@ func (m *BlockContentLink) GetRelations() []string {
 	return nil
 }
 
-//
 // Divider: block, that contains only one horizontal thin line
 type BlockContentDiv struct {
 	Style BlockContentDivStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.model.BlockContentDivStyle" json:"style,omitempty"`
@@ -2062,7 +2060,6 @@ func (m *BlockContentDiv) GetStyle() BlockContentDivStyle {
 	return BlockContentDiv_Line
 }
 
-//
 // Bookmark is to keep a web-link and to preview a content.
 type BlockContentBookmark struct {
 	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
@@ -3280,6 +3277,7 @@ func (m *BlockContentDataviewObjectOrder) GetObjectIds() []string {
 type BlockContentDataviewGroup struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Types that are valid to be assigned to Value:
+	//
 	//	*BlockContentDataviewGroupValueOfStatus
 	//	*BlockContentDataviewGroupValueOfTag
 	//	*BlockContentDataviewGroupValueOfCheckbox
@@ -3848,7 +3846,6 @@ func (m *BlockContentWidget) GetLayout() BlockContentWidgetLayout {
 	return BlockContentWidget_Link
 }
 
-//
 // Used to decode block meta only, without the content itself
 type BlockMetaOnly struct {
 	Id     string        `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -3902,7 +3899,6 @@ func (m *BlockMetaOnly) GetFields() *types.Struct {
 	return nil
 }
 
-//
 // General purpose structure, uses in Mark.
 type Range struct {
 	From int32 `protobuf:"varint,1,opt,name=from,proto3" json:"from,omitempty"`
@@ -3956,7 +3952,7 @@ func (m *Range) GetTo() int32 {
 	return 0
 }
 
-//*
+// *
 // Contains basic information about a user account
 type Account struct {
 	Id     string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -4042,10 +4038,11 @@ func (m *Account) GetInfo() *AccountInfo {
 	return nil
 }
 
-//*
+// *
 // Avatar of a user's account. It could be an image or color
 type AccountAvatar struct {
 	// Types that are valid to be assigned to Avatar:
+	//
 	//	*AccountAvatarAvatarOfImage
 	//	*AccountAvatarAvatarOfColor
 	Avatar IsAccountAvatarAvatar `protobuf_oneof:"avatar"`
@@ -5323,7 +5320,6 @@ func (m *InternalFlag) GetValue() InternalFlagValue {
 	return InternalFlag_editorDeleteEmpty
 }
 
-//
 // Works with a smart blocks: Page, Dashboard
 // Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
 type ObjectView struct {

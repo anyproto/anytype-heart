@@ -8,8 +8,10 @@ import (
 type ThreadLoadProgress struct {
 	RecordsMissingLocally int
 	RecordsLoaded         int
-	RecordsFailedToLoad   int
-	lk                    sync.Mutex
+	RecordsLoadedSpent    float64
+
+	RecordsFailedToLoad int
+	lk                  sync.Mutex
 }
 
 type contextKey string
@@ -23,10 +25,12 @@ func (p *ThreadLoadProgress) DeriveContext(ctx context.Context) context.Context 
 	return context.WithValue(ctx, ThreadLoadProgressContextKey, p)
 }
 
-func (p *ThreadLoadProgress) IncrementLoadedRecords() {
+func (p *ThreadLoadProgress) IncrementLoadedRecords(spentSeconds float64) {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 	p.RecordsLoaded++
+	p.RecordsLoadedSpent += spentSeconds
+
 }
 
 func (p *ThreadLoadProgress) IncrementFailedRecords() {
@@ -48,6 +52,7 @@ func (p *ThreadLoadProgress) Value() ThreadLoadProgress {
 	return ThreadLoadProgress{
 		RecordsMissingLocally: p.RecordsMissingLocally,
 		RecordsLoaded:         p.RecordsLoaded,
+		RecordsLoadedSpent:    p.RecordsLoadedSpent,
 		RecordsFailedToLoad:   p.RecordsFailedToLoad,
 	}
 }

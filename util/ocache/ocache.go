@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 var (

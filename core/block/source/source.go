@@ -225,6 +225,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 			With("request", request).
 			With("logs", logs).
 			With("records_loaded", v.RecordsLoaded).
+			With("records_loading_spent", v.RecordsLoadedSpent).
 			With("records_missing", v.RecordsMissingLocally).
 			With("spent", spent)
 

@@ -1233,9 +1233,9 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
-- [pb/protos/migration.proto](#pb/protos/migration.proto)
-    - [MigrationObject](#anytype.MigrationObject)
+- [pb/protos/snapshot.proto](#pb/protos/snapshot.proto)
     - [Profile](#anytype.Profile)
+    - [SnapshotWithType](#anytype.SnapshotWithType)
   
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
@@ -1392,7 +1392,6 @@
 | AccountStop | [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request) | [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype.Rpc.Account.Move.Request) | [Rpc.Account.Move.Response](#anytype.Rpc.Account.Move.Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype.Rpc.Account.ConfigUpdate.Request) | [Rpc.Account.ConfigUpdate.Response](#anytype.Rpc.Account.ConfigUpdate.Response) |  |
-| AccountExport | [Rpc.Account.Export.Request](#anytype.Rpc.Account.Export.Request) | [Rpc.Account.Export.Response](#anytype.Rpc.Account.Export.Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype.Rpc.Object.Open.Request) | [Rpc.Object.Open.Response](#anytype.Rpc.Object.Open.Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype.Rpc.Object.Close.Request) | [Rpc.Object.Close.Response](#anytype.Rpc.Object.Close.Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype.Rpc.Object.Show.Request) | [Rpc.Object.Show.Response](#anytype.Rpc.Object.Show.Response) |  |
@@ -10632,6 +10631,8 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | zip | [bool](#bool) |  | save as zip file |
 | includeNested | [bool](#bool) |  | include all nested |
 | includeFiles | [bool](#bool) |  | include all files |
+| includeArchived | [bool](#bool) |  | for migration |
+| includeConfig | [bool](#bool) |  | for migration |
 
 
 
@@ -10649,6 +10650,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | error | [Rpc.Object.ListExport.Response.Error](#anytype.Rpc.Object.ListExport.Response.Error) |  |  |
 | path | [string](#string) |  |  |
 | succeed | [int32](#int32) |  |  |
+| failed | [int32](#int32) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
@@ -19417,26 +19419,10 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="pb/protos/migration.proto"></a>
+<a name="pb/protos/snapshot.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## pb/protos/migration.proto
-
-
-
-<a name="anytype.MigrationObject"></a>
-
-### MigrationObject
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| sbType | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
-| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  |  |
-
-
-
+## pb/protos/snapshot.proto
 
 
 
@@ -19448,10 +19434,26 @@ Precondition: user A and user B opened the same block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| mnemonic | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | avatar | [string](#string) |  |  |
 | address | [string](#string) |  |  |
+| profileId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.SnapshotWithType"></a>
+
+### SnapshotWithType
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sbType | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
+| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  |  |
 
 
 

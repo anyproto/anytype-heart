@@ -1755,6 +1755,7 @@ message Rpc {
                 Error error = 1;
                 string path = 2;
                 int32 succeed = 4;
+                int32 failed = 5;
                 ResponseEvent event = 3;
 
                 message Error {
