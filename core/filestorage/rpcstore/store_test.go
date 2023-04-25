@@ -20,7 +20,6 @@ import (
 	"sort"
 	"sync"
 	"testing"
-	"time"
 )
 
 var ctx = context.Background()
@@ -34,7 +33,7 @@ func TestStore_Put(t *testing.T) {
 		blocks.NewBlock([]byte{'2'}),
 		blocks.NewBlock([]byte{'3'}),
 	}
-	err := fx.Add(ctx, bs)
+	err := fx.add(ctx, bs)
 	assert.NoError(t, err)
 	for _, b := range bs {
 		assert.NotNil(t, fx.serv.data[string(b.Cid().Bytes())])
@@ -47,9 +46,7 @@ func TestStore_DeleteFiles(t *testing.T) {
 	bs := []blocks.Block{
 		blocks.NewBlock([]byte{'1'}),
 	}
-	res := fx.AddAsync(ctx, "spaceId", "fileId", bs)
-	for _ = range res {
-	}
+	require.NoError(t, fx.AddToFile(ctx, "spaceId", "fileId", bs))
 	assert.Len(t, fx.serv.data, 1)
 	assert.Len(t, fx.serv.files, 1)
 	require.NoError(t, fx.DeleteFiles(ctx, "spaceId", "fileId"))
@@ -63,7 +60,7 @@ func TestStore_Get(t *testing.T) {
 		bs := []blocks.Block{
 			blocks.NewBlock([]byte{'1'}),
 		}
-		err := fx.Add(ctx, bs)
+		err := fx.add(ctx, bs)
 		require.NoError(t, err)
 		b, err := fx.Get(ctx, bs[0].Cid())
 		require.NoError(t, err)
@@ -90,7 +87,7 @@ func TestStore_GetMany(t *testing.T) {
 		blocks.NewBlock([]byte{'2'}),
 		blocks.NewBlock([]byte{'3'}),
 	}
-	err := fx.Add(ctx, bs)
+	err := fx.add(ctx, bs)
 	assert.NoError(t, err)
 
 	res := fx.GetMany(ctx, []cid.Cid{
@@ -118,20 +115,10 @@ func TestStore_AddAsync(t *testing.T) {
 		blocks.NewBlock([]byte{'2'}),
 		blocks.NewBlock([]byte{'3'}),
 	}
-	err := fx.Add(ctx, bs[:1])
+	err := fx.add(ctx, bs[:1])
 	assert.NoError(t, err)
 
-	successCh := fx.AddAsync(ctx, "", "", bs)
-	var successCids []cid.Cid
-	for i := 0; i < len(bs); i++ {
-		select {
-		case <-time.After(time.Second):
-			require.True(t, false, "timeout")
-		case c := <-successCh:
-			successCids = append(successCids, c)
-		}
-	}
-	assert.Len(t, successCids, 3)
+	require.NoError(t, fx.AddToFile(ctx, "", "", bs))
 }
 
 func newFixture(t *testing.T) *fixture {

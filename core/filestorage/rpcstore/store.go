@@ -24,7 +24,7 @@ func init() {
 
 type RpcStore interface {
 	fileblockstore.BlockStore
-	AddAsync(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (successCh chan cid.Cid)
+	AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error)
 	DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) (err error)
 	SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error)
 	FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error)
@@ -113,6 +113,10 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 }
 
 func (s *store) Add(ctx context.Context, bs []blocks.Block) error {
+	return ErrUnsupported
+}
+
+func (s *store) add(ctx context.Context, bs []blocks.Block) error {
 	var (
 		ready = make(chan result, len(bs))
 	)
@@ -143,24 +147,8 @@ func (s *store) Add(ctx context.Context, bs []blocks.Block) error {
 	return nil
 }
 
-func (s *store) AddAsync(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (successCh chan cid.Cid) {
-	successCh = make(chan cid.Cid, len(bs))
-	go func() {
-		defer close(successCh)
-		ctx = fileblockstore.CtxWithFileId(ctx, fileId)
-		ctx = fileblockstore.CtxWithSpaceId(ctx, spaceId)
-		if err := s.addAsync(ctx, bs, successCh); err != nil {
-			log.InfoCtx(ctx, "files add async error", zap.Error(err))
-		}
-	}()
-	return
-}
-
-func (s *store) addAsync(ctx context.Context, bs []blocks.Block, successCh chan cid.Cid) (err error) {
-	var (
-		cids  = make([]cid.Cid, 0, len(bs))
-		ready = make(chan result, 1)
-	)
+func (s *store) AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error) {
+	var cids = make([]cid.Cid, 0, len(bs))
 
 	for _, b := range bs {
 		cids = append(cids, b.Cid())
@@ -169,7 +157,7 @@ func (s *store) addAsync(ctx context.Context, bs []blocks.Block, successCh chan 
 	// check blocks for existing
 	checkResult, err := s.checkAvailability(ctx, cids)
 	if err != nil {
-		log.WarnCtx(ctx, "can't check cids availability", zap.Error(err))
+		return err
 	}
 
 	// exclude existing ids
@@ -185,16 +173,7 @@ func (s *store) addAsync(ctx context.Context, bs []blocks.Block, successCh chan 
 	if len(excludeCids) > 0 {
 		// bind existing ids
 		if err = s.bindCids(ctx, excludeCids); err != nil {
-			log.WarnCtx(ctx, "bind error", zap.Error(err))
-		} else {
-			// and send as success
-			for _, c := range excludeCids {
-				select {
-				case successCh <- c:
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-			}
+			return err
 		}
 
 		// filter existing blocks
@@ -208,39 +187,11 @@ func (s *store) addAsync(ctx context.Context, bs []blocks.Block, successCh chan 
 	}
 
 	if len(bs) == 0 {
-		return
+		return nil
 	}
-
-	// put non-existent blocks
-	ready = make(chan result, len(bs))
-	var newPutFunc = func(b blocks.Block) func(c *client) error {
-		return func(c *client) error {
-			return c.put(ctx, b.Cid(), b.RawData())
-		}
-	}
-	for _, b := range bs {
-		if err = s.cm.WriteOp(ctx, ready, newPutFunc(b), b.Cid()); err != nil {
-			log.Info("addAsync add op error", zap.Error(err))
-			return
-		}
-	}
-	for i := 0; i < len(bs); i++ {
-		select {
-		case res := <-ready:
-			if res.err == nil {
-				select {
-				case successCh <- res.cid:
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-			} else {
-				log.Info("addAsync: task error", zap.Error(res.err))
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-	return
+	ctx = fileblockstore.CtxWithSpaceId(ctx, spaceId)
+	ctx = fileblockstore.CtxWithFileId(ctx, fileId)
+	return s.add(ctx, bs)
 }
 
 func (s *store) checkAvailability(ctx context.Context, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error) {
