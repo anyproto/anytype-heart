@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -76,7 +77,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithEmpty,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		withDefaultWidgets,
+		template.WithCondition(ctx.App.MustComponent(config.CName).(*config.Config).NewAccount, withDefaultWidgets),
 	)
 }
 
