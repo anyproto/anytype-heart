@@ -70,9 +70,6 @@ type Service interface {
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
-	FileStore() filestore.FileStore // deprecated
-	ThreadsIds() ([]string, error)  // deprecated
-
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 
 	ProfileInfo
@@ -119,10 +116,6 @@ type Anytype struct {
 	tmpFolderAutocreate sync.Once
 	tempDir             string
 	commonFiles         fileservice.FileService
-}
-
-func (a *Anytype) ThreadsIds() ([]string, error) {
-	return nil, nil
 }
 
 func New() *Anytype {

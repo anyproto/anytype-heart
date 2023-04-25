@@ -11,22 +11,25 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var getFileTimeout = time.Second * 5
 
-func NewFiles(a core.Service, id string) (s Source) {
+func NewFiles(a core.Service, fileStore filestore.FileStore, id string) (s Source) {
 	return &files{
-		id: id,
-		a:  a,
+		id:        id,
+		a:         a,
+		fileStore: fileStore,
 	}
 }
 
 type files struct {
-	id string
-	a  core.Service
+	id        string
+	a         core.Service
+	fileStore filestore.FileStore
 }
 
 func (v *files) ReadOnly() bool {
@@ -120,7 +123,7 @@ func (v *files) PushChange(params PushChangeParams) (id string, err error) {
 }
 
 func (v *files) ListIds() ([]string, error) {
-	return v.a.FileStore().ListTargets()
+	return v.fileStore.ListTargets()
 }
 
 func (v *files) Close() (err error) {

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 )
 
@@ -34,7 +37,8 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
-	files, err := at.FileStore().ListTargets()
+	fileStore := app.MustComponent[filestore.FileStore](mw.app)
+	files, err := fileStore.ListTargets()
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}

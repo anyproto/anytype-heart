@@ -44,6 +44,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -134,6 +135,7 @@ type Service struct {
 	objectFactory *editor.ObjectFactory
 	clientService space.Service
 	commonAccount accountservice.Service
+	fileStore     filestore.FileStore
 }
 
 func (s *Service) Name() string {
@@ -156,6 +158,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.clientService = a.MustComponent(space.CName).(space.Service)
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
+	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.cache = s.createCache()
 	s.app = a
 	return
@@ -694,7 +697,7 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 			if err = s.objectStore.DeleteObject(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from objectstore: %s", err.Error())
 			}
-			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
+			if err = s.fileStore.DeleteByHash(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
 			}
 			// space will be reclaimed on the next GC cycle
@@ -702,7 +705,7 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
 				continue
 			}
-			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
+			if err = s.fileStore.DeleteFileKeys(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
 			}
 		}

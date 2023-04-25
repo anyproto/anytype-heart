@@ -22,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -38,6 +39,7 @@ type ObjectCreator struct {
 	objCreator      objectCreator
 	core            core.Service
 	objectStore     objectstore.ObjectStore
+	fileStore       filestore.FileStore
 	updater         Updater
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
@@ -51,6 +53,7 @@ func NewCreator(service *block.Service,
 	syncFactory *syncer.Factory,
 	relationCreator RelationCreator,
 	objectStore objectstore.ObjectStore,
+	fileStore filestore.FileStore,
 ) Creator {
 	return &ObjectCreator{
 		service:         service,
@@ -61,6 +64,7 @@ func NewCreator(service *block.Service,
 		relationCreator: relationCreator,
 		oldIDToNew:      map[string]string{},
 		objectStore:     objectStore,
+		fileStore:       fileStore,
 	}
 }
 
@@ -237,13 +241,13 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 		if err = oc.objectStore.DeleteObject(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteByHash(hash); err != nil {
+		if err = oc.fileStore.DeleteByHash(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
 		}
 		if _, err = oc.core.FileOffload(hash); err != nil {
 			log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteFileKeys(hash); err != nil {
+		if err = oc.fileStore.DeleteFileKeys(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
 		}
 	}

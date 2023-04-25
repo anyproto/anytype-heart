@@ -27,6 +27,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -98,7 +99,8 @@ const (
 )
 
 type indexer struct {
-	store objectstore.ObjectStore
+	store     objectstore.ObjectStore
+	fileStore filestore.FileStore
 	// todo: move logstore to separate component?
 	anytype         core.Service
 	source          source.Service
@@ -127,6 +129,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.doc = a.MustComponent(doc.CName).(doc.Service)
+	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
@@ -339,7 +342,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	}
 
 	if reindex&reindexFileKeys != 0 {
-		err = i.anytype.FileStore().RemoveEmpty()
+		err = i.fileStore.RemoveEmpty()
 		if err != nil {
 			log.Errorf("reindex failed to RemoveEmpty filekeys: %v", err.Error())
 		} else {
