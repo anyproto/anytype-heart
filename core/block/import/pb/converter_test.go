@@ -36,7 +36,10 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 
 	zipPath := wr.Path()
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{zipPath}}},
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path:                    []string{zipPath},
+			CreateObjectsCollection: true,
+		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -55,7 +58,10 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 	p := &Pb{}
 
 	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"not exist"}}},
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path:                    []string{"not exist"},
+			CreateObjectsCollection: true,
+		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -80,7 +86,10 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 	p := &Pb{}
 
 	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{wr.Path()}}},
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path:                    []string{wr.Path()},
+			CreateObjectsCollection: true,
+		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -96,7 +105,10 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	paths := []string{"testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb", "testdata/test.pb"}
 	// ALL_OR_NOTHING mode
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: paths}},
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path:                    paths,
+			CreateObjectsCollection: true,
+		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -108,7 +120,10 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	// IGNORE_ERRORS mode
 	res, ce = p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: paths}},
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path:                    paths,
+			CreateObjectsCollection: true,
+		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
