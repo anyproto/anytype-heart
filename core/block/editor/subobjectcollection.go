@@ -115,17 +115,6 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	return c.SmartBlock.Init(ctx)
 }
 
-func (c *SubObjectCollection) ListAllIds() (ids []string) {
-	st := c.NewState()
-	for _, coll := range objectTypeToCollection {
-		data := st.GetSubObjectCollection(coll)
-		for subId := range data.Fields {
-			ids = append(ids, c.getId(coll, subId))
-		}
-	}
-	return
-}
-
 // GetAllDocInfoIterator returns all sub objects in the collection
 func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (contin bool)) {
 	st := c.NewState()
@@ -465,5 +454,4 @@ func (p *SubObjectCollection) TryClose(objectTTL time.Duration) (res bool, err e
 
 type SubObjectCollectionGetter interface {
 	GetAllDocInfoIterator(func(smartblock.DocInfo) bool)
-	ListAllIds() []string
 }
