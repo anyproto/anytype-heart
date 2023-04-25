@@ -195,9 +195,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 			id    string
 			exist bool
 		)
-		if snapshot.SbType == sb.SmartBlockTypeSubObject {
-			continue
-		}
+
 		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot.Snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
 			if snapshot.SbType == sb.SmartBlockTypeWorkspace || snapshot.SbType == sb.SmartBlockTypeWorkspaceOld {

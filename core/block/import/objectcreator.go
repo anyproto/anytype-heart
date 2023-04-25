@@ -137,20 +137,22 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 		}
 	}
 
-	if sn.SbType == coresb.SmartBlockTypeSubObject && !existing {
-		ot := st.ObjectTypes()
-		req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
-		id, subObjectDetails, err := oc.service.CreateObject(req, "")
-		if err != nil && err != editor.ErrSubObjectAlreadyExists {
-			return nil, err
-		}
-		newID = id
-		if subObjectDetails != nil {
-			for key, value := range subObjectDetails.GetFields() {
-				details = append(details, &pb.RpcObjectSetDetailsDetail{
-					Key:   key,
-					Value: value,
-				})
+	if sn.SbType == coresb.SmartBlockTypeSubObject {
+		if !existing {
+			ot := st.ObjectTypes()
+			req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
+			id, subObjectDetails, err := oc.service.CreateObject(req, "")
+			if err != nil && err != editor.ErrSubObjectAlreadyExists {
+				return nil, err
+			}
+			newID = id
+			if subObjectDetails != nil {
+				for key, value := range subObjectDetails.GetFields() {
+					details = append(details, &pb.RpcObjectSetDetailsDetail{
+						Key:   key,
+						Value: value,
+					})
+				}
 			}
 		}
 		err = oc.service.Do(newID, func(b sb.SmartBlock) error {

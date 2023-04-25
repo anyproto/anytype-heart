@@ -36,26 +36,24 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 		}
 	}
 
-	if bundledSmartBlockType(sbType) {
-		if snapshot.GetDetails() != nil {
-			details := snapshot.GetDetails()
-			if details.GetFields() != nil {
-				name := pbtypes.GetString(details, bundle.RelationKeyName.String())
-				ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
-					Filters: []*model.BlockContentDataviewFilter{
-						{
-							Condition:   model.BlockContentDataviewFilter_Equal,
-							RelationKey: bundle.RelationKeyName.String(),
-							Value:       pbtypes.String(name),
-						},
+	if snapshot.GetDetails() != nil && sbType == sb.SmartBlockTypeSubObject {
+		details := snapshot.GetDetails()
+		if details.GetFields() != nil {
+			name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+			ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						RelationKey: bundle.RelationKeyName.String(),
+						Value:       pbtypes.String(name),
 					},
-				}, []sb.SmartBlockType{sbType})
-				if err != nil {
-					return "", false, err
-				}
-				if len(ids) > 0 {
-					return ids[0], true, err
-				}
+				},
+			}, []sb.SmartBlockType{sbType})
+			if err != nil {
+				return "", false, err
+			}
+			if len(ids) > 0 {
+				return ids[0], true, err
 			}
 		}
 	}
