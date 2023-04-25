@@ -44,14 +44,9 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	}
 
 	// remove empty layouts
-	for _, b := range s.blocks {
-		if layout := b.Model().GetLayout(); layout != nil {
-			if len(b.Model().ChildrenIds) == 0 {
-				s.Unlink(b.Model().Id)
-			}
-			// load parent for checking
-			s.GetParentOf(b.Model().Id)
-		}
+	s.removeEmptyLayoutBlocks(s.blocks)
+	if s.parent != nil {
+		s.removeEmptyLayoutBlocks(s.parent.blocks)
 	}
 	// normalize rows
 	for _, b := range s.blocks {
@@ -63,6 +58,18 @@ func (s *State) normalize(withLayouts bool) (err error) {
 		return s.normalizeTree()
 	}
 	return
+}
+
+func (s *State) removeEmptyLayoutBlocks(blocks map[string]simple.Block) {
+	for _, b := range blocks {
+		if layout := b.Model().GetLayout(); layout != nil {
+			if len(b.Model().ChildrenIds) == 0 {
+				s.Unlink(b.Model().Id)
+			}
+			// load parent for checking
+			s.GetParentOf(b.Model().Id)
+		}
+	}
 }
 
 func (s *State) normalizeChildren(b simple.Block) {
