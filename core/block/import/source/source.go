@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/exp/slices"
+	"github.com/samber/lo"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
-var log = logging.Logger("source-import")
+var log = logging.Logger("import-source")
 
 var extensions = []string{".md", ".csv", ".txt", ".pb", ".json", ".html"}
 
@@ -19,11 +19,11 @@ type Source interface {
 }
 
 func GetSource(importPath string) Source {
-	ext := filepath.Ext(importPath)
+	importFileExt := filepath.Ext(importPath)
 	switch {
-	case strings.EqualFold(ext, ".zip"):
+	case strings.EqualFold(importFileExt, ".zip"):
 		return NewZip()
-	case isSupportedExtension(ext, extensions):
+	case isSupportedExtension(importFileExt, extensions):
 		return NewFile()
 	default:
 		return NewDirectory()
@@ -31,5 +31,5 @@ func GetSource(importPath string) Source {
 }
 
 func isSupportedExtension(ext string, expectedExt []string) bool {
-	return slices.Contains(expectedExt, ext)
+	return lo.Contains(expectedExt, ext)
 }

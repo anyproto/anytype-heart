@@ -6,21 +6,24 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anytypeio/any-sync/util/slice"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/rand"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/constant"
@@ -37,6 +40,7 @@ type Pb struct {
 	service     *collection.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
 	core        core.Service
+	iconOption  int64
 }
 
 func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypeProvider, core core.Service) converter.Converter {
@@ -52,7 +56,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	if e != nil || params == nil {
 		return nil, converter.NewFromError("", fmt.Errorf("wrong parameters"))
 	}
-	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath())
+	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath(), req.IsMigration)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
@@ -74,14 +78,17 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 			allSnapshots = append(allSnapshots, rootCol)
 		}
 	}
-	progress.SetTotal(int64(len(allSnapshots)) * 2)
+	progress.SetTotal(int64(len(allSnapshots)))
 	if allErrors.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots}, nil
 	}
 	return &converter.Response{Snapshots: allSnapshots}, allErrors
 }
 
-func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, allPaths []string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+	allPaths []string,
+	isMigration bool) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allErrors := converter.NewError()
@@ -90,14 +97,17 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 			ce := converter.NewFromError(path, err)
 			return nil, nil, ce
 		}
-		snapshots, objects := p.handlePath(req, path, allErrors)
+		snapshots, objects := p.handlePath(req, path, allErrors, isMigration)
 		allSnapshots = append(allSnapshots, snapshots...)
 		targetObjects = append(targetObjects, objects...)
 	}
 	return allSnapshots, targetObjects, allErrors
 }
 
-func (p *Pb) handlePath(req *pb.RpcObjectImportRequest, path string, allErrors converter.ConvertError) ([]*converter.Snapshot, []string) {
+func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
+	path string,
+	allErrors converter.ConvertError,
+	isMigration bool) ([]*converter.Snapshot, []string) {
 	files, err := p.readFile(path)
 	if err != nil {
 		allErrors.Add(path, err)
@@ -130,11 +140,10 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest, path string, allErrors c
 		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
 		profileID = profile.ProfileId
 	}
-	snapshots, objects := p.getSnapshotsFromFiles(req, files, allErrors, path, profileID, needToImportWidgets)
+	snapshots, objects := p.getSnapshotsFromFiles(req, files, allErrors, path, profileID, needToImportWidgets, isMigration)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, nil
 	}
-	p.setDashboardID(profile, snapshots)
 	return snapshots, objects
 }
 
@@ -155,11 +164,8 @@ func (p *Pb) getProfileFromFiles(files map[string]io.ReadCloser) (*pb.Profile, e
 	return profile, nil
 }
 
-func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot) {
-	var (
-		newSpaceDashBoardID string
-		workspace           *converter.Snapshot
-	)
+func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Snapshot) {
+	var workspace *converter.Snapshot
 	if profile == nil {
 		return
 	}
@@ -167,28 +173,30 @@ func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot
 		if snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
 			workspace = snapshot
 		}
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		normalizedID := whitespace.WhitespaceNormalizeString(id)
-		normalizedSpaceDashboardID := whitespace.WhitespaceNormalizeString(profile.SpaceDashboardId)
-		if strings.EqualFold(normalizedID, normalizedSpaceDashboardID) {
-			newSpaceDashBoardID = snapshot.Id
+	}
+
+	if workspace != nil {
+		spaceName := pbtypes.GetString(workspace.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		if spaceName == "" || spaceName == "Personal space" { // migrate legacy name
+			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(profile.Name)
+		}
+
+		iconOption := pbtypes.GetInt64(workspace.Snapshot.Data.Details, bundle.RelationKeyIconOption.String())
+		if iconOption == 0 {
+			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.getIconOption())
 		}
 	}
 
-	if workspace != nil && newSpaceDashBoardID != "" {
-		workspace.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(newSpaceDashBoardID)
-	}
 }
-
 func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	pbFiles map[string]io.ReadCloser,
 	allErrors converter.ConvertError,
 	path, profileID string,
-	needToCreateWidgets bool) ([]*converter.Snapshot, []string) {
+	needToCreateWidgets, isMigration bool) ([]*converter.Snapshot, []string) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
-		snapshot, err := p.getSnapshotForPbFile(name, file, needToCreateWidgets, profileID, path)
+		snapshot, err := p.getSnapshotForPbFile(name, profileID, path, file, needToCreateWidgets, isMigration)
 		if err != nil {
 			allErrors.Add(name, err)
 			if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -208,48 +216,76 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	return allSnapshots, targetObjects
 }
 
-func (p *Pb) getSnapshotForPbFile(name string, file io.ReadCloser, needToCreateWidgets bool, profileID string, path string) (*converter.Snapshot, error) {
+func (p *Pb) getSnapshotForPbFile(name, profileID, path string,
+	file io.ReadCloser,
+	needToCreateWidgets, isMigration bool) (*converter.Snapshot, error) {
 	if name == constant.ProfileFile || name == configFile {
 		return nil, nil
 	}
 	id := uuid.New().String()
-	mo, errGS := p.GetSnapshot(file, name, needToCreateWidgets)
+	snapshot, errGS := p.GetSnapshot(file, name, needToCreateWidgets)
 	file.Close()
 	if errGS != nil {
 		return nil, errGS
 	}
-	if mo == nil {
+	if snapshot == nil {
 		return nil, nil
 	}
-	if mo.SbType == model.SmartBlockType_ProfilePage {
-		id = p.getIDForUserProfile(mo, profileID, id)
+	if _, ok := model.SmartBlockType_name[int32(snapshot.SbType)]; !ok {
+		newSbType := model.SmartBlockType_Page
+		if int32(snapshot.SbType) == 96 { // fallback for objectType smartblocktype
+			newSbType = model.SmartBlockType_SubObject
+		}
+		snapshot.SbType = newSbType
 	}
-	p.fillDetails(name, path, mo)
+	if snapshot.SbType == model.SmartBlockType_SubObject {
+		id = p.getIDForSubObject(snapshot, id)
+	}
+	if snapshot.SbType == model.SmartBlockType_ProfilePage {
+		id = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
+		p.setProfileIconOption(snapshot, profileID)
+	}
+	p.fillDetails(name, path, snapshot)
 	return &converter.Snapshot{
 		Id:       id,
-		SbType:   smartblock.SmartBlockType(mo.SbType),
+		SbType:   smartblock.SmartBlockType(snapshot.SbType),
 		FileName: name,
-		Snapshot: mo.Snapshot,
+		Snapshot: snapshot.Snapshot,
 	}, nil
 }
 
-func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string) string {
+func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	if objectID == profileID {
+	if objectID == profileID && isMigration {
 		return p.core.ProfileID()
 	}
 	return id
 }
 
+func (p *Pb) setProfileIconOption(mo *pb.SnapshotWithType, profileID string) {
+	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	if objectID != profileID {
+		return
+	}
+	mo.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.getIconOption())
+}
+
+func (p *Pb) getIconOption() int64 {
+	if p.iconOption == 0 {
+		p.iconOption = int64(rand.Intn(16) + 1)
+	}
+	return p.iconOption
+}
+
 func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
-	sourceDetail := converter.GetSourceDetail(name, path)
 	if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
 		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(sourceDetail)
 	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
+	sourceDetail := converter.GetSourceDetail(name, path)
+	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceDetail)
 }
 
 func (p *Pb) Name() string {
@@ -292,21 +328,32 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors con
 			}
 			continue
 		}
-		converter.UpdateRelationsIDs(st.(*state.State), snapshot.Id, newIDToOld)
-		snapshot.Snapshot.Data.Blocks = st.Blocks()
+		converter.UpdateRelationsIDs(st.(*state.State), newIDToOld)
+		converter.UpdateObjectType(newIDToOld, st.(*state.State))
+		p.updateObjectsIDsInCollection(st.(*state.State), newIDToOld)
+		p.updateSnapshot(snapshot, st.(*state.State))
 	}
 }
 
+func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
+	snapshot.Snapshot.Data.Details = pbtypes.StructMerge(snapshot.Snapshot.Data.Details, st.CombinedDetails(), false)
+	snapshot.Snapshot.Data.Blocks = st.Blocks()
+	snapshot.Snapshot.Data.ObjectTypes = st.ObjectTypes()
+	snapshot.Snapshot.Data.Collections = st.Store()
+}
+
 func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
-	localRelationsToAdd := make([]string, 0, len(bundle.LocalRelationsKeys))
-	for _, key := range bundle.LocalRelationsKeys {
-		if key == bundle.RelationKeyIsFavorite.String() || key == bundle.RelationKeyIsArchived.String() {
-			continue
-		}
-		localRelationsToAdd = append(localRelationsToAdd, key)
-	}
+	removeKeys := make([]string, 0, len(bundle.LocalRelationsKeys)+len(bundle.DerivedRelationsKeys))
+	removeKeys = slice.Filter(removeKeys, func(key string) bool {
+		// preserve some keys we have special cases for
+		return key != bundle.RelationKeyIsFavorite.String() &&
+			key != bundle.RelationKeyIsArchived.String() &&
+			key != bundle.RelationKeyCreatedDate.String() &&
+			key != bundle.RelationKeyLastModifiedDate.String()
+	})
+
 	for _, snapshot := range snapshots {
-		details := pbtypes.StructCutKeys(snapshot.Snapshot.Data.Details, append(bundle.DerivedRelationsKeys, localRelationsToAdd...))
+		details := pbtypes.StructCutKeys(snapshot.Snapshot.Data.Details, removeKeys)
 		snapshot.Snapshot.Data.Details = details
 	}
 }
@@ -349,4 +396,25 @@ func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
 
 func (p *Pb) needToImportWidgets(address string, accountID string) bool {
 	return address == accountID
+}
+
+func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string) {
+	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
+	for i, id := range objectsInCollections {
+		if newID, ok := newToOldIDs[id]; ok {
+			objectsInCollections[i] = newID
+		}
+	}
+	if len(objectsInCollections) != 0 {
+		st.UpdateStoreSlice(template.CollectionStoreKey, objectsInCollections)
+	}
+}
+
+// getIDForSubObject preserves original id from snapshot for relations and object types
+func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
+	originalId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	if strings.HasPrefix(originalId, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(originalId, addr.RelationKeyToIdPrefix) {
+		return originalId
+	}
+	return id
 }
