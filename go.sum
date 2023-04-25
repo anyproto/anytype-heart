@@ -89,8 +89,8 @@ github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYU
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31 h1:fCXBjRAxXq4pKyfH8xmYPfjL/E6v5zTTxYrIKDz8ufw=
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
-github.com/anytypeio/any-sync v0.0.20 h1:gx3V77lVTvd1sSxdt6pN2bpg9lfLZo4ZpULTXH1DVGU=
-github.com/anytypeio/any-sync v0.0.20/go.mod h1:dZDvctmda+TlONGCX0+IHdnew2ckg7NIkIUUcVdRPPo=
+github.com/anytypeio/any-sync v0.0.21 h1:X3JrGI22GX3JXS6TYFTYpGaHJT1XIQJdu+y/APx6pU8=
+github.com/anytypeio/any-sync v0.0.21/go.mod h1:dZDvctmda+TlONGCX0+IHdnew2ckg7NIkIUUcVdRPPo=
 github.com/anytypeio/go-chash v0.0.2 h1:BSpyMC3HXNkf2eosQrHM4svov0DrvxL9tb4gnHbdmbA=
 github.com/anytypeio/go-chash v0.0.2/go.mod h1:G+R6q7jYgNa52NqcRhnNm28pogfWW+cuHtgBktrc2QA=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
