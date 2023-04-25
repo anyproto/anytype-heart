@@ -61,14 +61,13 @@ type SourceIdEndodedDetails interface {
 	DetailsFromId() (*types.Struct, error)
 }
 
-// TODO Extract implementation from sources impl
-type SourceType interface {
+type IDsLister interface {
 	ListIds() ([]string, error)
 }
 
 type SourceWithType interface {
 	Source
-	SourceType
+	IDsLister
 }
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")

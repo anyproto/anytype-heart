@@ -36,7 +36,7 @@ type Service interface {
 	RemoveStaticSource(id string)
 
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
-	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
+	IDsListerBySmartblockType(blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
 
@@ -124,7 +124,7 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 	return newTreeSource(id, deps)
 }
 
-func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error) {
+func (s *service) IDsListerBySmartblockType(blockType smartblock.SmartBlockType) (IDsLister, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{}, nil
@@ -143,11 +143,10 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 			return nil, err
 		} else {
 			return &source{
+				smartblockType: blockType,
 				coreService:    s.coreService,
 				spaceService:   s.spaceService,
-				smartblockType: blockType,
 				sbtProvider:    s.sbtProvider,
-				fileService:    s.fileService,
 			}, nil
 		}
 	}

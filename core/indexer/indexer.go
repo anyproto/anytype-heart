@@ -682,11 +682,11 @@ func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock
 func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, error) {
 	var ids []string
 	for _, t := range sbt {
-		st, err := i.source.SourceTypeBySbType(t)
+		lister, err := i.source.IDsListerBySmartblockType(t)
 		if err != nil {
 			return nil, err
 		}
-		idsT, err := st.ListIds()
+		idsT, err := lister.ListIds()
 		if err != nil {
 			return nil, err
 		}

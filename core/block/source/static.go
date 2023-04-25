@@ -54,7 +54,6 @@ func (s *static) PushChange(params PushChangeParams) (id string, err error) {
 }
 
 func (s *static) ListIds() (result []string, err error) {
-	// TODO move this code to service.ListStaticIDs
 	s.s.mu.Lock()
 	defer s.s.mu.Unlock()
 	for id, src := range s.s.staticIds {
