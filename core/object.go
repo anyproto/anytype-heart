@@ -733,9 +733,8 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 }
 
 func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
-	response := func(setId string, err error) *pb.RpcObjectToSetResponse {
+	response := func(err error) *pb.RpcObjectToSetResponse {
 		resp := &pb.RpcObjectToSetResponse{
-			SetId: setId,
 			Error: &pb.RpcObjectToSetResponseError{
 				Code: pb.RpcObjectToSetResponseError_NULL,
 			},
@@ -747,16 +746,15 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		return resp
 	}
 	var (
-		setId string
-		err   error
+		err error
 	)
 	err = mw.doBlockService(func(bs *block.Service) error {
-		if setId, err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
+		if err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
 			return err
 		}
 		return nil
 	})
-	return response(setId, err)
+	return response(err)
 }
 
 func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {

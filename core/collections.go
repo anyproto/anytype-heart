@@ -68,9 +68,8 @@ func (mw *Middleware) ObjectCollectionSort(cctx context.Context, req *pb.RpcObje
 }
 
 func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObjectToCollectionRequest) *pb.RpcObjectToCollectionResponse {
-	response := func(colID string, err error) *pb.RpcObjectToCollectionResponse {
+	response := func(err error) *pb.RpcObjectToCollectionResponse {
 		resp := &pb.RpcObjectToCollectionResponse{
-			CollectionId: colID,
 			Error: &pb.RpcObjectToCollectionResponseError{
 				Code: pb.RpcObjectToCollectionResponseError_NULL,
 			},
@@ -82,14 +81,13 @@ func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObject
 		return resp
 	}
 	var (
-		setID string
-		err   error
+		err error
 	)
 	err = mw.doCollectionService(func(cs *collection.Service) (err error) {
-		if setID, err = cs.ObjectToCollection(req.ContextId); err != nil {
+		if err = cs.ObjectToCollection(req.ContextId); err != nil {
 			return err
 		}
 		return nil
 	})
-	return response(setID, err)
+	return response(err)
 }

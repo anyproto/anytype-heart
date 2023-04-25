@@ -214,7 +214,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	return coresb.SmartBlockTypePage, details, newState, nil
 }
 
-func (s *Service) ObjectToCollection(id string) (string, error) {
+func (s *Service) ObjectToCollection(id string) error {
 	if err := block.Do(s.picker, id, func(b smartblock.SmartBlock) error {
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
@@ -225,10 +225,10 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 		st.SetObjectType(bundle.TypeKeyCollection.URL())
 		return b.Apply(st)
 	}); err != nil {
-		return "", err
+		return err
 	}
 
-	return id, nil
+	return nil
 }
 
 func (s *Service) generateFilters(typesAndRels []string) []*model.BlockContentDataviewFilter {

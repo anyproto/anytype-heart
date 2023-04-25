@@ -149,7 +149,7 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBloc
 	return
 }
 
-func (s *Service) ObjectToSet(id string, source []string) (string, error) {
+func (s *Service) ObjectToSet(id string, source []string) error {
 	if err := s.Do(id, func(b smartblock.SmartBlock) error {
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
@@ -161,10 +161,10 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 		st.SetObjectType(bundle.TypeKeySet.URL())
 		return b.Apply(st)
 	}); err != nil {
-		return "", err
+		return err
 	}
 
-	return id, nil
+	return nil
 }
 
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {

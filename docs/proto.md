@@ -12082,7 +12082,6 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ToCollection.Response.Error](#anytype.Rpc.Object.ToCollection.Response.Error) |  |  |
-| collectionId | [string](#string) |  |  |
 
 
 
