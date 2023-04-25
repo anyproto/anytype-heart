@@ -61,12 +61,12 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 	// single tag groups
 	for _, v := range t.Records {
 		if tagOption := pbtypes.GetString(v.Details, bundle.RelationKeyRelationKey.String()); tagOption == t.Key {
-			optionId := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
-			if !uniqMap[optionId] {
-				uniqMap[optionId] = true
+			optionID := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
+			if !uniqMap[optionID] {
+				uniqMap[optionID] = true
 				groups = append(groups, Group{
-					Id:   optionId,
-					Data: GroupData{Ids: []string{optionId}},
+					Id:   optionID,
+					Data: GroupData{Ids: []string{optionID}},
 				})
 			}
 		}

@@ -10,20 +10,27 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
+var kanbanKey = bundle.RelationKeyTag.String()
+
 func genTagEntries() []*entry {
 	return []*entry{
-		{id: "id_one", data: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyTag.String(): pbtypes.StringList([]string{"tag_1"}),
+		makeTag("tag_1"),
+		makeTag("tag_2"),
+		makeTag("tag_3"),
+
+		{id: "record_one", data: &types.Struct{Fields: map[string]*types.Value{
+			kanbanKey: pbtypes.StringList([]string{"tag_1"}),
 		}}},
-		{id: "id_two", data: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyTag.String(): pbtypes.StringList([]string{"tag_2"}),
+		{id: "record_two", data: &types.Struct{Fields: map[string]*types.Value{
+			kanbanKey: pbtypes.StringList([]string{"tag_2"}),
 		}}},
-		{id: "id_three", data: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyTag.String(): pbtypes.StringList([]string{"tag_1", "tag_2", "tag_3"}),
+		{id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
+			kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_2", "tag_3"}),
 		}}},
 	}
 }
@@ -33,13 +40,21 @@ func tagEntriesToGroups(entries []*entry) []*model.BlockContentDataviewGroup {
 	for _, e := range entries {
 		recs = append(recs, database.Record{Details: e.data})
 	}
-	tags := kanban.GroupTag{Key: bundle.RelationKeyTag.String(), Records: recs}
+	tags := kanban.GroupTag{Key: kanbanKey, Records: recs}
 	groups, err := tags.MakeDataViewGroups()
 	if err != nil {
 		panic(err)
 	}
 
 	return groups
+}
+
+func makeTag(key string) *entry {
+	return &entry{id: key, data: &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyId.String():          pbtypes.String(key),
+		bundle.RelationKeyRelationKey.String(): pbtypes.String(kanbanKey),
+		bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+	}}}
 }
 
 func TestGroupTag(t *testing.T) {
@@ -50,64 +65,95 @@ func TestGroupTag(t *testing.T) {
 
 	f, err := database.NewFilters(q, nil, nil, time.Now().Location())
 	require.NoError(t, err)
+	filterTag := filter.Not{Filter: filter.Empty{Key: kanbanKey}}
+	f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}
+	f.FilterObj = filter.OrFilters{f.FilterObj, filter.AndFilters{
+		filter.Eq{
+			Key:   bundle.RelationKeyRelationKey.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(kanbanKey),
+		},
+		filter.Eq{
+			Key:   bundle.RelationKeyType.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		},
+	}}
 
-	t.Run("change existing groups", func(t *testing.T) {
+	t.Run("change_existing_groups", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "id_three", data: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTag.String(): pbtypes.StringList([]string{"tag_1", "tag_2"}),
+			id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_2"}),
 			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 1, 1)
 	})
 
-	t.Run("add new group", func(t *testing.T) {
+	t.Run("add_new_group_from_existing_tags", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "id_four", data: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTag.String(): pbtypes.StringList([]string{"tag_4"}),
+			id: "record_four", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_2"}),
 			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 1, 0)
 	})
 
-	t.Run("remove existing group by setting tag null", func(t *testing.T) {
+	t.Run("add_new_group_by_adding_new_tag", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "id_three", data: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTag.String(): pbtypes.StringList([]string{}),
+			id: "tag_4", data: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():          pbtypes.String("tag_4"),
+				bundle.RelationKeyRelationKey.String(): pbtypes.String(kanbanKey),
+			}}})
+		sub.onChange(ctx)
+
+		assertCtxGroup(t, ctx, 1, 0)
+	})
+
+	t.Run("remove_existing_group_by_setting_tag_null", func(t *testing.T) {
+		entries := genTagEntries()
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+
+		require.NoError(t, sub.init(entries))
+
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, &entry{
+			id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{}),
 			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 0, 1)
 	})
 
-	t.Run("remove existing group by removing record", func(t *testing.T) {
+	t.Run("remove_existing_group_by_removing_record", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "id_three", data: &types.Struct{Fields: map[string]*types.Value{
+			id: "record_three", data: &types.Struct{Fields: map[string]*types.Value{
 				bundle.RelationKeyIsArchived.String(): pbtypes.Bool(true),
 			}}})
 		sub.onChange(ctx)
@@ -115,19 +161,66 @@ func TestGroupTag(t *testing.T) {
 		assertCtxGroup(t, ctx, 0, 1)
 	})
 
-	t.Run("remove from group with single tag", func(t *testing.T) {
+	t.Run("remove_from_group_with_single_tag", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
 		ctx := &opCtx{c: sub.cache}
 		ctx.entries = append(ctx.entries, &entry{
-			id: "id_one", data: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTag.String(): pbtypes.StringList([]string{}),
+			id: "record_one", data: &types.Struct{Fields: map[string]*types.Value{
+				kanbanKey: pbtypes.StringList([]string{}),
 			}}})
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 0, 0)
+	})
+
+	t.Run("remove_tag_which_exist_in_two_groups", func(t *testing.T) {
+		entries := genTagEntries()
+		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+
+		require.NoError(t, sub.init(entries))
+
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, &entry{
+			id: "tag_1", data: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyIsArchived.String(): pbtypes.Bool(true),
+			}}})
+		sub.onChange(ctx)
+
+		assertCtxGroup(t, ctx, 1, 2)
+	})
+
+	t.Run("add_new_tag", func(t *testing.T) {
+		entries := genTagEntries()
+		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+
+		require.NoError(t, sub.init(entries))
+
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, makeTag("tag_4"))
+		sub.onChange(ctx)
+
+		assertCtxGroup(t, ctx, 1, 0)
+	})
+
+	t.Run("add_new_tag_and_set_to_record", func(t *testing.T) {
+		entries := genTagEntries()
+		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+
+		require.NoError(t, sub.init(entries))
+
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries,
+			makeTag("tag_4"),
+			&entry{id: "record_one", data: &types.Struct{Fields: map[string]*types.Value{
+					kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_4"}),
+			}}},
+		)
+		sub.onChange(ctx)
+
+		assertCtxGroup(t, ctx, 2, 0)
 	})
 }

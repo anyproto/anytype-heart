@@ -318,7 +318,7 @@ func TestMakeAndFilter(t *testing.T) {
 				Value:       pbtypes.StringList([]string{"14"}),
 			},
 		}
-		andFilter, err := MakeAndFilter(filters)
+		andFilter, err := MakeAndFilter(filters, nil)
 		require.NoError(t, err)
 		assert.Len(t, andFilter.(AndFilters), 14)
 	})
@@ -331,7 +331,7 @@ func TestMakeAndFilter(t *testing.T) {
 		} {
 			_, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
 				{Condition: cond, Value: pbtypes.Null()},
-			})
+			}, nil)
 			assert.Equal(t, ErrValueMustBeListSupporting, err)
 		}
 
@@ -339,7 +339,7 @@ func TestMakeAndFilter(t *testing.T) {
 	t.Run("unexpected condition", func(t *testing.T) {
 		_, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
 			{Condition: 10000},
-		})
+		}, nil)
 		assert.Error(t, err)
 	})
 	t.Run("replace 'value == false' to 'value != true'", func(t *testing.T) {
@@ -349,7 +349,7 @@ func TestMakeAndFilter(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Bool(false),
 			},
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		g := testGetter{"b": pbtypes.Bool(false)}
@@ -368,7 +368,7 @@ func TestMakeAndFilter(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       pbtypes.Bool(false),
 			},
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		g := testGetter{"b": pbtypes.Bool(false)}

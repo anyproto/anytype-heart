@@ -180,7 +180,7 @@ func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearch
 		}
 	}
 	rec = makeSuggestedDateRecord(dt, workspaceId)
-	f, _ := filter.MakeAndFilter(req.Filters, store)
+	f, _ := filter.MakeAndFilter(req.Filters, store) //nolint:errcheck
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
 	}

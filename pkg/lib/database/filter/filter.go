@@ -3,13 +3,13 @@ package filter
 import (
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var (
@@ -129,8 +129,8 @@ func MakeFilter(proto *model.BlockContentDataviewFilter, store OptionsGetter) (F
 			return nil, ErrValueMustBeListSupporting
 		}
 		return ExactIn{
-			Key:   proto.RelationKey,
-			Value: list,
+			Key:     proto.RelationKey,
+			Value:   list,
 			Options: optionsToMap(proto.RelationKey, store),
 		}, nil
 	case model.BlockContentDataviewFilter_NotExactIn:
@@ -398,8 +398,8 @@ func (l AllIn) String() string {
 }
 
 type ExactIn struct {
-	Key   string
-	Value *types.ListValue
+	Key     string
+	Value   *types.ListValue
 	Options map[string]string
 }
 
@@ -422,7 +422,7 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 			return ok
 		})
 	}
-	
+
 	if len(list.GetValues()) != len(exIn.Value.GetValues()) {
 		return false
 	}
