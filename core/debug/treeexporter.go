@@ -59,10 +59,10 @@ func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {
 		if len(data) > 0 {
-			data[0].Details = anonymize.Struct(data[0].Details)
-			data[0].Snippet = anonymize.Text(data[0].Snippet)
+			data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Struct)
+			data[0].Snippet = transform(data[0].Snippet, e.anonymized, anonymize.Text)
 			for i, r := range data[0].Relations {
-				data[0].Relations[i] = anonymize.Relation(r)
+				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)
 			}
 			osData := pbtypes.Sprint(data[0])
 			lsWr, er := e.zw.Create("localstore.json")
@@ -85,4 +85,11 @@ func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (
 	}
 	io.Copy(logW, logBuf)
 	return
+}
+
+func transform[T any](in T, transformed bool, f func(T) T) T {
+	if transformed {
+		return f(in)
+	}
+	return in
 }
