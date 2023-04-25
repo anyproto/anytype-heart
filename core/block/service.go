@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -217,17 +218,19 @@ func (s *Service) OpenBlock(
 	}
 	afterShowTime := time.Now()
 	// TODO: [MR] add files to status logic
-	// TODO: IT WILL NOT WORK for SETS, COLLECTIONS, etc
-	sbType, err := s.sbtProvider.Type(id)
-	if err == nil && sbType == coresb.SmartBlockTypePage {
-		s.status.Watch(id, func() []string {
-			return nil
-		})
+	_, err = s.status.Watch(id, func() []string {
+		return nil
+	})
+	if err == nil {
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
 			s.status.Unwatch(id)
 			return nil
 		}, smartblock.HookOnClose)
 	}
+	if err != nil && err != treestorage.ErrUnknownTreeId {
+		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
+	}
+
 	// if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 	//	var (
 	//		fList = func() []string {
@@ -245,6 +248,11 @@ func (s *Service) OpenBlock(
 	//		}, smartblock.HookOnClose)
 	//	}
 	// }
+
+	sbType, err := s.sbtProvider.Type(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get smartblock type: %w", err)
+	}
 	afterHashesTime := time.Now()
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
 		ObjectId:       id,

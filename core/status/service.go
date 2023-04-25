@@ -2,8 +2,11 @@ package status
 
 import (
 	"context"
+	"sync"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -11,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"sync"
 )
 
 var log = logging.Logger("anytype-mw-status")
@@ -25,7 +27,7 @@ type LogTime struct {
 }
 
 type Service interface {
-	Watch(id string, fileFunc func() []string) (new bool)
+	Watch(id string, fileFunc func() []string) (new bool, err error)
 	Unwatch(id string)
 	app.ComponentRunnable
 }
@@ -116,14 +118,16 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) Watch(id string, fileFunc func() []string) (new bool) {
+func (s *service) Watch(id string, fileFunc func() []string) (new bool, err error) {
 	s.Lock()
 	defer s.Unlock()
 	if !s.isRunning {
-		return false
+		return false, nil
 	}
-	s.watcher.Watch(id)
-	return true
+	if err = s.watcher.Watch(id); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *service) Unwatch(id string) {
