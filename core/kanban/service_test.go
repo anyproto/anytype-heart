@@ -78,10 +78,10 @@ func Test_GrouperTags(t *testing.T) {
 		},
 	}, nil, ""))
 
-	id1 := bson.NewObjectId().String()
-	id2 := bson.NewObjectId().String()
-	id3 := bson.NewObjectId().String()
-	id4 := bson.NewObjectId().String()
+	id1 := bson.NewObjectId().Hex()
+	id2 := bson.NewObjectId().Hex()
+	id3 := bson.NewObjectId().Hex()
+	id4 := bson.NewObjectId().Hex()
 	tp.RegisterStaticType(id1, smartblock2.SmartBlockTypePage)
 	tp.RegisterStaticType(id2, smartblock2.SmartBlockTypePage)
 	tp.RegisterStaticType(id3, smartblock2.SmartBlockTypePage)

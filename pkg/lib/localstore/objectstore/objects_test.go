@@ -10,11 +10,6 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
-
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -26,10 +21,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -161,9 +159,9 @@ func TestDsObjectStore_Query(t *testing.T) {
 		}
 	}
 
-	id1 := bson.NewObjectId().String()
-	id2 := bson.NewObjectId().String()
-	id3 := bson.NewObjectId().String()
+	id1 := bson.NewObjectId().Hex()
+	id2 := bson.NewObjectId().Hex()
+	id3 := bson.NewObjectId().Hex()
 	tp.RegisterStaticType(id1, smartblock.SmartBlockTypePage)
 	tp.RegisterStaticType(id2, smartblock.SmartBlockTypePage)
 	tp.RegisterStaticType(id3, smartblock.SmartBlockTypePage)

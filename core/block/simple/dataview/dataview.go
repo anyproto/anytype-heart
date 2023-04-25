@@ -105,7 +105,7 @@ func (d *Dataview) Copy() simple.Block {
 func (d *Dataview) Validate() error {
 	for _, view := range d.content.Views {
 		if view.Id == "" {
-			view.Id = bson.NewObjectId().String()
+			view.Id = bson.NewObjectId().Hex()
 		}
 	}
 
