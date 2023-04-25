@@ -67,7 +67,7 @@ func TestCommonSmart_pasteHtml(t *testing.T) {
 		checkBlockText(t, sb, []string{"foo"})
 	})
 
-	t.Run("", func(t *testing.T) {
+	t.Run("Table block", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
 		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<table><tr><td>\nfoo\n</td></tr></table>\n")
 		checkBlockText(t, sb, []string{"|\nfoo\n|"})

@@ -77,9 +77,7 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 		return nil, nil, err
 	}
 
-	// md := html2md.Convert(preprocessedSource)
 	md = whitespace.WhitespaceNormalizeString(md)
-	// md = strings.ReplaceAll(md, "*  *", "* *")
 
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
@@ -113,7 +111,7 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 		},
 	}
 	underscore := htmlconverter.Rule{
-		Filter: []string{"u", "ins"},
+		Filter: []string{"u", "ins", "abbr"},
 		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
 			content = strings.TrimSpace(content)
 			return htmlconverter.String("<u>" + content + "</u>")
@@ -139,7 +137,7 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	}
 
 	simpleText := htmlconverter.Rule{
-		Filter: []string{"small", "sub", "sup", "caption"},
+		Filter: []string{"small", "sub", "sup", "caption", "pre"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
 			return htmlconverter.String(content)
 		},
