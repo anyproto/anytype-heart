@@ -550,5 +550,6 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeObjectType ||
 		sbType == smartblock.SmartBlockTypeSet ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
-		sbType == smartblock.SmartBlockTypeWidget
+		sbType == smartblock.SmartBlockTypeWidget ||
+		sbType == smartblock.SmartBlockTypeCollection
 }

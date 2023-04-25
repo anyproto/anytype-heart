@@ -234,6 +234,7 @@ func (i *Import) createObjects(ctx *session.Context,
 	}
 	do := NewDataObject(oldIDToNew, ctx)
 	pool := workerpool.NewPool(numWorkers)
+	progress.SetProgressMessage("Create objects")
 	go i.addWork(res, existedObject, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)

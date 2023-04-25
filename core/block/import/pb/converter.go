@@ -151,6 +151,10 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 			FileName: name,
 			Snapshot: mo.Snapshot,
 		})
+		// not add sub objects to root collection
+		if mo.SbType == model.SmartBlockType_SubObject {
+			continue
+		}
 		targetObjects = append(targetObjects, id)
 	}
 	return allSnapshots, targetObjects, nil

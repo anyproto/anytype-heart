@@ -116,6 +116,13 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 
+	if sn.SbType == coresb.SmartBlockTypeWorkspace {
+		if err = oc.createRelationsInWorkspace(newID, st); err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
+		}
+		return nil, newID, nil
+	}
+
 	respDetails := oc.resetState(ctx, newID, st, details)
 
 	if isFavorite {
@@ -418,4 +425,63 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	}
 	result := slice.Union(existedObjects, objectsInCollections)
 	st.StoreSlice(sb.CollectionStoreKey, result)
+}
+
+// createRelationsInWorkspace compare current workspace store with imported and create objects, which are absent in current workspace
+func (oc *ObjectCreator) createRelationsInWorkspace(newID string, st *state.State) error {
+	var ids []string
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+		bs := b.NewState()
+		oldStore := bs.Store()
+		newStore := st.Store()
+		ids = oc.compareStoresAndGetAbsentObjectsIDs(oldStore, newStore)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	_, _, err = oc.service.AddSubObjectsToWorkspace(ids, newID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (oc *ObjectCreator) compareStoresAndGetAbsentObjectsIDs(oldStore *types.Struct, newStore *types.Struct) []string {
+	var ids []string
+	for colName, objects := range oldStore.GetFields() {
+		oldStr := objects.GetStructValue()
+		if objectsFromNewStore, ok := newStore.GetFields()[colName]; ok {
+			newStr := objectsFromNewStore.GetStructValue()
+			diff := pbtypes.StructDiff(oldStr, newStr)
+			ids = append(ids, oc.getAbsentObjectsIDs(diff)...)
+		}
+	}
+	return ids
+}
+
+func (oc *ObjectCreator) getAbsentObjectsIDs(diff *types.Struct) []string {
+	var ids []string
+	for objectName, details := range diff.GetFields() {
+		var isSystem bool
+		for _, relation := range bundle.SystemRelations {
+			if string(relation) == objectName {
+				isSystem = true
+				break
+			}
+		}
+		for _, objTypes := range bundle.SystemTypes {
+			if string(objTypes) == objectName {
+				isSystem = true
+				break
+			}
+		}
+		if isSystem {
+			continue
+		}
+		if source := pbtypes.GetString(details.GetStructValue(), bundle.RelationKeySourceObject.String()); source != "" {
+			ids = append(ids, source)
+		}
+	}
+	return ids
 }
