@@ -134,7 +134,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		}
 		if err := sbt.Valid(); err != nil {
 			sbt = smartblock.SmartBlockTypePage
-			log.Errorf("failed to get smartblock type for %s: %s", id, err.Error())
+			log.Errorf("failed to get smartblock type for %s: %s; fallback to page", id, err.Error())
 			// todo: this this TEMP! we shouldn't get incorrect ids here, need to fix zip file
 			//return fmt.Errorf("invalid smartblock type: %v %v", sbt, err)
 		}
@@ -408,6 +408,7 @@ func SmartBlockTypeFromThreadID(id string) (coresb.SmartBlockType, error) {
 
 	// checks in order to detect invalid sb type
 	if err := coresb.SmartBlockType(blockType).Valid(); err != nil {
+		return coresb.SmartBlockTypePage, nil
 		return 0, err
 	}
 
