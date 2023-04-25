@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -26,6 +27,7 @@ import (
 
 var (
 	file        = flag.String("f", "", "path to debug file")
+	makeJson    = flag.Bool("j", false, "generate json file")
 	makeTree    = flag.Bool("t", false, "generate graphviz file")
 	printState  = flag.Bool("s", false, "print result state debug")
 	changeIdx   = flag.Int("c", -1, "build tree before given index and print change")
@@ -55,6 +57,24 @@ func main() {
 		log.Fatal("can't import the tree", err)
 	}
 	fmt.Printf("import tree done in %.1fs\n", time.Since(st).Seconds())
+
+	if *makeJson {
+		treeJson, err := importer.Json()
+		if err != nil {
+			log.Fatal("can't build json:", err)
+		}
+		res, err := json.MarshalIndent(treeJson, "", "  ")
+		if err != nil {
+			log.Fatal("can't marshall json:", err)
+		}
+		tf, err := ioutil.TempFile("", "tree_*.json")
+		if err != nil {
+			log.Fatal("can't create temp file:", err)
+		}
+		fmt.Println("tree json file:", tf.Name())
+		tf.Write(res)
+		tf.Close()
+	}
 
 	if *changeIdx != -1 {
 		ch, err := importer.ChangeAt(*changeIdx)
