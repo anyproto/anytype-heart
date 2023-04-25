@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"io"
 	"io/ioutil"
 	"net"
@@ -22,9 +21,10 @@ import (
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-
+	"github.com/gogo/status"
 	cp "github.com/otiai10/copy"
 
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -582,7 +582,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
 	response := func(status *model.AccountStatus, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
 		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
 		if err != nil {
@@ -595,34 +595,42 @@ func (mw *Middleware) AccountDelete(ctx context.Context, req *pb.RpcAccountDelet
 	}
 
 	var st *model.AccountStatus
-	err := mw.doAccountService(func(a space.Service) (err error) {
-		resp, err := a.DeleteAccount(ctx, req.Revert)
-		if err != nil {
-			return
-		}
-		st = &model.AccountStatus{
-			StatusType:   model.AccountStatusType(resp.Status),
-			DeletionDate: resp.DeletionDate.Unix(),
+	err := mw.doAccountService(func(a account.Service) (err error) {
+		resp, err := a.DeleteAccount(context.Background(), req.Revert)
+		if resp.GetStatus() != nil {
+			st = &model.AccountStatus{
+				StatusType:   model.AccountStatusType(resp.Status.Status),
+				DeletionDate: resp.Status.DeletionDate,
+			}
 		}
 		return
 	})
 
 	mw.refetch()
-	if err == nil {
-		return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
+
+	if err != nil {
+		// TODO: maybe this logic should be in a.DeleteAccount
+		code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
+		st, ok := status.FromError(err)
+		if ok {
+			for _, detail := range st.Details() {
+				if at, ok := detail.(*cafePb.ErrorAttachment); ok {
+					switch at.Code {
+					case cafePb.ErrorCodes_AccountIsDeleted:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+					// this code is returned if we call revert but an account is active
+					case cafePb.ErrorCodes_AccountIsActive:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
+					default:
+						break
+					}
+				}
+			}
+		}
+		return response(nil, code, err)
 	}
-	code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
-	switch err {
-	case space.ErrSpaceIsDeleted:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
-	case space.ErrSpaceDeletionPending:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
-	case space.ErrSpaceIsCreated:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
-	default:
-		break
-	}
-	return response(nil, code, err)
+
+	return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
@@ -723,12 +731,22 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	}
 	mw.accountSearchCancel()
 
-	err = mw.extractAccountDirectory(profile, req)
+	archive, err := zip.OpenReader(req.Path)
 	if err != nil {
 		return err
 	}
+	err = mw.extractAccountDirectory(archive, profile, req)
+	if err != nil {
+		return err
+	}
+	oldCfg, err := extractConfig(archive)
+	if err != nil {
+		return fmt.Errorf("failed to extract config: %w", err)
+	}
 
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
+	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
+
 	index := len(mw.foundAccounts)
 	var account wallet.Keypair
 	account, err = core.WalletAccountAt(mw.mnemonic, index, "")
@@ -775,13 +793,29 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	return nil
 }
 
-func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) error {
-	archive, err := zip.OpenReader(req.Path)
-	if err != nil {
-		return err
+func extractConfig(archive *zip.ReadCloser) (*config.Config, error) {
+	for _, f := range archive.File {
+		if f.Name == config.ConfigFileName {
+			r, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+
+			var conf config.Config
+			err = json.NewDecoder(r).Decode(&conf)
+			if err != nil {
+				return nil, err
+			}
+			return &conf, nil
+		}
 	}
+	return nil, fmt.Errorf("config.json not found in archive")
+}
+
+func (mw *Middleware) extractAccountDirectory(archive *zip.ReadCloser, profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) error {
+
 	path := filepath.Join(mw.rootPath, profile.Address)
-	_, err = os.Stat(path)
+	_, err := os.Stat(path)
 	_, err2 := os.Stat(filepath.Join(path, clientds.SpaceDSDir))
 
 	if err2 == nil {

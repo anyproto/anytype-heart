@@ -7,24 +7,21 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/metric"
 	commonnet "github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/nodeconf"
+	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
-
-	"github.com/kelseyhightower/envconfig"
-
-	"github.com/anytypeio/any-sync/app"
-
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 )
 
 var log = logging.Logger("anytype-config")
@@ -42,6 +39,7 @@ type ConfigRequired struct {
 	HostAddr            string `json:",omitempty"`
 	CustomFileStorePath string `json:",omitempty"`
 	TimeZone            string `json:",omitempty"`
+	LegacyFileStorePath string `json:",omitempty"`
 }
 
 type Config struct {
@@ -49,7 +47,6 @@ type Config struct {
 	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	Offline                  bool
 	DisableThreadsSyncEvents bool
-	LegacyFileStorePath      string `json:",omitempty"`
 
 	RepoPath string
 
