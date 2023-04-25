@@ -48,6 +48,9 @@ type MD struct {
 }
 
 func (h *MD) Convert(model.SmartBlockType) (result []byte) {
+	if h.s.Pick(h.s.RootId()) == nil {
+		return
+	}
 	if len(h.s.Pick(h.s.RootId()).Model().ChildrenIds) == 0 {
 		return
 	}
