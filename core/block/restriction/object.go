@@ -134,13 +134,6 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 
 func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
 	var ok bool
-	// todo: get rid of this
-	if obj.Type() == model.SmartBlockType_ProfilePage && s.anytype.PredefinedBlocks().Profile != obj.Id() {
-		if r, ok = objectRestrictionsByPbType[model.SmartBlockType_Page]; ok {
-			return
-		}
-	}
-
 	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {
 		return
 	}
@@ -150,6 +143,7 @@ func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
 			return
 		}
 	}
-	log.Warnf("restrctions not found for object: id='%s' type='%v'", obj.Id(), obj.Type())
-	return objRestrictAll
+	l, has := obj.Layout()
+	log.Warnf("restrctions not found for object: id='%s' type='%v' layout='%v'(%v); fallback to empty", obj.Id(), obj.Type(), l, has)
+	return ObjectRestrictions{}
 }
