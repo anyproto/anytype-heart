@@ -63,6 +63,7 @@ func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg dr
 		Deadline: time.Now().Add(time.Minute),
 		SenderId: peerId,
 		Message:  syncMsg,
+		PeerCtx:  ctx,
 	})
 	return
 }

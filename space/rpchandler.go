@@ -64,9 +64,5 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
-	peerId, err := peer.CtxPeerId(stream.Context())
-	if err != nil {
-		return err
-	}
-	return r.s.streamPool.ReadStream(peerId, stream)
+	return r.s.streamPool.ReadStream(stream)
 }
