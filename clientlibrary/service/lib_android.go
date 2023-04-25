@@ -4,7 +4,7 @@ package service
 import "C"
 
 import (
-	ma "github.com/multiformats/go-multiaddr"
+	"github.com/anytypeio/go-anytype-middleware/net/addrs"
 )
 
 type InterfaceAddr interface {
@@ -26,12 +26,12 @@ type interfaceGetterAdapter struct {
 	interfaceGetter InterfaceAddrsGetter
 }
 
-func (i *interfaceGetterAdapter) InterfaceAddrs() []ma.InterfaceAddr {
+func (i *interfaceGetterAdapter) InterfaceAddrs() []addrs.InterfaceAddr {
 	iter := i.interfaceGetter.InterfaceAddrs()
 	addr := iter.Next()
-	var res []ma.InterfaceAddr
+	var res []addrs.InterfaceAddr
 	for addr != nil {
-		res = append(res, ma.InterfaceAddr{
+		res = append(res, addrs.InterfaceAddr{
 			Ip:     addr.Ip(),
 			Prefix: addr.Prefix(),
 		})
@@ -41,7 +41,7 @@ func (i *interfaceGetterAdapter) InterfaceAddrs() []ma.InterfaceAddr {
 }
 
 func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {
-	ma.SetInterfaceAddrsGetter(&interfaceGetterAdapter{
+	addrs.SetInterfaceAddrsGetter(&interfaceGetterAdapter{
 		interfaceGetter: getter,
 	})
 }
