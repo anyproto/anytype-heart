@@ -46,7 +46,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	id := bson.NewObjectId()
 	tp.RegisterStaticType(id.String(), smartblock.SmartBlockTypePage)
 
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err = ds.CreateObject(id.String(), &types.Struct{
@@ -91,7 +91,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	defer app.Close(context.Background())
 
 	ds := New(nil)
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	require.NoError(t, ds.AddToIndexQueue("one"))
@@ -149,7 +149,7 @@ func TestDsObjectStore_Query(t *testing.T) {
 	tp := typeprovider.New(nil)
 	tp.Init(nil)
 	ds := New(tp)
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	fts := app.MustComponent(ftsearch.CName).(ftsearch.FTSearch)
 
@@ -261,7 +261,7 @@ func Test_removeByPrefix(t *testing.T) {
 	app := testapp.New()
 	defer app.Close(context.Background())
 	ds := New(nil)
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
 	ds2 := ds.(*dsObjectStore)

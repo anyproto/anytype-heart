@@ -2,14 +2,16 @@ package wallet
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/accountdata"
 	"github.com/anytypeio/any-sync/util/crypto"
+
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"io/ioutil"
-	"path/filepath"
 )
 
 const (
@@ -108,6 +110,12 @@ func NewWithAccountRepo(rootPath string, derivationResult crypto.DerivationResul
 	}
 }
 
+func NewWithRepoDirAndRandomKeys(repoPath string) Wallet {
+	pk1, _, _ := crypto.GenerateRandomEd25519KeyPair()
+	pk2, _, _ := crypto.GenerateRandomEd25519KeyPair()
+
+	return NewWithRepoPathAndKeys(repoPath, pk1, pk2)
+}
 func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair crypto.PrivKey) Wallet {
 	return &wallet{
 		repoPath:   repoPath,

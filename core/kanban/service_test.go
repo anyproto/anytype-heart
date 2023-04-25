@@ -35,7 +35,7 @@ func Test_GrouperTags(t *testing.T) {
 	ds := objectstore.New(tp)
 	kanbanSrv := New()
 	err := app.With(&config.DefaultConfig).
-		With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).
+		With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
 		With(clientds.New()).
 		With(ftsearch.New()).
 		With(ds).

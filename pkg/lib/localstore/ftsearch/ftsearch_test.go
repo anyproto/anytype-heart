@@ -3,12 +3,14 @@ package ftsearch
 import (
 	"context"
 	"encoding/json"
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/blevesearch/bleve/v2"
-	"github.com/golang/mock/gomock"
 	"os"
 	"testing"
+
+	"github.com/blevesearch/bleve/v2"
+	"github.com/golang/mock/gomock"
+
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +25,7 @@ type fixture struct {
 func newFixture(path string, t *testing.T) *fixture {
 	ft := New()
 	ta := testapp.New().
-		With(wallet.NewWithRepoPathAndKeys(path, nil, nil)).
+		With(wallet.NewWithRepoDirAndRandomKeys(path)).
 		With(ft)
 
 	require.NoError(t, ta.Start(context.Background()))
