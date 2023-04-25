@@ -27,14 +27,11 @@ func (a *Anytype) ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, er
 
 // deprecated, to be removed
 func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
-	ids, err := a.threadService.Logstore().Threads()
-	if err != nil {
-		return nil, err
-	}
-
+	// TODO: [MR] add new infra object ids here if needed
+	var ids []string
 	var idsS = make([]string, 0, len(ids))
 	for _, id := range ids {
-		t, err := smartblock.SmartBlockTypeFromThreadID(id)
+		t, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
 			log.Errorf("SmartBlockTypeFromThreadID failed for %s: %v", id, err)
 			continue
@@ -45,7 +42,7 @@ func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
 			continue
 		}
 
-		idsS = append(idsS, id.String())
+		idsS = append(idsS, id)
 	}
 
 	pages, err := a.objectStore.GetByIDs(idsS...)

@@ -95,24 +95,25 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 	return
 }
 
-func (b *treeBuilder) writeChanges(logs []core.SmartblockLog) (err error) {
-	b.changes = make(map[string]struct{})
-	var q1, buf []string
-	for _, l := range logs {
-		if l.Head != "" {
-			q1 = append(q1, l.Head)
-		}
-	}
-
-	for len(q1) > 0 {
-		buf = buf[:0]
-		for _, id := range q1 {
-			buf = append(buf, b.writeChange(id)...)
-		}
-		q1, buf = buf, q1
-	}
-	return
-}
+//
+//func (b *treeBuilder) writeChanges(logs []core.SmartblockLog) (err error) {
+//	b.changes = make(map[string]struct{})
+//	var q1, buf []string
+//	for _, l := range logs {
+//		if l.Head != "" {
+//			q1 = append(q1, l.Head)
+//		}
+//	}
+//
+//	for len(q1) > 0 {
+//		buf = buf[:0]
+//		for _, id := range q1 {
+//			buf = append(buf, b.writeChange(id)...)
+//		}
+//		q1, buf = buf, q1
+//	}
+//	return
+//}
 
 func createFileWithDateInZip(zw *zip.Writer, name string, modified time.Time) (io.Writer, error) {
 	header := &zip.FileHeader{

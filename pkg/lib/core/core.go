@@ -12,27 +12,21 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/libp2p/go-libp2p/core/peer"
-	pstore "github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"github.com/textileio/go-threads/core/net"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 )
 
@@ -55,8 +49,6 @@ type Service interface {
 
 	EnsurePredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
-	GetBlock(blockId string) (SmartBlock, error)
-	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
 
 	// FileOffload removes file blocks recursively, but leave details
 	FileOffload(id string) (bytesRemoved uint64, err error)
@@ -79,7 +71,6 @@ type Service interface {
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
 	ThreadsIds() ([]string, error)        // deprecated
-	ThreadsService() threads.Service
 
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
@@ -112,7 +103,6 @@ type Anytype struct {
 	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
-	threadService      threads.Service
 	pinService         pin.FilePinService
 	ipfs               ipfs.Node
 	logLevels          map[string]string
@@ -135,11 +125,7 @@ type Anytype struct {
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {
-	tids, err := a.ThreadService().Logstore().Threads()
-	if err != nil {
-		return nil, err
-	}
-	return util.ThreadIdsToStings(tids), nil
+	return nil, nil
 }
 
 type batchAdder interface {
@@ -160,7 +146,6 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
 	a.ds = ap.MustComponent(datastore.CName).(datastore.Datastore)
-	a.threadService = ap.MustComponent(threads.CName).(threads.Service)
 	a.cafe = ap.MustComponent(cafe.CName).(cafe.Client)
 	a.files = ap.MustComponent(files.CName).(*files.Service)
 	a.pinService = ap.MustComponent(pin.CName).(pin.FilePinService)
@@ -214,27 +199,11 @@ func (a *Anytype) IsStarted() bool {
 }
 
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {
-	return a.threadService.GetAllWorkspaces()
-}
-
-func (a *Anytype) ThreadsService() threads.Service {
-	return a.threadService
+	return nil, nil
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
-	if strings.HasPrefix(objectId, "_") {
-		return addr.AnytypeMarketplaceWorkspace, nil
-	}
-	if a.predefinedBlockIds.IsAccount(objectId) {
-		return "", ErrObjectDoesNotBelongToWorkspace
-	}
-
-	workspaceIds := a.threadService.ThreadQueue().GetWorkspacesForThread(objectId)
-	if len(workspaceIds) != 0 {
-		return workspaceIds[0], nil
-	}
-
-	return "", ErrObjectDoesNotBelongToWorkspace
+	return a.predefinedBlockIds.Account, nil
 }
 
 // PredefinedBlocks returns default blocks like home and archive
@@ -244,7 +213,7 @@ func (a *Anytype) PredefinedBlocks() threads.DerivedSmartblockIds {
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
-	a.ThreadService().Threads().Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
+	// TODO: [MR] mdns
 }
 
 func (a *Anytype) Start() error {
@@ -265,12 +234,9 @@ func (a *Anytype) start() error {
 	}
 
 	var err error
-	a.predefinedBlockIds, err = a.threadService.DerivePredefinedThreadIds()
+	// TODO: [MR] derive trees in the new infra
+	a.predefinedBlockIds = threads.DerivedSmartblockIds{}
 	if err != nil {
-		return err
-	}
-
-	if err := a.subscribeForNewRecords(); err != nil {
 		return err
 	}
 
@@ -291,11 +257,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (
 		}
 	}()
 
-	_, err = a.threadService.EnsurePredefinedThreads(cctx, newAccount)
-	if err != nil {
-		return err
-	}
-
+	// TODO: [MR] derive trees in the new infra
 	return nil
 }
 
@@ -321,10 +283,6 @@ func (a *Anytype) Stop() error {
 	return nil
 }
 
-func (a *Anytype) ThreadService() threads.Service {
-	return a.threadService
-}
-
 func (a *Anytype) TempDir() string {
 	// it shouldn't be a case when it is called before wallet init, but just in case lets add the check here
 	if a.wallet == nil || a.wallet.RootPath() == "" {
@@ -345,130 +303,4 @@ func (a *Anytype) TempDir() string {
 	})
 
 	return a.tempDir
-}
-
-func (a *Anytype) addCreatorData(rec net.ThreadRecord,
-	readMx *sync.RWMutex,
-	checkedThreads map[string]struct{},
-	checkedWorkspaces map[string]struct{}) {
-	threadId := rec.ThreadID().String()
-	var err error
-	defer func() {
-		if err != nil && err != ErrObjectDoesNotBelongToWorkspace {
-			threads.WorkspaceLogger.
-				With("thread id", threadId).
-				Errorf("error checking or adding creator info: %v", err)
-		}
-	}()
-
-	if rec.LogID().String() != a.Device() {
-		return
-	}
-
-	readMx.RLock()
-	// if we already added info for this thread
-	if _, ok := checkedThreads[threadId]; ok {
-		readMx.RUnlock()
-		return
-	}
-	readMx.RUnlock()
-
-	sbType, err := smartblock.SmartBlockTypeFromID(threadId)
-	if err != nil {
-		return
-	}
-	var workspaceId string
-	if sbType == smartblock.SmartBlockTypeWorkspace {
-		// if we add something to workspace itself, it means that we should add our creator info
-		workspaceId = threadId
-	} else {
-		workspaceId, err = a.GetWorkspaceIdForObject(threadId)
-		if err != nil {
-			if err == ErrObjectDoesNotBelongToWorkspace {
-				readMx.Lock()
-				defer readMx.Unlock()
-				checkedThreads[threadId] = struct{}{}
-			}
-			return
-		}
-	}
-
-	readMx.RLock()
-	if _, ok := checkedWorkspaces[workspaceId]; ok {
-		readMx.RUnlock()
-		readMx.Lock()
-		defer readMx.Unlock()
-		checkedThreads[threadId] = struct{}{}
-		return
-	}
-	readMx.RUnlock()
-
-	err = a.creatorInfoAdder.AddCreatorInfoIfNeeded(workspaceId)
-	if err != nil {
-		return
-	}
-	readMx.Lock()
-	defer readMx.Unlock()
-	checkedThreads[threadId] = struct{}{}
-	checkedWorkspaces[workspaceId] = struct{}{}
-}
-
-// subscribeForNewRecords should be called only once as early as possible.
-// Subscribes to new records for all threads and add them to the batcher
-func (a *Anytype) subscribeForNewRecords() (err error) {
-	checkedWorkspaces := make(map[string]struct{})
-	checkedThreads := make(map[string]struct{})
-	creatorInfoMx := sync.RWMutex{}
-
-	isWorkspaceEventSent := false
-	isWorkspace := func(id string) bool {
-		sbType, err := smartblock.SmartBlockTypeFromID(id)
-		return err == nil && !a.predefinedBlockIds.IsAccount(id) && sbType == smartblock.SmartBlockTypeWorkspace
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	// do not defer cancel, cancel only on shutdown
-	threadsCh, err := a.threadService.PresubscribedNewRecords()
-	if err != nil {
-		return err
-	}
-	go func() {
-		a.lock.Lock()
-		shutdownCh := a.shutdownStartsCh
-		a.lock.Unlock()
-		defer a.recordsbatch.Close(context.Background())
-		for {
-			select {
-			case val, ok := <-threadsCh:
-				if !ok {
-					return
-				}
-				go a.addCreatorData(val, &creatorInfoMx, checkedThreads, checkedWorkspaces)
-				id := val.ThreadID().String()
-				if a.predefinedBlockIds.IsAccount(id) {
-					continue
-				}
-				if !isWorkspaceEventSent && isWorkspace(id) {
-					go a.fetcher.NotifyClientApp()
-					isWorkspaceEventSent = true
-				}
-
-				err = a.recordsbatch.Add(ThreadRecordInfo{
-					LogId:    val.LogID().String(),
-					ThreadID: id,
-				})
-
-				if err != nil {
-					log.Errorf("failed to add thread record to batcher: %s", err.Error())
-					continue
-				}
-			case <-ctx.Done():
-				return
-			case <-shutdownCh:
-				cancel()
-			}
-		}
-	}()
-
-	return nil
 }
