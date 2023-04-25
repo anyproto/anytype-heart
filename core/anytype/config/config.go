@@ -319,8 +319,9 @@ func getRandomPort() (int, error) {
 
 func (c *Config) GetSpace() commonspace.Config {
 	return commonspace.Config{
-		GCTTL:      60,
-		SyncPeriod: 20,
+		GCTTL:                60,
+		SyncPeriod:           20,
+		KeepTreeDataInMemory: true,
 	}
 }
 

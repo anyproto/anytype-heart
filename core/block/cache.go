@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
@@ -312,7 +313,7 @@ func (s *Service) getDerivedObject(
 
 	sb, err = s.GetAccountObject(ctx, id)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(err, treechangeproto.ErrGetTree) {
 			err = spacesyncproto.ErrSpaceMissing
 		}
 		err = fmt.Errorf("failed to get object from node: %w", err)
