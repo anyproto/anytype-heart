@@ -51,12 +51,12 @@ func (m *Markdown) Name() string {
 	return Name
 }
 
-func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) string {
+func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) []string {
 	if p := req.GetMarkdownParams(); p != nil {
 		return p.Path
 	}
 
-	return ""
+	return nil
 }
 
 func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
@@ -64,51 +64,88 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
-	path := m.GetParams(req)
+	paths := m.GetParams(req)
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	var (
+		allSnapshots []*converter.Snapshot
+		allErrors    = converter.NewError()
+	)
+	for _, path := range paths {
+		snapshots, convertError := m.getSnapshots(req, progress, path, allErrors)
+		if !convertError.IsEmpty() {
+			return nil, convertError
+		}
+		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, allErrors
+		}
+		allSnapshots = append(allSnapshots, snapshots...)
+	}
 
-	files, allErrors := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
-	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if len(allSnapshots) == 0 {
+		allErrors.Add("", fmt.Errorf("failed to get snaphots from path, no md files"))
+	}
+
+	allSnapshots, err := m.createRootCollection(allSnapshots)
+	if err != nil {
+		allErrors.Add(rootCollectionName, err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, allErrors
 		}
 	}
 
-	progress.SetTotal(int64(numberOfStages * len(files)))
+	if allErrors.IsEmpty() {
+		return &converter.Response{Snapshots: allSnapshots}, nil
+	}
+	return &converter.Response{Snapshots: allSnapshots}, allErrors
+}
+
+func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
+	targetObjects := m.getObjectIDs(allSnapshots)
+	rootCollection := converter.NewRootCollection(m.service)
+	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
+	if err != nil {
+		return nil, err
+	}
+
+	if rootCol != nil {
+		allSnapshots = append(allSnapshots, rootCol)
+	}
+	return allSnapshots, nil
+}
+
+func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path string, allErrors converter.ConvertError) ([]*converter.Snapshot, converter.ConvertError) {
+	files, e := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
+	if !e.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, e
+		}
+		allErrors.Merge(e)
+	}
 
 	if len(files) == 0 {
 		allErrors.Add(path, fmt.Errorf("couldn't found md files"))
-		return nil, allErrors
+		return nil, nil
 	}
+	progress.SetTotal(int64(numberOfStages * len(files)))
 
-	progress.SetProgressMessage("Start linking database file with pages")
-
-	if cancellErr := m.setInboundLinks(files, progress); cancellErr != nil {
-		return nil, cancellErr
+	if cancelErr := m.setInboundLinks(files, progress); cancelErr != nil {
+		return nil, cancelErr
 	}
+	details := make(map[string]*types.Struct, 0)
 
-	var (
-		details = make(map[string]*types.Struct, 0)
-	)
-
-	progress.SetProgressMessage("Start creating blocks")
-
-	if cancellErr := m.createThreadObject(files, progress, details, allErrors, req.Mode); cancellErr != nil {
-		return nil, cancellErr
-	}
-
-	progress.SetProgressMessage("Start linking blocks")
-
-	if cancelErr := m.createMarkdownForLink(files, progress, allErrors, req.Mode); cancelErr != nil {
+	if cancelErr := m.setNewID(files, progress, details); cancelErr != nil {
 		return nil, cancelErr
 	}
 
-	progress.SetProgressMessage("Start linking database with pages")
-
-	if cancellErr := m.linkPagesWithRootFile(files, progress, details); cancellErr != nil {
-		return nil, cancellErr
+	if cancelErr := m.addLinkToObjectBlocks(files, progress, allErrors, req.Mode); cancelErr != nil {
+		return nil, cancelErr
 	}
 
-	progress.SetProgressMessage("Start creating file blocks")
+	if cancelErr := m.linkPagesWithRootFile(files, progress); cancelErr != nil {
+		return nil, cancelErr
+	}
 
 	childBlocks, cancelErr := m.fillEmptyBlocks(files, progress)
 
@@ -116,53 +153,19 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 		return nil, cancelErr
 	}
 
-	progress.SetProgressMessage("Start creating link blocks")
-
-	if cancellErr := m.addLinkBlocks(files, progress); cancellErr != nil {
-		return nil, cancellErr
+	if cancelErr = m.addLinkBlocks(files, progress); cancelErr != nil {
+		return nil, cancelErr
 	}
 
-	progress.SetProgressMessage("Start creating root blocks")
-
-	if cancellErr := m.addChildBlocks(files, progress, childBlocks); cancellErr != nil {
-		return nil, cancellErr
+	if cancelErr = m.addChildBlocks(files, progress, childBlocks); cancelErr != nil {
+		return nil, cancelErr
 	}
 
-	progress.SetProgressMessage("Start creating snaphots")
-
-	var (
-		snapshots  []*converter.Snapshot
-		cancellErr converter.ConvertError
-	)
-
-	if snapshots, cancellErr = m.createSnapshots(files, progress, details); cancellErr != nil {
-		return nil, cancellErr
+	var snapshots []*converter.Snapshot
+	if snapshots, cancelErr = m.createSnapshots(files, progress, details); cancelErr != nil {
+		return nil, cancelErr
 	}
-
-	if len(snapshots) == 0 {
-		allErrors.Add(path, fmt.Errorf("failed to get snaphots from path, no md files"))
-	}
-
-	targetObjects := m.getObjectIDs(snapshots)
-
-	rootCollection := converter.NewRootCollection(m.service)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
-	if err != nil {
-		allErrors.Add(path, err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, allErrors
-		}
-	}
-
-	if rootCol != nil {
-		snapshots = append(snapshots, rootCol)
-	}
-
-	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: snapshots}, nil
-	}
-
-	return &converter.Response{Snapshots: snapshots}, allErrors
+	return snapshots, nil
 }
 
 func isChildBlock(blocks []string, b *model.Block) bool {
@@ -297,6 +300,7 @@ func (m *Markdown) getIdFromPath(path string) (id string) {
 }
 
 func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.Progress) converter.ConvertError {
+	progress.SetProgressMessage("Start linking database file with pages")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			cancellError := converter.NewFromError(name, err)
@@ -322,12 +326,12 @@ func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.
 }
 
 func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
-	progress process.Progress,
-	details map[string]*types.Struct) converter.ConvertError {
+	progress process.Progress) converter.ConvertError {
+	progress.SetProgressMessage("Start linking database with pages")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			cancelError := converter.NewFromError(name, err)
+			return cancelError
 		}
 
 		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
@@ -362,10 +366,11 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
 	return nil
 }
 func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Progress) converter.ConvertError {
+	progress.SetProgressMessage("Start creating link blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			cancelError := converter.NewFromError(name, err)
+			return cancelError
 		}
 
 		if file.PageID == "" {
@@ -395,7 +400,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 	progress process.Progress,
 	details map[string]*types.Struct) ([]*converter.Snapshot, converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
-
+	progress.SetProgressMessage("Start creating snapshots")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			cancellError := converter.NewFromError(name, err)
@@ -425,6 +430,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 func (m *Markdown) addChildBlocks(files map[string]*FileInfo,
 	progress process.Progress,
 	childBlocks []string) converter.ConvertError {
+	progress.SetProgressMessage("Start creating root blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			cancelError := converter.NewFromError(name, err)
@@ -453,14 +459,15 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo,
 	return nil
 }
 
-func (m *Markdown) createMarkdownForLink(files map[string]*FileInfo,
+func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo,
 	progress process.Progress,
 	allErrors converter.ConvertError,
 	mode pb.RpcObjectImportRequestMode) converter.ConvertError {
+	progress.SetProgressMessage("Start linking blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			cancelError := converter.NewFromError(name, err)
+			return cancelError
 		}
 
 		if file.PageID == "" {
@@ -511,6 +518,7 @@ func (m *Markdown) createMarkdownForLink(files map[string]*FileInfo,
 
 func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
 	progress process.Progress) ([]string, converter.ConvertError) {
+	progress.SetProgressMessage("Start creating file blocks")
 	// process file blocks
 	childBlocks := make([]string, 0)
 	for name, file := range files {
@@ -535,15 +543,14 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
 	return childBlocks, nil
 }
 
-func (m *Markdown) createThreadObject(files map[string]*FileInfo,
+func (m *Markdown) setNewID(files map[string]*FileInfo,
 	progress process.Progress,
-	details map[string]*types.Struct,
-	allErrors converter.ConvertError,
-	mode pb.RpcObjectImportRequestMode) converter.ConvertError {
+	details map[string]*types.Struct) converter.ConvertError {
+	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			cancelError := converter.NewFromError(name, err)
+			return cancelError
 		}
 
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {

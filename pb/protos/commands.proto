@@ -1809,7 +1809,7 @@ message Rpc {
                 }
 
                 message MarkdownParams {
-                    string path = 1;
+                    repeated string path = 1;
                 }
 
                 message BookmarksParams {
