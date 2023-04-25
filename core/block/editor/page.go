@@ -66,6 +66,7 @@ func NewPage(
 			f,
 			anytype,
 			tempDirProvider,
+			relationService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,

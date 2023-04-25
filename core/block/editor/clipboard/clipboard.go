@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -44,12 +45,14 @@ func NewClipboard(
 	file file.File,
 	anytype core.Service,
 	tempDirProvider core.TempDirProvider,
+	relationService relation.Service,
 ) Clipboard {
 	return &clipboard{
 		SmartBlock:      sb,
 		file:            file,
 		anytype:         anytype,
 		tempDirProvider: tempDirProvider,
+		relationService: relationService,
 	}
 }
 
@@ -58,6 +61,7 @@ type clipboard struct {
 	file            file.File
 	anytype         core.Service
 	tempDirProvider core.TempDirProvider
+	relationService relation.Service
 }
 
 func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -343,6 +347,23 @@ func (cb *clipboard) pasteAny(
 		}
 		if b.Id == template.TitleBlockId {
 			delete(b.Fields.Fields, text.DetailsKeyFieldName)
+		}
+		if d, ok := b.Content.(*model.BlockContentOfDataview); ok {
+			var relationKeys []string
+			if len(d.Dataview.RelationLinks) == 0 && len(d.Dataview.Views) != 0 {
+				for _, r := range d.Dataview.Views[0].Relations {
+					relationKeys = append(relationKeys, r.Key)
+				}
+				if len(relationKeys) != 0 {
+					relations, _ := cb.relationService.FetchKeys(relationKeys...)
+					links := make([]*model.RelationLink, 0, len(relations))
+					for _, r := range relations {
+						links = append(links, r.RelationLink())
+					}
+					d.Dataview.RelationLinks = links
+					fmt.Println()
+				}
+			}
 		}
 	}
 	srcState := cb.blocksToState(req.AnySlot)

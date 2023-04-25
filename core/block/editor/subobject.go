@@ -52,6 +52,7 @@ func NewSubObject(
 			),
 			anytype,
 			tempDirProvider,
+			relationService,
 		),
 		Dataview: dataview.NewDataview(
 			sb,

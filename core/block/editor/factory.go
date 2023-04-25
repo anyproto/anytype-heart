@@ -162,6 +162,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkService,
 			f.sendEvent,
 			f.tempDirProvider,
+			f.relationService,
 		)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
