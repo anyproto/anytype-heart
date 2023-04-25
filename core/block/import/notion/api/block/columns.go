@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
+	"strings"
 )
 
 type ColumnListBlock struct {
@@ -30,92 +31,91 @@ func (c *ColumnListBlock) GetBlocks(req *MapRequest) *MapResponse {
 		rowBlock       simple.Block
 	)
 	if len(columnsList) != 0 {
-		req.Blocks = []interface{}{columnsList[0]}
-		resp := MapBlocks(req)
-		childBlocks := make([]string, 0)
-		for _, b := range resp.Blocks {
-			if len(b.ChildrenIds) != 0 {
-				childBlocks = append(childBlocks, b.ChildrenIds...)
-			}
-		}
-		notChildBlocks := make([]string, 0)
-		for _, b := range resp.Blocks {
-			var found bool
-			for _, blockID := range childBlocks {
-				if b.Id == blockID {
-					found = true
-					break
-				}
-			}
-			if !found {
-				notChildBlocks = append(notChildBlocks, b.Id)
-			}
-		}
-		id := bson.NewObjectId().Hex()
-		column := simple.New(&model.Block{
-			Id:          "ct-" + id,
-			ChildrenIds: notChildBlocks,
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_Column,
-				},
-			},
-		})
-		resultResponse.Blocks = append(resultResponse.Blocks, column.Model())
-		resultResponse.BlockIDs = append(resultResponse.BlockIDs, column.Model().Id)
-		rowBlock = simple.New(&model.Block{
-			Id:          "r-" + id,
-			ChildrenIds: []string{column.Model().Id},
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_Row,
-				},
-			},
-		})
-		resultResponse.Blocks = append(resultResponse.Blocks, resp.Blocks...)
-		resultResponse.BlockIDs = append(resultResponse.BlockIDs, resp.BlockIDs...)
+		rowBlock = c.handleFirstColumn(req, columnsList[0], resultResponse)
 	}
 	for i := 1; i < len(columnsList); i++ {
-		req.Blocks = []interface{}{columnsList[i]}
-		resp := MapBlocks(req)
-		childBlocks := make([]string, 0)
-		for _, b := range resp.Blocks {
-			if len(b.ChildrenIds) != 0 {
-				childBlocks = append(childBlocks, b.ChildrenIds...)
-			}
-		}
-		notChildBlocks := make([]string, 0)
-		for _, b := range resp.Blocks {
-			var found bool
-			for _, blockID := range childBlocks {
-				if b.Id == blockID {
-					found = true
-					break
-				}
-			}
-			if !found {
-				notChildBlocks = append(notChildBlocks, b.Id)
-			}
-		}
-		id := bson.NewObjectId().Hex()
-		column := simple.New(&model.Block{
-			Id:          "cd-" + id,
-			ChildrenIds: notChildBlocks,
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_Column,
-				},
-			},
-		})
-		resultResponse.Blocks = append(resultResponse.Blocks, column.Model())
-		resultResponse.BlockIDs = append(resultResponse.BlockIDs, column.Model().Id)
-		resultResponse.Blocks = append(resultResponse.Blocks, resp.Blocks...)
-		resultResponse.BlockIDs = append(resultResponse.BlockIDs, resp.BlockIDs...)
-		rowBlock.Model().ChildrenIds = append(rowBlock.Model().ChildrenIds, column.Model().Id)
+		c.handleColumn(req, columnsList[i], resultResponse, rowBlock)
 	}
+	c.addRowBlock(resultResponse, rowBlock)
+	return resultResponse
+}
+
+func (c *ColumnListBlock) handleColumn(req *MapRequest, notionColumn interface{}, resultResponse *MapResponse, rowBlock simple.Block) {
+	column := c.addColumnBlocks("ct-", req, notionColumn, resultResponse)
+	rowBlock.Model().ChildrenIds = append(rowBlock.Model().ChildrenIds, column.Model().Id)
+}
+
+func (c *ColumnListBlock) handleFirstColumn(req *MapRequest, notionColumn interface{}, resultResponse *MapResponse) simple.Block {
+	column := c.addColumnBlocks("cd-", req, notionColumn, resultResponse)
+	rowBlock := c.getRowBlock(strings.TrimPrefix(column.Model().Id, "cd-"), column.Model().Id)
+	return rowBlock
+}
+
+func (c *ColumnListBlock) addColumnBlocks(prefix string, req *MapRequest, notionColumn interface{}, resultResponse *MapResponse) simple.Block {
+	req.Blocks = []interface{}{notionColumn}
+	resp := MapBlocks(req)
+	childBlocks := c.getChildBlocksForColumn(resp)
+	id := bson.NewObjectId().Hex()
+	column := c.getColumnBlock(id, prefix, childBlocks, resultResponse)
+	resultResponse.Blocks = append(resultResponse.Blocks, resp.Blocks...)
+	resultResponse.BlockIDs = append(resultResponse.BlockIDs, resp.BlockIDs...)
+	return column
+}
+
+func (c *ColumnListBlock) getRowBlock(id string, columnID string) simple.Block {
+	rowBlock := simple.New(&model.Block{
+		Id:          "r-" + id,
+		ChildrenIds: []string{columnID},
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Row,
+			},
+		},
+	})
+	return rowBlock
+}
+
+func (c *ColumnListBlock) getColumnBlock(id, prefix string, childBlocks []string, resultResponse *MapResponse) simple.Block {
+	column := simple.New(&model.Block{
+		Id:          prefix + id,
+		ChildrenIds: childBlocks,
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Column,
+			},
+		},
+	})
+	resultResponse.Blocks = append(resultResponse.Blocks, column.Model())
+	resultResponse.BlockIDs = append(resultResponse.BlockIDs, column.Model().Id)
+	return column
+}
+
+func (c *ColumnListBlock) getChildBlocksForColumn(resp *MapResponse) []string {
+	childBlocks := make([]string, 0)
+	for _, b := range resp.Blocks {
+		if len(b.ChildrenIds) != 0 {
+			childBlocks = append(childBlocks, b.ChildrenIds...)
+		}
+	}
+	notChildBlocks := make([]string, 0)
+	for _, b := range resp.Blocks {
+		var found bool
+		for _, blockID := range childBlocks {
+			if b.Id == blockID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			notChildBlocks = append(notChildBlocks, b.Id)
+		}
+	}
+	return notChildBlocks
+}
+
+func (c *ColumnListBlock) addRowBlock(resultResponse *MapResponse, rowBlock simple.Block) {
 	resultResponse.Blocks = append(resultResponse.Blocks, rowBlock.Model())
 	resultResponse.BlockIDs = append(resultResponse.BlockIDs, rowBlock.Model().Id)
-	return resultResponse
 }
 
 type ColumnBlock struct {
