@@ -510,7 +510,7 @@ func (sb *smartBlock) navigationalLinks() []string {
 
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
-			if f.Hash != "" {
+			if f.Hash != "" && f.Type != model.BlockContentFile_Image {
 				ids = append(ids, f.Hash)
 			}
 			return true
