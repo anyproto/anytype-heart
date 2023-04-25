@@ -26,6 +26,7 @@ import (
 )
 
 type ObjectType struct {
+	relationService relation2.Service
 	*SubObject
 }
 
@@ -39,6 +40,7 @@ func NewObjectType(
 	layoutConverter converter.LayoutConverter,
 ) *ObjectType {
 	return &ObjectType{
+		relationService: relationService,
 		SubObject: NewSubObject(
 			objectStore,
 			fileBlockService,
@@ -175,11 +177,10 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			r = &relationutils.Relation{Relation: r2}
 		} else {
 			// nolint:errcheck
-			// todo: uncomment this
-			//	r, _ = t.SubObject.FetchKey(rel)
-			//	if r == nil {
-			//		continue
-			//	}
+			r, _ = t.relationService.FetchKey(rel)
+			if r == nil {
+				continue
+			}
 		}
 		// add recommended relation to the dataview
 		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())
