@@ -1,6 +1,6 @@
 export GOPRIVATE=github.com/anytypeio
 export GOLANGCI_LINT_VERSION=v1.49.0
-LOCALNODE ?= false
+ANYENV ?= staging
 
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
@@ -109,8 +109,12 @@ build-android: setup-go
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
-ifeq ($(LOCALNODE), true)
-	$(eval TAGS := $(TAGS) localnode)
+
+ifeq ($(ANYENV), production)
+	$(eval TAGS := $(TAGS) envproduction)
+endif
+ifeq ($(ANYENV), dev)
+	$(eval TAGS := $(TAGS) envdev)
 endif
 	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
@@ -217,8 +221,11 @@ build-server:
 	@echo 'Building middleware server...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/util/vcs))
 	@$(eval TAGS := nosigar nowatchdog)
-ifeq ($(LOCALNODE), true)
-	$(eval TAGS := $(TAGS) localnode)
+ifeq ($(ANYENV), production)
+	$(eval TAGS := $(TAGS) envproduction)
+endif
+ifeq ($(ANYENV), dev)
+	$(eval TAGS := $(TAGS) envdev)
 endif
 	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
 

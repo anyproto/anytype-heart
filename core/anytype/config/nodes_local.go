@@ -1,4 +1,4 @@
-//go:build localnode
+//go:build envdev
 
 package config
 

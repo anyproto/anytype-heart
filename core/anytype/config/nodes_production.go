@@ -1,8 +1,8 @@
-//go:build !localnode
+//go:build envproduction
 
 package config
 
 import _ "embed"
 
-//go:embed nodes/staging.yml
+//go:embed nodes/production.yml
 var nodesConfYmlBytes []byte
