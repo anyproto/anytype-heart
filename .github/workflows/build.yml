@@ -58,9 +58,8 @@ jobs:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
         run: |
-          echo COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
-          echo DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
-          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anytypeio/go-anytype-middleware/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anytypeio/go-anytype-middleware/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
@@ -240,11 +239,9 @@ jobs:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
         run: |
-          echo COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
-          echo DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
+          echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
-          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anytypeio/go-anytype-middleware/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anytypeio/go-anytype-middleware/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |

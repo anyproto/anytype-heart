@@ -27,7 +27,7 @@ setup: setup-go
 setup-go:
 	@echo 'Setting up go modules...'
 	@go mod download
-	@GO111MODULE=off go get github.com/ahmetb/govvv
+	@GO111MODULE=off go install github.com/ahmetb/govvv
 	go install golang.org/x/mobile/cmd/gomobile@latest
 	go install golang.org/x/mobile/cmd/gobind@latest
 
@@ -66,7 +66,7 @@ clear-test-deps:
 
 build-lib:
 	@echo 'Building library...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
+	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/util/vcs))
 	@GO111MODULE=on go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./clientlibrary/clib
 
 build-js-addon:
@@ -95,7 +95,7 @@ build-ios: setup-go
 	@echo 'Clear xcframework'
 	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
-	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
+	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/util\/vcs/g'))
 	gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 	@go mod tidy
@@ -104,7 +104,7 @@ build-android: setup-go
 	gomobile init
 	@go get golang.org/x/mobile/bind
 	@echo 'Building library for Android...'
-	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
+	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
 ifeq ($(LOCALNODE), true)
 	$(eval TAGS := $(TAGS) localnode)
@@ -207,12 +207,12 @@ protos-java:
 
 build-cli:
 	@echo 'Building middleware cli...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
+	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/util/vcs))
 	@go build -v -o dist/cli -ldflags "$(FLAGS)" github.com/anytypeio/go-anytype-middleware/cmd/cli
 
 build-server:
 	@echo 'Building middleware server...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
+	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/util/vcs))
 	@$(eval TAGS := nosigar nowatchdog)
 ifeq ($(LOCALNODE), true)
 	$(eval TAGS := $(TAGS) localnode)
@@ -221,7 +221,7 @@ endif
 
 build-server-debug: protos-server
 	@echo 'Building middleware server with debug symbols...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
+	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/util/vcs))
 	@go build -v -o dist/server -gcflags "all=-N -l" -ldflags "$(FLAGS)" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
 
 run-server: build-server

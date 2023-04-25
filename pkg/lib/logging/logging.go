@@ -61,12 +61,10 @@ func LevelsFromStr(s string) map[string]string {
 
 func init() {
 	cfg := defaultCfg
-	_, revision, modified, _ := vcs.GetVCSInfo()
-	if modified {
-		revision += "-dirty"
-	}
-	SetVersion(revision)
-	
+	info := vcs.GetVCSInfo()
+
+	SetVersion(info.Version())
+
 	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" {
 		cfg.Format = logger.ColorizedOutput
 	} else {
