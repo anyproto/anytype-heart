@@ -22,7 +22,7 @@ const (
 	pageSize                  = 100
 	retryDelay                = time.Second
 	retryAmount               = 5
-	numberOfStepsForPages     = 3 // 2 cycles to get snapshots and 1 cycle to create objects
+	numberOfStepsForPages     = 4 // 3 cycles to get snapshots and 1 cycle to create objects
 	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
 )
 
@@ -53,7 +53,6 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 	db, pages, err := search.Retry(n.search.Search, retryAmount, retryDelay)(context.TODO(), apiKey, pageSize)
-
 	if err != nil {
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
 		return nil, ce
@@ -61,7 +60,6 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 
 	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases + len(pages)*numberOfStepsForPages))
 	dbSnapshots, notionIdsToAnytype, dbNameToID, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
-
 	if dbErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(dbErr)
 		return nil, ce
@@ -71,6 +69,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
 		DatabaseNameToID:           dbNameToID,
 	}
+
 	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, r, progress)
 	if pgErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(pgErr)

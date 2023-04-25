@@ -3,7 +3,6 @@ package importer
 import (
 	"context"
 	"fmt"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
