@@ -101,7 +101,7 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 	if err != nil {
 		return
 	}
-	tree, err := spc.BuildHistoryTree(context.Background(), blockId, commonspace.HistoryTreeOpts{})
+	tree, err := spc.BuildHistoryTree(context.Background(), blockId, commonspace.HistoryTreeOpts{BuildFullTree: true})
 	if err != nil {
 		return
 	}
