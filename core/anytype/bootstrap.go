@@ -50,7 +50,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/ipfslite"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -130,7 +129,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectstore.New()).
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
-		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
 		Register(account.New()).
