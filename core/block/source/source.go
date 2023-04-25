@@ -431,6 +431,8 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 					s = state.NewDocFromSnapshot(ot.Id(), model.Snapshot).(*state.State)
 					s.SetChangeId(startId)
 					return true
+				} else {
+					s = s.NewState()
 				}
 				return true
 			}
