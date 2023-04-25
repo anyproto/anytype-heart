@@ -79,7 +79,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}
 	}
-	return nil
+	return w.Apply(ctx.State)
 }
 
 func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
