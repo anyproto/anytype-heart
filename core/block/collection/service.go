@@ -2,6 +2,7 @@ package collection
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
@@ -18,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -223,9 +225,9 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	// TODO To be rewritten to layout change
 
 	var (
-		details      *types.Struct
-		dvBlock      *model.Block
-		typesFromSet []string
+		details             *types.Struct
+		dvBlock             *model.Block
+		typesAndRelsFromSet []string
 	)
 	if err := block.Do(s.picker, id, func(sb smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(sb.Details())
@@ -234,7 +236,7 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 
 		b := st.Pick(template.DataviewBlockId)
 		if b != nil {
-			typesFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+			typesAndRelsFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
 			delete(details.Fields, bundle.RelationKeySetOf.String())
 			pbtypes.UpdateStringList(details, bundle.RelationKeyFeaturedRelations.String(), func(fr []string) []string {
 				return slice.Remove(fr, bundle.RelationKeySetOf.String())
@@ -257,6 +259,7 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	}
 
 	if dvBlock != nil {
+		filters := s.generateFilters(typesAndRelsFromSet)
 		err = block.DoState(s.picker, newID, func(st *state.State, sb smartblock.SmartBlock) error {
 			dvBlock.Id = template.DataviewBlockId
 			dvBlock.GetDataview().IsCollection = true
@@ -264,13 +267,7 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 			st.Set(b)
 
 			recs, _, qErr := s.objectStore.Query(nil, database.Query{
-				Filters: []*model.BlockContentDataviewFilter{
-					{
-						RelationKey: bundle.RelationKeyType.String(),
-						Condition:   model.BlockContentDataviewFilter_In,
-						Value:       pbtypes.StringList(typesFromSet),
-					},
-				},
+				Filters: filters,
 			})
 			if qErr != nil {
 				return fmt.Errorf("can't get records for collection: %w", err)
@@ -306,4 +303,34 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	}
 
 	return newID, nil
+}
+
+func (s *Service) generateFilters(typesAndRels []string) []*model.BlockContentDataviewFilter {
+	var (
+		types, rels []string
+		filters     []*model.BlockContentDataviewFilter
+	)
+	for _, id := range typesAndRels {
+		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
+			types = append(types, id)
+		} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+			rels = append(rels, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
+		}
+	}
+	if len(types) != 0 {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.StringList(types),
+		})
+	}
+	if len(rels) != 0 {
+		for _, rel := range rels {
+			filters = append(filters, &model.BlockContentDataviewFilter{
+				RelationKey: rel,
+				Condition:   model.BlockContentDataviewFilter_Exists,
+			})
+		}
+	}
+	return filters
 }

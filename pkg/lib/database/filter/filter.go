@@ -140,6 +140,10 @@ func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
 			Key:   proto.RelationKey,
 			Value: list,
 		}}, nil
+	case model.BlockContentDataviewFilter_Exists:
+		return Exists{
+			Key: proto.RelationKey,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unexpected filter cond: %v", proto.Condition)
 	}

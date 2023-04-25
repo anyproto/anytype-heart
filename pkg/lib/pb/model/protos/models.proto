@@ -422,6 +422,7 @@ message Block {
                     NotAllIn = 14;
                     ExactIn = 15;
                     NotExactIn = 16;
+                    Exists = 17;
                 }
 
                 enum QuickOption {
