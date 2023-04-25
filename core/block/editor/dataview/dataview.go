@@ -302,8 +302,9 @@ func (d *sdataview) CreateView(ctx *session.Context, id string,
 	if len(view.Sorts) == 0 {
 		// todo: set depends on the view type
 		view.Sorts = []*model.BlockContentDataviewSort{{
-			RelationKey: "name",
-			Type:        model.BlockContentDataviewSort_Asc,
+			Id:          bson.NewObjectId().Hex(),
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
 		}}
 	}
 
