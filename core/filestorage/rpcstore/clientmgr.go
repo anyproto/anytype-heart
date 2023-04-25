@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"math/rand"
 	"sync"
@@ -52,7 +54,7 @@ type clientManager struct {
 	mu sync.RWMutex
 }
 
-func (m *clientManager) Add(ctx context.Context, ts ...*task) (err error) {
+func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
 	m.mu.Lock()
 	if m.ocache.Len() == 0 {
 		if err = m.checkPeers(ctx, true); err != nil {
@@ -62,6 +64,32 @@ func (m *clientManager) Add(ctx context.Context, ts ...*task) (err error) {
 	}
 	m.mu.Unlock()
 	return m.mb.Add(ctx, ts...)
+}
+
+func (m *clientManager) WriteOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
+	return m.addOp(ctx, true, ready, f, c)
+}
+
+func (m *clientManager) ReadOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
+	return m.addOp(ctx, false, ready, f, c)
+}
+
+func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
+	t := getTask()
+	t.ctx = ctx
+	t.cid = c
+	t.exec = f
+	t.spaceId = fileblockstore.CtxGetSpaceId(ctx)
+	t.onFinished = m.onTaskFinished
+	t.ready = ready
+	t.write = write
+	return m.add(ctx, t)
+}
+
+func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
+	t.ready <- result{cid: t.cid, err: taskErr}
+	t.release()
+	// TODO: we can requeue and retry here
 }
 
 func (m *clientManager) checkPeerLoop() {

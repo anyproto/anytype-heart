@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
+	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anytypeio/any-sync/commonspace/object/accountdata"
 	"github.com/anytypeio/any-sync/net/rpc/rpctest"
 	"github.com/anytypeio/any-sync/nodeconf"
@@ -18,6 +19,7 @@ import (
 	"sort"
 	"sync"
 	"testing"
+	"time"
 )
 
 var ctx = context.Background()
@@ -105,6 +107,31 @@ func TestStore_GetMany(t *testing.T) {
 	assert.Equal(t, bs, resBlocks)
 }
 
+func TestStore_AddAsync(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.Finish(t)
+
+	bs := []blocks.Block{
+		blocks.NewBlock([]byte{'1'}),
+		blocks.NewBlock([]byte{'2'}),
+		blocks.NewBlock([]byte{'3'}),
+	}
+	err := fx.Add(ctx, bs[:1])
+	assert.NoError(t, err)
+
+	successCh := fx.AddAsync(ctx, bs)
+	var successCids []cid.Cid
+	for i := 0; i < len(bs); i++ {
+		select {
+		case <-time.After(time.Second):
+			require.True(t, false, "timeout")
+		case c := <-successCh:
+			successCids = append(successCids, c)
+		}
+	}
+	assert.Len(t, successCids, 3)
+}
+
 func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
 		a: new(app.App),
@@ -154,46 +181,59 @@ type testServer struct {
 	data map[string][]byte
 }
 
-func (t *testServer) GetBlocks(stream fileproto.DRPCFile_GetBlocksStream) error {
-	for {
-		req, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-		t.mu.Lock()
-		resp := &fileproto.GetBlockResponse{
-			Cid: req.Cid,
-		}
-		if data, ok := t.data[string(req.Cid)]; ok {
-			resp.Data = data
-		} else {
-			resp.Code = fileproto.CIDError_CIDErrorNotFound
-		}
-		t.mu.Unlock()
-		if err = stream.Send(resp); err != nil {
-			return err
-		}
+func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if data, ok := t.data[string(req.Cid)]; ok {
+		return &fileproto.BlockGetResponse{
+			Cid:  req.Cid,
+			Data: data,
+		}, nil
+	} else {
+		return nil, fileprotoerr.ErrCIDNotFound
 	}
 }
 
-func (t *testServer) PushBlock(ctx context.Context, req *fileproto.PushBlockRequest) (*fileproto.PushBlockResponse, error) {
+func (t *testServer) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.BlockPushResponse, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.data[string(req.Cid)] = req.Data
-	return &fileproto.PushBlockResponse{}, nil
+	return &fileproto.BlockPushResponse{}, nil
 }
 
-func (t *testServer) DeleteBlocks(ctx context.Context, req *fileproto.DeleteBlocksRequest) (*fileproto.DeleteBlocksResponse, error) {
+func (t *testServer) BlocksDelete(ctx context.Context, req *fileproto.BlocksDeleteRequest) (*fileproto.BlocksDeleteResponse, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	for _, c := range req.Cid {
+	for _, c := range req.Cids {
 		delete(t.data, string(c))
 	}
-	return &fileproto.DeleteBlocksResponse{}, nil
+	return &fileproto.BlocksDeleteResponse{}, nil
+}
+
+func (t *testServer) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheckRequest) (resp *fileproto.BlocksCheckResponse, err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	resp = &fileproto.BlocksCheckResponse{}
+	for _, c := range req.Cids {
+		status := fileproto.AvailabilityStatus_NotExists
+		if _, ok := t.data[string(c)]; ok {
+			status = fileproto.AvailabilityStatus_Exists
+		}
+		resp.BlocksAvailability = append(resp.BlocksAvailability, &fileproto.BlockAvailability{
+			Cid:    c,
+			Status: status,
+		})
+	}
+	return
+}
+
+func (t *testServer) BlocksBind(ctx context.Context, request *fileproto.BlocksBindRequest) (*fileproto.BlocksBindResponse, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (t *testServer) Check(ctx context.Context, req *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
-	return &fileproto.CheckResponse{}, nil
+	return &fileproto.CheckResponse{AllowWrite: true}, nil
 }
 
 type config struct {

@@ -3,17 +3,17 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"os"
-	"sync"
-	"testing"
-	"time"
-
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/client/filestorage/badgerfilestore"
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
+	"sync"
+	"testing"
+	"time"
 )
 
 var ctx = context.Background()
@@ -260,9 +260,8 @@ func (t *testStore) Close() (err error) {
 
 type psFixture struct {
 	*proxyStore
-	tmpDir    string
-	flatfsDir string
-	db        *badger.DB
+	tmpDir string
+	db     *badger.DB
 }
 
 func newPSFixture(t *testing.T) *psFixture {
@@ -272,15 +271,10 @@ func newPSFixture(t *testing.T) *psFixture {
 	require.NoError(t, err)
 	fx.db, err = badger.Open(badger.DefaultOptions(fx.tmpDir).WithLoggingLevel(badger.ERROR))
 	require.NoError(t, err)
-
-	fx.flatfsDir = t.TempDir()
-	cache, err := newFlatStore(fx.flatfsDir)
-	require.NoError(t, err)
-
 	fx.proxyStore = &proxyStore{
-		cache:  cache,
+		cache:  newTestStore(nil),
 		origin: newTestStore(nil),
-		index:  NewFileBadgerIndex(fx.db),
+		index:  badgerfilestore.NewFileBadgerIndex(fx.db),
 	}
 	return fx
 }
