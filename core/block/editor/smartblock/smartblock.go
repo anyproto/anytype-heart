@@ -168,7 +168,6 @@ type InitContext struct {
 	SpaceID        string
 	BuildTreeOpts  commonspace.BuildTreeOpts
 	Ctx            context.Context
-	App            *app.App
 }
 
 type linkSource interface {

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -58,7 +57,6 @@ type SubObjectCollection struct {
 	defaultCollectionName string
 	collections           map[string]map[string]SubObjectImpl
 
-	app              *app.App
 	sourceService    source.Service
 	objectStore      objectstore.ObjectStore
 	anytype          core.Service
@@ -114,8 +112,6 @@ func NewSubObjectCollection(
 }
 
 func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
-	c.app = ctx.App
-
 	return c.SmartBlock.Init(ctx)
 }
 
@@ -395,7 +391,6 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 
 	if err = subObj.Init(&smartblock.InitContext{
 		Source: c.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, c.onSubObjectChange(collection, subId)),
-		App:    c.app,
 	}); err != nil {
 		return
 	}

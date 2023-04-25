@@ -40,10 +40,9 @@ type ObjectFactory struct {
 	sendEvent            func(e *pb.Event)
 	sourceService        source.Service
 	tempDirProvider      core.TempDirProvider
+	templateCloner       templateCloner
 
 	smartblockFactory smartblockFactory
-
-	app *app.App
 }
 
 func NewObjectFactory(
@@ -68,6 +67,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.relationService = app.MustComponent[relation2.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
+	f.templateCloner = app.MustComponent[templateCloner](a)
 
 	f.smartblockFactory = smartblockFactory{
 		anytype:            f.anytype,
@@ -78,7 +78,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 		restrictionService: app.MustComponent[restriction.Service](a),
 	}
 
-	f.app = a
 	return nil
 }
 
@@ -123,7 +122,6 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
 	}
-	initCtx.App = f.app
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
 	if err != nil {
@@ -230,6 +228,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.sbtProvider,
 			f.layoutConverter,
 			f.smartblockFactory,
+			f.templateCloner,
 		), nil
 	case model.SmartBlockType_MissingObject:
 		return NewMissingObject(sb), nil
