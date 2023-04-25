@@ -106,8 +106,6 @@ func (c *treeCache) Name() (name string) {
 	return treegetter.CName
 }
 
-func (c *treeCache) GetObject()
-
 func (c *treeCache) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
 	ctx = context.WithValue(ctx, spaceKey, spaceId)
 	v, err := c.cache.Get(ctx, id)

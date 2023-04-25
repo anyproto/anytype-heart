@@ -64,8 +64,9 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	}
 
 	sb = f.New(sc.Type())
-	sb.Lock()
-	defer sb.Unlock()
+	// we probably don't need any locks here, because the object is initialized synchronously,
+	// therefore it won't be loaded unless this function exits
+	// also the important part is that we can't have any locks, unless we build the tree
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
 	}

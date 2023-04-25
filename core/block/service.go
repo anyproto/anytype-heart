@@ -26,6 +26,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -65,11 +66,17 @@ const (
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
+	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
+
+var (
+	blockCacheTTL       = time.Minute
+	blockCleanupTimeout = time.Second * 30
+)
 
 var (
 	// quick fix for limiting file upload goroutines
@@ -86,35 +93,12 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
-	var ob = openedBlock{SmartBlock: sb}
-	if sb.Type() != model.SmartBlockType_Breadcrumbs &&
-		sb.Type() != model.SmartBlockType_SubObject &&
-		sb.Type() != model.SmartBlockType_Date &&
-		sb.Type() != model.SmartBlockType_BundledRelation &&
-		sb.Type() != model.SmartBlockType_BundledObjectType &&
-		sb.Type() != model.SmartBlockType_BundledTemplate {
-		// decode and store corresponding threadID for appropriate block
-		if tid, err := thread.Decode(sb.Id()); err != nil {
-			log.With("thread", sb.Id()).Warnf("can't restore thread ID: %v", err)
-		} else {
-			ob.statusWatchID = tid
-		}
-	}
-	return &ob
-}
-
-type openedBlock struct {
-	smartblock.SmartBlock
-	statusWatchID thread.ID
-}
-
 func New() *Service {
 	return &Service{}
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, objectID string)
 
 	CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
@@ -185,6 +169,9 @@ func (s *Service) initPredefinedBlocks(ctx context.Context) {
 		s.anytype.PredefinedBlocks().Profile,
 		s.anytype.PredefinedBlocks().Archive,
 		s.anytype.PredefinedBlocks().Home,
+		s.anytype.PredefinedBlocks().MarketplaceType,
+		s.anytype.PredefinedBlocks().MarketplaceRelation,
+		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 		s.anytype.PredefinedBlocks().Widgets,
 	}
 	startTime := time.Now()
@@ -264,7 +251,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	if tid := ob.statusWatchID; tid != thread.Undef && s.status != nil {
+	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
 			fList = func() []string {
 				ob.Lock()
@@ -274,9 +261,9 @@ func (s *Service) OpenBlock(
 			}
 		)
 
-		if newWatcher := s.status.Watch(ob.Id(), tid, fList); newWatcher {
+		if newWatcher := s.status.Watch(tid, fList); newWatcher {
 			ob.AddHook(func(_ smartblock.ApplyInfo) error {
-				s.status.Unwatch(ob.Id(), tid)
+				s.status.Unwatch(tid)
 				return nil
 			}, smartblock.HookOnClose)
 		}
@@ -431,13 +418,13 @@ func (s *Service) AddSubObjectsToWorkspace(
 	return
 }
 
-func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string, orphansGC bool) (err error) {
+func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string) (err error) {
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")
 		}
-		err = ws.RemoveSubObjects(objectIds, orphansGC)
+		err = ws.RemoveSubObjects(objectIds)
 		return err
 	})
 
@@ -635,14 +622,6 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 		return err
 	}
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
-}
-
-func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
-	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		st := b.NewStateCtx(ctx)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-		return b.Apply(st, smartblock.NoRestrictions)
-	})
 }
 
 func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
@@ -843,7 +822,7 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 					},
 				},
 			}
-			f, err := database.NewFilters(q, nil, s.objectStore, nil)
+			f, err := database.NewFilters(q, nil, nil)
 			if err != nil {
 				return nil
 			}
@@ -888,21 +867,6 @@ func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.Smart
 	}
 	return ob.SmartBlock, func() {
 		s.cache.Release(id)
-	}, nil
-}
-
-// PickBlockOffload returns opened smartBlock or opens smartBlock in silent mode
-// if the smartBlock is not used after the release(has 0 ref counter), it will be removed from cache
-func (s *Service) PickBlockOffload(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
-	ob, err := s.getSmartblock(ctx, id)
-	if err != nil {
-		return
-	}
-	return ob.SmartBlock, func() {
-		stillUsed := s.cache.Release(id)
-		if !stillUsed {
-			_, _ = s.cache.Remove(id)
-		}
 	}, nil
 }
 
@@ -1047,6 +1011,21 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 	return fmt.Errorf("undo operation not available for this block type: %T", sb)
 }
 
+func (s *Service) DoImport(id string, apply func(b _import.Import) error) error {
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(_import.Import); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+
+	return fmt.Errorf("import operation not available for this block type: %T", sb)
+}
+
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
 	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
 	if err != nil {
@@ -1116,34 +1095,6 @@ func DoWithContext[t any](ctx context.Context, p Picker, id string, apply func(s
 
 func DoState[t any](p Picker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	return DoStateCtx(p, nil, id, apply, flags...)
-}
-
-// DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
-// It correctly handles the case when two ids are the same.
-func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
-	if firstID == secondID {
-		return DoState(s, firstID, func(st *state.State, b t1) error {
-			// Check that b satisfies t2
-			b2, ok := any(b).(t2)
-			if !ok {
-				var dummy t2
-				return fmt.Errorf("block %s is not of type %T", firstID, dummy)
-			}
-			return f(st, st, b, b2)
-		})
-	}
-	if firstID < secondID {
-		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
-			return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
-				return f(firstState, secondState, firstBlock, secondBlock)
-			})
-		})
-	}
-	return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
-		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
-			return f(firstState, secondState, firstBlock, secondBlock)
-		})
-	})
 }
 
 func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
@@ -1226,7 +1177,7 @@ func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	url, err := uri.NormalizeURI(req.Url)
+	url, err := uri.ProcessURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
@@ -1294,10 +1245,7 @@ func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		if sb, err = sbOpener.Open(id); err != nil {
 			return
 		}
-		// in case of subObject, we need to set the statusWatchID to the workspaceId
-		ob = newOpenedBlock(sb)
-		ob.statusWatchID, _ = thread.Decode(workspaceId)
-		return ob, nil
+		return newOpenedBlock(sb), nil
 	}
 
 	sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{

@@ -102,7 +102,7 @@ require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
-	github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-20230103175543-ac84febce98d // indirect
+	github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-20230104133926-9b59e6029ddc // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

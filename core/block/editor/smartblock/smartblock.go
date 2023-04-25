@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +34,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
-	"github.com/anytypeio/go-anytype-middleware/util/mutex"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -42,6 +43,8 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
+	ErrRelationOptionNotFound                      = errors.New("relation option not found")
+	ErrRelationNotFound                            = errors.New("relation not found")
 	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
@@ -79,7 +82,7 @@ const CallerKey key = 0
 var log = logging.Logger("anytype-mw-smartblock")
 
 func New() SmartBlock {
-	s := &smartBlock{hooks: map[Hook][]HookCallback{}, Locker: mutex.NewLocker()}
+	s := &smartBlock{hooks: map[Hook][]HookCallback{}}
 	return s
 }
 
@@ -100,7 +103,6 @@ type SmartBlock interface {
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
 	AddRelationLinks(ctx *session.Context, relationIds ...string) (err error)
-	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
@@ -131,7 +133,7 @@ type SmartBlock interface {
 type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
-	RelationKeys   []string
+	RelationIds    []string
 	State          *state.State
 	Relations      []*model.Relation
 	Restriction    restriction.Service
@@ -146,14 +148,10 @@ type linkSource interface {
 	HasSmartIds() bool
 }
 
-type Locker interface {
-	TryLock() bool
-	sync.Locker
-}
-
 type smartBlock struct {
 	state.Doc
-	Locker
+	sync.Locker
+	objecttree.ObjectTree
 	depIds              []string // slice must be sorted
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
@@ -233,6 +231,9 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	sb.source = ctx.Source
+	// TODO: [MR] rewrite this so it would be obvious
+	//  we are doing this because we expecting cache to have objectTrees inside for smartblocks
+	sb.ObjectTree = sb.source.(objecttree.ObjectTree)
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
@@ -261,7 +262,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			return err
 		}
 	}
-	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
+	if err = sb.addRelations(ctx.State, ctx.RelationIds...); err != nil {
 		return
 	}
 
@@ -388,6 +389,37 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
+	if sb.Type() == model.SmartBlockType_Set {
+		// add the object type from the dataview source
+		if b := sb.Doc.Pick("dataview"); b != nil {
+			if dv := b.Model().GetDataview(); dv != nil {
+				if len(dv.Source) == 0 || dv.Source[0] == "" {
+					panic("empty dv source")
+				}
+				uniqueObjTypes = append(uniqueObjTypes, dv.Source...)
+				for _, rel := range dv.Relations {
+					if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
+						if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
+							continue
+						}
+						for _, ot := range rel.ObjectTypes {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								if ot == "" {
+									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
+								} else {
+									if strings.HasPrefix(ot, "http") {
+										log.Errorf("dv rels has http source")
+									}
+									uniqueObjTypes = append(uniqueObjTypes, ot)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
 	go sb.metaListener(recordsCh)
 	return
@@ -463,9 +495,7 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (sb *smartBlock) Locked() bool {
-	if !sb.TryLock() {
-		return true
-	}
+	sb.Lock()
 	defer sb.Unlock()
 	return sb.IsLocked()
 }
@@ -751,13 +781,13 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 func (sb *smartBlock) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
-	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
+	if err = sb.addRelations(s, relationKeys...); err != nil {
 		return
 	}
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
+func (sb *smartBlock) addRelations(s *state.State, relationKeys ...string) (err error) {
 	if len(relationKeys) == 0 {
 		return
 	}
@@ -993,11 +1023,11 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *session.Context, relationIds []s
 	return sb.Apply(st)
 }
 
-func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error), changes []*pb.ChangeContent) error {
+func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	s, err := f(sb.Doc)
+	s, changes, err := f(sb.Doc)
 	if err != nil {
 		return err
 	}
@@ -1170,6 +1200,41 @@ func (sb *smartBlock) AddHook(f HookCallback, events ...Hook) {
 	for _, e := range events {
 		sb.hooks[e] = append(sb.hooks[e], f)
 	}
+}
+
+func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []*model.Relation, aggregatedRelations []*model.Relation, details *types.Struct) []*model.Relation {
+	var m = make(map[string]int, len(extraRelations))
+	var rels = make([]*model.Relation, 0, len(objTypeRelations)+len(extraRelations))
+
+	for i, rel := range extraRelations {
+		m[rel.Key] = i
+		rels = append(rels, pbtypes.CopyRelation(rel))
+	}
+
+	for _, rel := range objTypeRelations {
+		if _, exists := m[rel.Key]; exists {
+			continue
+		}
+		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = len(rels) - 1
+	}
+
+	for _, rel := range aggregatedRelations {
+		if i, exists := m[rel.Key]; exists {
+			// overwrite name that we've got from DS
+			if rels[i].Name != rel.Name {
+				rels[i].Name = rel.Name
+			}
+			continue
+		}
+		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = len(rels) - 1
+	}
+
+	if details == nil || details.Fields == nil {
+		return rels
+	}
+	return rels
 }
 
 func (sb *smartBlock) baseRelations() []*model.Relation {

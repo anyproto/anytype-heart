@@ -107,12 +107,12 @@ func newTreeSource(a core.Service, ss status.Service, id string, listenToOwnChan
 }
 
 type source struct {
+	objecttree.ObjectTree
 	id, logId                string
 	tid                      thread.ID
 	smartblockType           smartblock.SmartBlockType
 	a                        core.Service
 	ss                       status.Service
-	objectTree               objecttree.ObjectTree
 	lastSnapshotId           string
 	receiver                 ChangeReceiver
 	unsubscribe              func()
@@ -176,7 +176,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 		return
 	}
 
-	s.objectTree, err = spc.BuildTree(ctx, s.id, s)
+	s.ObjectTree, err = spc.BuildTree(ctx, s.id, s)
 	if err != nil {
 		return
 	}
@@ -185,7 +185,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, err := change.BuildState(nil, s.objectTree)
+	st, _, err := change.BuildState(nil, s.ObjectTree)
 	if err != nil {
 		return
 	}
@@ -215,7 +215,7 @@ func (s *source) GetCreationInfo() (creator string, createdDate int64, err error
 		return "", 0, fmt.Errorf("anytype is nil")
 	}
 
-	createdDate = s.objectTree.UnmarshalledHeader().Timestamp
+	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
 	// TODO: add creator in profile
 	return
 }
@@ -257,7 +257,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		return
 	}
 	// TODO: [MR] Add signing key and identity
-	addResult, err := s.objectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
+	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         nil,
 		Identity:    nil,
@@ -298,7 +298,7 @@ func (s *source) ListIds() (ids []string, err error) {
 }
 
 func (s *source) needSnapshot() bool {
-	if s.objectTree.Heads()[0] == s.objectTree.Id() {
+	if s.ObjectTree.Heads()[0] == s.ObjectTree.Id() {
 		return true
 	}
 	return rand.Intn(500) == 42
@@ -315,7 +315,7 @@ func (s *source) iterate(startId string, iterFunc objecttree.ChangeIterateFunc) 
 		res = ch
 		return
 	}
-	return s.objectTree.IterateFrom(startId, unmarshall, iterFunc)
+	return s.ObjectTree.IterateFrom(startId, unmarshall, iterFunc)
 }
 
 func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {
@@ -332,7 +332,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 			}
 		}
 	}
-	err := s.iterate(s.objectTree.Root().Id, func(c *objecttree.Change) (isContinue bool) {
+	err := s.iterate(s.ObjectTree.Root().Id, func(c *objecttree.Change) (isContinue bool) {
 		model, ok := c.Model.(*pb.Change)
 		if !ok {
 			return false
