@@ -18,7 +18,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.18.10
+          go-version: 1.19.7
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -44,21 +44,26 @@ jobs:
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set env vars
-        run: |
-          export COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
-          export GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
-          export DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
-          export GIT_BRANCH=$(git branch --show-current)
-          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
-          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
-          echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
       - name: install protoc
         run: |
           make setup-protoc
       - name: setup go
         run: |
           make setup-go
+      - name: Set env vars
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_KEY }}
+          GITHUB_USER: ${{ secrets.GH_USER }}
+        run: |
+          echo COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
+          echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
+          echo DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
+          echo GIT_BRANCH=$(git branch --show-current)
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
+          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
+          echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
+          echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
+          git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
       - uses: actions/cache@v3
         with:
           path: |
@@ -165,7 +170,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.18.10
+          go-version: 1.19.7
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -191,20 +196,25 @@ jobs:
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set env vars
-        run: |
-          export COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
-          export GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
-          export DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
-          export GIT_BRANCH=$(git branch --show-current)
-          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
-          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
       - name: install protoc
         run: |
           HAS_SYSTEM_PROTOBUF=false make setup-protoc
       - name: setup go
         run: |
           make setup-go
+      - name: Set env vars
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_KEY }}
+          GITHUB_USER: ${{ secrets.GH_USER }}
+        run: |
+          echo COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
+          echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
+          echo DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
+          echo GIT_BRANCH=$(git branch --show-current)
+          echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
+          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
+          git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
       - uses: actions/cache@v3
         with:
           path: |
