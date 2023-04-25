@@ -1,11 +1,12 @@
 package unsplash
 
 import (
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/stretchr/testify/require"
 	"io"
 	"os"
 	"testing"
+
+	"github.com/rwcarlsen/goexif/exif"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_injectArtistIntoExif(t *testing.T) {

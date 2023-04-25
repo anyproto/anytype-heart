@@ -3,7 +3,6 @@ package unsplash
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -20,6 +19,7 @@ import (
 	"github.com/hbagdi/go-unsplash/unsplash"
 	"golang.org/x/oauth2"
 
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -35,6 +35,7 @@ const (
 	CName         = "unsplash"
 	cacheTTL      = time.Minute * 10
 	cacheGCPeriod = time.Minute * 5
+	anytypeURL    = "https://unsplash.anytype.io/"
 )
 
 type Unsplash interface {
@@ -306,4 +307,10 @@ func init() {
 	if DefaultToken == "" {
 		DefaultToken = loadenv.Get("UNSPLASH_KEY")
 	}
+
+	setAnytypeURL()
+}
+
+func setAnytypeURL() {
+	unsplash.SetupBaseUrl(anytypeURL)
 }
