@@ -3,7 +3,7 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/client/filestorage/badgerfilestore"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
