@@ -734,17 +734,17 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 			return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr
 		}
 	}
-	cfg, err := mw.getBootstrapConfig(err, req)
+	cfg, err := mw.getBootstrapConfig(req)
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	err = mw.startApp(cfg, res, err)
+	err = mw.startApp(cfg, res)
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	err = mw.setDetails(profile, req.Icon, err)
+	err = mw.setDetails(profile, req.Icon)
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
@@ -756,7 +756,7 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 	return address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
 }
 
-func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.DerivationResult, err error) error {
+func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.DerivationResult) error {
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(mw.rootPath, derivationResult),
@@ -764,13 +764,14 @@ func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.Deriv
 	}
 
 	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
+	var err error
 	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (mw *Middleware) getBootstrapConfig(err error, req *pb.RpcAccountRecoverFromLegacyExportRequest) (*config.Config, error) {
+func (mw *Middleware) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*config.Config, error) {
 	archive, err := zip.OpenReader(req.Path)
 	if err != nil {
 		return nil, err
@@ -785,18 +786,18 @@ func (mw *Middleware) getBootstrapConfig(err error, req *pb.RpcAccountRecoverFro
 	return cfg, nil
 }
 
-func (mw *Middleware) setDetails(profile *pb.Profile, icon int64, err error) error {
+func (mw *Middleware) setDetails(profile *pb.Profile, icon int64) error {
 	profileDetails, accountDetails := buildDetails(profile, icon)
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   profileDetails,
 	}); err != nil {
 		return err
 	}
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Account,
 		Details:   accountDetails,
 	}); err != nil {
