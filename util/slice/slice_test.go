@@ -6,6 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testStruct struct {
+	id  string
+	val int
+}
+
 func Test_FindPos(t *testing.T) {
 	s := []string{"1", "2", "3"}
 	assert.Equal(t, 0, FindPos(s, "1"))
@@ -61,4 +66,21 @@ func TestUnion(t *testing.T) {
 	assert.Equal(t, []string{"a", "b", "c"}, Union([]string{"a"}, []string{"a", "b", "c"}))
 	assert.Equal(t, []string{"a", "b", "c"}, Union([]string{"a"}, []string{"b", "c"}))
 	assert.Equal(t, []string{"a", "b", "c"}, Union([]string{"a", "b", "c"}, []string{}))
+}
+
+func TestChangeElement(t *testing.T) {
+	result := ChangeElement([]testStruct{{id: "a", val: 1}, {id: "b", val: 2}}, testStruct{id: "b", val: 3}, func(s, s2 testStruct) bool {
+		return s.id == s2.id
+	})
+	assert.Equal(t, []testStruct{{id: "a", val: 1}, {id: "b", val: 3}}, result)
+
+	resultPtr := ChangeElement([]*testStruct{{id: "a", val: 1}, {id: "b", val: 2}}, &testStruct{id: "a", val: 3}, func(s, s2 *testStruct) bool {
+		return s.id == s2.id
+	})
+	assert.Equal(t, []*testStruct{{id: "a", val: 3}, {id: "b", val: 2}}, resultPtr)
+
+	resultFood := ChangeElement([]string{"apple", "carrot", "bacon"}, "banana", func(_, f string) bool {
+		return f == "bacon"
+	})
+	assert.Equal(t, []string{"apple", "carrot", "banana"}, resultFood)
 }

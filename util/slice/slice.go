@@ -202,3 +202,13 @@ func Intersection(a, b []string) (res []string) {
 	}
 	return
 }
+
+func ChangeElement[T comparable](s []T, el T, compare func(el, el2 T) bool) []T {
+	for i, el2 := range s {
+		if compare(el, el2) {
+			s[i] = el
+			break
+		}
+	}
+	return s
+}

@@ -8,11 +8,13 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 //go:embed rules.json
@@ -90,21 +92,15 @@ func doRelationLinkRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 	switch r.Action {
 	case remove:
-		for i, relLink := range s.Data.RelationLinks {
-			if relLink.Key == r.RelationLink.Key {
-				s.Data.RelationLinks = append(s.Data.RelationLinks[:i], s.Data.RelationLinks[i+1:]...)
-				break
-			}
-		}
+		s.Data.RelationLinks = lo.Reject(s.Data.RelationLinks, func(relLink *model.RelationLink, _ int) bool {
+			return relLink.Key == r.RelationLink.Key
+		})
 	case add:
 		s.Data.RelationLinks = append(s.Data.RelationLinks, r.RelationLink)
 	case change:
-		for i, relLink := range s.Data.RelationLinks {
-			if relLink.Key == r.RelationLink.Key {
-				s.Data.RelationLinks[i] = r.RelationLink
-				break
-			}
-		}
+		s.Data.RelationLinks = slice.ChangeElement(s.Data.RelationLinks, r.RelationLink, func(r, r2 *model.RelationLink) bool {
+			return r.Key == r2.Key
+		})
 	default:
 		fmt.Printf(errInvalidAction, r.Action)
 	}
@@ -132,21 +128,11 @@ func doObjectTypeRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 	switch r.Action {
 	case remove:
-		for i, ot := range s.Data.ObjectTypes {
-			if ot == r.ObjectType {
-				s.Data.ObjectTypes = append(s.Data.ObjectTypes[:i], s.Data.ObjectTypes[i+1:]...)
-				break
-			}
-		}
+		s.Data.ObjectTypes = slice.Remove(s.Data.ObjectTypes, r.ObjectType)
 	case add:
 		s.Data.ObjectTypes = append(s.Data.ObjectTypes, r.ObjectType)
 	case change:
-		for i, ot := range s.Data.ObjectTypes {
-			if ot == r.ObjectType {
-				s.Data.ObjectTypes[i] = r.ObjectType
-				break
-			}
-		}
+		return
 	default:
 		fmt.Printf(errInvalidAction, r.Action)
 	}
