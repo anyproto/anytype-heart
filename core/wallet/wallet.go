@@ -42,6 +42,10 @@ func (r *wallet) GetOldAccountKey() crypto.PrivKey {
 	return r.oldAccountKey
 }
 
+func (r *wallet) GetMasterKey() crypto.PrivKey {
+	return r.masterKey
+}
+
 func (r *wallet) Init(a *app.App) (err error) {
 	if r.accountKey == nil {
 		return fmt.Errorf("no account key present")
@@ -71,7 +75,7 @@ func (r *wallet) Init(a *app.App) (err error) {
 	logging.SetAccount(accountId)
 	metrics.SharedClient.SetUserId(accountId)
 
-	r.accountData = accountdata.New(r.deviceKey, r.accountKey, r.masterKey)
+	r.accountData = accountdata.New(r.deviceKey, r.accountKey)
 	return nil
 }
 
@@ -118,6 +122,7 @@ type Wallet interface {
 	GetAccountPrivkey() crypto.PrivKey
 	GetDevicePrivkey() crypto.PrivKey
 	GetOldAccountKey() crypto.PrivKey
+	GetMasterKey() crypto.PrivKey
 	accountservice.Service
 	app.Component
 }

@@ -3,10 +3,10 @@ package space
 import (
 	"context"
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/gogo/protobuf/proto"
 	"time"
 
-	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/app/ocache"
@@ -67,7 +67,7 @@ type service struct {
 	spaceCache           ocache.OCache
 	commonSpace          commonspace.SpaceService
 	client               coordinatorclient.CoordinatorClient
-	account              accountservice.Service
+	wallet               wallet.Wallet
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
 	peerStore            peerstore.PeerStore
@@ -83,7 +83,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.conf = conf.GetSpace()
 	s.newAccount = conf.NewAccount
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
-	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
+	s.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
@@ -122,8 +122,8 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return
 	}
 	payload := commonspace.SpaceDerivePayload{
-		SigningKey: s.account.Account().SignKey,
-		MasterKey:  s.account.Account().MasterKey,
+		SigningKey: s.wallet.GetAccountPrivkey(),
+		MasterKey:  s.wallet.GetMasterKey(),
 		SpaceType:  SpaceType,
 	}
 	if s.newAccount {
