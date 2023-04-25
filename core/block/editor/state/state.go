@@ -660,7 +660,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.storeKeyRemoved != nil {
 		s.parent.storeKeyRemoved = s.storeKeyRemoved
 	}
-	
+
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
@@ -707,6 +707,7 @@ func (s *State) intermediateApply() {
 
 func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (filtered []simple.EventMessage) {
 	var prev []byte
+	filtered = msgs[:0]
 	for _, e := range msgs {
 		curr, _ := e.Msg.Marshal()
 		if bytes.Equal(prev, curr) {
@@ -716,6 +717,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 		prev = curr
 		filtered = append(filtered, e)
 	}
+	msgs = filtered
 	return
 }
 
