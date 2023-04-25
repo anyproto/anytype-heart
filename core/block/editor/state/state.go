@@ -559,14 +559,14 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	s.fillChanges(msgs)
 
 	// apply to parent
-	for _, id := range toRemove {
-		if s.parent != nil {
+	if s.parent != nil {
+		for _, id := range toRemove {
 			action.Remove = append(action.Remove, s.PickOrigin(id).Copy())
 			delete(s.parent.blocks, id)
 		}
 	}
-	for _, b := range s.blocks {
-		if s.parent != nil {
+	if s.parent != nil {
+		for _, b := range s.blocks {
 			id := b.Model().Id
 			if _, ok := inUse[id]; ok {
 				s.parent.blocks[id] = b

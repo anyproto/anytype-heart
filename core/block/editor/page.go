@@ -14,8 +14,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
-	"github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -39,23 +39,22 @@ type Page struct {
 }
 
 func NewPage(
-	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
 	bookmarkBlockService bookmark.BlockService,
 	bookmarkService bookmark.BookmarkService,
-	relationService relation.Service,
+	relationService relation2.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService files.Service,
 ) *Page {
+	sb := smartblock.New()
 	f := file.NewFile(
 		sb,
 		fileBlockService,
+		anytype,
 		tempDirProvider,
-		fileService,
 	)
 	return &Page{
 		SmartBlock:    sb,
@@ -69,9 +68,9 @@ func NewPage(
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			f,
+			anytype,
 			tempDirProvider,
 			relationService,
-			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,
@@ -166,7 +165,35 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	blockMigration := cleanupEmptyBlockMigration()
+	return migration.MakeMigrations([]migration.Migration{blockMigration})
+}
+
+// cleanupEmptyBlockMigration is fixing existing pages, imported from Notion
+func cleanupEmptyBlockMigration() migration.Migration {
+	return migration.Migration{
+		Version: 2,
+		Proc: func(s *state.State) {
+			if s.Exists(s.RootId()) {
+				block := s.Get(s.RootId())
+				if isBlockEmpty(block) {
+					newBlock := block.Copy()
+					newBlock.Model().Content = &model.BlockContentOfSmartblock{
+						Smartblock: &model.BlockContentSmartblock{},
+					}
+					s.Set(newBlock)
+				}
+			}
+		},
+	}
+}
+
+func isBlockEmpty(block simple.Block) bool {
+	if block.Model().Content == nil {
+		return true
+	}
+	smartBlock := block.Model().Content.(*model.BlockContentOfSmartblock)
+	return smartBlock == nil || smartBlock.Smartblock == nil
 }
 
 func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
