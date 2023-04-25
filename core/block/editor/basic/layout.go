@@ -134,12 +134,7 @@ func (bs *basic) SetObjectTypes(ctx *session.Context, objectTypes []string) (err
 		toLayout = ot.Layout
 	}
 
-	var fromLayout model.ObjectTypeLayout
-	if layout, ok := s.Layout(); ok {
-		fromLayout = layout
-	}
-
-	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
+	if err = bs.SetLayoutInState(s, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 
