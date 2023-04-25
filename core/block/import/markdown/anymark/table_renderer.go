@@ -31,6 +31,9 @@ func (s *tableState) setRenderFunction(kind ast.NodeKind, rendererFunc renderer.
 
 func (s *tableState) resetState() {
 	s.tableID = ""
+	s.currTableRow = ""
+	s.columnsIDs = nil
+	s.currColumnIDIndex = 0
 }
 
 type TableRenderer struct {

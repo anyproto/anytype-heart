@@ -66,12 +66,10 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
 	converter := htmlconverter.NewConverter("", true, &htmlconverter.Options{
-		DisableEscaping:  true,
-		AllowHeaderBreak: true,
-		EmDelimiter:      "*",
+		EmDelimiter: "*",
 	})
-	converter.AddRules(getCustomHTMLRules()...)
 	converter.Use(plugin.GitHubFlavored())
+	converter.AddRules(getCustomHTMLRules()...)
 	md, err := converter.ConvertString(preprocessedSource)
 	if err != nil {
 		return nil, nil, err
@@ -201,6 +199,94 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 			return htmlconverter.String(src)
 		},
 	}
-	rules = append(rules, strikethrough, underscore, br, anohref, simpleText, blockquote, italic, code, bdo, div, img)
+
+	// Add header row to table to support tables without headers, because markdown doesn't parse tables without headers
+	table := htmlconverter.Rule{
+		Filter: []string{"table"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			var (
+				hasHeader     = false
+				numberOfRows  int
+				numberOfCells int
+				isContinue    = true
+			)
+
+			node := selec.Children()
+			for {
+				if isContinue {
+					if hasHeader, isContinue = isHeadingRow(node); hasHeader {
+						break
+					}
+				}
+				if len(node.Nodes) == 0 {
+					break
+				}
+				node.Each(func(i int, s *goquery.Selection) {
+					nodeName := goquery.NodeName(s)
+					if nodeName == "tr" {
+						numberOfRows++
+					}
+					if nodeName == "td" || nodeName == "th" {
+						numberOfCells++
+					}
+				})
+				node = node.Children()
+			}
+			if hasHeader {
+				return htmlconverter.String(content)
+			}
+
+			if numberOfRows == 0 {
+				return nil
+			}
+			numberOfColumns := numberOfCells / numberOfRows
+
+			headerRow := "|"
+			for i := 0; i < numberOfColumns; i++ {
+				headerRow += " |"
+			}
+			headerRow += "\n|"
+			for i := 0; i < numberOfColumns; i++ {
+				headerRow += " --- |"
+			}
+			headerRow += content
+			return htmlconverter.String(headerRow)
+		},
+	}
+
+	rules = append(rules, strikethrough, underscore, br, anohref,
+		simpleText, blockquote, italic, code, bdo, div, img, table)
 	return rules
+}
+
+func isHeadingRow(s *goquery.Selection) (bool, bool) {
+	parent := s.Parent()
+
+	if goquery.NodeName(parent) == "thead" {
+		return true, false
+	}
+
+	var (
+		everyTH    = false
+		isContinue = true
+	)
+
+	s.Children().Each(func(i int, s *goquery.Selection) {
+		if isContinue {
+			if goquery.NodeName(s) == "th" && goquery.NodeName(s.Next()) == "th" {
+				everyTH = true
+				isContinue = false
+				return
+			}
+			if goquery.NodeName(s) != "th" {
+				everyTH = false
+			}
+		}
+	})
+
+	if parent.Children().First().IsSelection(s) && everyTH {
+		return true, false
+	}
+
+	return false, isContinue
 }

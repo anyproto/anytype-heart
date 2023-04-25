@@ -3,7 +3,7 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.18
 
 require (
-	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
+	github.com/JohannesKaufmann/html-to-markdown v1.3.6
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
@@ -89,7 +89,7 @@ require (
 	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
-	github.com/yuin/goldmark v1.4.13
+	github.com/yuin/goldmark v1.4.14
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230105202349-8879d0199aa3
@@ -302,8 +302,6 @@ replace github.com/elastic/gosigar => github.com/anytypeio/gosigar v0.0.0-202208
 replace github.com/textileio/go-ds-badger3 => github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8
 
 replace github.com/dgraph-io/ristretto => github.com/dgraph-io/ristretto v0.1.1-0.20220403145359-8e850b710d6d
-
-replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
 replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.6-0.20221213174125-89c8cdb03fe8
 
