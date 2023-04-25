@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -45,7 +44,7 @@ func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDeta
 				}
 			}
 			if detail.Key == bundle.RelationKeyLayout.String() {
-				// special case when client sets the layout detail directly instead of using setLayout command
+				// special case when client sets the layout detail directly instead of using SetLayoutInState command
 				err = bs.SetLayout(ctx, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
 				if err != nil {
 					log.Errorf("failed to set object's layout via detail: %s", err.Error())
@@ -117,7 +116,7 @@ func (bs *basic) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) 
 	}
 
 	s := bs.NewStateCtx(ctx)
-	if err = bs.setLayout(s, layout); err != nil {
+	if err = bs.SetLayoutInState(s, layout); err != nil {
 		return
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
@@ -141,9 +140,7 @@ func (bs *basic) SetObjectTypes(ctx *session.Context, objectTypes []string) (err
 		fromLayout = layout
 	}
 
-	// TODO Temp
-	conv := converter.NewLayoutConverter(bs.objectStore)
-	if err = conv.Convert(s, fromLayout, toLayout); err != nil {
+	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 
@@ -183,14 +180,14 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
 		prevType == nil || // if we have no type set for some reason or it is missing
 		float64(prevType.Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
-		if err = bs.setLayout(s, ot.Layout); err != nil {
+		if err = bs.SetLayoutInState(s, ot.Layout); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (bs *basic) setLayout(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
+func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
 	fromLayout, _ := s.Layout()
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
@@ -202,8 +199,7 @@ func (bs *basic) setLayout(s *state.State, toLayout model.ObjectTypeLayout) (err
 		}
 	}
 
-	conv := converter.NewLayoutConverter(bs.objectStore)
-	if err = conv.Convert(s, fromLayout, toLayout); err != nil {
+	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	template.InitTemplate(s, template.ByLayout(toLayout)...)

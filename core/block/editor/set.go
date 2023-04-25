@@ -2,6 +2,7 @@ package editor
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -29,11 +30,12 @@ func NewSet(
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
 ) *Set {
 	sb := smartblock.New()
 	return &Set{
 		SmartBlock:       sb,
-		CommonOperations: basic.NewBasic(sb, objectStore, relationService),
+		CommonOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
 		IHistory:         basic.NewHistory(sb),
 		Dataview: dataview.NewDataview(
 			sb,

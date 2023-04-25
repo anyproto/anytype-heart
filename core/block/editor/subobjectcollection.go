@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -64,6 +65,7 @@ type SubObjectCollection struct {
 	fileBlockService file.BlockService
 	tempDirProvider  core.TempDirProvider
 	sbtProvider      typeprovider.SmartBlockTypeProvider
+	layoutConverter  converter.LayoutConverter
 }
 
 func NewSubObjectCollection(
@@ -75,11 +77,12 @@ func NewSubObjectCollection(
 	fileBlockService file.BlockService,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
 ) *SubObjectCollection {
 	sb := smartblock.New()
 	return &SubObjectCollection{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService),
+		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -99,6 +102,7 @@ func NewSubObjectCollection(
 		relationService:       relationService,
 		fileBlockService:      fileBlockService,
 		tempDirProvider:       tempDirProvider,
+		layoutConverter:       layoutConverter,
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
 	}
@@ -360,11 +364,11 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, error) {
 	switch collection {
 	case collectionKeyObjectTypes:
-		return NewObjectType(c.anytype, c.objectStore, c.relationService, c.sbtProvider), nil
+		return NewObjectType(c.anytype, c.objectStore, c.relationService, c.sbtProvider, c.layoutConverter), nil
 	case collectionKeyRelations:
-		return NewRelation(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider), nil
+		return NewRelation(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
 	case collectionKeyRelationOptions:
-		return NewRelationOption(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider), nil
+		return NewRelationOption(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
 	default:
 		return nil, fmt.Errorf("unknown collection: %s", collection)
 	}

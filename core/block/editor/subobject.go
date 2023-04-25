@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -32,11 +33,12 @@ func NewSubObject(
 	relationService relation2.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
 ) *SubObject {
 	sb := smartblock.New()
 	return &SubObject{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService),
+		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,

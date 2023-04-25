@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -34,11 +35,12 @@ func NewDashboard(
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	anytype core.Service,
+	layoutConverter converter.LayoutConverter,
 ) *Dashboard {
 	sb := smartblock.New()
 	return &Dashboard{
 		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb, objectStore, relationService),
+		AllOperations:   basic.NewBasic(sb, objectStore, relationService, layoutConverter),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: detailsModifier,
 		objectStore:     objectStore,

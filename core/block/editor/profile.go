@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -43,7 +44,7 @@ func NewProfile(
 	bookmarkService bookmark.BookmarkService,
 	sendEvent func(e *pb.Event),
 	tempDirProvider core.TempDirProvider,
-	relationService relation.Service,
+	layoutConverter converter.LayoutConverter,
 ) *Profile {
 	sb := smartblock.New()
 	f := file.NewFile(
@@ -55,7 +56,7 @@ func NewProfile(
 	return &Profile{
 		SmartBlock:    sb,
 		sendEvent:     sendEvent,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService),
+		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -67,7 +68,6 @@ func NewProfile(
 			f,
 			anytype,
 			tempDirProvider,
-			relationService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,

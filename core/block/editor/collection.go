@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
@@ -28,9 +29,10 @@ func NewCollection(
 	relationService relation.Service,
 	collectionService CollectionService,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
 ) *Collection {
 	return &Collection{
-		Set:               NewSet(anytype, objectStore, relationService, sbtProvider),
+		Set:               NewSet(anytype, objectStore, relationService, sbtProvider, layoutConverter),
 		collectionService: collectionService,
 		objectStore:       objectStore,
 	}

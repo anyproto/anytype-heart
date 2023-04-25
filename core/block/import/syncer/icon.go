@@ -33,8 +33,8 @@ func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	}
 
 	err = is.service.Do(id, func(sb smartblock.SmartBlock) error {
-		bs := basic.NewBasic(sb, nil, nil)
-		upErr := bs.Update(ctx, func(simpleBlock simple.Block) error {
+		updater := sb.(basic.Updatable)
+		upErr := updater.Update(ctx, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = hash
 			return nil
 		}, b.Model().Id)

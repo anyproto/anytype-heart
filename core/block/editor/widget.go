@@ -2,6 +2,7 @@ package editor
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -27,9 +28,13 @@ type WidgetObject struct {
 	widget.Widget
 }
 
-func NewWidgetObject(objectStore objectstore.ObjectStore, relationService relation.Service) *WidgetObject {
+func NewWidgetObject(
+	objectStore objectstore.ObjectStore,
+	relationService relation.Service,
+	layoutConverter converter.LayoutConverter,
+) *WidgetObject {
 	sb := smartblock.New()
-	bs := basic.NewBasic(sb, objectStore, relationService)
+	bs := basic.NewBasic(sb, objectStore, relationService, layoutConverter)
 	return &WidgetObject{
 		SmartBlock: sb,
 		Movable:    bs,

@@ -6,6 +6,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -33,9 +34,10 @@ func NewObjectType(anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
 ) *ObjectType {
 	return &ObjectType{
-		Set: NewSet(anytype, objectStore, relationService, sbtProvider),
+		Set: NewSet(anytype, objectStore, relationService, sbtProvider, layoutConverter),
 
 		relationService: relationService,
 	}

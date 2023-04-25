@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
@@ -34,6 +35,7 @@ type ObjectFactory struct {
 	tempDirProvider      core.TempDirProvider
 	collectionService    CollectionService
 	sbtProvider          typeprovider.SmartBlockTypeProvider
+	layoutConverter      converter.LayoutConverter
 
 	app *app.App
 }
@@ -41,10 +43,12 @@ type ObjectFactory struct {
 func NewObjectFactory(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
 ) *ObjectFactory {
 	return &ObjectFactory{
 		tempDirProvider: tempDirProvider,
 		sbtProvider:     sbtProvider,
+		layoutConverter: layoutConverter,
 	}
 }
 
@@ -109,7 +113,7 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
-	basicEditor := basic.NewBasic(sb, f.objectStore, f.relationService)
+	basicEditor := basic.NewBasic(sb, f.objectStore, f.relationService, f.layoutConverter)
 	if len(initCtx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
 		err = basicEditor.SetObjectTypesInState(initCtx.State, initCtx.ObjectTypeUrls)
 		if err != nil {
@@ -136,6 +140,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.relationService,
 			f.tempDirProvider,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_Archive:
 		return NewArchive(
@@ -148,6 +153,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.objectStore,
 			f.relationService,
 			f.anytype,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_Set:
 		return NewSet(
@@ -155,6 +161,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.objectStore,
 			f.relationService,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_Collection:
 		return NewCollection(
@@ -163,6 +170,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.relationService,
 			f.collectionService,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		return NewProfile(
@@ -174,7 +182,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkService,
 			f.sendEvent,
 			f.tempDirProvider,
-			f.relationService,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
@@ -183,6 +191,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.objectStore,
 			f.relationService,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_BundledRelation:
 		return NewSet(
@@ -190,32 +199,18 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.objectStore,
 			f.relationService,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_SubObject:
 		panic("subobject not supported via factory")
 	case model.SmartBlockType_File:
 		return NewFiles()
 	case model.SmartBlockType_MarketplaceType:
-		return NewMarketplaceType(
-			f.anytype,
-			f.objectStore,
-			f.relationService,
-			f.sbtProvider,
-		)
+		panic("marketplace type is deprecated")
 	case model.SmartBlockType_MarketplaceRelation:
-		return NewMarketplaceRelation(
-			f.anytype,
-			f.objectStore,
-			f.relationService,
-			f.sbtProvider,
-		)
+		panic("marketplace type is deprecated")
 	case model.SmartBlockType_MarketplaceTemplate:
-		return NewMarketplaceTemplate(
-			f.anytype,
-			f.objectStore,
-			f.relationService,
-			f.sbtProvider,
-		)
+		panic("marketplace type is deprecated")
 	case model.SmartBlockType_Template:
 		return NewTemplate(
 			f.objectStore,
@@ -226,6 +221,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.relationService,
 			f.tempDirProvider,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
@@ -237,6 +233,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.relationService,
 			f.tempDirProvider,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_Breadcrumbs:
 		return NewBreadcrumbs()
@@ -250,9 +247,10 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.fileBlockService,
 			f.tempDirProvider,
 			f.sbtProvider,
+			f.layoutConverter,
 		)
 	case model.SmartBlockType_Widget:
-		return NewWidgetObject(f.objectStore, f.relationService)
+		return NewWidgetObject(f.objectStore, f.relationService, f.layoutConverter)
 	default:
 		panic(fmt.Errorf("unexpected smartblock type: %v", sbType))
 	}

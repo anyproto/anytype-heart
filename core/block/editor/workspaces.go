@@ -10,6 +10,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -69,6 +70,7 @@ func NewWorkspace(
 	fileBlockService file.BlockService,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
@@ -80,6 +82,7 @@ func NewWorkspace(
 			fileBlockService,
 			tempDirProvider,
 			sbtProvider,
+			layoutConverter,
 		),
 		DetailsModifier: modifier,
 		anytype:         anytype,

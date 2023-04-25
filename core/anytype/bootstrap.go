@@ -7,7 +7,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
-	//nolint: misspell
+	// nolint: misspell
 	"github.com/anytypeio/any-sync/commonspace/credentialprovider"
 	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
 	"github.com/anytypeio/any-sync/net/dialer"
@@ -23,6 +23,7 @@ import (
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -33,6 +34,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -123,13 +125,15 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
-
-	objectStore := objectstore.New()
-	objectCreator := object.NewCreator()
 	walletService := a.Component(wallet.CName).(wallet.Wallet)
 	tempDirService := core.NewTempDirService(walletService)
-	blockService := block.New(tempDirService)
+	spaceService := space.New()
+	sbtProvider := typeprovider.New(spaceService)
+	objectStore := objectstore.New(sbtProvider)
+	objectCreator := object.NewCreator(sbtProvider)
+	blockService := block.New(tempDirService, sbtProvider)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
+	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
 
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
@@ -140,14 +144,17 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pool.New()).
 		Register(streampool.New()).
 		Register(clientserver.New()).
+		Register(coordinatorclient.New()).
+		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
+		Register(filesync.New()).
 		Register(localdiscovery.New()).
-		Register(space.New()).
+		Register(spaceService).
 		Register(peermanager.New()).
-		Register(typeprovider.New()).
+		Register(sbtProvider).
 		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectStore).
@@ -166,21 +173,21 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(status.New()).
 		Register(history.New()).
 		Register(gateway.New()).
-		Register(export.New()).
+		Register(export.New(sbtProvider)).
 		Register(linkpreview.New()).
 		Register(unsplash.New(tempDirService)).
-		Register(restriction.New()).
+		Register(restriction.New(sbtProvider)).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
 		Register(collectionService).
-		Register(subscription.New(collectionService)).
-		Register(builtinobjects.New()).
+		Register(subscription.New(collectionService, sbtProvider)).
+		Register(builtinobjects.New(sbtProvider)).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
-		Register(importer.New(tempDirService)).
+		Register(importer.New(tempDirService, sbtProvider)).
 		Register(decorator.New()).
 		Register(objectCreator).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService))
+		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter))
 	return
 }

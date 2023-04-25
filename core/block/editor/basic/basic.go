@@ -5,6 +5,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -49,9 +50,10 @@ type CommonOperations interface {
 	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
-	SetObjectTypesInState(s *state.State, objectTypes []string) (err error)
 	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
+	SetObjectTypesInState(s *state.State, objectTypes []string) (err error)
 	SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error)
+	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
 	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 	SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) (err error)
 }
@@ -82,11 +84,17 @@ type Updatable interface {
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-func NewBasic(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, relationService relation2.Service) AllOperations {
+func NewBasic(
+	sb smartblock.SmartBlock,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+	layoutConverter converter.LayoutConverter,
+) AllOperations {
 	return &basic{
 		SmartBlock:      sb,
 		objectStore:     objectStore,
 		relationService: relationService,
+		layoutConverter: layoutConverter,
 	}
 }
 
@@ -95,6 +103,7 @@ type basic struct {
 
 	objectStore     objectstore.ObjectStore
 	relationService relation2.Service
+	layoutConverter converter.LayoutConverter
 }
 
 func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {

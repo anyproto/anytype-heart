@@ -151,6 +151,9 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBloc
 }
 
 func (s *Service) ObjectToSet(id string, source []string) (string, error) {
+
+	// TODO To convert an object to set we need to set SetOf detail
+
 	var details *types.Struct
 	if err := s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())

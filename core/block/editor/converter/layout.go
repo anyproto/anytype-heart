@@ -3,6 +3,9 @@ package converter
 import (
 	"fmt"
 
+	"golang.org/x/exp/slices"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -10,21 +13,24 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type LayoutConverter struct {
 	objectStore objectstore.ObjectStore
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-func NewLayoutConverter(objectStore objectstore.ObjectStore) *LayoutConverter {
-	return &LayoutConverter{
+func NewLayoutConverter(objectStore objectstore.ObjectStore, sbtProvider typeprovider.SmartBlockTypeProvider) LayoutConverter {
+	return LayoutConverter{
 		objectStore: objectStore,
+		sbtProvider: sbtProvider,
 	}
 }
 
-func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
 	}
@@ -39,6 +45,13 @@ func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 		return c.fromAnyToCollection(st)
 	}
 
+	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_set {
+		return c.fromNoteToSet(st)
+	}
+	if toLayout == model.ObjectType_set {
+		return c.fromAnyToSet(st)
+	}
+
 	if toLayout == model.ObjectType_note {
 		return c.fromAnyToNote(st)
 	}
@@ -46,6 +59,42 @@ func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 		return c.fromNoteToAny(st)
 	}
 	return nil
+}
+
+func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
+	if err := c.fromNoteToAny(st); err != nil {
+		return err
+	}
+
+	err2 := c.fromAnyToSet(st)
+	if err2 != nil {
+		return err2
+	}
+	return nil
+}
+
+func (c *LayoutConverter) fromAnyToSet(st *state.State) error {
+	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
+	if len(source) == 0 {
+		return fmt.Errorf("source detail is not set")
+	}
+
+	addFeaturedRelationSetOf(st)
+
+	dvBlock, _, err := dataview.DataviewBlockBySource(c.sbtProvider, c.objectStore, source)
+	if err != nil {
+		return err
+	}
+	template.InitTemplate(st, template.WithDataview(dvBlock, false))
+	return nil
+}
+
+func addFeaturedRelationSetOf(st *state.State) {
+	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
+	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
+		fr = append(fr, bundle.RelationKeySetOf.String())
+	}
+	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 }
 
 func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
@@ -81,7 +130,7 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 }
 
 func (c *LayoutConverter) fromNoteToCollection(st *state.State) error {
-	if err := c.fromAnyToNote(st); err != nil {
+	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
 

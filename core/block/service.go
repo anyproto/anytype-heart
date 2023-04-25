@@ -23,7 +23,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -1109,9 +1108,9 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 
 		if toLayout, ok := orig.Layout(); ok {
-			conv := converter.NewLayoutConverter(s.objectStore)
-			if err := conv.Convert(orig, 0, toLayout); err != nil {
-				return fmt.Errorf("convert layout: %w", err)
+			commonOperations := b.(basic.CommonOperations)
+			if err := commonOperations.SetLayoutInState(ts, toLayout); err != nil {
+				return fmt.Errorf("set layout: %w", err)
 			}
 		}
 
