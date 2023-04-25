@@ -12,6 +12,7 @@ func GetVCSInfo() (buildDate time.Time, revision string, modified bool, cgo bool
 		return
 	}
 
+	cgo = true // missing means CGO is enabled
 	for _, setting := range info.Settings {
 		switch setting.Key {
 		case "vcs.time":
