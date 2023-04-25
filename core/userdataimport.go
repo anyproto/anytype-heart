@@ -46,6 +46,7 @@ func (mw *Middleware) UserDataImport(cctx context.Context,
 	if err != nil {
 		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
 	}
+
 	return response(pb.RpcUserDataImportResponseError_NULL, nil)
 }
 
@@ -147,5 +148,8 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 	}
 
 	mw.foundAccounts = append(mw.foundAccounts, newAcc)
+	cafeAccount := mw.getCafeAccount()
+
+	enrichWithCafeAccount(newAcc, cafeAccount)
 	return nil
 }
