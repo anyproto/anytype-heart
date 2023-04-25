@@ -4,7 +4,7 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	storage "github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	spacestorage "github.com/anytypeio/any-sync/commonspace/spacestorage"
+	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/dgraph-io/badger/v3"
 )
@@ -205,6 +205,16 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 		err = nil
 	}
 	return
+}
+
+func (s *spaceStorage) SetSpaceDeleted() error {
+	// todo: not implemented
+	return nil
+}
+
+func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
+	// todo: not implemented
+	return false, nil
 }
 
 func (s *spaceStorage) Close() (err error) {

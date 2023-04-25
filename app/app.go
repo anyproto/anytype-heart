@@ -174,8 +174,6 @@ func (app *App) Start(ctx context.Context) (err error) {
 		}
 	}
 
-	logging.RefreshSubsystemLevels() // to make sure we know about all logging subsystems that were externally-created, e.g. in the libp2p
-
 	for i, s := range app.components {
 		if serviceRun, ok := s.(ComponentRunnable); ok {
 			start := time.Now()

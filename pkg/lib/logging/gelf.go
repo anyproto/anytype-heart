@@ -113,3 +113,15 @@ func (gs *gelfSink) SetAccount(account string) {
 	defer gs.Unlock()
 	gs.account = account
 }
+
+func SetVersion(version string) {
+	gelfSinkWrapper.SetVersion(version)
+}
+
+func SetHost(host string) {
+	gelfSinkWrapper.SetHost(host)
+}
+
+func SetAccount(account string) {
+	gelfSinkWrapper.SetAccount(account)
+}

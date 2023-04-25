@@ -2,16 +2,13 @@ package logging
 
 import (
 	"fmt"
-	"github.com/cheggaaa/mb"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/gobwas/glob"
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/anytypeio/any-sync/app/logger"
+	"github.com/cheggaaa/mb"
 	"go.uber.org/zap"
 	"gopkg.in/Graylog2/go-gelf.v2/gelf"
 )
@@ -19,51 +16,14 @@ import (
 const graylogHost = "graylog.anytype.io:6888"
 const graylogScheme = "gelf+ssl"
 
-var log = logging.Logger("anytype-logger")
-
-var DefaultLogLevel = logging.LevelError
-var logLevelsStr string
 var gelfSinkWrapper gelfSink
-var m = sync.Mutex{}
 
-var defaultCfg = logging.Config{
-	Format: logging.JSONOutput,
-	Level:  logging.LevelDebug,
-	Stderr: false,
-	Stdout: true,
-	URL:    graylogScheme + "://" + graylogHost,
+var defaultCfg = logger.Config{
+	Production:   false,
+	DefaultLevel: "WARN",
 }
 
-func getLoggingConfig() logging.Config {
-	cfg := defaultCfg
-
-	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" {
-		// set default format to colored text
-		cfg.Format = logging.ColorizedOutput
-		cfg.URL = ""
-	}
-
-	var format string
-	if v := os.Getenv("ANYTYPE_LOG_FMT"); v != "" {
-		format = v
-	} else if v := os.Getenv("GO_LOG_FMT"); v != "" {
-		// support native ipfs logger env var
-		format = v
-	}
-
-	switch format {
-	case "color":
-		cfg.Format = logging.ColorizedOutput
-	case "nocolor":
-		cfg.Format = logging.PlaintextOutput
-	case "json":
-		cfg.Format = logging.JSONOutput
-	}
-
-	return cfg
-}
-
-func init() {
+func registerGelfSink(config *logger.Config) {
 	gelfSinkWrapper.batch = mb.New(1000)
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
@@ -79,12 +39,7 @@ func init() {
 		// init tlsWriter outside to make sure it is available
 		return &gelfSinkWrapper, nil
 	})
-
-	if err != nil {
-		log.Error("failed to register zap sink", err.Error())
-	}
-	cfg := getLoggingConfig()
-	logging.SetupLogging(cfg)
+	config.AddOutputPaths = append(config.AddOutputPaths, graylogScheme+"://")
 }
 
 type LWrapper struct {
@@ -96,112 +51,44 @@ func (l *LWrapper) Warningf(template string, args ...interface{}) {
 }
 
 func Logger(system string) *LWrapper {
-	logger := logging.Logger(system)
-	m.Lock()
-	setSubsystemLevels()
-	m.Unlock()
-	return &LWrapper{logger.SugaredLogger}
+	lg := logger.NewNamed(system)
+	return &LWrapper{*(lg.Sugar())}
 }
 
-func ApplyLevels(str string) {
-	m.Lock()
-	logLevelsStr = str
-	setSubsystemLevels()
-	m.Unlock()
+func LoggerNotSugared(system string) *zap.Logger {
+	lg := logger.NewNamed(system)
+
+	return lg.Logger
 }
 
-func ApplyLevelsFromEnv() {
-	ApplyLevels(os.Getenv("ANYTYPE_LOG_LEVEL"))
-}
-
-func RefreshSubsystemLevels() {
-	m.Lock()
-	setSubsystemLevels()
-	m.Unlock()
-}
-
-func setClientSpecificLogLevels() {
-	// intentionally ignore errors here, cause some subsystem may be not ready yet
-	_ = logging.SetLogLevel("anytype-threadqueue", "info")
-}
-
-func setSubsystemLevels() {
-	logLevels := make(map[string]string)
-	if logLevelsStr != "" {
-		for _, level := range strings.Split(logLevelsStr, ";") {
-			parts := strings.Split(level, "=")
-			var subsystemPattern glob.Glob
-			var level string
-			if len(parts) == 1 {
-				subsystemPattern = glob.MustCompile("anytype-*")
-				level = parts[0]
-			} else if len(parts) == 2 {
-				var err error
-				subsystemPattern, err = glob.Compile(parts[0])
-				if err != nil {
-					log.Errorf("failed to parse glob pattern '%s': %w", parts[1], err)
-					continue
-				}
-				level = parts[1]
-			}
-
-			for _, subsystem := range logging.GetSubsystems() {
-				if subsystemPattern.Match(subsystem) {
-					logLevels[subsystem] = level
-				}
-			}
+func LevelsFromStr(s string) map[string]string {
+	levels := make(map[string]string)
+	for _, kv := range strings.Split(s, ";") {
+		strings.TrimSpace(kv)
+		parts := strings.Split(kv, "=")
+		var key, value string
+		if len(parts) == 1 {
+			key = "*"
+			value = parts[0]
+			levels["*"] = parts[0]
+		} else if len(parts) == 2 {
+			key = parts[0]
+			value = parts[1]
 		}
-	}
-
-	if len(logLevels) == 0 {
-		logging.SetAllLoggers(DefaultLogLevel)
-		setClientSpecificLogLevels()
-		return
-	}
-
-	subsystems := logging.GetSubsystems()
-	for subsystemPattern, level := range logLevels {
-		lvl, err := logging.LevelFromString(level)
+		_, err := zap.ParseAtomicLevel(value)
 		if err != nil {
-			log.Errorf("logging: invalid level for %s: %s", subsystemPattern, level)
+			fmt.Printf("Can't parse log level %s: %s\n", parts[0], err.Error())
 			continue
 		}
-
-		if subsystemPattern == "*" {
-			logging.SetAllLoggers(lvl)
-			continue
-		}
-
-		for _, subsystem := range subsystems {
-			matched, err := filepath.Match(subsystemPattern, subsystem)
-			if err != nil {
-				log.Errorf("logging: invalid subsystem pattern: %s", subsystemPattern)
-				continue
-			}
-
-			if !matched {
-				continue
-			}
-
-			err = logging.SetLogLevel(subsystem, level)
-			if err != nil {
-				if err != logging.ErrNoSuchLogger {
-					// it returns ErrNoSuchLogger when we don't initialised this subsystem yet
-					log.Errorf("subsystem %s has incorrect log level '%s': %w", subsystem, level, err)
-				}
-			}
-		}
+		levels[key] = value
 	}
+	return levels
 }
 
-func SetVersion(version string) {
-	gelfSinkWrapper.SetVersion(version)
-}
+func init() {
+	cfg := defaultCfg
+	registerGelfSink(&cfg)
+	cfg.NamedLevels = LevelsFromStr(os.Getenv("ANYTYPE_LOG_LEVEL"))
+	cfg.ApplyGlobal()
 
-func SetHost(host string) {
-	gelfSinkWrapper.SetHost(host)
-}
-
-func SetAccount(account string) {
-	gelfSinkWrapper.SetAccount(account)
 }

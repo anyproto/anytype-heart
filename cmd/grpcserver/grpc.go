@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/uber/jaeger-client-go"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -15,11 +14,9 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/uber/jaeger-client-go"
+
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -27,6 +24,11 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
+
+	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/pb/service"
@@ -47,7 +49,6 @@ func main() {
 	var webaddr string
 
 	fmt.Printf("mw grpc: %s\n", app.VersionDescription())
-	logging.ApplyLevelsFromEnv()
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
 		if len(os.Args) > 2 {
@@ -117,15 +118,15 @@ func main() {
 			return true
 		}
 
-		grpcLogger := logging.Logger("grpc")
+		grpcLogger := logging.LoggerNotSugared("grpc")
 
-		unaryInterceptors = append(unaryInterceptors, grpc_zap.UnaryServerInterceptor(grpcLogger.Desugar()))
-		streamInterceptors = append(streamInterceptors, grpc_zap.StreamServerInterceptor(grpcLogger.Desugar()))
+		unaryInterceptors = append(unaryInterceptors, grpc_zap.UnaryServerInterceptor(grpcLogger))
+		streamInterceptors = append(streamInterceptors, grpc_zap.StreamServerInterceptor(grpcLogger))
 		if grpcDebug > 1 {
-			unaryInterceptors = append(unaryInterceptors, grpc_zap.PayloadUnaryServerInterceptor(grpcLogger.Desugar(), decider))
+			unaryInterceptors = append(unaryInterceptors, grpc_zap.PayloadUnaryServerInterceptor(grpcLogger, decider))
 		}
 		if grpcDebug > 2 {
-			streamInterceptors = append(streamInterceptors, grpc_zap.PayloadStreamServerInterceptor(grpcLogger.Desugar(), decider))
+			streamInterceptors = append(streamInterceptors, grpc_zap.PayloadStreamServerInterceptor(grpcLogger, decider))
 		}
 	}
 
