@@ -1,4 +1,4 @@
-on: [push]
+on: [ push ]
 name: Test
 jobs:
   unit-test:
@@ -7,17 +7,11 @@ jobs:
         go-version: [ 1.18.x ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
-    env:
-      GOPRIVATE: github.com/anytypeio
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
           go-version: ${{ matrix.go-version }}
-
-      - name: git config
-        run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
-
       - name: Checkout code
         uses: actions/checkout@v2
       - uses: actions/cache@v3
@@ -35,10 +29,25 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
+      - name: Setup license repository
+        uses: actions/checkout@master
+        with:
+          repository: anytypeio/open
+          ref: refs/heads/add-checkers
+          path: ./open
+
+      - name: Check licenses
+        run: |
+          cd open
+          python3 tools/generate.py --platform golang
+          cd ..
+          sudo gem install license_finder
+          license_finder inherited_decisions add open/decisions.yml
+          license_finder --enabled-package-managers gomodules
       - name: Generate mocks
         run: |
-            go install github.com/golang/mock/mockgen@latest
-            go generate ./...
+          go install github.com/golang/mock/mockgen@latest
+          go generate ./...
       - name: Go test
         run: |
           export ANYTYPE_LOG_LEVEL=DEBUG
