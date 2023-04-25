@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
@@ -34,7 +35,7 @@ type FileSync interface {
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	SyncStatus() (ss SyncStatus, err error)
-	NewStatusWatcher(statusService StatusService, fileStore filestore.FileStore, updateInterval time.Duration) *StatusWatcher
+	NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher
 	app.ComponentRunnable
 }
 
@@ -47,10 +48,11 @@ type SpaceStat struct {
 }
 
 type FileStat struct {
-	SpaceId    string
-	FileId     string
-	CidCount   int
-	BytesUsage int
+	SpaceId             string
+	FileId              string
+	TotalChunksCount    int
+	UploadedChunksCount int
+	BytesUsage          int
 }
 
 type SyncStatus struct {
@@ -66,12 +68,14 @@ type fileSync struct {
 	uploadPingCh chan struct{}
 	removePingCh chan struct{}
 	dagService   ipld.DAGService
+	fileStore    filestore.FileStore
 }
 
 func (f *fileSync) Init(a *app.App) (err error) {
 	f.dbProvider = a.MustComponent(datastore.CName).(datastore.Datastore)
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
+	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return
@@ -138,12 +142,63 @@ func (f *fileSync) FileStat(ctx context.Context, spaceId, fileId string) (fs Fil
 	if err != nil {
 		return
 	}
+	if len(fi) == 0 {
+		return FileStat{}, fmt.Errorf("file not found")
+	}
+	file := fi[0]
+
+	totalChunks, err := f.countChunks(ctx, fileId)
+	if err != nil {
+		return FileStat{}, fmt.Errorf("count chunks: %w", err)
+	}
+
+	// TODO Add cache when TotalChunksCount == UploadedChunksCount?
+
 	return FileStat{
-		SpaceId:    spaceId,
-		FileId:     fileId,
-		CidCount:   int(fi[0].CidsCount),
-		BytesUsage: int(fi[0].UsageBytes),
+		SpaceId:             spaceId,
+		FileId:              fileId,
+		TotalChunksCount:    totalChunks,
+		UploadedChunksCount: int(file.CidsCount),
+		BytesUsage:          int(file.UsageBytes),
 	}, nil
+}
+
+func (f *fileSync) countChunks(ctx context.Context, fileID string) (int, error) {
+	chunksCount, err := f.fileStore.GetChunksCount(fileID)
+	if err == nil {
+		return chunksCount, nil
+	}
+
+	chunksCount, err = f.fetchChunksCount(ctx, fileID)
+	if err != nil {
+		return -1, fmt.Errorf("count chunks in IPFS: %w", err)
+	}
+
+	err = f.fileStore.SetChunksCount(fileID, chunksCount)
+
+	return chunksCount, err
+}
+
+func (f *fileSync) fetchChunksCount(ctx context.Context, fileID string) (int, error) {
+	fileCid, err := cid.Parse(fileID)
+	if err != nil {
+		return -1, err
+	}
+	node, err := f.dagService.Get(ctx, fileCid)
+	if err != nil {
+		return -1, err
+	}
+
+	var count int
+	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
+	err = walker.Iterate(func(node ipld.NavigableNode) error {
+		count++
+		return nil
+	})
+	if err == ipld.EndOfDag {
+		err = nil
+	}
+	return count, err
 }
 
 func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {

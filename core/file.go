@@ -7,10 +7,10 @@ import (
 	"github.com/anytypeio/any-sync/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
@@ -58,8 +58,8 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
-	response := func(filesOffloaded int32, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
-		m := &pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: code}, BytesOffloaded: bytesOffloaded, FilesOffloaded: filesOffloaded}
+	response := func(filesOffloaded uint64, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
+		m := &pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: code}, BytesOffloaded: bytesOffloaded, FilesOffloaded: int32(filesOffloaded)}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -76,35 +76,13 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
-	fileStore := app.MustComponent[filestore.FileStore](mw.app)
-	files, err := fileStore.List()
+	fileService := app.MustComponent[*files.Service](mw.app)
+	totalFilesOffloaded, totalBytesOffloaded, err := fileService.FileListOffload(req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
-	var (
-		totalBytesOffloaded uint64
-		totalFilesOffloaded int32
-		// totalFilesSkipped   int
-	)
 
-	for _, file := range files {
-		// TODO Check that file is uploaded
-		// if st, exists := pinStatus[fileId]; (!exists || st.Status != pb2.PinStatus_Done) && !req.IncludeNotPinned {
-		// 	totalFilesSkipped++
-		// 	continue
-		// }
-		bytesRemoved, err := at.FileOffload(file.Hash)
-		if err != nil {
-			log.Errorf("failed to offload file %s: %s", file.Hash, err.Error())
-			continue
-		}
-		if bytesRemoved > 0 {
-			totalBytesOffloaded += bytesRemoved
-			totalFilesOffloaded++
-		}
-	}
-
-	return response(totalFilesOffloaded, uint64(totalBytesOffloaded), pb.RpcFileListOffloadResponseError_NULL, nil)
+	return response(totalFilesOffloaded, totalBytesOffloaded, pb.RpcFileListOffloadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
@@ -123,19 +101,14 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	at := mw.app.MustComponent(core.CName).(core.Service)
+	fileService := app.MustComponent[*files.Service](mw.app)
 
-	if !at.IsStarted() {
-		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
-	}
-
-	// TODO Check that file is fully uploaded
-	bytesRemoved, err := at.FileOffload(req.Id)
+	bytesRemoved, err := fileService.FileOffload(req.Id, req.IncludeNotPinned)
 	if err != nil {
 		log.Errorf("failed to offload file %s: %s", req.Id, err.Error())
 	}
 
-	return response(uint64(bytesRemoved), pb.RpcFileOffloadResponseError_NULL, nil)
+	return response(bytesRemoved, pb.RpcFileOffloadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {

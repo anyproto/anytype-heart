@@ -693,10 +693,11 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
 			}
 			// space will be reclaimed on the next GC cycle
-			if _, err = s.Anytype().FileOffload(fileHash); err != nil {
-				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
-				continue
-			}
+			// TODO FIXXXXXXXXXXX
+			// if _, err = s.Anytype().FileOffload(fileHash); err != nil {
+			// 	log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
+			// 	continue
+			// }
 			if err = s.fileStore.DeleteFileKeys(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
 			}

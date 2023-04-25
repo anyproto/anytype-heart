@@ -314,9 +314,10 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 		if err = oc.fileStore.DeleteByHash(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
 		}
-		if _, err = oc.core.FileOffload(hash); err != nil {
-			log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
-		}
+		// TODO: FIXXXXXX
+		// if _, err = oc.core.FileOffload(hash); err != nil {
+		// 	log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
+		// }
 		if err = oc.fileStore.DeleteFileKeys(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
 		}

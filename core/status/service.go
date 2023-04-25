@@ -16,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
@@ -104,10 +103,9 @@ func (s *service) Init(a *app.App) (err error) {
 	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.coreService = a.MustComponent(core.CName).(core.Service)
-	fileStore := app.MustComponent[filestore.FileStore](a)
 
 	fileSyncService := app.MustComponent[filesync.FileSync](a)
-	s.fileStatusService = fileSyncService.NewStatusWatcher(s, fileStore, 5*time.Second)
+	s.fileStatusService = fileSyncService.NewStatusWatcher(s, 5*time.Second)
 	return
 }
 

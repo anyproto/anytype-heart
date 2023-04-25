@@ -41,9 +41,6 @@ type Service interface {
 	EnsurePredefinedBlocks(ctx context.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
-	// FileOffload removes file blocks recursively, but leave details
-	FileOffload(id string) (bytesRemoved uint64, err error)
-
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files2.AddOption) (File, error)
 	FileGetKeys(hash string) (*files2.FileKeys, error)

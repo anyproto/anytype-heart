@@ -7,11 +7,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
-	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 )
 
 type StatusService interface {
@@ -23,9 +19,8 @@ type fileWithSpace struct {
 }
 
 type fileStatus struct {
-	chunksCount int
-	status      syncstatus.SyncStatus
-	updatedAt   time.Time
+	status    syncstatus.SyncStatus
+	updatedAt time.Time
 }
 
 type StatusWatcher struct {
@@ -38,10 +33,9 @@ type StatusWatcher struct {
 	updateInterval  time.Duration
 	statusService   StatusService
 	fileSyncService *fileSync
-	fileStore       filestore.FileStore
 }
 
-func (f *fileSync) NewStatusWatcher(statusService StatusService, fileStore filestore.FileStore, updateInterval time.Duration) *StatusWatcher {
+func (f *fileSync) NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher {
 	return &StatusWatcher{
 		filesToWatchLock: &sync.Mutex{},
 		files:            map[fileWithSpace]fileStatus{},
@@ -50,7 +44,6 @@ func (f *fileSync) NewStatusWatcher(statusService StatusService, fileStore files
 		statusService:    statusService,
 		fileSyncService:  f,
 		updateInterval:   updateInterval,
-		fileStore:        fileStore,
 	}
 }
 
@@ -102,14 +95,9 @@ func (s *StatusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace)
 func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (fileStatus, error) {
 	now := time.Now()
 	status, ok := s.files[key]
-	if !ok || status.chunksCount == 0 {
-		chunksCount, err := s.countChunks(ctx, key.fileID)
-		if err != nil {
-			return status, fmt.Errorf("count file chunks: %w", err)
-		}
+	if !ok {
 		status = fileStatus{
-			chunksCount: chunksCount,
-			status:      syncstatus.StatusNotSynced,
+			status: syncstatus.StatusNotSynced,
 		}
 	}
 
@@ -135,49 +123,11 @@ func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (f
 	if err != nil {
 		return status, fmt.Errorf("file stat: %w", err)
 	}
-	if fstat.CidCount == status.chunksCount {
+	if fstat.UploadedChunksCount == fstat.TotalChunksCount {
 		status.status = syncstatus.StatusSynced
 	}
 
 	return status, nil
-}
-
-func (s *StatusWatcher) countChunks(ctx context.Context, fileID string) (int, error) {
-	chunksCount, err := s.fileStore.GetChunksCount(fileID)
-	if err == nil {
-		return chunksCount, nil
-	}
-
-	chunksCount, err = s.fetchChunksCount(ctx, fileID)
-	if err != nil {
-		return -1, fmt.Errorf("count chunks in IPFS: %w", err)
-	}
-
-	err = s.fileStore.SetChunksCount(fileID, chunksCount)
-
-	return chunksCount, err
-}
-
-func (s *StatusWatcher) fetchChunksCount(ctx context.Context, fileID string) (int, error) {
-	fileCid, err := cid.Parse(fileID)
-	if err != nil {
-		return -1, err
-	}
-	node, err := s.fileSyncService.dagService.Get(ctx, fileCid)
-	if err != nil {
-		return -1, err
-	}
-
-	var count int
-	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, s.fileSyncService.dagService))
-	err = walker.Iterate(func(node ipld.NavigableNode) error {
-		count++
-		return nil
-	})
-	if err == ipld.EndOfDag {
-		err = nil
-	}
-	return count, err
 }
 
 func (s *StatusWatcher) Watch(spaceID, fileID string) {
