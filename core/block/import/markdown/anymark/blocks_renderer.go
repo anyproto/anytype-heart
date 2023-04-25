@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -294,17 +295,11 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 
 	switch {
 	case len(t.Text) >= 3 && t.Text[:3] == "[ ]":
-		r.adjustMarkdownRange(t, 3)
-		t.Text = strings.TrimLeft(t.Text[3:], " ")
-		t.Style = model.BlockContentText_Checkbox
+		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, 3)
 	case len(t.Text) >= 2 && t.Text[:2] == "[]":
-		r.adjustMarkdownRange(t, 2)
-		t.Text = strings.TrimLeft(t.Text[2:], " ")
-		t.Style = model.BlockContentText_Checkbox
+		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, 2)
 	case len(t.Text) >= 3 && t.Text[:3] == "[x]":
-		r.adjustMarkdownRange(t, 3)
-		t.Text = strings.TrimLeft(t.Text[3:], " ")
-		t.Style = model.BlockContentText_Checkbox
+		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, 3)
 		t.Checked = true
 	}
 
@@ -322,7 +317,8 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	}
 
 	// IMPORTANT: do not create a new block if textBuffer is empty
-	if len(t.Text) > 0 || len(closingBlock.ChildrenIds) > 0 {
+	if len(t.Text) > 0 || len(closingBlock.ChildrenIds) > 0 || isBlockCanHaveChild(closingBlock.Block) ||
+		t.Style == model.BlockContentText_Checkbox {
 		// Nested list case:
 		if len(r.listParentID) > 0 {
 			r.addChildID(id)
@@ -331,6 +327,35 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 		r.blocks = append(r.blocks, &(closingBlock.Block))
 
 	}
+}
+
+func (r *blocksRenderer) normalizeCheckboxBlock(t *model.BlockContentText, parentBlock *textBlock, checkboxLength int) *textBlock {
+	r.adjustMarkdownRange(t, checkboxLength)
+	t.Text = strings.TrimLeft(t.Text[checkboxLength:], " ")
+	t.Style = model.BlockContentText_Checkbox
+	if len(r.openedTextBlocks) > 0 {
+		parentBlock = r.removeMarkedBlock(parentBlock)
+	}
+	return parentBlock
+}
+
+// removeMarkedBlock removes unnecessary marked block because goldmark parses notion checkbox as marked block,
+// because of "-" before checkbox (-[x]/-[]), so we remove this block and makes parent block nil
+// if parent block is the removed block
+func (r *blocksRenderer) removeMarkedBlock(parentBlock *textBlock) *textBlock {
+	markedBlock := r.openedTextBlocks[len(r.openedTextBlocks)-1]
+	if markedBlock != nil && r.isEmptyMarkedBlock(markedBlock) {
+		r.openedTextBlocks = r.openedTextBlocks[:len(r.openedTextBlocks)-1]
+		if reflect.DeepEqual(parentBlock, markedBlock) {
+			parentBlock = nil
+		}
+	}
+	return parentBlock
+}
+
+func (r *blocksRenderer) isEmptyMarkedBlock(markedBlock *textBlock) bool {
+	return markedBlock.GetText() != nil && markedBlock.GetText().Text == "" &&
+		markedBlock.GetText().Style == model.BlockContentText_Marked
 }
 
 func (r *blocksRenderer) adjustMarkdownRange(t *model.BlockContentText, adjustNumber int) {
