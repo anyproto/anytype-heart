@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
 const (
 	Name               = "Csv"
 	rootCollectionName = "CSV Import"
@@ -52,7 +51,6 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 	if len(path) == 0 {
 		return nil, nil
 	}
-	progress.SetTotal(int64(numberOfStages * len(path)))
 	progress.SetProgressMessage("Start creating snapshots from files")
 	snapshots := make([]*converter.Snapshot, 0)
 	allRelations := make(map[string][]*converter.Relation, 0)
@@ -75,27 +73,14 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 			continue
 		}
 
-		details := converter.GetDetails(p)
-		details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-		_, _, st, err := c.collectionService.CreateCollection(details, nil)
-
-		relations := getDetailsFromCSVTable(csvTable)
-		objectsSnapshots, objectsRelations := getEmptyObjects(csvTable, relations)
-		targetIDs := make([]string, 0, len(objectsSnapshots))
-		for _, objectsSnapshot := range objectsSnapshots {
-			targetIDs = append(targetIDs, objectsSnapshot.Id)
+		allObjectsIDs, snapshots, allRelations, err = c.handleCSVFile(p, csvTable, allObjectsIDs, snapshots, allRelations)
+		if err != nil {
+			cErr.Add(p, err)
+			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, cErr
+			}
+			continue
 		}
-		allObjectsIDs = append(allObjectsIDs, targetIDs...)
-
-		st.StoreSlice(sb.CollectionStoreKey, targetIDs)
-		snapshot := c.getCollectionSnapshot(details, st, p)
-
-		snapshots = append(snapshots, snapshot)
-		snapshots = append(snapshots, objectsSnapshots...)
-		allObjectsIDs = append(allObjectsIDs, snapshot.Id)
-
-		allRelations[snapshot.Id] = relations
-		allRelations = makeRelationsResultMap(allRelations, objectsRelations)
 	}
 
 	rootCollection := converter.NewRootCollection(c.collectionService)
@@ -110,7 +95,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 	if rootCol != nil {
 		snapshots = append(snapshots, rootCol)
 	}
-
+	progress.SetTotal(int64(len(allObjectsIDs)))
 	if cErr.IsEmpty() {
 		return &converter.Response{
 			Snapshots: snapshots,
@@ -122,6 +107,39 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 		Snapshots: snapshots,
 		Relations: allRelations,
 	}, cErr
+}
+
+func (c *CSV) handleCSVFile(path string,
+	csvTable [][]string,
+	allObjectsIDs []string,
+	snapshots []*converter.Snapshot,
+	allRelations map[string][]*converter.Relation) (
+	[]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
+	details := converter.GetDetails(path)
+	details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+	_, _, st, err := c.collectionService.CreateCollection(details, nil)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	relations := getDetailsFromCSVTable(csvTable)
+	objectsSnapshots, objectsRelations := getEmptyObjects(csvTable, relations)
+	targetIDs := make([]string, 0, len(objectsSnapshots))
+	for _, objectsSnapshot := range objectsSnapshots {
+		targetIDs = append(targetIDs, objectsSnapshot.Id)
+	}
+	allObjectsIDs = append(allObjectsIDs, targetIDs...)
+
+	st.StoreSlice(sb.CollectionStoreKey, targetIDs)
+	snapshot := c.getCollectionSnapshot(details, st, path)
+
+	snapshots = append(snapshots, snapshot)
+	snapshots = append(snapshots, objectsSnapshots...)
+	allObjectsIDs = append(allObjectsIDs, snapshot.Id)
+
+	allRelations[snapshot.Id] = relations
+	allRelations = makeRelationsResultMap(allRelations, objectsRelations)
+	return allObjectsIDs, snapshots, allRelations, nil
 }
 
 func (c *CSV) getCollectionSnapshot(details *types.Struct, st *state.State, p string) *converter.Snapshot {
