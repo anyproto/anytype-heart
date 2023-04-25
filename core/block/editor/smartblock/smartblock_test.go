@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
 
@@ -99,7 +98,6 @@ type fixture struct {
 	source   *mockSource.MockSource
 	snapshot *testMock.MockSmartBlockSnapshot
 	store    *testMock.MockObjectStore
-	md       *mockDoc.MockService
 	SmartBlock
 }
 
@@ -119,7 +117,6 @@ func newFixture(t *testing.T) *fixture {
 	a := testapp.New()
 	a.Register(store).
 		Register(restriction.New())
-	md := mockDoc.RegisterMockDoc(ctrl, a)
 	mockRelation.RegisterMockRelation(ctrl, a)
 
 	return &fixture{
@@ -129,7 +126,6 @@ func newFixture(t *testing.T) *fixture {
 		store:      store,
 		app:        a.App,
 		source:     source,
-		md:         md,
 	}
 }
 
@@ -151,7 +147,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
 
-	fx.md.EXPECT().ReportChange(gomock.Any(), gomock.Any()).AnyTimes()
 	fx.store.EXPECT().GetPendingLocalDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)

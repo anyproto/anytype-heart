@@ -13,7 +13,6 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -119,7 +118,7 @@ type SmartBlock interface {
 	EnabledRelationAsDependentObjects()
 	AddHook(f HookCallback, events ...Hook)
 	CheckSubscriptions() (changed bool)
-	GetDocInfo() (doc.DocInfo, error)
+	GetDocInfo() DocInfo
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
 	ObjectClose()
@@ -131,6 +130,15 @@ type SmartBlock interface {
 	sync.Locker
 }
 
+type DocInfo struct {
+	Id         string
+	Links      []string
+	FileHashes []string
+	Heads      []string
+	Creator    string
+	State      *state.State
+}
+
 type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
@@ -138,7 +146,6 @@ type InitContext struct {
 	State          *state.State
 	Relations      []*model.Relation
 	Restriction    restriction.Service
-	Doc            doc.Service
 	ObjectStore    objectstore.ObjectStore
 	Ctx            context.Context
 	ObjectTree     objecttree.ObjectTree
@@ -156,7 +163,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx context.Context, info doc.DocInfo) error
+	Index(ctx context.Context, info DocInfo) error
 }
 
 type smartBlock struct {
@@ -699,7 +706,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	sb.reportChange(st)
+	sb.runIndexer(st)
 
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
@@ -1136,7 +1143,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
-	sb.reportChange(s)
+	sb.runIndexer(s)
 	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
 
 	return nil
@@ -1166,7 +1173,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
-	sb.reportChange(sb.Doc.(*state.State))
+	sb.runIndexer(sb.Doc.(*state.State))
 	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
 	return nil
 }
@@ -1317,11 +1324,11 @@ func (sb *smartBlock) execHooks(event Hook, info ApplyInfo) (err error) {
 	return
 }
 
-func (sb *smartBlock) GetDocInfo() (doc.DocInfo, error) {
-	return sb.getDocInfo(sb.NewState()), nil
+func (sb *smartBlock) GetDocInfo() DocInfo {
+	return sb.getDocInfo(sb.NewState())
 }
 
-func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
+func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
@@ -1334,7 +1341,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
-	return doc.DocInfo{
+	return DocInfo{
 		Id:         sb.Id(),
 		Links:      links,
 		Heads:      sb.source.Heads(),
@@ -1344,7 +1351,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	}
 }
 
-func (sb *smartBlock) reportChange(s *state.State) {
+func (sb *smartBlock) runIndexer(s *state.State) {
 	docInfo := sb.getDocInfo(s)
 	if err := sb.indexer.Index(context.TODO(), docInfo); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)

@@ -2,18 +2,19 @@ package editor
 
 import (
 	"context"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestBreadcrumbs_Init(t *testing.T) {
@@ -36,7 +37,6 @@ func TestBreadcrumbs_SetCrumbs(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.Finish()
 		fx.expectDerivedDetails()
-		fx.mockDoc.EXPECT().ReportChange(gomock.Any(), gomock.Any()).AnyTimes()
 
 		b := NewBreadcrumbs()
 		err := b.Init(&smartblock.InitContext{
@@ -60,7 +60,6 @@ func newFixture(t *testing.T) *fixture {
 		t:    t,
 	}
 	fx.mockStore = testMock.RegisterMockObjectStore(fx.ctrl, fx.app)
-	fx.mockDoc = mockDoc.RegisterMockDoc(fx.ctrl, fx.app)
 	fx.mockAnytype = testMock.RegisterMockAnytype(fx.ctrl, fx.app)
 	fx.app.Register(restriction.New())
 	mockRelation.RegisterMockRelation(fx.ctrl, fx.app)
@@ -74,7 +73,6 @@ type fixture struct {
 	ctrl        *gomock.Controller
 	app         *testapp.TestApp
 	mockStore   *testMock.MockObjectStore
-	mockDoc     *mockDoc.MockService
 	mockAnytype *testMock.MockService
 }
 
@@ -82,7 +80,6 @@ func (fx *fixture) expectDerivedDetails() {
 	fx.mockStore.EXPECT().GetDetails(gomock.Any()).Return(&model.ObjectDetails{}, nil)
 	fx.mockStore.EXPECT().GetPendingLocalDetails(gomock.Any()).Return(&model.ObjectDetails{}, nil)
 	fx.mockStore.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any())
-	fx.mockDoc.EXPECT().ReportChange(gomock.Any(), gomock.Any())
 }
 
 func (fx *fixture) Finish() {

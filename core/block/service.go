@@ -18,7 +18,6 @@ import (
 	"github.com/ipfs/go-datastore/query"
 
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -122,7 +121,6 @@ type Service struct {
 	closed          bool
 	linkPreview     linkpreview.LinkPreview
 	process         process.Service
-	doc             doc.Service
 	app             *app.App
 	source          source.Service
 	objectStore     objectstore.ObjectStore
@@ -150,7 +148,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
-	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)

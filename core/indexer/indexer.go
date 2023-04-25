@@ -16,7 +16,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -213,7 +212,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info doc.DocInfo) error {
+func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 	startTime := time.Now()
 	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
@@ -812,10 +811,10 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 	return
 }
 
-func (i *indexer) getObjectInfo(ctx context.Context, id string) (info doc.DocInfo, err error) {
+func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock2.DocInfo, err error) {
 	err = block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
-		info, err = sb.GetDocInfo()
-		return err
+		info = sb.GetDocInfo()
+		return nil
 	})
 	return
 }

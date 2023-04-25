@@ -18,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
@@ -155,7 +154,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(builtintemplate.New()).
 		Register(status.New()).
 		Register(block.New()).
-		Register(doc.New()).
 		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).

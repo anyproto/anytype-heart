@@ -7,15 +7,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
@@ -31,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockBuiltinTemplate"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockStatus"
 )
@@ -57,16 +54,9 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	fx.anytype = testMock.RegisterMockAnytype(fx.ctrl, ta)
-	fx.docService = mockDoc.NewMockService(fx.ctrl)
-	fx.docService.EXPECT().Name().AnyTimes().Return(doc.CName)
-	fx.docService.EXPECT().Init(gomock.Any())
-	fx.docService.EXPECT().Run(context.Background())
 	fx.anytype.EXPECT().PredefinedBlocks().Times(2)
-	fx.docService.EXPECT().Close().AnyTimes()
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
 
-	fx.docService.EXPECT().GetDocInfo(gomock.Any(), gomock.Any()).Return(doc.DocInfo{State: state.NewDoc("", nil).(*state.State)}, nil).AnyTimes()
-	fx.docService.EXPECT().OnWholeChange(gomock.Any())
 	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
 	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
@@ -127,7 +117,6 @@ type fixture struct {
 	ctrl        *gomock.Controller
 	anytype     *testMock.MockService
 	objectStore *testMock.MockObjectStore
-	docService  *mockDoc.MockService
 	ch          chan core.SmartblockRecordWithThreadID
 	rb          recordsbatcher.RecordsBatcher
 	ta          *testapp.TestApp

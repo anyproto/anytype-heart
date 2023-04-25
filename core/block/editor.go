@@ -589,12 +589,6 @@ func (s *Service) AddRelationBlock(ctx *session.Context, req pb.RpcBlockRelation
 	})
 }
 
-func (s *Service) Wakeup(id string) (err error) {
-	return s.Do(id, func(b smartblock.SmartBlock) error {
-		return nil
-	})
-}
-
 func (s *Service) GetRelations(objectId string) (relations []*model.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		relations = b.Relations(nil).Models()

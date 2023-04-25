@@ -1,24 +1,24 @@
 package smarttest
 
 import (
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
+	"github.com/anytypeio/any-sync/app"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/gogo/protobuf/types"
 )
 
 func New(id string) *SmartTest {
@@ -99,8 +99,8 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
 
-func (st *SmartTest) GetDocInfo() (doc.DocInfo, error) {
-	return doc.DocInfo{
+func (st *SmartTest) GetDocInfo() (DocInfo, error) {
+	return DocInfo{
 		Id: st.Id(),
 	}, nil
 }
