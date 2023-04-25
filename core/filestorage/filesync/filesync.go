@@ -15,6 +15,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 )
 
 const CName = "filesync"
@@ -33,7 +34,7 @@ type FileSync interface {
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	SyncStatus() (ss SyncStatus, err error)
-	NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher
+	NewStatusWatcher(statusService StatusService, fileStore filestore.FileStore, updateInterval time.Duration) *StatusWatcher
 	app.ComponentRunnable
 }
 

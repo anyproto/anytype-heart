@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
-	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 )
 
 type StatusService interface {
@@ -35,20 +35,20 @@ type StatusWatcher struct {
 
 	updateInterval  time.Duration
 	statusService   StatusService
-	dagService      ipld.DAGService
 	fileSyncService FileSync
+	fileStore       filestore.FileStore
 }
 
-func (f *fileSync) NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher {
+func (f *fileSync) NewStatusWatcher(statusService StatusService, fileStore filestore.FileStore, updateInterval time.Duration) *StatusWatcher {
 	return &StatusWatcher{
 		filesToWatchLock: &sync.Mutex{},
 		files:            map[fileWithSpace]fileStatus{},
 		filesToWatch:     map[fileWithSpace]struct{}{},
 		updateCh:         make(chan fileWithSpace),
 		statusService:    statusService,
-		dagService:       f.dagService,
 		fileSyncService:  f,
 		updateInterval:   updateInterval,
+		fileStore:        fileStore,
 	}
 }
 
@@ -101,7 +101,7 @@ func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (f
 	now := time.Now()
 	status, ok := s.files[key]
 	if !ok || status.chunksCount == 0 {
-		chunksCount, err := s.countFileChunks(ctx, key.fileID)
+		chunksCount, err := s.fileStore.GetChunksCount(key.fileID)
 		if err != nil {
 			return status, fmt.Errorf("count file chunks: %w", err)
 		}
@@ -129,28 +129,6 @@ func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (f
 	}
 
 	return status, nil
-}
-
-func (s *StatusWatcher) countFileChunks(ctx context.Context, id string) (int, error) {
-	fileCid, err := cid.Parse(id)
-	if err != nil {
-		return 0, err
-	}
-	node, err := s.dagService.Get(ctx, fileCid)
-	if err != nil {
-		return 0, err
-	}
-
-	var count int
-	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, s.dagService))
-	err = walker.Iterate(func(node ipld.NavigableNode) error {
-		count++
-		return nil
-	})
-	if err == ipld.EndOfDag {
-		err = nil
-	}
-	return count, err
 }
 
 func (s *StatusWatcher) Watch(spaceID, fileID string) {

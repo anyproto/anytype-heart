@@ -6,15 +6,14 @@ import (
 	"crypto/aes"
 	"crypto/sha256"
 	"fmt"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"io"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -23,7 +22,7 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
@@ -36,6 +35,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
 const (
@@ -98,7 +98,18 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
+	chunksCount, err := s.getChunksCount(ctx, node)
+	if err != nil {
+		return "", nil, fmt.Errorf("count chunks: %w", err)
+	}
+
 	nodeHash := node.Cid().String()
+	if err = s.store.SetChunksCount(nodeHash, chunksCount); err != nil {
+		return "", nil, fmt.Errorf("store chunks count: %w", err)
+	}
+
+	chunkies, err := s.store.GetChunksCount(nodeHash)
+	_ = chunkies
 
 	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
 		return "", nil, err
@@ -116,6 +127,19 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	}
 
 	return nodeHash, fileInfo, nil
+}
+
+func (s *Service) getChunksCount(ctx context.Context, node ipld.Node) (int, error) {
+	var chunksCount int
+	err := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, s.commonFile.DAGService())).
+		Iterate(func(_ ipld.NavigableNode) error {
+			chunksCount++
+			return nil
+		})
+	if err != nil && err != ipld.EndOfDag {
+		return -1, fmt.Errorf("failed to count cids: %w", err)
+	}
+	return chunksCount, nil
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore

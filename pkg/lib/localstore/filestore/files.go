@@ -2,26 +2,29 @@ package filestore
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"sync"
+
 	"github.com/anytypeio/any-sync/app"
+	"github.com/gogo/protobuf/proto"
+	dsCtx "github.com/ipfs/go-datastore"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	ds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"sync"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
-	"github.com/gogo/protobuf/proto"
-	dsCtx "github.com/ipfs/go-datastore"
 )
 
 var (
 	// FileInfo is stored in db key pattern:
 	// /files/info/<hash>
-	filesPrefix   = "files"
-	filesInfoBase = dsCtx.NewKey("/" + filesPrefix + "/info")
-	filesKeysBase = dsCtx.NewKey("/" + filesPrefix + "/keys")
+	filesPrefix     = "files"
+	filesInfoBase   = dsCtx.NewKey("/" + filesPrefix + "/info")
+	filesKeysBase   = dsCtx.NewKey("/" + filesPrefix + "/keys")
+	chunksCountBase = dsCtx.NewKey("/" + filesPrefix + "/chunks_count")
 
 	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
@@ -95,6 +98,9 @@ type FileStore interface {
 	ListFileKeys() ([]string, error)
 	List() ([]*storage.FileInfo, error)
 	RemoveEmpty() error
+
+	GetChunksCount(hash string) (int, error)
+	SetChunksCount(hash string, chunksCount int) error
 }
 
 func New() FileStore {
@@ -601,6 +607,25 @@ func (m *dsFileStore) DeleteByHash(hash string) error {
 
 	fileInfoKey := filesInfoBase.ChildString(hash)
 	return m.ds.Delete(fileInfoKey)
+}
+
+func (m *dsFileStore) GetChunksCount(hash string) (int, error) {
+	key := chunksCountBase.ChildString(hash)
+	b, err := m.ds.Get(key)
+	if err != nil {
+		if err == dsCtx.ErrNotFound {
+			return 0, localstore.ErrNotFound
+		}
+		return 0, err
+	}
+	val := binary.LittleEndian.Uint64(b)
+	return int(val), nil
+}
+
+func (m *dsFileStore) SetChunksCount(hash string, chunksCount int) error {
+	key := chunksCountBase.ChildString(hash)
+	val := binary.LittleEndian.AppendUint64(nil, uint64(chunksCount))
+	return m.ds.Put(key, val)
 }
 
 func (ls *dsFileStore) Close(ctx context.Context) (err error) {
