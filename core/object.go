@@ -806,7 +806,7 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	request *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
 	// nolint: lll
-	response := func(code pb.RpcObjectImportNotionValidateTokenResponseErrorCode) *pb.RpcObjectImportNotionValidateTokenResponse {
+	response := func(code pb.RpcObjectImportNotionValidateTokenResponseErrorCode, e error) *pb.RpcObjectImportNotionValidateTokenResponse {
 		err := &pb.RpcObjectImportNotionValidateTokenResponseError{Code: code}
 		switch code {
 		case pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED:
@@ -817,8 +817,10 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 			err.Description = "Notion is currently unavailable."
 		case pb.RpcObjectImportNotionValidateTokenResponseError_NULL:
 			err.Description = ""
+		case pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR:
+			err.Description = e.Error()
 		default:
-			err.Description = "Internal error"
+			err.Description = "Unknown internal error"
 		}
 		return &pb.RpcObjectImportNotionValidateTokenResponse{Error: err}
 	}
@@ -827,6 +829,6 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	defer mw.m.RUnlock()
 
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-	errCode := importer.ValidateNotionToken(ctx, request)
-	return response(errCode)
+	errCode, err := importer.ValidateNotionToken(ctx, request)
+	return response(errCode, err)
 }

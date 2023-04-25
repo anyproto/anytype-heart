@@ -94,20 +94,21 @@ func NewTokenValidator() *TokenValidator {
 }
 
 // Validate calls Notion API with given api key and check, if error is unauthorized
-func (v TokenValidator) Validate(ctx context.Context,
-	apiKey string) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
+func (v TokenValidator) Validate(
+	ctx context.Context, apiKey string,
+) (pb.RpcObjectImportNotionValidateTokenResponseErrorCode, error) {
 	err := v.ping.Ping(ctx, apiKey)
 	if errors.Is(err, ErrorInternal) {
-		return pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR
+		return pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR, err
 	}
 	if errors.Is(err, ErrorUnauthorized) {
-		return pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED
+		return pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED, nil
 	}
 	if errors.Is(err, ErrorForbidden) {
-		return pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN
+		return pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN, nil
 	}
 	if errors.Is(err, ErrorNotionUnavailable) {
-		return pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE
+		return pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE, nil
 	}
-	return pb.RpcObjectImportNotionValidateTokenResponseError_NULL
+	return pb.RpcObjectImportNotionValidateTokenResponseError_NULL, nil
 }
