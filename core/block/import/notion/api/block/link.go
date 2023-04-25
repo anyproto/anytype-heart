@@ -77,23 +77,21 @@ type ChildPG struct {
 }
 
 func (b *ChildPageBlock) GetBlocks(req *MapRequest) *MapResponse {
-	bl, id := b.ChildPage.GetLinkToObjectBlock(req.NotionPageIdsToAnytype, req.PageNameToID)
+	bl := b.ChildPage.GetLinkToObjectBlock(req.NotionPageIdsToAnytype, req.PageNameToID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
-		BlockIDs: []string{id},
+		BlockIDs: []string{bl.Id},
 	}
 }
 
-func (p ChildPG) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) (*model.Block, string) {
+func (p ChildPG) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
 	var (
 		targetBlockID string
 		ok            bool
 	)
 	for id, name := range idToName {
 		if strings.EqualFold(name, p.Title) {
-			if len(notionIdsToAnytype) > 0 {
-				targetBlockID, ok = notionIdsToAnytype[id]
-			}
+			targetBlockID, ok = notionIdsToAnytype[id]
 			break
 		}
 	}
@@ -111,7 +109,7 @@ func (p ChildPG) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]st
 					},
 				},
 			},
-		}, id
+		}
 	}
 
 	return &model.Block{
@@ -121,7 +119,7 @@ func (p ChildPG) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]st
 			Link: &model.BlockContentLink{
 				TargetBlockId: targetBlockID,
 			},
-		}}, id
+		}}
 }
 
 type ChildDatabaseBlock struct {
@@ -130,10 +128,10 @@ type ChildDatabaseBlock struct {
 }
 
 func (b *ChildDatabaseBlock) GetBlocks(req *MapRequest) *MapResponse {
-	bl, id := b.ChildDatabase.GetLinkToObjectBlock(req.NotionDatabaseIdsToAnytype, req.DatabaseNameToID)
+	bl := b.ChildDatabase.GetDataviewBlock(req.NotionDatabaseIdsToAnytype, req.DatabaseNameToID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
-		BlockIDs: []string{id},
+		BlockIDs: []string{bl.Id},
 	}
 }
 
@@ -141,7 +139,7 @@ type ChildDB struct {
 	Title string `json:"title"`
 }
 
-func (c *ChildDB) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) (*model.Block, string) {
+func (c *ChildDB) GetDataviewBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
 	var (
 		targetBlockID string
 	)
@@ -156,7 +154,7 @@ func (c *ChildDB) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]s
 
 	id := bson.NewObjectId().Hex()
 
-	block := collection.GetDataviewContent()
+	block := collection.MakeDataviewContent()
 
 	block.Dataview.TargetObjectId = targetBlockID
 
@@ -164,7 +162,7 @@ func (c *ChildDB) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]s
 		Id:          id,
 		ChildrenIds: nil,
 		Content:     block,
-	}, id
+	}
 }
 
 type LinkToPageBlock struct {

@@ -214,7 +214,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 		template.WithRequiredRelations(),
 	}
 
-	blockContent := GetDataviewContent()
+	blockContent := MakeDataviewContent()
 	tmpls = append(tmpls,
 		template.WithDataview(*blockContent, false),
 	)
@@ -225,7 +225,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	return coresb.SmartBlockTypeCollection, details, newState, nil
 }
 
-func GetDataviewContent() *model.BlockContentOfDataview {
+func MakeDataviewContent() *model.BlockContentOfDataview {
 	relations := []*model.RelationLink{
 		{
 			Format: model.RelationFormat_shorttext,
