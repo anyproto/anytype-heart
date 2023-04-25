@@ -819,6 +819,8 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 			err.Description = ""
 		case pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR:
 			err.Description = e.Error()
+		case pb.RpcObjectImportNotionValidateTokenResponseError_ACCOUNT_IS_NOT_RUNNING:
+			err.Description = "User didn't log in"
 		default:
 			err.Description = "Unknown internal error"
 		}
@@ -827,6 +829,10 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 
 	mw.m.RLock()
 	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return response(pb.RpcObjectImportNotionValidateTokenResponseError_ACCOUNT_IS_NOT_RUNNING, nil)
+	}
 
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
 	errCode, err := importer.ValidateNotionToken(ctx, request)

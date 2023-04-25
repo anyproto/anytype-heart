@@ -16251,6 +16251,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 4 |  |
 | FORBIDDEN | 5 |  |
 | SERVICE_UNAVAILABLE | 6 |  |
+| ACCOUNT_IS_NOT_RUNNING | 7 |  |
 
 
 
