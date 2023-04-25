@@ -6,16 +6,19 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/util/periodicsync"
-	"github.com/anytypeio/go-anytype-middleware/net/addrs"
-	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
-	"github.com/libp2p/zeroconf/v2"
-	"go.uber.org/zap"
 	gonet "net"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/util/periodicsync"
+	"github.com/libp2p/zeroconf/v2"
+	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/net/addrs"
+	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 )
 
 type localDiscovery struct {
@@ -65,8 +68,25 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	l.periodicCheck.Close()
 	l.cancel()
 	if l.server != nil {
-		l.server.Shutdown()
-		l.closeWait.Wait()
+		start := time.Now()
+		shutdownFinished := make(chan struct{})
+		go func() {
+			l.server.Shutdown()
+			l.closeWait.Wait()
+			close(shutdownFinished)
+			spent := time.Since(start)
+			if spent.Milliseconds() > 500 {
+				log.Warn("zeroconf server shutdown took too long", zap.Duration("spent", spent))
+			}
+		}()
+
+		select {
+		case <-shutdownFinished:
+			return nil
+		case <-time.After(time.Second * 1):
+			// we can't afford to wait for too long
+			return nil
+		}
 	}
 	return nil
 }
@@ -76,6 +96,8 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
+
+	newAddrs.SortWithPriority([]string{"en", "wlan", "eth", "lo"})
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
 		return
 	}
@@ -106,17 +128,18 @@ func (l *localDiscovery) startServer() (err error) {
 		}
 	}
 	log.Debug("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
-	// for now assuming that we have just one address
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
 		serviceName,
 		mdnsDomain,
 		l.port,
 		l.peerId,
-		l.ipv4,
+		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
-		nil,
-		zeroconf.TTL(10),
+		l.interfacesAddrs.Interfaces,
+		zeroconf.TTL(60),
+		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
+		zeroconf.WriteTimeout(time.Second*1),
 	)
 	return
 }
@@ -155,7 +178,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch); err != nil {
+	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch, zeroconf.ClientWriteTimeout(time.Second*30), zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
 }
