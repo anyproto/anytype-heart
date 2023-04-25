@@ -1,12 +1,14 @@
 package core
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,6 +28,7 @@ import (
 	cp "github.com/otiai10/copy"
 
 	"github.com/anytypeio/go-anytype-middleware/core/account"
+	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
@@ -685,6 +688,180 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 		return err
 	}
 
+	return nil
+}
+
+func (mw *Middleware) AccountRecoverFromLegacyBackup(cctx context.Context,
+	req *pb.RpcAccountRecoverFromLegacyBackupRequest) *pb.RpcAccountRecoverFromLegacyBackupResponse {
+	ctx := mw.newContext(cctx)
+
+	response := func(address string, code pb.RpcAccountRecoverFromLegacyBackupResponseErrorCode, err error) *pb.RpcAccountRecoverFromLegacyBackupResponse {
+		m := &pb.RpcAccountRecoverFromLegacyBackupResponse{Address: address, Error: &pb.RpcAccountRecoverFromLegacyBackupResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	profile, err := importer.ImportUserProfile(ctx, req)
+	if req.NeedToCreateAccount {
+		if err != nil {
+			return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
+		}
+		err = mw.createAccount(profile, req)
+		if err != nil {
+			return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
+		}
+		mw.mnemonic = ""
+	}
+
+	return response(profile.Address, pb.RpcAccountRecoverFromLegacyBackupResponseError_NULL, nil)
+}
+
+func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyBackupRequest) error {
+	mw.m.Lock()
+
+	defer mw.m.Unlock()
+	if err := mw.stop(); err != nil {
+		return err
+	}
+
+	mw.rootPath = req.RootPath
+	mw.foundAccounts = nil
+
+	err := os.MkdirAll(mw.rootPath, 0700)
+	if err != nil {
+		return err
+	}
+	err = mw.setMnemonic(profile.Mnemonic)
+	if err != nil {
+		return err
+	}
+	mw.accountSearchCancel()
+
+	err = mw.extractAccountDirectory(profile, req)
+	if err != nil {
+		return err
+	}
+
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
+	index := len(mw.foundAccounts)
+	var account wallet.Keypair
+	account, err = core.WalletAccountAt(mw.mnemonic, index, "")
+	if err != nil {
+		return err
+	}
+
+	if req.StorePath != "" && req.StorePath != mw.rootPath {
+		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
+
+		storePath := filepath.Join(req.StorePath, account.Address())
+
+		err = os.MkdirAll(storePath, 0700)
+		if err != nil {
+			return err
+		}
+
+		if err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
+			return err
+		}
+	}
+
+	newAcc := &model.Account{Id: account.Address()}
+
+	comps := []app.Component{
+		cfg,
+		anytype.BootstrapWallet(mw.rootPath, account.Address()),
+		mw.EventSender,
+	}
+
+	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
+	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
+		return err
+	}
+
+	newAcc.Name = profile.Name
+	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
+	newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{
+		Image: &model.BlockContentFile{Hash: profile.Avatar},
+	}}
+	details = append(details, &pb.RpcObjectSetDetailsDetail{
+		Key:   "iconImage",
+		Value: pbtypes.String(profile.Avatar),
+	})
+
+	newAcc.Info = mw.getInfo()
+	bs := mw.app.MustComponent(block.CName).(*block.Service)
+	coreService := mw.app.MustComponent(core.CName).(core.Service)
+	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: coreService.PredefinedBlocks().Profile,
+		Details:   details,
+	}); err != nil {
+		return err
+	}
+
+	mw.foundAccounts = append(mw.foundAccounts, newAcc)
+	return nil
+}
+
+func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyBackupRequest) error {
+	archive, err := zip.OpenReader(req.Path)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(mw.rootPath, profile.Address)
+	_, err = os.Stat(path)
+	if err == nil {
+		err = os.Rename(path, path+"_backup")
+		if err != nil {
+			return err
+		}
+	}
+	err = os.MkdirAll(path, 0700)
+	if err != nil {
+		return err
+	}
+	for _, file := range archive.File {
+		if strings.EqualFold(file.FileInfo().Name(), profile.Address) && file.FileInfo().IsDir() {
+			continue
+		}
+		fName := file.FileHeader.Name
+		if strings.Contains(fName, profile.Address) {
+			if err = mw.createAccountFile(fName, file); err != nil {
+				return err
+			}
+
+		}
+	}
+	return nil
+}
+
+func (mw *Middleware) createAccountFile(fName string, file *zip.File) error {
+	path := filepath.Join(mw.rootPath, fName)
+	if file.FileInfo().IsDir() {
+		err := os.MkdirAll(path, file.Mode())
+		return err
+	}
+	fileReader, err := file.Open()
+	if err != nil {
+		return err
+	}
+
+	defer fileReader.Close()
+	targetFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, file.Mode())
+	if err != nil {
+		return err
+	}
+
+	defer targetFile.Close()
+	for {
+		_, err := io.CopyN(targetFile, fileReader, 1024)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
 	return nil
 }
 

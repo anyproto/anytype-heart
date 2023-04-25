@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -24,7 +25,6 @@ type Importer interface {
 	ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 	//nolint: lll
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode
-	ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportRequest, address string) error
 }
 
 // Creator incapsulate logic with creation of given smartblocks

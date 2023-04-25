@@ -2,6 +2,8 @@ package newinfra
 
 import (
 	"archive/zip"
+	"errors"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"io"
 	"strings"
 
@@ -17,46 +19,36 @@ import (
 
 const profileFile = "profile"
 
+const Name = "Migration"
+
+func init() {
+	converter.RegisterFunc(New)
+}
+
 type NewInfra struct{}
 
-func NewImporter() *NewInfra {
+func New(core.Service) converter.Converter {
 	return &NewInfra{}
 }
 
-func (i *NewInfra) GetUserProfile(req *pb.RpcUserDataImportRequest, progress *process.Progress) (*pb.Profile, error) {
-	archive, err := zip.OpenReader(req.Path)
-	if err != nil {
-		return nil, err
+func (i *NewInfra) GetParams(params pb.IsRpcObjectImportRequestParams) (string, string, error) {
+	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfMigrationParams); ok {
+		return p.MigrationParams.GetPath(), p.MigrationParams.GetAddress(), nil
 	}
-	defer archive.Close()
-	progress.SetTotal(1)
-
-	f, err := archive.Open(profileFile)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	var profile pb.Profile
-
-	err = profile.Unmarshal(data)
-	if err != nil {
-		return nil, err
-	}
-	progress.SetDone(1)
-	return &profile, nil
+	return "", "", errors.New("NewInfra: GetParams wrong parameters format")
 }
 
-func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *process.Progress, address string) *converter.Response {
-	archive, err := zip.OpenReader(req.Path)
+func (i *NewInfra) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	importError := converter.NewError()
+	path, address, e := i.GetParams(req.Params)
+	if e != nil {
+		importError.Add(path, e)
+		return nil, importError
+	}
+	archive, err := zip.OpenReader(path)
 	if err != nil {
-		importError.Add(req.Path, err)
-		return &converter.Response{Error: importError}
+		importError.Add(path, err)
+		return nil, importError
 	}
 	defer archive.Close()
 	res := &converter.Response{Snapshots: make([]*converter.Snapshot, 0)}
@@ -90,20 +82,20 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *proc
 		reader, err := f.Open()
 		if err != nil {
 			importError.Add(f.Name, err)
-			return &converter.Response{Error: importError}
+			return nil, importError
 		}
 
 		data, err := io.ReadAll(reader)
 		if err != nil {
 			importError.Add(f.Name, err)
-			return &converter.Response{Error: importError}
+			return nil, importError
 		}
 
 		var mo pb.MigrationObject
 		err = mo.Unmarshal(data)
 		if err != nil {
 			importError.Add(f.Name, err)
-			return &converter.Response{Error: importError}
+			return nil, importError
 		}
 
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(f.Name)
@@ -117,5 +109,9 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *proc
 		res.Snapshots = append(res.Snapshots, snapshot)
 		progress.AddDone(1)
 	}
-	return res
+	return res, nil
+}
+
+func (i *NewInfra) Name() string {
+	return Name
 }
