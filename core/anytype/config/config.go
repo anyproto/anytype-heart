@@ -277,6 +277,16 @@ func (c *Config) GetNet() commonnet.Config {
 	}
 }
 
+func (c *Config) GetDebugNet() commonnet.Config {
+	return commonnet.Config{
+		Server: commonnet.ServerConfig{ListenAddrs: []string{"127.0.0.1:8090"}},
+		Stream: commonnet.StreamConfig{
+			TimeoutMilliseconds: 1000,
+			MaxMsgSizeMb:        256,
+		},
+	}
+}
+
 func (c *Config) GetNodes() []nodeconf.NodeConfig {
 	return []nodeconf.NodeConfig{
 		{
