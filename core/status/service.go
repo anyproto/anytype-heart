@@ -11,9 +11,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+
+	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 )
 
 var log = logging.Logger("anytype-mw-status")
@@ -35,49 +40,53 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	fInfo        pin.FilePinService
-	profile      core.ProfileInfo
-	ownDeviceID  string
-	cafeID       string
+	typeProvider typeprovider.SmartBlockTypeProvider
 	emitter      func(event *pb.Event)
 	spaceService space.Service
 	watcher      syncstatus.StatusWatcher
+	coreService  core.Service
 
 	nodeConnected bool
+	subObjects    []string
+	isRunning     bool
 
-	isRunning bool
 	sync.Mutex
 }
 
 func (s *service) UpdateTree(ctx context.Context, treeId string, status syncstatus.SyncStatus) (err error) {
 	var (
 		nodeConnected bool
-		evStatus      pb.EventStatusThreadSyncStatus
-		cafeStatus    pb.EventStatusThreadSyncStatus
+		objStatus     pb.EventStatusThreadSyncStatus
+		generalStatus pb.EventStatusThreadSyncStatus
 	)
 	s.Lock()
 	nodeConnected = s.nodeConnected
 	s.Unlock()
 	switch status {
 	case syncstatus.StatusUnknown:
-		evStatus = pb.EventStatusThread_Unknown
+		objStatus = pb.EventStatusThread_Unknown
 	case syncstatus.StatusSynced:
-		evStatus = pb.EventStatusThread_Synced
+		objStatus = pb.EventStatusThread_Synced
 	case syncstatus.StatusNotSynced:
-		evStatus = pb.EventStatusThread_Unknown
+		objStatus = pb.EventStatusThread_Unknown
 	}
 	if !nodeConnected {
-		evStatus = pb.EventStatusThread_Offline
+		objStatus = pb.EventStatusThread_Offline
 	}
-	cafeStatus = evStatus
+	generalStatus = objStatus
 
-	s.sendEvent(treeId, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
-		Summary: &pb.EventStatusThreadSummary{Status: evStatus},
-		Cafe: &pb.EventStatusThreadCafe{
-			Status: cafeStatus,
-			Files:  &pb.EventStatusThreadCafePinStatus{},
-		},
-	}})
+	s.notify(treeId, objStatus, generalStatus)
+	s.Lock()
+	if treeId != s.coreService.PredefinedBlocks().Account {
+		s.Unlock()
+		return
+	}
+	cp := slice.Copy(s.subObjects)
+	s.Unlock()
+
+	for _, obj := range cp {
+		s.notify(obj, objStatus, generalStatus)
+	}
 	return
 }
 
@@ -96,7 +105,9 @@ func (s *service) Init(a *app.App) (err error) {
 	if !disableEvents {
 		s.emitter = a.MustComponent(event.CName).(event.Sender).Send
 	}
+	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
 	return
 }
 
@@ -111,7 +122,8 @@ func (s *service) Run(ctx context.Context) (err error) {
 	s.watcher = res.SyncStatus().(syncstatus.StatusWatcher)
 	s.watcher.SetUpdateReceiver(s)
 	s.isRunning = true
-	return nil
+	_, err = s.watch(s.coreService.PredefinedBlocks().Account)
+	return
 }
 
 func (s *service) Name() string {
@@ -121,8 +133,21 @@ func (s *service) Name() string {
 func (s *service) Watch(id string, fileFunc func() []string) (new bool, err error) {
 	s.Lock()
 	defer s.Unlock()
+	return s.watch(id)
+}
+
+func (s *service) Unwatch(id string) {
+	s.Lock()
+	defer s.Unlock()
+	s.unwatch(id)
+}
+
+func (s *service) watch(id string) (new bool, err error) {
 	if !s.isRunning {
 		return false, nil
+	}
+	if s.tryRegister(id) {
+		return true, nil
 	}
 	if err = s.watcher.Watch(id); err != nil {
 		return false, err
@@ -130,10 +155,11 @@ func (s *service) Watch(id string, fileFunc func() []string) (new bool, err erro
 	return true, nil
 }
 
-func (s *service) Unwatch(id string) {
-	s.Lock()
-	defer s.Unlock()
+func (s *service) unwatch(id string) {
 	if !s.isRunning {
+		return
+	}
+	if s.tryUnregister(id) {
 		return
 	}
 	s.watcher.Unwatch(id)
@@ -143,6 +169,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	s.Lock()
 	defer s.Unlock()
 	s.isRunning = false
+	s.unwatch(s.coreService.PredefinedBlocks().Account)
 	return nil
 }
 
@@ -154,4 +181,36 @@ func (s *service) sendEvent(ctx string, event pb.IsEventMessageValue) {
 		Messages:  []*pb.EventMessage{{Value: event}},
 		ContextId: ctx,
 	})
+}
+
+func (s *service) tryRegister(id string) bool {
+	tp, err := s.typeProvider.Type(id)
+	if err != nil {
+		log.Debug("failed to get type of", zap.String("objectID", id))
+		return false
+	}
+	if tp == smartblock.SmartBlockTypeSubObject {
+		s.subObjects = append(s.subObjects, id)
+		return true
+	}
+	return false
+}
+
+func (s *service) tryUnregister(id string) bool {
+	idx := slices.Index(s.subObjects, id)
+	if idx != -1 {
+		s.subObjects = slice.RemoveIndex(s.subObjects, idx)
+		return true
+	}
+	return false
+}
+
+func (s *service) notify(objId string, objStatus, generalStatus pb.EventStatusThreadSyncStatus) {
+	s.sendEvent(objId, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
+		Summary: &pb.EventStatusThreadSummary{Status: objStatus},
+		Cafe: &pb.EventStatusThreadCafe{
+			Status: generalStatus,
+			Files:  &pb.EventStatusThreadCafePinStatus{},
+		},
+	}})
 }

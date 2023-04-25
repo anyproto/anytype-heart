@@ -161,9 +161,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(core.New()).
 		Register(builtintemplate.New()).
-		Register(status.New()).
 		Register(blockService).
 		Register(indexer.New()).
+		Register(status.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
