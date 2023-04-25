@@ -9,7 +9,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -76,8 +75,6 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	at := mw.app.MustComponent(core.CName).(core.Service)
-
 	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
 		var filtered []*model.ObjectInfo
 		for _, page := range Objects {
@@ -90,7 +87,8 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return filtered
 	}
 
-	page, err := at.ObjectInfoWithLinks(req.ObjectId)
+	store := app.MustComponent[objectstore.ObjectStore](mw.app)
+	page, err := store.GetWithLinksInfoByID(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}

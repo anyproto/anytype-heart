@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -69,8 +68,6 @@ type Service interface {
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
-
-	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 
 	ProfileInfo
 
