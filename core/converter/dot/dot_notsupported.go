@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
-func NewMultiConverter(format int, sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
+func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
 	return &dot{}
 }
 
