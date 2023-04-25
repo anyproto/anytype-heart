@@ -52,7 +52,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 	if s == nil {
 		return nil
 	}
-	readers, err := s.GetFileReaders(importPath, []string{".md"})
+	readers, err := s.GetFileReaders(importPath, []string{".md", ".png", ".jpeg", ".gif"})
 	if err != nil {
 		allErrors.Add(importPath, err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
@@ -270,6 +270,7 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		files[shortPath].IsRootFile = true
 	}
 	if filepath.Ext(shortPath) == ".md" {
+		defer f.Close()
 		b, err := io.ReadAll(f)
 		if err != nil {
 			return err
@@ -280,7 +281,6 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		}
 		// md file no longer needed
 		m.processBlocks(shortPath, files[shortPath], files)
-		f.Close()
 	} else {
 		// need to store file reader, so we can use it to create local file and upload it
 		files[shortPath].ReadCloser = f
@@ -297,6 +297,7 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 		log.Errorf("failed to create file: %s", err.Error())
 		return
 	}
+	defer tmpFile.Close()
 	w := bufio.NewWriter(tmpFile)
 	shortPath := f.Name
 	targetFile, found := files[shortPath]
@@ -304,7 +305,7 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 		log.Errorf("file not found")
 		return
 	}
-
+	defer targetFile.Close()
 	_, err = w.ReadFrom(targetFile.ReadCloser)
 	if err != nil {
 		log.Errorf("failed to read file: %s", err.Error())
@@ -316,7 +317,5 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 		return
 	}
 
-	targetFile.Close()
-	tmpFile.Close()
 	f.Name = newFile
 }

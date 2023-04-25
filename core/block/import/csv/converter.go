@@ -165,6 +165,7 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 }
 
 func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error) {
+	defer rc.Close()
 	csvReader := csv.NewReader(rc)
 	if delimiter != "" {
 		characters := []rune(delimiter)
