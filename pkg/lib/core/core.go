@@ -3,8 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -15,12 +16,10 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -105,8 +104,6 @@ type Anytype struct {
 	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
-	pinService         pin.FilePinService
-	ipfs               ipfs.Node
 	logLevels          map[string]string
 
 	opts ServiceOptions
@@ -123,6 +120,7 @@ type Anytype struct {
 	wallet              wallet.Wallet
 	tmpFolderAutocreate sync.Once
 	tempDir             string
+	commonFiles         fileservice.FileService
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {
@@ -143,8 +141,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.ds = ap.MustComponent(datastore.CName).(datastore.Datastore)
 	a.cafe = ap.MustComponent(cafe.CName).(cafe.Client)
 	a.files = ap.MustComponent(files.CName).(*files.Service)
-	a.pinService = ap.MustComponent(pin.CName).(pin.FilePinService)
-	a.ipfs = ap.MustComponent(ipfs.CName).(ipfs.Node)
+	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
 	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
 	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	a.deriver = ap.MustComponent(treegetter.CName).(ObjectsDeriver)

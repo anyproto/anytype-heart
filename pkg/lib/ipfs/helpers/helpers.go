@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers/resolver"
 	"github.com/ipfs/go-cid"
@@ -34,13 +35,13 @@ const (
 )
 
 // DataAtPath return bytes under an ipfs path
-func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
-	resolvedPath, err := ResolvePath(ctx, node, path.New(pth))
+func DataAtPath(ctx context.Context, fs fileservice.FileService, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
+	resolvedPath, err := ResolvePath(ctx, fs.DAGService(), path.New(pth))
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
 
-	r, err := node.GetFile(ctx, resolvedPath.Cid())
+	r, err := fs.GetFile(ctx, resolvedPath.Cid())
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}

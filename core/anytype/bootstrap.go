@@ -53,7 +53,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -139,7 +138,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(core.New()).
 		Register(builtintemplate.New()).
-		Register(pin.New()).
 		Register(status.New()).
 		Register(block.New()).
 		Register(doc.New()).

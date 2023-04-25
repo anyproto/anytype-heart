@@ -123,6 +123,14 @@ func (c *proxyStore) Delete(ctx context.Context, k cid.Cid) error {
 	return c.index.Add(indexCids)
 }
 
+func (c *proxyStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
+	return c.cache.ExistsCids(ctx, ks)
+}
+
+func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
+	return c.cache.NotExistsBlocks(ctx, bs)
+}
+
 func (c *proxyStore) Close() (err error) {
 	if closer, ok := c.cache.(io.Closer); ok {
 		if localErr := closer.Close(); localErr != nil {

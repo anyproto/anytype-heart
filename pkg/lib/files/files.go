@@ -6,6 +6,7 @@ import (
 	"crypto/aes"
 	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -24,7 +25,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
@@ -34,7 +34,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 )
 
 const (
@@ -47,15 +46,15 @@ var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encr
 var _ app.Component = (*Service)(nil)
 
 type Service struct {
-	store filestore.FileStore
-	ipfs  ipfs.Node
-	pins  pin.FilePinService
+	store      filestore.FileStore
+	commonFile fileservice.FileService
+	ipfs       ipld.DAGService
 }
 
 func (s *Service) Init(a *app.App) (err error) {
-	s.ipfs = a.MustComponent("ipfs").(ipfs.Node)
 	s.store = a.MustComponent("filestore").(filestore.FileStore)
-	s.pins = a.MustComponent(pin.CName).(pin.FilePinService)
+	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
+	s.ipfs = s.commonFile.DAGService()
 	return nil
 }
 
@@ -105,14 +104,6 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	}); err != nil {
 		return "", nil, err
 	}
-
-	go func() {
-		if err := s.pins.FilePin(nodeHash); err != nil {
-			log.Warnf("cannot pin file %s: %v", nodeHash, err)
-		} else {
-			log.Debugf("pinning file %s started on the cafe", nodeHash)
-		}
-	}()
 
 	return nodeHash, fileInfo, nil
 }
@@ -354,7 +345,7 @@ func (s *Service) fileIndexLink(ctx context.Context, inode ipld.Node, data strin
 }
 
 func (s *Service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
-	cid, r, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
+	cid, r, err := helpers.DataAtPath(context.TODO(), s.commonFile, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +394,7 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 			break
 		}
 	} else {
-		b, err := ioutil.ReadAll(r)
+		b, err := io.ReadAll(r)
 		if err != nil {
 			return nil, err
 		}
@@ -438,7 +429,7 @@ func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo)
 	if err != nil {
 		return nil, err
 	}
-	fd, err := s.ipfs.GetFile(ctx, fileCid)
+	fd, err := s.commonFile.GetFile(ctx, fileCid)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +540,7 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		contentReader = res.File
 	}
 
-	contentNode, err := s.ipfs.AddFile(ctx, contentReader, nil)
+	contentNode, err := s.commonFile.AddFile(ctx, contentReader)
 	if err != nil {
 		return nil, err
 	}
@@ -570,7 +561,7 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		metaReader = bytes.NewReader(plaintext)
 	}
 
-	metaNode, err := s.ipfs.AddFile(ctx, metaReader, nil)
+	metaNode, err := s.commonFile.AddFile(ctx, metaReader)
 	if err != nil {
 		return nil, err
 	}

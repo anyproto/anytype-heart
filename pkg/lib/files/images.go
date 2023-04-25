@@ -44,14 +44,5 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}
 	}
-
-	go func() {
-		if err := s.pins.FilePin(nodeHash); err != nil {
-			log.Warnf("cannot pin image %s: %v", nodeHash, err)
-		} else {
-			log.Debugf("pinning image %s started on the cafe", nodeHash)
-		}
-	}()
-
 	return nodeHash, variantsByWidth, nil
 }

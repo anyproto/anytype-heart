@@ -36,7 +36,7 @@ func (a *Anytype) GetAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 
 	var visitedMap = make(map[string]struct{})
 	getCidsLinksRecursively = func(c cid.Cid) (err error) {
-		if exists, err := a.ipfs.BlockStore().Has(context.Background(), c); err != nil {
+		if exists, err := a.commonFiles.HasCid(context.Background(), c); err != nil {
 			return err
 		} else if !exists {
 			// double-check the blockstore, if we don't have the block - we have not yet downloaded it
@@ -47,7 +47,7 @@ func (a *Anytype) GetAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 
 		// here we can be sure that the block is loaded to the blockstore, so 1s should be more than enough
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		n, err := a.ipfs.Get(ctx, c)
+		n, err := a.commonFiles.DAGService().Get(ctx, c)
 		if err != nil {
 			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
 		}
@@ -95,7 +95,7 @@ func (a *Anytype) FileOffload(hash string) (totalSize uint64, err error) {
 			return 0, err
 		}
 
-		err = a.ipfs.Remove(context.Background(), c)
+		err = a.commonFiles.DAGService().Remove(context.Background(), c)
 		if err != nil {
 			// no need to check for cid not exists
 			return 0, err

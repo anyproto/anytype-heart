@@ -24,7 +24,7 @@ type FileStorage interface {
 }
 
 type fileStorage struct {
-	fileblockstore.BlockStore
+	fileblockstore.BlockStoreLocal
 	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
 	syncer       *syncer
@@ -52,7 +52,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 		origin: f.rpcStore.NewStore(),
 		index:  badgerfilestore.NewFileBadgerIndex(db),
 	}
-	f.BlockStore = ps
+	f.BlockStoreLocal = ps
 	f.syncer = &syncer{ps: ps, done: make(chan struct{})}
 
 	ctx, f.syncerCancel = context.WithCancel(ctx)
