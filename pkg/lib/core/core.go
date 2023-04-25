@@ -153,19 +153,13 @@ func (a *Anytype) SpaceService() space.Service {
 
 // Deprecated, use wallet component directly
 func (a *Anytype) Account() string {
-	pk, _ := a.wallet.GetAccountPrivkey()
-	if pk == nil {
-		return ""
-	}
+	pk := a.wallet.GetAccountPrivkey()
 	return pk.GetPublic().Account()
 }
 
 // Deprecated, use wallet component directly
 func (a *Anytype) Device() string {
-	pk, _ := a.wallet.GetDevicePrivkey()
-	if pk == nil {
-		return ""
-	}
+	pk := a.wallet.GetDevicePrivkey()
 	return pk.GetPublic().PeerId()
 }
 

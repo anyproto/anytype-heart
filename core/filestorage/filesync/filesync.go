@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/cheggaaa/mb/v3"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-libipfs/blocks"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"

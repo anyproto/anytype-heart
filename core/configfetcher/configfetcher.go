@@ -2,6 +2,7 @@ package configfetcher
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"sync"
 	"time"
 
@@ -59,6 +60,7 @@ type configFetcher struct {
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
 	spaceService space.Service
+	wallet       wallet.Wallet
 }
 
 func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
@@ -88,6 +90,7 @@ func (c *configFetcher) Run(context.Context) error {
 
 func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
 	c.periodicSync = periodicsync.NewPeriodicSync(300, time.Second*10, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
@@ -116,8 +119,14 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 		if sErr != nil {
 			return sErr
 		}
+		payload := coordinatorclient.SpaceSignPayload{
+			SpaceId:     header.Id,
+			SpaceHeader: header.RawHeader,
+			OldAccount:  c.wallet.GetOldAccountKey(),
+			Identity:    c.wallet.GetDevicePrivkey(),
+		}
 		// registering space inside coordinator
-		_, err = c.client.SpaceSign(ctx, header.Id, header.RawHeader)
+		_, err = c.client.SpaceSign(ctx, payload)
 		if err != nil {
 			return err
 		}

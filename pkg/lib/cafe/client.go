@@ -67,14 +67,8 @@ func (c *Online) Init(a *app.App) (err error) {
 	c.grpcAddress = cfg.CafeNodeGrpcAddr()
 	c.apiInsecure = cfg.CafeAPIInsecure
 
-	c.device, err = wl.GetDevicePrivkey()
-	if err != nil {
-		return err
-	}
-	c.account, err = wl.GetAccountPrivkey()
-	if err != nil {
-		return err
-	}
+	c.device = wl.GetDevicePrivkey()
+	c.account = wl.GetAccountPrivkey()
 
 	return nil
 }

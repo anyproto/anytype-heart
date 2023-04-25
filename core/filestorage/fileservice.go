@@ -3,9 +3,6 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
@@ -13,9 +10,10 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/dgraph-io/badger/v3"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-libipfs/blocks"
-	"go.uber.org/zap"
+	"os"
+	"path/filepath"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
@@ -83,8 +81,6 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 	return fileblockstore.CtxWithSpaceId(ctx, f.spaceService.AccountId())
 }
 
-const errDirectoryIsLocked = "Cannot acquire directory lock"
-
 func (f *fileStorage) Run(ctx context.Context) (err error) {
 	bs, err := newFlatStore(f.flatfsPath)
 	if err != nil {
@@ -92,9 +88,12 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	}
 	f.handler.store = bs
 
-	oldStore, storeErr := f.initOldStore()
-	if storeErr != nil {
-		log.Error("can't open legacy file store", zap.Error(storeErr))
+	var oldStore *badger.DB
+	if f.cfg.LegacyFileStorePath != "" {
+		oldStore, err = badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
+		if err != nil {
+			return fmt.Errorf("open old file store: %w", err)
+		}
 	}
 	ps := &proxyStore{
 		cache:    bs,
@@ -103,16 +102,6 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	}
 	f.BlockStoreLocal = ps
 	return
-}
-
-func (f *fileStorage) initOldStore() (*badger.DB, error) {
-	if f.cfg.LegacyFileStorePath == "" {
-		return nil, nil
-	}
-	if _, err := os.Stat(f.cfg.LegacyFileStorePath); os.IsNotExist(err) {
-		return nil, nil
-	}
-	return badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
 }
 func (f *fileStorage) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
 	return f.BlockStoreLocal.Get(f.patchAccountIdCtx(ctx), k)

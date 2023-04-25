@@ -181,11 +181,8 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
 	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
-	var deviceId string
-	deviceKey, err := wallet.GetDevicePrivkey()
-	if err == nil {
-		deviceId = deviceKey.GetPublic().Account()
-	}
+	deviceKey := wallet.GetDevicePrivkey()
+	deviceId := deviceKey.GetPublic().Account()
 
 	if gwAddr != "" {
 		gwAddr = "http://" + gwAddr
@@ -238,16 +235,16 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	}
 
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
-	accountKey, err := core.WalletAccountAt(mw.mnemonic, 0)
+	derivationResult, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
-	address := accountKey.GetPublic().Account()
+	address := derivationResult.Identity.GetPublic().Account()
 	if code, err := checkInviteCode(cfg, req.AlphaInviteCode, address); err != nil {
 		return response(nil, code, err)
 	}
 
-	if err = core.WalletInitRepo(mw.rootPath, accountKey); err != nil {
+	if err = core.WalletInitRepo(mw.rootPath, derivationResult.Identity); err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 	if req.StorePath != "" && req.StorePath != mw.rootPath {
@@ -266,7 +263,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(mw.rootPath, accountKey),
+		anytype.BootstrapWallet(mw.rootPath, derivationResult),
 		mw.EventSender,
 	}
 
@@ -347,11 +344,11 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 		return response(pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST, nil)
 	}
 
-	account, err := core.WalletAccountAt(mw.mnemonic, 0)
+	res, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_BAD_INPUT, err)
 	}
-	sendAccountAddEvent(0, &model.Account{Id: account.GetPublic().Account(), Name: ""})
+	sendAccountAddEvent(0, &model.Account{Id: res.Identity.GetPublic().Account(), Name: ""})
 	return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 }
 
@@ -401,21 +398,21 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	if mw.mnemonic == "" {
 		return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, fmt.Errorf("no mnemonic provided"))
 	}
-	account, err := core.WalletAccountAt(mw.mnemonic, 0)
+	res, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
 		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 	}
 	var repoWasMissing bool
 	if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
 		repoWasMissing = true
-		if err = core.WalletInitRepo(mw.rootPath, account); err != nil {
+		if err = core.WalletInitRepo(mw.rootPath, res.Identity); err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 	}
 
 	comps := []app.Component{
 		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false),
-		anytype.BootstrapWallet(mw.rootPath, account),
+		anytype.BootstrapWallet(mw.rootPath, res),
 		mw.EventSender,
 	}
 
@@ -716,11 +713,11 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	account, err := core.WalletAccountAt(mw.mnemonic, 0)
+	res, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
-	address := account.GetPublic().Account()
+	address := res.Identity.GetPublic().Account()
 	if address == "" || profile.Address != address {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
 	}
@@ -731,8 +728,8 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 	mw.accountSearchCancel()
-	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) && account != nil {
-		if walletErr := core.WalletInitRepo(mw.rootPath, account); walletErr != nil {
+	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) {
+		if walletErr := core.WalletInitRepo(mw.rootPath, res.Identity); walletErr != nil {
 			return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr
 		}
 	}
@@ -741,7 +738,7 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	err = mw.startApp(cfg, account, err)
+	err = mw.startApp(cfg, res, err)
 	if err != nil {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
@@ -754,10 +751,10 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	return pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
 }
 
-func (mw *Middleware) startApp(cfg *config.Config, account crypto.PrivKey, err error) error {
+func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.DerivationResult, err error) error {
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(mw.rootPath, account),
+		anytype.BootstrapWallet(mw.rootPath, derivationResult),
 		mw.EventSender,
 	}
 

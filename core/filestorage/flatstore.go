@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	flatfs "github.com/ipfs/go-ds-flatfs"
 	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-libipfs/blocks"
 	"go.uber.org/zap"
 )
 

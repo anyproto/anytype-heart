@@ -3,14 +3,12 @@ package anytype
 import (
 	"context"
 	"github.com/anytypeio/any-sync/util/crypto"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"os"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
-	//nolint: misspell
-	"github.com/anytypeio/any-sync/commonspace/credentialprovider"
+
 	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
@@ -33,6 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -54,6 +53,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
+	//nolint: misspell
+	"github.com/anytypeio/go-anytype-middleware/space/credentialprovider"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
@@ -75,8 +76,8 @@ func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects bool)
 	)
 }
 
-func BootstrapWallet(rootPath string, accountKey crypto.PrivKey) wallet.Wallet {
-	return wallet.NewWithAccountRepo(rootPath, accountKey)
+func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) wallet.Wallet {
+	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
 func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, err error) {

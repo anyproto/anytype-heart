@@ -20,8 +20,8 @@ func WalletGenerateMnemonic(wordCount int) (string, error) {
 	return string(m), nil
 }
 
-func WalletAccountAt(mnemonic string, index int) (crypto.PrivKey, error) {
-	return crypto.Mnemonic(mnemonic).DeriveEd25519Key(index)
+func WalletAccountAt(mnemonic string, index int) (crypto.DerivationResult, error) {
+	return crypto.Mnemonic(mnemonic).DeriveKeys(uint32(index))
 }
 
 func WalletInitRepo(rootPath string, pk crypto.PrivKey) error {
