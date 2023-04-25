@@ -77,16 +77,16 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 
-	spaceService := app.MustComponent[space.Service](a)
-	fileSyncService := app.MustComponent[filesync.FileSync](a)
-	factory := syncer.New(syncer.NewFileSyncer(i.s, fileSyncService, spaceService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
+	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	objCreator := a.MustComponent(objectcreator.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore)
+	spaceService := app.MustComponent[space.Service](a)
+	fileSyncService := app.MustComponent[filesync.FileSync](a)
+	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore, fileSyncService, spaceService)
 	return nil
 }
 

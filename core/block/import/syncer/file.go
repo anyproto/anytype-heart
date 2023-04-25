@@ -7,36 +7,27 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
 type FileSyncer struct {
-	service      *block.Service
-	fileSync     filesync.FileSync
-	spaceService space.Service
+	service *block.Service
 }
 
 func NewFileSyncer(
 	service *block.Service,
-	fileSync filesync.FileSync,
-	spaceService space.Service,
 ) *FileSyncer {
 	return &FileSyncer{
-		service:      service,
-		fileSync:     fileSync,
-		spaceService: spaceService,
+		service: service,
 	}
-}
-
-func (fs *FileSyncer) SyncExistingFile(fileID string) error {
-	return fs.fileSync.AddFile(fs.spaceService.AccountId(), fileID)
 }
 
 func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
+		return nil
+	}
+	if b.Model().GetFile().Name == "" {
 		return nil
 	}
 

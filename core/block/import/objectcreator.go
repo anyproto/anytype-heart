@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -26,6 +27,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -46,6 +48,8 @@ type ObjectCreator struct {
 	fileStore       filestore.FileStore
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
+	spaceService    space.Service
+	fileSync        filesync.FileSync
 	mu              sync.Mutex
 }
 
@@ -56,6 +60,8 @@ func NewCreator(service *block.Service,
 	relationCreator RelationCreator,
 	objectStore objectstore.ObjectStore,
 	fileStore filestore.FileStore,
+	fileSync filesync.FileSync,
+	spaceService space.Service,
 ) Creator {
 	return &ObjectCreator{
 		service:         service,
@@ -65,6 +71,8 @@ func NewCreator(service *block.Service,
 		relationCreator: relationCreator,
 		objectStore:     objectStore,
 		fileStore:       fileStore,
+		fileSync:        fileSync,
+		spaceService:    spaceService,
 	}
 }
 
@@ -195,10 +203,11 @@ func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase,
 func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
 	for _, fileID := range st.GetAllFileHashes(st.FileRelationKeys()) {
 		log.With(zap.String("fileID", fileID)).Info("sync file link")
-		if sErr := oc.syncFactory.FileSyncer().SyncExistingFile(fileID); sErr != nil {
+		if sErr := oc.fileSync.AddFile(oc.spaceService.AccountId(), fileID); sErr != nil {
 			log.With(zap.String("object id", newID)).Errorf("sync file link: %s", sErr)
 		}
 	}
+
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
@@ -293,12 +302,21 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 func (oc *ObjectCreator) deleteFile(hash string) {
 	inboundLinks, err := oc.objectStore.GetOutboundLinksById(hash)
 	if err != nil {
-		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
+		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err.Error())
+		return
 	}
 	if len(inboundLinks) == 0 {
-		err = oc.service.DeleteObject(hash)
-		if err != nil {
-			log.With("file", hash).Errorf("failed to delete file: %s", err)
+		if err = oc.objectStore.DeleteObject(hash); err != nil {
+			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
+		}
+		if err = oc.fileStore.DeleteByHash(hash); err != nil {
+			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
+		}
+		if _, err = oc.core.FileOffload(hash); err != nil {
+			log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
+		}
+		if err = oc.fileStore.DeleteFileKeys(hash); err != nil {
+			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
 		}
 	}
 }
