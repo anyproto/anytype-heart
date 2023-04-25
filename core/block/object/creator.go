@@ -242,10 +242,18 @@ func (c *Creator) CreateCollection(details *types.Struct, flags []*model.Interna
 		template.WithRequiredRelations(),
 	}
 
-	var (
-		relations     []*model.RelationLink
-		viewRelations []*model.BlockContentDataviewRelation
-	)
+	relations := []*model.RelationLink{
+		{
+			Format: model.RelationFormat_shorttext,
+			Key:    bundle.RelationKeyName.String(),
+		},
+	}
+	viewRelations := []*model.BlockContentDataviewRelation{
+		{
+			Key:       bundle.RelationKeyName.String(),
+			IsVisible: true,
+		},
+	}
 	for _, relKey := range dataview.DefaultDataviewRelations {
 		if pbtypes.HasRelationLink(relations, relKey.String()) {
 			continue
@@ -283,12 +291,6 @@ func (c *Creator) CreateCollection(details *types.Struct, flags []*model.Interna
 	}
 
 	if blockContent != nil {
-		for i, view := range blockContent.Dataview.Views {
-			if view.Relations == nil {
-				// TODO Do it above
-				blockContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(blockContent.Dataview.Relations)
-			}
-		}
 		tmpls = append(tmpls,
 			template.WithDataview(*blockContent, false),
 		)
