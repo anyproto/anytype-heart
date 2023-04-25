@@ -128,7 +128,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 	for _, peerId := range peerIds {
 		if _, cerr := m.ocache.Pick(ctx, peerId); cerr == ocache.ErrNotExists {
 			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, clientCreateTimeout)
+			ctx, cancel := context.WithTimeout(ctx, clientCreateTimeout)
 			cl, e := newClient(ctx, m.s, peerId, m.mb)
 			if e != nil {
 				log.Info("can't create client", zap.Error(e))

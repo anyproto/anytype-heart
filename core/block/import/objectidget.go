@@ -82,8 +82,8 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, sn *converter.Snapshot, sbTy
 		return "", false, nil
 	}
 
-	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeySource.String()] != nil && updateExisting {
-		source := snapshot.Details.Fields[bundle.RelationKeySource.String()].GetStringValue()
+	if updateExisting {
+		source := sn.Id
 		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{

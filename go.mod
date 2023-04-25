@@ -188,6 +188,7 @@ require (
 	github.com/ipfs/go-ipfs-provider v0.8.1 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
+	github.com/ipfs/go-libipfs v0.3.0 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.0 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
