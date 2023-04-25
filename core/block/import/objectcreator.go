@@ -83,7 +83,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	oc.updateRootBlock(snapshot, newID)
 
 	oc.setWorkspaceID(err, newID, snapshot)
-	oc.setRelationKeyID(snapshot, newID)
 
 	var oldRelationBlocksToNew map[string]*model.Block
 	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
@@ -148,14 +147,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	return respDetails, newID, nil
 }
 
-func (oc *ObjectCreator) setRelationKeyID(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	if snapshot.Details != nil && snapshot.Details.Fields != nil {
-		snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(newID)
-	}
-}
-
 func (oc *ObjectCreator) getDetails(snapshot *model.SmartBlockSnapshotBase) []*pb.RpcObjectSetDetailsDetail {
 	var details []*pb.RpcObjectSetDetailsDetail
+	snapshot.Details = pbtypes.StructCutKeys(snapshot.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 	if snapshot.Details != nil {
 		for key, value := range snapshot.Details.Fields {
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
