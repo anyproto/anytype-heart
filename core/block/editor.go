@@ -7,6 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -28,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 

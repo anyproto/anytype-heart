@@ -32,7 +32,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -320,7 +319,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 			// }
 
 			// we do this instead of context.WithTimeout in order to continue loading in case of timeout in background
-			ctx = context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
+			//ctx = context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 			ctx = context.WithValue(ctx, metrics.CtxKeyRequest, "reindexOutdatedThreads")
 			d, err := i.doc.GetDocInfo(ctx, id)
 			if err != nil {
@@ -428,7 +427,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	}
 
 	// for all ids except home and archive setting cache timeout for reindexing
-	ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
+	//ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if reindex&reindexThreadObjects != 0 {
 		ids, err := i.getIdsForTypes(
 			smartblock.SmartBlockTypePage,
@@ -915,8 +914,8 @@ func (i *indexer) ftIndex() {
 
 func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
-	ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
-	ctx = context.WithValue(ctx, metrics.CtxKeyRequest, "index_fulltext")
+	//ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
+	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "index_fulltext")
 
 	info, err := i.doc.GetDocInfo(ctx, id)
 	if err != nil {

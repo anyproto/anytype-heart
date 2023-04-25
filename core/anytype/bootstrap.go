@@ -2,6 +2,10 @@ package anytype
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/net/rpc/server"
+	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/storage"
 	"os"
 
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
@@ -104,9 +108,13 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 	a.Register(clientds.New()).
+		Register(server.New()).
+		Register(storage.New()).
+		Register(commonspace.New()).
+		Register(space.New()).
+		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
-		Register(relation.New()).
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(ipfslite.New()).

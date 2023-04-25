@@ -82,6 +82,8 @@ github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-2023010
 github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-20230102103143-1a2ceb6e2bd6/go.mod h1:2vafONFWOYl9XTv9vW5KzOmuqdxhC6PAlRfkT7TseZA=
 github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-20230102121649-8680c2432933 h1:s0yyWe4o+UQRoMWuoFkZHoLAsfEc7yPyOP0v1bKQT0A=
 github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-20230102121649-8680c2432933/go.mod h1:2vafONFWOYl9XTv9vW5KzOmuqdxhC6PAlRfkT7TseZA=
+github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-20230102132724-987bd0154f4a h1:A9xzoo/Dy2PN7rbxsfvvBw6g1xhc8/DHQbmhFfcuFVQ=
+github.com/anytypeio/go-anytype-infrastructure-experiments/common v0.0.0-20230102132724-987bd0154f4a/go.mod h1:2vafONFWOYl9XTv9vW5KzOmuqdxhC6PAlRfkT7TseZA=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8/go.mod h1:R5tqrpzflXnpE1v91BNZrz62AVox66+rWM51LXNoNik=
 github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:YBmcug6mOdwjJcmzA/Fpjtl2oo78+fMlr5Xj0dzwg78=
