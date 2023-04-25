@@ -11,7 +11,7 @@ ifndef $(GOROOT)
     export GOROOT
 endif
 
-export PATH=$(GOPATH)/bin:$(shell echo $$PATH)
+export PATH:=deps:$(GOPATH)/bin:$(PATH)
 
 all:
 	@set -e;
@@ -110,12 +110,10 @@ build-android: setup-go
 
 setup-protoc-go:
 	@echo 'Setting up protobuf compiler...'
-	@rm -rf $(GOPATH)/src/github.com/gogo
-	@mkdir -p $(GOPATH)/src/github.com/gogo
-	@cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/anytypeio/protobuf
-	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
-	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
-	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogo/gomobile
+	go build -o deps/ github.com/gogo/protobuf/protoc-gen-gogofaster
+	go build -o deps/ github.com/gogo/protobuf/protoc-gen-gogofast
+	go build -o deps/ github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+	#go build -o deps/ github.com/gogo/protobuf/protoc-gen-gogo/gomobile
 
 
 setup-protoc-jsweb:
@@ -125,10 +123,6 @@ setup-protoc-jsweb:
 	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
 	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C grpc-web install-plugin || $(MAKE) -C grpc-web install-plugin
 	@rm -rf grpc-web
-
-setup-protoc-doc:
-	@echo 'Setting up documentation plugin for protobuf compiler...'
-	@go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 
 setup-protoc: setup-protoc-go setup-protoc-jsweb
 
@@ -214,7 +208,7 @@ build-cli:
 build-server:
 	@echo 'Building middleware server...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
-	@go build -v -o dist/server -ldflags "$(FLAGS)" --tags "nographviz nosigar nowatchdog" ./cmd/grpcserver/grpc.go
+	@go build -v -o dist/server -ldflags "$(FLAGS)" --tags "nosigar nowatchdog" ./cmd/grpcserver/grpc.go
 
 build-server-debug: protos-server
 	@echo 'Building middleware server with debug symbols...'
