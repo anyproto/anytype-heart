@@ -108,7 +108,6 @@ func newFixture(t *testing.T) *fixture {
 
 	at := testMock.NewMockService(ctrl)
 	at.EXPECT().ProfileID().Return("").AnyTimes()
-	at.EXPECT().Account().Return("").AnyTimes()
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
 	source.EXPECT().Anytype().AnyTimes().Return(at)
