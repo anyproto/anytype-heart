@@ -2,9 +2,11 @@ package block
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treestorage"
+	"fmt"
+	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -17,9 +19,7 @@ import (
 type ctxKey int
 
 const (
-	spaceKey ctxKey = iota
-	treeCreateKey
-	putObjectKey
+	optsKey ctxKey = iota
 )
 
 type treeCreateCache struct {
@@ -27,65 +27,20 @@ type treeCreateCache struct {
 	initFunc   InitFunc
 }
 
+type cacheOpts struct {
+	spaceId      string
+	createOption *treeCreateCache
+	buildOption  commonspace.BuildTreeOpts
+	putObject    smartblock.SmartBlock
+
+	waitRemote bool
+}
+
 type InitFunc = func(id string) *smartblock.InitContext
 
 func (s *Service) createCache() ocache.OCache {
 	return ocache.New(
-		func(ctx context.Context, id string) (value ocache.Object, err error) {
-			spaceId := ctx.Value(spaceKey).(string)
-			spc, err := s.clientService.GetSpace(ctx, spaceId)
-			if err != nil {
-				return
-			}
-
-			// creating tree if needed
-			createPayload, exists := ctx.Value(treeCreateKey).(treeCreateCache)
-			if exists {
-				var ot objecttree.ObjectTree
-				if _, err := spc.Storage().TreeStorage(id); err == nil {
-					return s.objectFactory.InitObject(id, &smartblock.InitContext{
-						Ctx: ctx,
-					})
-				}
-				// TODO: [MR] Make put tree return error
-				ot, err = spc.PutTree(ctx, createPayload.treeCreate, nil)
-				if err != nil {
-					return
-				}
-				ot.Close()
-				return s.objectFactory.InitObject(id, createPayload.initFunc(id))
-			}
-
-			// putting object through cache
-			putObject, exists := ctx.Value(putObjectKey).(smartblock.SmartBlock)
-			if exists {
-				return putObject, nil
-			}
-
-			sbt, _ := coresb.SmartBlockTypeFromID(id)
-			// if it is subObject
-			if sbt == coresb.SmartBlockTypeSubObject {
-				return s.initSubObject(ctx, id)
-			}
-
-			// if it is tree based object, then checking that the tree exists
-			if sbt == coresb.SmartBlockTypePage {
-				// getting tree from remote, if it doesn't exist locally
-				if _, err = spc.Storage().TreeRoot(id); err != nil {
-					var ot objecttree.ObjectTree
-					ot, err = spc.BuildTree(ctx, id, nil)
-					if err != nil {
-						return
-					}
-					ot.Close()
-				}
-			}
-
-			// otherwise general init
-			return s.objectFactory.InitObject(id, &smartblock.InitContext{
-				Ctx: ctx,
-			})
-		},
+		s.cacheLoad,
 		//ocache.WithLogger(log.Desugar()),
 		ocache.WithRefCounter(true),
 		ocache.WithGCPeriod(time.Minute),
@@ -94,37 +49,103 @@ func (s *Service) createCache() ocache.OCache {
 	)
 }
 
+func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
+	cacheOpts := ctx.Value(optsKey).(cacheOpts)
+	spc, err := s.clientService.GetSpace(ctx, cacheOpts.spaceId)
+	if err != nil {
+		return
+	}
+
+	// creating tree if needed
+	if cacheOpts.createOption != nil {
+		var (
+			ot  objecttree.ObjectTree
+			opt = cacheOpts.createOption
+		)
+		ot, err = spc.PutTree(ctx, opt.treeCreate, nil)
+		if err != nil {
+			if err == treestorage.ErrTreeExists {
+				return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx})
+			}
+			return
+		}
+		ot.Close()
+		return s.objectFactory.InitObject(id, opt.initFunc(id))
+	}
+
+	// putting object through cache
+	if cacheOpts.putObject != nil {
+		return cacheOpts.putObject, nil
+	}
+
+	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	// if it is subObject
+	if sbt == coresb.SmartBlockTypeSubObject {
+		return s.initSubObject(ctx, id)
+	}
+
+	// if it is tree based object, then checking that the tree exists
+	if sbt == coresb.SmartBlockTypePage {
+		// getting tree from remote, if it doesn't exist locally
+		if _, err = spc.Storage().TreeRoot(id); err != nil {
+			var ot objecttree.ObjectTree
+			ot, err = spc.BuildTree(ctx, id, commonspace.BuildTreeOpts{})
+			if err != nil {
+				return
+			}
+			ot.Close()
+		}
+	}
+
+	// otherwise general init
+	return s.objectFactory.InitObject(id, &smartblock.InitContext{
+		Ctx: ctx,
+	})
+}
+
 func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
-	ctx = context.WithValue(ctx, spaceKey, spaceId)
+	ctx = context.WithValue(ctx, optsKey, cacheOpts{spaceId: spaceId})
 	v, err := s.cache.Get(ctx, id)
 	if err != nil {
 		return
 	}
+	defer s.cache.Release(id)
 	sb := v.(smartblock.SmartBlock).Inner()
 	return sb.(source.ObjectTreeProvider).Tree(), nil
 }
 
-func (s *Service) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
-	ctx = context.WithValue(ctx, spaceKey, s.clientService.AccountId())
+func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartblock.SmartBlock, release func(), err error) {
+	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
+		opts.spaceId = spaceId
+		return opts
+	})
 	v, err := s.cache.Get(ctx, id)
 	if err != nil {
 		return
 	}
 	return v.(smartblock.SmartBlock), func() {
+		sbt, _ := coresb.SmartBlockTypeFromID(id)
+		if sbt == coresb.SmartBlockTypeSubObject {
+			s.cache.Release(s.anytype.PredefinedBlocks().Account)
+		}
 		s.cache.Release(id)
 	}, nil
 }
 
+func (s *Service) GetAccountObject(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+	return s.GetObject(ctx, s.clientService.AccountId(), id)
+}
+
 func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
-	tr, _, err := s.GetObject(ctx, treeId)
+	obj, _, err := s.GetObject(ctx, spaceId, treeId)
 	if err != nil {
 		return
 	}
-	err = s.OnDelete(tr)
+	err = s.OnDelete(obj)
 	if err != nil {
 		return
 	}
-	err = tr.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
+	err = obj.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
 	if err != nil {
 		return
 	}
@@ -169,12 +190,11 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
 }
 
-func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {
+func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType, newAccount bool, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {
 	space, err := s.clientService.AccountSpace(ctx)
 	if err != nil {
 		return
 	}
-	log.With(zap.String("sbt", tp.ToProto().String())).Warn("deriving smartblock")
 	payload := objecttree.ObjectTreeCreatePayload{
 		SignKey:     s.commonAccount.Account().SignKey,
 		ChangeType:  tp.ToProto().String(),
@@ -186,11 +206,37 @@ func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
-	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
+	// not trying to get object from remote for new accounts
+	if newAccount {
+		return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
+	}
+
+	var (
+		cancel context.CancelFunc
+		id     = create.RootRawChange.Id
+	)
+	// timing out when getting objects from remote
+	ctx, cancel = context.WithTimeout(ctx, time.Second*20)
+	ctx = context.WithValue(ctx,
+		optsKey,
+		cacheOpts{
+			buildOption: commonspace.BuildTreeOpts{
+				WaitTreeRemoteSync: true,
+			},
+		},
+	)
+	defer cancel()
+
+	sb, release, err = s.GetAccountObject(ctx, id)
+	if err != nil {
+		err = fmt.Errorf("failed to get object from node: %w", err)
+		return
+	}
+	return
 }
 
-func (s *Service) DeriveObject(ctx context.Context, tp coresb.SmartBlockType) (id string, err error) {
-	obj, release, err := s.DeriveTreeObject(ctx, tp, func(id string) *smartblock.InitContext {
+func (s *Service) DeriveObject(ctx context.Context, tp coresb.SmartBlockType, newAccount bool) (id string, err error) {
+	obj, release, err := s.DeriveTreeObject(ctx, tp, newAccount, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 	})
 	if err != nil {
@@ -202,24 +248,20 @@ func (s *Service) DeriveObject(ctx context.Context, tp coresb.SmartBlockType) (i
 }
 
 func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.SmartBlock) (sb smartblock.SmartBlock, release func(), err error) {
-	ctx = context.WithValue(ctx, putObjectKey, obj)
-	return s.GetObject(ctx, id)
+	ctx = context.WithValue(ctx, optsKey, cacheOpts{
+		putObject: obj,
+	})
+	return s.GetAccountObject(ctx, id)
 }
 
 func (s *Service) cacheCreatedObject(ctx context.Context, spaceId string, initFunc InitFunc, create treestorage.TreeStorageCreatePayload) (sb smartblock.SmartBlock, release func(), err error) {
-	ctx = context.WithValue(ctx, spaceKey, spaceId)
-	ctx = context.WithValue(ctx, treeCreateKey, treeCreateCache{
-		treeCreate: create,
-		initFunc:   initFunc,
+	ctx = context.WithValue(ctx, optsKey, cacheOpts{
+		createOption: &treeCreateCache{
+			treeCreate: create,
+			initFunc:   initFunc,
+		},
 	})
-	id := create.RootRawChange.Id
-	v, err := s.cache.Get(ctx, id)
-	if err != nil {
-		return
-	}
-	return v.(smartblock.SmartBlock), func() {
-		s.cache.Release(id)
-	}, nil
+	return s.GetObject(ctx, spaceId, create.RootRawChange.Id)
 }
 
 func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.Object, err error) {
@@ -227,4 +269,12 @@ func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.
 		return
 	}
 	return account.(SmartblockOpener).Open(id)
+}
+
+func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts) context.Context {
+	opts, ok := ctx.Value(optsKey).(cacheOpts)
+	if !ok {
+		opts = cacheOpts{}
+	}
+	return context.WithValue(ctx, optsKey, update(opts))
 }

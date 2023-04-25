@@ -791,7 +791,7 @@ func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.Smart
 }
 
 func (s *Service) getSmartblock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
-	return s.GetObject(ctx, id)
+	return s.GetAccountObject(ctx, id)
 }
 
 func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {

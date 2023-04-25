@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -188,7 +188,10 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 		return
 	}
 
-	s.ObjectTree, err = spc.BuildTree(ctx, s.id, s)
+	s.ObjectTree, err = spc.BuildTree(ctx, s.id, commonspace.BuildTreeOpts{
+		Listener:           s,
+		WaitTreeRemoteSync: false,
+	})
 	if err != nil {
 		return
 	}
