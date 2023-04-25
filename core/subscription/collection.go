@@ -16,15 +16,20 @@ import (
 )
 
 type collectionObserver struct {
+	collectionID string
+	subID        string
+	objectsCh    <-chan []string
+
 	lock   *sync.RWMutex
 	ids    []string
 	idsSet map[string]struct{}
 
 	closeCh chan struct{}
 
-	cache       *cache
-	objectStore objectstore.ObjectStore
-	recBatch    *mb.MB
+	cache             *cache
+	objectStore       objectstore.ObjectStore
+	collectionService CollectionService
+	recBatch          *mb.MB
 }
 
 func (s *service) newCollectionObserver(collectionID string, subID string) (*collectionObserver, error) {
@@ -34,12 +39,16 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 	}
 
 	obs := &collectionObserver{
-		lock:    &sync.RWMutex{},
-		closeCh: make(chan struct{}),
+		collectionID: collectionID,
+		subID:        subID,
+		objectsCh:    objectsCh,
+		lock:         &sync.RWMutex{},
+		closeCh:      make(chan struct{}),
 
-		cache:       s.cache,
-		objectStore: s.objectStore,
-		recBatch:    s.recBatch,
+		cache:             s.cache,
+		objectStore:       s.objectStore,
+		recBatch:          s.recBatch,
+		collectionService: s.collectionService,
 
 		idsSet: map[string]struct{}{},
 	}
@@ -64,6 +73,12 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 
 func (c *collectionObserver) close() {
 	close(c.closeCh)
+	go c.collectionService.UnsubscribeFromCollection(c.collectionID, c.subID)
+	// Deplete the channel to avoid deadlock in collections service, because broadcasting to a channel and
+	// unsubscribing are synchronous between each other
+	for range c.objectsCh {
+
+	}
 }
 
 func (c *collectionObserver) listEntries() []*entry {
@@ -102,7 +117,8 @@ func (c *collectionObserver) updateIDs(ids []string) {
 func (c *collectionObserver) FilterObject(g filter.Getter) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	_, ok := c.idsSet[g.(*entry).id]
+	id := g.Get(bundle.RelationKeyId.String()).GetStringValue()
+	_, ok := c.idsSet[id]
 	return ok
 }
 
@@ -142,7 +158,6 @@ func (c *collectionSub) hasDep() bool {
 func (c *collectionSub) close() {
 	c.observer.close()
 	c.sortedSub.close()
-	c.collectionService.UnsubscribeFromCollection(c.collectionID, c.sortedSub.id)
 }
 
 func (s *service) newCollectionSub(id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
