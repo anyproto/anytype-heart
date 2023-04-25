@@ -68,17 +68,13 @@ func (d *debug) SpaceSummary() (summary SpaceSummary, err error) {
 	if err != nil {
 		return
 	}
-	var (
-		debugTrees = spc.DebugAllHeads()
-		treeInfos  = make([]TreeInfo, 0, len(debugTrees))
-	)
-	for _, t := range debugTrees {
-		treeInfos = append(treeInfos, TreeInfo{
+	summary.SpaceId = spc.Id()
+	for _, t := range spc.DebugAllHeads() {
+		summary.TreeInfos = append(summary.TreeInfos, TreeInfo{
 			Heads: t.Heads,
 			Id:    t.Id,
 		})
 	}
-	summary.SpaceId = spc.Id()
 	return
 }
 
@@ -87,7 +83,7 @@ func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
 	if err != nil {
 		return
 	}
-	tree, err := d.block.GetTree(context.Background(), spc.Id(), id)
+	tree, err := spc.BuildHistoryTree(context.Background(), id, commonspace.HistoryTreeOpts{})
 	if err != nil {
 		return
 	}
