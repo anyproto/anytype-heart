@@ -25,12 +25,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	m "github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema"
@@ -75,11 +77,13 @@ type service struct {
 	spaceService      space.Service
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
+	objectStore       objectstore.ObjectStore
 }
 
-func New(statusWatcher SyncStatusWatcher) Service {
+func New(statusWatcher SyncStatusWatcher, objectStore objectstore.ObjectStore) Service {
 	return &service{
 		syncStatusWatcher: statusWatcher,
+		objectStore:       objectStore,
 	}
 }
 
@@ -343,13 +347,13 @@ func (s *service) FileGetKeys(hash string) (*FileKeys, error) {
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, data string) error {
+func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash string) error {
 	for _, link := range inode.Links() {
 		nd, err := helpers.NodeAtLink(ctx, s.dagService, link)
 		if err != nil {
 			return err
 		}
-		err = s.fileIndexNode(ctx, nd, data)
+		err = s.fileIndexNode(ctx, nd, hash)
 		if err != nil {
 			return err
 		}
@@ -360,10 +364,6 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, data strin
 
 // fileIndexNode walks a file node, indexing file links
 func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string) error {
-	if err := s.AddToSyncQueue(fileID); err != nil {
-		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
-	}
-
 	if looksLikeFileNode(inode) {
 		return s.fileIndexLink(ctx, inode, fileID)
 	}
@@ -390,7 +390,14 @@ func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID str
 	if dlink == nil {
 		return ErrMissingContentLink
 	}
-	return s.fileStore.AddTarget(dlink.Cid.String(), fileID)
+	linkID := dlink.Cid.String()
+	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
+		return fmt.Errorf("add target to %s: %w", linkID, err)
+	}
+	if err := s.AddToSyncQueue(fileID); err != nil {
+		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
+	}
+	return nil
 }
 
 func (s *service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
@@ -745,10 +752,6 @@ func (s *service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
-	if err := s.AddToSyncQueue(hash); err != nil {
-		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
-	}
-
 	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
@@ -797,6 +800,9 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	err = s.fileStore.AddMulti(updateIfExists, files...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add files to store: %w", err)
+	}
+	if err := s.AddToSyncQueue(hash); err != nil {
+		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
 	}
 
 	return files, nil
@@ -874,6 +880,14 @@ func (s *service) StoreFileKeys(fileKeys ...FileKeys) error {
 var ErrFileNotFound = fmt.Errorf("file not found")
 
 func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
+	ok, err := s.isDeleted(hash)
+	if err != nil {
+		return nil, fmt.Errorf("check if file is deleted: %w", err)
+	}
+	if ok {
+		return nil, ErrFileNotFound
+	}
+
 	fileList, err := s.fileStore.ListByTarget(hash)
 	if err != nil {
 		return nil, err
@@ -894,6 +908,14 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 		info: fileIndex,
 		node: s,
 	}, nil
+}
+
+func (s *service) isDeleted(fileID string) (bool, error) {
+	d, err := s.objectStore.GetDetails(fileID)
+	if err != nil {
+		return false, err
+	}
+	return pbtypes.GetBool(d.GetDetails(), bundle.RelationKeyIsDeleted.String()), nil
 }
 
 // TODO: Touch the file to fire indexing
