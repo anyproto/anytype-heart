@@ -5,27 +5,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync/filesyncstatus"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
-type LinkedFilesWatcher interface {
-	GetLinkedFilesSummary(parentObjectID string) pb.EventStatusThreadCafePinStatus
-	WatchLinkedFiles(parentObjectID string, filesGetter func() []string)
-	UnwatchLinkedFiles(parentObjectID string)
+type linkedFilesWatcher struct {
+	spaceService       space.Service
+	fileStatusRegistry *fileStatusRegistry
 
-	app.ComponentRunnable
+	sync.Mutex
+	linkedFilesSummary map[string]pb.EventStatusThreadCafePinStatus
+	linkedFilesCloseCh map[string]chan struct{}
 }
 
-func NewLinkedFilesWatcher(
+func newLinkedFilesWatcher(
 	spaceService space.Service,
-	fileStatusRegistry filesyncstatus.Registry,
-) LinkedFilesWatcher {
+	fileStatusRegistry *fileStatusRegistry,
+) *linkedFilesWatcher {
 	return &linkedFilesWatcher{
 		linkedFilesSummary: make(map[string]pb.EventStatusThreadCafePinStatus),
 		linkedFilesCloseCh: make(map[string]chan struct{}),
@@ -34,32 +33,10 @@ func NewLinkedFilesWatcher(
 	}
 }
 
-type linkedFilesWatcher struct {
-	spaceService       space.Service
-	fileStatusRegistry filesyncstatus.Registry
-
-	sync.Mutex
-	linkedFilesSummary map[string]pb.EventStatusThreadCafePinStatus
-	linkedFilesCloseCh map[string]chan struct{}
-}
-
-func (w *linkedFilesWatcher) Run(ctx context.Context) error {
-	return nil
-}
-
-func (w *linkedFilesWatcher) Init(a *app.App) error {
-	return nil
-}
-
-func (w *linkedFilesWatcher) Name() string {
-	return "linked_files_watcher"
-}
-
-func (w *linkedFilesWatcher) Close(ctx context.Context) error {
+func (w *linkedFilesWatcher) close() {
 	for _, closeCh := range w.linkedFilesCloseCh {
 		close(closeCh)
 	}
-	return nil
 }
 
 func (w *linkedFilesWatcher) GetLinkedFilesSummary(parentObjectID string) pb.EventStatusThreadCafePinStatus {

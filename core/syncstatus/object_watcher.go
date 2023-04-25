@@ -8,24 +8,24 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
-type spaceObjectWatcher struct {
+type objectWatcher struct {
 	spaceService   space.Service
 	updateReceiver syncstatus.UpdateReceiver
 
 	watcher syncstatus.StatusWatcher
 }
 
-func NewSpaceObjectWatcher(
+func newObjectWatcher(
 	spaceService space.Service,
 	updateReceiver syncstatus.UpdateReceiver,
-) RunnableWatcher {
-	return &spaceObjectWatcher{
+) *objectWatcher {
+	return &objectWatcher{
 		spaceService:   spaceService,
 		updateReceiver: updateReceiver,
 	}
 }
 
-func (w *spaceObjectWatcher) Run(ctx context.Context) error {
+func (w *objectWatcher) run(ctx context.Context) error {
 	res, err := w.spaceService.AccountSpace(ctx)
 	if err != nil {
 		return err
@@ -37,10 +37,10 @@ func (w *spaceObjectWatcher) Run(ctx context.Context) error {
 	return nil
 }
 
-func (w *spaceObjectWatcher) Watch(id string) error {
+func (w *objectWatcher) Watch(id string) error {
 	return w.watcher.Watch(id)
 }
 
-func (w *spaceObjectWatcher) Unwatch(id string) {
+func (w *objectWatcher) Unwatch(id string) {
 	w.watcher.Unwatch(id)
 }

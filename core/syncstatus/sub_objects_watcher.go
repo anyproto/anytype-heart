@@ -4,18 +4,12 @@ import (
 	"sync"
 )
 
-type SubObjectsWatcher interface {
-	Watch(id string)
-	Unwatch(id string)
-	ForEach(f func(id string))
-}
-
 type subObjectsWatcher struct {
 	sync.Mutex
 	subObjects map[string]struct{}
 }
 
-func NewSubObjectsWatcher() SubObjectsWatcher {
+func newSubObjectsWatcher() *subObjectsWatcher {
 	return &subObjectsWatcher{
 		subObjects: map[string]struct{}{},
 	}

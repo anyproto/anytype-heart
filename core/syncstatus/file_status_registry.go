@@ -1,4 +1,4 @@
-package filesyncstatus
+package syncstatus
 
 import (
 	"context"
@@ -8,19 +8,20 @@ import (
 
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/getblock"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-type Registry interface {
-	GetFileStatus(ctx context.Context, spaceID string, fileID string) (syncstatus.SyncStatus, error)
-}
-
-type registry struct {
-	fileSyncService   filesync.FileSync
-	fileStore         filestore.FileStore
-	syncStatusIndexer SyncStatusIndexer
+type fileStatusRegistry struct {
+	fileSyncService filesync.FileSync
+	fileStore       filestore.FileStore
+	picker          getblock.Picker
 
 	sync.Mutex
 
@@ -28,22 +29,22 @@ type registry struct {
 	updateInterval time.Duration
 }
 
-func NewRegistry(
+func newFileStatusRegistry(
 	fileSyncService filesync.FileSync,
 	fileStore filestore.FileStore,
-	syncStatusIndexer SyncStatusIndexer,
+	picker getblock.Picker,
 	updateInterval time.Duration,
-) Registry {
-	return &registry{
-		fileSyncService:   fileSyncService,
-		fileStore:         fileStore,
-		syncStatusIndexer: syncStatusIndexer,
-		files:             map[fileWithSpace]fileStatus{},
-		updateInterval:    updateInterval,
+) *fileStatusRegistry {
+	return &fileStatusRegistry{
+		picker:          picker,
+		fileSyncService: fileSyncService,
+		fileStore:       fileStore,
+		files:           map[fileWithSpace]fileStatus{},
+		updateInterval:  updateInterval,
 	}
 }
 
-func (r *registry) GetFileStatus(ctx context.Context, spaceID string, fileID string) (syncstatus.SyncStatus, error) {
+func (r *fileStatusRegistry) GetFileStatus(ctx context.Context, spaceID string, fileID string) (syncstatus.SyncStatus, error) {
 	key := fileWithSpace{
 		spaceID: spaceID,
 		fileID:  fileID,
@@ -62,7 +63,7 @@ func (r *registry) GetFileStatus(ctx context.Context, spaceID string, fileID str
 	return r.setFileStatus(key, status)
 }
 
-func (r *registry) setFileStatus(key fileWithSpace, status fileStatus) (syncstatus.SyncStatus, error) {
+func (r *fileStatusRegistry) setFileStatus(key fileWithSpace, status fileStatus) (syncstatus.SyncStatus, error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -73,13 +74,13 @@ func (r *registry) setFileStatus(key fileWithSpace, status fileStatus) (syncstat
 			return syncstatus.StatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
 		}
 		r.files[key] = status
-		go r.syncStatusIndexer.Index(key.fileID, status.status)
+		go r.indexFileSyncStatus(key.fileID, status.status)
 		return status.status, nil
 	}
 	return prevStatus.status, nil
 }
 
-func (r *registry) getFileStatus(key fileWithSpace) (fileStatus, error) {
+func (r *fileStatusRegistry) getFileStatus(key fileWithSpace) (fileStatus, error) {
 	r.Lock()
 	defer r.Unlock()
 	status, ok := r.files[key]
@@ -106,7 +107,7 @@ func validStatusTransition(from, to syncstatus.SyncStatus) bool {
 	}
 }
 
-func (r *registry) updateFileStatus(ctx context.Context, status fileStatus, key fileWithSpace) (fileStatus, error) {
+func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileStatus, key fileWithSpace) (fileStatus, error) {
 	now := time.Now()
 	if status.status == syncstatus.StatusSynced {
 		return status, nil
@@ -135,4 +136,18 @@ func (r *registry) updateFileStatus(ctx context.Context, status fileStatus, key 
 	}
 
 	return status, nil
+}
+
+func (r *fileStatusRegistry) indexFileSyncStatus(fileID string, status syncstatus.SyncStatus) {
+	err := getblock.Do(r.picker, fileID, func(b basic.DetailsSettable) (err error) {
+		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+			{
+				Key:   bundle.RelationKeyFileSyncStatus.String(),
+				Value: pbtypes.Float64(float64(status)),
+			},
+		}, true)
+	})
+	if err != nil {
+		log.With("fileID", fileID, "status", status).Errorf("failed to index file sync status: %v", err)
+	}
 }

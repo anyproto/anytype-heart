@@ -11,28 +11,28 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
-type UpdateReceiver struct {
+type updateReceiver struct {
 	coreService core.Service
 	emitter     func(event *pb.Event)
 
-	linkedFilesWatcher LinkedFilesWatcher
-	subObjectsWatcher  SubObjectsWatcher
+	linkedFilesWatcher *linkedFilesWatcher
+	subObjectsWatcher  *subObjectsWatcher
 
 	sync.Mutex
 	nodeConnected bool
 }
 
-func NewUpdateReceiver(
+func newUpdateReceiver(
 	coreService core.Service,
-	linkedFilesWatcher LinkedFilesWatcher,
-	subObjectsWatcher SubObjectsWatcher,
+	linkedFilesWatcher *linkedFilesWatcher,
+	subObjectsWatcher *subObjectsWatcher,
 	cfg *config.Config,
 	emitter func(event *pb.Event),
-) *UpdateReceiver {
+) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		emitter = nil
 	}
-	return &UpdateReceiver{
+	return &updateReceiver{
 		coreService:        coreService,
 		linkedFilesWatcher: linkedFilesWatcher,
 		subObjectsWatcher:  subObjectsWatcher,
@@ -40,7 +40,7 @@ func NewUpdateReceiver(
 	}
 }
 
-func (r *UpdateReceiver) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) (err error) {
+func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) (err error) {
 	var (
 		nodeConnected bool
 		objStatus     pb.EventStatusThreadSyncStatus
@@ -73,19 +73,19 @@ func (r *UpdateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 	return
 }
 
-func (r *UpdateReceiver) isNodeConnected() bool {
+func (r *updateReceiver) isNodeConnected() bool {
 	r.Lock()
 	defer r.Unlock()
 	return r.nodeConnected
 }
 
-func (r *UpdateReceiver) UpdateNodeConnection(online bool) {
+func (r *updateReceiver) UpdateNodeConnection(online bool) {
 	r.Lock()
 	defer r.Unlock()
 	r.nodeConnected = online
 }
 
-func (r *UpdateReceiver) notify(
+func (r *updateReceiver) notify(
 	objId string,
 	objStatus, generalStatus pb.EventStatusThreadSyncStatus,
 	pinStatus pb.EventStatusThreadCafePinStatus,
@@ -99,7 +99,7 @@ func (r *UpdateReceiver) notify(
 	}})
 }
 
-func (r *UpdateReceiver) sendEvent(ctx string, event pb.IsEventMessageValue) {
+func (r *updateReceiver) sendEvent(ctx string, event pb.IsEventMessageValue) {
 	if r.emitter == nil {
 		return
 	}

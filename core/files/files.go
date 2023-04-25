@@ -25,14 +25,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	m "github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema"
@@ -47,7 +45,6 @@ const (
 )
 
 var log = logging.Logger("anytype-files")
-var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
 
 var _ Service = (*service)(nil)
 
@@ -66,25 +63,23 @@ type Service interface {
 	app.Component
 }
 
-type StatusWatcher interface {
-	Watch(spaceID, fileID string)
+type SyncStatusWatcher interface {
+	Watch(id string, fileFunc func() []string) (new bool, err error)
 }
 
 type service struct {
-	fileStore     filestore.FileStore
-	commonFile    fileservice.FileService
-	fileSync      filesync.FileSync
-	dagService    ipld.DAGService
-	spaceService  space.Service
-	fileStorage   filestorage.FileStorage
-	statusWatcher StatusWatcher
-	objectStore   objectstore.ObjectStore
+	fileStore         filestore.FileStore
+	commonFile        fileservice.FileService
+	fileSync          filesync.FileSync
+	dagService        ipld.DAGService
+	spaceService      space.Service
+	fileStorage       filestorage.FileStorage
+	syncStatusWatcher SyncStatusWatcher
 }
 
-func New(statusWatcher StatusWatcher, objectStore objectstore.ObjectStore) Service {
+func New(statusWatcher SyncStatusWatcher) Service {
 	return &service{
-		statusWatcher: statusWatcher,
-		objectStore:   objectStore,
+		syncStatusWatcher: statusWatcher,
 	}
 }
 
@@ -146,21 +141,8 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	return nodeHash, fileInfo, nil
 }
 
-func (s *service) getChunksCount(ctx context.Context, node ipld.Node) (int, error) {
-	var chunksCount int
-	err := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, s.commonFile.DAGService())).
-		Iterate(func(_ ipld.NavigableNode) error {
-			chunksCount++
-			return nil
-		})
-	if err != nil && err != ipld.EndOfDag {
-		return -1, fmt.Errorf("failed to count cids: %w", err)
-	}
-	return chunksCount, nil
-}
-
 func (s *service) storeChunksCount(ctx context.Context, node ipld.Node) error {
-	chunksCount, err := s.getChunksCount(ctx, node)
+	chunksCount, err := s.fileSync.FetchChunksCount(ctx, node)
 	if err != nil {
 		return fmt.Errorf("count chunks: %w", err)
 	}
@@ -361,13 +343,13 @@ func (s *service) FileGetKeys(hash string) (*FileKeys, error) {
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash string) error {
+func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, data string) error {
 	for _, link := range inode.Links() {
 		nd, err := helpers.NodeAtLink(ctx, s.dagService, link)
 		if err != nil {
 			return err
 		}
-		err = s.fileIndexNode(ctx, nd, hash)
+		err = s.fileIndexNode(ctx, nd, data)
 		if err != nil {
 			return err
 		}
@@ -378,6 +360,10 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash strin
 
 // fileIndexNode walks a file node, indexing file links
 func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string) error {
+	if err := s.AddToSyncQueue(fileID); err != nil {
+		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
+	}
+
 	if looksLikeFileNode(inode) {
 		return s.fileIndexLink(ctx, inode, fileID)
 	}
@@ -404,14 +390,7 @@ func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID str
 	if dlink == nil {
 		return ErrMissingContentLink
 	}
-	linkID := dlink.Cid.String()
-	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
-		return fmt.Errorf("add target to %s: %w", linkID, err)
-	}
-	if err := s.AddToSyncQueue(fileID); err != nil {
-		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
-	}
-	return nil
+	return s.fileStore.AddTarget(dlink.Cid.String(), fileID)
 }
 
 func (s *service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
@@ -470,7 +449,7 @@ func (s *service) fileInfoFromPath(target string, path string, key string) (*sto
 		}
 		err = proto.Unmarshal(b, &file)
 		if err != nil || file.Hash == "" {
-			return nil, ErrorFailedToUnmarhalNotencrypted
+			return nil, fmt.Errorf("failed to unmarshal not-encrypted file info: %w", err)
 		}
 	}
 
@@ -766,6 +745,10 @@ func (s *service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
+	if err := s.AddToSyncQueue(hash); err != nil {
+		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
+	}
+
 	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
@@ -815,9 +798,6 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	if err != nil {
 		return nil, fmt.Errorf("failed to add files to store: %w", err)
 	}
-	if err := s.AddToSyncQueue(hash); err != nil {
-		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
-	}
 
 	return files, nil
 }
@@ -826,9 +806,11 @@ func (s *service) AddToSyncQueue(fileID string) error {
 	spaceID := s.spaceService.AccountId()
 
 	if err := s.fileSync.AddFile(spaceID, fileID); err != nil {
-		return err
+		return fmt.Errorf("add file to sync queue: %w", err)
 	}
-	s.statusWatcher.Watch(spaceID, fileID)
+	if _, err := s.syncStatusWatcher.Watch(fileID, nil); err != nil {
+		return fmt.Errorf("watch sync status: %w", err)
+	}
 	return nil
 }
 
@@ -892,14 +874,6 @@ func (s *service) StoreFileKeys(fileKeys ...FileKeys) error {
 var ErrFileNotFound = fmt.Errorf("file not found")
 
 func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
-	ok, err := s.isDeleted(hash)
-	if err != nil {
-		return nil, fmt.Errorf("check if file is deleted: %w", err)
-	}
-	if ok {
-		return nil, ErrFileNotFound
-	}
-
 	fileList, err := s.fileStore.ListByTarget(hash)
 	if err != nil {
 		return nil, err
@@ -920,14 +894,6 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 		info: fileIndex,
 		node: s,
 	}, nil
-}
-
-func (s *service) isDeleted(fileID string) (bool, error) {
-	d, err := s.objectStore.GetDetails(fileID)
-	if err != nil {
-		return false, err
-	}
-	return pbtypes.GetBool(d.GetDetails(), bundle.RelationKeyIsDeleted.String()), nil
 }
 
 // TODO: Touch the file to fire indexing

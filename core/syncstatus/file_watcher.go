@@ -1,4 +1,4 @@
-package filesyncstatus
+package syncstatus
 
 import (
 	"context"
@@ -6,13 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 )
-
-var log = logger.NewNamed(CName)
 
 type fileWithSpace struct {
 	fileID, spaceID string
@@ -23,18 +19,11 @@ type fileStatus struct {
 	updatedAt time.Time
 }
 
-type StatusWatcher interface {
-	Watch(spaceID, fileID string)
-	Unwatch(spaceID, fileID string)
-
-	app.ComponentRunnable
-}
-
-type statusWatcher struct {
+type fileWatcher struct {
 	filesToWatchLock *sync.Mutex
 	filesToWatch     map[fileWithSpace]struct{}
 
-	registry Registry
+	registry *fileStatusRegistry
 	updateCh chan fileWithSpace
 	closeCh  chan struct{}
 
@@ -43,8 +32,8 @@ type statusWatcher struct {
 	updateInterval time.Duration
 }
 
-func New(registry Registry, updateReceiver syncstatus.UpdateReceiver, updateInterval time.Duration) StatusWatcher {
-	return &statusWatcher{
+func newFileWatcher(registry *fileStatusRegistry, updateReceiver syncstatus.UpdateReceiver, updateInterval time.Duration) *fileWatcher {
+	return &fileWatcher{
 		filesToWatchLock: &sync.Mutex{},
 		filesToWatch:     map[fileWithSpace]struct{}{},
 		updateCh:         make(chan fileWithSpace),
@@ -55,27 +44,7 @@ func New(registry Registry, updateReceiver syncstatus.UpdateReceiver, updateInte
 	}
 }
 
-func (s *statusWatcher) Init(_ *app.App) error {
-	return nil
-}
-
-func (s *statusWatcher) Run(ctx context.Context) error {
-	go s.run()
-	return nil
-}
-
-func (s *statusWatcher) Close(ctx context.Context) error {
-	close(s.closeCh)
-	return nil
-}
-
-const CName = "file_sync_status"
-
-func (s *statusWatcher) Name() string {
-	return CName
-}
-
-func (s *statusWatcher) run() {
+func (s *fileWatcher) run() {
 	ctx := context.Background()
 
 	go func() {
@@ -108,7 +77,11 @@ func (s *statusWatcher) run() {
 	}
 }
 
-func (s *statusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
+func (s *fileWatcher) close() {
+	close(s.closeCh)
+}
+
+func (s *fileWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
 	status, err := s.registry.GetFileStatus(ctx, key.spaceID, key.fileID)
 	if err != nil {
 		return fmt.Errorf("get file status: %w", err)
@@ -126,7 +99,7 @@ func (s *statusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace)
 	return nil
 }
 
-func (s *statusWatcher) checkFiles(ctx context.Context) {
+func (s *fileWatcher) checkFiles(ctx context.Context) {
 	s.filesToWatchLock.Lock()
 	defer s.filesToWatchLock.Unlock()
 
@@ -135,7 +108,7 @@ func (s *statusWatcher) checkFiles(ctx context.Context) {
 	}
 }
 
-func (s *statusWatcher) requestUpdate(key fileWithSpace) {
+func (s *fileWatcher) requestUpdate(key fileWithSpace) {
 	select {
 	case <-s.closeCh:
 		return
@@ -143,7 +116,7 @@ func (s *statusWatcher) requestUpdate(key fileWithSpace) {
 	}
 }
 
-func (s *statusWatcher) Watch(spaceID, fileID string) {
+func (s *fileWatcher) Watch(spaceID, fileID string) {
 	s.filesToWatchLock.Lock()
 	defer s.filesToWatchLock.Unlock()
 
@@ -154,7 +127,7 @@ func (s *statusWatcher) Watch(spaceID, fileID string) {
 	go s.requestUpdate(key)
 }
 
-func (s *statusWatcher) Unwatch(spaceID, fileID string) {
+func (s *fileWatcher) Unwatch(spaceID, fileID string) {
 	s.filesToWatchLock.Lock()
 	defer s.filesToWatchLock.Unlock()
 	delete(s.filesToWatch, fileWithSpace{spaceID: spaceID, fileID: fileID})

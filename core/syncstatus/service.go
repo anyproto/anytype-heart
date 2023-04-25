@@ -3,13 +3,18 @@ package syncstatus
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync/filesyncstatus"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/block/getblock"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
@@ -27,26 +32,16 @@ type Service interface {
 
 var _ Service = (*service)(nil)
 
-type Watcher interface {
-	Watch(id string) error
-	Unwatch(id string)
-}
-
-type RunnableWatcher interface {
-	Watcher
-	Run(ctx context.Context) error
-}
-
 type service struct {
 	typeProvider typeprovider.SmartBlockTypeProvider
 	spaceService space.Service
 
 	coreService core.Service
 
-	fileWatcher        filesyncstatus.StatusWatcher
-	objectWatcher      RunnableWatcher
-	subObjectsWatcher  SubObjectsWatcher
-	linkedFilesWatcher LinkedFilesWatcher
+	fileWatcher        *fileWatcher
+	objectWatcher      *objectWatcher
+	subObjectsWatcher  *subObjectsWatcher
+	linkedFilesWatcher *linkedFilesWatcher
 
 	isRunning bool
 
@@ -57,11 +52,19 @@ func New(
 	typeProvider typeprovider.SmartBlockTypeProvider,
 	spaceService space.Service,
 	coreService core.Service,
-	fileWatcher filesyncstatus.StatusWatcher,
-	objectWatcher RunnableWatcher,
-	subObjectsWatcher SubObjectsWatcher,
-	linkedFilesWatcher LinkedFilesWatcher,
+	fileSyncService filesync.FileSync,
+	fileStore filestore.FileStore,
+	picker getblock.Picker,
+	cfg *config.Config,
+	sendEvent func(event *pb.Event),
+	updateInterval time.Duration,
 ) Service {
+	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, updateInterval)
+	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
+	subObjectsWatcher := newSubObjectsWatcher()
+	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, cfg, sendEvent)
+	fileWatcher := newFileWatcher(fileStatusRegistry, updateReceiver, updateInterval)
+	objectWatcher := newObjectWatcher(spaceService, updateReceiver)
 	return &service{
 		spaceService:       spaceService,
 		typeProvider:       typeProvider,
@@ -82,7 +85,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 	defer s.Unlock()
 	s.isRunning = true
 
-	if err = s.objectWatcher.Run(ctx); err != nil {
+	go s.fileWatcher.run()
+
+	if err = s.objectWatcher.run(ctx); err != nil {
 		return err
 	}
 
@@ -154,5 +159,8 @@ func (s *service) Close(ctx context.Context) (err error) {
 	defer s.Unlock()
 	s.isRunning = false
 	s.unwatch(s.coreService.PredefinedBlocks().Account)
+	s.fileWatcher.close()
+	s.linkedFilesWatcher.close()
+
 	return nil
 }

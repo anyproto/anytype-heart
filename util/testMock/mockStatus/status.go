@@ -1,4 +1,4 @@
-//go:generate mockgen -package mockStatus -destination status_mock.go github.com/anytypeio/go-anytype-middleware/core/status Service
+//go:generate mockgen -package mockStatus -destination status_mock.go github.com/anytypeio/go-anytype-middleware/core/syncstatus Service
 package mockStatus
 
 import (

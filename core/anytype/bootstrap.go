@@ -38,7 +38,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync/filesyncstatus"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -119,23 +118,24 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	relationService := relation.New()
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
-	fileSyncService := filesync.New(eventService.Send)
+	fileSyncService := filesync.New()
 	fileStore := filestore.New()
 
-	syncStatusIndexer := filesyncstatus.NewSyncStatusIndexer(blockService)
-
 	fileSyncUpdateInterval := 5 * time.Second
-	fileSyncStatusRegistry := filesyncstatus.NewRegistry(fileSyncService, fileStore, syncStatusIndexer, fileSyncUpdateInterval)
 
-	linkedFilesStatusWatcher := syncstatus.NewLinkedFilesWatcher(spaceService, fileSyncStatusRegistry)
-	subObjectsStatusWatcher := syncstatus.NewSubObjectsWatcher()
-	statusUpdateReceiver := syncstatus.NewUpdateReceiver(coreService, linkedFilesStatusWatcher, subObjectsStatusWatcher, cfg, eventService.Send)
-	objectStatusWatcher := syncstatus.NewSpaceObjectWatcher(spaceService, statusUpdateReceiver)
+	syncStatusService := syncstatus.New(
+		sbtProvider,
+		spaceService,
+		coreService,
+		fileSyncService,
+		fileStore,
+		blockService,
+		cfg,
+		eventService.Send,
+		fileSyncUpdateInterval,
+	)
 
-	fileSyncStatusWatcher := filesyncstatus.New(fileSyncStatusRegistry, statusUpdateReceiver, fileSyncUpdateInterval)
-	syncStatusService := syncstatus.New(sbtProvider, spaceService, coreService, fileSyncStatusWatcher, objectStatusWatcher, subObjectsStatusWatcher, linkedFilesStatusWatcher)
-
-	fileService := files.New(fileSyncStatusWatcher, objectStore)
+	fileService := files.New(syncStatusService)
 
 	indexerService := indexer.New(blockService, spaceService, fileService)
 
@@ -156,7 +156,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(rpcstore.New()).
 		Register(fileStore).
 		Register(fileservice.New()).
-		Register(filestorage.New(eventService.Send)).
+		Register(filestorage.New()).
 		Register(fileSyncService).
 		Register(localdiscovery.New()).
 		Register(spaceService).
@@ -174,10 +174,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coreService).
 		Register(builtintemplate.New()).
 		Register(blockService).
-		Register(syncStatusIndexer).
-		Register(fileSyncStatusWatcher).
 		Register(indexerService).
-		Register(linkedFilesStatusWatcher).
 		Register(syncStatusService).
 		Register(history.New()).
 		Register(gateway.New()).
