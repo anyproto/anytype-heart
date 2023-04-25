@@ -144,6 +144,26 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		sub.disableDep = true
 	} else {
 		sub.forceSubIds = filterDepIds
+		for _, forceSubID := range sub.forceSubIds {
+			filters := []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(forceSubID),
+				},
+			}
+			f, err = database.NewFilters(database.Query{Filters: filters}, nil, s.objectStore, time.Now().Location())
+			if err != nil {
+				return
+			}
+			forceSubRecords, qerr := s.objectStore.QueryRaw(query.Query{
+				Filters: []query.Filter{f},
+			})
+			if qerr != nil {
+				return nil, fmt.Errorf("objectStore query error: %v", qerr)
+			}
+			records = append(records, forceSubRecords...)
+		}
 	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {

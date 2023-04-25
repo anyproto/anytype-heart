@@ -134,6 +134,25 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
+		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+			[]database.Record{
+				{Details: &types.Struct{Fields: map[string]*types.Value{
+					"id":   pbtypes.String("force1"),
+					"name": pbtypes.String("force1"),
+				}}},
+			},
+			nil,
+		)
+		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+			[]database.Record{
+				{Details: &types.Struct{Fields: map[string]*types.Value{
+					"id":   pbtypes.String("force2"),
+					"name": pbtypes.String("force2"),
+				}}},
+			},
+			nil,
+		)
+
 		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
@@ -142,17 +161,6 @@ func TestService_Search(t *testing.T) {
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
 		}, nil).AnyTimes()
-
-		fx.store.EXPECT().QueryById([]string{"force1", "force2"}).Return([]database.Record{
-			{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("force1"),
-				"name": pbtypes.String("force1"),
-			}}},
-			{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("force2"),
-				"name": pbtypes.String("force2"),
-			}}},
-		}, nil)
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "subId",

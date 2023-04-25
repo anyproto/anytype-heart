@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "47980e2ed93f7ed22d3c6f22facaf03a60bc1f5aa7fbe959baf94ee4509dadc7"
+const RelationChecksum = "27849f86d15afe14d50deac524b679af690c376f30162cb073c4859db7ff60e7"
 
 type RelationKey string
 
@@ -183,6 +183,7 @@ const (
 	RelationKeySmartblockTypes           RelationKey = "smartblockTypes"
 	RelationKeySource                    RelationKey = "source"
 	RelationKeySourceObject              RelationKey = "sourceObject"
+	RelationKeySpaceDashboardId          RelationKey = "spaceDashboardId"
 )
 
 var (
@@ -2047,6 +2048,19 @@ var (
 			MaxCount:         1,
 			Name:             "Source object",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceDashboardId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Space Dashboard object ID",
+			Format:           model.RelationFormat_object,
+			Id:               "_brspaceDashboardId",
+			Key:              "spaceDashboardId",
+			MaxCount:         1,
+			Name:             "Space Dashboard ID",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

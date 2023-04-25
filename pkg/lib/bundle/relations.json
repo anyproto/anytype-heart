@@ -1627,5 +1627,15 @@
     "name": "Source object",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Space Dashboard object ID",
+    "format": "object",
+    "hidden": false,
+    "key": "spaceDashboardId",
+    "maxCount": 1,
+    "name": "Space Dashboard ID",
+    "readonly": false,
+    "source": "details"
   }
 ]
