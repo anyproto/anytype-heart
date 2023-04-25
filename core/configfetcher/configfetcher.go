@@ -61,6 +61,7 @@ type configFetcher struct {
 	observers    []util.CafeAccountStateUpdateObserver
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
+	spaceService space.Service
 	accountId    string
 }
 
@@ -94,7 +95,8 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
 	c.periodicSync = periodicsync.NewPeriodicSync(300, time.Second*10, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
-	c.accountId = a.MustComponent(space.CName).(space.Service).AccountId()
+	c.spaceService = a.MustComponent(space.CName).(space.Service)
+	c.accountId = c.spaceService.AccountId()
 	c.fetched = make(chan struct{})
 	return nil
 }
@@ -110,6 +112,22 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 		})
 	}()
 	res, err := c.client.StatusCheck(ctx, c.accountId)
+	if err == coordinatorproto.ErrSpaceNotExists {
+		sp, err := c.spaceService.GetSpace(ctx, c.accountId)
+		if err != nil {
+			return err
+		}
+		header, err := sp.Storage().SpaceHeader()
+		if err != nil {
+			return err
+		}
+		// registering space inside coordinator
+		_, err = c.client.SpaceSign(ctx, header.Id, header.RawHeader)
+		if err != nil {
+			return err
+		}
+		return c.updateStatus(ctx)
+	}
 	if err != nil {
 		return
 	}
