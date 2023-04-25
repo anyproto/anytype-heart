@@ -1,3 +1,5 @@
+//go:generate mockgen -package file_test -destination block_service_mock_test.go github.com/anytypeio/go-anytype-middleware/core/block/editor/file BlockService
+
 package file_test
 
 import (
@@ -18,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockFile"
 )
 
 func TestUploader_Upload(t *testing.T) {
@@ -36,10 +37,10 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		im := fx.newImage("123")
-		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
+		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		b := newBlock(model.BlockContentFile_Image)
-		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.Hash, "123")
@@ -50,8 +51,8 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		im := fx.newImage("123")
-		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
-		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
+		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetFile("./testdata/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
@@ -66,8 +67,8 @@ func TestUploader_Upload(t *testing.T) {
 			Added: time.Now(),
 		}
 		// fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(nil, image.ErrFormat)
-		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
-		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", meta), nil)
+		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.fileService.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", meta), nil)
 		b := newBlock(model.BlockContentFile_Image)
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/test.txt").Upload(ctx)
 		require.NoError(t, res.Err)
@@ -87,8 +88,8 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		im := fx.newImage("123")
-		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
-		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
+		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
@@ -110,8 +111,8 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		im := fx.newImage("123")
-		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
-		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
+		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
@@ -132,8 +133,8 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		im := fx.newImage("123")
-		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
-		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
+		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
 		require.NoError(t, res.Err)
@@ -146,8 +147,8 @@ func TestUploader_Upload(t *testing.T) {
 	t.Run("bytes", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
-		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", &files.FileMeta{}), nil)
+		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.fileService.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", &files.FileMeta{}), nil)
 		res := fx.Uploader.SetBytes([]byte("my bytes")).SetName("filename").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.Hash, "123")
@@ -159,18 +160,18 @@ func newFixture(t *testing.T) *uplFixture {
 	fx := &uplFixture{
 		ctrl: gomock.NewController(t),
 	}
-	fx.anytype = testMock.NewMockService(fx.ctrl)
-	fx.fileService = mockFile.NewMockBlockService(fx.ctrl)
+	fx.fileService = testMock.NewMockFileService(fx.ctrl)
+	fx.blockService = NewMockBlockService(fx.ctrl)
 
-	fx.Uploader = file.NewUploader(fx.fileService, fx.anytype, core.NewTempDirService(nil))
+	fx.Uploader = file.NewUploader(fx.blockService, fx.fileService, core.NewTempDirService(nil))
 	return fx
 }
 
 type uplFixture struct {
 	file.Uploader
-	fileService *mockFile.MockBlockService
-	anytype     *testMock.MockService
-	ctrl        *gomock.Controller
+	blockService *MockBlockService
+	fileService  *testMock.MockFileService
+	ctrl         *gomock.Controller
 }
 
 func (fx *uplFixture) newImage(hash string) *testMock.MockImage {

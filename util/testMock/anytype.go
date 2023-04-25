@@ -2,6 +2,7 @@
 //go:generate mockgen -package testMock -destination objectstore_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore ObjectStore
 //go:generate mockgen -package testMock -destination history_mock.go github.com/anytypeio/go-anytype-middleware/core/block/undo History
 //go:generate mockgen -package testMock -destination sbt_provider_mock.go github.com/anytypeio/go-anytype-middleware/space/typeprovider SmartBlockTypeProvider
+//go:generate mockgen -package testMock -destination file_service_mock.go -mock_names Service=MockFileService github.com/anytypeio/go-anytype-middleware/core/files Service,Image,File
 package testMock
 
 import (

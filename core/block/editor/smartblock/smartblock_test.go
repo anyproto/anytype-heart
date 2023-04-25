@@ -4,12 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -95,7 +93,6 @@ func TestBasic_SetAlign(t *testing.T) {
 type fixture struct {
 	t       *testing.T
 	ctrl    *gomock.Controller
-	app     *app.App
 	source  *mockSource.MockSource
 	at      *testMock.MockService
 	store   *testMock.MockObjectStore
@@ -106,35 +103,32 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 
-	at := testMock.NewMockService(ctrl)
-	at.EXPECT().ProfileID().Return("").AnyTimes()
+	coreService := testMock.NewMockService(ctrl)
+	coreService.EXPECT().ProfileID().Return("").AnyTimes()
+
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
-	source.EXPECT().Anytype().AnyTimes().Return(at)
-	source.EXPECT().Virtual().AnyTimes().Return(false)
-	store := testMock.NewMockObjectStore(ctrl)
-	store.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 
-	store.EXPECT().Name().Return(objectstore.CName).AnyTimes()
+	objectStore := testMock.NewMockObjectStore(ctrl)
+	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
+	objectStore.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
+
+	objectStore.EXPECT().Name().Return(objectstore.CName).AnyTimes()
 
 	indexer := NewMockIndexer(ctrl)
 	indexer.EXPECT().Name().Return("indexer").AnyTimes()
 
-	a := testapp.New()
-	a.Register(store).
-		Register(restriction.New(nil, nil)).
-		Register(indexer)
+	restrictionService := restriction.New(nil)
+	relationService := mockRelation.NewMockService(ctrl)
 
-	mockRelation.RegisterMockRelation(ctrl, a)
+	fileService := testMock.NewMockFileService(ctrl)
 
 	return &fixture{
-		SmartBlock: New(),
+		SmartBlock: New(coreService, fileService, restrictionService, objectStore, relationService, indexer),
 		t:          t,
-		at:         at,
+		at:         coreService,
 		ctrl:       ctrl,
-		store:      store,
-		app:        a.App,
+		store:      objectStore,
 		source:     source,
 		indexer:    indexer,
 	}
@@ -154,6 +148,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().ReadDoc(context.Background(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.Init(&InitContext{Source: fx.source, App: fx.app})
+	err := fx.Init(&InitContext{Source: fx.source})
 	require.NoError(fx.t, err)
 }

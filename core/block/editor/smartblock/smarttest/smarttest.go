@@ -37,7 +37,6 @@ type SmartTest struct {
 	anytype          *testMock.MockService
 	id               string
 	hist             undo.History
-	meta             *core.SmartBlockMeta
 	TestRestrictions restriction.Restrictions
 	App              *app.App
 	sync.Mutex
@@ -142,12 +141,6 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 }
 
 func (st *SmartTest) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
-	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			}}
-	}
 	for _, key := range relationKeys {
 		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
 			Key:    key,
@@ -186,16 +179,11 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 }
 
 func (st *SmartTest) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
-	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			}}
-	}
+	dets := &types.Struct{Fields: map[string]*types.Value{}}
 	for _, d := range details {
-		st.meta.Details.Fields[d.Key] = d.Value
+		dets.Fields[d.Key] = d.Value
 	}
-	st.Doc.(*state.State).SetDetails(st.meta.Details)
+	st.Doc.(*state.State).SetDetails(dets)
 	return
 }
 
