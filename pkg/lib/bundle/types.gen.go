@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "d5d95049213bc1ebe98186daa410f0ed5e5e2b098940663edc70b6144bd1797a"
+const TypeChecksum = "5314d5db7ac9eb826dd19a0029f39fce5cbf288b9dada44add42112e88fd3058"
 
 type TypeKey string
 
@@ -151,7 +151,7 @@ var (
 		TypeKeyCollection: {
 
 			Description:   "TODO TODO TODO",
-			IconEmoji:     "📚",
+			IconEmoji:     "🗄",
 			Layout:        model.ObjectType_collection,
 			Name:          "Collection",
 			Readonly:      true,
