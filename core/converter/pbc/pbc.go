@@ -25,7 +25,7 @@ type pbc struct {
 	isJSON bool
 }
 
-func (p *pbc) Convert(sbType model.SmartBlockType, id string) []byte {
+func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 	st := p.s.NewState()
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{

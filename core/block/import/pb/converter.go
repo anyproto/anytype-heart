@@ -3,6 +3,7 @@ package pb
 import (
 	"archive/zip"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/constant"
 	"io"
 	"io/ioutil"
 	"os"
@@ -30,7 +31,6 @@ import (
 const (
 	Name               = "Pb"
 	rootCollectionName = "Protobuf Import"
-	profileFile        = "profile"
 	configFile         = "config.json"
 )
 
@@ -96,7 +96,7 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		if profile != nil {
 			pr, e := p.core.LocalProfile()
 			if e != nil {
-				allErrors.Add(profileFile, e)
+				allErrors.Add(constant.ProfileFile, e)
 				if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 					return nil, nil, allErrors
 				}
@@ -151,7 +151,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
-		if name == profileFile || name == configFile {
+		if name == constant.ProfileFile || name == configFile {
 			continue
 		}
 		if err := progress.TryStep(1); err != nil {
@@ -222,10 +222,10 @@ func (p *Pb) handleZipArchive(r *zip.ReadCloser, mode string, files map[string]*
 		err error
 	)
 	for _, f := range r.File {
-		if filepath.Base(f.Name) == profileFile {
+		if filepath.Base(f.Name) == constant.ProfileFile {
 			pr, err = p.getProfile(f)
 			if err != nil {
-				errors.Add(profileFile, err)
+				errors.Add(constant.ProfileFile, err)
 				if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 					return nil, errors
 				}
@@ -238,7 +238,7 @@ func (p *Pb) handleZipArchive(r *zip.ReadCloser, mode string, files map[string]*
 		shortPath := filepath.Clean(f.Name)
 		rc, fErr := f.Open()
 		if fErr != nil {
-			errors.Add(profileFile, err)
+			errors.Add(constant.ProfileFile, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 				return nil, errors
 			}
@@ -272,7 +272,7 @@ func (p *Pb) handleFile(importPath string, files map[string]*converter.IOReader)
 		return nil, nil, errors
 	}
 	var pr *pb.Profile
-	if filepath.Base(f.Name()) == profileFile {
+	if filepath.Base(f.Name()) == constant.ProfileFile {
 		pr, err = p.readProfileFile(f)
 		if err != nil {
 			errors.Add(importPath, err)

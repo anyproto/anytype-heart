@@ -68,6 +68,10 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 			return workspaceID, true, nil
 		}
 	}
+	if sbType == sb.SmartBlockTypeWidget {
+		widgetID := ou.core.PredefinedBlocks().Widgets
+		return widgetID, false, err
+	}
 
 	if getExisting {
 		id, exist := ou.getExisting(sn)

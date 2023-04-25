@@ -8,7 +8,7 @@ import (
 )
 
 type Converter interface {
-	Convert(sbType model.SmartBlockType, id string) (result []byte)
+	Convert(sbType model.SmartBlockType) (result []byte)
 	SetKnownDocs(docs map[string]*types.Struct) Converter
 	FileHashes() []string
 	ImageHashes() []string

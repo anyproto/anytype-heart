@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/constant"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -39,8 +40,6 @@ import (
 )
 
 const CName = "export"
-
-const profileFile = "profile"
 
 var log = logging.Logger("anytype-mw-export")
 
@@ -335,7 +334,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0, ""))); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
 		return 0, err
 	}
 
@@ -382,7 +381,7 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
-		result := conv.Convert(b.Type(), docID)
+		result := conv.Convert(b.Type())
 		filename := docID + conv.Ext()
 		if format == pb.RpcObjectListExport_Markdown {
 			s := b.NewState()
@@ -475,7 +474,7 @@ func (e *export) createProfileFile(wr writer) error {
 	if err != nil {
 		return err
 	}
-	err = wr.WriteFile(profileFile, bytes.NewReader(data))
+	err = wr.WriteFile(constant.ProfileFile, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}

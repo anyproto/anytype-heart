@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/constant"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,7 +28,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -702,8 +703,6 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 
 func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
-	ctx := mw.newContext(cctx)
-
 	response := func(address string, code pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, err error) *pb.RpcAccountRecoverFromLegacyExportResponse {
 		m := &pb.RpcAccountRecoverFromLegacyExportResponse{AccountId: address, Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{Code: code}}
 		if err != nil {
@@ -711,7 +710,7 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 		}
 		return m
 	}
-	profile, err := importer.ImportUserProfile(ctx, req)
+	profile, err := getUserProfile(req)
 	if err != nil {
 		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
 	}
@@ -721,6 +720,32 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	}
 
 	return response(profile.Address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil)
+}
+
+func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
+	archive, err := zip.OpenReader(req.Path)
+	if err != nil {
+		return nil, err
+	}
+	defer archive.Close()
+
+	f, err := archive.Open(constant.ProfileFile)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	var profile pb.Profile
+
+	err = profile.Unmarshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return &profile, nil
 }
 
 func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
