@@ -106,6 +106,7 @@ func (s *fileSyncStore) GetRemove() (spaceId, fileId string, err error) {
 	return s.getOne(removeKeyPrefix)
 }
 
+// getOne returns the oldest key from the queue with given prefix
 func (s *fileSyncStore) getOne(prefix []byte) (spaceId, fileId string, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
@@ -119,10 +120,6 @@ func (s *fileSyncStore) getOne(prefix []byte) (spaceId, fileId string, err error
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
 			timestamp, err := getTimestamp(item)
-			{
-				fid, sid := extractFileAndSpaceID(item)
-				fmt.Printf("fileId: %s, spaceId: %s, timestamp: %d\n", fid, sid, timestamp)
-			}
 			if err != nil {
 				return fmt.Errorf("get timestamp: %w", err)
 			}

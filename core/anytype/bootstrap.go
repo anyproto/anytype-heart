@@ -158,7 +158,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(rpcstore.New()).
 		Register(fileStore).
 		Register(fileservice.New()).
-		Register(filestorage.New()).
+		Register(filestorage.New(eventService.Send)).
 		Register(fileSyncService).
 		Register(localdiscovery.New()).
 		Register(spaceService).

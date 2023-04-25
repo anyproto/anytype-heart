@@ -1234,6 +1234,8 @@
     - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
+    - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
+    - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.Details](#anytype-Event-Object-Details)
@@ -19394,6 +19396,36 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-File-LocalUsage"></a>
+
+### Event.File.LocalUsage
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| localBytesUsage | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-File-SpaceUsage"></a>
+
+### Event.File.SpaceUsage
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bytesUsage | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -19460,6 +19492,8 @@ Precondition: user A opened a block
 | processDone | [Event.Process.Done](#anytype-Event-Process-Done) |  |  |
 | threadStatus | [Event.Status.Thread](#anytype-Event-Status-Thread) |  |  |
 | fileLimitReached | [Event.File.LimitReached](#anytype-Event-File-LimitReached) |  |  |
+| fileSpaceUsage | [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage) |  |  |
+| fileLocalUsage | [Event.File.LocalUsage](#anytype-Event-File-LocalUsage) |  |  |
 
 
 

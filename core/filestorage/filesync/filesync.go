@@ -3,6 +3,7 @@ package filesync
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
@@ -30,12 +31,6 @@ var log = logger.NewNamed(CName)
 var loopTimeout = time.Minute
 
 var errReachedLimit = fmt.Errorf("file upload limit has been reached")
-
-func New(sendEvent func(event *pb.Event)) FileSync {
-	return &fileSync{
-		sendEvent: sendEvent,
-	}
-}
 
 //go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync FileSync
 type FileSync interface {
@@ -66,6 +61,16 @@ type fileSync struct {
 	dagService   ipld.DAGService
 	fileStore    filestore.FileStore
 	sendEvent    func(event *pb.Event)
+
+	spaceStatsLock sync.Mutex
+	spaceStats     map[string]SpaceStat
+}
+
+func New(sendEvent func(event *pb.Event)) FileSync {
+	return &fileSync{
+		sendEvent:  sendEvent,
+		spaceStats: map[string]SpaceStat{},
+	}
 }
 
 func (f *fileSync) Init(a *app.App) (err error) {
@@ -159,7 +164,6 @@ func (f *fileSync) addOperation() {
 		}
 		if err != nil {
 			log.Warn("can't upload file", zap.String("fileID", fileID), zap.Error(err))
-			return
 		}
 	}
 }
@@ -205,7 +209,16 @@ func (f *fileSync) tryToUpload() (string, error) {
 		return fileId, err
 	}
 	log.Info("done upload", zap.String("fileID", fileId))
+
+	f.updateSpaceUsageInformation(spaceId)
+
 	return fileId, f.queue.DoneUpload(spaceId, fileId)
+}
+
+func (f *fileSync) updateSpaceUsageInformation(spaceId string) {
+	if _, err := f.SpaceStat(context.Background(), spaceId); err != nil {
+		log.Warn("can't get space usage information", zap.String("spaceId", spaceId), zap.Error(err))
+	}
 }
 
 func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {
@@ -239,25 +252,40 @@ func (f *fileSync) removeLoop() {
 		case <-f.removePingCh:
 		case <-time.After(loopTimeout):
 		}
-		for {
-			spaceId, fileId, err := f.queue.GetRemove()
-			if err != nil {
-				if err != errQueueIsEmpty {
-					log.Warn("queue get remove task error", zap.Error(err))
-				}
-				break
-			}
-			if err = f.removeFile(f.loopCtx, spaceId, fileId); err != nil {
-				log.Warn("remove file error", zap.Error(err))
-				break
-			} else {
-				if err = f.queue.DoneRemove(spaceId, fileId); err != nil {
-					log.Warn("can't mark remove task as done", zap.Error(err))
-					break
-				}
-			}
+		f.removeOperation()
+
+	}
+}
+
+func (f *fileSync) removeOperation() {
+	for {
+		fileID, err := f.tryToRemove()
+		if err == errQueueIsEmpty {
+			return
+		}
+		if err != nil {
+			log.Warn("can't remove file", zap.String("fileID", fileID), zap.Error(err))
 		}
 	}
+}
+
+func (f *fileSync) tryToRemove() (string, error) {
+	spaceID, fileID, err := f.queue.GetRemove()
+	if err == errQueueIsEmpty {
+		return fileID, errQueueIsEmpty
+	}
+	if err != nil {
+		return fileID, fmt.Errorf("get remove task from queue: %w", err)
+	}
+	if err = f.removeFile(f.loopCtx, spaceID, fileID); err != nil {
+		return fileID, fmt.Errorf("remove file: %w", err)
+	}
+	if err = f.queue.DoneRemove(spaceID, fileID); err != nil {
+		return fileID, fmt.Errorf("mark remove task as done: %w", err)
+	}
+	f.updateSpaceUsageInformation(spaceID)
+
+	return fileID, nil
 }
 
 func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err error) {

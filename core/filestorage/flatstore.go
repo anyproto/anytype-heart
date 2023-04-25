@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	blocks "github.com/ipfs/go-block-format"
@@ -13,13 +15,16 @@ import (
 	flatfs "github.com/ipfs/go-ds-flatfs"
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 type flatStore struct {
-	ds *flatfs.Datastore
+	ds                         *flatfs.Datastore
+	localBytesUsageEventSender *localBytesUsageEventSender
 }
 
-func newFlatStore(path string) (*flatStore, error) {
+func newFlatStore(path string, sendEvent func(event *pb.Event), sendEventBatchTimeout time.Duration) (*flatStore, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return nil, fmt.Errorf("mkdir: %w", err)
@@ -29,7 +34,15 @@ func newFlatStore(path string) (*flatStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &flatStore{ds: ds}, nil
+
+	bytesUsage, err := ds.DiskUsage(context.Background())
+	if err != nil {
+		log.Error("can't get initial disk usage", zap.Error(err))
+	}
+	return &flatStore{
+		ds:                         ds,
+		localBytesUsageEventSender: newLocalBytesUsageEventSender(sendEvent, sendEventBatchTimeout, bytesUsage),
+	}, nil
 }
 
 func (f *flatStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
@@ -70,11 +83,24 @@ func (f *flatStore) Add(ctx context.Context, bs []blocks.Block) error {
 			return fmt.Errorf("put %s: %w", dskey(b.Cid()), err)
 		}
 	}
+	f.sendLocalBytesUsageEvent(ctx)
 	return nil
 }
 
 func (f *flatStore) Delete(ctx context.Context, c cid.Cid) error {
-	return f.ds.Delete(ctx, dskey(c))
+	err := f.ds.Delete(ctx, dskey(c))
+	if err != nil {
+		return err
+	}
+	f.sendLocalBytesUsageEvent(ctx)
+	return nil
+}
+
+func (f *flatStore) sendLocalBytesUsageEvent(ctx context.Context) {
+	du, err := f.ds.DiskUsage(ctx)
+	if err == nil {
+		f.localBytesUsageEventSender.sendLocalBytesUsageEvent(du)
+	}
 }
 
 func (f *flatStore) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, notExist []cid.Cid, err error) {
@@ -125,4 +151,52 @@ func (f *flatStore) BlockAvailability(ctx context.Context, ks []cid.Cid) (availa
 
 func (f *flatStore) Close() error {
 	return f.ds.Close()
+}
+
+type localBytesUsageEventSender struct {
+	sendEvent   func(event *pb.Event)
+	batchPeriod time.Duration
+
+	sync.Mutex
+	timer           *time.Timer
+	localBytesUsage uint64
+}
+
+func newLocalBytesUsageEventSender(sendEvent func(event *pb.Event), batchPeriod time.Duration, initialLocalBytesUsage uint64) *localBytesUsageEventSender {
+	d := &localBytesUsageEventSender{
+		sendEvent: sendEvent,
+
+		batchPeriod:     batchPeriod,
+		localBytesUsage: initialLocalBytesUsage,
+	}
+	return d
+}
+
+func (d *localBytesUsageEventSender) sendLocalBytesUsageEvent(localBytesUsage uint64) {
+	d.Lock()
+	defer d.Unlock()
+	d.localBytesUsage = localBytesUsage
+
+	if d.timer == nil {
+		d.timer = time.AfterFunc(d.batchPeriod, func() {
+			d.Lock()
+			defer d.Unlock()
+			d.send(d.localBytesUsage)
+			d.timer = nil
+		})
+	}
+}
+
+func (d *localBytesUsageEventSender) send(usage uint64) {
+	d.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfFileLocalUsage{
+					FileLocalUsage: &pb.EventFileLocalUsage{
+						LocalBytesUsage: usage,
+					},
+				},
+			},
+		},
+	})
 }

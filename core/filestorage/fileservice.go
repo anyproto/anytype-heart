@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
@@ -20,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
@@ -30,8 +32,10 @@ const FlatfsDirName = "flatfs"
 
 var log = logger.NewNamed(CName)
 
-func New() FileStorage {
-	return &fileStorage{}
+func New(sendEvent func(event *pb.Event)) FileStorage {
+	return &fileStorage{
+		sendEvent: sendEvent,
+	}
 }
 
 type FileStorage interface {
@@ -42,19 +46,18 @@ type FileStorage interface {
 }
 
 type fileStorage struct {
-	proxy   *proxyStore
-	handler *rpcHandler
+	fileblockstore.BlockStoreLocal
 
-	cfg        *config.Config
-	flatfsPath string
-
+	cfg          *config.Config
+	flatfsPath   string
 	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
 	spaceService space.Service
+	handler      *rpcHandler
 	spaceStorage storage.ClientStorage
+	sendEvent    func(event *pb.Event)
+	localStore   *flatStore
 }
-
-var _ fileblockstore.BlockStoreLocal = &fileStorage{}
 
 func (f *fileStorage) Init(a *app.App) (err error) {
 	cfg := app.MustComponent[*config.Config](a)
@@ -89,11 +92,12 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
-	localStore, err := newFlatStore(f.flatfsPath)
+	localStore, err := newFlatStore(f.flatfsPath, f.sendEvent, 2*time.Second)
 	if err != nil {
 		return fmt.Errorf("flatstore: %w", err)
 	}
 	f.handler.store = localStore
+	f.localStore = localStore
 
 	oldStore, storeErr := f.initOldStore()
 	if storeErr != nil {
@@ -104,7 +108,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 		origin:     f.rpcStore.NewStore(),
 		oldStore:   oldStore,
 	}
-	f.proxy = ps
+	f.BlockStoreLocal = ps
 	return
 }
 
@@ -119,33 +123,33 @@ func (f *fileStorage) initOldStore() (*badger.DB, error) {
 }
 
 func (f *fileStorage) LocalDiskUsage(ctx context.Context) (uint64, error) {
-	return f.proxy.localStore.ds.DiskUsage(ctx)
+	return f.localStore.ds.DiskUsage(ctx)
 }
 
 func (f *fileStorage) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
-	return f.proxy.Get(f.patchAccountIdCtx(ctx), k)
+	return f.BlockStoreLocal.Get(f.patchAccountIdCtx(ctx), k)
 }
 
 func (f *fileStorage) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
-	return f.proxy.GetMany(f.patchAccountIdCtx(ctx), ks)
+	return f.BlockStoreLocal.GetMany(f.patchAccountIdCtx(ctx), ks)
 }
 
 func (f *fileStorage) Add(ctx context.Context, bs []blocks.Block) (err error) {
-	return f.proxy.Add(f.patchAccountIdCtx(ctx), bs)
+	return f.BlockStoreLocal.Add(f.patchAccountIdCtx(ctx), bs)
 }
 
 func (f *fileStorage) Delete(ctx context.Context, k cid.Cid) error {
-	return f.proxy.Delete(f.patchAccountIdCtx(ctx), k)
+	return f.BlockStoreLocal.Delete(f.patchAccountIdCtx(ctx), k)
 }
 
 func (f *fileStorage) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
-	return f.proxy.ExistsCids(f.patchAccountIdCtx(ctx), ks)
+	return f.BlockStoreLocal.ExistsCids(f.patchAccountIdCtx(ctx), ks)
 }
 
 func (f *fileStorage) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
-	return f.proxy.NotExistsBlocks(f.patchAccountIdCtx(ctx), bs)
+	return f.BlockStoreLocal.NotExistsBlocks(f.patchAccountIdCtx(ctx), bs)
 }
 
 func (f *fileStorage) Close(ctx context.Context) (err error) {
-	return f.proxy.Close()
+	return
 }
