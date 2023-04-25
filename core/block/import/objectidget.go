@@ -130,6 +130,14 @@ func (ou *ObjectIDGetter) createSubObject(sn *converter.Snapshot) string {
 		id      string
 	)
 	ou.cleanupSubObjectID(sn)
+	so := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceObject.String())
+	if so != "" &&
+		!bundle.HasRelation(strings.TrimPrefix(so, addr.BundledRelationURLPrefix)) &&
+		!bundle.HasObjectType(strings.TrimPrefix(so, addr.BundledObjectTypeURLPrefix)) {
+		// remove sourceObject in case we have removed it from the library
+		delete(sn.Snapshot.Data.Details.Fields, bundle.RelationKeySourceObject.String())
+	}
+
 	req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Data.Details}
 	id, objects, err := ou.service.CreateObject(req, "")
 	if err != nil {
