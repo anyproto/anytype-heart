@@ -1826,7 +1826,7 @@ message Rpc {
 
                 message PbParams {
                     repeated string path = 1;
-                    bool notCreateObjectsCollection = 2;
+                    bool noCollection = 2;
                 }
 
                 message CsvParams {
