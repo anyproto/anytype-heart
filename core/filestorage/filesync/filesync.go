@@ -3,6 +3,7 @@ package filesync
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	ipld "github.com/ipfs/go-ipld-format"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -96,7 +98,12 @@ func (f *fileSync) Close(ctx context.Context) (err error) {
 	if f.loopCancel != nil {
 		f.loopCancel()
 	}
-	return
+	if closer, ok := f.rpcStore.(io.Closer); ok {
+		if err = closer.Close(); err != nil {
+			log.Error("can't close rpc store", zap.Error(err))
+		}
+	}
+	return nil
 }
 
 func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
