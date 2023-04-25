@@ -99,6 +99,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if snapshot.Details != nil && snapshot.Details.Fields != nil {
 		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
+		snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(newID)
 	}
 
 	var oldRelationBlocksToNew map[string]*model.Block
