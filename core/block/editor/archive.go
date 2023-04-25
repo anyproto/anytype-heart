@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -45,9 +46,28 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	p.SmartBlock.DisableLayouts()
+	p.DisableLayouts()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	return smartblock.ObjectApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoDuplicateLinks(), template.WithNoObjectTypes(), template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
+	return nil
+}
+
+func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	return migration.Migration{
+		Version: 1,
+		Proc: func(st *state.State) {
+			template.InitTemplate(st,
+				template.WithEmpty,
+				template.WithNoDuplicateLinks(),
+				template.WithNoObjectTypes(),
+				template.WithDetailName("Archive"),
+				template.WithDetailIconEmoji("🗑"),
+			)
+		},
+	}
+}
+
+func (p *Archive) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations(nil)
 }
 
 func (p *Archive) Relations(_ *state.State) relationutils.Relations {

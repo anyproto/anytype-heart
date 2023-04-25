@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -48,26 +49,30 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	p.DisableLayouts()
-	return p.init(ctx.State)
+	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
+	return nil
+
 }
 
-func (p *Dashboard) init(s *state.State) (err error) {
-	state.CleanupLayouts(s)
-	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	if err = smartblock.ObjectApplyTemplate(p, s,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_dashboard),
-		template.WithEmpty,
-		template.WithDetailName("Home"),
-		template.WithDetailIconEmoji("🏠"),
-		template.WithNoRootLink(p.anytype.PredefinedBlocks().Archive),
-		template.WithRequiredRelations(),
-		template.WithNoDuplicateLinks(),
-	); err != nil {
-		return
+func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	return migration.Migration{
+		Version: 1,
+		Proc: func(st *state.State) {
+			template.InitTemplate(st,
+				template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_dashboard),
+				template.WithEmpty,
+				template.WithDetailName("Home"),
+				template.WithDetailIconEmoji("🏠"),
+				template.WithNoRootLink(p.anytype.PredefinedBlocks().Archive),
+				template.WithRequiredRelations(),
+				template.WithNoDuplicateLinks(),
+			)
+		},
 	}
+}
 
-	log.Infof("create default structure for dashboard: %v", s.RootId())
-	return
+func (p *Dashboard) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations(nil)
 }
 
 func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {

@@ -65,28 +65,25 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 		widget.DefaultWidgetSet,
 		widget.DefaultWidgetRecent,
 	} {
-		// TODO Can I remove this check?
-		if !w.isLinkBlockIncluded(st, id) {
-			if _, err := w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
-				TargetId:     "",
-				Position:     model.Block_Bottom,
-				WidgetLayout: widget.LayoutList,
-				Block: &model.Block{
-					Id:          "",
-					ChildrenIds: nil,
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							TargetBlockId: id,
-							Style:         model.BlockContentLink_Page,
-							IconSize:      model.BlockContentLink_SizeNone,
-							CardStyle:     model.BlockContentLink_Text,
-							Description:   model.BlockContentLink_None,
-						},
+		if _, err := w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
+			TargetId:     "",
+			Position:     model.Block_Bottom,
+			WidgetLayout: widget.LayoutList,
+			Block: &model.Block{
+				Id:          "",
+				ChildrenIds: nil,
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: id,
+						Style:         model.BlockContentLink_Page,
+						IconSize:      model.BlockContentLink_SizeNone,
+						CardStyle:     model.BlockContentLink_Text,
+						Description:   model.BlockContentLink_None,
 					},
 				},
-			}); err != nil {
-				log.Errorf(BlockAdditionError, widget.DefaultWidgetFavorite, err)
-			}
+			},
+		}); err != nil {
+			log.Errorf(BlockAdditionError, widget.DefaultWidgetFavorite, err)
 		}
 	}
 }
@@ -104,15 +101,4 @@ func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
 		st.Unlink(id)
 	}
 	return w.Apply(st)
-}
-
-func (w *WidgetObject) isLinkBlockIncluded(s *state.State, id string) bool {
-	for _, b := range s.Blocks() {
-		if link, ok := b.Content.(*model.BlockContentOfLink); ok {
-			if link.Link.TargetBlockId == id {
-				return true
-			}
-		}
-	}
-	return false
 }
