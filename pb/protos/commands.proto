@@ -528,7 +528,6 @@ message Rpc {
                 string path = 1;
                 string rootPath = 2;
                 string storePath = 3;
-                bool needToCreateAccount = 4;
             }
 
             message Response {
@@ -1782,6 +1781,7 @@ message Rpc {
 
         message Import {
             message Request {
+                option (no_auth) = true;
                 oneof params {
                     NotionParams notionParams = 1;
                     BookmarksParams bookmarksParams = 2; //for internal use

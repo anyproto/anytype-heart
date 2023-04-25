@@ -3,7 +3,6 @@ package newinfra
 import (
 	"archive/zip"
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"io"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )

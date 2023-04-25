@@ -19,33 +19,29 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/gogo/status"
 	cp "github.com/otiai10/copy"
 
 	"github.com/anytypeio/go-anytype-middleware/core/account"
-	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
-	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
-
-	"github.com/anytypeio/any-sync/app"
-
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
-
+	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -520,7 +516,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 		return nil
 	}
 
-	dirs := []string{filestorage.FlatfsDirName}
+	dirs := clientds.GetDirsForMoving()
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 
 	configPath := conf.GetConfigPath()
@@ -703,15 +699,12 @@ func (mw *Middleware) AccountRecoverFromLegacyBackup(cctx context.Context,
 		return m
 	}
 	profile, err := importer.ImportUserProfile(ctx, req)
-	if req.NeedToCreateAccount {
-		if err != nil {
-			return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
-		}
-		err = mw.createAccount(profile, req)
-		if err != nil {
-			return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
-		}
-		mw.mnemonic = ""
+	if err != nil {
+		return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
+	}
+	err = mw.createAccount(profile, req)
+	if err != nil {
+		return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
 	}
 
 	return response(profile.Address, pb.RpcAccountRecoverFromLegacyBackupResponseError_NULL, nil)
