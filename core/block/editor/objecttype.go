@@ -194,7 +194,7 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	if !isBundled {
 		var system bool
 		for _, o := range bundle.SystemTypes {
-			if addr.ObjectTypeKeyToIdPrefix+o.String() == t.RootId() {
+			if o.URL() == t.RootId() {
 				system = true
 				break
 			}
@@ -202,7 +202,7 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 		var internal bool
 		for _, o := range bundle.InternalTypes {
-			if addr.ObjectTypeKeyToIdPrefix+o.String() == t.RootId() {
+			if o.URL() == t.RootId() {
 				internal = true
 				break
 			}

@@ -53,13 +53,10 @@ func (ot *ObjectType) ToStruct() *types.Struct {
 	}}
 }
 
-// MigrateObjectTypeIds returns 2 slices:
-// normalized – contains the slice of normalized ids.
-// it contains original slice if there is nothing to normalize(no bundled object type IDs exist in the object)
-//
-// idsToMigrate - contains the slice of ids converted during the first step, nil if no ids were converted
+// deprecated
 func MigrateObjectTypeIds(ids []string) (normalized []string, idsToMigrate []string) {
-	// shortcut if there is nothing to migrate
+	// todo: remove this and all dependencies on it
+
 	hasIdsToMigrate := false
 	for i := range ids {
 		_, err := bundle.TypeKeyFromUrl(ids[i])
@@ -86,7 +83,9 @@ func MigrateObjectTypeIds(ids []string) (normalized []string, idsToMigrate []str
 	return normalized, idsToMigrate
 }
 
+// deprecated
 func MigrateObjectTypeId(id string) (normalized string, isMigrated bool) {
+	// todo: remove this and all dependencies on it
 	t, err := bundle.TypeKeyFromUrl(id)
 	if err == nil {
 		return addr.ObjectTypeKeyToIdPrefix + t.String(), true
