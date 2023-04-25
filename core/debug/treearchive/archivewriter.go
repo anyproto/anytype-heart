@@ -18,55 +18,55 @@ type ExportedObjectsJson struct {
 	TreeId string `json:"treeId"`
 }
 
-type Exporter struct {
+type ArchiveWriter struct {
 	zw       *zip.Writer
 	zf       fs.File
 	treeId   string
 	aclId    string
-	storages []zipStorage
+	storages []flushableStorage
 }
 
-type zipStorage interface {
+type flushableStorage interface {
 	FlushStorage() error
 }
 
-func NewExporter(path string) (*Exporter, error) {
+func NewArchiveWriter(path string) (*ArchiveWriter, error) {
 	zf, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}
 	zw := zip.NewWriter(zf)
-	return &Exporter{
+	return &ArchiveWriter{
 		zw: zw,
 		zf: zf,
 	}, nil
 }
 
-func (e *Exporter) Writer() *zip.Writer {
+func (e *ArchiveWriter) ZipWriter() *zip.Writer {
 	return e.zw
 }
 
-func (e *Exporter) TreeStorage(root *treechangeproto.RawTreeChangeWithId) (treestorage.TreeStorage, error) {
+func (e *ArchiveWriter) TreeStorage(root *treechangeproto.RawTreeChangeWithId) (treestorage.TreeStorage, error) {
 	e.treeId = root.Id
 	st, err := ziptreestorage.NewZipTreeWriteStorage(root, e.zw)
 	if err != nil {
 		return nil, err
 	}
-	e.storages = append(e.storages, st.(zipStorage))
+	e.storages = append(e.storages, st.(flushableStorage))
 	return st, nil
 }
 
-func (e *Exporter) ListStorage(root *aclrecordproto.RawAclRecordWithId) (liststorage.ListStorage, error) {
+func (e *ArchiveWriter) ListStorage(root *aclrecordproto.RawAclRecordWithId) (liststorage.ListStorage, error) {
 	e.aclId = root.Id
 	st, err := zipaclstorage.NewAclWriteStorage(root, e.zw)
 	if err != nil {
 		return nil, err
 	}
-	e.storages = append(e.storages, st.(zipStorage))
+	e.storages = append(e.storages, st.(flushableStorage))
 	return st, nil
 }
 
-func (e *Exporter) Close() (err error) {
+func (e *ArchiveWriter) Close() (err error) {
 	for _, st := range e.storages {
 		err = st.FlushStorage()
 		if err != nil {

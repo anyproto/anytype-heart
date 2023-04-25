@@ -28,25 +28,25 @@ type treeExporter struct {
 
 func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (filename string, err error) {
 	filename = filepath.Join(path, fmt.Sprintf("at.dbg.%s.%s.zip", e.id, time.Now().Format("20060102.150405.99")))
-	exp, err := treearchive.NewExporter(filename)
+	archiveWriter, err := treearchive.NewArchiveWriter(filename)
 	if err != nil {
 		return
 	}
-	defer exp.Close()
+	defer archiveWriter.Close()
 
-	e.zw = exp.Writer()
+	e.zw = archiveWriter.ZipWriter()
 	params := exporter.TreeExporterParams{
-		ListStorageExporter: exp,
-		TreeStorageExporter: exp,
+		ListStorageExporter: archiveWriter,
+		TreeStorageExporter: archiveWriter,
 		DataConverter:       &changeDataConverter{anonymize: e.anonymized},
 	}
+	anySyncExporter := exporter.NewTreeExporter(params)
 	logBuf := bytes.NewBuffer(nil)
-	e.log = log.New(io.MultiWriter(logBuf, os.Stderr), "", log.LstdFlags)
 
-	st := time.Now()
-	treeExporter := exporter.NewTreeExporter(params)
+	e.log = log.New(io.MultiWriter(logBuf, os.Stderr), "", log.LstdFlags)
 	e.log.Printf("exporting tree and acl")
-	err = treeExporter.ExportUnencrypted(tree)
+	st := time.Now()
+	err = anySyncExporter.ExportUnencrypted(tree)
 	if err != nil {
 		e.log.Printf("export tree in zip error: %v", err)
 		return
@@ -54,7 +54,6 @@ func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (
 
 	e.log.Printf("exported tree for a %v", time.Since(st))
 	data, err := e.s.GetByIDs(e.id)
-
 	if err != nil {
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {
