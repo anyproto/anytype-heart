@@ -29,7 +29,10 @@ const (
 	typePrefix            = "_ot"
 	systemRelationsName   = "systemRelations"
 	internalRelationsName = "internalRelations"
+	systemTypesName       = "systemTypes"
+	internalTypesName     = "internalTypes"
 	relationsName         = "relations"
+	typesName             = "types"
 
 	relationAssertionError = "relations validation has failed"
 )
@@ -77,7 +80,7 @@ func main() {
 		internalRelationsName,
 		writeInternalRelations,
 		addInternalRelationsComment,
-		returnKeys,
+		nil,
 	)
 	exitOnError(err)
 
@@ -87,16 +90,43 @@ func main() {
 		addSystemRelationsComment,
 		excludeInternalRelations,
 	)
+
+	exitOnError(err)
+
+	err = generateTypesLists(
+		internalTypesName,
+		writeInternalTypes,
+		addInternalTypesComment,
+		nil,
+	)
+	exitOnError(err)
+
+	err = generateTypesLists(
+		systemTypesName,
+		appendInternalToSystemTypes,
+		addSystemTypesComment,
+		excludeInternalTypes,
+	)
+
 	exitOnError(err)
 }
 
-func returnKeys(keys []bundle.RelationKey) []bundle.RelationKey {
-	return keys
+func excludeInternalTypes(allSystemKeys []bundle.TypeKey) []bundle.TypeKey {
+	var sourceName = pkgPrefix + internalTypesName + jsonExt
+	internalTypeKeys, _, err := readTypes(sourceName, nil)
+	exitOnError(err)
+
+	assertTypesIncluded(
+		internalTypeKeys,
+		allSystemKeys,
+	)
+
+	return lo.Without(allSystemKeys, internalTypeKeys...)
 }
 
 func excludeInternalRelations(allSystemKeys []bundle.RelationKey) []bundle.RelationKey {
 	var sourceName = pkgPrefix + internalRelationsName + jsonExt
-	internalRelationKeys, _, err := readRelations(sourceName, returnKeys)
+	internalRelationKeys, _, err := readRelations(sourceName, nil)
 	exitOnError(err)
 
 	assertRelationsIncluded(
@@ -371,6 +401,28 @@ func generateRelationsLists(
 	return writeGeneratedCodeToFile(name, genFile)
 }
 
+func generateTypesLists(
+	name string,
+	writeTypes func(genFile *File, list []Code),
+	comment func(genFile *File),
+	filter func([]bundle.TypeKey) []bundle.TypeKey,
+) error {
+	var sourceName = pkgPrefix + name + jsonExt
+
+	typeKeys, checkSum, err := readTypes(sourceName, filter)
+	if err != nil {
+		return err
+	}
+
+	genFile := NewFile("bundle")
+	addHeader(genFile, name, sourceName, checkSum, comment)
+
+	types := generateTypesList(typeKeys)
+	writeTypes(genFile, types)
+
+	return writeGeneratedCodeToFile(name, genFile)
+}
+
 func writeGeneratedCodeToFile(name string, genFile *File) error {
 	outPutFile, err := os.OpenFile(pkgPrefix+name+".gen.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
@@ -378,6 +430,25 @@ func writeGeneratedCodeToFile(name string, genFile *File) error {
 	}
 	_, _ = fmt.Fprintf(outPutFile, "%#v", genFile)
 	return nil
+}
+
+func readTypes(
+	sourceName string,
+	filter func([]bundle.TypeKey) []bundle.TypeKey,
+) ([]bundle.TypeKey, [32]byte, error) {
+	bytes, err := os.ReadFile(sourceName)
+	if err != nil {
+		return nil, [32]byte{}, err
+	}
+
+	checkSum := sha256.Sum256(bytes)
+
+	typesKeys, err := parseTypes(bytes, filter)
+	if err != nil {
+		return nil, [32]byte{}, err
+	}
+
+	return typesKeys, checkSum, err
 }
 
 func readRelations(
@@ -399,6 +470,24 @@ func readRelations(
 	return relationKeys, checkSum, err
 }
 
+func parseTypes(bytes []byte, filter func([]bundle.TypeKey) []bundle.TypeKey) ([]bundle.TypeKey, error) {
+	var typesKeys []bundle.TypeKey
+	err := json.Unmarshal(bytes, &typesKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	allTypesKeys, err := readAllTypesKeys()
+	if err != nil {
+		return nil, err
+	}
+	assertTypesIncluded(typesKeys, allTypesKeys)
+	if filter != nil {
+		typesKeys = filter(typesKeys)
+	}
+	return typesKeys, nil
+}
+
 func parseRelations(bytes []byte, filter func([]bundle.RelationKey) []bundle.RelationKey) ([]bundle.RelationKey, error) {
 	var relationKeys []bundle.RelationKey
 	err := json.Unmarshal(bytes, &relationKeys)
@@ -411,8 +500,24 @@ func parseRelations(bytes []byte, filter func([]bundle.RelationKey) []bundle.Rel
 		return nil, err
 	}
 	assertRelationsIncluded(relationKeys, allRelationKeys)
-	relationKeys = filter(relationKeys)
+	if filter != nil {
+		relationKeys = filter(relationKeys)
+	}
 	return relationKeys, nil
+}
+
+func assertTypesIncluded(
+	whatIncluded []bundle.TypeKey,
+	whereIncluded []bundle.TypeKey,
+) {
+
+	err := validateRelationsIncluded(
+		lo.Map(whatIncluded, typeToString()),
+		lo.Map(whereIncluded, typeToString()),
+	)
+	if err != nil {
+		exitOnError(fmt.Errorf(relationAssertionError))
+	}
 }
 
 func assertRelationsIncluded(
@@ -431,6 +536,10 @@ func assertRelationsIncluded(
 
 func relationToString() func(item bundle.RelationKey, index int) string {
 	return func(item bundle.RelationKey, index int) string { return item.String() }
+}
+
+func typeToString() func(item bundle.TypeKey, index int) string {
+	return func(item bundle.TypeKey, index int) string { return item.String() }
 }
 
 func addHeader(genFile *File, name string, sourceName string, checkSum [32]byte, comment func(genFile *File)) {
@@ -459,6 +568,15 @@ func generateRelationsList(relationKeys []bundle.RelationKey) []Code {
 	return list
 }
 
+func generateTypesList(typesKeys []bundle.TypeKey) []Code {
+	var list = make([]Code, len(typesKeys))
+	for _, typeKey := range typesKeys {
+		list = append(list, Line().Id(typeConst(typeKey.String())))
+	}
+	list = append(list, Line())
+	return list
+}
+
 func appendInternalToSystemRelations(genFile *File, list []Code) {
 	genFile.
 		Var().
@@ -474,6 +592,21 @@ func appendInternalToSystemRelations(genFile *File, list []Code) {
 		)
 }
 
+func appendInternalToSystemTypes(genFile *File, list []Code) {
+	genFile.
+		Var().
+		Id("SystemTypes").
+		Op("=").
+		Append(
+			Id("InternalTypes").
+				Op(",").
+				Index().
+				Qual("", "TypeKey").
+				Values(list...).
+				Op("..."),
+		)
+}
+
 func writeInternalRelations(genFile *File, list []Code) {
 	genFile.
 		Var().
@@ -481,6 +614,16 @@ func writeInternalRelations(genFile *File, list []Code) {
 		Op("=").
 		Index().
 		Qual("", "RelationKey").
+		Values(list...)
+}
+
+func writeInternalTypes(genFile *File, list []Code) {
+	genFile.
+		Var().
+		Id("InternalTypes").
+		Op("=").
+		Index().
+		Qual("", "TypeKey").
 		Values(list...)
 }
 
@@ -492,6 +635,16 @@ func addInternalRelationsComment(genFile *File) {
 func addSystemRelationsComment(genFile *File) {
 	genFile.Comment("SystemRelations contains relations that have some special biz logic depends on them in some objects")
 	genFile.Comment("in case EVERY object depend on the relation please add it to RequiredInternalRelations")
+}
+
+func addInternalTypesComment(genFile *File) {
+	genFile.Comment("InternalTypes contains the list of types that are not possible to create directly via ObjectCreate")
+	genFile.Comment("to create as a general object because they have specific logic")
+}
+
+func addSystemTypesComment(genFile *File) {
+	genFile.Comment("SystemTypes contains types that have some special biz logic depends on them in some objects")
+	genFile.Comment("they shouldn't be removed or edited in any way")
 }
 
 func validateRelationsIncluded(
@@ -522,4 +675,22 @@ func readAllRelationKeys() ([]bundle.RelationKey, error) {
 		func(item Relation, index int) bundle.RelationKey { return bundle.RelationKey(item.Key) },
 	)
 	return allRelationsKeys, nil
+}
+
+func readAllTypesKeys() ([]bundle.TypeKey, error) {
+	bytes, err := os.ReadFile(pkgPrefix + typesName + jsonExt)
+	if err != nil {
+		return []bundle.TypeKey{}, err
+	}
+
+	var allTypes []ObjectType
+	err = json.Unmarshal(bytes, &allTypes)
+	if err != nil {
+		return []bundle.TypeKey{}, err
+	}
+	var allTypesKey = lo.Map(
+		allTypes,
+		func(item ObjectType, index int) bundle.TypeKey { return bundle.TypeKey(item.ID) },
+	)
+	return allTypesKey, nil
 }

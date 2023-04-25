@@ -27,32 +27,6 @@ func (rk RelationKey) IsSystem() bool {
 	return ok
 }
 
-// InternalTypes contains the list of types that are not possible
-// to create as a general object because they have specific logic
-var InternalTypes = []TypeKey{
-	TypeKeyFile,
-	TypeKeyImage,
-	TypeKeyAudio,
-	TypeKeyVideo,
-	TypeKeyDate,
-	TypeKeySpace,
-	TypeKeyRelation,
-	TypeKeyRelationOption,
-	TypeKeyDashboard,
-}
-
-var SystemTypes = append(InternalTypes, []TypeKey{
-	TypeKeyPage,
-	TypeKeyNote,
-	TypeKeyTask,
-	TypeKeyObjectType,
-	TypeKeySet,
-	TypeKeyCollection,
-	TypeKeyProfile,
-	TypeKeyTemplate,
-	TypeKeyBookmark,
-}...)
-
 var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyFile.URL(),
 	TypeKeyImage.URL(),
@@ -61,7 +35,7 @@ var FormatFilePossibleTargetObjectTypes = []string{
 
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
-	coresb.SmartBlockTypeProfilePage: TypeKeyPage,
+	coresb.SmartBlockTypeProfilePage: TypeKeyProfile,
 	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
 	coresb.SmartBlockTypeWidget:      TypeKeyDashboard,

@@ -152,10 +152,13 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-      - name: Add system relations
+      - name: Add system relations/types jsons
         run: |
-          mkdir -p relations/
-          cp pkg/lib/bundle/systemRelations.json ./relations
+          mkdir -p json/
+          cp pkg/lib/bundle/systemRelations.json ./json
+          cp pkg/lib/bundle/systemTypes.json ./json
+          cp pkg/lib/bundle/internalRelations.json ./json
+          cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile android lib
         run: |
           gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
@@ -269,8 +272,11 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Add system relations
         run: |
-          mkdir -p relations/
-          cp pkg/lib/bundle/systemRelations.json ./relations
+          mkdir -p json/
+          cp pkg/lib/bundle/systemRelations.json ./json
+          cp pkg/lib/bundle/systemTypes.json ./json
+          cp pkg/lib/bundle/internalRelations.json ./json
+          cp pkg/lib/bundle/internalTypes.json ./json
       - name: Upload protobuf artifact for linux build
         uses: actions/upload-artifact@v2
         with:
