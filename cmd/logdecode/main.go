@@ -11,14 +11,21 @@ import (
 	"os"
 )
 
+const (
+	argsLenWithFile  = 2
+	fileArgNumber    = 1
+	stdinSizeOnLinux = 4092
+	bufferSize       = 1024
+)
+
 func main() {
 	var (
 		err    error
 		reader io.Reader
 		file   = os.Stdin
 	)
-	if len(os.Args) == 2 {
-		if file, err = os.Open(os.Args[1]); err != nil {
+	if len(os.Args) == argsLenWithFile {
+		if file, err = os.Open(os.Args[fileArgNumber]); err != nil {
 			fmt.Println("Error opening file:", err)
 			return
 		}
@@ -33,7 +40,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Error decoding base64:", err)
 		// On some OS stdin is limited with 4092 bytes
-		if errors.Is(err, base64.CorruptInputError(4092)) {
+		if errors.Is(err, base64.CorruptInputError(stdinSizeOnLinux)) {
 			fmt.Println("Try to pass base64 in a file. Filename should be the argument of the program")
 		}
 		return
@@ -49,7 +56,7 @@ func main() {
 	}
 
 	result := ""
-	buf := make([]byte, 1024)
+	buf := make([]byte, bufferSize)
 	for {
 		n, err := reader.Read(buf)
 		result += string(buf[:n])
