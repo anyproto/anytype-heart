@@ -2491,6 +2491,30 @@ message Rpc {
                 }
             }
         }
+
+        message GetSpaceQuota {
+            message Request {}
+
+            message Response {
+                Error error = 1;
+                uint32 filesCount = 2;
+                uint32 cidsCount  = 3;
+                uint32 bytesUsage = 4;
+                uint32 bytesLimit = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
     }
 
     message Navigation {

@@ -528,26 +528,6 @@ func (mw *Middleware) BlockListSetVerticalAlign(cctx context.Context, req *pb.Rp
 	return response(pb.RpcBlockListSetVerticalAlignResponseError_NULL, nil)
 }
 
-func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcFileDropResponseErrorCode, err error) *pb.RpcFileDropResponse {
-		m := &pb.RpcFileDropResponse{Error: &pb.RpcFileDropResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DropFiles(*req)
-	})
-	if err != nil {
-		return response(pb.RpcFileDropResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcFileDropResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockListMoveToExistingObject(cctx context.Context, req *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockListMoveToExistingObjectResponseErrorCode, err error) *pb.RpcBlockListMoveToExistingObjectResponse {
@@ -980,46 +960,6 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockBookmarkFetchResponseError_NULL, nil)
-}
-
-func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
-	response := func(hash string, code pb.RpcFileUploadResponseErrorCode, err error) *pb.RpcFileUploadResponse {
-		m := &pb.RpcFileUploadResponse{Error: &pb.RpcFileUploadResponseError{Code: code}, Hash: hash}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	var hash string
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(*req)
-		return
-	})
-	if err != nil {
-		return response("", pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(hash, pb.RpcFileUploadResponseError_NULL, nil)
-}
-
-func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
-	response := func(path string, code pb.RpcFileDownloadResponseErrorCode, err error) *pb.RpcFileDownloadResponse {
-		m := &pb.RpcFileDownloadResponse{Error: &pb.RpcFileDownloadResponseError{Code: code}, LocalPath: path}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	var path string
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		path, err = bs.DownloadFile(req)
-		return
-	})
-	if err != nil {
-		// TODO Maybe use the appropriate error code?
-		return response("", pb.RpcFileDownloadResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(path, pb.RpcFileDownloadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {

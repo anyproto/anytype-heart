@@ -124,6 +124,7 @@ service ClientCommands {
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
+    rpc FileGetSpaceQuota (anytype.Rpc.File.GetSpaceQuota.Request) returns (anytype.Rpc.File.GetSpaceQuota.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);

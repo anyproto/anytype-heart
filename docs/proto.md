@@ -497,6 +497,10 @@
     - [Rpc.File.Drop.Request](#anytype-Rpc-File-Drop-Request)
     - [Rpc.File.Drop.Response](#anytype-Rpc-File-Drop-Response)
     - [Rpc.File.Drop.Response.Error](#anytype-Rpc-File-Drop-Response-Error)
+    - [Rpc.File.GetSpaceQuota](#anytype-Rpc-File-GetSpaceQuota)
+    - [Rpc.File.GetSpaceQuota.Request](#anytype-Rpc-File-GetSpaceQuota-Request)
+    - [Rpc.File.GetSpaceQuota.Response](#anytype-Rpc-File-GetSpaceQuota-Response)
+    - [Rpc.File.GetSpaceQuota.Response.Error](#anytype-Rpc-File-GetSpaceQuota-Response-Error)
     - [Rpc.File.ListOffload](#anytype-Rpc-File-ListOffload)
     - [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request)
     - [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response)
@@ -994,6 +998,7 @@
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
+    - [Rpc.File.GetSpaceQuota.Response.Error.Code](#anytype-Rpc-File-GetSpaceQuota-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
@@ -1496,6 +1501,7 @@
 | FileUpload | [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request) | [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response) |  |
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
 | FileDrop | [Rpc.File.Drop.Request](#anytype-Rpc-File-Drop-Request) | [Rpc.File.Drop.Response](#anytype-Rpc-File-Drop-Response) |  |
+| FileGetSpaceQuota | [Rpc.File.GetSpaceQuota.Request](#anytype-Rpc-File-GetSpaceQuota-Request) | [Rpc.File.GetSpaceQuota.Response](#anytype-Rpc-File-GetSpaceQuota-Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
@@ -8803,6 +8809,61 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-File-GetSpaceQuota"></a>
+
+### Rpc.File.GetSpaceQuota
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-GetSpaceQuota-Request"></a>
+
+### Rpc.File.GetSpaceQuota.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-GetSpaceQuota-Response"></a>
+
+### Rpc.File.GetSpaceQuota.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.GetSpaceQuota.Response.Error](#anytype-Rpc-File-GetSpaceQuota-Response-Error) |  |  |
+| filesCount | [uint32](#uint32) |  |  |
+| cidsCount | [uint32](#uint32) |  |  |
+| bytesUsage | [uint32](#uint32) |  |  |
+| bytesLimit | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-GetSpaceQuota-Response-Error"></a>
+
+### Rpc.File.GetSpaceQuota.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.GetSpaceQuota.Response.Error.Code](#anytype-Rpc-File-GetSpaceQuota-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File-ListOffload"></a>
 
 ### Rpc.File.ListOffload
@@ -12078,7 +12139,6 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ToSet.Response.Error](#anytype-Rpc-Object-ToSet-Response-Error) |  |  |
-| setId | [string](#string) |  |  |
 
 
 
@@ -15868,6 +15928,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-File-Drop-Response-Error-Code"></a>
 
 ### Rpc.File.Drop.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-File-GetSpaceQuota-Response-Error-Code"></a>
+
+### Rpc.File.GetSpaceQuota.Response.Error.Code
 
 
 | Name | Number | Description |
