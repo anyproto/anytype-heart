@@ -54,6 +54,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
@@ -119,6 +120,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	}
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
+		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(dialer.New()).

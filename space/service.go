@@ -15,11 +15,10 @@ import (
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/streampool"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"go.uber.org/zap"
 	"time"
 )
@@ -53,10 +52,10 @@ type service struct {
 	account              accountservice.Service
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
-	filePeers            rpcstore.Service
+	peerStore            peerstore.PeerStore
+	dialer               dialer.Dialer
 	poolManager          PoolManager
 	streamHandler        *streamHandler
-	dialer               dialer.Dialer
 	accountId            string
 }
 
@@ -66,8 +65,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.dialer = a.MustComponent(dialer.CName).(dialer.Dialer)
-	s.filePeers = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{s: s}
@@ -199,19 +198,5 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
 		return
 	}
 	log.Debug("got peer ids from peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", resp.SpaceIds))
-	is := slice.Intersection(allIds, resp.SpaceIds)
-	if len(is) == 0 {
-		return
-	}
-	s.filePeers.AddLocalPeer(peer.PeerId, is)
-	streamPeer, err := s.poolManager.StreamPeerPool().Get(ctx, peer.PeerId)
-	if err != nil {
-		return
-	}
-	stream, _, err := s.streamHandler.OpenSpaceStream(ctx, streamPeer, is)
-	if err != nil {
-		return
-	}
-	log.Debug("opened stream with peer", zap.String("peer", peer.PeerId))
-	s.streamPool.AddStream(peer.PeerId, stream, is...)
+	s.peerStore.UpdateLocalPeer(peer.PeerId, resp.SpaceIds)
 }

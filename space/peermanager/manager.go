@@ -2,21 +2,26 @@ package peermanager
 
 import (
 	"context"
+	"fmt"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/net/peer"
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"sync"
 )
 
 type clientPeerManager struct {
 	spaceId            string
 	responsiblePeerIds []string
 	p                  *provider
+	peerStore          peerstore.PeerStore
+	sync.Mutex
 }
 
 func (n *clientPeerManager) init() {
-	n.responsiblePeerIds = n.p.nodeconf.GetLast().NodeIds(n.spaceId)
+	n.responsiblePeerIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 }
 
 func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *spacesyncproto.ObjectSyncMessage) (err error) {
@@ -49,13 +54,11 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 	if err == nil {
 		peers = []peer.Peer{p}
 	}
-	streams := n.p.streamPool.Streams(n.spaceId)
-	for _, stream := range streams {
-		peerId, err := peer.CtxPeerId(stream.Context())
+	for _, peerId := range n.peerStore.LocalPeerIds(n.spaceId) {
 		if err != nil || slices.ContainsFunc(peers, func(p peer.Peer) bool { return p.Id() == peerId }) {
 			continue
 		}
-		clientPeer, err := n.p.UnaryPeerPool().Get(ctx, peerId)
+		clientPeer, err := n.p.commonPool.Get(ctx, peerId)
 		if err != nil {
 			continue
 		}
@@ -68,20 +71,36 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 }
 
 func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context, exactId string) (peers []peer.Peer, err error) {
-	if exactId == "" {
-		// lookup in common pool for existing connection
-		p, e := n.p.commonPool.GetOneOf(ctx, n.responsiblePeerIds)
-		if e != nil {
-			return nil, e
+	if exactId != "" {
+		p, err := n.p.pool.Get(ctx, exactId)
+		if err != nil {
+			return
 		}
-		exactId = p.Id()
+		return []peer.Peer{p}, nil
 	}
 
-	p, err := n.p.pool.Get(ctx, exactId)
-	if err != nil {
-		return
+	var peerIds []string
+	// lookup in common pool for existing connection
+	p, nodeErr := n.p.commonPool.GetOneOf(ctx, n.responsiblePeerIds)
+	if nodeErr != nil {
+		log.Warn("failed to get responsible peer from common pool", zap.Error(nodeErr))
+	} else {
+		peerIds = []string{p.Id()}
 	}
-	return []peer.Peer{p}, nil
+	peerIds = append(peerIds, n.peerStore.LocalPeerIds(n.spaceId)...)
+	for _, peerId := range peerIds {
+		p, err := n.p.pool.Get(ctx, peerId)
+		if err != nil {
+			log.Warn("failed to get peer from stream pool", zap.String("peerId", peerId), zap.Error(err))
+			continue
+		}
+		peers = append(peers, p)
+	}
+	// set node error if no local peers
+	if len(peers) == 0 {
+		err = fmt.Errorf("failed to get peers for stream")
+	}
+	return
 }
 
 func (n *clientPeerManager) isResponsible(peerId string) bool {

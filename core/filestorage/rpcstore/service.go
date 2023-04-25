@@ -5,8 +5,7 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/nodeconf"
-	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"sync"
 )
 
@@ -20,25 +19,27 @@ func New() Service {
 
 type Service interface {
 	NewStore() RpcStore
-	AddLocalPeer(peerId string, spaceIds []string)
 	app.Component
 }
 
 type service struct {
-	pool                pool.Pool
-	nodeconf            nodeconf.Service
-	nodePeerIds         []string
-	localPeerIdsBySpace map[string][]string
-	allPeerIds          []string
-	mx                  sync.Mutex
-	peerUpdateCh        chan struct{}
+	pool         pool.Pool
+	nodeconf     nodeconf.Service
+	peerStore    peerstore.PeerStore
+	mx           sync.Mutex
+	peerUpdateCh chan struct{}
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.pool = a.MustComponent(pool.CName).(pool.Pool)
 	s.nodeconf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
-	s.nodePeerIds = s.nodeconf.GetLast().FilePeers()
-	s.localPeerIdsBySpace = map[string][]string{}
+	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
+	s.peerStore.AddObserver(func(peerId string, spaceIds []string) {
+		select {
+		case s.peerUpdateCh <- struct{}{}:
+		default:
+		}
+	})
 	return
 }
 
@@ -55,47 +56,11 @@ func (s *service) NewStore() RpcStore {
 }
 
 func (s *service) fileNodePeers() []string {
-	return s.nodePeerIds
-}
-
-func (s *service) localPeers(spaceIds []string) (res []string) {
-	// TODO: check if needed
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	unique := map[string]struct{}{}
-	for _, spaceId := range spaceIds {
-		spacePeers := s.localPeerIdsBySpace[spaceId]
-		for _, peerId := range spacePeers {
-			unique[peerId] = struct{}{}
-		}
-	}
-	for peerId := range unique {
-		res = append(res, peerId)
-	}
-	return
+	return s.peerStore.ResponsibleFilePeers()
 }
 
 func (s *service) allLocalPeers() []string {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	return s.allPeerIds
-}
-
-func (s *service) AddLocalPeer(peerId string, spaceIds []string) {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	if slices.Contains(s.allPeerIds, peerId) {
-		return
-	}
-	log.Debug("adding peer to local peers", zap.String("peer", peerId), zap.Strings("spaces", spaceIds))
-	s.allPeerIds = append(s.allPeerIds, peerId)
-	for _, id := range spaceIds {
-		spacePeerIds := s.localPeerIdsBySpace[id]
-		spacePeerIds = append(spacePeerIds, peerId)
-		s.localPeerIdsBySpace[id] = spacePeerIds
-	}
-	select {
-	case s.peerUpdateCh <- struct{}{}:
-	default:
-	}
+	return s.peerStore.AllLocalPeers()
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
 	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 )
 
 func New() peermanager.PeerManagerProvider {
@@ -24,10 +25,12 @@ type provider struct {
 	pool       pool.Pool
 	commonPool pool.Pool
 	streamPool streampool.StreamPool
+	peerStore  peerstore.PeerStore
 }
 
 func (p *provider) Init(a *app.App) (err error) {
 	p.nodeconf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
+	p.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	poolService := a.MustComponent(pool.CName).(pool.Service)
 	p.commonPool = poolService
 	p.pool = poolService.NewPool("space_stream")
@@ -40,7 +43,11 @@ func (p *provider) Name() (name string) {
 }
 
 func (p *provider) NewPeerManager(ctx context.Context, spaceId string) (peermanager.PeerManager, error) {
-	pm := &clientPeerManager{p: p, spaceId: spaceId}
+	pm := &clientPeerManager{
+		p:         p,
+		spaceId:   spaceId,
+		peerStore: p.peerStore,
+	}
 	pm.init()
 	return pm, nil
 }
