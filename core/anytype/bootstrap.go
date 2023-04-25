@@ -13,8 +13,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
+	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	"github.com/anytypeio/go-anytype-middleware/space/streammanager"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
@@ -127,7 +127,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(space.New()).
-		Register(streammanager.New()).
+		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		Register(relation.New()).
 		Register(ftsearch.New()).
