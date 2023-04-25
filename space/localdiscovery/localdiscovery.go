@@ -1,3 +1,6 @@
+//go:build !android
+// +build !android
+
 package localdiscovery
 
 import (
@@ -5,40 +8,15 @@ import (
 	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/util/periodicsync"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/net/addrs"
 	"github.com/libp2p/zeroconf/v2"
 	"go.uber.org/zap"
-	"strconv"
 	"strings"
 	"sync"
 )
-
-const (
-	CName = "client.space.localdiscovery"
-
-	serviceName = "_p2p._localdiscovery"
-	mdnsDomain  = "local"
-)
-
-var log = logger.NewNamed(CName)
-
-type DiscoveredPeer struct {
-	Addrs  []string
-	PeerId string
-}
-
-type Notifier interface {
-	PeerDiscovered(peer DiscoveredPeer)
-}
-
-type LocalDiscovery interface {
-	SetNotifier(Notifier)
-	app.ComponentRunnable
-}
 
 type localDiscovery struct {
 	server *zeroconf.Server
@@ -84,7 +62,7 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
-	if len(l.addrs) == 0 {
+	if l.port == 0 {
 		return
 	}
 	l.periodicCheck.Close()
@@ -125,6 +103,7 @@ func (l *localDiscovery) startServer() (err error) {
 		ip := strings.Split(addr.String(), "/")[0]
 		ips = append(ips, ip)
 	}
+	log.Debug("starting mdns server", zap.Strings("ips", ips), zap.Int("port", l.port))
 	// for now assuming that we have just one address
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
@@ -135,7 +114,7 @@ func (l *localDiscovery) startServer() (err error) {
 		ips,
 		nil,
 		l.interfacesAddrs.Interfaces,
-		zeroconf.TTL(60),
+		zeroconf.TTL(10),
 	)
 	return
 }
@@ -150,7 +129,6 @@ func (l *localDiscovery) startQuerying(ctx context.Context) {
 func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
 	for entry := range ch {
-		// TODO: check why this happens
 		if entry.Instance == l.peerId {
 			log.Debug("discovered self")
 			continue
@@ -175,14 +153,4 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch, zeroconf.SelectIfaces(l.interfacesAddrs.Interfaces)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
-}
-
-func getPort(addrs []string) (port int, err error) {
-	if len(addrs) == 0 {
-		err = fmt.Errorf("addresses are empty")
-		return
-	}
-	split := strings.Split(addrs[0], ":")
-	_, portString := split[0], split[1]
-	return strconv.Atoi(portString)
 }
