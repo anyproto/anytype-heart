@@ -81,7 +81,16 @@ func (r *TableRenderer) renderTable(_ util.BufWriter, _ []byte, node ast.Node, e
 		}
 		return ast.WalkContinue, nil
 	}
-	r.blockRenderer.blocks = append(r.blockRenderer.blocks, r.blocksState.Blocks()...)
+	var blocksToAdd []*model.Block
+	for _, block := range r.blocksState.Blocks() {
+		if block.GetContent() != nil {
+			if _, ok := block.GetContent().(*model.BlockContentOfSmartblock); ok {
+				continue
+			}
+		}
+		blocksToAdd = append(blocksToAdd, block)
+	}
+	r.blockRenderer.blocks = append(r.blockRenderer.blocks, blocksToAdd...)
 	r.blocksState = nil
 	r.tableState.resetState()
 	return ast.WalkContinue, nil
