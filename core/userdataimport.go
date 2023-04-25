@@ -1,10 +1,13 @@
 package core
 
 import (
+	"archive/zip"
 	"context"
 	"github.com/anytypeio/any-sync/app"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -73,6 +76,11 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 	}
 	mw.accountSearchCancel()
 
+	err = mw.extractAccountDirectory(req)
+	if err != nil {
+		return err
+	}
+
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
 	index := len(mw.foundAccounts)
 	var account wallet.Keypair
@@ -130,5 +138,51 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 	}
 
 	mw.foundAccounts = append(mw.foundAccounts, newAcc)
+	return nil
+}
+
+func (mw *Middleware) extractAccountDirectory(req *pb.RpcUserDataImportRequest) error {
+	archive, err := zip.OpenReader(req.Path)
+	if err != nil {
+		return err
+	}
+	var accountName string
+	for _, file := range archive.File {
+		path := filepath.Join(mw.rootPath, file.Name)
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(path, file.Mode())
+			accountName = file.FileInfo().Name()
+			break
+		}
+	}
+	for _, file := range archive.File {
+		if file.FileInfo().Name() == accountName {
+			continue
+		}
+
+		n := file.FileHeader.Name
+		if strings.HasPrefix(n, accountName) {
+			path := filepath.Join(mw.rootPath, n)
+			if file.FileInfo().IsDir() {
+				os.MkdirAll(path, file.Mode())
+				continue
+			}
+			fileReader, err := file.Open()
+			if err != nil {
+				return err
+			}
+			defer fileReader.Close()
+
+			targetFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(file.Mode()))
+			if err != nil {
+				return err
+			}
+			defer targetFile.Close()
+
+			if _, err := io.Copy(targetFile, fileReader); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
