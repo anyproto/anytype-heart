@@ -104,9 +104,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 	a.Register(clientds.New()).
-		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
+		Register(relation.New()).
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(ipfslite.New()).

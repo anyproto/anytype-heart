@@ -1,6 +1,7 @@
 package relation
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -61,6 +62,7 @@ var errSubobjectAlreadyExists = fmt.Errorf("subobject already exists in the coll
 type bulkMigration struct {
 	cache     map[string]struct{}
 	s         subObjectCreator
+	skipIds   map[string]struct{}
 	relations []*types.Struct
 	options   []*types.Struct
 	types     []*types.Struct
@@ -71,8 +73,11 @@ func (b *bulkMigration) AddRelations(relations []*model.Relation) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, rel := range relations {
+		if rel == nil || rel.GetName() == "" {
+			continue
+		}
 		for _, opt := range rel.SelectDict {
-			if _, exists := b.cache["opt"+opt.Id]; exists {
+			if _, exists := b.cache[opt.Id]; exists {
 				continue
 			}
 			// hack for missing relation name on snippet
@@ -81,13 +86,13 @@ func (b *bulkMigration) AddRelations(relations []*model.Relation) {
 			}
 			opt.RelationKey = rel.Key
 			b.options = append(b.options, (&relationutils.Option{RelationOption: opt}).ToStruct())
-			b.cache["opt"+opt.Id] = struct{}{}
+			b.cache[opt.Id] = struct{}{}
 		}
-		if _, exists := b.cache["rel"+rel.Key]; exists {
+		if _, exists := b.cache[addr.RelationKeyToIdPrefix+rel.Key]; exists {
 			continue
 		}
 		b.relations = append(b.relations, (&relationutils.Relation{Relation: rel}).ToStruct())
-		b.cache["rel"+rel.Key] = struct{}{}
+		b.cache[addr.RelationKeyToIdPrefix+rel.Key] = struct{}{}
 	}
 }
 
@@ -95,11 +100,16 @@ func (b *bulkMigration) AddObjectTypes(objectTypes []*model.ObjectType) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, ot := range objectTypes {
-		if _, exists := b.cache["type"+ot.Url]; exists {
+		tk, err := bundle.TypeKeyFromUrl(ot.Url)
+		if err != nil {
+			log.Errorf("failed to parse type key %s: %v", ot.Url, err)
+			continue
+		}
+		if _, exists := b.cache[addr.ObjectTypeKeyToIdPrefix+tk.String()]; exists {
 			continue
 		}
 		b.types = append(b.types, (&relationutils.ObjectType{ObjectType: ot}).ToStruct())
-		b.cache["type"+ot.Url] = struct{}{}
+		b.cache[addr.ObjectTypeKeyToIdPrefix+tk.String()] = struct{}{}
 	}
 }
 
@@ -146,6 +156,7 @@ func (b *bulkMigration) Commit() error {
 type service struct {
 	objectStore     objectstore.ObjectStore
 	relationCreator subObjectCreator
+	existingIds     map[string]struct{}
 }
 
 func (s *service) MigrateRelations(relations []*model.Relation) error {
@@ -160,15 +171,35 @@ func (s *service) MigrateObjectTypes(types []*model.ObjectType) error {
 	return b.Commit()
 }
 
+func (s *service) preloadSubobjects() error {
+	s.existingIds = make(map[string]struct{})
+	ids, err := s.existingSubobjects()
+	if err != nil {
+		log.Errorf("failed to preload subobjects: %v", err)
+	}
+	for _, id := range ids {
+		s.existingIds[id] = struct{}{}
+	}
+	return nil
+}
+
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.relationCreator = a.MustComponent("objectCreator").(subObjectCreator)
-
 	return
 }
 
+func (s *service) Run(context.Context) error {
+	s.preloadSubobjects()
+	return nil
+}
+
 func (s *service) CreateBulkMigration() BulkMigration {
-	return &bulkMigration{cache: map[string]struct{}{}, s: s.relationCreator}
+	m := s.existingIds
+	if m == nil {
+		m = make(map[string]struct{})
+	}
+	return &bulkMigration{cache: m, s: s.relationCreator}
 }
 
 func (s *service) Name() (name string) {
@@ -253,6 +284,33 @@ func WithWorkspaceId(id string) FetchOption {
 	return func(options *fetchOptions) {
 		options.workspaceId = &id
 	}
+}
+
+func (s *service) existingSubobjects() (ids []string, err error) {
+	q := database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_In,
+				RelationKey: bundle.RelationKeyType.String(),
+				Value:       pbtypes.StringList([]string{bundle.TypeKeyRelation.URL(), bundle.TypeKeyRelationOption.URL(), bundle.TypeKeyObjectType.URL()}),
+			},
+		},
+	}
+	f, err := database.NewFilters(q, nil, s.objectStore, nil)
+	if err != nil {
+		return
+	}
+	records, err := s.objectStore.QueryRaw(query.Query{
+		Filters: []query.Filter{f},
+	})
+	if err != nil {
+		return nil, err
+	}
+	ids = make([]string, 0, len(records))
+	for _, record := range records {
+		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+	}
+	return
 }
 
 func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
@@ -427,5 +485,9 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 
 func (s *service) validateOptions(rel *relationutils.Relation, v []string) error {
 	// TODO:
+	return nil
+}
+
+func (s *service) Close() (err error) {
 	return nil
 }
