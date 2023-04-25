@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
@@ -320,11 +321,12 @@ func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[st
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch a := bl.(type) {
 		case relation.Block:
-			newTarget := oldIDtoNew[a.Model().GetRelation().GetKey()]
-			if newTarget == "" {
-				// maybe we should panic here?
-				log.With("object", st.RootId()).Errorf("cant find target id for relation: %s", a.Model().GetLink().TargetBlockId)
-				return true
+			var newTarget string
+			if newTarget = oldIDtoNew[a.Model().GetRelation().GetKey()]; newTarget == "" {
+				if newTarget = oldIDtoNew[addr.RelationKeyToIdPrefix+a.Model().GetRelation().GetKey()]; newTarget == "" {
+					log.With("object", st.RootId()).Errorf("cant find target id for relation: %s", a.Model().GetRelation().Key)
+					return true
+				}
 			}
 
 			a.Model().GetRelation().Key = newTarget
