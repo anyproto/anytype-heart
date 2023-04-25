@@ -15,12 +15,12 @@ type zipAclWriteStorage struct {
 }
 
 func NewAclWriteStorage(root *aclrecordproto.RawAclRecordWithId, zw *zip.Writer) (ls liststorage.ListStorage, err error) {
-	aclStorage := &zipAclWriteStorage{
+	ls = &zipAclWriteStorage{
 		id:   root.Id,
 		head: root.Id,
 		zw:   zw,
 	}
-	err = aclStorage.AddRawRecord(context.Background(), root)
+	err = ls.AddRawRecord(context.Background(), root)
 	return
 }
 
@@ -52,4 +52,8 @@ func (z *zipAclWriteStorage) AddRawRecord(ctx context.Context, rec *aclrecordpro
 	}
 	_, err = wr.Write(rec.Payload)
 	return
+}
+
+func (z *zipAclWriteStorage) FlushStorage() error {
+	return nil
 }

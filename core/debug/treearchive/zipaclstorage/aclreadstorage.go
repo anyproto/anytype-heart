@@ -23,7 +23,7 @@ func NewZipAclReadStorage(id string, zr *zip.ReadCloser) (ls liststorage.ListSto
 		files: map[string]*zip.File{},
 		zr:    zr,
 	}
-	for _, f := range zr.File {
+	for _, f := range zr.Reader.File {
 		if len(f.Name) > len(id) && strings.Contains(f.Name, id) {
 			split := strings.SplitAfter(id, "/")
 			last := split[len(split)-1]
