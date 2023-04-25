@@ -101,7 +101,7 @@ func (a *Anytype) FileOffload(hash string) (totalSize uint64, err error) {
 		}
 	}
 
-	return uint64(totalSize), nil
+	return totalSize, nil
 }
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {

@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -69,10 +70,11 @@ type ObjectsDeriver interface {
 }
 
 type Anytype struct {
-	files       *files.Service
-	objectStore objectstore.ObjectStore
-	fileStore   filestore.FileStore
-	deriver     ObjectsDeriver
+	files            *files.Service
+	objectStore      objectstore.ObjectStore
+	fileStore        filestore.FileStore
+	fileBlockStorage filestorage.FileStorage
+	deriver          ObjectsDeriver
 
 	predefinedBlockIds threads.DerivedSmartblockIds
 
@@ -103,6 +105,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.files = ap.MustComponent(files.CName).(*files.Service)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
 	a.deriver = ap.MustComponent(treegetter.CName).(ObjectsDeriver)
+	a.fileBlockStorage = app.MustComponent[filestorage.FileStorage](ap)
 	return
 }
 
