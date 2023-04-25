@@ -1,5 +1,5 @@
 // https://gist.github.com/jsmouret/2bc876e8def6c63410556350eca3e43d
-package pb
+package pbtypes
 
 import (
 	"fmt"

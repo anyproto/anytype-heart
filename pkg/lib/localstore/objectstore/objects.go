@@ -29,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -605,9 +604,9 @@ func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) 
 	if details.Details == nil || details.Details.Fields == nil {
 		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	} else {
-		pb.StructDeleteEmptyFields(details.Details)
+		pbtypes.StructDeleteEmptyFields(details.Details)
 	}
-	details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
+	details.Details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
 	return &details, nil
 }
 
@@ -753,7 +752,7 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
 				}
-				details.Fields[database.RecordIDField] = pb.ToValue(id)
+				details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
 				records = append(records, database.Record{Details: details})
 				continue
 			}
@@ -1369,7 +1368,7 @@ func (m *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before m
 // should be called under the mutex
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
-	detCopy.Fields[database.RecordIDField] = pb.ToValue(id)
+	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
 	if m.onChangeCallback != nil {
 		m.onChangeCallback(database.Record{
 			Details: detCopy,
@@ -1630,7 +1629,7 @@ func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
-		log.With("thread", id).Errorf("failed to extract smartblock type %s", id) //todo rq: surpess error?
+		log.With("thread", id).Errorf("failed to extract smartblock type %s", id) // todo rq: surpess error?
 		return nil, ErrNotAnObject
 	}
 	if sbt == smartblock.SmartBlockTypeArchive {

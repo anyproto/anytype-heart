@@ -1,4 +1,4 @@
-//go:generate mockgen -package testMock -destination anytype_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/core Service,SmartBlock,File,Image
+//go:generate mockgen -package testMock -destination anytype_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/core Service
 //go:generate mockgen -package testMock -destination objectstore_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore ObjectStore
 //go:generate mockgen -package testMock -destination history_mock.go github.com/anytypeio/go-anytype-middleware/core/block/undo History
 //go:generate mockgen -package testMock -destination sbt_provider_mock.go github.com/anytypeio/go-anytype-middleware/space/typeprovider SmartBlockTypeProvider

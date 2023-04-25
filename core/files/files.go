@@ -24,6 +24,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
@@ -34,9 +35,9 @@ import (
 	m "github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const (
@@ -47,6 +48,18 @@ var log = logging.Logger("anytype-files")
 var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
 
 var _ app.Component = (*Service)(nil)
+
+type IService interface {
+	FileAdd(ctx context.Context, options ...AddOption) (File, error)
+	FileByHash(ctx context.Context, hash string) (File, error)
+	FileGetKeys(hash string) (*FileKeys, error)
+	FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
+	FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error)
+	GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error)
+	ImageAdd(ctx context.Context, options ...AddOption) (Image, error)
+	ImageByHash(ctx context.Context, hash string) (Image, error)
+	StoreFileKeys(fileKeys ...FileKeys) error
+}
 
 type Service struct {
 	fileStore    filestore.FileStore
@@ -556,7 +569,7 @@ func (s *Service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		Media:    conf.Media,
 		Name:     conf.Name,
 		Added:    time.Now().Unix(),
-		Meta:     pb.ToStruct(res.Meta),
+		Meta:     pbtypes.ToStruct(res.Meta),
 		Size_:    int64(readerWithCounter.Count()),
 	}
 

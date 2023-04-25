@@ -13,7 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -58,7 +57,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		snapshot.Data.RelationLinks = relationutils.MigrateRelationModels(snapshot.Data.ExtraRelations)
 	}
 	// clear nil values
-	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
+	pbtypes.StructDeleteEmptyFields(snapshot.Data.Details)
 
 	removedCollectionKeysMap := make(map[string]struct{}, len(snapshot.Data.RemovedCollectionKeys))
 	for _, t := range snapshot.Data.RemovedCollectionKeys {

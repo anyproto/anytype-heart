@@ -1,11 +1,11 @@
 package filter
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	timeutil "github.com/anytypeio/go-anytype-middleware/util/time"
-	"time"
 )
 
 func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
@@ -24,29 +24,29 @@ func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc 
 			switch f.Condition {
 			case model.BlockContentDataviewFilter_Equal:
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-				f.Value = pb.ToValue(d1)
+				f.Value = pbtypes.ToValue(d1)
 
 				filters = append(filters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-					Value:       pb.ToValue(d2),
+					Value:       pbtypes.ToValue(d2),
 				})
 			case model.BlockContentDataviewFilter_Less:
-				f.Value = pb.ToValue(d1)
+				f.Value = pbtypes.ToValue(d1)
 			case model.BlockContentDataviewFilter_Greater:
-				f.Value = pb.ToValue(d2)
+				f.Value = pbtypes.ToValue(d2)
 			case model.BlockContentDataviewFilter_LessOrEqual:
-				f.Value = pb.ToValue(d2)
+				f.Value = pbtypes.ToValue(d2)
 			case model.BlockContentDataviewFilter_GreaterOrEqual:
-				f.Value = pb.ToValue(d1)
+				f.Value = pbtypes.ToValue(d1)
 			case model.BlockContentDataviewFilter_In:
 				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-				f.Value = pb.ToValue(d1)
+				f.Value = pbtypes.ToValue(d1)
 
 				filters = append(filters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-					Value:       pb.ToValue(d2),
+					Value:       pbtypes.ToValue(d2),
 				})
 			}
 		}
