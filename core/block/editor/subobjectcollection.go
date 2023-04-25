@@ -189,17 +189,26 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 	st := c.NewState()
 	for _, ch := range info.Changes {
 		if keySet := ch.GetStoreKeySet(); keySet != nil {
-			if len(keySet.Path) >= 2 {
-				if coll, ok := c.collections[keySet.Path[0]]; ok {
-					if opt, ok := coll[keySet.Path[1]]; ok {
-						if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetCollection(keySet.Path[0]), keySet.Path[1])); e != nil {
-							log.With("threadId", c.Id()).Errorf("options: can't set struct %s-%s: %v", keySet.Path[0], keySet.Path[1], e)
-						}
-					} else {
-						if err = c.initSubObject(st, keySet.Path[0], keySet.Path[1], false); err != nil {
-							return
-						}
-					}
+			if len(keySet.Path) < 2 {
+				continue
+			}
+			var (
+				collName = keySet.Path[0]
+				subId    = keySet.Path[1]
+			)
+			coll, exists := c.collections[collName]
+			if !exists {
+				coll = map[string]SubObjectImpl{}
+				c.collections[collName] = coll
+			}
+			if opt, ok := coll[subId]; ok {
+				if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetCollection(collName), subId)); e != nil {
+					log.With("treeId", c.Id()).
+						Errorf("options: can't set struct %s-%s: %v", collName, subId, e)
+				}
+			} else {
+				if err = c.initSubObject(st, collName, subId, false); err != nil {
+					return
 				}
 			}
 		} else if keyUnset := ch.GetStoreKeyUnset(); keyUnset != nil {

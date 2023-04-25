@@ -211,10 +211,12 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeStoreKeySet(ch.GetStoreKeySet()); err != nil {
 			return
 		}
+		s.changes = append(s.changes, ch)
 	case ch.GetStoreKeyUnset() != nil:
 		if err = s.changeStoreKeyUnset(ch.GetStoreKeyUnset()); err != nil {
 			return
 		}
+		s.changes = append(s.changes, ch)
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
