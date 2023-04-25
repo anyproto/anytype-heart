@@ -460,6 +460,9 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 	var objTypeIds, relTypeKeys []string
 
 	for _, source := range sources {
+		if source == "" {
+			return nil, fmt.Errorf("source could not be empty")
+		}
 		sbt, err := s.sbtProvider.Type(source)
 		if err != nil {
 			return nil, err
@@ -474,7 +477,7 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 			}
 			relKey, err := pbtypes.RelationIdToKey(source)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get relation key from id %s: %s", relKey, err.Error())
+				return nil, fmt.Errorf("failed to get relation key from id %s: %s", source, err.Error())
 			}
 			relTypeKeys = append(relTypeKeys, relKey)
 		}
