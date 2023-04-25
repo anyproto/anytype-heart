@@ -37,24 +37,43 @@ func (i InterfacesAddrs) Equal(other InterfacesAddrs) bool {
 	return slices.Equal(myStr, otherStr)
 }
 
-var re = regexp.MustCompile(`^(.*?)([0-9]*)$`)
+var (
+	ifaceRe = regexp.MustCompile(`^([a-z]*?)([0-9]+)$`)
+	// ifaceReBusSlot used for prefixBusSlot naming schema used in newer linux distros https://cgit.freedesktop.org/systemd/systemd/tree/src/udev/udev-builtin-net_id.c#n20
+	ifaceReBusSlot = regexp.MustCompile(`^([a-z]*?)p([0-9]+)s([0-9a-f]+)$`)
+)
 
-func (i InterfacesAddrs) SortWithPriority(priority []string) {
-	f := func(ifName string) (prefix string, num int) {
-		res := re.FindStringSubmatch(ifName)
-
+func parseInterfaceName(name string) (prefix string, bus int, num int64) {
+	// try new-style naming schema first (enp0s3, wlp2s0, ...)
+	res := ifaceReBusSlot.FindStringSubmatch(name)
+	if len(res) > 0 {
 		if len(res) > 1 {
 			prefix = res[1]
 		}
 		if len(res) > 2 {
-			num, _ = strconv.Atoi(res[2])
+			bus, _ = strconv.Atoi(res[2])
+		}
+		if len(res) > 3 {
+			numHex := res[3]
+			num, _ = strconv.ParseInt(numHex, 16, 32)
 		}
 		return
 	}
+	// try old-style naming schema (eth0, wlan0, ...)
+	res = ifaceRe.FindStringSubmatch(name)
+	if len(res) > 1 {
+		prefix = res[1]
+	}
+	if len(res) > 2 {
+		num, _ = strconv.ParseInt(res[2], 10, 32)
+	}
+	return
+}
 
+func (i InterfacesAddrs) SortWithPriority(priority []string) {
 	slices.SortFunc(i.Interfaces, func(a, b net.Interface) bool {
-		aPrefix, aNum := f(a.Name)
-		bPrefix, bNum := f(b.Name)
+		aPrefix, aBus, aNum := parseInterfaceName(a.Name)
+		bPrefix, bBus, bNum := parseInterfaceName(b.Name)
 
 		aPrioirity := slice.FindPos(priority, aPrefix)
 		bPrioirity := slice.FindPos(priority, bPrefix)
@@ -71,6 +90,9 @@ func (i InterfacesAddrs) SortWithPriority(priority []string) {
 				return aPrioirity < bPrioirity
 			}
 			// prioritise wlan1 over eth8
+			if aBus != bBus {
+				return aBus < bBus
+			}
 			return aNum < bNum
 		} else if aPrioirity != -1 {
 			return true
