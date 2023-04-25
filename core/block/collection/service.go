@@ -5,28 +5,58 @@ import (
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-type Service struct {
-	picker block.Picker
+var log = logging.Logger("collection-service")
 
+type Service struct {
 	lock        *sync.RWMutex
 	collections map[string]map[string]chan []string
+
+	picker        block.Picker
+	objectStore   objectstore.ObjectStore
+	objectCreator ObjectCreator
+	objectDeleter ObjectDeleter
 }
 
-func New(picker block.Picker) *Service {
+type ObjectCreator interface {
+	CreateObject(req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+}
+
+type ObjectDeleter interface {
+	DeleteObject(id string) (err error)
+}
+
+func New(
+	picker block.Picker,
+	store objectstore.ObjectStore,
+	objectCreator ObjectCreator,
+	objectDeleter ObjectDeleter,
+) *Service {
 	return &Service{
-		picker:      picker,
-		lock:        &sync.RWMutex{},
-		collections: map[string]map[string]chan []string{},
+		picker:        picker,
+		objectStore:   store,
+		objectCreator: objectCreator,
+		objectDeleter: objectDeleter,
+		lock:          &sync.RWMutex{},
+		collections:   map[string]map[string]chan []string{},
 	}
 }
 
@@ -169,4 +199,106 @@ func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID 
 	ch := col[subscriptionID]
 	close(ch)
 	delete(col, subscriptionID)
+}
+
+func (s *Service) ObjectToCollection(id string) (string, error) {
+	var (
+		details      *types.Struct
+		dvBlock      *model.Block
+		typesFromSet []string
+	)
+	if err := block.Do(s.picker, id, func(sb smartblock.SmartBlock) error {
+		details = pbtypes.CopyStruct(sb.Details())
+
+		st := sb.NewState()
+		if layout, ok := st.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := st.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
+			}
+		}
+
+		b := st.Pick(template.DataviewBlockId)
+		if b != nil {
+			typesFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+			delete(details.Fields, bundle.RelationKeySetOf.String())
+			dvBlock = b.Model()
+		}
+		return nil
+	}); err != nil {
+		return "", err
+	}
+	// cleanup details
+	delete(details.Fields, bundle.RelationKeyFeaturedRelations.String())
+	delete(details.Fields, bundle.RelationKeyLayout.String())
+	delete(details.Fields, bundle.RelationKeyType.String())
+
+	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateRequest{
+		Details: details,
+	}, bundle.TypeKeyCollection)
+	if err != nil {
+		return "", err
+	}
+
+	if dvBlock != nil {
+
+		err = block.DoState(s.picker, newID, func(st *state.State, sb smartblock.SmartBlock) error {
+			dvBlock.Id = template.DataviewBlockId
+			b := simple.New(dvBlock)
+			st.Set(b)
+
+			typeFilter := &model.BlockContentDataviewFilter{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(typesFromSet),
+			}
+
+			uniqIDs := map[string]struct{}{}
+			for _, v := range dvBlock.GetDataview().Views {
+				recs, _, err := s.objectStore.Query(nil, database.Query{
+					Filters: append(v.Filters, typeFilter),
+				})
+				if err != nil {
+					return fmt.Errorf("can't get records for collection: %w", err)
+				}
+				for _, r := range recs {
+					id := pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
+					uniqIDs[id] = struct{}{}
+				}
+			}
+
+			ids := make([]string, 0, len(uniqIDs))
+			for id := range uniqIDs {
+				ids = append(ids, id)
+			}
+			st.StoreSlice(storeKey, ids)
+			return nil
+		})
+		if err != nil {
+			return newID, fmt.Errorf("can't update dataview block: %w", err)
+		}
+	}
+
+	res, err := s.objectStore.GetWithLinksInfoByID(id)
+	if err != nil {
+		return "", err
+	}
+	for _, il := range res.Links.Inbound {
+		err = block.Do(s.picker, il.Id, func(b basic.CommonOperations) error {
+			return b.ReplaceLink(id, newID)
+		})
+		if err != nil {
+			return "", fmt.Errorf("replace link in %s: %w", il.Id, err)
+		}
+	}
+	err = s.objectDeleter.DeleteObject(id)
+	if err != nil {
+		// intentionally do not return error here
+		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
+	}
+
+	return newID, nil
 }

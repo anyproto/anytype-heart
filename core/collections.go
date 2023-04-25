@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -86,8 +85,8 @@ func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObject
 		setId string
 		err   error
 	)
-	err = mw.doBlockService(func(bs *block.Service) error {
-		if setId, err = bs.ObjectToCollection(req.ContextId); err != nil {
+	err = mw.doCollectionService(func(cs *collection.Service) (err error) {
+		if setId, err = cs.ObjectToCollection(req.ContextId); err != nil {
 			return err
 		}
 		return nil

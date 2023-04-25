@@ -122,8 +122,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
+	objectStore := objectstore.New()
+	objectCreator := object.NewCreator()
 	blockService := block.New()
-	collectionService := collection.New(blockService)
+	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
@@ -145,7 +147,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(typeprovider.New()).
 		Register(relation.New()).
 		Register(ftsearch.New()).
-		Register(objectstore.New()).
+		Register(objectStore).
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
@@ -175,7 +177,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(session.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
-		Register(object.NewCreator()).
+		Register(objectCreator).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory())
 

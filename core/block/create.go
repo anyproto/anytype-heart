@@ -9,14 +9,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -185,107 +182,6 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	}, bundle.TypeKeySet)
 	if err != nil {
 		return "", err
-	}
-
-	res, err := s.objectStore.GetWithLinksInfoByID(id)
-	if err != nil {
-		return "", err
-	}
-	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, newID); err != nil {
-			return "", err
-		}
-	}
-	err = s.DeleteObject(id)
-	if err != nil {
-		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
-	}
-
-	return newID, nil
-}
-
-// TODO Move to Collection service
-func (s *Service) ObjectToCollection(id string) (string, error) {
-	var (
-		details      *types.Struct
-		dvBlock      *model.Block
-		typesFromSet []string
-	)
-	if err := s.Do(id, func(sb smartblock.SmartBlock) error {
-		details = pbtypes.CopyStruct(sb.Details())
-
-		st := sb.NewState()
-		if layout, ok := st.Layout(); ok && layout == model.ObjectType_note {
-			textBlock, err := st.GetFirstTextBlock()
-			if err != nil {
-				return err
-			}
-			if textBlock != nil {
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
-			}
-		}
-
-		b := st.Pick(template.DataviewBlockId)
-		if b != nil {
-			typesFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
-			delete(details.Fields, bundle.RelationKeySetOf.String())
-			dvBlock = b.Model()
-		}
-		return nil
-	}); err != nil {
-		return "", err
-	}
-	// cleanup details
-	delete(details.Fields, bundle.RelationKeyFeaturedRelations.String())
-	delete(details.Fields, bundle.RelationKeyLayout.String())
-	delete(details.Fields, bundle.RelationKeyType.String())
-
-	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateRequest{
-		Details: details,
-	}, bundle.TypeKeyCollection)
-	if err != nil {
-		return "", err
-	}
-
-	if dvBlock != nil {
-
-		err = DoState(s, newID, func(st *state.State, sb smartblock.SmartBlock) error {
-			dvBlock.Id = template.DataviewBlockId
-			b := simple.New(dvBlock)
-			st.Set(b)
-
-			typeFilter := &model.BlockContentDataviewFilter{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(typesFromSet),
-			}
-
-			uniqIDs := map[string]struct{}{}
-			for _, v := range dvBlock.GetDataview().Views {
-				recs, _, err := s.objectStore.Query(nil, database.Query{
-					Filters: append(v.Filters, typeFilter),
-				})
-				if err != nil {
-					return fmt.Errorf("can't get records for collection: %w", err)
-				}
-				for _, r := range recs {
-					id := pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
-					uniqIDs[id] = struct{}{}
-				}
-			}
-
-			ids := make([]string, 0, len(uniqIDs))
-			for id := range uniqIDs {
-				ids = append(ids, id)
-			}
-			// TODO Use constant
-			st.StoreSlice("objects", ids)
-			return nil
-		})
-		if err != nil {
-			return newID, fmt.Errorf("can't update dataview block: %w", err)
-		}
 	}
 
 	res, err := s.objectStore.GetWithLinksInfoByID(id)
