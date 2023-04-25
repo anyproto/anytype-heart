@@ -207,16 +207,6 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 	return
 }
 
-func (s *spaceStorage) SetSpaceDeleted() error {
-	// todo: not implemented
-	return nil
-}
-
-func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
-	// todo: not implemented
-	return false, nil
-}
-
 func (s *spaceStorage) Close() (err error) {
 	return nil
 }
