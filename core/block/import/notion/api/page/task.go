@@ -114,7 +114,9 @@ func (pt *Task) prepareDetails(p Page) map[string]*types.Value {
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 	createdTime := converter.ConvertStringToTime(p.CreatedTime)
-	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(createdTime))
+	lastEditedTime := converter.ConvertStringToTime(p.LastEditedTime)
+	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastEditedTime))
+	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(createdTime))
 	return details
 }
 
