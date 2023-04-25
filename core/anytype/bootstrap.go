@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
@@ -148,7 +147,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
-		Register(clientdebugrpc.New()).
+		//Register(clientdebugrpc.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).

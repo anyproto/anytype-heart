@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
+	"math/rand"
 	"sync"
 	"time"
 
