@@ -2,6 +2,10 @@ package importer
 
 import (
 	"context"
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -13,8 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"strings"
 )
 
 type CreateSubObjectRequest struct {
@@ -57,6 +59,13 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 		return ou.getSubObjectID(sn, sbType)
 	}
 
+	if sbType == sb.SmartBlockTypeWorkspace {
+		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(sn.Id)
+		if wErr == nil {
+			return workspaceID, true, nil
+		}
+	}
+
 	if getExisting {
 		id, exist := ou.getExisting(sn)
 		if id != "" {
@@ -64,12 +73,6 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 		}
 	}
 
-	if sbType == sb.SmartBlockTypeWorkspace {
-		workspaceID, err := ou.core.GetWorkspaceIdForObject(sn.Id)
-		if err == nil {
-			return workspaceID, true, nil
-		}
-	}
 	cctx := context.Background()
 
 	sb, release, err := ou.service.CreateTreeObject(cctx, sbType, func(id string) *smartblock.InitContext {

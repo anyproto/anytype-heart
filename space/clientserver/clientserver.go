@@ -84,9 +84,9 @@ func (s *drpcServer) Run(ctx context.Context) (err error) {
 			return handler
 		},
 		Handshake: func(conn gonet.Conn) (cCtx context.Context, sc sec.SecureConn, err error) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			defer cancel()
-			return s.transport.SecureInbound(ctx, conn)
+			return s.transport.SecureInbound(ctxWithTimeout, conn)
 		},
 	}
 	// TODO: the logic must be written so that server wouldn't be mandatory for client to work
