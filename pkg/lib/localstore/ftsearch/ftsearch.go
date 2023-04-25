@@ -11,6 +11,7 @@ import (
 	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search/query"
+	"github.com/samber/lo"
 
 	"github.com/anytypeio/any-sync/app"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch/analyzers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 const (
@@ -230,7 +230,10 @@ func getStandardMapping() *mapping.FieldMapping {
 }
 
 func getAllWordsFromQueryConsequently(terms []string, field string) query.Query {
-	terms = slice.Map(terms, func(item string) string { return strings.ReplaceAll(item, "*", `\*`) })
+	terms = lo.Map(
+		terms,
+		func(item string, index int) string { return strings.ReplaceAll(item, "*", `\*`) },
+	)
 	qry := strings.Join(terms, ".*")
 	regexpQuery := bleve.NewRegexpQuery(".*" + qry + ".*")
 	regexpQuery.SetField(field)

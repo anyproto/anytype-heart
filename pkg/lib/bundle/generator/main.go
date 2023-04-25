@@ -9,11 +9,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/strutil"
 
 	. "github.com/dave/jennifer/jen"
@@ -77,7 +77,7 @@ func main() {
 		internalRelationsName,
 		writeInternalRelations,
 		addInternalRelationsComment,
-		returnKeys(),
+		returnKeys,
 	)
 	exitOnError(err)
 
@@ -90,13 +90,13 @@ func main() {
 	exitOnError(err)
 }
 
-func returnKeys() func(keys []bundle.RelationKey) []bundle.RelationKey {
-	return func(keys []bundle.RelationKey) []bundle.RelationKey { return keys }
+func returnKeys(keys []bundle.RelationKey) []bundle.RelationKey {
+	return keys
 }
 
 func excludeInternalRelations(allSystemKeys []bundle.RelationKey) []bundle.RelationKey {
 	var sourceName = pkgPrefix + internalRelationsName + jsonExt
-	internalRelationKeys, _, err := readRelations(sourceName, returnKeys())
+	internalRelationKeys, _, err := readRelations(sourceName, returnKeys)
 	exitOnError(err)
 
 	assertRelationsIncluded(
@@ -104,7 +104,7 @@ func excludeInternalRelations(allSystemKeys []bundle.RelationKey) []bundle.Relat
 		allSystemKeys,
 	)
 
-	return slice.Subtract(allSystemKeys, internalRelationKeys)
+	return lo.Without(allSystemKeys, internalRelationKeys...)
 }
 
 func exitOnError(err error) {
@@ -421,12 +421,16 @@ func assertRelationsIncluded(
 ) {
 
 	err := validateRelationsIncluded(
-		slice.Map(whatIncluded, bundle.RelationKey.String),
-		slice.Map(whereIncluded, bundle.RelationKey.String),
+		lo.Map(whatIncluded, relationToString()),
+		lo.Map(whereIncluded, relationToString()),
 	)
 	if err != nil {
 		exitOnError(fmt.Errorf(relationAssertionError))
 	}
+}
+
+func relationToString() func(item bundle.RelationKey, index int) string {
+	return func(item bundle.RelationKey, index int) string { return item.String() }
 }
 
 func addHeader(genFile *File, name string, sourceName string, checkSum [32]byte, comment func(genFile *File)) {
@@ -513,11 +517,9 @@ func readAllRelationKeys() ([]bundle.RelationKey, error) {
 	if err != nil {
 		return []bundle.RelationKey{}, err
 	}
-	var allRelationsKeys = slice.Map(
+	var allRelationsKeys = lo.Map(
 		allRelations,
-		func(t Relation) bundle.RelationKey {
-			return bundle.RelationKey(t.Key)
-		},
+		func(item Relation, index int) bundle.RelationKey { return bundle.RelationKey(item.Key) },
 	)
 	return allRelationsKeys, nil
 }
