@@ -55,8 +55,8 @@ github.com/andybalholm/cascadia v1.3.1 h1:nhxRkql1kdYCc8Snf7D5/D3spOX+dBgjA6u8x0
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/anytypeio/any-sync v0.0.32 h1:8EuLnQ09tPYF8rbJOldFZY+wnNONunXhamuHDkQKbKQ=
-github.com/anytypeio/any-sync v0.0.32/go.mod h1:kQTr9fuCRVhZImnilnM1EWjuFIgwahN4tnEJvuDi4qM=
+github.com/anytypeio/any-sync v0.0.33 h1:7Pe4f5QcfO+R4lwRnLWNH5QBBk/Tr4h/qnK6DvLepIQ=
+github.com/anytypeio/any-sync v0.0.33/go.mod h1:83bo8nROh8ksggZBRirGNBpqiwCIAp7Nt9jLEATiD6I=
 github.com/anytypeio/go-chash v0.1.0 h1:nYCMh13SEai/7cXRUoKfU27uASj7XEF6NhvY6hFMKY8=
 github.com/anytypeio/go-chash v0.1.0/go.mod h1:Q7XiggkMrThRFAwYSItzLOT9OPC8a497SLZtgmJtC/I=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
@@ -529,8 +529,8 @@ github.com/ipfs/go-block-format v0.1.2 h1:GAjkfhVx1f4YTODS6Esrj1wt2HhrtwTnhEr+Dy
 github.com/ipfs/go-block-format v0.1.2/go.mod h1:mACVcrxarQKstUU3Yf/RdwbC4DzPV6++rO2a3d+a/KE=
 github.com/ipfs/go-blockservice v0.1.0/go.mod h1:hzmMScl1kXHg3M2BjTymbVPjv627N7sYcvYaKbop39M=
 github.com/ipfs/go-blockservice v0.2.1/go.mod h1:k6SiwmgyYgs4M/qt+ww6amPeUH9EISLRBnvUurKJhi8=
-github.com/ipfs/go-blockservice v0.5.0 h1:B2mwhhhVQl2ntW2EIpaWPwSCxSuqr5fFA93Ms4bYLEY=
-github.com/ipfs/go-blockservice v0.5.0/go.mod h1:W6brZ5k20AehbmERplmERn8o2Ni3ZZubvAxaIUeaT6w=
+github.com/ipfs/go-blockservice v0.5.1 h1:9pAtkyKAz/skdHTh0kH8VulzWp+qmSDD0aI17TYP/s0=
+github.com/ipfs/go-blockservice v0.5.1/go.mod h1:VpMblFEqG67A/H2sHKAemeH9vlURVavlysbdUI632yk=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.3/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=

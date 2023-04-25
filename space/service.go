@@ -97,7 +97,7 @@ func (s *service) Init(a *app.App) (err error) {
 		SendQueueWorkers: 10,
 		SendQueueSize:    300,
 		DialQueueWorkers: 4,
-		DialQueueSize:    100,
+		DialQueueSize:    300,
 	})
 	s.spaceCache = ocache.New(
 		s.loadSpace,
