@@ -84,8 +84,5 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
-	if s.db != nil {
-		return s.db.Close()
-	}
 	return
 }
