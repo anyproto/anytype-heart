@@ -6,7 +6,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -21,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -48,6 +48,9 @@ const CName = "builtinobjects"
 //go:embed data/bundled_objects.zip
 var objectsZip []byte
 
+//go:embed data/migration_dashboard.zip
+var migrationDashboardZip []byte
+
 var log = logging.Logger("anytype-mw-builtinobjects")
 
 const (
@@ -63,6 +66,8 @@ const (
 
 type BuiltinObjects interface {
 	app.ComponentRunnable
+
+	InjectMigrationDashboard() error
 }
 
 type builtinObjects struct {
@@ -119,6 +124,42 @@ func (b *builtinObjects) Run(context.Context) (err error) {
 	}
 
 	return
+}
+
+func (b *builtinObjects) InjectMigrationDashboard() (err error) {
+	zr, err := zip.NewReader(bytes.NewReader(migrationDashboardZip), int64(len(migrationDashboardZip)))
+	if err != nil {
+		return
+	}
+	if len(zr.File) != 1 {
+		return fmt.Errorf("one file expected in migration_dashboard.zip. Found %d instead", len(zr.File))
+	}
+	ctx := context.Background()
+	obj, err := b.service.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *sb.InitContext {
+		return &sb.InitContext{
+			IsNewObject: true,
+			Ctx:         ctx,
+		}
+	})
+	if err != nil {
+		return
+	}
+
+	zf := zr.File[0]
+	id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
+	newId := obj.Id()
+	b.idsMap[id] = newId
+
+	b.handleSpaceDashboard(obj.Id())
+
+	rd, err := zf.Open()
+	if err != nil {
+		return
+	}
+	if err = b.createObject(rd); err != nil {
+		return
+	}
+	return nil
 }
 
 func (b *builtinObjects) inject(ctx context.Context) (err error) {
@@ -183,7 +224,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		if e != nil {
 			return e
 		}
-		if err = b.createObject(ctx, rd); err != nil {
+		if err = b.createObject(rd); err != nil {
 			return
 		}
 	}
@@ -249,7 +290,7 @@ func (b *builtinObjects) getFirstWidgetBlockId() (string, error) {
 	return w.Blocks()[1].Id, nil
 }
 
-func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (err error) {
+func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 	defer rd.Close()
 	data, err := ioutil.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"io"
 	"io/ioutil"
 	"net"
@@ -746,6 +747,10 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 	err = mw.setDetails(profile, req.Icon, err)
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+	}
+
+	if err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(); err != nil {
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT, err
 	}
 
 	return address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
