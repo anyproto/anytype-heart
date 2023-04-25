@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/any-sync/app"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -30,7 +29,6 @@ type Service interface {
 }
 
 type service struct {
-	anytype     core.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
 	store       objectstore.ObjectStore
 }
@@ -42,9 +40,7 @@ func New(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-
 	return
 }
 

@@ -93,7 +93,7 @@ func (dr DataviewRestrictions) Equal(dr2 DataviewRestrictions) bool {
 func (s *service) getDataviewRestrictions(rh RestrictionHolder) DataviewRestrictions {
 	layout, hasLayout := rh.Layout()
 	if hasLayout && layout == model.ObjectType_objectType {
-
+		return s.getDataviewRestrictionsForObjectType(rh.Id())
 	}
 
 	if dr, ok := dataviewRestrictionsByPb[rh.Type()]; ok {
