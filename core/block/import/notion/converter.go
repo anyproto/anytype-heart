@@ -80,7 +80,13 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	n.dbService.AddPagesToCollections(dbSnapshots, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
 
-	n.dbService.AddObjectsToNotionCollection(dbSnapshots, pgSnapshots)
+	err = n.dbService.AddObjectsToNotionCollection(dbSnapshots, pgSnapshots)
+	if err != nil {
+		ce.Add("", err)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, ce
+		}
+	}
 
 	n.dbService.MapProperties(dbSnapshots, pgSnapshots.Relations, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
 

@@ -52,7 +52,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetProgressMessage("Start creating snapshots from files")
 	progress.SetTotal(int64(len(pbFiles) * 2))
 
-	var targetObject []string
+	targetObject := make([]string, 0, len(path))
 	for name, file := range pbFiles {
 		if err := progress.TryStep(1); err != nil {
 			ce := converter.NewFromError(name, err)

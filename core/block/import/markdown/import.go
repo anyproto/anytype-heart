@@ -603,7 +603,7 @@ func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string
 }
 
 func (m *Markdown) getObjectIDs(snapshots []*converter.Snapshot) []string {
-	var targetObject []string
+	targetObject := make([]string, 0, len(snapshots))
 	for _, snapshot := range snapshots {
 		targetObject = append(targetObject, snapshot.Id)
 	}

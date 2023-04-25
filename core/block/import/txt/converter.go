@@ -1,12 +1,12 @@
 package txt
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"os"
 	"path/filepath"
 
 	"github.com/google/uuid"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -52,7 +52,7 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetProgressMessage("Start creating snapshots from files")
 	snapshots := make([]*converter.Snapshot, 0)
 	cErr := converter.NewError()
-	var targetObject []string
+	targetObject := make([]string, 0, len(path))
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
 			cancelError := converter.NewFromError(p, err)

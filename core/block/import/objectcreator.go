@@ -3,7 +3,6 @@ package importer
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -27,6 +26,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type objectCreator interface {
