@@ -1015,7 +1015,12 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 		}
 		for k, after := range act.Details.After.Fields {
 			rel := relations.Get(k)
-			if rel != nil && (rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) {
+			if rel != nil && (rel.Format == model.RelationFormat_status ||
+				rel.Format == model.RelationFormat_tag ||
+				rel.Format == model.RelationFormat_object ||
+				rel.Format == model.RelationFormat_file ||
+				isCoverId(rel)) {
+
 				before := act.Details.Before.Fields[k]
 				// Check that value is actually changed
 				if before == nil || !before.Equal(after) {
@@ -1044,6 +1049,13 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 		}
 	}
 	return false
+}
+
+// We need to provide the author's name if we download an image with unsplash
+// for the cover image inside an inner smartblock
+// CoverId can be either a file, a gradient, an icon, or a color
+func isCoverId(rel *model.RelationLink) bool {
+	return rel.Key == bundle.RelationKeyCoverId.String()
 }
 
 func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Action) (hashes []string) {
