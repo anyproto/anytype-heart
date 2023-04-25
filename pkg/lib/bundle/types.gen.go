@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "1b8f1280163fb5fdf510ee37a4dbea8a70a207e7b57b31ccb902c75eb2a66103"
+const TypeChecksum = "35e457c4f843b6e1b26f6d2bd362c2606ce554528174db47d15b82e5652dbcf3"
 
 type TypeKey string
 
@@ -150,8 +150,8 @@ var (
 		},
 		TypeKeyCollection: {
 
-			Description:   "Arbitrary collection of objects",
-			IconEmoji:     "🗄",
+			Description:   "Collect objects in one place, use different views to organize them",
+			IconEmoji:     "🗂️",
 			Layout:        model.ObjectType_collection,
 			Name:          "Collection",
 			Readonly:      true,
@@ -261,7 +261,7 @@ var (
 		TypeKeyFile: {
 
 			Description:   "Auto-generated object from files added to Anytype. Computer resource for recording data in a computer storage device",
-			IconEmoji:     "🗂️",
+			IconEmoji:     "📎",
 			Layout:        model.ObjectType_file,
 			Name:          "File",
 			Readonly:      true,
@@ -448,8 +448,8 @@ var (
 		},
 		TypeKeySet: {
 
-			Description:   "Collection of objects with equal types and relations. Database experience based on all objects in Anytype",
-			IconEmoji:     "🗂️",
+			Description:   "Query all objects in your space based on types and relations",
+			IconEmoji:     "🔎",
 			Layout:        model.ObjectType_set,
 			Name:          "Set",
 			Readonly:      true,

@@ -462,14 +462,14 @@
     "types": [
       "Set"
     ],
-    "emoji": "🗂️",
+    "emoji": "🔎",
     "hidden": false,
     "layout": "set",
     "relations": [
       "tag",
       "setOf"
     ],
-    "description": "Collection of objects with equal types and relations. Database experience based on all objects in Anytype"
+    "description": "Query all objects in your space based on types and relations"
   },
   {
     "id": "collection",
@@ -477,13 +477,13 @@
     "types": [
       "Collection"
     ],
-    "emoji": "🗄",
+    "emoji": "🗂️",
     "hidden": false,
     "layout": "collection",
     "relations": [
       "tag"
     ],
-    "description": "Arbitrary collection of objects"
+    "description": "Collect objects in one place, use different views to organize them"
   },
   {
     "id": "classNote",
@@ -702,7 +702,7 @@
     "types": [
       "File"
     ],
-    "emoji": "🗂️",
+    "emoji": "📎",
     "hidden": false,
     "layout": "file",
     "relations": [
