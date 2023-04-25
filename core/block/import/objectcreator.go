@@ -233,19 +233,41 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 }
 
 func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, oldIDtoNew map[string]string) {
+	// hand-pick relation because space is a special case
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
+	var details []*pb.RpcObjectSetDetailsDetail
 	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
-		st.SetDetail(bundle.RelationKeySpaceDashboardId.String(), pbtypes.String(id))
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeySpaceDashboardId.String(),
+			Value: pbtypes.String(id),
+		})
 	}
-	d := oc.getDetails(st.CombinedDetails())
-	e := block.Do(oc.service, oc.core.PredefinedBlocks().Account, func(ws basic.CommonOperations) error {
-		if err := ws.SetDetails(nil, d, false); err != nil {
-			return err
+
+	spaceName := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String())
+	if spaceName != "" {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyName.String(),
+			Value: pbtypes.String(spaceName),
+		})
+	}
+
+	iconOption := pbtypes.GetInt64(st.CombinedDetails(), bundle.RelationKeyIconOption.String())
+	if iconOption != 0 {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyIconOption.String(),
+			Value: pbtypes.Int64(iconOption),
+		})
+	}
+	if len(details) > 0 {
+		err := block.Do(oc.service, oc.core.PredefinedBlocks().Account, func(ws basic.CommonOperations) error {
+			if err := ws.SetDetails(nil, details, false); err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			log.Errorf("failed to set spaceDashBoardID, %s", err.Error())
 		}
-		return nil
-	})
-	if e != nil {
-		log.Errorf("failed to set spaceDashBoardID, %s", e)
 	}
 }
 
