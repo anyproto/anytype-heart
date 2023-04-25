@@ -56,7 +56,7 @@ jobs:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
         run: |
-          echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
+          GIT_SUMMARY=$(git describe --tags --always)
           echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anytypeio/go-anytype-middleware/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
@@ -244,7 +244,7 @@ jobs:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
         run: |
-          echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
+          GIT_SUMMARY=$(git describe --tags --always)
           echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
           echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anytypeio/go-anytype-middleware/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
