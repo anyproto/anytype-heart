@@ -232,7 +232,7 @@ func (i *Import) createObjects(ctx *session.Context,
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(oldIDToNew, progress, ctx)
+	do := NewDataObject(oldIDToNew, ctx)
 	pool := workerpool.NewPool(numWorkers)
 	go i.addWork(res, existedObject, pool)
 	go pool.Start(do)

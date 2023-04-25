@@ -2,6 +2,7 @@ package page
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/property"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -18,15 +18,14 @@ import (
 )
 
 type DataObject struct {
-	apiKey   string
-	mode     pb.RpcObjectImportRequestMode
-	request  *block.MapRequest
-	progress *process.Progress
-	ctx      context.Context
+	apiKey  string
+	mode    pb.RpcObjectImportRequestMode
+	request *block.MapRequest
+	ctx     context.Context
 }
 
-func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, request *block.MapRequest, progress *process.Progress) *DataObject {
-	return &DataObject{apiKey: apiKey, mode: mode, request: request, progress: progress, ctx: ctx}
+func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, request *block.MapRequest) *DataObject {
+	return &DataObject{apiKey: apiKey, mode: mode, request: request, ctx: ctx}
 }
 
 type Result struct {
@@ -69,17 +68,10 @@ func (pt *Task) transformPages(ctx context.Context,
 	p Page,
 	mode pb.RpcObjectImportRequestMode,
 	request *block.MapRequest) (*model.SmartBlockSnapshotBase, []*converter.Relation, converter.ConvertError) {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySource.String()] = pbtypes.String(p.URL)
-	if p.Icon != nil && p.Icon.Emoji != nil {
-		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*p.Icon.Emoji)
-	}
-	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(p.Archived)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
-
+	details := pt.prepareDetails(p)
 	allErrors := converter.ConvertError{}
 	relations := pt.handlePageProperties(ctx, apiKey, p.ID, p.Properties, details, request)
-	addFCoverDetail(p, details)
+	addCoverDetail(p, details)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(ctx, p.ID, apiKey, pageSize, mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
@@ -99,6 +91,17 @@ func (pt *Task) transformPages(ctx context.Context,
 	return snapshot, relations, nil
 }
 
+func (pt *Task) prepareDetails(p Page) map[string]*types.Value {
+	details := make(map[string]*types.Value, 0)
+	details[bundle.RelationKeySource.String()] = pbtypes.String(p.URL)
+	if p.Icon != nil && p.Icon.Emoji != nil {
+		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*p.Icon.Emoji)
+	}
+	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(p.Archived)
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
+	return details
+}
+
 // handlePageProperties gets properties values by their ids from notion api
 // and transforms them to Details and RelationLinks
 func (pt *Task) handlePageProperties(ctx context.Context,
@@ -108,40 +111,49 @@ func (pt *Task) handlePageProperties(ctx context.Context,
 	req *block.MapRequest) []*converter.Relation {
 	relations := make([]*converter.Relation, 0)
 	for k, v := range p {
-		if isPropertyPaginated(v) {
-			properties, err := pt.propertyService.GetPropertyObject(ctx, pageID, v.GetID(), apiKey, v.GetPropertyType())
-			if err != nil {
-				logger.With("method", "handlePageProperties").Errorf("failed to get paginated property, %s, %s", v.GetPropertyType(), err)
-				continue
-			}
-			pt.handlePaginatedProperty(v, properties)
-		}
-		if r, ok := v.(*property.RelationItem); ok {
-			linkRelationsIDWithAnytypeID(r, req.NotionPageIdsToAnytype, req.NotionDatabaseIdsToAnytype)
-		}
-		var (
-			ds property.DetailSetter
-			ok bool
-		)
-		if ds, ok = v.(property.DetailSetter); !ok {
-			logger.With("method", "handlePageProperties").
-				Errorf("failed to convert to interface DetailSetter, %s", v.GetPropertyType())
+		relation, err := pt.handleProperty(ctx, apiKey, pageID, k, v, req, d)
+		if err != nil {
+			logger.With("method", "handlePageProperties").Error(err)
 			continue
 		}
-		ds.SetDetail(k, d)
-
-		rel := &converter.Relation{
-			Relation: &model.Relation{
-				Name:   k,
-				Format: v.GetFormat(),
-			},
-		}
-		if isPropertyTag(v) {
-			setOptionsForListRelation(v, rel.Relation)
-		}
-		relations = append(relations, rel)
+		relations = append(relations, relation)
 	}
 	return relations
+}
+
+func (pt *Task) handleProperty(ctx context.Context,
+	apiKey, pageID, key string,
+	propObject property.Object, req *block.MapRequest,
+	details map[string]*types.Value) (*converter.Relation, error) {
+	if isPropertyPaginated(propObject) {
+		properties, err := pt.propertyService.GetPropertyObject(ctx, pageID, propObject.GetID(), apiKey, propObject.GetPropertyType())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+		}
+		pt.handlePaginatedProperty(propObject, properties)
+	}
+	if r, ok := propObject.(*property.RelationItem); ok {
+		linkRelationsIDWithAnytypeID(r, req.NotionPageIdsToAnytype, req.NotionDatabaseIdsToAnytype)
+	}
+	var (
+		ds property.DetailSetter
+		ok bool
+	)
+	if ds, ok = propObject.(property.DetailSetter); !ok {
+		return nil, fmt.Errorf("failed to convert to interface DetailSetter, %s", propObject.GetPropertyType())
+	}
+	ds.SetDetail(key, details)
+
+	rel := &converter.Relation{
+		Relation: &model.Relation{
+			Name:   key,
+			Format: propObject.GetFormat(),
+		},
+	}
+	if isPropertyTag(propObject) {
+		setOptionsForListRelation(propObject, rel.Relation)
+	}
+	return rel, nil
 }
 
 func (pt *Task) handlePaginatedProperty(v property.Object, properties []interface{}) {
@@ -182,7 +194,7 @@ func linkRelationsIDWithAnytypeID(rel *property.RelationItem,
 	}
 }
 
-func addFCoverDetail(p Page, details map[string]*types.Value) {
+func addCoverDetail(p Page, details map[string]*types.Value) {
 	if p.Cover != nil {
 		if p.Cover.Type == api.External {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.External.URL)

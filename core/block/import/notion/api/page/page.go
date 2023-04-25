@@ -2,6 +2,8 @@ package page
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -87,7 +89,7 @@ func (ds *Service) GetPages(ctx context.Context,
 
 	go ds.addWorkToPool(pages, pool)
 
-	do := NewDataObject(ctx, apiKey, mode, request, progress)
+	do := NewDataObject(ctx, apiKey, mode, request)
 	go pool.Start(do)
 
 	allSnapshots, relationsToPageID, converterError := ds.readResultFromPool(pool, mode, progress)
@@ -133,6 +135,7 @@ func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {
 		if stop {
 			break
 		}
+		time.Sleep(time.Millisecond * 3) // to avoid rate limit error
 	}
 	pool.CloseTask()
 }
