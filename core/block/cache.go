@@ -166,7 +166,7 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 	}
 
 	s.sendOnRemoveEvent(treeId)
-	_, err = s.cache.Remove(treeId)
+	_, err = s.cache.Remove(ctx, treeId)
 	return
 }
 
@@ -210,7 +210,7 @@ func (s *Service) DeleteObject(id string) (err error) {
 	}
 
 	s.sendOnRemoveEvent(id)
-	_, err = s.cache.Remove(id)
+	_, err = s.cache.Remove(context.Background(), id)
 	return
 }
 
