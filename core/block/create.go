@@ -162,6 +162,7 @@ func (s *Service) ObjectToSet(id string, source []string) error {
 		st.SetObjectType(bundle.TypeKeySet.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		flags.AddToState(st)
 
 		return b.Apply(st)

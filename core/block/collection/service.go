@@ -225,6 +225,7 @@ func (s *Service) ObjectToCollection(id string) error {
 		st.SetObjectType(bundle.TypeKeyCollection.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		flags.AddToState(st)
 		return b.Apply(st)
 	}); err != nil {
