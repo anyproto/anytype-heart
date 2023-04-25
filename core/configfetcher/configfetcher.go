@@ -55,10 +55,9 @@ type ConfigFetcher interface {
 
 type configFetcher struct {
 	sync.RWMutex
-	store           objectstore.ObjectStore
-	cafe            cafeClient.Client
-	workspaceGetter WorkspaceGetter
-	eventSender     func(event *pbMiddle.Event)
+	store       objectstore.ObjectStore
+	cafe        cafeClient.Client
+	eventSender func(event *pbMiddle.Event)
 
 	fetched       chan struct{}
 	stopped       chan struct{}
@@ -87,10 +86,6 @@ func (c *configFetcher) GetAccountStateWithContext(ctx context.Context) *pb.Acco
 	state := c.GetCafeAccountStateWithContext(ctx)
 	// we could have cached this, but for now it is not needed, because we call this rarely
 	enableSpaces := state.GetConfig().GetEnableSpaces()
-	workspaces, err := c.workspaceGetter.GetAllWorkspaces()
-	if err == nil && len(workspaces) != 0 {
-		enableSpaces = true
-	}
 	state.Config.EnableSpaces = enableSpaces
 
 	return state
@@ -181,7 +176,6 @@ func (c *configFetcher) GetCafeAccountStateWithContext(ctx context.Context) *pb.
 func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.cafe = a.MustComponent(cafeClient.CName).(cafeClient.Client)
-	c.workspaceGetter = a.MustComponent("threads").(WorkspaceGetter)
 	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
 	c.fetched = make(chan struct{})
 	c.stopped = make(chan struct{})
@@ -239,6 +233,7 @@ func (c *configFetcher) Refetch() {
 
 func (c *configFetcher) Close(ctx context.Context) (err error) {
 	c.cancel()
+	return
 	<-c.stopped
 
 	c.Lock()

@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	CName          = "wallet"
-	KeyFileAccount = "account.key"
-	KeyFileDevice  = "device.key"
+	CName          = accountservice.CName
+	keyFileAccount = "account.key"
+	keyFileDevice  = "device.key"
 )
 
 type wallet struct {
@@ -144,8 +144,8 @@ func NewWithAccountRepo(rootpath, accountId string) Wallet {
 	return &wallet{
 		rootPath:       rootpath,
 		repoPath:       repoPath,
-		accountKeyPath: filepath.Join(repoPath, KeyFileAccount),
-		deviceKeyPath:  filepath.Join(repoPath, KeyFileDevice),
+		accountKeyPath: filepath.Join(repoPath, keyFileAccount),
+		deviceKeyPath:  filepath.Join(repoPath, keyFileDevice),
 	}
 }
 

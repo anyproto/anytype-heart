@@ -8,9 +8,7 @@ import (
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
-	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
-	"github.com/anytypeio/any-sync/net/rpc/server"
 	"time"
 )
 
@@ -50,14 +48,8 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithGCPeriod(time.Minute),
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
-	s.accountId, err = s.commonSpace.DeriveSpace(context.Background(), commonspace.SpaceDerivePayload{
-		SigningKey:    s.account.Account().SignKey,
-		EncryptionKey: s.account.Account().EncKey,
-	})
-	if err != nil {
-		return
-	}
-	return spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
+	return
+	//return spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 }
 
 func (s *service) Name() (name string) {
@@ -65,6 +57,13 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	s.accountId, err = s.commonSpace.DeriveSpace(context.Background(), commonspace.SpaceDerivePayload{
+		SigningKey:    s.account.Account().SignKey,
+		EncryptionKey: s.account.Account().EncKey,
+	})
+	if err != nil {
+		return
+	}
 	return
 }
 

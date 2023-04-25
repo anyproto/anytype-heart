@@ -8,7 +8,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"io"
 )
 
 const CName = fileblockstore.CName
@@ -26,24 +25,15 @@ type FileStorage interface {
 
 type fileStorage struct {
 	fileblockstore.BlockStore
+	provider     datastore.Datastore
+	rpcStore     rpcstore.Service
 	syncer       *syncer
 	syncerCancel context.CancelFunc
 }
 
 func (f *fileStorage) Init(a *app.App) (err error) {
-	provider := a.MustComponent(datastore.CName).(datastore.Datastore)
-	db, err := provider.Badger()
-	if err != nil {
-		return
-	}
-	bs := badgerfilestore.NewBadgerStorage(db)
-	ps := &proxyStore{
-		cache:  bs,
-		origin: a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore(),
-		index:  badgerfilestore.NewFileBadgerIndex(db),
-	}
-	f.BlockStore = ps
-	f.syncer = &syncer{ps: ps, done: make(chan struct{})}
+	f.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
+	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	return
 }
 
@@ -52,6 +42,19 @@ func (f *fileStorage) Name() (name string) {
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
+	db, err := f.provider.Badger()
+	if err != nil {
+		return
+	}
+	bs := badgerfilestore.NewBadgerStorage(db)
+	ps := &proxyStore{
+		cache:  bs,
+		origin: f.rpcStore.NewStore(),
+		index:  badgerfilestore.NewFileBadgerIndex(db),
+	}
+	f.BlockStore = ps
+	f.syncer = &syncer{ps: ps, done: make(chan struct{})}
+
 	ctx, f.syncerCancel = context.WithCancel(ctx)
 	go f.syncer.run(ctx)
 	return
@@ -62,5 +65,5 @@ func (f *fileStorage) Close(ctx context.Context) (err error) {
 		f.syncerCancel()
 		<-f.syncer.done
 	}
-	return f.BlockStore.(io.Closer).Close()
+	return
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/anytypeio/any-sync/commonspace"
+	commonnet "github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/nodeconf"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"net"
@@ -264,6 +265,15 @@ func (c *Config) GetSpace() commonspace.Config {
 	return commonspace.Config{
 		GCTTL:      60,
 		SyncPeriod: 20,
+	}
+}
+
+func (c *Config) GetNet() commonnet.Config {
+	return commonnet.Config{
+		Stream: commonnet.StreamConfig{
+			TimeoutMilliseconds: 1000,
+			MaxMsgSizeMb:        256,
+		},
 	}
 }
 

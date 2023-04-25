@@ -164,6 +164,7 @@ type smartBlock struct {
 	relationService     relation2.Service
 	isDeleted           bool
 	disableLayouts      bool
+	mx                  sync.Mutex
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -171,6 +172,23 @@ type smartBlock struct {
 
 	recordsSub      database.Subscription
 	closeRecordsSub func()
+}
+
+func (sb *smartBlock) Lock() {
+	// TODO: [MR] fix lock problem
+	if sb.ObjectTree != nil {
+		sb.ObjectTree.Lock()
+	} else {
+		sb.mx.Lock()
+	}
+}
+
+func (sb *smartBlock) Unlock() {
+	if sb.ObjectTree != nil {
+		sb.ObjectTree.Unlock()
+	} else {
+		sb.mx.Unlock()
+	}
 }
 
 func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {

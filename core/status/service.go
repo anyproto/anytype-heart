@@ -11,7 +11,6 @@ import (
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
 	"github.com/libp2p/go-libp2p/core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 
@@ -99,13 +98,9 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ownDeviceID = anytype.Device()
 
 	var (
-		cafePeer string
-		cafeAddr ma.Multiaddr
+		cafePeer = "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
 	)
-	//cafeAddr = a.MustComponent(threads.CName).(threads.Service).CafePeer()
-	if cafeAddr != nil {
-		cafePeer, _ = cafeAddr.ValueForProtocol(ma.P_P2P)
-	}
+
 	if cafePeer == "" {
 		return fmt.Errorf("cafe address must be specified at start time")
 	}

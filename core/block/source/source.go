@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
@@ -91,7 +92,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	}
 }
 
-func newTreeSource(a core.Service, ss status.Service, sbt smartblock.SmartBlockType, id string, listenToOwnChanges bool) (s Source, err error) {
+func newTreeSource(a core.Service, ss status.Service, acc accountservice.Service, sbt smartblock.SmartBlockType, id string, listenToOwnChanges bool) (s Source, err error) {
 	return &source{
 		id:                       id,
 		a:                        a,
@@ -100,6 +101,7 @@ func newTreeSource(a core.Service, ss status.Service, sbt smartblock.SmartBlockT
 		logId:                    a.Device(),
 		openedAt:                 time.Now(),
 		smartblockType:           sbt,
+		acc:                      acc,
 	}, nil
 }
 
@@ -117,6 +119,7 @@ type source struct {
 	listenToOwnDeviceChanges bool // false means we will ignore own(same-logID) changes in applyRecords
 	closed                   chan struct{}
 	openedAt                 time.Time
+	acc                      accountservice.Service
 }
 
 func (s *source) Update(ot objecttree.ObjectTree) {
@@ -131,6 +134,10 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 }
 
 func (s *source) Rebuild(ot objecttree.ObjectTree) {
+	if s.ObjectTree == nil {
+		return
+	}
+
 	doc, err := s.buildState()
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to build state")
@@ -203,8 +210,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
 	}
-
-	return
+	return st, nil
 }
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
@@ -255,8 +261,8 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	// TODO: [MR] Add signing key and identity
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         nil,
-		Identity:    nil,
+		Key:         s.acc.Account().SignKey,
+		Identity:    s.acc.Account().Identity,
 		IsSnapshot:  c.Snapshot != nil,
 		IsEncrypted: true,
 	})
@@ -410,7 +416,7 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 			model := change.Model.(*pb.Change)
 			if startId == change.Id {
 				if s == nil {
-					s = state.NewDocFromSnapshot(change.Id, model.Snapshot, nil).(*state.State)
+					s = state.NewDocFromSnapshot(change.Id, model.Snapshot).(*state.State)
 					s.SetChangeId(startId)
 					return true
 				}

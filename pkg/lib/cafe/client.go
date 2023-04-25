@@ -322,5 +322,8 @@ func New() Client {
 }
 
 func (c *Online) Close(ctx context.Context) (err error) {
-	return c.conn.Close()
+	if c.conn != nil {
+		return c.conn.Close()
+	}
+	return
 }

@@ -153,69 +153,16 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
+	s.clientService = a.MustComponent(space.CName).(space.Service)
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
+	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.cache = s.createCache()
 	s.app = a
 	return
 }
 
 func (s *Service) Run(ctx context.Context) (err error) {
-	s.initPredefinedBlocks(ctx)
 	return
-}
-
-func (s *Service) initPredefinedBlocks(ctx context.Context) {
-	ids := []string{
-		s.anytype.PredefinedBlocks().Account,
-		s.anytype.PredefinedBlocks().AccountOld,
-		s.anytype.PredefinedBlocks().Profile,
-		s.anytype.PredefinedBlocks().Archive,
-		s.anytype.PredefinedBlocks().Home,
-		s.anytype.PredefinedBlocks().MarketplaceType,
-		s.anytype.PredefinedBlocks().MarketplaceRelation,
-		s.anytype.PredefinedBlocks().MarketplaceTemplate,
-		s.anytype.PredefinedBlocks().Widgets,
-	}
-	startTime := time.Now()
-	for _, id := range ids {
-		headsHash, _ := s.anytype.ObjectStore().GetLastIndexedHeadsHash(id)
-		if headsHash != "" {
-			// skip object that has been already indexed before
-			continue
-		}
-		ctx := &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
-		// this is needed so that old account will create its state successfully on first launch
-		if id == s.anytype.PredefinedBlocks().AccountOld {
-			ctx = nil
-		}
-		initTime := time.Now()
-		sb, err := s.objectFactory.InitObject(id, ctx)
-		if err != nil {
-			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
-				if id == s.anytype.PredefinedBlocks().Account {
-					log.With("thread", id).Errorf("can't init predefined account thread: %v", err)
-				}
-				if id == s.anytype.PredefinedBlocks().AccountOld {
-					log.With("thread", id).Errorf("can't init predefined old account thread: %v", err)
-				}
-				log.With("thread", id).Errorf("can't init predefined block: %v", err)
-			}
-		} else {
-			sb.Close()
-		}
-		sbType, _ := coresb.SmartBlockTypeFromID(id)
-		metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlock{
-			SbType:   int(sbType),
-			TimeMs:   time.Now().Sub(initTime).Milliseconds(),
-			ObjectId: id,
-		})
-	}
-	spent := time.Now().Sub(startTime).Milliseconds()
-	if spent > 100 {
-		metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlocks{
-			TimeMs: spent,
-		})
-	}
 }
 
 func (s *Service) Anytype() core.Service {

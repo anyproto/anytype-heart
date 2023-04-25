@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"math"
 	"sort"
 	"strings"
@@ -114,6 +115,14 @@ type indexer struct {
 
 	relationBulkMigration relation.BulkMigration
 	relationMigratorMu    sync.Mutex
+	typeProvider          typeprovider.ObjectTypeProvider
+}
+
+type myHasher struct {
+}
+
+func (m myHasher) Hash() string {
+	return ""
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -121,9 +130,9 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.relationService = a.MustComponent(relation.CName).(relation.Service)
-
+	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
-	i.btHash = a.MustComponent("builtintemplate").(Hasher)
+	i.btHash = myHasher{}
 	i.doc = a.MustComponent(doc.CName).(doc.Service)
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
@@ -697,7 +706,7 @@ func (i *indexer) migrateObjectTypes(ots []string) {
 }
 
 func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved bool) error {
-	t, err := smartblock.SmartBlockTypeFromID(id)
+	t, err := i.typeProvider.Type(id)
 	if err != nil {
 		return fmt.Errorf("incorrect sb type: %v", err)
 	}
@@ -787,7 +796,7 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 
 func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	startTime := time.Now()
-	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
+	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
@@ -803,7 +812,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	indexDetails, indexLinks := sbType.Indexable()
 	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace && sbType != smartblock.SmartBlockTypeBreadcrumbs {
 		// avoid recursions
-
+		log.With("migratedtype", sbType).Warn("migrating types")
 		if pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
 			i.migrateRelations(extractOldRelationsFromState(info.State))
 			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
@@ -917,7 +926,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 		return
 	}
 
-	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
+	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}

@@ -9,8 +9,9 @@ import (
 )
 
 type storageService struct {
-	keys storageServiceKeys
-	db   *badger.DB
+	keys     storageServiceKeys
+	provider datastore.Datastore
+	db       *badger.DB
 }
 
 type ClientStorage interface {
@@ -24,11 +25,7 @@ func New() ClientStorage {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	provider := a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.db, err = provider.Badger()
-	if err != nil {
-		return
-	}
+	s.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
 	s.keys = newStorageServiceKeys()
 	return
 }
@@ -79,9 +76,16 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 }
 
 func (s *storageService) Run(ctx context.Context) (err error) {
-	return nil
+	s.db, err = s.provider.Badger()
+	if err != nil {
+		return
+	}
+	return
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
-	return s.db.Close()
+	if s.db != nil {
+		return s.db.Close()
+	}
+	return
 }

@@ -65,6 +65,10 @@ func (d *DerivedSmartblockIds) InsertId(sbt smartblock.SmartBlockType, id string
 		d.Home = id
 	case smartblock.SmartBlockTypeArchive:
 		d.Archive = id
+	case smartblock.SmartBlockTypeProfilePage:
+		d.Profile = id
+	default:
+		panic(fmt.Sprintf("don't know %s/%s", sbt.ToProto().String(), id))
 	}
 }
 

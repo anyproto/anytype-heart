@@ -2,6 +2,7 @@ package source
 
 import (
 	"fmt"
+	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"sync"
 
@@ -36,6 +37,7 @@ type service struct {
 	anytype       core.Service
 	statusService status.Service
 	typeProvider  typeprovider.ObjectTypeProvider
+	account       accountservice.Service
 
 	staticIds map[string]func() Source
 	mu        sync.Mutex
@@ -46,6 +48,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.statusService = a.MustComponent(status.CName).(status.Service)
 	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
+	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	return
 }
 
@@ -85,8 +88,8 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 	if err != nil {
 		return nil, err
 	}
-
-	return newTreeSource(s.anytype, s.statusService, sbt, id, listenToOwnChanges)
+	log.With("sbt", sbt).Warn("providing sbt")
+	return newTreeSource(s.anytype, s.statusService, s.account, sbt, id, listenToOwnChanges)
 }
 
 func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {

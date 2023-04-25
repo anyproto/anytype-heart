@@ -60,7 +60,7 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	if err != nil {
 		return
 	}
-
+	log.With("scType", sc.Type()).Warn("getting source")
 	sb = f.New(sc.Type())
 	// we probably don't need any locks here, because the object is initialized synchronously,
 	// therefore it won't be loaded unless this function exits

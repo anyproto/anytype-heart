@@ -118,7 +118,6 @@ type Anytype struct {
 	shutdownStartsCh chan struct {
 	} // closed when node shutdown starts
 
-	recordsbatch        batchAdder
 	subscribeOnce       sync.Once
 	config              *config.Config
 	wallet              wallet.Wallet
@@ -130,11 +129,6 @@ func (a *Anytype) ThreadsIds() ([]string, error) {
 	return nil, nil
 }
 
-type batchAdder interface {
-	Add(msgs ...interface{}) error
-	Close(ctx context.Context) (err error)
-}
-
 func New() *Anytype {
 	return &Anytype{
 		shutdownStartsCh: make(chan struct{}),
@@ -144,7 +138,6 @@ func New() *Anytype {
 func (a *Anytype) Init(ap *app.App) (err error) {
 	a.wallet = ap.MustComponent(wallet.CName).(wallet.Wallet)
 	a.config = ap.MustComponent(config.CName).(*config.Config)
-	a.recordsbatch = ap.MustComponent("recordsbatcher").(batchAdder)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
 	a.ds = ap.MustComponent(datastore.CName).(datastore.Datastore)

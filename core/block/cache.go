@@ -149,6 +149,7 @@ func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
+	log.With(zap.String("sbt", tp.ToProto().String())).Warn("deriving smartblock")
 	payload := objecttree.ObjectTreeCreatePayload{
 		SignKey:     s.commonAccount.Account().SignKey,
 		ChangeType:  tp.ToProto().String(),
