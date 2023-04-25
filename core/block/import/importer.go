@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -21,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/workerpool"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -28,6 +30,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
@@ -74,7 +77,9 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 
-	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
+	spaceService := app.MustComponent[space.Service](a)
+	fileSyncService := app.MustComponent[filesync.FileSync](a)
+	factory := syncer.New(syncer.NewFileSyncer(i.s, fileSyncService, spaceService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	objCreator := a.MustComponent(object.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
