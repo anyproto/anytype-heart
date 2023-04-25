@@ -12,10 +12,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -217,12 +219,41 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	return coresb.SmartBlockTypeCollection, details, newState, nil
 }
 
-// TODO To be removed
 func (s *Service) ObjectToCollection(id string) (string, error) {
-	var (
-		details *types.Struct
-	)
+	// TODO To be rewritten to layout change
 
+	var (
+		details      *types.Struct
+		dvBlock      *model.Block
+		typesFromSet []string
+	)
+	if err := block.Do(s.picker, id, func(sb smartblock.SmartBlock) error {
+		details = pbtypes.CopyStruct(sb.Details())
+
+		st := sb.NewState()
+		if layout, ok := st.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := st.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Model().GetText().Text)
+			}
+		}
+
+		b := st.Pick(template.DataviewBlockId)
+		if b != nil {
+			typesFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+			delete(details.Fields, bundle.RelationKeySetOf.String())
+			pbtypes.UpdateStringList(details, bundle.RelationKeyFeaturedRelations.String(), func(fr []string) []string {
+				return slice.Remove(fr, bundle.RelationKeySetOf.String())
+			})
+			dvBlock = b.Model()
+		}
+		return nil
+	}); err != nil {
+		return "", err
+	}
 	// cleanup details
 	delete(details.Fields, bundle.RelationKeyLayout.String())
 	delete(details.Fields, bundle.RelationKeyType.String())
@@ -232,6 +263,37 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	}, bundle.TypeKeyCollection)
 	if err != nil {
 		return "", err
+	}
+
+	if dvBlock != nil {
+		err = block.DoState(s.picker, newID, func(st *state.State, sb smartblock.SmartBlock) error {
+			dvBlock.Id = template.DataviewBlockId
+			dvBlock.GetDataview().IsCollection = true
+			b := simple.New(dvBlock)
+			st.Set(b)
+
+			recs, _, qErr := s.objectStore.Query(nil, database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyType.String(),
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       pbtypes.StringList(typesFromSet),
+					},
+				},
+			})
+			if qErr != nil {
+				return fmt.Errorf("can't get records for collection: %w", err)
+			}
+			ids := make([]string, 0, len(recs))
+			for _, r := range recs {
+				ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
+			}
+			st.StoreSlice(template.CollectionStoreKey, ids)
+			return nil
+		})
+		if err != nil {
+			return newID, fmt.Errorf("can't update dataview block: %w", err)
+		}
 	}
 
 	res, err := s.objectStore.GetWithLinksInfoByID(id)
