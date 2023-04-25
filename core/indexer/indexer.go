@@ -5,8 +5,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"golang.org/x/exp/slices"
 	"math"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -213,30 +213,21 @@ func (i *indexer) reindexIfNeeded() error {
 	var (
 		err       error
 		checksums *model.ObjectStoreChecksums
+		reindex   reindexFlags
 	)
-	if i.newAccount {
+	checksums, err = i.store.GetChecksums()
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+	if checksums == nil {
 		checksums = &model.ObjectStoreChecksums{
 			// do no add bundled relations checksums, because we want to index them for new accounts
 			ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
 			FilesForceReindexCounter:         ForceFilesReindexCounter,
 			IdxRebuildCounter:                ForceIdxRebuildCounter,
-			FulltextRebuild:                  ForceFulltextIndexCounter,
 			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 		}
-	} else {
-		checksums, err = i.store.GetChecksums()
-		if err != nil && err != ds.ErrNotFound {
-			return err
-		}
 	}
-
-	if checksums == nil {
-		// zero values are valid
-		// means we didn't perform new indexer before
-		checksums = &model.ObjectStoreChecksums{}
-	}
-
-	var reindex reindexFlags
 
 	if checksums.BundledRelations != bundle.RelationChecksum {
 		reindex = reindex | reindexBundledRelations
@@ -269,45 +260,40 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
-	//TODO: [MR] check reindexing logic
-	//if i.threadService == nil {
-	//	return 0, 0, nil
-	//}
-	//tids, err := i.threadService.Logstore().Threads()
-	//if err != nil {
-	//	return 0, 0, err
-	//}
-	//
-	//var idsToReindex []string
-	//for _, tid := range tids {
-	//	lastHash, err := i.store.GetLastIndexedHeadsHash(tid.String())
-	//	if err != nil {
-	//		log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
-	//		continue
-	//	}
-	//
-	//	info, err := i.threadService.Logstore().GetThread(tid)
-	//	if err != nil {
-	//		log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
-	//		continue
-	//	}
-	//	var heads = make(map[string]string, len(info.Logs))
-	//	for _, li := range info.Logs {
-	//		head := li.Head.ID
-	//		if !head.Defined() {
-	//			continue
-	//		}
-	//
-	//		heads[li.ID.String()] = head.String()
-	//	}
-	//	hh := headsHash(heads)
-	//	if lastHash != hh {
-	//		log.With("thread", tid.String()).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
-	//		idsToReindex = append(idsToReindex, tid.String())
-	//	}
-	//}
-	idsToReindex := []string{}
-	var ctx context.Context
+	spc, err := i.anytype.SpaceService().AccountSpace(context.Background())
+	if err != nil {
+		return
+	}
+
+	tids := spc.StoredIds()
+	var idsToReindex []string
+	for _, tid := range tids {
+		logErr := func(err error) {
+			log.With("tree", tid).Errorf("reindexOutdatedThreads failed to get tree to reindex: %s", err.Error())
+		}
+
+		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)
+		if err != nil {
+			logErr(err)
+			continue
+		}
+		info, err := spc.Storage().TreeStorage(tid)
+		if err != nil {
+			logErr(err)
+			continue
+		}
+		heads, err := info.Heads()
+		if err != nil {
+			logErr(err)
+			continue
+		}
+
+		hh := headsHash(heads)
+		if lastHash != hh {
+			log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+			idsToReindex = append(idsToReindex, tid)
+		}
+	}
 	if len(idsToReindex) > 0 {
 		for _, id := range idsToReindex {
 			// TODO: we should reindex it I guess at start
@@ -315,9 +301,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 			//	continue
 			// }
 
-			// we do this instead of context.WithTimeout in order to continue loading in case of timeout in background
-			//ctx = context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
-			ctx = context.WithValue(ctx, metrics.CtxKeyRequest, "reindexOutdatedThreads")
+			ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "reindexOutdatedThreads")
 			d, err := i.doc.GetDocInfo(ctx, id)
 			if err != nil {
 				continue
@@ -751,7 +735,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 				return fmt.Errorf("can't update object in the store: %v", err)
 			}
 		}
-		if headsHash := headsHash(d.LogHeads); headsHash != "" {
+		if headsHash := headsHash(d.Heads); headsHash != "" {
 			err = i.store.SaveLastIndexedHeadsHash(id, headsHash)
 			if err != nil {
 				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
@@ -794,7 +778,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		sbType = smartblock.SmartBlockTypePage
 	}
 	saveIndexedHash := func() {
-		if headsHash := headsHash(info.LogHeads); headsHash != "" {
+		if headsHash := headsHash(info.Heads); headsHash != "" {
 			err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
 			if err != nil {
 				log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
@@ -1007,20 +991,12 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func headsHash(headByLogId map[string]string) string {
-	if len(headByLogId) == 0 {
+func headsHash(heads []string) string {
+	if len(heads) == 0 {
 		return ""
 	}
+	slices.Sort(heads)
 
-	var sortedHeads = make([]string, 0, len(headByLogId))
-	for _, head := range headByLogId {
-		if head == "b" {
-			continue
-		}
-		sortedHeads = append(sortedHeads, head)
-	}
-	sort.Strings(sortedHeads)
-
-	sum := sha256.Sum256([]byte(strings.Join(sortedHeads, ",")))
+	sum := sha256.Sum256([]byte(strings.Join(heads, ",")))
 	return fmt.Sprintf("%x", sum)
 }

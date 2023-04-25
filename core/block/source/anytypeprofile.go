@@ -86,7 +86,7 @@ func (v *anytypeProfile) Close() (err error) {
 	return
 }
 
-func (v *anytypeProfile) LogHeads() map[string]string {
+func (v *anytypeProfile) Heads() []string {
 	return nil
 }
 

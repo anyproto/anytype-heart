@@ -1701,10 +1701,16 @@ func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, e
 	}
 	defer txn.Discard()
 
-	var objChecksum model.ObjectStoreChecksums
-	if val, err := txn.Get(bundledChecksums); err != nil && err != ds.ErrNotFound {
+	val, err := txn.Get(bundledChecksums)
+	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get details: %w", err)
-	} else if err := proto.Unmarshal(val, &objChecksum); err != nil {
+	}
+	if err == ds.ErrNotFound {
+		return nil, err
+	}
+
+	var objChecksum model.ObjectStoreChecksums
+	if err := proto.Unmarshal(val, &objChecksum); err != nil {
 		return nil, err
 	}
 

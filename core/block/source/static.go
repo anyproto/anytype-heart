@@ -80,7 +80,7 @@ func (s *static) Close() (err error) {
 	return
 }
 
-func (v *static) LogHeads() map[string]string {
+func (v *static) Heads() []string {
 	return nil
 }
 

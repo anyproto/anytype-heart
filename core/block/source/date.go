@@ -115,7 +115,7 @@ func (v *date) Close() (err error) {
 	return
 }
 
-func (v *date) LogHeads() map[string]string {
+func (v *date) Heads() []string {
 	return nil
 }
 

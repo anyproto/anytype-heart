@@ -43,7 +43,7 @@ type Source interface {
 	Anytype() core.Service
 	Type() model.SmartBlockType
 	Virtual() bool
-	LogHeads() map[string]string
+	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
 	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
@@ -270,7 +270,6 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if err != nil {
 		return
 	}
-	// TODO: [MR] Add signing key and identity
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.acc.Account().SignKey,
@@ -381,8 +380,14 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	return fileKeys
 }
 
-func (s *source) LogHeads() map[string]string {
-	return nil
+func (s *source) Heads() []string {
+	if s.ObjectTree == nil {
+		return nil
+	}
+	heads := s.ObjectTree.Heads()
+	headsCopy := make([]string, 0, len(heads))
+	headsCopy = append(headsCopy, heads...)
+	return headsCopy
 }
 
 func (s *source) Close() (err error) {

@@ -67,7 +67,7 @@ func (v *virtual) Close() (err error) {
 	return
 }
 
-func (v *virtual) LogHeads() map[string]string {
+func (v *virtual) Heads() []string {
 	return nil
 }
 

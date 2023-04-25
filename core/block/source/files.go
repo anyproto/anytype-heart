@@ -127,7 +127,7 @@ func (v *files) Close() (err error) {
 	return
 }
 
-func (v *files) LogHeads() map[string]string {
+func (v *files) Heads() []string {
 	return nil
 }
 

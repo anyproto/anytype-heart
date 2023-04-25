@@ -94,7 +94,7 @@ func (v *bundledObjectType) Close() (err error) {
 	return
 }
 
-func (v *bundledObjectType) LogHeads() map[string]string {
+func (v *bundledObjectType) Heads() []string {
 	return nil
 }
 

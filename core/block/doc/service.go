@@ -27,7 +27,7 @@ type DocInfo struct {
 	Id         string
 	Links      []string
 	FileHashes []string
-	LogHeads   map[string]string
+	Heads      []string
 	Creator    string
 	State      *state.State
 }

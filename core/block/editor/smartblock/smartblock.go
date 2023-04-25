@@ -1317,7 +1317,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	return doc.DocInfo{
 		Id:         sb.Id(),
 		Links:      links,
-		LogHeads:   sb.source.LogHeads(),
+		Heads:      sb.source.Heads(),
 		FileHashes: fileHashes,
 		Creator:    creator,
 		State:      st.Copy(),
