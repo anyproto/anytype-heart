@@ -2,11 +2,11 @@ package anymark
 
 import (
 	"bytes"
-	"github.com/JohannesKaufmann/html-to-markdown/plugin"
 	"regexp"
 	"strings"
 
 	htmlconverter "github.com/JohannesKaufmann/html-to-markdown"
+	"github.com/JohannesKaufmann/html-to-markdown/plugin"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
