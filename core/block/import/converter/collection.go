@@ -95,15 +95,17 @@ func addRelationsToCollectionDataView(st *state.State, rel *model.Relation) erro
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
 				return false
 			}
-			err := dv.AddViewRelation(bl.Model().GetDataview().GetViews()[0].GetId(), &model.BlockContentDataviewRelation{
-				Key:       rel.Key,
-				IsVisible: true,
-				Width:     192,
-			})
-			if err != nil {
-				return false
+			for _, view := range bl.Model().GetDataview().GetViews() {
+				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+					Key:       rel.Key,
+					IsVisible: true,
+					Width:     192,
+				})
+				if err != nil {
+					return false
+				}
 			}
-			err = dv.AddRelation(&model.RelationLink{
+			err := dv.AddRelation(&model.RelationLink{
 				Key:    rel.Key,
 				Format: rel.Format,
 			})

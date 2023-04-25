@@ -30,7 +30,7 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	assert.Len(t, db, 1)
 	assert.Nil(t, err)
 
-	ds := database.New()
+	ds := database.New(nil)
 	databases, _, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import))
 
 	assert.NotNil(t, databases)
