@@ -22,6 +22,8 @@ const (
 	AnytypeMarketplaceWorkspace = "_anytype_marketplace"
 	VirtualPrefix               = "_virtual"
 	DatePrefix                  = "_date_"
+
+	MissingObject = "_missing_object"
 )
 
 func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {

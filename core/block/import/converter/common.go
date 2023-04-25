@@ -2,6 +2,7 @@ package converter
 
 import (
 	"bytes"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"path/filepath"
 	"strings"
 
@@ -68,8 +69,7 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 	}
 	newTarget := oldIDtoNew[target]
 	if newTarget == "" {
-		log.With("object", st.RootId()).Errorf("cant find target id for dataview: %s", block.Model().GetDataview().TargetObjectId)
-		return
+		newTarget = addr.MissingObject
 	}
 
 	block.Model().GetDataview().TargetObjectId = newTarget
@@ -79,8 +79,7 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, pageID string, st *state.State) {
 	newTarget := oldIDtoNew[block.Model().GetBookmark().TargetObjectId]
 	if newTarget == "" {
-		log.With("object", pageID).Errorf("cant find target id for bookmark: %s", block.Model().GetBookmark().TargetObjectId)
-		return
+		newTarget = addr.MissingObject
 	}
 
 	block.Model().GetBookmark().TargetObjectId = newTarget
@@ -90,8 +89,7 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, pageI
 func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	newTarget := oldIDtoNew[block.Model().GetLink().TargetBlockId]
 	if newTarget == "" {
-		log.With("object", st.RootId()).Errorf("cant find target id for link: %s", block.Model().GetLink().TargetBlockId)
-		return
+		newTarget = addr.MissingObject
 	}
 
 	block.Model().GetLink().TargetBlockId = newTarget
@@ -106,8 +104,7 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 		}
 		newTarget := oldIDtoNew[mark.Param]
 		if newTarget == "" {
-			log.With("object", objectID).Errorf("cant find target id for mention: %s", mark.Param)
-			continue
+			newTarget = addr.MissingObject
 		}
 
 		marks[i].Param = newTarget
