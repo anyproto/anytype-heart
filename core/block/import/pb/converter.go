@@ -3,13 +3,13 @@ package pb
 import (
 	"archive/zip"
 	"fmt"
+	"github.com/gogo/protobuf/types"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
@@ -19,8 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -32,7 +30,8 @@ const (
 	configFile         = "config.json"
 )
 
-var log = logging.Logger("pb-converter")
+type ProtobufSnapshotGetter struct {
+}
 
 type Pb struct {
 	service     *collection.Service
@@ -54,7 +53,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 		errors.Add("", fmt.Errorf("wrong parameters"))
 		return nil, errors
 	}
-	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath(), params.AccountId)
+	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath())
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
@@ -83,18 +82,18 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 	return &converter.Response{Snapshots: allSnapshots}, allErrors
 }
 
-func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress, allPaths []string, accountID string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress, allPaths []string) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allErrors := converter.NewError()
 	for _, path := range allPaths {
-		pbFiles, profile, err := p.readFile(path, req.Mode.String())
+		pbFiles, err := p.readFile(path, req.Mode.String())
 		if err != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			allErrors.Merge(err)
 			return nil, nil, allErrors
 		}
-		needToImportWidgets := p.needToImportWidgets(profile.Address, accountID)
-		snapshots, objects, ce := p.getSnapshotsFromFiles(req, progress, pbFiles, allErrors, path, needToImportWidgets, profile.SpaceDashboardId)
+
+		snapshots, objects, ce := p.getSnapshotsFromFiles(req, progress, pbFiles, allErrors, path)
 		if !ce.IsEmpty() {
 			return nil, nil, ce
 		}
@@ -111,9 +110,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	progress *process.Progress,
 	pbFiles map[string]*converter.IOReader,
 	allErrors converter.ConvertError,
-	path string,
-	needToCreateWidgets bool,
-	spaceDashboardID string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+	path string) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
@@ -126,12 +123,8 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		}
 
 		id := uuid.New().String()
-		var (
-			mo    *pb.SnapshotWithType
-			errGS error
-		)
 		rc := file.Reader
-		mo, errGS = p.GetSnapshot(rc, name, needToCreateWidgets, spaceDashboardID)
+		mo, errGS := p.GetSnapshot(rc, name)
 		rc.Close()
 		if errGS != nil {
 			allErrors.Add(name, errGS)
@@ -142,6 +135,9 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 			}
 		}
 		source := converter.GetSourceDetail(name, path)
+		if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
+			mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       id,
@@ -165,43 +161,19 @@ func (p *Pb) GetParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 	return nil, errors.New("PB: GetParams wrong parameters format")
 }
 
-func (p *Pb) readFile(importPath string, mode string) (map[string]*converter.IOReader, *pb.Profile, converter.ConvertError) {
+func (p *Pb) readFile(importPath string, mode string) (map[string]*converter.IOReader, converter.ConvertError) {
 	files := make(map[string]*converter.IOReader)
 	r, err := zip.OpenReader(importPath)
 	if err != nil {
 		return p.handleFile(importPath, files)
 	}
-	pr, convertError := p.handleZipArchive(r, mode, files)
-	return files, pr, convertError
+	convertError := p.handleZipArchive(r, mode, files)
+	return files, convertError
 }
 
-func (p *Pb) handleZipArchive(r *zip.ReadCloser, mode string, files map[string]*converter.IOReader) (*pb.Profile, converter.ConvertError) {
+func (p *Pb) handleZipArchive(r *zip.ReadCloser, mode string, files map[string]*converter.IOReader) converter.ConvertError {
 	errors := converter.NewError()
-	var pr *pb.Profile
 	for _, f := range r.File {
-		if filepath.Base(f.Name) == profileFile {
-			rc, err := f.Open()
-			if err != nil {
-				errors.Add(f.FileInfo().Name(), err)
-				switch mode {
-				case pb.RpcObjectImportRequest_IGNORE_ERRORS.String():
-					continue
-				default:
-					return nil, errors
-				}
-
-			}
-			pr, err = p.readProfileFile(rc)
-			if err != nil {
-				errors.Add(f.Name, err)
-				switch mode {
-				case pb.RpcObjectImportRequest_IGNORE_ERRORS.String():
-					continue
-				default:
-					return nil, errors
-				}
-			}
-		}
 		if !(filepath.Ext(f.Name) == ".pb" || filepath.Ext(f.Name) == ".json") {
 			continue
 		}
@@ -214,7 +186,7 @@ func (p *Pb) handleZipArchive(r *zip.ReadCloser, mode string, files map[string]*
 			case pb.RpcObjectImportRequest_IGNORE_ERRORS.String():
 				continue
 			default:
-				return nil, errors
+				return errors
 			}
 
 		}
@@ -223,38 +195,33 @@ func (p *Pb) handleZipArchive(r *zip.ReadCloser, mode string, files map[string]*
 			Reader: rc,
 		}
 	}
-	return pr, nil
+	return nil
 }
 
-func (p *Pb) handleFile(importPath string, files map[string]*converter.IOReader) (map[string]*converter.IOReader, *pb.Profile, converter.ConvertError) {
+func (p *Pb) handleFile(importPath string, files map[string]*converter.IOReader) (map[string]*converter.IOReader, converter.ConvertError) {
 	errors := converter.NewError()
-	f, err := os.Open(importPath)
-	if err != nil {
-		errors.Add(importPath, err)
-		return nil, nil, errors
+	f, fErr := os.Open(importPath)
+	if fErr != nil {
+		errors.Add(importPath, fErr)
+		return nil, errors
 	}
-	var pr *pb.Profile
-	if filepath.Base(f.Name()) == profileFile {
-		pr, err = p.readProfileFile(f)
-		if err != nil {
-			errors.Add(importPath, err)
-			return nil, nil, errors
-		}
-	}
-
 	if !(filepath.Ext(f.Name()) == ".pb" || filepath.Ext(f.Name()) == ".json") {
-		return nil, nil, nil
+		return nil, nil
 	}
 	name := filepath.Clean(f.Name())
 	files[name] = &converter.IOReader{
 		Name:   f.Name(),
 		Reader: f,
 	}
-	return files, pr, nil
+	return files, nil
 }
 
-func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool, spaceDashboardID string) (*pb.SnapshotWithType, error) {
+func (p *Pb) GetSnapshot(rd io.ReadCloser, name string) (*pb.SnapshotWithType, error) {
 	defer rd.Close()
+	data, err := ioutil.ReadAll(rd)
+	if err != nil {
+		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+	}
 	snapshot := &pb.SnapshotWithType{}
 	if filepath.Ext(name) == ".json" {
 		um := jsonpb.Unmarshaler{}
@@ -263,53 +230,8 @@ func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool,
 		}
 		return snapshot, nil
 	}
-	data, err := ioutil.ReadAll(rd)
-	if err != nil {
-		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
-	}
 	if err = snapshot.Unmarshal(data); err != nil {
 		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
 	}
-	if snapshot.SbType == model.SmartBlockType_Widget && !needToCreateWidget {
-		return nil, nil
-	}
-	p.setSpaceDashboardID(spaceDashboardID, snapshot)
 	return snapshot, nil
-}
-
-func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
-	profile := &pb.Profile{}
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	if err = profile.Unmarshal(data); err != nil {
-		return nil, err
-	}
-	return profile, nil
-}
-
-func (p *Pb) needToImportWidgets(address string, accountId string) bool {
-	if address == accountId {
-		return true
-	}
-	return false
-}
-
-func (p *Pb) setSpaceDashboardID(spaceDashboardID string, snapshot *pb.SnapshotWithType) {
-	if snapshot.SbType == model.SmartBlockType_Workspace && spaceDashboardID != "" {
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
-		if id != "" {
-			return
-		}
-		details := snapshot.Snapshot.Data.Details
-		if details == nil || details.Fields == nil {
-			snapshot.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-		snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(spaceDashboardID)
-		snapshot.Snapshot.Data.RelationLinks = append(snapshot.Snapshot.Data.RelationLinks, &model.RelationLink{
-			Key:    bundle.RelationKeySpaceDashboardId.String(),
-			Format: model.RelationFormat_object,
-		})
-	}
 }
