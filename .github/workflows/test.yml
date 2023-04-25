@@ -1,5 +1,10 @@
-on: [ push ]
+on: [ pull_request ]
 name: Test
+
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   unit-test:
     strategy:
@@ -19,7 +24,9 @@ jobs:
         run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - uses: actions/cache@v3
         with:
           path: |
@@ -41,7 +48,6 @@ jobs:
           repository: anytypeio/open
           ref: refs/heads/main
           path: ./open
-
       - name: Check licenses
         run: |
           cd open
@@ -55,15 +61,21 @@ jobs:
           go install github.com/golang/mock/mockgen@latest
           go generate ./...
       - name: Go test
+        env:
+          prometheus_username: ${{ secrets.PROMETHEUS_USERNAME }}
+          prometheus_password: ${{ secrets.PROMETHEUS_PASSWORD }}
         run: |
           export ANYTYPE_LOG_LEVEL=DEBUG
           export ANYTYPE_LOG_NOGELF=1
           go install gotest.tools/gotestsum@latest
           PACKAGE_NAMES=$(go list -tags nogrpcserver ./... | grep -v "github.com/anytypeio/go-anytype-middleware/cmd/grpserver" | grep -v "github.com/anytypeio/go-anytype-middleware/clientlibrary/clib")
           mkdir ~/gotestsum-report
-          gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags nogrpcserver -p 1 $PACKAGE_NAMES
+          gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags nogrpcserver -p 1 $(echo $PACKAGE_NAMES) -coverprofile=coverage.out -covermode=count ./...
+          COVERAGE=$(go tool cover -func coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+          echo "coverage_middleware $COVERAGE" | curl --data-binary @- --user "$prometheus_username:$prometheus_password" https://pushgateway.anytype.io/metrics/job/tech_quality
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v2
         with:
           report_paths: '~/gotestsum-report/gotestsum-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: seriousben/go-patch-cover-action@v1
