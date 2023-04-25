@@ -296,7 +296,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
 			profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
-				Key:   "iconImage",
+				Key:   bundle.RelationKeyIconImage.String(),
 				Value: pbtypes.String(hash),
 			})
 		}
@@ -783,7 +783,7 @@ func (mw *Middleware) getBootstrapConfig(err error, req *pb.RpcAccountRecoverFro
 func (mw *Middleware) setDetails(profile *pb.Profile, err error) error {
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
 	details = append(details, &pb.RpcObjectSetDetailsDetail{
-		Key:   "iconImage",
+		Key:   bundle.RelationKeyIconImage.String(),
 		Value: pbtypes.String(profile.Avatar),
 	})
 
