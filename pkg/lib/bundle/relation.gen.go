@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "42f65ce9ff2a4909536c449403d18b772bbaa576d01277575cb3d4cb2e67eef3"
+const RelationChecksum = "cafd8e8f11181140ab6d416049b4ef419c70956c9e93fcfd632288b95fc85c78"
 
 type RelationKey string
 
@@ -184,6 +184,8 @@ const (
 	RelationKeySource                    RelationKey = "source"
 	RelationKeySourceObject              RelationKey = "sourceObject"
 	RelationKeyOldAnytypeID              RelationKey = "oldAnytypeID"
+	RelationKeySpaceDashboardId          RelationKey = "spaceDashboardId"
+	RelationKeyIconOption                RelationKey = "iconOption"
 )
 
 var (
@@ -1017,6 +1019,20 @@ var (
 			MaxCount:         1,
 			Name:             "Image",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIconOption: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Choose one of our pre-installed icons during On-boarding",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_briconOption",
+			Key:              "iconOption",
+			MaxCount:         1,
+			Name:             "Icon option",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2061,6 +2077,19 @@ var (
 			MaxCount:         1,
 			Name:             "Source object",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceDashboardId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Space Dashboard object ID",
+			Format:           model.RelationFormat_object,
+			Id:               "_brspaceDashboardId",
+			Key:              "spaceDashboardId",
+			MaxCount:         1,
+			Name:             "Space Dashboard ID",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

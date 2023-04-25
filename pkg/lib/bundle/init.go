@@ -9,7 +9,6 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -65,7 +64,25 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeyTemplateIsBundled,
 	RelationKeyTag,
 	RelationKeyOldAnytypeID,
+	RelationKeySpaceDashboardId,
+	RelationKeyRecommendedRelations,
+	RelationKeyIconOption,
 }...)
+
+func makeSystemRelationsMap() map[RelationKey]struct{} {
+	res := make(map[RelationKey]struct{}, len(SystemRelations))
+	for _, k := range SystemRelations {
+		res[k] = struct{}{}
+	}
+	return res
+}
+
+var systemRelationsMap = makeSystemRelationsMap()
+
+func (rk RelationKey) IsSystem() bool {
+	_, ok := systemRelationsMap[rk]
+	return ok
+}
 
 // InternalTypes contains the list of types that are not possible
 // to create as a general object because they have specific logic

@@ -1636,5 +1636,25 @@
     "name": "Old Anytype ID",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Space Dashboard object ID",
+    "format": "object",
+    "hidden": false,
+    "key": "spaceDashboardId",
+    "maxCount": 1,
+    "name": "Space Dashboard ID",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Choose one of our pre-installed icons during On-boarding",
+    "format": "number",
+    "hidden": true,
+    "key": "iconOption",
+    "maxCount": 1,
+    "name": "Icon option",
+    "readonly": false,
+    "source": "details"
   }
 ]

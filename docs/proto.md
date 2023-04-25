@@ -26,10 +26,6 @@
     - [Change.Snapshot.LogHeadsEntry](#anytype-Change-Snapshot-LogHeadsEntry)
     - [Change.StoreKeySet](#anytype-Change-StoreKeySet)
     - [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset)
-    - [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate)
-    - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
-    - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
-    - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
     - [Change._RelationAdd](#anytype-Change-_RelationAdd)
     - [Change._RelationRemove](#anytype-Change-_RelationRemove)
     - [Change._RelationUpdate](#anytype-Change-_RelationUpdate)
@@ -710,10 +706,6 @@
     - [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request)
     - [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response)
     - [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error)
-    - [Rpc.Object.ToCollection](#anytype-Rpc-Object-ToCollection)
-    - [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request)
-    - [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response)
-    - [Rpc.Object.ToCollection.Response.Error](#anytype-Rpc-Object-ToCollection-Response-Error)
     - [Rpc.Object.ToSet](#anytype-Rpc-Object-ToSet)
     - [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request)
     - [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response)
@@ -727,19 +719,6 @@
     - [Rpc.Object.WorkspaceSetDashboard.Request](#anytype-Rpc-Object-WorkspaceSetDashboard-Request)
     - [Rpc.Object.WorkspaceSetDashboard.Response](#anytype-Rpc-Object-WorkspaceSetDashboard-Response)
     - [Rpc.Object.WorkspaceSetDashboard.Response.Error](#anytype-Rpc-Object-WorkspaceSetDashboard-Response-Error)
-    - [Rpc.ObjectCollection](#anytype-Rpc-ObjectCollection)
-    - [Rpc.ObjectCollection.Add](#anytype-Rpc-ObjectCollection-Add)
-    - [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request)
-    - [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response)
-    - [Rpc.ObjectCollection.Add.Response.Error](#anytype-Rpc-ObjectCollection-Add-Response-Error)
-    - [Rpc.ObjectCollection.Remove](#anytype-Rpc-ObjectCollection-Remove)
-    - [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request)
-    - [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response)
-    - [Rpc.ObjectCollection.Remove.Response.Error](#anytype-Rpc-ObjectCollection-Remove-Response-Error)
-    - [Rpc.ObjectCollection.Sort](#anytype-Rpc-ObjectCollection-Sort)
-    - [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request)
-    - [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response)
-    - [Rpc.ObjectCollection.Sort.Response.Error](#anytype-Rpc-ObjectCollection-Sort-Response-Error)
     - [Rpc.ObjectRelation](#anytype-Rpc-ObjectRelation)
     - [Rpc.ObjectRelation.Add](#anytype-Rpc-ObjectRelation-Add)
     - [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request)
@@ -884,6 +863,7 @@
   
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
+    - [Rpc.Account.Create.Request.IconOption](#anytype-Rpc-Account-Create-Request-IconOption)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -1048,13 +1028,9 @@
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
     - [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code)
-    - [Rpc.Object.ToCollection.Response.Error.Code](#anytype-Rpc-Object-ToCollection-Response-Error-Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype-Rpc-Object-ToSet-Response-Error-Code)
     - [Rpc.Object.Undo.Response.Error.Code](#anytype-Rpc-Object-Undo-Response-Error-Code)
     - [Rpc.Object.WorkspaceSetDashboard.Response.Error.Code](#anytype-Rpc-Object-WorkspaceSetDashboard-Response-Error-Code)
-    - [Rpc.ObjectCollection.Add.Response.Error.Code](#anytype-Rpc-ObjectCollection-Add-Response-Error-Code)
-    - [Rpc.ObjectCollection.Remove.Response.Error.Code](#anytype-Rpc-ObjectCollection-Remove-Response-Error-Code)
-    - [Rpc.ObjectCollection.Sort.Response.Error.Code](#anytype-Rpc-ObjectCollection-Sort-Response-Error-Code)
     - [Rpc.ObjectRelation.Add.Response.Error.Code](#anytype-Rpc-ObjectRelation-Add-Response-Error-Code)
     - [Rpc.ObjectRelation.AddFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-AddFeatured-Response-Error-Code)
     - [Rpc.ObjectRelation.Delete.Response.Error.Code](#anytype-Rpc-ObjectRelation-Delete-Response-Error-Code)
@@ -1102,7 +1078,6 @@
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
-    - [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet)
     - [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate)
     - [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete)
     - [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet)
@@ -1455,7 +1430,6 @@
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectApplyTemplate | [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request) | [Rpc.Object.ApplyTemplate.Response](#anytype-Rpc-Object-ApplyTemplate-Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request) | [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response) | ObjectToSet creates new set from given object and removes object |
-| ObjectToCollection | [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request) | [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response) |  |
 | ObjectAddWithObjectId | [Rpc.Object.AddWithObjectId.Request](#anytype-Rpc-Object-AddWithObjectId-Request) | [Rpc.Object.AddWithObjectId.Response](#anytype-Rpc-Object-AddWithObjectId-Response) |  |
 | ObjectShareByLink | [Rpc.Object.ShareByLink.Request](#anytype-Rpc-Object-ShareByLink-Request) | [Rpc.Object.ShareByLink.Response](#anytype-Rpc-Object-ShareByLink-Response) |  |
 | ObjectOpenBreadcrumbs | [Rpc.Object.OpenBreadcrumbs.Request](#anytype-Rpc-Object-OpenBreadcrumbs-Request) | [Rpc.Object.OpenBreadcrumbs.Response](#anytype-Rpc-Object-OpenBreadcrumbs-Response) |  |
@@ -1468,9 +1442,6 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
-| ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
-| ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
-| ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
 | ObjectCreateRelation | [Rpc.Object.CreateRelation.Request](#anytype-Rpc-Object-CreateRelation-Request) | [Rpc.Object.CreateRelation.Response](#anytype-Rpc-Object-CreateRelation-Response) | Relations *** |
 | ObjectCreateRelationOption | [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request) | [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response) |  |
 | RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response) |  |
@@ -1730,7 +1701,6 @@ the element of change tree used to store and internal apply smartBlock history
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove) |  |  |
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
 | storeKeyUnset | [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset) |  |  |
-| storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
 
 
 
@@ -1918,71 +1888,6 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-StoreSliceUpdate"></a>
-
-### Change.StoreSliceUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| add | [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add) |  |  |
-| remove | [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove) |  |  |
-| move | [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-StoreSliceUpdate-Add"></a>
-
-### Change.StoreSliceUpdate.Add
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| afterId | [string](#string) |  |  |
-| ids | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-StoreSliceUpdate-Move"></a>
-
-### Change.StoreSliceUpdate.Move
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| afterId | [string](#string) |  |  |
-| ids | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-StoreSliceUpdate-Remove"></a>
-
-### Change.StoreSliceUpdate.Remove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| ids | [string](#string) | repeated |  |
 
 
 
@@ -2216,6 +2121,7 @@ Front end to middleware request-to-create-an account
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
+| icon | [Rpc.Account.Create.Request.IconOption](#anytype-Rpc-Account-Create-Request-IconOption) |  | Option of pre-installed icon |
 | alphaInviteCode | [string](#string) |  |  |
 
 
@@ -11101,7 +11007,6 @@ deprecated, to be removed |
 | source | [string](#string) | repeated |  |
 | ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
-| collectionId | [string](#string) |  |  |
 
 
 
@@ -11916,63 +11821,6 @@ deprecated, to be removed |
 
 
 
-<a name="anytype-Rpc-Object-ToCollection"></a>
-
-### Rpc.Object.ToCollection
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ToCollection-Request"></a>
-
-### Rpc.Object.ToCollection.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ToCollection-Response"></a>
-
-### Rpc.Object.ToCollection.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.ToCollection.Response.Error](#anytype-Rpc-Object-ToCollection-Response-Error) |  |  |
-| collectionId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ToCollection-Response-Error"></a>
-
-### Rpc.Object.ToCollection.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.ToCollection.Response.Error.Code](#anytype-Rpc-Object-ToCollection-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-ToSet"></a>
 
 ### Rpc.Object.ToSet
@@ -12157,191 +12005,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.WorkspaceSetDashboard.Response.Error.Code](#anytype-Rpc-Object-WorkspaceSetDashboard-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection"></a>
-
-### Rpc.ObjectCollection
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Add"></a>
-
-### Rpc.ObjectCollection.Add
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Add-Request"></a>
-
-### Rpc.ObjectCollection.Add.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| afterId | [string](#string) |  |  |
-| objectIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Add-Response"></a>
-
-### Rpc.ObjectCollection.Add.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectCollection.Add.Response.Error](#anytype-Rpc-ObjectCollection-Add-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Add-Response-Error"></a>
-
-### Rpc.ObjectCollection.Add.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectCollection.Add.Response.Error.Code](#anytype-Rpc-ObjectCollection-Add-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Remove"></a>
-
-### Rpc.ObjectCollection.Remove
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Remove-Request"></a>
-
-### Rpc.ObjectCollection.Remove.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| objectIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Remove-Response"></a>
-
-### Rpc.ObjectCollection.Remove.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectCollection.Remove.Response.Error](#anytype-Rpc-ObjectCollection-Remove-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Remove-Response-Error"></a>
-
-### Rpc.ObjectCollection.Remove.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectCollection.Remove.Response.Error.Code](#anytype-Rpc-ObjectCollection-Remove-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Sort"></a>
-
-### Rpc.ObjectCollection.Sort
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Sort-Request"></a>
-
-### Rpc.ObjectCollection.Sort.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| objectIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Sort-Response"></a>
-
-### Rpc.ObjectCollection.Sort.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectCollection.Sort.Response.Error](#anytype-Rpc-ObjectCollection-Sort-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Sort-Response-Error"></a>
-
-### Rpc.ObjectCollection.Sort.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectCollection.Sort.Response.Error.Code](#anytype-Rpc-ObjectCollection-Sort-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14368,6 +14031,26 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BET | 25 |  |
 | BRT | 26 |  |
 | CAT | 27 |  |
+
+
+
+<a name="anytype-Rpc-Account-Create-Request-IconOption"></a>
+
+### Rpc.Account.Create.Request.IconOption
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ICON_OPTION_0 | 0 |  |
+| ICON_OPTION_1 | 1 |  |
+| ICON_OPTION_2 | 2 |  |
+| ICON_OPTION_3 | 3 |  |
+| ICON_OPTION_4 | 4 |  |
+| ICON_OPTION_5 | 5 |  |
+| ICON_OPTION_6 | 6 |  |
+| ICON_OPTION_7 | 7 |  |
+| ICON_OPTION_8 | 8 |  |
+| ICON_OPTION_9 | 9 |  |
 
 
 
@@ -16570,19 +16253,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Object-ToCollection-Response-Error-Code"></a>
-
-### Rpc.Object.ToCollection.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype-Rpc-Object-ToSet-Response-Error-Code"></a>
 
 ### Rpc.Object.ToSet.Response.Error.Code
@@ -16613,45 +16283,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-WorkspaceSetDashboard-Response-Error-Code"></a>
 
 ### Rpc.Object.WorkspaceSetDashboard.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Add-Response-Error-Code"></a>
-
-### Rpc.ObjectCollection.Add.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Remove-Response-Error-Code"></a>
-
-### Rpc.ObjectCollection.Remove.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-ObjectCollection-Sort-Response-Error-Code"></a>
-
-### Rpc.ObjectCollection.Sort.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -17266,22 +16897,6 @@ B. Partial block load
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
 | groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Dataview-IsCollectionSet"></a>
-
-### Event.Block.Dataview.IsCollectionSet
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | dataview block&#39;s id |
-| value | [bool](#bool) |  |  |
 
 
 
@@ -19236,7 +18851,6 @@ Precondition: user A opened a block
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
 | blockDataviewViewUpdate | [Event.Block.Dataview.ViewUpdate](#anytype-Event-Block-Dataview-ViewUpdate) |  |  |
 | blockDataviewTargetObjectIdSet | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
-| blockDataviewIsCollectionSet | [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
 | blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |
@@ -20319,7 +19933,6 @@ Bookmark is to keep a web-link and to preview a content.
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | TargetObjectId | [string](#string) |  |  |
-| isCollection | [bool](#bool) |  |  |
 
 
 
@@ -21627,7 +21240,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | bookmark | 11 |  |
 | relationOptionsList | 12 |  |
 | relationOption | 13 |  |
-| collection | 14 |  |
 | database | 20 | to be released later |
 
 
@@ -21733,7 +21345,6 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Archive | 48 |  |
 | Database | 64 |  |
 | Set | 65 | only have dataview simpleblock |
-| Collection | 66 |  |
 | STObjectType | 96 | have relations list |
 | Widget | 112 |  |
 | File | 256 |  |
