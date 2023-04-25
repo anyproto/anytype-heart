@@ -511,17 +511,26 @@ func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.Bl
 }
 
 func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (err error) {
-	var relationKeys []string
+	relationKeys := make(map[string]struct{})
 	if len(d.RelationLinks) != 0 || len(d.Views) == 0 {
 		return
 	}
-	for _, r := range d.Views[0].Relations {
-		relationKeys = append(relationKeys, r.Key)
+	for _, v := range d.Views {
+		for _, r := range v.Relations {
+			if _, found := relationKeys[r.Key]; !found {
+				relationKeys[r.Key] = struct{}{}
+			}
+		}
 	}
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := cb.relationService.FetchKeys(relationKeys...)
+
+	relationKeysList := make([]string, len(relationKeys))
+	for k := range relationKeys {
+		relationKeysList = append(relationKeysList, k)
+	}
+	relations, err := cb.relationService.FetchKeys(relationKeysList...)
 	if err != nil {
 		return fmt.Errorf("failed to fetch relation keys of dataview: %v", err)
 	}
@@ -529,6 +538,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	for _, r := range relations {
 		links = append(links, r.RelationLink())
 	}
+
 	d.RelationLinks = links
 	return
 }
