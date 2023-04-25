@@ -26,17 +26,17 @@ type TreeJson struct {
 }
 
 type JsonChange struct {
-	Id     string           `json:"id"`
-	Ord    int              `json:"ord"`
-	Change marshalledChange `json:"change"`
+	Id     string               `json:"id"`
+	Ord    int                  `json:"ord"`
+	Change MarshalledJsonChange `json:"change"`
 }
 
-type marshalledChange struct {
-	Ch string
+type MarshalledJsonChange struct {
+	JsonString string
 }
 
-func (m marshalledChange) MarshalJSON() ([]byte, error) {
-	return []byte(m.Ch), nil
+func (m MarshalledJsonChange) MarshalJSON() ([]byte, error) {
+	return []byte(m.JsonString), nil
 }
 
 type TreeImporter interface {
@@ -109,7 +109,7 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 		ch := JsonChange{
 			Id:     change.Id,
 			Ord:    i,
-			Change: marshalledChange{Ch: pbtypes.Sprint(model)},
+			Change: MarshalledJsonChange{JsonString: pbtypes.Sprint(model)},
 		}
 		treeJson.Changes = append(treeJson.Changes, ch)
 		return true
