@@ -111,8 +111,8 @@ github.com/anytypeio/ipfs-lite v1.4.3-0.20221213154513-adb3ebf9381c h1:1r6gf2nJa
 github.com/anytypeio/ipfs-lite v1.4.3-0.20221213154513-adb3ebf9381c/go.mod h1:4urJUIk36yaTHlgPuZ/YHUmtvAII19xVHmCE8YA7u54=
 github.com/anytypeio/protobuf v1.3.3-0.20220812130913-4790a673c288 h1:vUBUGHh0bGm6DPgj5iTcYz1FsS7tjRIuApmkYOQ31aQ=
 github.com/anytypeio/protobuf v1.3.3-0.20220812130913-4790a673c288/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
-github.com/anytypeio/zeroconf/v2 v2.2.1-0.20230302101101-9dba2bace95a h1:dLU6QnzLGTA5wcSVjIKDLHLr3k99L40bDBWLfH5v2Lw=
-github.com/anytypeio/zeroconf/v2 v2.2.1-0.20230302101101-9dba2bace95a/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
+github.com/anytypeio/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941 h1:0pGgaVVkAq2V9UoZIaBjkRzx01IzBaZNAx73xSK2MhY=
+github.com/anytypeio/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=

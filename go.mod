@@ -286,7 +286,7 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/libp2p/zeroconf/v2 => github.com/anytypeio/zeroconf/v2 v2.2.1-0.20230302101101-9dba2bace95a
+replace github.com/libp2p/zeroconf/v2 => github.com/anytypeio/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941
 
 replace github.com/elastic/gosigar => github.com/anytypeio/gosigar v0.0.0-20220811145612-92bd3366198a
 
