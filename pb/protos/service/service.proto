@@ -73,6 +73,7 @@ service ClientCommands {
     rpc ObjectApplyTemplate (anytype.Rpc.Object.ApplyTemplate.Request) returns (anytype.Rpc.Object.ApplyTemplate.Response);
     // ObjectToSet creates new set from given object and removes object
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
+    rpc ObjectToCollection (anytype.Rpc.Object.ToCollection.Request) returns (anytype.Rpc.Object.ToCollection.Response);
     rpc ObjectAddWithObjectId (anytype.Rpc.Object.AddWithObjectId.Request) returns (anytype.Rpc.Object.AddWithObjectId.Response);
     rpc ObjectShareByLink (anytype.Rpc.Object.ShareByLink.Request) returns (anytype.Rpc.Object.ShareByLink.Response);
     rpc ObjectOpenBreadcrumbs (anytype.Rpc.Object.OpenBreadcrumbs.Request) returns (anytype.Rpc.Object.OpenBreadcrumbs.Response);

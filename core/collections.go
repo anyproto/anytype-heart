@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -65,4 +66,31 @@ func (mw *Middleware) ObjectCollectionSort(cctx context.Context, req *pb.RpcObje
 		return response(pb.RpcObjectCollectionSortResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectCollectionSortResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObjectToCollectionRequest) *pb.RpcObjectToCollectionResponse {
+	response := func(colID string, err error) *pb.RpcObjectToCollectionResponse {
+		resp := &pb.RpcObjectToCollectionResponse{
+			CollectionId: colID,
+			Error: &pb.RpcObjectToCollectionResponseError{
+				Code: pb.RpcObjectToCollectionResponseError_NULL,
+			},
+		}
+		if err != nil {
+			resp.Error.Code = pb.RpcObjectToCollectionResponseError_UNKNOWN_ERROR
+			resp.Error.Description = err.Error()
+		}
+		return resp
+	}
+	var (
+		setId string
+		err   error
+	)
+	err = mw.doBlockService(func(bs *block.Service) error {
+		if setId, err = bs.ObjectToCollection(req.ContextId); err != nil {
+			return err
+		}
+		return nil
+	})
+	return response(setId, err)
 }

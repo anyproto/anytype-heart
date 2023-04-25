@@ -202,6 +202,56 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	return newID, nil
 }
 
+func (s *Service) ObjectToCollection(id string) (string, error) {
+	var details *types.Struct
+	// TODO Copy dataview from Sets
+	if err := s.Do(id, func(b smartblock.SmartBlock) error {
+		details = pbtypes.CopyStruct(b.Details())
+
+		s := b.NewState()
+		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return "", err
+	}
+	// cleanup details
+	delete(details.Fields, bundle.RelationKeyLayout.String())
+	delete(details.Fields, bundle.RelationKeyType.String())
+
+	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateRequest{
+		Details: details,
+	}, bundle.TypeKeyCollection)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := s.objectStore.GetWithLinksInfoByID(id)
+	if err != nil {
+		return "", err
+	}
+	for _, il := range res.Links.Inbound {
+		if err = s.replaceLink(il.Id, id, newID); err != nil {
+			return "", err
+		}
+	}
+	err = s.DeleteObject(id)
+	if err != nil {
+		// intentionally do not return error here
+		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
+	}
+
+	return newID, nil
+}
+
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
 	return s.objectCreator.CreateObject(req, forcedType)
 }

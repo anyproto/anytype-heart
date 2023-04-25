@@ -705,6 +705,10 @@
     - [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request)
     - [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response)
     - [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error)
+    - [Rpc.Object.ToCollection](#anytype-Rpc-Object-ToCollection)
+    - [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request)
+    - [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response)
+    - [Rpc.Object.ToCollection.Response.Error](#anytype-Rpc-Object-ToCollection-Response-Error)
     - [Rpc.Object.ToSet](#anytype-Rpc-Object-ToSet)
     - [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request)
     - [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response)
@@ -1029,6 +1033,7 @@
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
     - [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code)
+    - [Rpc.Object.ToCollection.Response.Error.Code](#anytype-Rpc-Object-ToCollection-Response-Error-Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype-Rpc-Object-ToSet-Response-Error-Code)
     - [Rpc.Object.Undo.Response.Error.Code](#anytype-Rpc-Object-Undo-Response-Error-Code)
     - [Rpc.ObjectCollection.Add.Response.Error.Code](#anytype-Rpc-ObjectCollection-Add-Response-Error-Code)
@@ -1426,6 +1431,7 @@
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectApplyTemplate | [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request) | [Rpc.Object.ApplyTemplate.Response](#anytype-Rpc-Object-ApplyTemplate-Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request) | [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response) | ObjectToSet creates new set from given object and removes object |
+| ObjectToCollection | [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request) | [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response) |  |
 | ObjectAddWithObjectId | [Rpc.Object.AddWithObjectId.Request](#anytype-Rpc-Object-AddWithObjectId-Request) | [Rpc.Object.AddWithObjectId.Response](#anytype-Rpc-Object-AddWithObjectId-Response) |  |
 | ObjectShareByLink | [Rpc.Object.ShareByLink.Request](#anytype-Rpc-Object-ShareByLink-Request) | [Rpc.Object.ShareByLink.Response](#anytype-Rpc-Object-ShareByLink-Response) |  |
 | ObjectOpenBreadcrumbs | [Rpc.Object.OpenBreadcrumbs.Request](#anytype-Rpc-Object-OpenBreadcrumbs-Request) | [Rpc.Object.OpenBreadcrumbs.Response](#anytype-Rpc-Object-OpenBreadcrumbs-Response) |  |
@@ -11811,6 +11817,63 @@ deprecated, to be removed |
 
 
 
+<a name="anytype-Rpc-Object-ToCollection"></a>
+
+### Rpc.Object.ToCollection
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToCollection-Request"></a>
+
+### Rpc.Object.ToCollection.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToCollection-Response"></a>
+
+### Rpc.Object.ToCollection.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ToCollection.Response.Error](#anytype-Rpc-Object-ToCollection-Response-Error) |  |  |
+| collectionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToCollection-Response-Error"></a>
+
+### Rpc.Object.ToCollection.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ToCollection.Response.Error.Code](#anytype-Rpc-Object-ToCollection-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ToSet"></a>
 
 ### Rpc.Object.ToSet
@@ -16259,6 +16322,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-ToBookmark-Response-Error-Code"></a>
 
 ### Rpc.Object.ToBookmark.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-ToCollection-Response-Error-Code"></a>
+
+### Rpc.Object.ToCollection.Response.Error.Code
 
 
 | Name | Number | Description |

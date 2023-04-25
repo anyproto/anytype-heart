@@ -3,10 +3,12 @@ package object
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/space/clientcache"
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -19,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -26,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
-	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("object-service")
@@ -71,10 +73,10 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
-	Cache() clientcache.Cache
+	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
 }
 
-func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
 		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -83,10 +85,12 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return c.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
+	return c.CreateSmartBlockFromState(ctx, sbType, details, createState)
 }
 
-func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
+// CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
+// It will return error if some of the relation keys in `details` not installed in the workspace.
+func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -106,11 +110,18 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		}
 	}
 
+	var relationKeys []string
 	var workspaceID string
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
+			relId := addr.RelationKeyToIdPrefix + k
+			if _, err2 := c.objectStore.GetRelationById(relId); err != nil {
+				// check if installed
+				err = fmt.Errorf("failed to get installed relation %s: %w", relId, err2)
+				return
+			}
+			relationKeys = append(relationKeys, k)
 			createState.SetDetail(k, v)
-			// TODO: add relations to relationIds
 		}
 
 		detailsWorkspaceID := details.Fields[bundle.RelationKeyWorkspaceId.String()]
@@ -134,21 +145,11 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
 	ctx = context.WithValue(ctx, eventCreate, ev)
-	// TODO: [MR] what should we do here with our current object creation?
-	//  in which situation we call this condition
-	//if raw := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); raw != "" {
-	//	tid, err = thread.Decode(raw)
-	//	if err != nil {
-	//		log.Errorf("failed to decode thread id from the state: %s", err.Error())
-	//	}
-	//}
-	//csm, err := c.CreateObjectInWorkspace(ctx, workspaceID, tid, sbType)
-	//if err != nil {
-	//	err = fmt.Errorf("anytype.CreateBlock error: %v", err)
-	//	return
-	//}
-	cache := c.blockService.Cache()
-	sb, release, err := cache.CreateTreeObject(sbType, func(id string) *smartblock.InitContext {
+	if sbType == coresb.SmartBlockTypeSubObject {
+		return c.CreateSubObjectInWorkspace(createState.CombinedDetails(), workspaceID)
+	}
+
+	sb, release, err := c.blockService.CreateTreeObject(ctx, sbType, func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()
@@ -156,7 +157,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		return &smartblock.InitContext{
 			ObjectTypeUrls: objectTypes,
 			State:          createState,
-			RelationIds:    relationIds,
+			RelationKeys:   relationKeys,
 		}
 	})
 	if err != nil {
@@ -188,28 +189,31 @@ func (c *Creator) InjectWorkspaceID(details *types.Struct, objectID string) {
 func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
+	// TODO remove it, when schema will be refactored
+	source := req.Source
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
-	if len(req.Source) != 0 {
-		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, req.Source); err != nil {
-			return
-		}
+	if len(source) == 0 {
+		source = []string{bundle.TypeKeyPage.URL()}
+	}
+	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, source); err != nil {
+		return
 	}
 
 	newState := state.NewDoc("", nil).NewState()
 
-	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
-	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
-
 	tmpls := []template.StateTransformer{
-		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
-		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
 		template.WithRequiredRelations(),
 	}
 	var blockContent *model.BlockContentOfDataview
 	if dvSchema != nil {
 		blockContent = &dvContent
 	}
+
+	if len(req.Source) > 0 {
+		req.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.StringList(req.Source)
+	}
+
 	if blockContent != nil {
 		for i, view := range blockContent.Dataview.Views {
 			if view.Relations == nil {
@@ -217,7 +221,6 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 			}
 		}
 		tmpls = append(tmpls,
-			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
 			template.WithDataview(*blockContent, false),
 		)
 	}
@@ -227,7 +230,76 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, nil, nil, newState)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, newState)
+}
+
+func (c *Creator) CreateCollection(details *types.Struct, flags []*model.InternalFlag) (setID string, newDetails *types.Struct, err error) {
+	details = internalflag.PutToDetails(details, flags)
+
+	newState := state.NewDoc("", nil).NewState()
+
+	tmpls := []template.StateTransformer{
+		template.WithRequiredRelations(),
+	}
+
+	var (
+		relations     []*model.RelationLink
+		viewRelations []*model.BlockContentDataviewRelation
+	)
+	for _, relKey := range dataview.DefaultDataviewRelations {
+		if pbtypes.HasRelationLink(relations, relKey.String()) {
+			continue
+		}
+		rel := bundle.MustGetRelation(relKey)
+		if rel.Hidden {
+			continue
+		}
+		relations = append(relations, &model.RelationLink{
+			Format: rel.Format,
+			Key:    rel.Key,
+		})
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+	}
+
+	blockContent := &model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			RelationLinks: relations,
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   bson.NewObjectId().Hex(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Filters:   nil,
+					Relations: viewRelations,
+				},
+			},
+		},
+	}
+
+	if blockContent != nil {
+		for i, view := range blockContent.Dataview.Views {
+			if view.Relations == nil {
+				// TODO Do it above
+				blockContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(blockContent.Dataview.Relations)
+			}
+		}
+		tmpls = append(tmpls,
+			template.WithDataview(*blockContent, false),
+		)
+	}
+
+	if err = template.InitTemplate(newState, tmpls...); err != nil {
+		return "", nil, err
+	}
+
+	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, details, newState)
 }
 
 // TODO: it must be in another component
@@ -256,7 +328,7 @@ func (c *Creator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []st
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
 func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
-	u, err := uri.ProcessURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
+	u, err := uri.NormalizeURI(pbtypes.GetString(req.Details, bundle.RelationKeySource.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("process uri: %w", err)
 	}
@@ -276,46 +348,51 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		details = internalflag.PutToDetails(details, internalFlags)
 	}
 
-	objectType, err := bundle.TypeKeyFromUrl(pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	if err != nil && forcedType == "" {
-		return "", nil, fmt.Errorf("invalid type in details: %w", err)
+	var templateID string
+	if v, ok := req.(block.TemplateIDGetter); ok {
+		templateID = v.GetTemplateId()
 	}
+
+	var objectType string
 	if forcedType != "" {
-		objectType = forcedType
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType.URL())
+		objectType = forcedType.URL()
+	} else if objectType = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectType == "" {
+		return "", nil, fmt.Errorf("missing type in details or in forcedType")
 	}
+
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
 	var sbType = coresb.SmartBlockTypePage
 
 	switch objectType {
-	case bundle.TypeKeyBookmark:
+	case bundle.TypeKeyBookmark.URL():
 		return c.ObjectCreateBookmark(&pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
-	case bundle.TypeKeySet:
+	case bundle.TypeKeySet.URL():
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
 		return c.CreateSet(&pb.RpcObjectCreateSetRequest{
 			Details:       details,
 			InternalFlags: internalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 		})
-	case bundle.TypeKeyObjectType:
+	case bundle.TypeKeyCollection.URL():
+		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+		return c.CreateCollection(details, internalFlags)
+	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelation:
+	case bundle.TypeKeyRelation.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyRelationOption:
+	case bundle.TypeKeyRelationOption.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
 
-	case bundle.TypeKeyTemplate:
+	case bundle.TypeKeyTemplate.URL():
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
-	var templateID string
-	if v, ok := req.(block.TemplateIDGetter); ok {
-		templateID = v.GetTemplateId()
-	}
-	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, nil, templateID)
+	return c.CreateSmartBlockFromTemplate(context.TODO(), sbType, details, templateID)
 }
