@@ -20,15 +20,15 @@ func New() FileStorage {
 
 type FileStorage interface {
 	app.ComponentRunnable
-	fileblockstore.BlockStore
+	fileblockstore.BlockStoreLocal
 }
 
 type fileStorage struct {
 	fileblockstore.BlockStoreLocal
-	provider     datastore.Datastore
-	rpcStore     rpcstore.Service
 	syncer       *syncer
 	syncerCancel context.CancelFunc
+	provider     datastore.Datastore
+	rpcStore     rpcstore.Service
 }
 
 func (f *fileStorage) Init(a *app.App) (err error) {
@@ -54,7 +54,6 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	}
 	f.BlockStoreLocal = ps
 	f.syncer = &syncer{ps: ps, done: make(chan struct{})}
-
 	ctx, f.syncerCancel = context.WithCancel(ctx)
 	go f.syncer.run(ctx)
 	return

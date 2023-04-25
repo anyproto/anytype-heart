@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -13,7 +14,7 @@ import (
 
 type proxyStore struct {
 	cache  fileblockstore.BlockStoreLocal
-	origin fileblockstore.BlockStore
+	origin rpcstore.RpcStore
 	index  *badgerfilestore.FileBadgerIndex
 }
 

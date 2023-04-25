@@ -3,7 +3,6 @@ package rpcstore
 import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/nodeconf"
 )
@@ -17,7 +16,7 @@ func New() Service {
 }
 
 type Service interface {
-	NewStore() fileblockstore.BlockStore
+	NewStore() RpcStore
 	app.Component
 }
 
@@ -36,7 +35,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) NewStore() fileblockstore.BlockStore {
+func (s *service) NewStore() RpcStore {
 	cm := newClientManager(s)
 	return &store{
 		s:  s,

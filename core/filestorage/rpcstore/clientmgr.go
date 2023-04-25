@@ -32,7 +32,8 @@ func newClientManager(s *service) *clientManager {
 			ocache.WithLogger(log.Sugar()),
 			ocache.WithGCPeriod(0),
 		),
-		s: s,
+		checkPeersCh: make(chan struct{}),
+		s:            s,
 	}
 	cm.ctx, cm.ctxCancel = context.WithCancel(context.Background())
 	go cm.checkPeerLoop()
@@ -41,41 +42,52 @@ func newClientManager(s *service) *clientManager {
 
 // clientManager manages clients, removes unused ones, and adds new ones if necessary
 type clientManager struct {
-	mb        *mb.MB[*task]
-	ctx       context.Context
-	ctxCancel context.CancelFunc
-	ocache    ocache.OCache
+	mb           *mb.MB[*task]
+	ctx          context.Context
+	ctxCancel    context.CancelFunc
+	ocache       ocache.OCache
+	checkPeersCh chan struct{}
 
 	s  *service
 	mu sync.RWMutex
 }
 
 func (m *clientManager) Add(ctx context.Context, ts ...*task) (err error) {
+	m.mu.Lock()
+	if m.ocache.Len() == 0 {
+		if err = m.checkPeers(ctx, true); err != nil {
+			m.mu.Unlock()
+			return
+		}
+	}
+	m.mu.Unlock()
 	return m.mb.Add(ctx, ts...)
 }
 
 func (m *clientManager) checkPeerLoop() {
-	m.checkPeers()
+	_ = m.checkPeers(m.ctx, false)
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-m.ctx.Done():
 			return
+		case <-m.checkPeersCh:
+			_ = m.checkPeers(m.ctx, false)
 		case <-ticker.C:
-			m.checkPeers()
+			_ = m.checkPeers(m.ctx, false)
 		}
 	}
 }
 
-func (m *clientManager) checkPeers() {
+func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err error) {
 	// start GC to remove unused clients
 	m.ocache.GC()
 	if m.ocache.Len() >= maxConnections {
 		// reached connection limit, can't add new peers
 		return
 	}
-	if m.ocache.Len() != 0 && m.mb.Len() == 0 {
+	if !needClient && m.mb.Len() == 0 {
 		// has empty queue, no need new peers
 		return
 	}
@@ -86,11 +98,12 @@ func (m *clientManager) checkPeers() {
 		peerIds[i], peerIds[j] = peerIds[j], peerIds[i]
 	})
 	for _, peerId := range peerIds {
-		if _, cerr := m.ocache.Pick(m.ctx, peerId); cerr == ocache.ErrNotExists {
-			ctx, cancel := context.WithTimeout(m.ctx, clientCreateTimeout)
-			cl, err := newClient(ctx, m.s, peerId, m.mb)
-			if err != nil {
-				log.Info("can't create client", zap.Error(err))
+		if _, cerr := m.ocache.Pick(ctx, peerId); cerr == ocache.ErrNotExists {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, clientCreateTimeout)
+			cl, e := newClient(ctx, m.s, peerId, m.mb)
+			if e != nil {
+				log.Info("can't create client", zap.Error(e))
 				cancel()
 				continue
 			}
@@ -99,6 +112,10 @@ func (m *clientManager) checkPeers() {
 			return
 		}
 	}
+	if m.ocache.Len() == 0 {
+		return fmt.Errorf("no connection to any file client")
+	}
+	return nil
 }
 
 func (m *clientManager) Close() (err error) {

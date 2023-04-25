@@ -3,16 +3,11 @@ package rpcstore
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/accountservice/mock_accountservice"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
-	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/accountdata"
-	"github.com/anytypeio/any-sync/metric"
-	"github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/net/rpc/rpctest"
 	"github.com/anytypeio/any-sync/nodeconf"
 	"github.com/golang/mock/gomock"
@@ -26,48 +21,6 @@ import (
 )
 
 var ctx = context.Background()
-
-type config struct {
-	GrpcServer net.Config
-	Account    accountservice.Config
-	APIServer  net.Config
-	Nodes      []nodeconf.NodeConfig
-	Space      commonspace.Config
-	Metric     metric.Config
-	Log        logger.Config
-}
-
-func (c config) Init(a *app.App) (err error) {
-	return
-}
-
-func (c config) Name() (name string) {
-	return "config"
-}
-
-func (c config) GetNet() net.Config {
-	return c.GrpcServer
-}
-
-func (c config) GetDebugNet() net.Config {
-	return c.APIServer
-}
-
-func (c config) GetAccount() accountservice.Config {
-	return c.Account
-}
-
-func (c config) GetMetric() metric.Config {
-	return c.Metric
-}
-
-func (c config) GetSpace() commonspace.Config {
-	return c.Space
-}
-
-func (c config) GetNodes() []nodeconf.NodeConfig {
-	return c.Nodes
-}
 
 func TestStore_Put(t *testing.T) {
 	fx := newFixture(t)
@@ -241,4 +194,18 @@ func (t *testServer) DeleteBlocks(ctx context.Context, req *fileproto.DeleteBloc
 
 func (t *testServer) Check(ctx context.Context, req *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
 	return &fileproto.CheckResponse{}, nil
+}
+
+type config struct {
+	Nodes []nodeconf.NodeConfig
+}
+
+func (c config) Init(a *app.App) (err error) {
+	return
+}
+
+func (c config) Name() string { return "config" }
+
+func (c config) GetNodes() []nodeconf.NodeConfig {
+	return c.Nodes
 }
