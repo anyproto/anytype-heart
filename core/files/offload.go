@@ -105,7 +105,8 @@ func (s *Service) keepOnlyPinned(fileIDs []string) ([]string, error) {
 
 	fileIDs = fileIDs[:0]
 	for _, fileStat := range fileStats {
-		if fileStat.UploadedChunksCount == fileStat.TotalChunksCount {
+		if fileStat.UploadedChunksCount == fileStat.TotalChunksCount ||
+			fileStat.UploadedChunksCount == 0 {
 			fileIDs = append(fileIDs, fileStat.FileId)
 		}
 	}
@@ -113,6 +114,7 @@ func (s *Service) keepOnlyPinned(fileIDs []string) ([]string, error) {
 }
 
 func (s *Service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
+
 	var getCidsLinksRecursively func(c cid.Cid) (err error)
 
 	var visitedMap = make(map[string]struct{})

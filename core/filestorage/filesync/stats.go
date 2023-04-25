@@ -47,6 +47,7 @@ func (f *fileSync) FileListStats(ctx context.Context, spaceID string, fileIDs []
 	if err != nil {
 		return nil, err
 	}
+	// TODO FilesInfo contains deleted files and have no indication of that
 	return conc.MapErr(filesInfo, func(fileInfo *fileproto.FileInfo) (FileStat, error) {
 		return f.fileInfoToStat(ctx, spaceID, fileInfo)
 	})

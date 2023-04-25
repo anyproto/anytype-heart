@@ -140,7 +140,7 @@ func (f *fileSync) addOperation() {
 			break
 		}
 		if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
-			log.Warn("upload file error", zap.Error(err))
+			log.Warn("upload file error", zap.Error(err), zap.String("fileID", fileId))
 			break
 		} else {
 			if err = f.queue.DoneUpload(spaceId, fileId); err != nil {

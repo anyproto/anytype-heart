@@ -94,6 +94,7 @@ type FileStore interface {
 	ListByTarget(target string) ([]*storage.FileInfo, error)
 	Count() (int, error)
 	DeleteByHash(hash string) error
+	DeleteByTarget(targetHash string) error
 	DeleteFileKeys(hash string) error
 	ListFileKeys() ([]string, error)
 	List() ([]*storage.FileInfo, error)
@@ -600,13 +601,30 @@ func (m *dsFileStore) DeleteByHash(hash string) error {
 		return fmt.Errorf("failed to find file by hash to remove")
 	}
 
-	err = localstore.RemoveIndexes(m, m.ds, file, file.Hash)
+	return m.deleteFile(file)
+}
+
+func (m *dsFileStore) deleteFile(file *storage.FileInfo) error {
+	err := localstore.RemoveIndexes(m, m.ds, file, file.Hash)
 	if err != nil {
 		return err
 	}
 
-	fileInfoKey := filesInfoBase.ChildString(hash)
+	fileInfoKey := filesInfoBase.ChildString(file.Hash)
 	return m.ds.Delete(fileInfoKey)
+}
+
+func (m *dsFileStore) DeleteByTarget(targetHash string) error {
+	files, err := m.ListByTarget(targetHash)
+	if err != nil {
+		return fmt.Errorf("failed to find files by target to remove: %w", err)
+	}
+	for _, f := range files {
+		if derr := m.deleteFile(f); derr != nil {
+			return fmt.Errorf("failed to delete file %s: %w", f.Hash, derr)
+		}
+	}
+	return nil
 }
 
 func (m *dsFileStore) GetChunksCount(hash string) (int, error) {

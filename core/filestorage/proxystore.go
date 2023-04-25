@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 )
 
 type proxyStore struct {

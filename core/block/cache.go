@@ -182,7 +182,7 @@ func (s *Service) DeleteObject(id string) (err error) {
 		err = s.OnDelete(id, func() error {
 			// TODO Cleanup inbound links
 
-			if err = s.fileStore.DeleteByHash(id); err != nil {
+			if err = s.fileStore.DeleteByTarget(id); err != nil {
 				return err
 			}
 			if err = s.fileStore.DeleteFileKeys(id); err != nil {
