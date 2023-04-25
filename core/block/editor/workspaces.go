@@ -146,6 +146,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) error {
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
+		template.WithForcedDetail(bundle.RelationKeyWorkspaceId, pbtypes.String(p.Id())),
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
