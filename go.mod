@@ -69,6 +69,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.3.1
 	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multihash v0.2.1
+	github.com/nightlyone/lockfile v1.0.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/otiai10/copy v1.9.0
 	github.com/otiai10/opengraph/v2 v2.1.0
@@ -78,6 +79,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.36.0
 	github.com/sasha-s/go-deadlock v0.3.1
+	github.com/shirou/gopsutil/v3 v3.23.3
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.8.2
 	github.com/textileio/go-ds-badger3 v0.1.0
@@ -105,6 +107,16 @@ require (
 	github.com/ipfs/go-ipfs-files v0.3.0 // indirect
 	github.com/ipfs/go-libipfs v0.7.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
+)
+
+require (
+	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
+	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/shoenig/go-m1cpu v0.1.4 // indirect
+	github.com/tklauser/go-sysconf v0.3.11 // indirect
+	github.com/tklauser/numcpus v0.6.0 // indirect
+	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 )
 
 require (

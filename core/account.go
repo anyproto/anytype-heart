@@ -43,6 +43,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
+	"github.com/anytypeio/go-anytype-middleware/util/osprocess"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -354,6 +355,10 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 }
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+	err := osprocess.Lock()
+	if err != nil {
+		log.Warnf("accountselect lock failed: %v", err)
+	}
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		var clientConfig *pb.RpcAccountConfig
 		if account != nil {
