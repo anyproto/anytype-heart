@@ -57,11 +57,11 @@ func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeSt
 		if err != nil {
 			return err
 		}
-		err = txn.Set(keys.RootIdKey(), nil)
+		err = txn.Set(keys.HeadsKey(), treestorage.CreateHeadsPayload([]string{payload.RootRawChange.Id}))
 		if err != nil {
 			return err
 		}
-		err = txn.Set(keys.HeadsKey(), treestorage.CreateHeadsPayload([]string{payload.RootRawChange.Id}))
+		err = txn.Set(keys.RootIdKey(), nil)
 		if err != nil {
 			return err
 		}
