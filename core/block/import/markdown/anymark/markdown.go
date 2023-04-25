@@ -94,7 +94,7 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 func getCustomHTMLRules() []htmlconverter.Rule {
 	var rules []htmlconverter.Rule
 	strikethrough := htmlconverter.Rule{
-		Filter: []string{"span"},
+		Filter: []string{"span", "del"},
 		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
 			// If the span element has not the classname `bb_strike` return nil.
 			// That way the next rules will apply. In this case the commonmark rules.
