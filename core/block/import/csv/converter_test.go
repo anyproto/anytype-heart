@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -65,5 +66,34 @@ func TestCsv_GetSnapshots(t *testing.T) {
 		}
 	}
 
+	assert.True(t, found)
+}
+
+func TestCsv_GetSnapshotsTable(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path: []string{"testdata/Journal.csv"},
+				Mode: pb.RpcObjectImportRequestCsvParams_TABLE,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+
+	assert.NotNil(t, sn)
+	assert.Len(t, sn.Snapshots, 2) //1 page with table + root collection
+	assert.Contains(t, sn.Snapshots[0].FileName, "Journal.csv")
+
+	var found bool
+	for _, bl := range sn.Snapshots[0].Snapshot.Data.Blocks {
+		if _, ok := bl.Content.(*model.BlockContentOfTable); ok {
+			found = true
+		}
+	}
 	assert.True(t, found)
 }

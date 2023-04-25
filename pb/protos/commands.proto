@@ -1828,6 +1828,12 @@ message Rpc {
 
                 message CsvParams {
                     repeated string path = 1;
+                    Mode mode = 2;
+
+                    enum Mode {
+                        COLLECTION = 0;
+                        TABLE = 1;
+                    };
                 }
 
                 enum Mode {

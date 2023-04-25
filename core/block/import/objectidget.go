@@ -145,7 +145,7 @@ func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
-	records, _, err := ou.objectStore.Query(nil, database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -153,16 +153,15 @@ func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
 				Value:       pbtypes.String(source),
 			},
 		},
-		Limit: 1,
-	})
+	}, []sb.SmartBlockType{sn.SbType})
 	if err == nil {
-		if len(records) > 0 {
-			id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		if len(ids) > 0 {
+			id := ids[0]
 			return id, true
 		}
 	}
 	id := sn.Id
-	records, _, err = ou.objectStore.Query(nil, database.Query{
+	records, _, err := ou.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
