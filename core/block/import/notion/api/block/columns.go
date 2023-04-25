@@ -1,10 +1,12 @@
 package block
 
 import (
+	"strings"
+
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/globalsign/mgo/bson"
-	"strings"
 )
 
 type ColumnListBlock struct {
