@@ -128,8 +128,6 @@ func (rc *RelationService) create(ctx *session.Context,
 		filesToDelete         = make([]string, 0)
 		oldRelationBlockToNew = make(map[string]*model.Block, 0)
 		createRequest         = make([]*types.Struct, 0)
-		existedRelationsIDs   = make([]string, 0)
-		setDetailsRequest     = make([]*pb.RpcObjectSetDetailsDetail, 0)
 	)
 
 	for _, r := range relations {
@@ -148,8 +146,7 @@ func (rc *RelationService) create(ctx *session.Context,
 		log.Errorf("create relation %s", err)
 	}
 
-	ids := make([]string, 0, len(existedRelationsIDs)+len(objects))
-	ids = append(ids, existedRelationsIDs...)
+	ids := make([]string, 0, len(objects))
 
 	for _, s := range objects {
 		name := pbtypes.GetString(s, bundle.RelationKeyName.String())
@@ -186,24 +183,13 @@ func (rc *RelationService) create(ctx *session.Context,
 				filesToDelete = append(filesToDelete, rc.handleFileRelation(ctx, snapshot, r.Name)...)
 			}
 		}
-		setDetailsRequest = append(setDetailsRequest, &pb.RpcObjectSetDetailsDetail{
-			Key:   relationID,
-			Value: snapshot.Details.Fields[r.Name],
-		})
 		if r.BlockID != "" {
 			original, new := rc.linkRelationsBlocks(snapshot, r.BlockID, relationID)
 			if original != nil && new != nil {
 				oldRelationBlockToNew[original.GetId()] = new
 			}
 		}
-	}
-
-	err = rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-		ContextId: pageID,
-		Details:   setDetailsRequest,
-	})
-	if err != nil {
-		log.Errorf("set details %s", err)
+		rc.updateDetails(snapshot, r.Name, relationID)
 	}
 
 	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {
@@ -259,7 +245,10 @@ func (rc *RelationService) update(ctx *session.Context,
 		if err != nil {
 			log.Errorf("set details %s", err)
 			failedRelations = append(failedRelations, r)
+		} else {
+			rc.updateDetails(snapshot, r.Name, key)
 		}
+
 	}
 
 	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {
@@ -270,6 +259,12 @@ func (rc *RelationService) update(ctx *session.Context,
 
 	return filesToDelete, oldRelationBlockToNew, failedRelations, nil
 
+}
+
+func (rc *RelationService) updateDetails(snapshot *model.SmartBlockSnapshotBase, name, key string) {
+	value := snapshot.Details.Fields[name]
+	delete(snapshot.Details.Fields, name)
+	snapshot.Details.Fields[key] = value
 }
 
 func (rc *RelationService) ReplaceRelationBlock(ctx *session.Context,

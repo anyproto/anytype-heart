@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
+	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
@@ -14,10 +14,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -84,15 +83,7 @@ func (ds *Service) GetPages(ctx context.Context,
 			return nil, nil, ce
 		}
 
-		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-		if err != nil {
-			convereterError.Add(p.ID, err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, nil, convereterError
-			}
-			continue
-		}
-		notionPagesIdsToAnytype[p.ID] = tid.String()
+		notionPagesIdsToAnytype[p.ID] = uuid.New().String()
 	}
 
 	progress.SetProgressMessage("Start creating blocks")
@@ -115,7 +106,6 @@ func (ds *Service) GetPages(ctx context.Context,
 					}
 				}
 				t.Title = title
-				pageNameToID[p.ID] = t.GetTitle()
 			}
 		}
 	}
@@ -139,6 +129,7 @@ func (ds *Service) GetPages(ctx context.Context,
 			Id:       pageID,
 			FileName: p.URL,
 			Snapshot: snapshot,
+			SbType:   sb.SmartBlockTypePage,
 		})
 		relationsToPageID[pageID] = relations
 	}
@@ -294,8 +285,7 @@ func isPropertyPaginated(pr property.Object) bool {
 func isPropertyTag(pr property.Object) bool {
 	return pr.GetPropertyType() == property.PropertyConfigTypeMultiSelect ||
 		pr.GetPropertyType() == property.PropertyConfigTypeSelect ||
-		pr.GetPropertyType() == property.PropertyConfigStatus ||
-		pr.GetPropertyType() == property.PropertyConfigTypePeople
+		pr.GetPropertyType() == property.PropertyConfigStatus
 }
 
 func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
@@ -311,11 +301,6 @@ func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
 		for _, so := range property.MultiSelect {
 			text = append(text, so.Name)
 			color = append(color, api.NotionColorToAnytype[so.Color])
-		}
-	case *property.PeopleItem:
-		for _, so := range property.People {
-			text = append(text, so.Name)
-			color = append(color, api.DefaultColor)
 		}
 	}
 

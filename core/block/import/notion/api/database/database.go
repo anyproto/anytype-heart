@@ -5,16 +5,15 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
+	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -69,22 +68,17 @@ func (ds *Service) GetDatabase(ctx context.Context,
 			return nil, nil, nil, ce
 		}
 
-		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-		if err != nil {
-			convereterError.Add(d.ID, err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, nil, nil, convereterError
-			}
-			continue
-		}
+		id := uuid.New().String()
+
 		snapshot := ds.transformDatabase(d)
 
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
-			Id:       tid.String(),
+			Id:       id,
 			FileName: d.URL,
 			Snapshot: snapshot,
+			SbType:   sb.SmartBlockTypePage,
 		})
-		notionIdsToAnytype[d.ID] = tid.String()
+		notionIdsToAnytype[d.ID] = id
 		databaseNameToID[d.ID] = pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())
 	}
 	if convereterError.IsEmpty() {
