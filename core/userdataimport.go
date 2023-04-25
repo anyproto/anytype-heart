@@ -76,7 +76,7 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 	}
 	mw.accountSearchCancel()
 
-	err = mw.extractAccountDirectory(req)
+	err = mw.extractAccountDirectory(profile, req)
 	if err != nil {
 		return "", err
 	}
@@ -141,51 +141,46 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 	return account.Address(), nil
 }
 
-func (mw *Middleware) extractAccountDirectory(req *pb.RpcUserDataImportRequest) error {
+func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcUserDataImportRequest) error {
 	archive, err := zip.OpenReader(req.Path)
 	if err != nil {
 		return err
 	}
-	var accountName string
 	for _, file := range archive.File {
-		path := filepath.Join(mw.rootPath, file.Name)
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
-			accountName = file.FileInfo().Name()
-			break
-		}
-	}
-	for _, file := range archive.File {
-		if file.FileInfo().Name() == accountName {
+		if strings.Contains(file.FileInfo().Name(), profile.Address) {
 			continue
 		}
-
 		fName := file.FileHeader.Name
-		if strings.Contains(fName, accountName) {
-			path := filepath.Join(mw.rootPath, fName)
-			if file.FileInfo().IsDir() {
-				os.MkdirAll(path, file.Mode())
-				continue
-			}
-			fileReader, err := file.Open()
-			if err != nil {
+		if strings.Contains(fName, profile.Address) {
+			if err = mw.createAccountFile(fName, file); err != nil {
 				return err
 			}
 
-			targetFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, file.Mode())
-			if err != nil {
-				fileReader.Close()
-				return err
-			}
-
-			if _, err := io.Copy(targetFile, fileReader); err != nil {
-				fileReader.Close()
-				targetFile.Close()
-				return err
-			}
-			targetFile.Close()
-			fileReader.Close()
 		}
+	}
+	return nil
+}
+
+func (mw *Middleware) createAccountFile(fName string, file *zip.File) error {
+	path := filepath.Join(mw.rootPath, fName)
+	if file.FileInfo().IsDir() {
+		os.MkdirAll(path, file.Mode())
+		return nil
+	}
+	fileReader, err := file.Open()
+	if err != nil {
+		return err
+	}
+
+	defer fileReader.Close()
+	targetFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, file.Mode())
+	if err != nil {
+		return err
+	}
+
+	defer targetFile.Close()
+	if _, err = io.Copy(targetFile, fileReader); err != nil {
+		return err
 	}
 	return nil
 }
