@@ -245,8 +245,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	sub := s.newSimpleSub(req.SubId, req.Keys, false)
-
+	sub := s.newSimpleSub(req.SubId, req.Keys, !req.NoDepSubscription)
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{

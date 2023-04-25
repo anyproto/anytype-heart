@@ -613,7 +613,6 @@
     - [Rpc.Object.Import.Request.CsvParams](#anytype.Rpc.Object.Import.Request.CsvParams)
     - [Rpc.Object.Import.Request.HtmlParams](#anytype.Rpc.Object.Import.Request.HtmlParams)
     - [Rpc.Object.Import.Request.MarkdownParams](#anytype.Rpc.Object.Import.Request.MarkdownParams)
-    - [Rpc.Object.Import.Request.MigrationParams](#anytype.Rpc.Object.Import.Request.MigrationParams)
     - [Rpc.Object.Import.Request.NotionParams](#anytype.Rpc.Object.Import.Request.NotionParams)
     - [Rpc.Object.Import.Request.PbParams](#anytype.Rpc.Object.Import.Request.PbParams)
     - [Rpc.Object.Import.Request.Snapshot](#anytype.Rpc.Object.Import.Request.Snapshot)
@@ -1278,9 +1277,9 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
-- [pb/protos/migration.proto](#pb/protos/migration.proto)
-    - [MigrationObject](#anytype.MigrationObject)
+- [pb/protos/snapshot.proto](#pb/protos/snapshot.proto)
     - [Profile](#anytype.Profile)
+    - [SnapshotWithType](#anytype.SnapshotWithType)
   
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
@@ -2500,7 +2499,7 @@ Middleware-to-front-end response to an account recover request, that can contain
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| address | [string](#string) |  |  |
+| accountId | [string](#string) |  |  |
 | error | [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype.Rpc.Account.RecoverFromLegacyExport.Response.Error) |  |  |
 
 
@@ -10429,7 +10428,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype.Rpc.Object.Import.Request.NotionParams) |  |  |
 | bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype.Rpc.Object.Import.Request.BookmarksParams) |  | for internal use |
 | markdownParams | [Rpc.Object.Import.Request.MarkdownParams](#anytype.Rpc.Object.Import.Request.MarkdownParams) |  |  |
-| migrationParams | [Rpc.Object.Import.Request.MigrationParams](#anytype.Rpc.Object.Import.Request.MigrationParams) |  |  |
 | htmlParams | [Rpc.Object.Import.Request.HtmlParams](#anytype.Rpc.Object.Import.Request.HtmlParams) |  |  |
 | txtParams | [Rpc.Object.Import.Request.TxtParams](#anytype.Rpc.Object.Import.Request.TxtParams) |  |  |
 | pbParams | [Rpc.Object.Import.Request.PbParams](#anytype.Rpc.Object.Import.Request.PbParams) |  |  |
@@ -10438,6 +10436,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | updateExistingObjects | [bool](#bool) |  |  |
 | type | [Rpc.Object.Import.Request.Type](#anytype.Rpc.Object.Import.Request.Type) |  |  |
 | mode | [Rpc.Object.Import.Request.Mode](#anytype.Rpc.Object.Import.Request.Mode) |  |  |
+| noProgress | [bool](#bool) |  |  |
 
 
 
@@ -10469,6 +10468,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
 | mode | [Rpc.Object.Import.Request.CsvParams.Mode](#anytype.Rpc.Object.Import.Request.CsvParams.Mode) |  |  |
+| useFirstRowForRelations | [bool](#bool) |  |  |
+| delimiter | [string](#string) |  |  |
+| transposeRowsAndColumns | [bool](#bool) |  |  |
 
 
 
@@ -10505,22 +10507,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.Import.Request.MigrationParams"></a>
-
-### Rpc.Object.Import.Request.MigrationParams
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [string](#string) |  |  |
-| path | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Object.Import.Request.NotionParams"></a>
 
 ### Rpc.Object.Import.Request.NotionParams
@@ -10544,7 +10530,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  |  |
+| path | [string](#string) | repeated |  |
+| noCollection | [bool](#bool) |  |  |
 
 
 
@@ -10818,6 +10805,9 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | zip | [bool](#bool) |  | save as zip file |
 | includeNested | [bool](#bool) |  | include all nested |
 | includeFiles | [bool](#bool) |  | include all files |
+| isJson | [bool](#bool) |  | for protobuf export |
+| includeDeleted | [bool](#bool) |  | for migration |
+| includeArchived | [bool](#bool) |  | for migration |
 
 
 
@@ -11961,6 +11951,7 @@ deprecated, to be removed |
 | ids | [string](#string) | repeated | ids for subscribe |
 | keys | [string](#string) | repeated | sorts (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
 | ignoreWorkspace | [string](#string) |  |  |
+| noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 
 
@@ -14603,6 +14594,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| DIFFERENT_ACCOUNT | 3 |  |
 
 
 
@@ -16374,7 +16366,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Notion | 0 |  |
 | Markdown | 1 |  |
 | External | 2 | external developers use it |
-| Migration | 3 |  |
+| Pb | 3 |  |
 | Html | 4 |  |
 | Txt | 5 |  |
 | Csv | 6 |  |
@@ -20097,26 +20089,10 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="pb/protos/migration.proto"></a>
+<a name="pb/protos/snapshot.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## pb/protos/migration.proto
-
-
-
-<a name="anytype.MigrationObject"></a>
-
-### MigrationObject
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| sbType | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
-| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  |  |
-
-
-
+## pb/protos/snapshot.proto
 
 
 
@@ -20128,10 +20104,26 @@ Precondition: user A and user B opened the same block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| mnemonic | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | avatar | [string](#string) |  |  |
 | address | [string](#string) |  |  |
+| spaceDashboardId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.SnapshotWithType"></a>
+
+### SnapshotWithType
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sbType | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
+| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  |  |
 
 
 

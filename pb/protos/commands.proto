@@ -1328,6 +1328,8 @@ message Rpc {
                 repeated string keys = 3;
 
                 string ignoreWorkspace = 11;
+                // disable dependent subscription
+                bool noDepSubscription = 12;
             }
 
             message Response {
