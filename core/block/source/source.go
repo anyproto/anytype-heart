@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/synctree"
-	"github.com/gogo/protobuf/proto"
-	"go.uber.org/zap"
 	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/synctree"
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
@@ -23,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -77,7 +78,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeFile:
-		return &files{a: s.anytype}, nil
+		return &files{a: s.anytype, fileStore: s.fileStore}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledRelation:
@@ -88,7 +89,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 		if err := blockType.Valid(); err != nil {
 			return nil, err
 		} else {
-			return &source{a: s.anytype, smartblockType: blockType}, nil
+			return &source{a: s.anytype, spaceService: s.spaceService, smartblockType: blockType}, nil
 		}
 	}
 }
@@ -99,6 +100,7 @@ type sourceDeps struct {
 	accountService accountservice.Service
 	sbt            smartblock.SmartBlockType
 	ot             objecttree.ObjectTree
+	spaceService   space.Service
 }
 
 func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
@@ -106,6 +108,7 @@ func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
 		ObjectTree:     deps.ot,
 		id:             id,
 		a:              deps.anytype,
+		spaceService:   deps.spaceService,
 		ss:             deps.statusService,
 		logId:          deps.anytype.Device(),
 		openedAt:       time.Now(),
@@ -120,18 +123,20 @@ type ObjectTreeProvider interface {
 
 type source struct {
 	objecttree.ObjectTree
-	id, logId      string
-	tid            thread.ID
-	smartblockType smartblock.SmartBlockType
-	a              core.Service
-	ss             status.Service
-	lastSnapshotId string
-	receiver       ChangeReceiver
-	unsubscribe    func()
-	metaOnly       bool
-	closed         chan struct{}
-	openedAt       time.Time
-	acc            accountservice.Service
+	id, logId            string
+	tid                  thread.ID
+	smartblockType       smartblock.SmartBlockType
+	a                    core.Service
+	ss                   status.Service
+	lastSnapshotId       string
+	changesSinceSnapshot int
+	receiver             ChangeReceiver
+	unsubscribe          func()
+	metaOnly             bool
+	closed               chan struct{}
+	openedAt             time.Time
+	acc                  accountservice.Service
+	spaceService         space.Service
 }
 
 func (s *source) Tree() objecttree.ObjectTree {
@@ -141,9 +146,17 @@ func (s *source) Tree() objecttree.ObjectTree {
 func (s *source) Update(ot objecttree.ObjectTree) {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
+	prevSnapshot := s.lastSnapshotId
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		return BuildState(d.(*state.State), ot, s.Anytype().PredefinedBlocks().Profile)
+		st, changes, sinceSnapshot, err := BuildState(d.(*state.State), ot, s.Anytype().PredefinedBlocks().Profile)
+		if prevSnapshot != s.lastSnapshotId {
+			s.changesSinceSnapshot = sinceSnapshot
+		} else {
+			s.changesSinceSnapshot += sinceSnapshot
+		}
+		return st, changes, err
 	})
+
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
 	}
@@ -201,7 +214,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, err := BuildState(nil, s.ObjectTree, s.Anytype().PredefinedBlocks().Profile)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.Anytype().PredefinedBlocks().Profile)
 	if err != nil {
 		return
 	}
@@ -211,7 +224,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 	st.InjectDerivedDetails()
-
+	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
 		return
@@ -277,15 +290,17 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
+		s.changesSinceSnapshot = 0
 		log.Infof("%s: pushed snapshot", s.id)
 	} else {
+		s.changesSinceSnapshot++
 		log.Debugf("%s: pushed %d changes", s.id, len(c.Content))
 	}
 	return
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.a.SpaceService().AccountSpace(context.Background())
+	spc, err := s.spaceService.AccountSpace(context.Background())
 	if err != nil {
 		return
 	}
@@ -303,11 +318,30 @@ func (s *source) ListIds() (ids []string, err error) {
 	return ids, nil
 }
 
+func snapshotChance(changesSinceSnapshot int) bool {
+	v := 2000
+	if changesSinceSnapshot <= 100 {
+		return false
+	}
+
+	d := changesSinceSnapshot/50 + 1
+
+	min := (v / 2) - d
+	max := (v / 2) + d
+
+	r := rand.Intn(v)
+	if r >= min && r <= max {
+		return true
+	}
+
+	return false
+}
+
 func (s *source) needSnapshot() bool {
 	if s.ObjectTree.Heads()[0] == s.ObjectTree.Id() {
 		return true
 	}
-	return rand.Intn(500) == 42
+	return snapshotChance(s.changesSinceSnapshot)
 }
 
 func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -391,7 +425,7 @@ func (s *source) Close() (err error) {
 	return s.ObjectTree.Close()
 }
 
-func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, err error) {
+func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -426,6 +460,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			model := change.Model.(*pb.Change)
 			if startId == change.Id {
 				if st == nil {
+					changesAppliedSinceSnapshot = 0
 					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot).(*state.State)
 					st.SetChangeId(startId)
 					return true
@@ -433,6 +468,11 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 					st = st.NewState()
 				}
 				return true
+			}
+			if model.Snapshot != nil {
+				changesAppliedSinceSnapshot = 0
+			} else {
+				changesAppliedSinceSnapshot++
 			}
 			ns := st.NewState()
 			appliedContent = append(appliedContent, model.Content...)

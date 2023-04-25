@@ -32,6 +32,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -118,6 +119,7 @@ type indexer struct {
 	relationBulkMigration relation.BulkMigration
 	relationMigratorMu    sync.Mutex
 	typeProvider          typeprovider.ObjectTypeProvider
+	spaceService          space.Service
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -130,6 +132,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.doc = a.MustComponent(doc.CName).(doc.Service)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
+	i.spaceService = app.MustComponent[space.Service](a)
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
@@ -262,7 +265,7 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
-	spc, err := i.anytype.SpaceService().AccountSpace(context.Background())
+	spc, err := i.spaceService.AccountSpace(context.Background())
 	if err != nil {
 		return
 	}

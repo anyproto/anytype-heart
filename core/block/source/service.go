@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
@@ -42,9 +43,9 @@ type service struct {
 	typeProvider  typeprovider.ObjectTypeProvider
 	account       accountservice.Service
 	fileStore     filestore.FileStore
-
-	staticIds map[string]func() Source
-	mu        sync.Mutex
+	spaceService  space.Service
+	staticIds     map[string]func() Source
+	mu            sync.Mutex
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -54,6 +55,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 
@@ -103,6 +105,7 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 		accountService: s.account,
 		sbt:            sbt,
 		ot:             ot,
+		spaceService:   s.spaceService,
 	}
 	return newTreeSource(id, deps)
 }

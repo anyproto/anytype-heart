@@ -3,33 +3,28 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"go.uber.org/zap"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"go.uber.org/zap"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
 )
 
 var log = logging.Logger("anytype-core")
@@ -46,7 +41,6 @@ type Service interface {
 	Device() string  // deprecated, use wallet component
 	Stop() error
 	IsStarted() bool
-	SpaceService() space.Service
 
 	EnsurePredefinedBlocks(ctx context.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
@@ -56,18 +50,16 @@ type Service interface {
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
-	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
-	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
 	FileGetKeys(hash string) (*files.FileKeys, error)
 	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
-	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
-	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
+
+	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 
 	ProfileInfo
 
@@ -84,22 +76,12 @@ type ObjectsDeriver interface {
 }
 
 type Anytype struct {
-	files        *files.Service
-	cafe         cafe.Client
-	mdns         mdns.Service
-	objectStore  objectstore.ObjectStore
-	fileStore    filestore.FileStore
-	fetcher      configfetcher.ConfigFetcher
-	sendEvent    func(event *pb.Event)
-	deriver      ObjectsDeriver
-	spaceService space.Service
-
-	ds datastore.Datastore
+	files       *files.Service
+	objectStore objectstore.ObjectStore
+	fileStore   filestore.FileStore
+	deriver     ObjectsDeriver
 
 	predefinedBlockIds threads.DerivedSmartblockIds
-	logLevels          map[string]string
-
-	opts ServiceOptions
 
 	migrationOnce    sync.Once
 	lock             sync.Mutex
@@ -126,23 +108,14 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
-	a.ds = ap.MustComponent(datastore.CName).(datastore.Datastore)
-	a.cafe = ap.MustComponent(cafe.CName).(cafe.Client)
 	a.files = ap.MustComponent(files.CName).(*files.Service)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
-	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
-	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	a.deriver = ap.MustComponent(treegetter.CName).(ObjectsDeriver)
-	a.spaceService = ap.MustComponent(space.CName).(space.Service)
 	return
 }
 
 func (a *Anytype) Name() string {
 	return CName
-}
-
-func (a *Anytype) SpaceService() space.Service {
-	return a.spaceService
 }
 
 // Deprecated, use wallet component directly
@@ -219,9 +192,6 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeArchive,
-		coresb.SmartblockTypeMarketplaceType,
-		coresb.SmartblockTypeMarketplaceRelation,
-		coresb.SmartblockTypeMarketplaceTemplate,
 		coresb.SmartBlockTypeWidget,
 		coresb.SmartBlockTypeHome,
 	}
