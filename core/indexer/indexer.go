@@ -17,8 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -371,6 +369,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		return err
 	}
 
+	// TODO If we use the single mechanism for indexing using only Index method, we need to always index isArchived and isFavorite
 	if flags.any() {
 		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)
 		if err != nil {
@@ -802,19 +801,6 @@ func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, er
 		ids = append(ids, idsT...)
 	}
 	return ids, nil
-}
-
-func extractOldRelationsFromState(s *state.State) []*model.Relation {
-	var rels []*model.Relation
-	if objRels := s.OldExtraRelations(); len(objRels) > 0 {
-		rels = append(rels, s.OldExtraRelations()...)
-	}
-
-	if dvBlock := s.Pick(template.DataviewBlockId); dvBlock != nil {
-		rels = append(rels, dvBlock.Model().GetDataview().GetRelations()...)
-	}
-
-	return rels
 }
 
 func headsHash(heads []string) string {
