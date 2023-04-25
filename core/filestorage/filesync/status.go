@@ -35,7 +35,7 @@ type StatusWatcher struct {
 
 	updateInterval  time.Duration
 	statusService   StatusService
-	fileSyncService FileSync
+	fileSyncService *fileSync
 	fileStore       filestore.FileStore
 }
 
@@ -119,6 +119,15 @@ func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (f
 		return status, nil
 	}
 	status.updatedAt = now
+
+	isUploading, err := s.fileSyncService.queue.HasUpload(key.spaceID, key.fileID)
+	if err != nil {
+		return status, fmt.Errorf("check queue: %w", err)
+	}
+	if isUploading {
+		status.status = syncstatus.StatusNotSynced
+		return status, nil
+	}
 
 	fstat, err := s.fileSyncService.FileStat(ctx, key.spaceID, key.fileID)
 	if err != nil {

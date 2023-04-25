@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"github.com/dgraph-io/badger/v3"
 	"time"
+
+	"github.com/dgraph-io/badger/v3"
 )
 
 const (
@@ -57,6 +58,21 @@ func (s *fileSyncStore) DoneRemove(spaceId, fileId string) (err error) {
 
 func (s *fileSyncStore) GetUpload() (spaceId, fileId string, err error) {
 	return s.getOne(uploadKeyPrefix)
+}
+
+func (s *fileSyncStore) HasUpload(spaceId, fileId string) (ok bool, err error) {
+	err = s.db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get(uploadKey(spaceId, fileId))
+		if err == badger.ErrKeyNotFound {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		ok = true
+		return nil
+	})
+	return
 }
 
 func (s *fileSyncStore) GetRemove() (spaceId, fileId string, err error) {

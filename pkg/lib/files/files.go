@@ -97,20 +97,11 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	if err != nil {
 		return "", nil, err
 	}
-
-	chunksCount, err := s.getChunksCount(ctx, node)
-	if err != nil {
-		return "", nil, fmt.Errorf("count chunks: %w", err)
-	}
-
-	nodeHash := node.Cid().String()
-	if err = s.store.SetChunksCount(nodeHash, chunksCount); err != nil {
+	if err = s.storeChunksCount(ctx, node); err != nil {
 		return "", nil, fmt.Errorf("store chunks count: %w", err)
 	}
 
-	chunkies, err := s.store.GetChunksCount(nodeHash)
-	_ = chunkies
-
+	nodeHash := node.Cid().String()
 	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
 		return "", nil, err
 	}
@@ -140,6 +131,20 @@ func (s *Service) getChunksCount(ctx context.Context, node ipld.Node) (int, erro
 		return -1, fmt.Errorf("failed to count cids: %w", err)
 	}
 	return chunksCount, nil
+}
+
+func (s *Service) storeChunksCount(ctx context.Context, node ipld.Node) error {
+	chunksCount, err := s.getChunksCount(ctx, node)
+	if err != nil {
+		return fmt.Errorf("count chunks: %w", err)
+	}
+
+	nodeHash := node.Cid().String()
+	if err = s.store.SetChunksCount(nodeHash, chunksCount); err != nil {
+		return fmt.Errorf("store chunks count: %w", err)
+	}
+
+	return nil
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
