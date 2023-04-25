@@ -69,7 +69,6 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.3.1
 	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multihash v0.2.1
-	github.com/nightlyone/lockfile v1.0.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/otiai10/copy v1.9.0
 	github.com/otiai10/opengraph/v2 v2.1.0

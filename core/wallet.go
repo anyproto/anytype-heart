@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/util/osprocess"
 )
 
 const wordCount int = 12
@@ -61,10 +60,6 @@ func (mw *Middleware) setMnemonic(mnemonic string) error {
 }
 
 func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
-	err := osprocess.Lock()
-	if err != nil {
-		log.Warnf("walletrecover lock failed: %v", err)
-	}
 	response := func(code pb.RpcWalletRecoverResponseErrorCode, err error) *pb.RpcWalletRecoverResponse {
 		m := &pb.RpcWalletRecoverResponse{Error: &pb.RpcWalletRecoverResponseError{Code: code}}
 		if err != nil {

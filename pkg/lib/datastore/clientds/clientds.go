@@ -103,6 +103,8 @@ func (r *clientds) Run(context.Context) error {
 		return fmt.Errorf("old repo found")
 	}
 
+	RemoveExpiredLocks(r.repoPath)
+
 	r.localstoreDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(localstoreDSDir), &r.cfg.Localstore)
 	if err != nil {
 		return err
