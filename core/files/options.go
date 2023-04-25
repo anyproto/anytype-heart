@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/h2non/filetype"
 	ipfspath "github.com/ipfs/go-path"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 type AddOption func(*AddOptions)

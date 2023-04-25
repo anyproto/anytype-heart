@@ -7,17 +7,17 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
 
-func (a *Anytype) FileGetKeys(hash string) (*files.FileKeys, error) {
+func (a *Anytype) FileGetKeys(hash string) (*files2.FileKeys, error) {
 	return a.files.FileGetKeys(hash)
 }
 
-func (a *Anytype) FileStoreKeys(fileKeys ...files.FileKeys) error {
+func (a *Anytype) FileStoreKeys(fileKeys ...files2.FileKeys) error {
 	var fks []filestore.FileKeys
 
 	for _, fk := range fileKeys {
@@ -128,8 +128,8 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 }
 
 // TODO: Touch the file to fire indexing
-func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File, error) {
-	opts := files.AddOptions{}
+func (a *Anytype) FileAdd(ctx context.Context, options ...files2.AddOption) (File, error) {
+	opts := files2.AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
 	}
