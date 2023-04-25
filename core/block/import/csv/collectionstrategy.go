@@ -45,7 +45,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]
 	}
 	allObjectsIDs = append(allObjectsIDs, targetIDs...)
 
-	st.StoreSlice(template.CollectionStoreKey, targetIDs)
+	st.UpdateStoreSlice(template.CollectionStoreKey, targetIDs)
 	snapshot := c.getCollectionSnapshot(details, st, path)
 
 	snapshots = append(snapshots, snapshot)

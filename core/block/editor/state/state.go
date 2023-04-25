@@ -1438,8 +1438,8 @@ func (s *State) SetInStore(path []string, value *types.Value) (changed bool) {
 	return
 }
 
-func (s *State) StoreSlice(key string, val []string) {
-	old := pbtypes.GetStringList(s.Store(), key)
+func (s *State) UpdateStoreSlice(key string, val []string) {
+	old := s.GetStoreSlice(key)
 	s.setInStore([]string{key}, pbtypes.StringList(val))
 
 	diff := slice.Diff(old, val, slice.StringIdentity[string], slice.Equal[string])
@@ -1611,7 +1611,8 @@ func (s *State) removeFromStore(path []string) bool {
 	return true
 }
 
-func (s *State) GetCollection(collectionName string) *types.Struct {
+// GetSubObjectCollection returns the sub object collection, right now only used for account object
+func (s *State) GetSubObjectCollection(collectionName string) *types.Struct {
 	coll := s.Store()
 	if coll == nil {
 		return nil
@@ -1625,6 +1626,23 @@ func (s *State) GetCollection(collectionName string) *types.Struct {
 		return nil
 	}
 	return coll.Fields[collectionName].Kind.(*types.Value_StructValue).StructValue
+}
+
+// GetStoreSlice returns the list of items in the collection, used for objects with type collection
+func (s *State) GetStoreSlice(collectionName string) []string {
+	coll := s.Store()
+	if coll == nil {
+		return nil
+	}
+	v, ok := coll.Fields[collectionName]
+	if !ok {
+		return nil
+	}
+	_, ok = coll.Fields[collectionName].Kind.(*types.Value_ListValue)
+	if !ok {
+		return nil
+	}
+	return pbtypes.GetStringListValue(v)
 }
 
 func (s *State) Store() *types.Struct {

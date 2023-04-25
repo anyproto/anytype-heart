@@ -37,7 +37,7 @@ func (r *RootCollection) AddObjects(collectionName string, targetObjects []strin
 	}
 
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
-	st.StoreSlice(template.CollectionStoreKey, targetObjects)
+	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
 
 	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct), nil
 }

@@ -56,7 +56,7 @@ func TestBroadcast(t *testing.T) {
 
 	changeCollection := func(ids []string) {
 		st := sb.NewState()
-		st.StoreSlice(template.CollectionStoreKey, ids)
+		st.UpdateStoreSlice(template.CollectionStoreKey, ids)
 		err := sb.Apply(st)
 
 		require.NoError(t, err)

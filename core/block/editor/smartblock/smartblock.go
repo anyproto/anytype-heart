@@ -514,7 +514,7 @@ func (sb *smartBlock) navigationalLinks() []string {
 	s := sb.Doc.(*state.State)
 
 	// Objects from collection
-	ids := pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
+	ids := s.GetStoreSlice(template.CollectionStoreKey)
 
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {

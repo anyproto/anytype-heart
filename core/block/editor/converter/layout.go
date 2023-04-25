@@ -161,7 +161,7 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 	if err != nil {
 		return err
 	}
-	st.StoreSlice(template.CollectionStoreKey, ids)
+	st.UpdateStoreSlice(template.CollectionStoreKey, ids)
 	return nil
 }
 

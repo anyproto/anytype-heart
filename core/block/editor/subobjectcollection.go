@@ -213,7 +213,7 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 				c.collections[collName] = coll
 			}
 			if opt, ok := coll[subId]; ok {
-				if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetCollection(collName), subId)); e != nil {
+				if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetSubObjectCollection(collName), subId)); e != nil {
 					log.With("treeId", c.Id()).
 						Errorf("options: can't set struct %s-%s: %v", collName, subId, e)
 				}
@@ -271,7 +271,7 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 				break
 			}
 		}
-		prevSubState := pbtypes.GetStruct(st.GetCollection(collection), subId)
+		prevSubState := pbtypes.GetStruct(st.GetSubObjectCollection(collection), subId)
 
 		if !hasPersistentDetails {
 			// todo: it shouldn't be done here, we have a place for it in the state, but it's not possible to set the virtual changes there
@@ -376,7 +376,7 @@ func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, er
 
 func SubState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
 	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
-	data := pbtypes.GetStruct(st.GetCollection(collection), subId)
+	data := pbtypes.GetStruct(st.GetSubObjectCollection(collection), subId)
 	if data == nil || data.Fields == nil {
 		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
 	}

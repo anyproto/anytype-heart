@@ -111,7 +111,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		log.With("object", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
-	if st.GetCollection(template.CollectionStoreKey) != nil {
+	if st.GetStoreSlice(template.CollectionStoreKey) != nil {
 		oc.updateLinksInCollections(st, oldIDtoNew)
 		if err = oc.addRelationsToCollectionDataView(st, relations, createdRelations); err != nil {
 			log.With("object", newID).Errorf("failed to add relations to object view: %s", err.Error())
@@ -395,20 +395,20 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
 	var existedObjects []string
 	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
-		existedObjects = pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
+		existedObjects = s.GetStoreSlice(template.CollectionStoreKey)
 		return nil
 	})
 	if err != nil {
 		log.Errorf("failed to get existed objects in collection, %s", err)
 	}
-	objectsInCollections := pbtypes.GetStringList(st.Store(), template.CollectionStoreKey)
+	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
 	for i, id := range objectsInCollections {
 		if newID, ok := oldIDtoNew[id]; ok {
 			objectsInCollections[i] = newID
 		}
 	}
 	result := slice.Union(existedObjects, objectsInCollections)
-	st.StoreSlice(template.CollectionStoreKey, result)
+	st.UpdateStoreSlice(template.CollectionStoreKey, result)
 }
 
 // createRelationsInWorkspace compare current workspace store with imported and create objects, which are absent in current workspace

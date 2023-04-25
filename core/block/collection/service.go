@@ -111,9 +111,9 @@ func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequ
 
 func (s *Service) updateCollection(ctx *session.Context, contextID string, modifier func(src []string) []string) error {
 	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
-		lst := pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
+		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
-		s.StoreSlice(template.CollectionStoreKey, lst)
+		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
 		return nil
 	})
 }
@@ -122,7 +122,7 @@ func (s *Service) collectionAddHookOnce(sb smartblock.SmartBlock) {
 	sb.AddHookOnce("collection", func(info smartblock.ApplyInfo) (err error) {
 		for _, ch := range info.Changes {
 			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == template.CollectionStoreKey {
-				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), template.CollectionStoreKey))
+				s.broadcast(sb.Id(), info.State.GetStoreSlice(template.CollectionStoreKey))
 				return nil
 			}
 		}
@@ -166,7 +166,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
-		initialObjectIDs = pbtypes.GetStringList(st.Store(), template.CollectionStoreKey)
+		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
 		return nil
 	})
 	if err != nil {

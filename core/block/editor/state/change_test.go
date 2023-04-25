@@ -188,10 +188,10 @@ func TestState_ChangesCreate_StoreSlice(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%s -> %s", tc.before, tc.after), func(t *testing.T) {
 			doc := NewDoc("root", nil)
-			doc.(*State).StoreSlice(key, tc.before)
+			doc.(*State).UpdateStoreSlice(key, tc.before)
 
 			newState := doc.NewState()
-			newState.StoreSlice(key, tc.after)
+			newState.UpdateStoreSlice(key, tc.after)
 
 			_, _, err := ApplyState(newState, false)
 			require.NoError(t, err)
