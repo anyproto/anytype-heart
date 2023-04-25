@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
 	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
 
-	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -18,9 +20,9 @@ import (
 	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -31,7 +33,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -55,8 +56,8 @@ var (
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
 	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
-	cafePrefix   = "cafe"
-	accountState = ds.NewKey("/" + cafePrefix + "/accountstate")
+	accountPrefix = "account"
+	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
 
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
@@ -191,10 +192,8 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) ObjectStore {
-	return &dsObjectStore{
-		sbtProvider: sbtProvider,
-	}
+func New() ObjectStore {
+	return &dsObjectStore{}
 }
 
 func NewWithLocalstore(ds noctxds.DSTxnBatching) ObjectStore {
@@ -275,17 +274,12 @@ type ObjectStore interface {
 	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
 
-	GetAccountState() (state *cafePb.AccountState, err error)
-	SaveAccountState(state *cafePb.AccountState) (err error)
+	GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error)
+	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
 
 	GetCurrentWorkspaceId() (string, error)
 	SetCurrentWorkspaceId(threadId string) (err error)
 	RemoveCurrentWorkspaceId() (err error)
-}
-
-type relationOption struct {
-	relationKey string
-	optionId    string
 }
 
 type relationObjectType struct {
@@ -295,30 +289,24 @@ type relationObjectType struct {
 
 var ErrNotAnObject = fmt.Errorf("not an object")
 
+var filterNotSystemObjects = &filterSmartblockTypes{
+	smartBlockTypes: []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeHome,
+	},
+	not: true,
+}
+
 type filterSmartblockTypes struct {
 	smartBlockTypes []smartblock.SmartBlockType
 	not             bool
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-}
-
-func newSmartblockTypesFilter(sbtProvider typeprovider.SmartBlockTypeProvider, not bool, smartBlockTypes []smartblock.SmartBlockType) *filterSmartblockTypes {
-	return &filterSmartblockTypes{
-		smartBlockTypes: smartBlockTypes,
-		not:             not,
-		sbtProvider:     sbtProvider,
-	}
-}
-
-type RelationWithObjectType struct {
-	objectType string
-	relation   *model.Relation
 }
 
 func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 	keyParts := strings.Split(e.Key, "/")
 	id := keyParts[len(keyParts)-1]
 
-	t, err := m.sbtProvider.Type(id)
+	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		log.Errorf("failed to detect smartblock type for %s: %s", id, err.Error())
 		return false
@@ -347,8 +335,6 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
-
-	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
@@ -393,40 +379,40 @@ func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) GetAccountState() (cfg *cafePb.AccountState, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	var state cafePb.AccountState
-	if val, err := txn.Get(accountState); err != nil {
-		return nil, err
-	} else if err := proto.Unmarshal(val, &state); err != nil {
-		return nil, err
-	}
-
-	return &state, nil
-}
-
-func (m *dsObjectStore) SaveAccountState(state *cafePb.AccountState) (err error) {
+func (m *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error) {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	b, err := state.Marshal()
+	b, err := status.Marshal()
 	if err != nil {
 		return err
 	}
 
-	if err := txn.Put(accountState, b); err != nil {
+	if err := txn.Put(accountStatus, b); err != nil {
 		return fmt.Errorf("failed to put into ds: %w", err)
 	}
 
 	return txn.Commit()
+}
+
+func (m *dsObjectStore) GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	status = &coordinatorproto.SpaceStatusPayload{}
+	if val, err := txn.Get(accountStatus); err != nil {
+		return nil, err
+	} else if err := proto.Unmarshal(val, status); err != nil {
+		return nil, err
+	}
+
+	return status, nil
 }
 
 func (m *dsObjectStore) EraseIndexes() (err error) {
@@ -574,19 +560,19 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 }
 
 func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
-	var sbTypes []smartblock.SmartBlockType
+	var filter filterSmartblockTypes
 	for _, otUrl := range ots {
 		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
 			for _, sbt := range ot.Types {
-				sbTypes = append(sbTypes, smartblock.SmartBlockType(sbt))
+				filter.smartBlockTypes = append(filter.smartBlockTypes, smartblock.SmartBlockType(sbt))
 			}
 			continue
 		}
-		if sbt, err := m.sbtProvider.Type(otUrl); err == nil {
-			sbTypes = append(sbTypes, sbt)
+		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
+			filter.smartBlockTypes = append(filter.smartBlockTypes, sbt)
 		}
 	}
-	return newSmartblockTypesFilter(m.sbtProvider, false, sbTypes)
+	return &filter
 }
 
 func (m *dsObjectStore) QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
@@ -674,11 +660,6 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if !q.WithSystemObjects {
-		filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
-			smartblock.SmartBlockTypeArchive,
-			smartblock.SmartBlockTypeHome,
-		})
-
 		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 	}
 
@@ -801,7 +782,7 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, objectTypes)}, dsq.Filters...)
+		dsq.Filters = append([]query.Filter{&filterSmartblockTypes{smartBlockTypes: objectTypes}}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
@@ -865,7 +846,7 @@ func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartbloc
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, objectTypes)}, dsq.Filters...)
+		dsq.Filters = append([]query.Filter{&filterSmartblockTypes{smartBlockTypes: objectTypes}}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
@@ -915,7 +896,7 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	defer txn.Discard()
 
 	for _, id := range ids {
-		if sbt, err := m.sbtProvider.Type(id); err == nil {
+		if sbt, err := smartblock.SmartBlockTypeFromID(id); err == nil {
 			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
 				details, err := m.sourceService.GetDetailsFromIdBasedSource(id)
 				if err != nil {
@@ -979,7 +960,7 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		},
 	}
 
-	f, err := database.NewFilters(q, nil, nil)
+	f, err := database.NewFilters(q, nil, m, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1764,7 +1745,7 @@ func (m *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string
 }
 
 func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
-	t, err := m.sbtProvider.Type(id)
+	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
 		return fmt.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
@@ -1794,17 +1775,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		return nil
 	}
 
-	for k, v := range newDetails.GetDetails().GetFields() {
-		// todo: remove null cleanup(should be done when receiving from client)
-		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
-				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
-			} else {
-				log.Warnf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
-			}
-		}
-	}
-
 	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
 	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(diff))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
@@ -1817,27 +1787,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	}
 
 	return nil
-}
-
-func storeOptions(txn noctxds.Txn, options []*model.RelationOption) error {
-	var err error
-	for _, opt := range options {
-		err = storeOption(txn, opt)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func storeOption(txn noctxds.Txn, option *model.RelationOption) error {
-	b, err := proto.Marshal(option)
-	if err != nil {
-		return err
-	}
-
-	optionKey := relationsOptionsBase.ChildString(option.Id)
-	return txn.Put(optionKey, b)
 }
 
 func (m *dsObjectStore) Prefix() string {
@@ -1928,15 +1877,6 @@ func (m *dsObjectStore) listRelations(txn noctxds.Txn, limit int) ([]*model.Rela
 	return rels, nil
 }
 
-func isObjectBelongToType(txn noctxds.Txn, id, objType string) (bool, error) {
-	objTypeCompact, err := objTypeCompactEncode(objType)
-	if err != nil {
-		return false, err
-	}
-
-	return localstore.HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
-}
-
 /* internal */
 // getObjectDetails returns empty(not nil) details when not found in the DS
 func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
@@ -1981,20 +1921,6 @@ func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	}
 }
 
-// getSetRelations returns the list of relations last time indexed for the set's dataview
-func getSetRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
-	var relations model.Relations
-	if val, err := txn.Get(setRelationsBase.ChildString(id)); err != nil {
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get relations: %w", err)
-		}
-	} else if err := proto.Unmarshal(val, &relations); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
-	}
-
-	return relations.GetRelations(), nil
-}
-
 // getObjectRelations returns the list of relations last time indexed for the object
 func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	var relations model.Relations
@@ -2009,30 +1935,8 @@ func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	return relations.GetRelations(), nil
 }
 
-func getOption(txn noctxds.Txn, optionId string) (*model.RelationOption, error) {
-	var opt model.RelationOption
-	if val, err := txn.Get(relationsOptionsBase.ChildString(optionId)); err != nil {
-		log.Debugf("getOption %s: not found", optionId)
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get option from localstore: %w", err)
-		}
-	} else if err := proto.Unmarshal(val, &opt); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal option: %w", err)
-	}
-
-	return &opt, nil
-}
-
-func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
-	if !pbtypes.HasField(det, bundle.RelationKeyType.String()) {
-		return nil, fmt.Errorf("type not found in details")
-	}
-
-	return pbtypes.GetStringList(det, bundle.RelationKeyType.String()), nil
-}
-
 func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
-	sbt, err := m.sbtProvider.Type(id)
+	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		log.With("thread", id).Errorf("failed to extract smartblock type %s", id)
 		return nil, ErrNotAnObject
