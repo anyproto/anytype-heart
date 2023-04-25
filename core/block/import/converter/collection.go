@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -24,35 +25,24 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 }
 
 func (r *RootCollection) AddObjects(collectionName string, targetObject []string) (*Snapshot, error) {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySource.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
-	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-
-	detailsStruct := &types.Struct{Fields: details}
+	detailsStruct := r.getCreateCollectionRequest(collectionName)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, relation := range []*model.Relation{
-		{
-			Key:    bundle.RelationKeyTag.String(),
-			Format: model.RelationFormat_tag,
-		},
-		{
-			Key:    bundle.RelationKeyCreatedDate.String(),
-			Format: model.RelationFormat_date,
-		},
-	} {
-		err = addRelationsToCollectionDataView(st, relation)
-		if err != nil {
-			return nil, err
-		}
+	err = r.addRelations(st)
+	if err != nil {
+		return nil, err
 	}
 
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
+	st.StoreSlice(smartblock.CollectionStoreKey, targetObject)
+
+	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct), nil
+}
+
+func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *state.State, detailsStruct *types.Struct) *Snapshot {
 	rootCol := &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
@@ -66,10 +56,37 @@ func (r *RootCollection) AddObjects(collectionName string, targetObject []string
 		},
 		},
 	}
+	return rootCol
+}
 
-	AddObjectToSnapshot(rootCol, targetObject)
+func (r *RootCollection) addRelations(st *state.State) error {
+	for _, relation := range []*model.Relation{
+		{
+			Key:    bundle.RelationKeyTag.String(),
+			Format: model.RelationFormat_tag,
+		},
+		{
+			Key:    bundle.RelationKeyCreatedDate.String(),
+			Format: model.RelationFormat_date,
+		},
+	} {
+		err := addRelationsToCollectionDataView(st, relation)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	return rootCol, nil
+func (r *RootCollection) getCreateCollectionRequest(collectionName string) *types.Struct {
+	details := make(map[string]*types.Value, 0)
+	details[bundle.RelationKeySource.String()] = pbtypes.String(collectionName)
+	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+
+	detailsStruct := &types.Struct{Fields: details}
+	return detailsStruct
 }
 
 func addRelationsToCollectionDataView(st *state.State, rel *model.Relation) error {

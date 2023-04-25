@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
@@ -196,7 +197,7 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot
 		}
 	}
 	for db, objects := range databaseToObjects {
-		converter.AddObjectToSnapshot(snapshots[db], objects)
+		addObjectToSnapshot(snapshots[db], objects)
 	}
 }
 
@@ -250,4 +251,10 @@ func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*conve
 		snapshotsMap[s.Id] = s
 	}
 	return snapshotsMap
+}
+
+func addObjectToSnapshot(snapshots *converter.Snapshot, targetID []string) {
+	snapshots.Snapshot.Data.Collections = &types.Struct{
+		Fields: map[string]*types.Value{smartblock.CollectionStoreKey: pbtypes.StringList(targetID)},
+	}
 }

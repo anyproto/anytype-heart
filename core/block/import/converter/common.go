@@ -7,7 +7,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -37,10 +36,4 @@ func GetDetails(name string) *types.Struct {
 		bundle.RelationKeySource.String(): pbtypes.String(name),
 	}
 	return &types.Struct{Fields: fields}
-}
-
-func AddObjectToSnapshot(snapshots *Snapshot, targetID []string) {
-	snapshots.Snapshot.Data.Collections = &types.Struct{
-		Fields: map[string]*types.Value{smartblock.CollectionStoreKey: pbtypes.StringList(targetID)},
-	}
 }

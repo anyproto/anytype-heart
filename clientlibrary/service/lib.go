@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/anytypeio/any-sync/app"
-
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-middleware/core"

@@ -329,15 +329,17 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
 				return nil
 			}
-			err := dv.AddViewRelation(bl.Model().GetDataview().GetViews()[0].GetId(), &model.BlockContentDataviewRelation{
-				Key:       relFormat.ID,
-				IsVisible: true,
-				Width:     192,
-			})
-			if err != nil {
-				return err
+			for _, view := range bl.Model().GetDataview().GetViews() {
+				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+					Key:       relFormat.ID,
+					IsVisible: true,
+					Width:     192,
+				})
+				if err != nil {
+					return err
+				}
 			}
-			err = dv.AddRelation(&model.RelationLink{
+			err := dv.AddRelation(&model.RelationLink{
 				Key:    relFormat.ID,
 				Format: relFormat.Format,
 			})
