@@ -4,20 +4,24 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/textileio/go-threads/core/thread"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/textileio/go-threads/core/thread"
+
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+
 	"github.com/anytypeio/any-sync/app"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -34,9 +38,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-
-	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -47,7 +48,8 @@ var objectsZip []byte
 var log = logging.Logger("anytype-mw-builtinobjects")
 
 const (
-	analyticsContext = "get-started"
+	analyticsContext         = "get-started"
+	builtInDashboardObjectID = "bafybajhnav5nrikgey5hb6rwiq6j6mulyon3my4ehg3riia37cape4ru"
 )
 
 func New() BuiltinObjects {
@@ -58,16 +60,11 @@ type BuiltinObjects interface {
 	app.ComponentRunnable
 }
 
-type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
-}
-
 type builtinObjects struct {
-	cancel        func()
-	source        source.Service
-	objectCreator objectCreator
-	service       *block.Service
-	relService    relation2.Service
+	cancel     func()
+	source     source.Service
+	service    *block.Service
+	relService relation2.Service
 
 	newAccount bool
 	idsMap     map[string]string
@@ -78,7 +75,6 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
-	b.objectCreator = a.MustComponent(object.CName).(objectCreator)
 	b.cancel = func() {}
 	return
 }
@@ -111,6 +107,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		return
 	}
 	b.idsMap = make(map[string]string, len(zr.File))
+	isSpaceDashboardIDFound := false
 	for _, zf := range zr.File {
 		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
 		sbt, err := smartblock.SmartBlockTypeFromID(id)
@@ -120,6 +117,21 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 				return err
 			}
 		}
+		if sbt == smartblock.SmartBlockTypeSubObject {
+			// todo: probably subobjects are broken here
+			// preserve original id for subobjects, it makes no sense to replace them and also it breaks the grouping
+			b.idsMap[id] = id
+			continue
+		}
+		if id == builtInDashboardObjectID {
+			b.idsMap[id], err = b.service.GetSpaceDashboardID(ctx)
+			if err != nil {
+				return err
+			}
+			isSpaceDashboardIDFound = true
+			continue
+		}
+
 		// create object
 		obj, release, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
 			return &sb.InitContext{
@@ -132,6 +144,10 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		newId := obj.Id()
 		release()
 		b.idsMap[id] = newId
+	}
+
+	if !isSpaceDashboardIDFound {
+		panic("Space Home object file was not find in built-in objects")
 	}
 
 	for _, zf := range zr.File {
@@ -169,19 +185,34 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	st.SetRootId(newId)
 	a := st.Get(newId)
 	m := a.Model()
+	sbt, err := smartblock.SmartBlockTypeFromID(newId)
+	if sbt == smartblock.SmartBlockTypeSubObject {
+		ot, err := bundle.TypeKeyFromUrl(pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyType.String()))
+		if err != nil {
+			return err
+		}
+		_, _, err = b.service.CreateObject(&pb.RpcObjectCreateRequest{Details: st.CombinedDetails()}, ot)
+		if err != nil {
+			return err
+		}
+	}
+
 	f := m.GetFields().GetFields()
 	if f == nil {
 		f = make(map[string]*types.Value)
 	}
 	m.Fields = &types.Struct{Fields: f}
 	f["analyticsContext"] = pbtypes.String(analyticsContext)
-	f["analyticsOriginalId"] = pbtypes.String(oldId)
+	if f["analyticsOriginalId"] == nil {
+		// in case we already have analyticsOriginalId do not update it
+		f["analyticsOriginalId"] = pbtypes.String(oldId)
+	}
 
 	st.Set(simple.New(m))
 	rels := relationutils.MigrateRelationModels(st.OldExtraRelations())
 	st.AddRelationLinks(rels...)
 
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
+	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String(), bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyLinks.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String(b.service.Anytype().PredefinedBlocks().Account))
@@ -236,7 +267,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 			log.With("object", oldId).Errorf("failed to find relation %s: %s", k, err.Error())
 			continue
 		}
-		if rel.Format != model.RelationFormat_object {
+		if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
 			continue
 		}
 

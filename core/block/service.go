@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/hashicorp/go-multierror"
-	"github.com/textileio/go-threads/core/thread"
 	"strings"
 	"time"
 
@@ -162,17 +161,21 @@ func (s *Service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *Service) GetSpaceDashboardID() (string, error) {
+func (s *Service) GetSpaceDashboardID(ctx context.Context) (string, error) {
 	if !s.app.MustComponent(config.CName).(*config.Config).NewAccount {
 		return s.Anytype().PredefinedBlocks().Home, nil
 	}
 	if s.spaceDashboardID == "" {
-		//TODO: in new-infra threads are created differently! Need to change logic
-		threadID, err := threads.ThreadCreateID(thread.AccessControlled, coresb.SmartBlockTypePage)
+		obj, release, err := s.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *smartblock.InitContext {
+			return &smartblock.InitContext{
+				Ctx: ctx,
+			}
+		})
 		if err != nil {
 			return "", err
 		}
-		s.spaceDashboardID = threadID.String()
+		release()
+		s.spaceDashboardID = obj.Id()
 	}
 	return s.spaceDashboardID, nil
 }

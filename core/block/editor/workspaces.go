@@ -1,9 +1,12 @@
 package editor
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -127,7 +130,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	spaceDashboardID, err := p.dashboardIDGetter.GetSpaceDashboardID()
+	spaceDashboardID, err := p.dashboardIDGetter.GetSpaceDashboardID(ctx.Ctx)
 	if err != nil {
 		log.Errorf("failed to get Space Dashboard ID: %v", err)
 	}
@@ -153,7 +156,7 @@ type templateCloner interface {
 }
 
 type dashboardIDGetter interface {
-	GetSpaceDashboardID() (string, error)
+	GetSpaceDashboardID(ctx context.Context) (string, error)
 }
 
 type WorkspaceParameters struct {
