@@ -37,6 +37,31 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 		return "", false, nil
 	}
 
+	if bundledSmartBlockType(sbType) {
+		if snapshot.GetDetails() != nil {
+			details := snapshot.GetDetails()
+			if details.GetFields() != nil {
+				name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+				ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+					Filters: []*model.BlockContentDataviewFilter{
+						{
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							RelationKey: bundle.RelationKeyName.String(),
+							Value:       pbtypes.String(name),
+						},
+					},
+				}, []sb.SmartBlockType{sbType})
+				if err != nil {
+					return "", false, err
+				}
+				if len(ids) > 0 {
+					return ids[0], true, err
+				}
+				return "", false, nil
+			}
+		}
+	}
+
 	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeySource.String()] != nil && updateExisting {
 		source := snapshot.Details.Fields[bundle.RelationKeySource.String()].GetStringValue()
 		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
@@ -107,6 +132,22 @@ func predefinedSmartBlockType(sbType sb.SmartBlockType) bool {
 		sb.SmartblockTypeMarketplaceTemplate,
 		sb.SmartBlockTypeWidget,
 		sb.SmartBlockTypeHome,
+	}
+
+	for _, blockType := range sbTypes {
+		if blockType == sbType {
+			return true
+		}
+	}
+
+	return false
+}
+
+func bundledSmartBlockType(sbType sb.SmartBlockType) bool {
+	sbTypes := []sb.SmartBlockType{
+		sb.SmartBlockTypeBundledTemplate,
+		sb.SmartBlockTypeBundledRelation,
+		sb.SmartBlockTypeBundledObjectType,
 	}
 
 	for _, blockType := range sbTypes {
