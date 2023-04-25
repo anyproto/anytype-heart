@@ -259,7 +259,6 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		Timestamp: time.Now().Unix(),
 		Version:   params.State.MigrationVersion(),
 	}
-	fmt.Println("PUSH VER", s.id, params.State.MigrationVersion())
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -497,7 +496,6 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 	if lastChange != nil {
 		st.SetLastModified(lastChange.Timestamp, profileId)
 	}
-	fmt.Println("SET MIG VERSION", st.RootId(), lastMigrationVersion)
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
 }
