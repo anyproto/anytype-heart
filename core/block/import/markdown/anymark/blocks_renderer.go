@@ -334,7 +334,7 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 }
 
 func (r *blocksRenderer) adjustMarkdownRange(t *model.BlockContentText, adjustNumber int) {
-	removedSpaceCount := len(t.Text[3:]) - len(strings.TrimLeft(t.Text[3:], " "))
+	removedSpaceCount := len(t.Text[adjustNumber:]) - len(strings.TrimLeft(t.Text[adjustNumber:], " "))
 	for _, mark := range t.Marks.Marks {
 		if mark.Range != nil {
 			mark.Range.To -= int32(adjustNumber + removedSpaceCount)
