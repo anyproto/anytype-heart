@@ -51,6 +51,7 @@ func NewCreator(service *block.Service,
 func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, existing bool, workspaceID string) (*types.Struct, error) {
 	snapshot := sn.Snapshot
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
+	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
 
 	var (
 		err    error
@@ -156,6 +157,15 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 
 	if isFavorite {
 		err = oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
+		if err != nil {
+			log.With(zap.String("object id", newID)).
+				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
+			err = nil
+		}
+	}
+
+	if isArchive {
+		err = oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {
 			log.With(zap.String("object id", newID)).
 				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
