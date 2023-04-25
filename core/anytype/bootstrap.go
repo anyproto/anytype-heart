@@ -2,25 +2,28 @@ package anytype
 
 import (
 	"context"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
+	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/net/dialer"
+	"github.com/anytypeio/any-sync/net/pool"
+	"github.com/anytypeio/any-sync/net/secureservice"
+	"github.com/anytypeio/any-sync/nodeconf"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
+	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
+	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
+	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"os"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/metric"
-	"github.com/anytypeio/any-sync/net/dialer"
-	"github.com/anytypeio/any-sync/net/pool"
-	"github.com/anytypeio/any-sync/net/rpc/server"
-	"github.com/anytypeio/any-sync/net/secureservice"
-	"github.com/anytypeio/any-sync/net/streampool"
-	"github.com/anytypeio/any-sync/nodeconf"
-
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
@@ -32,8 +35,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
@@ -49,20 +50,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/ipfslite"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
-	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
-	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
-	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
-	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
-	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
-	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
@@ -94,7 +87,6 @@ func StartAccountRecoverApp(ctx context.Context, eventSender event.Sender, accou
 func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
 	return config.New(
 		config.WithStagingCafe(isStaging),
-		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
 	)
 }
@@ -121,35 +113,24 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
-
-	objectStore := objectstore.New()
-	objectCreator := object.NewCreator()
-	blockService := block.New()
-	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
-
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
-		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(dialer.New()).
 		Register(pool.New()).
-		Register(streampool.New()).
-		Register(metric.New()).
-		Register(server.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
-		Register(localdiscovery.New()).
 		Register(space.New()).
-		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		Register(relation.New()).
 		Register(ftsearch.New()).
-		Register(objectStore).
+		Register(objectstore.New()).
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
+		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
 		Register(account.New()).
@@ -159,7 +140,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(builtintemplate.New()).
 		Register(status.New()).
-		Register(blockService).
+		Register(block.New()).
 		Register(doc.New()).
 		Register(indexer.New()).
 		Register(history.New()).
@@ -170,16 +151,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(restriction.New()).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
-		Register(collectionService).
-		Register(subscription.New(collectionService)).
+		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
 		Register(session.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
-		Register(objectCreator).
+		Register(object.NewCreator()).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory())
-
 	return
 }

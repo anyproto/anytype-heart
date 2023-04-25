@@ -85,12 +85,12 @@ func (r *rpcHandler) DumpTree(ctx context.Context, request *clientdebugrpcproto.
 	if err != nil {
 		return
 	}
-	di, err := tr.Debug(state.ChangeParser{})
+	dump, err := tr.DebugDump(state.ChangeParser{})
 	if err != nil {
 		return
 	}
 	resp = &clientdebugrpcproto.DumpTreeResponse{
-		Dump: di.Graphviz,
+		Dump: dump,
 	}
 	return
 }

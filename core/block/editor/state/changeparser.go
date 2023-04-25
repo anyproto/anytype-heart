@@ -27,7 +27,7 @@ func (c ChangeParser) ParseChange(change *objecttree.Change, isRoot bool) ([]str
 
 func (c ChangeParser) parseContent(content []*pb.ChangeContent) (chSymbs []string, err error) {
 	for _, chc := range content {
-		tp := fmt.Sprintf("%T", chc.Value)
+		tp := fmt.Sprintf("%T", chc.String())
 		tp = strings.Replace(tp, "ChangeContentValueOf", "", 1)
 		res := ""
 		for _, ts := range tp {
@@ -46,7 +46,7 @@ func (c ChangeParser) parseContent(content []*pb.ChangeContent) (chSymbs []strin
 		case chc.GetBlockRemove() != nil:
 			target = append(target, chc.GetBlockRemove().Ids...)
 		}
-		if len(target) >= 1 {
+		if len(target) > 1 {
 			res += "->" + strings.Join(target, "/")
 		}
 		chSymbs = append(chSymbs, res)

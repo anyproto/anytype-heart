@@ -6,15 +6,13 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
-	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.15
+	github.com/anytypeio/any-sync v0.0.2-0.20230111181804-76aa703b8dc0
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.6
-	github.com/chai2010/webp v1.1.1
 	github.com/cheggaaa/mb v1.0.3
-	github.com/cheggaaa/mb/v3 v3.0.1
+	github.com/cheggaaa/mb/v3 v3.0.0
 	github.com/dave/jennifer v1.4.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger v1.6.2
@@ -25,9 +23,8 @@ require (
 	github.com/dsoprea/go-exif/v3 v3.0.0-20210625224831-a6301f85c82b
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20210512043942-b434301c6836
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/go-shiori/go-readability v0.0.0-20220215145315-dd6828d2f09b
 	github.com/gobwas/glob v0.2.3
-	github.com/goccy/go-graphviz v0.1.0
+	github.com/goccy/go-graphviz v0.0.9
 	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -44,31 +41,31 @@ require (
 	github.com/hsanjuan/ipfs-lite v1.5.0
 	github.com/huandu/skiplist v1.2.0
 	github.com/improbable-eng/grpc-web v0.14.1
-	github.com/ipfs/go-block-format v0.1.1
+	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger v0.3.1-0.20211203181443-9205b3779632
-	github.com/ipfs/go-ds-flatfs v0.5.1
 	github.com/ipfs/go-ipfs-blockstore v1.2.0
+	github.com/ipfs/go-ipfs-files v0.2.0
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-ipns v0.3.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/ipfs/go-log/v2 v2.5.1
-	github.com/ipfs/go-merkledag v0.10.0
+	github.com/ipfs/go-merkledag v0.8.1
 	github.com/ipfs/go-path v0.3.0
-	github.com/ipfs/go-unixfs v0.4.3
+	github.com/ipfs/go-unixfs v0.4.1
 	github.com/ipfs/interface-go-ipfs-core v0.8.1
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-libp2p v0.24.1
 	github.com/libp2p/go-libp2p-kad-dht v0.20.0
 	github.com/libp2p/go-libp2p-record v0.2.0
-	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.4
+	github.com/mauidude/go-readability v0.0.0-20220221173116-a9b3620098b7
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
-	github.com/microcosm-cc/bluemonday v1.0.1
+	github.com/microcosm-cc/bluemonday v1.0.9
 	github.com/miolini/datacounter v1.0.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/msingleton/amplitude-go v0.0.0-20200312121213-b7c11448c30e
@@ -78,7 +75,7 @@ require (
 	github.com/multiformats/go-multibase v0.1.1
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/otiai10/copy v1.9.0
+	github.com/otiai10/copy v1.7.0
 	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
@@ -92,17 +89,12 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/yuin/goldmark v1.4.13
-	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230105202349-8879d0199aa3
-	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
-	golang.org/x/net v0.7.0
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
-	golang.org/x/text v0.7.0
+	golang.org/x/text v0.6.0
 	google.golang.org/grpc v1.47.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
-	gopkg.in/yaml.v2 v2.4.0
-	storj.io/drpc v0.0.32
 
 )
 
@@ -112,9 +104,9 @@ require (
 	github.com/RoaringBitmap/roaring v0.9.4 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
-	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
-	github.com/anytypeio/go-chash v0.0.2 // indirect
+	github.com/anytypeio/go-chash v0.0.1 // indirect
+	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
@@ -157,12 +149,10 @@ require (
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-shiori/dom v0.0.0-20210627111528-4e4722cd0d65 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/go-xmlfmt/xmlfmt v0.0.0-20191208150333-d5b6f63a941b // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/googleapis v1.3.1 // indirect
-	github.com/gogs/chardet v0.0.0-20191104214054-4b6791f73a28 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
@@ -172,6 +162,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20221203041831-ce31453925ec // indirect
+	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -179,7 +170,7 @@ require (
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
-	github.com/ipfs/go-bitfield v1.1.0 // indirect
+	github.com/ipfs/go-bitfield v1.0.0 // indirect
 	github.com/ipfs/go-bitswap v0.11.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.0 // indirect
 	github.com/ipfs/go-cidutil v0.1.0 // indirect
@@ -194,12 +185,11 @@ require (
 	github.com/ipfs/go-ipfs-provider v0.8.1 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
-	github.com/ipfs/go-libipfs v0.3.0 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.0 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
-	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
-	github.com/ipld/go-ipld-prime v0.20.0 // indirect
+	github.com/ipld/go-codec-dagpb v1.5.0 // indirect
+	github.com/ipld/go-ipld-prime v0.19.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
@@ -219,11 +209,12 @@ require (
 	github.com/libp2p/go-openssl v0.1.0 // indirect
 	github.com/libp2p/go-reuseport v0.2.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
+	github.com/libp2p/zeroconf/v2 v2.2.0 // indirect
 	github.com/lucas-clemente/quic-go v0.31.1 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
 	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
@@ -235,7 +226,7 @@ require (
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
-	github.com/multiformats/go-multicodec v0.8.0 // indirect
+	github.com/multiformats/go-multicodec v0.7.0 // indirect
 	github.com/multiformats/go-multistream v0.3.3 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/oklog/ulid/v2 v2.0.2 // indirect
@@ -251,7 +242,6 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -261,7 +251,7 @@ require (
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tidwall/sjson v1.2.3 // indirect
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
-	github.com/whyrusleeping/cbor-gen v0.0.0-20221220214510-0333c149dec0 // indirect
+	github.com/whyrusleeping/cbor-gen v0.0.0-20221213004032-c09a31a7d5e8 // indirect
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
@@ -273,18 +263,23 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.15.0 // indirect
 	go.uber.org/fx v1.18.2 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/image v0.0.0-20200119044424-58c23975cae1 // indirect
 	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220114231437-d2e6a121cae0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
+	storj.io/drpc v0.0.32 // indirect
 )
 
 replace github.com/elastic/gosigar => github.com/anytypeio/gosigar v0.0.0-20220811145612-92bd3366198a
