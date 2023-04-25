@@ -315,11 +315,17 @@ func (rc *RelationService) ReplaceRelationBlock(ctx *session.Context,
 func (rc *RelationService) handleCoverRelation(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	pageID string) ([]string, error) {
+
+	// todo: check if coverId is color
 	filesToDelete := rc.handleFileRelation(ctx, snapshot, bundle.RelationKeyCoverId.String())
 	details := make([]*pb.RpcObjectSetDetailsDetail, 0)
+	coverId := pbtypes.GetString(snapshot.Details, bundle.RelationKeyCoverId.String())
+	if coverId == "" {
+		return nil, nil
+	}
 	details = append(details, &pb.RpcObjectSetDetailsDetail{
 		Key:   bundle.RelationKeyCoverId.String(),
-		Value: snapshot.Details.Fields[bundle.RelationKeyCoverId.String()],
+		Value: pbtypes.String(coverId),
 	})
 	err := rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
 		ContextId: pageID,
