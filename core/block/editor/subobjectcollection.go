@@ -283,7 +283,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	}
 
 	switch collection {
-	case collectionKeyObjectTypes:
+	case CollectionKeyObjectTypes:
 		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)
 	default:
 		ot, ok := collectionKeyToObjectType(collection)

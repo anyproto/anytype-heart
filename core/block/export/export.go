@@ -163,7 +163,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 
 func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool) (docs map[string]*types.Struct, err error) {
 	if len(reqIds) == 0 {
-		return e.getAllObjects(includeArchived)
+		return e.getExistedObjects(includeArchived)
 	}
 
 	if len(reqIds) > 0 {
@@ -210,28 +210,6 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	return docs, err
 }
 
-func (e *export) getAllObjects(includeArchived bool) (map[string]*types.Struct, error) {
-	var res []*model.ObjectInfo
-	if includeArchived {
-		archivedObjects, err := e.getArchivedObjects()
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, archivedObjects...)
-	}
-	objectDetails, err := e.getExistedObjects()
-	if err != nil {
-		return nil, err
-	}
-	for _, re := range res {
-		if !e.objectValid(re.Id, re) {
-			continue
-		}
-		objectDetails[re.Id] = re.Details
-	}
-	return objectDetails, nil
-}
-
 func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	links, err := e.a.ObjectStore().GetOutboundLinksById(id)
 	if err != nil {
@@ -261,14 +239,14 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 }
 
-func (e *export) getExistedObjects() (map[string]*types.Struct, error) {
+func (e *export) getExistedObjects(includeArchived bool) (map[string]*types.Struct, error) {
 	res, err := e.a.ObjectStore().List()
 	if err != nil {
 		return nil, err
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, r := range res {
-		if !e.objectValid(r.Id, r) {
+		if !e.objectValid(r.Id, r, includeArchived) {
 			continue
 		}
 		objectDetails[r.Id] = r.Details
@@ -278,21 +256,6 @@ func (e *export) getExistedObjects() (map[string]*types.Struct, error) {
 		return nil, err
 	}
 	return objectDetails, nil
-}
-
-func (e *export) getArchivedObjects() ([]*model.ObjectInfo, error) {
-	archivedObjects, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeyIsArchived.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.Bool(true),
-		},
-		},
-	}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to QueryObjectIds: %v", err)
-	}
-	return archivedObjects, nil
 }
 
 func (e *export) getDeletedObjects() ([]*model.ObjectInfo, error) {
@@ -487,27 +450,17 @@ func (e *export) writeConfig(wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(id string, r *model.ObjectInfo) bool {
+func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool) bool {
 	if r.Id == addr.AnytypeProfileId {
 		return false
 	}
 	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
 		return false
 	}
-	if sourceObject := pbtypes.GetString(r.Details, bundle.RelationKeySourceObject.String()); sourceObject != "" {
-		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
-			return true
-		}
-		if strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) ||
-			strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) {
-			return false
-		}
-		return true
-	}
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
-		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
-			return true
-		}
+		return false
+	}
+	if pbtypes.GetBool(r.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
 		return false
 	}
 	return true
