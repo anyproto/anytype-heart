@@ -90,6 +90,8 @@ var (
 		Hash:   false,
 	}
 
+	ErrObjectNotFound = errors.New("object not found")
+
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
@@ -103,15 +105,15 @@ func NewWithLocalstore(ds noctxds.DSTxnBatching) ObjectStore {
 	}
 }
 
-type SourceIdEncodedDetails interface {
-	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
+type SourceDetailsFromId interface {
+	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
 
 func (m *dsObjectStore) Init(a *app.App) (err error) {
 	m.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
 	s := a.Component("source")
 	if s != nil {
-		m.sourceService = a.MustComponent("source").(SourceIdEncodedDetails)
+		m.sourceService = a.MustComponent("source").(SourceDetailsFromId)
 	}
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
@@ -219,7 +221,7 @@ type dsObjectStore struct {
 	// underlying storage
 	ds            noctxds.DSTxnBatching
 	dsIface       datastore.Datastore
-	sourceService SourceIdEncodedDetails
+	sourceService SourceDetailsFromId
 
 	fts ftsearch.FTSearch
 
@@ -746,7 +748,7 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	for _, id := range ids {
 		if sbt, err := smartblock.SmartBlockTypeFromID(id); err == nil {
 			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
-				details, err := m.sourceService.GetDetailsFromIdBasedSource(id)
+				details, err := m.sourceService.DetailsFromIdBasedSource(id)
 				if err != nil {
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
@@ -1638,9 +1640,9 @@ func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 	var details *types.Struct
 	if indexDetails, _ := sbt.Indexable(); !indexDetails {
 		if m.sourceService != nil {
-			details, err = m.sourceService.GetDetailsFromIdBasedSource(id)
+			details, err = m.sourceService.DetailsFromIdBasedSource(id)
 			if err != nil {
-				return nil, err
+				return nil, ErrObjectNotFound
 			}
 		}
 	} else {
@@ -1684,7 +1686,7 @@ func (m *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.
 	for _, id := range ids {
 		info, err := m.getObjectInfo(txn, id)
 		if err != nil {
-			if strings.HasSuffix(err.Error(), "key not found") || err == ErrNotAnObject {
+			if strings.HasSuffix(err.Error(), "key not found") || err == ErrObjectNotFound || err == ErrNotAnObject {
 				continue
 			}
 			return nil, err

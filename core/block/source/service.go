@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anytypeio/any-sync/accountservice"
@@ -119,11 +120,24 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 	return newTreeSource(id, deps)
 }
 
-func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	ss, err := s.NewSource(id, "", commonspace.BuildTreeOpts{})
-	if err != nil {
-		return nil, err
+func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	if !strings.HasPrefix(id, addr.DatePrefix) {
+		return nil, fmt.Errorf("unsupported id")
 	}
+	ss := NewDate(s.anytype, id)
+	defer ss.Close()
+	if v, ok := ss.(SourceIdEndodedDetails); ok {
+		return v.DetailsFromId()
+	}
+	_ = ss.Close()
+	return nil, fmt.Errorf("date source miss the details")
+}
+
+func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	if !strings.HasPrefix(id, addr.DatePrefix) {
+		return nil, fmt.Errorf("id unsupported")
+	}
+	ss := NewDate(s.anytype, id)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()

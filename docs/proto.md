@@ -505,6 +505,11 @@
     - [Rpc.File.Offload.Request](#anytype.Rpc.File.Offload.Request)
     - [Rpc.File.Offload.Response](#anytype.Rpc.File.Offload.Response)
     - [Rpc.File.Offload.Response.Error](#anytype.Rpc.File.Offload.Response.Error)
+    - [Rpc.File.SpaceUsage](#anytype.Rpc.File.SpaceUsage)
+    - [Rpc.File.SpaceUsage.Request](#anytype.Rpc.File.SpaceUsage.Request)
+    - [Rpc.File.SpaceUsage.Response](#anytype.Rpc.File.SpaceUsage.Response)
+    - [Rpc.File.SpaceUsage.Response.Error](#anytype.Rpc.File.SpaceUsage.Response.Error)
+    - [Rpc.File.SpaceUsage.Response.Usage](#anytype.Rpc.File.SpaceUsage.Response.Usage)
     - [Rpc.File.Upload](#anytype.Rpc.File.Upload)
     - [Rpc.File.Upload.Request](#anytype.Rpc.File.Upload.Request)
     - [Rpc.File.Upload.Response](#anytype.Rpc.File.Upload.Response)
@@ -996,6 +1001,7 @@
     - [Rpc.File.Drop.Response.Error.Code](#anytype.Rpc.File.Drop.Response.Error.Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype.Rpc.File.ListOffload.Response.Error.Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype.Rpc.File.Offload.Response.Error.Code)
+    - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype.Rpc.File.SpaceUsage.Response.Error.Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype.Rpc.File.Upload.Response.Error.Code)
     - [Rpc.GenericErrorResponse.Error.Code](#anytype.Rpc.GenericErrorResponse.Error.Code)
     - [Rpc.History.GetVersions.Response.Error.Code](#anytype.Rpc.History.GetVersions.Response.Error.Code)
@@ -1496,6 +1502,7 @@
 | FileUpload | [Rpc.File.Upload.Request](#anytype.Rpc.File.Upload.Request) | [Rpc.File.Upload.Response](#anytype.Rpc.File.Upload.Response) |  |
 | FileDownload | [Rpc.File.Download.Request](#anytype.Rpc.File.Download.Request) | [Rpc.File.Download.Response](#anytype.Rpc.File.Download.Response) |  |
 | FileDrop | [Rpc.File.Drop.Request](#anytype.Rpc.File.Drop.Request) | [Rpc.File.Drop.Response](#anytype.Rpc.File.Drop.Response) |  |
+| FileSpaceUsage | [Rpc.File.SpaceUsage.Request](#anytype.Rpc.File.SpaceUsage.Request) | [Rpc.File.SpaceUsage.Response](#anytype.Rpc.File.SpaceUsage.Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request) | [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype.Rpc.Template.CreateFromObject.Request) | [Rpc.Template.CreateFromObject.Response](#anytype.Rpc.Template.CreateFromObject.Response) |  |
@@ -8921,6 +8928,78 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype.Rpc.File.SpaceUsage"></a>
+
+### Rpc.File.SpaceUsage
+
+
+
+
+
+
+
+<a name="anytype.Rpc.File.SpaceUsage.Request"></a>
+
+### Rpc.File.SpaceUsage.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.File.SpaceUsage.Response"></a>
+
+### Rpc.File.SpaceUsage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.SpaceUsage.Response.Error](#anytype.Rpc.File.SpaceUsage.Response.Error) |  |  |
+| usage | [Rpc.File.SpaceUsage.Response.Usage](#anytype.Rpc.File.SpaceUsage.Response.Usage) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.File.SpaceUsage.Response.Error"></a>
+
+### Rpc.File.SpaceUsage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.SpaceUsage.Response.Error.Code](#anytype.Rpc.File.SpaceUsage.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.File.SpaceUsage.Response.Usage"></a>
+
+### Rpc.File.SpaceUsage.Response.Usage
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filesCount | [uint64](#uint64) |  |  |
+| cidsCount | [uint64](#uint64) |  |  |
+| bytesUsage | [uint64](#uint64) |  |  |
+| bytesLeft | [uint64](#uint64) |  |  |
+| bytesLimit | [uint64](#uint64) |  |  |
+| localBytesUsage | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.File.Upload"></a>
 
 ### Rpc.File.Upload
@@ -15906,6 +15985,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.File.SpaceUsage.Response.Error.Code"></a>
+
+### Rpc.File.SpaceUsage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.File.Upload.Response.Error.Code"></a>
 
 ### Rpc.File.Upload.Response.Error.Code
@@ -20315,6 +20407,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
+| analyticsId | [string](#string) |  |  |
 
 
 
