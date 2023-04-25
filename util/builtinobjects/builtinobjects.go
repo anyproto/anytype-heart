@@ -184,6 +184,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
+	st.SetLocalDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String(b.service.Anytype().PredefinedBlocks().Account))
 	st.InjectDerivedDetails()
 	if err = b.validate(st); err != nil {
 		return
