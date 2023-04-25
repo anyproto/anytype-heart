@@ -163,7 +163,14 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 		collectionService: s.collectionService,
 	}
 
-	if err := ssub.init(obs.listEntries()); err != nil {
+	entries := obs.listEntries()
+	filtered := entries[:0]
+	for _, e := range entries {
+		if flt.FilterObject(e) {
+			filtered = append(filtered, e)
+		}
+	}
+	if err := ssub.init(filtered); err != nil {
 		return nil, err
 	}
 	return sub, nil
