@@ -16,6 +16,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -339,10 +340,16 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors con
 		}
 		converter.UpdateRelationsIDs(st.(*state.State), snapshot.Id, newIDToOld)
 		converter.UpdateObjectType(newIDToOld, st.(*state.State))
-		snapshot.Snapshot.Data.Details = st.CombinedDetails()
-		snapshot.Snapshot.Data.Blocks = st.Blocks()
-		snapshot.Snapshot.Data.ObjectTypes = st.ObjectTypes()
+		p.updateObjectsIDsInCollection(st.(*state.State), newIDToOld)
+		p.updateSnapshot(snapshot, st.(*state.State))
 	}
+}
+
+func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
+	snapshot.Snapshot.Data.Details = st.CombinedDetails()
+	snapshot.Snapshot.Data.Blocks = st.Blocks()
+	snapshot.Snapshot.Data.ObjectTypes = st.ObjectTypes()
+	snapshot.Snapshot.Data.Collections = st.Store()
 }
 
 func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
@@ -396,4 +403,16 @@ func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
 
 func (p *Pb) needToImportWidgets(address string, accountID string) bool {
 	return address == accountID
+}
+
+func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string) {
+	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
+	for i, id := range objectsInCollections {
+		if newID, ok := newToOldIDs[id]; ok {
+			objectsInCollections[i] = newID
+		}
+	}
+	if len(objectsInCollections) != 0 {
+		st.UpdateStoreSlice(template.CollectionStoreKey, objectsInCollections)
+	}
 }
