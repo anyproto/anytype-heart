@@ -101,7 +101,7 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest, progress
 			continue
 		}
 
-		if c.needToTranspose(params) {
+		if c.needToTranspose(params) && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
 
@@ -121,8 +121,8 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest, progress
 }
 
 func (c *CSV) needToTranspose(params *pb.RpcObjectImportRequestCsvParams) bool {
-	return (params.GetTransposeRowsAndColumns() && !params.GetUseFirstColumnForRelations()) ||
-		(params.GetUseFirstColumnForRelations() && !params.GetTransposeRowsAndColumns())
+	return (params.GetTransposeRowsAndColumns() && params.GetUseFirstRowForRelations()) ||
+		(!params.GetUseFirstRowForRelations() && !params.GetTransposeRowsAndColumns())
 }
 
 func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strategy {
