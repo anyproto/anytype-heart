@@ -3,6 +3,7 @@ package space
 import (
 	"context"
 	"errors"
+	"github.com/gogo/protobuf/proto"
 	"time"
 
 	"github.com/anytypeio/any-sync/accountservice"
@@ -252,17 +253,45 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
 }
 
 func (s *service) checkOldSpace() (err error) {
-	accId, err := s.commonSpace.DeriveSpace(context.Background(), commonspace.SpaceDerivePayload{
-		SigningKey:    s.account.Account().SignKey,
-		EncryptionKey: s.account.Account().EncKey,
-		SpaceType:     "derived.space",
-	})
+	old, err := s.spaceStorageProvider.AllSpaceIds()
 	if err != nil {
 		return
 	}
-	_, err = s.spaceStorageProvider.WaitSpaceStorage(context.Background(), accId)
-	if err == nil {
-		return ErrUsingOldStorage
+	for _, id := range old {
+		st, err := s.spaceStorageProvider.WaitSpaceStorage(context.Background(), id)
+		if err != nil {
+			return err
+		}
+		header, err := st.SpaceHeader()
+		if err != nil {
+			return err
+		}
+		tp, err := s.getSpaceType(header)
+		if err != nil {
+			return err
+		}
+		if tp == "derived.space" {
+			return ErrUsingOldStorage
+		}
+		err = st.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func (s *service) getSpaceType(header *spacesyncproto.RawSpaceHeaderWithId) (tp string, err error) {
+	raw := &spacesyncproto.RawSpaceHeader{}
+	err = proto.Unmarshal(header.RawHeader, raw)
+	if err != nil {
+		return
+	}
+	payload := &spacesyncproto.SpaceHeader{}
+	err = proto.Unmarshal(raw.SpaceHeader, payload)
+	if err != nil {
+		return
+	}
+	tp = payload.SpaceType
+	return
 }

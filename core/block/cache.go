@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	spaceservice "github.com/anytypeio/go-anytype-middleware/space"
 	"time"
 
 	"github.com/anytypeio/any-sync/app/ocache"
@@ -218,12 +219,17 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
+	changePayload, err := createChangePayload(tp)
+	if err != nil {
+		return
+	}
 	payload := objecttree.ObjectTreeCreatePayload{
-		SignKey:     s.commonAccount.Account().SignKey,
-		ChangeType:  tp.ToProto().String(),
-		SpaceId:     space.Id(),
-		Identity:    s.commonAccount.Account().Identity,
-		IsEncrypted: true,
+		SignKey:       s.commonAccount.Account().SignKey,
+		ChangeType:    spaceservice.ChangeType,
+		ChangePayload: changePayload,
+		SpaceId:       space.Id(),
+		Identity:      s.commonAccount.Account().Identity,
+		IsEncrypted:   true,
 	}
 	create, err := space.CreateTree(context.Background(), payload)
 	if err != nil {
@@ -241,12 +247,17 @@ func (s *Service) DeriveTreeCreatePayload(
 	if err != nil {
 		return nil, err
 	}
+	changePayload, err := createChangePayload(tp)
+	if err != nil {
+		return nil, err
+	}
 	payload := objecttree.ObjectTreeCreatePayload{
-		SignKey:     s.commonAccount.Account().SignKey,
-		ChangeType:  tp.ToProto().String(),
-		SpaceId:     space.Id(),
-		Identity:    s.commonAccount.Account().Identity,
-		IsEncrypted: true,
+		SignKey:       s.commonAccount.Account().SignKey,
+		ChangeType:    spaceservice.ChangeType,
+		ChangePayload: changePayload,
+		SpaceId:       space.Id(),
+		Identity:      s.commonAccount.Account().Identity,
+		IsEncrypted:   true,
 	}
 	create, err := space.DeriveTree(context.Background(), payload)
 	return &create, err
@@ -329,4 +340,9 @@ func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts)
 		opts = cacheOpts{}
 	}
 	return context.WithValue(ctx, optsKey, update(opts))
+}
+
+func createChangePayload(sbType coresb.SmartBlockType) (data []byte, err error) {
+	payload := &model.ObjectChangePayload{ObjectType: model.SmartBlockType(sbType)}
+	return payload.Marshal()
 }
