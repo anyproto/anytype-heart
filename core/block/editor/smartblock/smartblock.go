@@ -180,7 +180,6 @@ type smartBlock struct {
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
 	restrictionsUpdater func()
 	restrictions        restriction.Restrictions
-	restrictionsChanged bool
 	objectStore         objectstore.ObjectStore
 	relationService     relation2.Service
 	isDeleted           bool
@@ -330,7 +329,7 @@ func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
 		return
 	}
 	sb.restrictions = r
-	sb.restrictionsChanged = true
+	sb.SendEvent([]*pb.EventMessage{{Value: &pb.EventMessageValueOfObjectRestrictionsSet{ObjectRestrictionsSet: &pb.EventObjectRestrictionsSet{Id: sb.Id(), Restrictions: r.Proto()}}}})
 }
 
 func (sb *smartBlock) SetIsDeleted() {
@@ -636,7 +635,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 	if checkRestrictions {
-		if err = s.CheckRestrictions(); err != nil {
+		if err = s.ParentState().CheckRestrictions(); err != nil {
 			return
 		}
 	}

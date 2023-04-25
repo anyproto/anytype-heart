@@ -1242,7 +1242,8 @@
     - [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend)
     - [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove)
     - [Event.Object.Remove](#anytype.Event.Object.Remove)
-    - [Event.Object.Restriction](#anytype.Event.Object.Restriction)
+    - [Event.Object.Restrictions](#anytype.Event.Object.Restrictions)
+    - [Event.Object.Restrictions.Set](#anytype.Event.Object.Restrictions.Set)
     - [Event.Object.Subscription](#anytype.Event.Object.Subscription)
     - [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add)
     - [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters)
@@ -19367,6 +19368,7 @@ Precondition: user A opened a block
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype.Event.Object.Remove) |  |  |
+| objectRestrictionsSet | [Event.Object.Restrictions.Set](#anytype.Event.Object.Restrictions.Set) |  |  |
 | subscriptionAdd | [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add) |  |  |
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype.Event.Object.Subscription.Remove) |  |  |
 | subscriptionPosition | [Event.Object.Subscription.Position](#anytype.Event.Object.Subscription.Position) |  |  |
@@ -19563,9 +19565,19 @@ Unset existing detail keys
 
 
 
-<a name="anytype.Event.Object.Restriction"></a>
+<a name="anytype.Event.Object.Restrictions"></a>
 
-### Event.Object.Restriction
+### Event.Object.Restrictions
+
+
+
+
+
+
+
+<a name="anytype.Event.Object.Restrictions.Set"></a>
+
+### Event.Object.Restrictions.Set
 
 
 
