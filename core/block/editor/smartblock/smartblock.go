@@ -746,7 +746,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	// TODO !!! Run migrations !!!
 	s.SetParent(sb.Doc.(*state.State))
 
 	sb.storeFileKeys(s)
