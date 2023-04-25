@@ -662,6 +662,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	changes := st.GetChanges()
 	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
+		if hasDetailsMsgs(msgs) {
+			sb.runIndexer(st)
+		}
 		return nil
 	}
 	pushChange := func() error {
