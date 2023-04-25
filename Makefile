@@ -246,6 +246,9 @@ endif
 
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
+	@mkdir -p ../js-anytype/dist/lib/json/
+	@cp pkg/lib/bundle/system*.json ../js-anytype/dist/lib/json/
+	@cp pkg/lib/bundle/internal*.json ../js-anytype/dist/lib/json/
 
 build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build&install into ../js-anytype"
