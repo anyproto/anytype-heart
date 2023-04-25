@@ -682,7 +682,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 		srcPath = fileConf.IPFSStorageAddr
 	}
 
-	parts := strings.Split(srcPath, string(os.PathSeparator))
+	parts := strings.Split(srcPath, string(filepath.Separator))
 	accountDir := parts[len(parts)-1]
 	if accountDir == "" {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR, errors.New("fail to identify account dir"))

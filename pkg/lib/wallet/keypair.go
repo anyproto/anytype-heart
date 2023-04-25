@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/anytypeio/any-sync/util/keys"
-	"github.com/anytypeio/any-sync/util/keys/asymmetric/encryptionkey"
 	"github.com/anytypeio/any-sync/util/keys/asymmetric/signingkey"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -26,7 +25,6 @@ type Keypair interface {
 	KeypairType() KeypairType
 	MarshalBinary() ([]byte, error)
 	AnySyncSignKey() (signingkey.PrivKey, error)
-	AnySyncEncKey() (encryptionkey.PrivKey, error)
 
 	crypto.PrivKey
 }
@@ -185,12 +183,4 @@ func (s sigPubKey) Equals(key keys.Key) bool {
 
 func (kp keypair) AnySyncSignKey() (signingkey.PrivKey, error) {
 	return signPrivKey{keypair: kp}, nil
-}
-
-func (kp keypair) AnySyncEncKey() (encryptionkey.PrivKey, error) {
-	raw, err := kp.Raw()
-	if err != nil {
-		return nil, err
-	}
-	return encryptionkey.NewEncryptionRsaPrivKeyFromBytes(raw)
 }

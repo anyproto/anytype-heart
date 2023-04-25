@@ -1,11 +1,11 @@
 package wallet
 
 import (
-	"context"
 	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/accountdata"
+	"github.com/anytypeio/any-sync/util/keys/asymmetric/encryptionkey"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -102,7 +102,12 @@ func (r *wallet) Init(a *app.App) (err error) {
 		if e != nil {
 			return e
 		}
-		accountEncKey, e := r.accountKeypair.AnySyncEncKey()
+		rawAccounrPriv, e := r.accountKeypair.Raw()
+		if e != nil {
+			return e
+		}
+		// TODO: maybe need to cache it into file
+		accountEncKey, _, e := encryptionkey.DeriveRSAKePair(4096, rawAccounrPriv)
 		if e != nil {
 			return e
 		}
