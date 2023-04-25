@@ -13,7 +13,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -35,8 +34,10 @@ var log = logging.Logger("anytype-mw-subscription")
 
 var batchTime = 50 * time.Millisecond
 
-func New() Service {
-	return new(service)
+func New(collectionService CollectionService) Service {
+	return &service{
+		collectionService: collectionService,
+	}
 }
 
 type Service interface {
@@ -59,16 +60,21 @@ type subscription interface {
 	close()
 }
 
+type CollectionService interface {
+	SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error)
+	UnsubscribeFromCollection(collectionID string, subscriptionID string)
+}
+
 type service struct {
 	cache         *cache
 	ds            *dependencyService
 	subscriptions map[string]subscription
 	recBatch      *mb.MB
 
-	objectStore objectstore.ObjectStore
-	kanban      kanban.Service
-	collections *collection.Service
-	sendEvent   func(e *pb.Event)
+	objectStore       objectstore.ObjectStore
+	kanban            kanban.Service
+	collectionService CollectionService
+	sendEvent         func(e *pb.Event)
 
 	m      sync.Mutex
 	ctxBuf *opCtx
@@ -82,7 +88,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
-	s.collections = app.MustComponent[*collection.Service](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
@@ -149,7 +154,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	// }
 
 	if req.CollectionId != "" {
-		return s.makeCollectionSubscription(req, f, filterDepIds)
+		return s.makeCollectionSub(req, f, filterDepIds)
 	}
 
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
@@ -191,8 +196,8 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	return
 }
 
-func (s *service) makeCollectionSubscription(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
-	sub, err := s.newCollectionSubscription(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+func (s *service) makeCollectionSub(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
+	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if err != nil {
 		return nil, err
 	}

@@ -5,13 +5,15 @@ package testMock
 
 import (
 	"context"
+
 	"github.com/anytypeio/any-sync/app"
+	"github.com/golang/mock/gomock"
+
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockKanban"
-	"github.com/golang/mock/gomock"
 )
 
 type App interface {
@@ -23,7 +25,7 @@ func RegisterMockAnytype(ctrl *gomock.Controller, ta *testapp.TestApp) *MockServ
 	ms.EXPECT().Name().AnyTimes().Return(core.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
 	ms.EXPECT().Run(context.Background()).AnyTimes()
-	ms.EXPECT().Close().AnyTimes()
+	ms.EXPECT().Close(context.Background()).AnyTimes()
 	ms.EXPECT().Account().AnyTimes().Return("account")
 	ms.EXPECT().ProfileID().AnyTimes().Return("profileId")
 	ta.Register(ms)
@@ -35,7 +37,7 @@ func RegisterMockObjectStore(ctrl *gomock.Controller, ta App) *MockObjectStore {
 	ms.EXPECT().Name().AnyTimes().Return(objectstore.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
 	ms.EXPECT().Run(context.Background()).AnyTimes()
-	ms.EXPECT().Close().AnyTimes()
+	ms.EXPECT().Close(context.Background()).AnyTimes()
 	ta.Register(ms)
 	return ms
 }

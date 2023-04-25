@@ -7,7 +7,6 @@ import (
 	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -26,7 +25,7 @@ type collectionObserver struct {
 }
 
 func (s *service) newCollectionObserver(collectionID string, subID string) (*collectionObserver, error) {
-	initialObjectIDs, objectsCh, err := s.collections.SubscribeForCollection(collectionID, subID)
+	initialObjectIDs, objectsCh, err := s.collectionService.SubscribeForCollection(collectionID, subID)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe for collection: %w", err)
 	}
@@ -122,7 +121,7 @@ type collectionSub struct {
 
 	sortedSub         *sortedSub
 	observer          *collectionObserver
-	collectionService *collection.Service
+	collectionService CollectionService
 }
 
 func (c *collectionSub) init(entries []*entry) (err error) {
@@ -151,7 +150,7 @@ func (c *collectionSub) close() {
 	c.collectionService.UnsubscribeFromCollection(c.collectionID, c.sortedSub.id)
 }
 
-func (s *service) newCollectionSubscription(id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
+func (s *service) newCollectionSub(id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(collectionID, id)
 	if err != nil {
 		return nil, err
@@ -175,7 +174,7 @@ func (s *service) newCollectionSubscription(id string, collectionID string, keys
 
 		sortedSub:         ssub,
 		observer:          obs,
-		collectionService: s.collections,
+		collectionService: s.collectionService,
 	}
 
 	if err := ssub.init(obs.listEntries()); err != nil {

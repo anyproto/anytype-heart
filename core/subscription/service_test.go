@@ -4,6 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -12,10 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestService_Search(t *testing.T) {
@@ -59,7 +60,7 @@ func TestService_Search(t *testing.T) {
 
 	t.Run("dependencies", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.a.Close()
+		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
 		newSub(fx, "test")
@@ -104,7 +105,7 @@ func TestService_Search(t *testing.T) {
 	})
 	t.Run("cache ref counter", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.a.Close()
+		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
 		newSub(fx, "test")
@@ -122,7 +123,7 @@ func TestService_Search(t *testing.T) {
 
 	t.Run("filter deps", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.a.Close()
+		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
 		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
@@ -173,7 +174,7 @@ func TestService_Search(t *testing.T) {
 	})
 	t.Run("add with limit", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.a.Close()
+		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
 		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
@@ -240,7 +241,7 @@ func TestService_Search(t *testing.T) {
 
 	t.Run("delete item from list", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.a.Close()
+		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
 		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
@@ -301,13 +302,23 @@ func TestService_Search(t *testing.T) {
 	})
 }
 
+type collectionServiceMock struct {
+}
+
+func (c *collectionServiceMock) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
+	return nil, nil, nil
+}
+
+func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+}
+
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := testapp.New()
 	testMock.RegisterMockObjectStore(ctrl, a)
 	testMock.RegisterMockKanban(ctrl, a)
 	fx := &fixture{
-		Service: New(),
+		Service: New(&collectionServiceMock{}),
 		a:       a,
 		ctrl:    ctrl,
 		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
