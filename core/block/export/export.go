@@ -453,6 +453,7 @@ func (e *export) createProfileFile(wr writer) error {
 		Avatar:    localProfile.IconImage,
 		Address:   localProfile.AccountAddr,
 		ProfileId: e.a.ProfileID(), // save profile id to restore user profile during import
+		AnalyticsId:      pr.AccountAddr,
 	}
 	data, err := profile.Marshal()
 	if err != nil {
