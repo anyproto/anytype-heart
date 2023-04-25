@@ -4,9 +4,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 )
 
-func NewMissingObject() *MissingObject {
+func NewMissingObject(sb smartblock.SmartBlock) *MissingObject {
 	return &MissingObject{
-		SmartBlock: smartblock.New(),
+		SmartBlock: sb,
 	}
 }
 

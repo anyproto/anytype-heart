@@ -29,11 +29,11 @@ type WidgetObject struct {
 }
 
 func NewWidgetObject(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	layoutConverter converter.LayoutConverter,
 ) *WidgetObject {
-	sb := smartblock.New()
 	bs := basic.NewBasic(sb, objectStore, relationService, layoutConverter)
 	return &WidgetObject{
 		SmartBlock: sb,

@@ -7,22 +7,20 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func NewVirtual(a core.Service, t model.SmartBlockType) (s Source) {
+// TODO Remove Virtual source and all mentions about it
+func NewVirtual(t model.SmartBlockType) (s Source) {
 	return &virtual{
 		id:     addr.VirtualPrefix + t.String() + "_" + uuid.New().String(),
-		a:      a,
 		sbType: t,
 	}
 }
 
 type virtual struct {
 	id     string
-	a      core.Service
 	sbType model.SmartBlockType
 }
 
@@ -32,10 +30,6 @@ func (v *virtual) ReadOnly() bool {
 
 func (v *virtual) Id() string {
 	return v.id
-}
-
-func (v *virtual) Anytype() core.Service {
-	return v.a
 }
 
 func (v *virtual) Type() model.SmartBlockType {

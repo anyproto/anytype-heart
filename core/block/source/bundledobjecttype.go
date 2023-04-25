@@ -9,20 +9,17 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func NewBundledObjectType(a core.Service, id string) (s Source) {
+func NewBundledObjectType(id string) (s Source) {
 	return &bundledObjectType{
 		id: id,
-		a:  a,
 	}
 }
 
 type bundledObjectType struct {
 	id string
-	a  core.Service
 }
 
 func (v *bundledObjectType) ReadOnly() bool {
@@ -31,10 +28,6 @@ func (v *bundledObjectType) ReadOnly() bool {
 
 func (v *bundledObjectType) Id() string {
 	return v.id
-}
-
-func (v *bundledObjectType) Anytype() core.Service {
-	return v.a
 }
 
 func (v *bundledObjectType) Type() model.SmartBlockType {

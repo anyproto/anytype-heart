@@ -70,6 +70,7 @@ type SubObjectCollection struct {
 }
 
 func NewSubObjectCollection(
+	sb smartblock.SmartBlock,
 	defaultCollectionName string,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
@@ -80,7 +81,6 @@ func NewSubObjectCollection(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 ) *SubObjectCollection {
-	sb := smartblock.New()
 	return &SubObjectCollection{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
@@ -400,13 +400,14 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 }
 
 func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, error) {
+	sb := smartblock.New(c.anytype)
 	switch collection {
 	case collectionKeyObjectTypes:
-		return NewObjectType(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
+		return NewObjectType(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
 	case collectionKeyRelations:
-		return NewRelation(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
+		return NewRelation(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
 	case collectionKeyRelationOptions:
-		return NewRelationOption(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
+		return NewRelationOption(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
 	default:
 		return nil, fmt.Errorf("unknown collection: %s", collection)
 	}

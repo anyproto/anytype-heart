@@ -40,10 +40,6 @@ func (v *files) Id() string {
 	return v.id
 }
 
-func (v *files) Anytype() core.Service {
-	return v.a
-}
-
 func (v *files) Type() model.SmartBlockType {
 	return model.SmartBlockType_File
 }

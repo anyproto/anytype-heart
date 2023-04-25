@@ -21,6 +21,7 @@ type Relation struct {
 }
 
 func NewRelation(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	fileBlockService file.BlockService,
 	anytype core.Service,
@@ -31,6 +32,7 @@ func NewRelation(
 ) *Relation {
 	return &Relation{
 		SubObject: NewSubObject(
+			sb,
 			objectStore,
 			fileBlockService,
 			anytype,

@@ -30,10 +30,10 @@ type Archive struct {
 }
 
 func NewArchive(
+	sb smartblock.SmartBlock,
 	detailsModifier DetailsModifier,
 	objectStore objectstore.ObjectStore,
 ) *Archive {
-	sb := smartblock.New()
 	return &Archive{
 		SmartBlock:      sb,
 		Collection:      collection.NewCollection(sb),

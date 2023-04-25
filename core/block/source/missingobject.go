@@ -8,18 +8,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type missingObject struct {
-	a core.Service
 }
 
-func NewMissingObject(a core.Service) (s Source) {
-	return &missingObject{a: a}
+func NewMissingObject() (s Source) {
+	return &missingObject{}
 }
 
 func (m *missingObject) ListIds() ([]string, error) {
@@ -33,10 +31,6 @@ func (m *missingObject) ReadOnly() bool {
 // nolint:revive
 func (m *missingObject) Id() string {
 	return addr.MissingObject
-}
-
-func (m *missingObject) Anytype() core.Service {
-	return m.a
 }
 
 func (m *missingObject) Type() model.SmartBlockType {

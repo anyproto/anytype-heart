@@ -5,7 +5,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -14,7 +13,6 @@ func (s *service) NewStaticSource(id string, sbType model.SmartBlockType, doc *s
 		id:         id,
 		sbType:     sbType,
 		doc:        doc,
-		a:          s.anytype,
 		s:          s,
 		pushChange: pushChange,
 	}
@@ -25,16 +23,11 @@ type static struct {
 	sbType     model.SmartBlockType
 	doc        *state.State
 	pushChange func(p PushChangeParams) (string, error)
-	a          core.Service
 	s          *service
 }
 
 func (s *static) Id() string {
 	return s.id
-}
-
-func (s *static) Anytype() core.Service {
-	return s.a
 }
 
 func (s *static) Type() model.SmartBlockType {
@@ -65,6 +58,7 @@ func (s *static) PushChange(params PushChangeParams) (id string, err error) {
 }
 
 func (s *static) ListIds() (result []string, err error) {
+	// TODO move this code to service.ListStaticIDs
 	s.s.mu.Lock()
 	defer s.s.mu.Unlock()
 	for id, src := range s.s.staticIds {

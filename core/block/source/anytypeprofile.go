@@ -8,22 +8,19 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewAnytypeProfile(a core.Service, id string) (s Source) {
+func NewAnytypeProfile(id string) (s Source) {
 	return &anytypeProfile{
 		id: id,
-		a:  a,
 	}
 }
 
 type anytypeProfile struct {
 	id string
-	a  core.Service
 }
 
 func (v *anytypeProfile) ListIds() ([]string, error) {
@@ -36,10 +33,6 @@ func (v *anytypeProfile) ReadOnly() bool {
 
 func (v *anytypeProfile) Id() string {
 	return v.id
-}
-
-func (v *anytypeProfile) Anytype() core.Service {
-	return v.a
 }
 
 func (v *anytypeProfile) Type() model.SmartBlockType {

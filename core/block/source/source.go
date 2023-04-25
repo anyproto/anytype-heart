@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -24,6 +25,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -41,7 +43,6 @@ type ChangeReceiver interface {
 
 type Source interface {
 	Id() string
-	Anytype() core.Service
 	Type() model.SmartBlockType
 	Virtual() bool
 	Heads() []string
@@ -73,48 +74,30 @@ type SourceWithType interface {
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error) {
-	switch blockType {
-	case smartblock.SmartBlockTypeAnytypeProfile:
-		return &anytypeProfile{a: s.anytype}, nil
-	case smartblock.SmartBlockTypeMissingObject:
-		return &missingObject{a: s.anytype}, nil
-	case smartblock.SmartBlockTypeFile:
-		return &files{a: s.anytype, fileStore: s.fileStore}, nil
-	case smartblock.SmartBlockTypeBundledObjectType:
-		return &bundledObjectType{a: s.anytype}, nil
-	case smartblock.SmartBlockTypeBundledRelation:
-		return &bundledRelation{a: s.anytype}, nil
-	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil, nil), nil
-	default:
-		if err := blockType.Valid(); err != nil {
-			return nil, err
-		} else {
-			return &source{a: s.anytype, spaceService: s.spaceService, smartblockType: blockType}, nil
-		}
-	}
-}
-
 type sourceDeps struct {
-	anytype        core.Service
+	sbt smartblock.SmartBlockType
+	ot  objecttree.ObjectTree
+
+	coreService    core.Service
 	statusService  status.Service
 	accountService accountservice.Service
-	sbt            smartblock.SmartBlockType
-	ot             objecttree.ObjectTree
 	spaceService   space.Service
+	sbtProvider    typeprovider.SmartBlockTypeProvider
+	fileService    *files2.Service
 }
 
 func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
 	return &source{
 		ObjectTree:     deps.ot,
 		id:             id,
-		a:              deps.anytype,
+		coreService:    deps.coreService,
 		spaceService:   deps.spaceService,
-		ss:             deps.statusService,
+		statusService:  deps.statusService,
 		openedAt:       time.Now(),
 		smartblockType: deps.sbt,
-		acc:            deps.accountService,
+		accountService: deps.accountService,
+		sbtProvider:    deps.sbtProvider,
+		fileService:    deps.fileService,
 	}, nil
 }
 
@@ -127,8 +110,6 @@ type source struct {
 	id                   string
 	tid                  thread.ID
 	smartblockType       smartblock.SmartBlockType
-	a                    core.Service
-	ss                   status.Service
 	lastSnapshotId       string
 	changesSinceSnapshot int
 	receiver             ChangeReceiver
@@ -136,8 +117,13 @@ type source struct {
 	metaOnly             bool
 	closed               chan struct{}
 	openedAt             time.Time
-	acc                  accountservice.Service
-	spaceService         space.Service
+
+	coreService    core.Service
+	statusService  status.Service
+	fileService    *files2.Service
+	accountService accountservice.Service
+	spaceService   space.Service
+	sbtProvider    typeprovider.SmartBlockTypeProvider
 }
 
 func (s *source) Tree() objecttree.ObjectTree {
@@ -149,7 +135,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	s.lastSnapshotId = ot.Root().Id
 	prevSnapshot := s.lastSnapshotId
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildState(d.(*state.State), ot, s.Anytype().PredefinedBlocks().Profile)
+		st, changes, sinceSnapshot, err := BuildState(d.(*state.State), ot, s.coreService.PredefinedBlocks().Profile)
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
@@ -187,10 +173,6 @@ func (s *source) Id() string {
 	return s.id
 }
 
-func (s *source) Anytype() core.Service {
-	return s.a
-}
-
 func (s *source) Type() model.SmartBlockType {
 	return model.SmartBlockType(s.smartblockType)
 }
@@ -215,7 +197,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.Anytype().PredefinedBlocks().Profile)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedBlocks().Profile)
 	if err != nil {
 		return
 	}
@@ -239,10 +221,6 @@ func (s *source) buildState() (doc state.Doc, err error) {
 }
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
-	if s.Anytype() == nil {
-		return "", 0, fmt.Errorf("anytype is nil")
-	}
-
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
 	// TODO: add creator in profile
 	return
@@ -252,16 +230,12 @@ type PushChangeParams struct {
 	State             *state.State
 	Changes           []*pb.ChangeContent
 	FileChangedHashes []string
-	Time              time.Time // used to derive the lastModifiedDate; Default is time.Now()
 	DoSnapshot        bool
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
-	if params.Time.IsZero() {
-		params.Time = time.Now()
-	}
 	c := &pb.Change{
-		Timestamp: params.Time.Unix(),
+		Timestamp: time.Now().Unix(),
 		Version:   params.State.MigrationVersion(),
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
@@ -284,7 +258,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.acc.Account().SignKey,
+		Key:         s.accountService.Account().SignKey,
 		IsSnapshot:  c.Snapshot != nil,
 		IsEncrypted: true,
 	})
@@ -310,10 +284,10 @@ func (s *source) ListIds() (ids []string, err error) {
 		return
 	}
 	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
-		if s.Anytype().PredefinedBlocks().IsAccount(id) {
+		if s.coreService.PredefinedBlocks().IsAccount(id) {
 			return false
 		}
-		t, err := smartblock.SmartBlockTypeFromID(id)
+		t, err := s.sbtProvider.Type(id)
 		if err != nil {
 			return false
 		}
@@ -399,7 +373,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.a.FileGetKeys(h)
+		fk, err := s.fileService.FileGetKeys(h)
 		if err != nil {
 			log.Warnf("can't get file key for hash: %v: %v", h, err)
 			continue
@@ -497,7 +471,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 	if err != nil {
 		return
 	}
-	if lastChange != nil && !st.IsTheHeaderChange() {
+	if lastChange != nil {
 		st.SetLastModified(lastChange.Timestamp, profileId)
 	}
 	st.SetMigrationVersion(lastMigrationVersion)

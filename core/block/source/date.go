@@ -16,17 +16,17 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewDate(a core.Service, id string) (s Source) {
+func NewDate(id string, coreService core.Service) (s Source) {
 	return &date{
-		id: id,
-		a:  a,
+		id:          id,
+		coreService: coreService,
 	}
 }
 
 type date struct {
-	id string
-	t  time.Time
-	a  core.Service
+	id          string
+	t           time.Time
+	coreService core.Service
 }
 
 func (v *date) ListIds() ([]string, error) {
@@ -39,10 +39,6 @@ func (v *date) ReadOnly() bool {
 
 func (v *date) Id() string {
 	return v.id
-}
-
-func (v *date) Anytype() core.Service {
-	return v.a
 }
 
 func (v *date) Type() model.SmartBlockType {
@@ -63,7 +59,7 @@ func (v *date) getDetails() (p *types.Struct) {
 		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_basic)),
 		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
-		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.a.PredefinedBlocks().Account),
+		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.coreService.PredefinedBlocks().Account),
 	}}
 }
 

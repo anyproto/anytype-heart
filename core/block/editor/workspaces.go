@@ -64,6 +64,7 @@ type Workspaces struct {
 }
 
 func NewWorkspace(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	relationService relation.Service,
@@ -76,6 +77,7 @@ func NewWorkspace(
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
+			sb,
 			collectionKeyRelationOptions,
 			objectStore,
 			anytype,

@@ -38,6 +38,7 @@ type Page struct {
 }
 
 func NewPage(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
@@ -48,7 +49,6 @@ func NewPage(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 ) *Page {
-	sb := smartblock.New()
 	f := file.NewFile(
 		sb,
 		fileBlockService,

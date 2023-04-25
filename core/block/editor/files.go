@@ -11,9 +11,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewFiles() *Files {
+func NewFiles(sb smartblock.SmartBlock) *Files {
 	return &Files{
-		SmartBlock: smartblock.New(),
+		SmartBlock: sb,
 	}
 }
 

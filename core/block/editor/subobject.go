@@ -27,6 +27,7 @@ type SubObject struct {
 }
 
 func NewSubObject(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	fileBlockService file.BlockService,
 	anytype core.Service,
@@ -35,7 +36,6 @@ func NewSubObject(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 ) *SubObject {
-	sb := smartblock.New()
 	return &SubObject{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),

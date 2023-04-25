@@ -30,6 +30,7 @@ type ObjectType struct {
 }
 
 func NewObjectType(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	fileBlockService file.BlockService,
 	anytype core.Service,
@@ -41,6 +42,7 @@ func NewObjectType(
 	return &ObjectType{
 		relationService: relationService,
 		SubObject: NewSubObject(
+			sb,
 			objectStore,
 			fileBlockService,
 			anytype,

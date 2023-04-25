@@ -31,13 +31,13 @@ type Dashboard struct {
 }
 
 func NewDashboard(
+	sb smartblock.SmartBlock,
 	detailsModifier DetailsModifier,
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	anytype core.Service,
 	layoutConverter converter.LayoutConverter,
 ) *Dashboard {
-	sb := smartblock.New()
 	return &Dashboard{
 		SmartBlock:      sb,
 		AllOperations:   basic.NewBasic(sb, objectStore, relationService, layoutConverter),

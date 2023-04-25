@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/anytypeio/any-sync/accountservice"
@@ -13,6 +12,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -35,30 +35,33 @@ type Service interface {
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
-	DetailsFromIdBasedSource(id string) (*types.Struct, error)
+	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
 }
 
 type service struct {
-	anytype       core.Service
+	coreService   core.Service
 	statusService status.Service
 	sbtProvider   typeprovider.SmartBlockTypeProvider
 	account       accountservice.Service
 	fileStore     filestore.FileStore
 	spaceService  space.Service
-	staticIds     map[string]Source
-	mu            sync.Mutex
+	fileService   *files2.Service
+
+	mu        sync.Mutex
+	staticIds map[string]Source
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]Source)
-	s.anytype = a.MustComponent(core.CName).(core.Service)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
 	s.statusService = a.MustComponent(status.CName).(status.Service)
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
+	s.fileService = app.MustComponent[*files2.Service](a)
 	return
 }
 
@@ -68,21 +71,21 @@ func (s *service) Name() (name string) {
 
 func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.BuildTreeOpts) (source Source, err error) {
 	if id == addr.AnytypeProfileId {
-		return NewAnytypeProfile(s.anytype, id), nil
+		return NewAnytypeProfile(id), nil
 	}
 	if id == addr.MissingObject {
-		return NewMissingObject(s.anytype), nil
+		return NewMissingObject(), nil
 	}
 	st, err := s.sbtProvider.Type(id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFiles(s.anytype, s.fileStore, id), nil
+		return NewFiles(s.coreService, s.fileStore, id), nil
 	case smartblock.SmartBlockTypeDate:
-		return NewDate(s.anytype, id), nil
+		return NewDate(id, s.coreService), nil
 	case smartblock.SmartBlockTypeBundledObjectType:
-		return NewBundledObjectType(s.anytype, id), nil
+		return NewBundledObjectType(id), nil
 	case smartblock.SmartBlockTypeBundledRelation:
-		return NewBundledRelation(s.anytype, id), nil
+		return NewBundledRelation(id), nil
 	}
 
 	s.mu.Lock()
@@ -109,28 +112,58 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 		return nil, err
 	}
 	deps := sourceDeps{
-		anytype:        s.anytype,
+		coreService:    s.coreService,
 		statusService:  s.statusService,
 		accountService: s.account,
 		sbt:            sbt,
 		ot:             ot,
 		spaceService:   s.spaceService,
 		sbtProvider:    s.sbtProvider,
+		fileService:    s.fileService,
 	}
 	return newTreeSource(id, deps)
 }
 
-func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	if !strings.HasPrefix(id, addr.DatePrefix) {
-		return nil, fmt.Errorf("unsupported id")
+func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error) {
+	switch blockType {
+	case smartblock.SmartBlockTypeAnytypeProfile:
+		return &anytypeProfile{}, nil
+	case smartblock.SmartBlockTypeMissingObject:
+		return &missingObject{}, nil
+	case smartblock.SmartBlockTypeFile:
+		return &files{a: s.coreService, fileStore: s.fileStore}, nil
+	case smartblock.SmartBlockTypeBundledObjectType:
+		return &bundledObjectType{}, nil
+	case smartblock.SmartBlockTypeBundledRelation:
+		return &bundledRelation{}, nil
+	case smartblock.SmartBlockTypeBundledTemplate:
+		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil, nil), nil
+	default:
+		if err := blockType.Valid(); err != nil {
+			return nil, err
+		} else {
+			return &source{
+				coreService:    s.coreService,
+				spaceService:   s.spaceService,
+				smartblockType: blockType,
+				sbtProvider:    s.sbtProvider,
+				fileService:    s.fileService,
+			}, nil
+		}
 	}
-	ss := NewDate(s.anytype, id)
+}
+
+func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	ss, err := s.NewSource(id, "", commonspace.BuildTreeOpts{})
+	if err != nil {
+		return nil, err
+	}
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()
 	}
 	_ = ss.Close()
-	return nil, fmt.Errorf("date source miss the details")
+	return nil, fmt.Errorf("id unsupported")
 }
 
 func (s *service) RegisterStaticSource(id string, src Source) {

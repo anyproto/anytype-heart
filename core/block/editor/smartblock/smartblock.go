@@ -81,8 +81,14 @@ const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New() SmartBlock {
-	s := &smartBlock{hooks: map[Hook][]HookCallback{}, hooksOnce: map[string]struct{}{}, Locker: &sync.Mutex{}}
+func New(coreService core.Service) SmartBlock {
+	s := &smartBlock{
+		hooks:     map[Hook][]HookCallback{},
+		hooksOnce: map[string]struct{}{},
+		Locker:    &sync.Mutex{},
+
+		coreService: coreService,
+	}
 	return s
 }
 
@@ -193,6 +199,8 @@ type smartBlock struct {
 
 	recordsSub      database.Subscription
 	closeRecordsSub func()
+
+	coreService core.Service
 }
 
 type LockerSetter interface {
@@ -265,10 +273,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictionsUpdater = func() {
-		restrictions := ctx.App.MustComponent(restriction.CName).(restriction.Service).GetRestrictions(sb)
+		restrictions := ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 		sb.SetRestrictions(restrictions)
 	}
-	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).GetRestrictions(sb)
+	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
 	sb.indexer = app.MustComponent[Indexer](ctx.App)
 	sb.objectStore = ctx.App.MustComponent(objectstore.CName).(objectstore.ObjectStore)
@@ -505,12 +513,8 @@ func (sb *smartBlock) navigationalLinks() []string {
 
 	s := sb.Doc.(*state.State)
 
-	var ids []string
-
-	if !internalflag.NewFromState(s).Has(model.InternalFlag_collectionDontIndexLinks) {
-		// flag used when importing a large set of objects
-		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
-	}
+	// Objects from collection
+	ids := s.GetStoreSlice(template.CollectionStoreKey)
 
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
@@ -631,23 +635,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
-
-	var lastModified = time.Now()
-	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
-		// in case it is the first change, allow to explicitly set the last modified time
-		// this case is used when we import existing data from other sources and want to preserve the original dates
-		if err != nil {
-			log.Errorf("failed to get creation info: %s", err)
-		} else {
-			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
-		}
-	}
 	if err = sb.onApply(s); err != nil {
 		return
 	}
-	if sb.Anytype() != nil {
+	if sb.coreService != nil {
 		// this one will be reverted in case we don't have any actual change being made
-		s.SetLastModified(lastModified.Unix(), sb.Anytype().PredefinedBlocks().Profile)
+		s.SetLastModified(time.Now().Unix(), sb.coreService.PredefinedBlocks().Profile)
 	}
 	beforeApplyStateTime := time.Now()
 
@@ -682,7 +675,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			}
 		}
 		pushChangeParams := source.PushChangeParams{
-			Time:              lastModified,
 			State:             st,
 			Changes:           changes,
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
@@ -827,7 +819,7 @@ func (sb *smartBlock) History() undo.History {
 }
 
 func (sb *smartBlock) Anytype() core.Service {
-	return sb.source.Anytype()
+	return sb.coreService
 }
 
 func (sb *smartBlock) RelationService() relation2.Service {
@@ -907,7 +899,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	wsId, _ := sb.Anytype().GetWorkspaceIdForObject(sb.Id())
+	wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
 	if wsId != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
 	}
@@ -1135,7 +1127,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			Keys: k.Keys,
 		}
 	}
-	if err := sb.Anytype().FileStoreKeys(fileKeys...); err != nil {
+	if err := sb.coreService.FileStoreKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }
@@ -1194,7 +1186,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
-		creator = sb.Anytype().ProfileID()
+		creator = sb.coreService.ProfileID()
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only

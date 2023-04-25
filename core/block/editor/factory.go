@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -116,6 +117,14 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
+	basicEditor := basic.NewBasic(sb, f.objectStore, f.relationService, f.layoutConverter)
+	if len(initCtx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
+		err = basicEditor.SetObjectTypesInState(initCtx.State, initCtx.ObjectTypeUrls)
+		if err != nil {
+			return nil, fmt.Errorf("set object types in state: %w", err)
+		}
+	}
+
 	err = migration.RunMigrations(sb, initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("run migrations: %w", err)
@@ -124,10 +133,11 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 }
 
 func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
+	sb := smartblock.New(f.anytype)
 	switch sbType {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType:
-
 		return NewPage(
+			sb,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
@@ -140,11 +150,13 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 		), nil
 	case model.SmartBlockType_Archive:
 		return NewArchive(
+			sb,
 			f.detailsModifier,
 			f.objectStore,
 		), nil
 	case model.SmartBlockType_Home:
 		return NewDashboard(
+			sb,
 			f.detailsModifier,
 			f.objectStore,
 			f.relationService,
@@ -153,6 +165,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 		), nil
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		return NewProfile(
+			sb,
 			f.objectStore,
 			f.relationService,
 			f.anytype,
@@ -164,9 +177,10 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.layoutConverter,
 		), nil
 	case model.SmartBlockType_File:
-		return NewFiles(), nil
+		return NewFiles(sb), nil
 	case model.SmartBlockType_Template:
 		return NewTemplate(
+			sb,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
@@ -179,6 +193,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 		), nil
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
+			sb,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
@@ -191,6 +206,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 		), nil
 	case model.SmartBlockType_Workspace:
 		return NewWorkspace(
+			sb,
 			f.objectStore,
 			f.anytype,
 			f.relationService,
@@ -201,8 +217,10 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.sbtProvider,
 			f.layoutConverter,
 		), nil
+	case model.SmartBlockType_MissingObject:
+		return NewMissingObject(sb), nil
 	case model.SmartBlockType_Widget:
-		return NewWidgetObject(f.objectStore, f.relationService, f.layoutConverter), nil
+		return NewWidgetObject(sb, f.objectStore, f.relationService, f.layoutConverter), nil
 	case model.SmartBlockType_SubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	default:

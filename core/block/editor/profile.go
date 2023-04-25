@@ -36,6 +36,7 @@ type Profile struct {
 }
 
 func NewProfile(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	anytype core.Service,
@@ -46,7 +47,6 @@ func NewProfile(
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,
 ) *Profile {
-	sb := smartblock.New()
 	f := file.NewFile(
 		sb,
 		fileBlockService,

@@ -24,6 +24,7 @@ type Template struct {
 }
 
 func NewTemplate(
+	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
@@ -35,6 +36,7 @@ func NewTemplate(
 	layoutConverter converter.LayoutConverter,
 ) *Template {
 	return &Template{Page: NewPage(
+		sb,
 		objectStore,
 		anytype,
 		fileBlockService,

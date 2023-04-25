@@ -10,10 +10,6 @@ import (
 
 var ErrFileNotFound = fmt.Errorf("file not found")
 
-func (a *Anytype) FileGetKeys(hash string) (*files2.FileKeys, error) {
-	return a.files.FileGetKeys(hash)
-}
-
 func (a *Anytype) FileStoreKeys(fileKeys ...files2.FileKeys) error {
 	var fks []filestore.FileKeys
 
