@@ -3,9 +3,7 @@ package html
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -17,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
@@ -84,7 +81,7 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 		sn := &model.SmartBlockSnapshotBase{
 			Blocks:      blocks,
-			Details:     h.getDetails(p),
+			Details:     converter.GetDetails(p),
 			ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 		}
 		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
@@ -106,19 +103,4 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 	return &converter.Response{
 		Snapshots: snapshots,
 	}, nil
-}
-
-func (h *HTML) getDetails(name string) *types.Struct {
-	var title string
-
-	if title == "" {
-		title = strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
-	}
-
-	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():       pbtypes.String(title),
-		bundle.RelationKeySource.String():     pbtypes.String(name),
-		bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(true),
-	}
-	return &types.Struct{Fields: fields}
 }

@@ -12,6 +12,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -24,6 +29,21 @@ func GetSourceDetail(fileName, importPath string) string {
 	source.WriteRune(filepath.Separator)
 	source.WriteString(fileName)
 	return source.String()
+}
+
+func GetDetails(name string) *types.Struct {
+	var title string
+
+	if title == "" {
+		title = strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
+	}
+
+	fields := map[string]*types.Value{
+		bundle.RelationKeyName.String():       pbtypes.String(title),
+		bundle.RelationKeySource.String():     pbtypes.String(name),
+		bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(true),
+	}
+	return &types.Struct{Fields: fields}
 }
 
 func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
