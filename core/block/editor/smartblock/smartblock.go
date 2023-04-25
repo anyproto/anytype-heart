@@ -1407,7 +1407,9 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 
 func hasStoreChanges(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if ch.GetStoreKeySet() != nil || ch.GetStoreKeyUnset() != nil {
+		if ch.GetStoreKeySet() != nil ||
+			ch.GetStoreKeyUnset() != nil ||
+			ch.GetStoreSliceUpdate() != nil {
 			return true
 		}
 	}

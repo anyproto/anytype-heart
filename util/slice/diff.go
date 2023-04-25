@@ -292,3 +292,28 @@ func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) 
 
 	return res
 }
+
+func UnwrapChanges[T, R any](
+	changes []Change[T],
+	add func(afterID string, items []T) R,
+	remove func(ids []string) R,
+	move func(afterID string, ids []string) R,
+	update func(id string, item T) R,
+) []R {
+	res := make([]R, 0, len(changes))
+	for _, c := range changes {
+		if v := c.Add(); v != nil {
+			res = append(res, add(v.AfterID, v.Items))
+		}
+		if v := c.Remove(); v != nil {
+			res = append(res, remove(v.IDs))
+		}
+		if v := c.Move(); v != nil {
+			res = append(res, move(v.AfterID, v.IDs))
+		}
+		if v := c.Replace(); v != nil {
+			res = append(res, update(v.ID, v.Item))
+		}
+	}
+	return res
+}

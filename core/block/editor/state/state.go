@@ -1439,6 +1439,48 @@ func (s *State) SetInStore(path []string, value *types.Value) (changed bool) {
 	return
 }
 
+func (s *State) StoreSlice(key string, val []string) {
+	old := pbtypes.GetStringList(s.Store(), key)
+	s.setInStore([]string{key}, pbtypes.StringList(val))
+
+	diff := slice.Diff(old, val, slice.StringIdentity[string], slice.Equal[string])
+	changes := slice.UnwrapChanges(diff,
+		func(afterID string, items []string) *pb.ChangeStoreSliceUpdate {
+			return &pb.ChangeStoreSliceUpdate{
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{
+					Add: &pb.ChangeStoreSliceUpdateAdd{
+						AfterId: afterID,
+						Ids:     items,
+					},
+				},
+			}
+		}, func(items []string) *pb.ChangeStoreSliceUpdate {
+			return &pb.ChangeStoreSliceUpdate{
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfRemove{
+					Remove: &pb.ChangeStoreSliceUpdateRemove{
+						Ids: items,
+					},
+				},
+			}
+		}, func(afterID string, items []string) *pb.ChangeStoreSliceUpdate {
+			return &pb.ChangeStoreSliceUpdate{
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfMove{
+					Move: &pb.ChangeStoreSliceUpdateMove{
+						AfterId: afterID,
+						Ids:     items,
+					},
+				},
+			}
+		}, nil)
+
+	for _, ch := range changes {
+		ch.Key = key
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreSliceUpdate{StoreSliceUpdate: ch},
+		})
+	}
+}
+
 func (s *State) HasInStore(path []string) bool {
 	store := s.Store()
 	if store.GetFields() == nil {

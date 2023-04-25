@@ -90,6 +90,8 @@ func TestState_ChangesCreate_Collection_Unset(t *testing.T) {
 	}).String(), changes[0].String())
 }
 
+// TODO tests for atomic changes
+
 func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
 	d := NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"a", "b"}}),
@@ -208,7 +210,7 @@ func TestStateNormalizeMerge(t *testing.T) {
 		stateA.InsertTo("common39", model.Block_Bottom, "a1", "a2")
 		_, _, err = ApplyState(stateA, true)
 		require.NoError(t, err)
-		//t.Log(docA.String())
+		// t.Log(docA.String())
 		changesA := stateA.GetChanges()
 
 		docB := d.Copy()
@@ -217,7 +219,7 @@ func TestStateNormalizeMerge(t *testing.T) {
 		stateB.InsertTo("common39", model.Block_Bottom, "b1")
 		_, _, err = ApplyState(stateB, true)
 		require.NoError(t, err)
-		//t.Log(docB.String())
+		// t.Log(docB.String())
 		changesB := stateB.GetChanges()
 
 		s = d.NewState()
@@ -233,7 +235,7 @@ func TestStateNormalizeMerge(t *testing.T) {
 		assert.True(t, CleanupLayouts(s) > 0)
 		ids = append(ids, "a1", "a2", "b1")
 		assert.Equal(t, ids, s.Pick("parent").Model().ChildrenIds)
-		//t.Log(s.String())
+		// t.Log(s.String())
 	})
 	t.Run("rebalance", func(t *testing.T) {
 		d := d.Copy()

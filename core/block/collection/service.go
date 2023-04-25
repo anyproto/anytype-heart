@@ -32,11 +32,12 @@ const storeKey = "objects"
 
 func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
+		toAdd := slice.Difference(req.ObjectIds, col)
 		pos := slice.FindPos(col, req.AfterId)
 		if pos >= 0 {
-			col = slice.Insert(col, pos+1, req.ObjectIds...)
+			col = slice.Insert(col, pos+1, toAdd...)
 		} else {
-			col = append(col, req.ObjectIds...)
+			col = append(col, toAdd...)
 		}
 		return col
 	})
@@ -73,7 +74,7 @@ func (s *Service) updateCollection(ctx *session.Context, contextID string, modif
 		store := s.Store()
 		lst := pbtypes.GetStringList(store, storeKey)
 		lst = modifier(lst)
-		s.SetInStore([]string{storeKey}, pbtypes.StringList(lst))
+		s.StoreSlice(storeKey, lst)
 		return nil
 	})
 }

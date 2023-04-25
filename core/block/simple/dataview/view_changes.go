@@ -50,7 +50,7 @@ func diffViewFilters(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatav
 		return nil
 	}
 
-	return unwrapChanges(
+	return slice.UnwrapChanges(
 		diff,
 		func(afterID string, items []*model.BlockContentDataviewFilter) *pb.EventBlockDataviewViewUpdateFilter {
 			return &pb.EventBlockDataviewViewUpdateFilter{
@@ -108,7 +108,7 @@ func diffViewRelations(a, b *model.BlockContentDataviewView) []*pb.EventBlockDat
 		return nil
 	}
 
-	return unwrapChanges(
+	return slice.UnwrapChanges(
 		diff,
 		func(afterID string, items []*model.BlockContentDataviewRelation) *pb.EventBlockDataviewViewUpdateRelation {
 			return &pb.EventBlockDataviewViewUpdateRelation{
@@ -166,7 +166,7 @@ func diffViewSorts(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatavie
 		return nil
 	}
 
-	return unwrapChanges(
+	return slice.UnwrapChanges(
 		diff,
 		func(afterID string, items []*model.BlockContentDataviewSort) *pb.EventBlockDataviewViewUpdateSort {
 			return &pb.EventBlockDataviewViewUpdateSort{
@@ -278,31 +278,6 @@ func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		}
 		view.Sorts = slice.ApplyChanges(view.Sorts, changes, getViewSortID)
 	}
-}
-
-func unwrapChanges[T, R any](
-	changes []slice.Change[T],
-	add func(afterID string, items []T) R,
-	remove func(ids []string) R,
-	move func(afterID string, ids []string) R,
-	update func(id string, item T) R,
-) []R {
-	res := make([]R, 0, len(changes))
-	for _, c := range changes {
-		if v := c.Add(); v != nil {
-			res = append(res, add(v.AfterID, v.Items))
-		}
-		if v := c.Remove(); v != nil {
-			res = append(res, remove(v.IDs))
-		}
-		if v := c.Move(); v != nil {
-			res = append(res, move(v.AfterID, v.IDs))
-		}
-		if v := c.Replace(); v != nil {
-			res = append(res, update(v.ID, v.Item))
-		}
-	}
-	return res
 }
 
 func diffViewObjectOrder(a, b *model.BlockContentDataviewObjectOrder) []*pb.EventBlockDataviewSliceChange {
