@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -97,10 +96,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}()
 
 	converter.UpdateRelationsIDs(st, newID, oldIDtoNew)
-	details := oc.getDetails(st.Details(), snapshot.Details)
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		return oc.handleSubObject(ctx, snapshot, newID, details), "", nil
+		oc.handleSubObject(snapshot, newID)
 	}
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, newID); err != nil {
@@ -115,12 +113,12 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.handleWorkspace(ctx, details, newID, st, oldIDtoNew, sn.Snapshot.Data.Details)
+		oc.handleWorkspace(newID, st, oldIDtoNew)
 		return nil, newID, nil
 	}
 
 	converter.UpdateObjectType(oldIDtoNew, st)
-	respDetails := oc.resetState(ctx, newID, st, details)
+	respDetails := oc.resetState(ctx, newID, st)
 
 	oc.setFavorite(snapshot, newID)
 
@@ -157,37 +155,19 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) handleWorkspace(ctx *session.Context,
-	details []*pb.RpcObjectSetDetailsDetail,
-	newID string,
-	st *state.State,
-	oldToNew map[string]string,
-	d *types.Struct) {
+func (oc *ObjectCreator) handleWorkspace(newID string, st *state.State, oldToNew map[string]string) {
 	if err := oc.createObjectsInWorkspace(newID, st); err != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
 	}
-	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
-		return b.SetDetails(ctx, details, true)
-	})
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to set details %s: %s", newID, err.Error())
-	}
-	oc.setSpaceDashboardID(newID, d, oldToNew)
+	oc.setSpaceDashboardID(st, newID, oldToNew)
 }
 
-func (oc *ObjectCreator) getDetails(d *types.Struct, snapshotDetails *types.Struct) []*pb.RpcObjectSetDetailsDetail {
+func (oc *ObjectCreator) getDetails(d *types.Struct) []*pb.RpcObjectSetDetailsDetail {
 	var details []*pb.RpcObjectSetDetailsDetail
 	for key, value := range d.Fields {
 		details = append(details, &pb.RpcObjectSetDetailsDetail{
 			Key:   key,
 			Value: value,
-		})
-	}
-	createdDate := pbtypes.GetFloat64(snapshotDetails, bundle.RelationKeyCreatedDate.String())
-	if createdDate != 0 {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyCreatedDate.String(),
-			Value: pbtypes.Float64(createdDate),
 		})
 	}
 	return details
@@ -242,40 +222,19 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(newID string, details *types.Struct, oldIDtoNew map[string]string) {
-	spaceDashBoardID := pbtypes.GetString(details, bundle.RelationKeySpaceDashboardId.String())
+func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, id string, oldIDtoNew map[string]string) {
+	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
-		e := block.Do(oc.service, newID, func(ws basic.CommonOperations) error {
-			if err := ws.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
-				{
-					Key:   bundle.RelationKeySpaceDashboardId.String(),
-					Value: pbtypes.String(id),
-				},
-			}, false); err != nil {
-				return err
-			}
-			return nil
-		})
-		if e != nil {
-			log.Errorf("failed to set spaceDashBoardID, %s", e)
-		}
+		st.SetDetail(bundle.RelationKeySpaceDashboardId.String(), pbtypes.String(id))
 	}
 }
 
-func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
-		}
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return fmt.Errorf("common operations is not allowed for this object")
-		}
-		err = commonOperations.SetDetails(ctx, details, true)
-		if err != nil {
-			return err
 		}
 		respDetails = b.CombinedDetails()
 		return nil
@@ -334,7 +293,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
-func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, newID string, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+func (oc *ObjectCreator) handleSubObject(snapshot *model.SmartBlockSnapshotBase, newID string) {
 	defer oc.mu.Unlock()
 	oc.mu.Lock()
 	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
@@ -345,13 +304,6 @@ func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.S
 			}
 		}
 	}
-	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
-		return b.SetDetails(ctx, details, true)
-	})
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
-	}
-	return nil
 }
 
 func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat) error {

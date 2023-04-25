@@ -902,6 +902,13 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
+	combinedDetails := s.CombinedDetails()
+	originalCreatedDate := pbtypes.GetFloat64(combinedDetails, bundle.RelationKeyOriginalCreatedDate.String())
+	objectSource := pbtypes.GetString(combinedDetails, bundle.RelationKeySource.String())
+	if objectSource != "" && originalCreatedDate != 0 {
+		createdDate = int64(originalCreatedDate)
+	}
+
 	if creator != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
 	}
