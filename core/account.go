@@ -803,6 +803,13 @@ func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcAc
 	}
 	path := filepath.Join(mw.rootPath, profile.Address)
 	_, err = os.Stat(path)
+	_, err2 := os.Stat(filepath.Join(path, clientds.SpaceDSDir))
+
+	if err2 == nil {
+		// rename existing directory only in case it was not already migrated before
+		return nil
+	}
+
 	if err == nil {
 		err = os.Rename(path, path+"_backup")
 		if err != nil {

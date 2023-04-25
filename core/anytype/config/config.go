@@ -2,21 +2,24 @@ package config
 
 import (
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/metric"
-	commonnet "github.com/anytypeio/any-sync/net"
-	"github.com/anytypeio/any-sync/nodeconf"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
-	"github.com/anytypeio/go-anytype-middleware/util/netutil"
-	"gopkg.in/yaml.v2"
 	"net"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/metric"
+	commonnet "github.com/anytypeio/any-sync/net"
+	"github.com/anytypeio/any-sync/nodeconf"
+	"gopkg.in/yaml.v2"
+
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
+
 	"github.com/kelseyhightower/envconfig"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
@@ -36,9 +39,9 @@ type FileConfig interface {
 }
 
 type ConfigRequired struct {
-	HostAddr        string `json:",omitempty"`
-	IPFSStorageAddr string `json:",omitempty"`
-	TimeZone        string `json:",omitempty"`
+	HostAddr            string `json:",omitempty"`
+	CustomFileStorePath string `json:",omitempty"`
+	TimeZone            string `json:",omitempty"`
 }
 
 type Config struct {
@@ -46,6 +49,7 @@ type Config struct {
 	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	Offline                  bool
 	DisableThreadsSyncEvents bool
+	LegacyFileStorePath      string `json:",omitempty"`
 
 	RepoPath string
 
@@ -67,7 +71,7 @@ type Config struct {
 
 	Threads              threads.Config
 	DS                   clientds.Config
-	FS                   clientds.FSConfig
+	FS                   filestorage.FSConfig
 	DisableFileConfig    bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 	CreateBuiltinObjects bool
 }
@@ -85,7 +89,7 @@ var DefaultConfig = Config{
 	Offline:              false,
 	SwarmLowWater:        10,
 	SwarmHighWater:       50,
-	LocalServerAddr:      "0.0.0.0:9091",
+	LocalServerAddr:      ":0",
 	PrivateNetworkSecret: ipfs.IpfsPrivateNetworkKey,
 	BootstrapNodes: []string{
 		"/ip4/54.93.109.23/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",           // fra1
@@ -147,9 +151,6 @@ func DisableFileConfig(disable bool) func(*Config) {
 
 func New(options ...func(*Config)) *Config {
 	cfg := DefaultConfig
-	if randomPort, err := netutil.GetRandomPort(); err == nil {
-		cfg.LocalServerAddr = fmt.Sprintf("0.0.0.0:%d", randomPort)
-	}
 	for _, opt := range options {
 		opt(&cfg)
 	}
@@ -262,14 +263,14 @@ func (c *Config) DSConfig() clientds.Config {
 	return c.DS
 }
 
-func (c *Config) FSConfig() (clientds.FSConfig, error) {
+func (c *Config) FSConfig() (filestorage.FSConfig, error) {
 	res := ConfigRequired{}
 	err := files.GetFileConfig(c.GetConfigPath(), &res)
 	if err != nil {
-		return clientds.FSConfig{}, err
+		return filestorage.FSConfig{}, err
 	}
 
-	return clientds.FSConfig{IPFSStorageAddr: res.IPFSStorageAddr}, nil
+	return filestorage.FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
 }
 
 func (c *Config) ThreadsConfig() threads.Config {

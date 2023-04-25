@@ -22,7 +22,7 @@ const (
 	CName           = "datastore"
 	oldLitestoreDir = "ipfslite_v3"
 	localstoreDSDir = "localstore"
-	spaceDSDir      = "spacestore"
+	SpaceDSDir      = "spacestore"
 )
 
 var log = logging.Logger("anytype-clientds")
@@ -108,7 +108,7 @@ func (r *clientds) Run(context.Context) error {
 		return err
 	}
 
-	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(spaceDSDir), &r.cfg.Spacestore)
+	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(SpaceDSDir), &r.cfg.Spacestore)
 	if err != nil {
 		return err
 	}
