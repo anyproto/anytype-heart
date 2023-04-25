@@ -15,8 +15,8 @@ func TestHTML_GetSnapshots(t *testing.T) {
 		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
 			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
 		},
-		Type: 3,
-		Mode: 1,
+		Type: pb.RpcObjectImportRequest_Txt,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
 	assert.NotNil(t, sn)
