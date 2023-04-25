@@ -521,8 +521,8 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 	upl := NewUploader(dp.s, dp.fileService, dp.tempDirProvider)
 	res := upl.SetName(f.name).AutoType(true).SetFile(f.path).Upload(context.TODO())
-	log.With("filePath", f.path).Error("upload error: %s", res.Err)
 	if res.Err != nil {
+		log.With("filePath", f.path).Errorf("upload error: %s", res.Err)
 		f.err = fmt.Errorf("upload error: %w", res.Err)
 		return
 	}

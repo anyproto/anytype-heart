@@ -72,6 +72,15 @@ func (f *fileSync) tryToUpload() (string, error) {
 		return fileId, err
 	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
+		ok, storeErr := f.hasFileInStore(fileId)
+		if storeErr != nil {
+			return fileId, storeErr
+		}
+		if !ok {
+			log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+			return fileId, f.queue.DoneUpload(spaceId, fileId)
+		}
+
 		if err == errReachedLimit {
 			if !wasDiscarded {
 				f.sendLimitReachedEvent(spaceId, fileId)
@@ -83,14 +92,6 @@ func (f *fileSync) tryToUpload() (string, error) {
 			return fileId, err
 		}
 
-		ok, storeErr := f.hasFileInStore(fileId)
-		if storeErr != nil {
-			return fileId, storeErr
-		}
-		if !ok {
-			log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
-			return fileId, f.queue.DoneUpload(spaceId, fileId)
-		}
 		// Push to the back of the queue
 		if qerr := f.queue.QueueUpload(spaceId, fileId); qerr != nil {
 			log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
