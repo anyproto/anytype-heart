@@ -109,8 +109,7 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 	if err != nil {
 		return
 	}
-
-	err = tr.(objecttree.ObjectTree).Delete()
+	err = tr.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
 	if err != nil {
 		return
 	}
