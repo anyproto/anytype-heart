@@ -145,7 +145,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 				PreviousIds: c.PreviousIds,
 				AuthorId:    profileId,
 				AuthorName:  profileName,
-				Time:        c.Timestamp,
+				Time:        convNanoToSec(c.Timestamp),
 			})
 			return true
 		})
@@ -241,7 +241,7 @@ func (h *history) buildState(pageId, versionId string) (st *state.State, ver *pb
 			PreviousIds: ch.PreviousIds,
 			AuthorId:    profileId,
 			AuthorName:  profileName,
-			Time:        ch.Timestamp,
+			Time:        convNanoToSec(ch.Timestamp),
 		}
 	}
 	return
@@ -255,4 +255,8 @@ func (h *history) getProfileInfo() (profileId, profileName string, err error) {
 	}
 	profileName = lp.Name
 	return
+}
+
+func convNanoToSec(timestamp int64) int64 {
+	return timestamp / int64(time.Second)
 }
