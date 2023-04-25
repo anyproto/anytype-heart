@@ -2,6 +2,8 @@ version: "3.9"
 
 services:
   test:
+    environment:
+      - ANYTYPE_OFFLINE=true
     build: .
     ports:
       - "${ANYTYPE_TEST_GRPC_PORT:?}:31007"

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -44,24 +45,39 @@ func (s *testSuite) Context() context.Context {
 	return s.ctx
 }
 
-func (s *testSuite) SetupTest() {
+func cachedString(key string, proc func() (string, error)) (string, bool, error) {
+	filename := filepath.Join(cacheDir, key)
+	raw, err := os.ReadFile(filename)
+	result := string(raw)
+
+	if os.IsNotExist(err) || result == "" {
+		res, err := proc()
+		if err != nil {
+			return "", false, fmt.Errorf("running proc for caching %s: %w", key, err)
+		}
+		err = os.WriteFile(filename, []byte(res), 0600)
+		if err != nil {
+			return "", false, fmt.Errorf("writing cache for %s: %w", key, err)
+		}
+		return res, false, nil
+	}
+
+	return result, true, nil
+}
+
+func (s *testSuite) SetupSuite() {
 	s.ctx = context.Background()
 
 	c, err := newClient()
 	s.Require().NoError(err)
 	s.ClientCommandsClient = c
 
-	raw, err := os.ReadFile(mnemonicFile)
-	mnemonic := string(raw)
-	if os.IsNotExist(err) || mnemonic == "" {
+	mnemonic, _, err := cachedString("mnemonic", func() (string, error) {
 		s.T().Log("creating new test account")
-		mnemonic = s.accountCreate()
-		err := os.WriteFile(mnemonicFile, []byte(mnemonic), 0600)
-		s.Require().NoError(err)
-		s.T().Log("your mnemonic:", mnemonic)
-	} else {
-		s.T().Log("use existing mnemonic:", mnemonic)
-	}
+		return s.accountCreate(), nil
+	})
+	s.Require().NoError(err)
+	s.T().Log("your mnemonic:", mnemonic)
 
 	_ = call(s, c.WalletRecover, &pb.RpcWalletRecoverRequest{
 		Mnemonic: mnemonic,
@@ -70,19 +86,26 @@ func (s *testSuite) SetupTest() {
 
 	s.events = s.setSessionCtx(mnemonic)
 
-	call(s, c.AccountRecover, &pb.RpcAccountRecoverRequest{})
-	var id string
-	waitEvent(s, func(a *pb.EventMessageValueOfAccountShow) {
-		id = a.AccountShow.Account.Id
+	accountID, _, err := cachedString("account_id", func() (string, error) {
+		s.T().Log("recovering the account")
+		call(s, c.AccountRecover, &pb.RpcAccountRecoverRequest{})
+		var res string
+		waitEvent(s, func(a *pb.EventMessageValueOfAccountShow) {
+			res = a.AccountShow.Account.Id
+		})
+		return res, nil
 	})
+	s.Require().NoError(err)
+	s.T().Log("your account ID:", accountID)
+
 	acc := call(s, c.AccountSelect, &pb.RpcAccountSelectRequest{
-		Id: id,
+		Id: accountID,
 	}).Account
 
 	s.acc = acc
 }
 
-func (s *testSuite) TearDownTest() {
+func (s *testSuite) TearDownSuite() {
 	// Do nothing if client hasn't been started
 	if s.ClientCommandsClient == nil {
 		return
@@ -139,7 +162,7 @@ func (s *testSuite) accountCreate() string {
 	return mnemonic
 }
 
-const mnemonicFile = ".cache/mnemonic.txt"
+const cacheDir = ".cache"
 
 func getError(i interface{}) (int, string) {
 	v := reflect.ValueOf(i).Elem()
