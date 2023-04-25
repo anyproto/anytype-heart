@@ -427,7 +427,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 		a.lock.Lock()
 		shutdownCh := a.shutdownStartsCh
 		a.lock.Unlock()
-		defer a.recordsbatch.Close()
+		defer a.recordsbatch.Close(context.Background())
 		for {
 			select {
 			case val, ok := <-threadsCh:

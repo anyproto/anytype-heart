@@ -22,8 +22,7 @@ func New() Service {
 }
 
 type Service interface {
-	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
-	CreateSpace(ctx context.Context, payload commonspace.SpaceCreatePayload) (commonspace.Space, error)
+	AccountSpace(ctx context.Context) (commonspace.Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
 	app.ComponentRunnable
 }
@@ -33,12 +32,14 @@ type service struct {
 	spaceCache           ocache.OCache
 	commonSpace          commonspace.SpaceService
 	spaceStorageProvider spacestorage.SpaceStorageProvider
+	accountId            string
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.conf = a.MustComponent("config").(commonspace.ConfigGetter).GetSpace()
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(spacestorage.SpaceStorageProvider)
+	// TODO: add account id
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),
@@ -56,19 +57,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *service) CreateSpace(ctx context.Context, payload commonspace.SpaceCreatePayload) (container commonspace.Space, err error) {
-	id, err := s.commonSpace.CreateSpace(ctx, payload)
-	if err != nil {
-		return
-	}
-
-	obj, err := s.spaceCache.Get(ctx, id)
-	if err != nil {
-		return
-	}
-	return obj.(commonspace.Space), nil
-}
-
 func (s *service) DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (container commonspace.Space, err error) {
 	id, err := s.commonSpace.DeriveSpace(ctx, payload)
 	if err != nil {
@@ -82,8 +70,8 @@ func (s *service) DeriveSpace(ctx context.Context, payload commonspace.SpaceDeri
 	return obj.(commonspace.Space), nil
 }
 
-func (s *service) GetSpace(ctx context.Context, id string) (container commonspace.Space, err error) {
-	v, err := s.spaceCache.Get(ctx, id)
+func (s *service) AccountSpace(ctx context.Context) (container commonspace.Space, err error) {
+	v, err := s.spaceCache.Get(ctx, s.accountId)
 	if err != nil {
 		return
 	}

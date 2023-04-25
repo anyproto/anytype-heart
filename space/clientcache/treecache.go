@@ -69,7 +69,7 @@ func (c *treeCache) Init(a *app.App) (err error) {
 	c.cache = ocache.New(
 		func(ctx context.Context, id string) (value ocache.Object, err error) {
 			spaceId := ctx.Value(spaceKey).(string)
-			_, err = c.clientService.GetSpace(ctx, spaceId)
+			_, err = c.clientService.AccountSpace(ctx, spaceId)
 			if err != nil {
 				return
 			}
