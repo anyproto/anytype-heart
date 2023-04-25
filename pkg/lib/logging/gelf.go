@@ -2,18 +2,44 @@ package logging
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/cheggaaa/mb"
+	"go.uber.org/zap"
 	"gopkg.in/Graylog2/go-gelf.v2/gelf"
 )
 
 const (
 	printErrorThreshold      = time.Minute
 	logWriteDiscardThreshold = time.Second * 30
+	graylogHost              = "graylog.anytype.io:6888"
+	graylogScheme            = "gelf+ssl"
 )
+
+var gelfSinkWrapper gelfSink
+
+func registerGelfSink(config *logger.Config) {
+	gelfSinkWrapper.batch = mb.New(1000)
+	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
+	if err != nil {
+		fmt.Printf("failed to init gelf tls: %s", err.Error())
+	} else {
+		tlsWriter.MaxReconnect = 0
+		tlsWriter.ReconnectDelay = time.Second
+		gelfSinkWrapper.gelfWriter = tlsWriter
+	}
+
+	go gelfSinkWrapper.Run()
+	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
+		// init tlsWriter outside to make sure it is available
+		return &gelfSinkWrapper, nil
+	})
+	config.AddOutputPaths = append(config.AddOutputPaths, graylogScheme+"://")
+}
 
 type gelfSink struct {
 	sync.RWMutex
