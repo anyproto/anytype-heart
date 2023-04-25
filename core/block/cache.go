@@ -62,10 +62,25 @@ func (s *Service) createCache() ocache.OCache {
 				return putObject, nil
 			}
 
+			sbt, _ := coresb.SmartBlockTypeFromID(id)
 			// if it is subObject
-			if sbt, _ := coresb.SmartBlockTypeFromID(id); sbt == coresb.SmartBlockTypeSubObject {
+			if sbt == coresb.SmartBlockTypeSubObject {
 				return s.initSubObject(ctx, id)
 			}
+
+			// if it is tree based object, then checking that the tree exists
+			if sbt == coresb.SmartBlockTypePage {
+				// getting tree from remote, if it doesn't exist locally
+				if _, err = spc.Storage().TreeRoot(id); err != nil {
+					var ot objecttree.ObjectTree
+					ot, err = spc.BuildTree(ctx, id, nil)
+					if err != nil {
+						return
+					}
+					ot.Close()
+				}
+			}
+
 			// otherwise general init
 			return s.objectFactory.InitObject(id, &smartblock.InitContext{
 				Ctx: ctx,
