@@ -141,7 +141,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
 			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
 		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
-			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
+			template.WithDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
 		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
 			template.WithDetail(bundle.RelationKeySpaceDashboardId, pbtypes.String(spaceDashboardID))),
 		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
