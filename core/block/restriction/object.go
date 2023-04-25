@@ -2,7 +2,10 @@ package restriction
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -37,6 +40,23 @@ var (
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
+	}
+	sysTypesRestrictions = ObjectRestrictions{
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
+		model.Restrictions_Template,
+		model.Restrictions_Details,
+		model.Restrictions_Delete,
+	}
+	sysRelationsRestrictions = ObjectRestrictions{
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
+		model.Restrictions_Template,
+		model.Restrictions_Delete,
+		model.Restrictions_Relations,
+		model.Restrictions_Details,
 	}
 
 	objectRestrictionsByLayout = map[model.ObjectTypeLayout]ObjectRestrictions{
@@ -142,18 +162,62 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 	return obj
 }
 
-func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
+func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
+
+	layout, hasLayout := rh.Layout()
+	if hasLayout {
+		switch layout {
+		case model.ObjectType_objectType:
+			return s.getObjectRestrictionsForObjectType(rh.Id())
+		case model.ObjectType_relation:
+			return s.getObjectRestrictionsForRelation(rh.Id())
+		}
+	}
+
 	var ok bool
-	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {
+	if r, ok = objectRestrictionsByPbType[rh.Type()]; ok {
 		return
 	}
 
-	if l, has := obj.Layout(); has {
+	if l, has := rh.Layout(); has {
 		if r, ok = objectRestrictionsByLayout[l]; ok {
 			return
 		}
 	}
-	l, has := obj.Layout()
-	log.Warnf("restrctions not found for object: id='%s' type='%v' layout='%v'(%v); fallback to empty", obj.Id(), obj.Type(), l, has)
+	l, has := rh.Layout()
+	log.Warnf("restrctions not found for object: id='%s' type='%v' layout='%v'(%v); fallback to empty", rh.Id(), rh.Type(), l, has)
 	return ObjectRestrictions{}
+}
+
+func (s *service) getObjectRestrictionsForObjectType(id string) (r ObjectRestrictions) {
+	r, _ = objectRestrictionsByPbType[model.SmartBlockType_SubObject]
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return
+	}
+	var system bool
+	for _, st := range bundle.SystemTypes {
+		if st.URL() == id {
+			system = true
+			break
+		}
+	}
+	if !system {
+		return
+	}
+	return sysTypesRestrictions
+}
+
+func (s *service) getObjectRestrictionsForRelation(id string) (r ObjectRestrictions) {
+	r, _ = objectRestrictionsByPbType[model.SmartBlockType_SubObject]
+	var system bool
+	for _, sr := range bundle.SystemRelations {
+		if sr.URL() == id {
+			system = true
+			break
+		}
+	}
+	if !system {
+		return
+	}
+	return sysRelationsRestrictions
 }

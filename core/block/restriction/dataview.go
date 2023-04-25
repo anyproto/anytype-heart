@@ -1,22 +1,16 @@
 package restriction
 
 import (
+	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 const DataviewBlockId = "dataview"
 
 var (
-	dvRestrictMarketplace = DataviewRestrictions{
-		model.RestrictionsDataviewRestrictions{
-			BlockId: DataviewBlockId,
-			Restrictions: []model.RestrictionsDataviewRestriction{
-				model.Restrictions_DVRelation,
-				model.Restrictions_DVCreateObject,
-				model.Restrictions_DVViews,
-			},
-		},
-	}
 	dvRestrictNo = DataviewRestrictions{
 		model.RestrictionsDataviewRestrictions{
 			BlockId: DataviewBlockId,
@@ -96,9 +90,35 @@ func (dr DataviewRestrictions) Equal(dr2 DataviewRestrictions) bool {
 	return true
 }
 
-func (s *service) DataviewRestrictionsByObj(obj Object) DataviewRestrictions {
-	if dr, ok := dataviewRestrictionsByPb[obj.Type()]; ok {
+func (s *service) getDataviewRestrictions(rh RestrictionHolder) DataviewRestrictions {
+	layout, hasLayout := rh.Layout()
+	if hasLayout && layout == model.ObjectType_objectType {
+
+	}
+
+	if dr, ok := dataviewRestrictionsByPb[rh.Type()]; ok {
 		return dr
 	}
 	return nil
+}
+
+func (s *service) getDataviewRestrictionsForObjectType(id string) (r DataviewRestrictions) {
+	r, _ = dataviewRestrictionsByPb[model.SmartBlockType_SubObject]
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return
+	}
+	var internal bool
+	for _, st := range bundle.InternalTypes {
+		if st.URL() == id {
+			internal = true
+			break
+		}
+	}
+	if !internal {
+		return
+	}
+	return append(r.Copy(), model.RestrictionsDataviewRestrictions{
+		BlockId:      DataviewBlockId,
+		Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
+	})
 }

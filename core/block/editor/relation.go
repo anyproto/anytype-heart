@@ -6,12 +6,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
@@ -50,19 +48,6 @@ func (r *Relation) Init(ctx *smartblock.InitContext) error {
 	}
 
 	st := ctx.State
-
-	var system bool
-	for _, rel := range bundle.SystemRelations {
-		if addr.RelationKeyToIdPrefix+rel.String() == r.RootId() {
-			system = true
-			break
-		}
-	}
-	if system {
-		rest := r.Restrictions()
-		obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Delete, model.Restrictions_Relations, model.Restrictions_Details}...)
-		r.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: rest.Dataview})
-	}
 
 	// temp fix for our internal accounts with inconsistent types (should be removed later)
 	// todo: remove after release

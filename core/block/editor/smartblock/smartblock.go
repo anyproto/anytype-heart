@@ -265,10 +265,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictionsUpdater = func() {
-		restrictions := ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+		restrictions := ctx.App.MustComponent(restriction.CName).(restriction.Service).GetRestrictions(sb)
 		sb.SetRestrictions(restrictions)
 	}
-	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).GetRestrictions(sb)
 	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
 	sb.indexer = app.MustComponent[Indexer](ctx.App)
 	sb.objectStore = ctx.App.MustComponent(objectstore.CName).(objectstore.ObjectStore)
