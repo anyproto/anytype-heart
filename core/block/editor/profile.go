@@ -36,6 +36,7 @@ type Profile struct {
 
 func NewProfile(
 	objectStore objectstore.ObjectStore,
+	relationService relation.Service,
 	anytype core.Service,
 	fileBlockService file.BlockService,
 	bookmarkBlockService bookmark.BlockService,
@@ -54,7 +55,7 @@ func NewProfile(
 	return &Profile{
 		SmartBlock:    sb,
 		sendEvent:     sendEvent,
-		AllOperations: basic.NewBasic(sb),
+		AllOperations: basic.NewBasic(sb, objectStore, relationService),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -105,7 +106,7 @@ func (p *Profile) StateMigrations() migration.Migrations {
 }
 
 func (p *Profile) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
-	if err = p.SmartBlock.SetDetails(ctx, details, showEvent); err != nil {
+	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
 	p.sendEvent(&pb.Event{

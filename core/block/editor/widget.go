@@ -7,9 +7,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -25,9 +27,9 @@ type WidgetObject struct {
 	widget.Widget
 }
 
-func NewWidgetObject() *WidgetObject {
+func NewWidgetObject(objectStore objectstore.ObjectStore, relationService relation.Service) *WidgetObject {
 	sb := smartblock.New()
-	bs := basic.NewBasic(sb)
+	bs := basic.NewBasic(sb, objectStore, relationService)
 	return &WidgetObject{
 		SmartBlock: sb,
 		Movable:    bs,

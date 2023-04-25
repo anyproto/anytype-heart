@@ -79,7 +79,7 @@ func NewSubObjectCollection(
 	sb := smartblock.New()
 	return &SubObjectCollection{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb),
+		AllOperations: basic.NewBasic(sb, objectStore, relationService),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,

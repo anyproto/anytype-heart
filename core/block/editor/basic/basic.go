@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -47,6 +48,12 @@ type CommonOperations interface {
 	PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error)
 	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+
+	SetObjectTypesInState(s *state.State, objectTypes []string) (err error)
+	SetObjectTypes(ctx *session.Context, objectTypes []string) (err error)
+	SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error)
+	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
+	SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) (err error)
 }
 
 type Movable interface {
@@ -75,14 +82,19 @@ type Updatable interface {
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-func NewBasic(sb smartblock.SmartBlock) AllOperations {
+func NewBasic(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, relationService relation2.Service) AllOperations {
 	return &basic{
-		SmartBlock: sb,
+		SmartBlock:      sb,
+		objectStore:     objectStore,
+		relationService: relationService,
 	}
 }
 
 type basic struct {
 	smartblock.SmartBlock
+
+	objectStore     objectstore.ObjectStore
+	relationService relation2.Service
 }
 
 func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {

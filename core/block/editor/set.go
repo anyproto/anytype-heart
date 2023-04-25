@@ -33,7 +33,7 @@ func NewSet(
 	sb := smartblock.New()
 	return &Set{
 		SmartBlock:       sb,
-		CommonOperations: basic.NewBasic(sb),
+		CommonOperations: basic.NewBasic(sb, objectStore, relationService),
 		IHistory:         basic.NewHistory(sb),
 		Dataview: dataview.NewDataview(
 			sb,

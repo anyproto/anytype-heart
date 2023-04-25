@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -31,12 +32,13 @@ type Dashboard struct {
 func NewDashboard(
 	detailsModifier DetailsModifier,
 	objectStore objectstore.ObjectStore,
+	relationService relation.Service,
 	anytype core.Service,
 ) *Dashboard {
 	sb := smartblock.New()
 	return &Dashboard{
 		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb),
+		AllOperations:   basic.NewBasic(sb, objectStore, relationService),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: detailsModifier,
 		objectStore:     objectStore,

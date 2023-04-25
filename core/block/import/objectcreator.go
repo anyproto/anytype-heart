@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -218,7 +219,7 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 func (oc *ObjectCreator) setSpaceDashboardID(newID string, sn *converter.Snapshot, oldIDtoNew map[string]string) {
 	spaceDashBoardID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
 	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
-		e := oc.service.Do(newID, func(ws sb.SmartBlock) error {
+		e := block.Do(oc.service, newID, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 				{
 					Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -238,7 +239,8 @@ func (oc *ObjectCreator) setSpaceDashboardID(newID string, sn *converter.Snapsho
 func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, snapshot *model.SmartBlockSnapshotBase, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
-		err := b.SetObjectTypes(ctx, snapshot.ObjectTypes)
+		commonOperations := b.(basic.CommonOperations)
+		err := commonOperations.SetObjectTypes(ctx, snapshot.ObjectTypes)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set object types %s: %s", newID, err.Error())
 		}
@@ -248,7 +250,7 @@ func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, snapshot
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
 		}
 
-		err = b.SetDetails(ctx, details, true)
+		err = commonOperations.SetDetails(ctx, details, true)
 		if err != nil {
 			return err
 		}
@@ -320,7 +322,7 @@ func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.S
 			}
 		}
 	}
-	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
 		return b.SetDetails(ctx, details, true)
 	})
 	if err != nil {

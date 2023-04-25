@@ -25,6 +25,10 @@ func NewLayoutConverter(objectStore objectstore.ObjectStore) *LayoutConverter {
 }
 
 func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+	if fromLayout == toLayout {
+		return nil
+	}
+
 	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_collection {
 		return c.fromNoteToCollection(st)
 	}

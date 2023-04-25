@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -107,6 +108,15 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
+
+	basicEditor := basic.NewBasic(sb, f.objectStore, f.relationService)
+	if len(initCtx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
+		err = basicEditor.SetObjectTypesInState(initCtx.State, initCtx.ObjectTypeUrls)
+		if err != nil {
+			return nil, fmt.Errorf("set object types in state: %w", err)
+		}
+	}
+
 	err = migration.RunMigrations(sb, initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("run migrations: %w", err)
@@ -136,6 +146,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 		return NewDashboard(
 			f.detailsModifier,
 			f.objectStore,
+			f.relationService,
 			f.anytype,
 		)
 	case model.SmartBlockType_Set:
@@ -156,6 +167,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		return NewProfile(
 			f.objectStore,
+			f.relationService,
 			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,
@@ -240,7 +252,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.sbtProvider,
 		)
 	case model.SmartBlockType_Widget:
-		return NewWidgetObject()
+		return NewWidgetObject(f.objectStore, f.relationService)
 	default:
 		panic(fmt.Errorf("unexpected smartblock type: %v", sbType))
 	}

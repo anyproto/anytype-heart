@@ -32,7 +32,7 @@ import (
 var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 func (s *Service) MarkArchived(id string, archived bool) (err error) {
-	return s.Do(id, func(b smartblock.SmartBlock) error {
+	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   "isArchived",
@@ -148,7 +148,7 @@ func (s *Service) SetFields(ctx *session.Context, req pb.RpcBlockSetFieldsReques
 }
 
 func (s *Service) SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error) {
-	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetDetails(ctx, req.Details, true)
 	})
 }
@@ -417,7 +417,7 @@ func (s *Service) SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkLis
 func (s *Service) SetAlign(
 	ctx *session.Context, contextId string, align model.BlockAlign, blockIds ...string,
 ) (err error) {
-	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+	return Do(s, contextId, func(sb basic.CommonOperations) error {
 		return sb.SetAlign(ctx, align, blockIds...)
 	})
 }
@@ -431,7 +431,7 @@ func (s *Service) SetVerticalAlign(
 }
 
 func (s *Service) SetLayout(ctx *session.Context, contextId string, layout model.ObjectTypeLayout) (err error) {
-	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+	return Do(s, contextId, func(sb basic.CommonOperations) error {
 		return sb.SetLayout(ctx, layout)
 	})
 }
@@ -666,7 +666,7 @@ func (s *Service) AddExtraRelations(ctx *session.Context, objectId string, relat
 }
 
 func (s *Service) SetObjectTypes(ctx *session.Context, objectId string, objectTypes []string) (err error) {
-	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+	return Do(s, objectId, func(b basic.CommonOperations) error {
 		return b.SetObjectTypes(ctx, objectTypes)
 	})
 }

@@ -54,7 +54,7 @@ func NewPage(
 	)
 	return &Page{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb),
+		AllOperations: basic.NewBasic(sb, objectStore, relationService),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
