@@ -530,7 +530,7 @@ message Rpc {
             }
 
             message Response {
-                string address = 1;
+                string accountId = 1;
                 Error error = 2;
 
                 message Error {

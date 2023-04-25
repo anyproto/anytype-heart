@@ -705,7 +705,7 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	ctx := mw.newContext(cctx)
 
 	response := func(address string, code pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, err error) *pb.RpcAccountRecoverFromLegacyExportResponse {
-		m := &pb.RpcAccountRecoverFromLegacyExportResponse{Address: address, Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{Code: code}}
+		m := &pb.RpcAccountRecoverFromLegacyExportResponse{AccountId: address, Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
