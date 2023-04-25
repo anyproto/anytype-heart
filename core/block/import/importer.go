@@ -86,13 +86,13 @@ func (i *Import) Init(a *app.App) (err error) {
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
 	var progress process.Progress
-	if req.GetShowProgress() {
-		progress = process.NewProgress(pb.ModelProcess_Import)
-	} else {
+	if req.GetNoProgress() {
 		progress = process.NewNoOp()
+	} else {
+		progress = process.NewProgress(pb.ModelProcess_Import)
 	}
 	defer progress.Finish()
-	if i.s != nil && req.GetShowProgress() {
+	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
 	}
 	allErrors := converter.NewError()

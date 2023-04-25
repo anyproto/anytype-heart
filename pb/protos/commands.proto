@@ -1801,7 +1801,7 @@ message Rpc {
                 bool updateExistingObjects = 9;
                 Type type = 10;
                 Mode mode = 11;
-                bool showProgress = 12;
+                bool noProgress = 12;
 
                 message NotionParams {
                     string apiKey = 1;
@@ -1825,8 +1825,7 @@ message Rpc {
 
                 message PbParams {
                     repeated string path = 1;
-                    string accountId = 2;
-                    bool createObjectsCollection = 3;
+                    bool notCreateObjectsCollection = 3;
                 }
 
                 message CsvParams {
