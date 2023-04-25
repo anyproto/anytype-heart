@@ -660,21 +660,29 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *Service) OnDelete(b smartblock.SmartBlock) (err error) {
+func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) {
 	var (
 		fileHashes []string
 		isFavorite bool
-		id         = b.Id()
 	)
 
-	b.ObjectClose()
-	st := b.NewState()
-	fileHashes = st.GetAllFileHashes(b.FileRelationKeys(st))
-	isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
-	if isFavorite {
-		_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
+	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		b.ObjectClose()
+		st := b.NewState()
+		fileHashes = st.GetAllFileHashes(b.FileRelationKeys(st))
+		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
+		if isFavorite {
+			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
+		}
+		b.SetIsDeleted()
+		if workspaceRemove != nil {
+			return workspaceRemove()
+		}
+		return nil
+	})
+	if err != nil && err != ErrBlockNotFound {
+		return err
 	}
-	b.SetIsDeleted()
 
 	for _, fileHash := range fileHashes {
 		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
@@ -697,11 +705,9 @@ func (s *Service) OnDelete(b smartblock.SmartBlock) (err error) {
 			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
 			}
-
 		}
 	}
 
-	s.sendOnRemoveEvent(id)
 	return
 }
 

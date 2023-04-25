@@ -258,8 +258,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 	sb.source = ctx.Source
 	if provider, ok := sb.source.(source.ObjectTreeProvider); ok {
-		// TODO: [MR] rewrite this so it would be obvious
-		//  we are doing this because we expecting cache to have objectTrees inside for smartblocks
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
