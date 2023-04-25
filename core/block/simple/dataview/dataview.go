@@ -57,6 +57,7 @@ type Block interface {
 	SetSource(source []string) error
 	SetActiveView(activeView string)
 	SetTargetObjectID(targetObjectID string)
+	SetIsCollection(value bool)
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -302,6 +303,15 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 				}},
 			}})
 	}
+	if dv.content.IsCollection != d.content.IsCollection {
+		msgs = append(msgs,
+			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewIsCollectionSet{
+				BlockDataviewIsCollectionSet: &pb.EventBlockDataviewIsCollectionSet{
+					Id:    dv.Id,
+					Value: dv.content.IsCollection,
+				}},
+			}})
+	}
 
 	return
 }
@@ -513,6 +523,10 @@ func (d *Dataview) SetActiveView(activeView string) {
 
 func (d *Dataview) SetTargetObjectID(targetObjectID string) {
 	d.content.TargetObjectId = targetObjectID
+}
+
+func (d *Dataview) SetIsCollection(value bool) {
+	d.content.IsCollection = value
 }
 
 func (d *Dataview) SetViewOrder(viewIds []string) {

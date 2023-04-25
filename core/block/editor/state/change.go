@@ -214,6 +214,11 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 			return
 		}
 		s.changes = append(s.changes, ch)
+	case ch.GetStoreSliceUpdate() != nil:
+		// TODO optimize: collect changes then apply them on one shot
+		if err = s.changeStoreSliceUpdate(ch.GetStoreSliceUpdate()); err != nil {
+			return
+		}
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -449,6 +454,23 @@ func (s *State) changeStoreKeyUnset(unset *pb.ChangeStoreKeyUnset) error {
 	return nil
 }
 
+func (s *State) changeStoreSliceUpdate(upd *pb.ChangeStoreSliceUpdate) error {
+	var changes []slice.Change[string]
+	if v := upd.GetAdd(); v != nil {
+		changes = append(changes, slice.MakeChangeAdd(v.Ids, v.AfterId))
+	} else if v := upd.GetRemove(); v != nil {
+		changes = append(changes, slice.MakeChangeRemove[string](v.Ids))
+	} else if v := upd.GetMove(); v != nil {
+		changes = append(changes, slice.MakeChangeMove[string](v.Ids, v.AfterId))
+	}
+
+	store := s.Store()
+	old := pbtypes.GetStringList(store, upd.Key)
+	cur := slice.ApplyChanges(old, changes, slice.StringIdentity[string])
+	s.setInStore([]string{upd.Key}, pbtypes.StringList(cur))
+	return nil
+}
+
 func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
@@ -538,6 +560,12 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfObjectRelationsRemove:
 			delRelIds = append(delRelIds, msg.Msg.GetObjectRelationsRemove().RelationKeys...)
 		case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewViewUpdate:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewTargetObjectIdSet:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewIsCollectionSet:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)

@@ -241,6 +241,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 	blockContent := &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
+			IsCollection:  true,
 			RelationLinks: relations,
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -314,9 +315,9 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	}
 
 	if dvBlock != nil {
-
 		err = block.DoState(s.picker, newID, func(st *state.State, sb smartblock.SmartBlock) error {
 			dvBlock.Id = template.DataviewBlockId
+			dvBlock.GetDataview().IsCollection = true
 			b := simple.New(dvBlock)
 			st.Set(b)
 

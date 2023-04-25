@@ -863,6 +863,7 @@ func (s *Service) CopyDataviewToBlock(ctx *session.Context,
 		dvContent.Dataview.GroupOrders = targetDvContent.GroupOrders
 		dvContent.Dataview.ObjectOrders = targetDvContent.ObjectOrders
 		dvContent.Dataview.TargetObjectId = req.TargetObjectId
+		dvContent.Dataview.IsCollection = targetDvContent.IsCollection
 
 		return b.Apply(st)
 	})
