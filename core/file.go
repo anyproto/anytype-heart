@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
@@ -67,11 +66,6 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 
 	if mw.app == nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
-	}
-
-	at := mw.app.MustComponent(core.CName).(core.Service)
-	if !at.IsStarted() {
-		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
 	fileService := app.MustComponent[*files.Service](mw.app)

@@ -193,7 +193,6 @@ type smartBlock struct {
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
 	source              source.Source
-	metaData            *core.SmartBlockMeta
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
 	restrictionsUpdater func()
 	restrictions        restriction.Restrictions
