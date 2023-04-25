@@ -71,12 +71,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
 
-func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects bool) *config.Config {
+func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects, createTemplates bool) *config.Config {
 	return config.New(
 		config.WithStagingCafe(isStaging),
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
 		config.WithCreateBuiltinObjects(createBuiltinObjects),
+		config.WithCreateTemplates(createTemplates),
 	)
 }
 

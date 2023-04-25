@@ -70,6 +70,7 @@ type Config struct {
 	FS                   FSConfig
 	DisableFileConfig    bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 	CreateBuiltinObjects bool
+	CreateTemplates      bool
 }
 
 type FSConfig struct {
@@ -140,6 +141,12 @@ func WithLocalServer(addr string) func(*Config) {
 func WithCreateBuiltinObjects(createBuiltinObjects bool) func(*Config) {
 	return func(c *Config) {
 		c.CreateBuiltinObjects = createBuiltinObjects
+	}
+}
+
+func WithCreateTemplates(createTemplates bool) func(*Config) {
+	return func(c *Config) {
+		c.CreateTemplates = createTemplates
 	}
 }
 

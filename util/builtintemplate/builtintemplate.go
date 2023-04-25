@@ -13,6 +13,7 @@ import (
 
 	"github.com/anytypeio/any-sync/app"
 
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
@@ -41,13 +42,15 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	source        source.Service
-	generatedHash string
+	source          source.Service
+	generatedHash   string
+	createTemplates bool
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.makeGenHash(4)
+	b.createTemplates = a.MustComponent(config.CName).(*config.Config).CreateTemplates
 	return
 }
 
@@ -63,6 +66,9 @@ func (b *builtinTemplate) Name() (name string) {
 }
 
 func (b *builtinTemplate) Run(context.Context) (err error) {
+	if !b.createTemplates {
+		return nil
+	}
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
 		return
