@@ -142,7 +142,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		return s.BuildState(d.(*state.State), ot)
+		return BuildState(d.(*state.State), ot, s.Anytype().PredefinedBlocks().Profile)
 	})
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
@@ -201,7 +201,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, err := s.BuildState(nil, s.ObjectTree)
+	st, _, err := BuildState(nil, s.ObjectTree, s.Anytype().PredefinedBlocks().Profile)
 	if err != nil {
 		return
 	}
@@ -397,7 +397,7 @@ func (s *source) Close() (err error) {
 	return s.ObjectTree.Close()
 }
 
-func (s *source) BuildState(initState *state.State, ot objecttree.ObjectTree) (st *state.State, appliedContent []*pb.ChangeContent, err error) {
+func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -455,7 +455,7 @@ func (s *source) BuildState(initState *state.State, ot objecttree.ObjectTree) (s
 		return
 	}
 	if lastChange != nil {
-		st.SetLastModified(lastChange.Timestamp, s.Anytype().PredefinedBlocks().Profile)
+		st.SetLastModified(lastChange.Timestamp, profileId)
 	}
 	return
 }
