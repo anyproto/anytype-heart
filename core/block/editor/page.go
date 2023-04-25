@@ -147,6 +147,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithDescription,
+					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithBookmarkBlocks,
 				)
 			default:
