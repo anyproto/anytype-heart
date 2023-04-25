@@ -1,7 +1,10 @@
 package web
 
 import (
+	"context"
 	"fmt"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
@@ -26,7 +29,7 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTreeCreator) *converter.Response {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
 	if err != nil {
@@ -43,15 +46,20 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 		we.Add(url, err)
 		return &converter.Response{Error: we}
 	}
-	// TODO: [MR] fix imports
-	panic("can't convert")
-	//tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+
+	ctx := context.Background()
+	obj, release, err := oc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
+		return &sb.InitContext{
+			Ctx: ctx,
+		}
+	})
+	defer release()
 	if err != nil {
 		we.Add(url, err)
 		return &converter.Response{Error: we}
 	}
 	s := &converter.Snapshot{
-		//Id:       tid.String(),
+		Id:       obj.Id(),
 		FileName: url,
 		Snapshot: snapshots,
 	}

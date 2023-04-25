@@ -115,7 +115,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
 		sbt, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
-			sbt, err = smartBlockTypeFromThreadID(id)
+			sbt, err = SmartBlockTypeFromThreadID(id)
 			if err != nil {
 				return err
 			}
@@ -307,7 +307,7 @@ func (b *builtinObjects) Close(ctx context.Context) (err error) {
 	return
 }
 
-func smartBlockTypeFromThreadID(id string) (coresb.SmartBlockType, error) {
+func SmartBlockTypeFromThreadID(id string) (coresb.SmartBlockType, error) {
 	tid, err := thread.Decode(id)
 	if err != nil {
 		return coresb.SmartBlockTypePage, err

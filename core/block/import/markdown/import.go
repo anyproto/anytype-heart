@@ -1,7 +1,10 @@
 package markdown
 
 import (
+	"context"
 	"fmt"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -56,7 +59,7 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTreeCreator) *converter.Response {
 	path, err := m.GetParams(req.Params)
 	allErrors := converter.NewError()
 	if err != nil {
@@ -98,17 +101,20 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 	)
 	for name, file := range files {
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
-			// TODO: [MR] fix imports
-			panic("can't import")
-			//tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+			ctx := context.Background()
+			obj, release, err := oc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
+				return &sb.InitContext{
+					Ctx: ctx,
+				}
+			})
 			if err != nil {
 				allErrors.Add(name, err)
 				if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 					return &converter.Response{Error: allErrors}
 				}
 			}
-			//file.PageID = tid.String()
-
+			file.PageID = obj.Id()
+			release()
 			if len(file.ParsedBlocks) > 0 {
 				if text := file.ParsedBlocks[0].GetText(); text != nil && text.Style == model.BlockContentText_Header1 {
 					title = text.Text
