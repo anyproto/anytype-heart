@@ -303,32 +303,13 @@ func (d *sdataview) CreateView(ctx *session.Context, id string,
 		}
 	}
 
-	sch, err := d.getSchema(tb, source)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(view.Relations) == 0 {
-		relsM := make(map[string]struct{}, len(view.Relations))
-		// by default use list of relations from the schema
-		for _, rel := range sch.ListRelations() {
-			var isHidden bool
-			relsM[rel.Key] = struct{}{}
-			r, _ := bundle.GetRelation(bundle.RelationKey(rel.Key))
-			if r != nil {
-				isHidden = r.Hidden
+		for _, rl := range tb.Model().GetDataview().GetRelationLinks() {
+			var isVisible bool
+			if rl.Key == bundle.RelationKeyName.String() {
+				isVisible = true
 			}
-			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !isHidden})
-		}
-		for _, relKey := range DefaultDataviewRelations {
-			if _, exists := relsM[relKey.String()]; exists {
-				continue
-			}
-			rel := bundle.MustGetRelation(relKey)
-			if rel.Hidden {
-				continue
-			}
-			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rl.Key, IsVisible: isVisible})
 		}
 	}
 
