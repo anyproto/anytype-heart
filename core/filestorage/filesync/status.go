@@ -30,6 +30,7 @@ type StatusWatcher struct {
 	filesLock *sync.Mutex
 	files     map[fileWithSpace]fileStatus
 	updateCh  chan fileWithSpace
+	closeCh   chan struct{}
 
 	updateInterval  time.Duration
 	statusService   StatusService
@@ -43,6 +44,7 @@ func (f *fileSync) NewStatusWatcher(statusService StatusService, updateInterval 
 		filesToWatchLock: &sync.Mutex{},
 		filesToWatch:     map[fileWithSpace]struct{}{},
 		updateCh:         make(chan fileWithSpace),
+		closeCh:          make(chan struct{}),
 		statusService:    statusService,
 		fileSyncService:  f,
 		updateInterval:   updateInterval,
@@ -57,7 +59,10 @@ func (s *StatusWatcher) run() {
 	ctx := context.Background()
 
 	go func() {
-		for key := range s.updateCh {
+		select {
+		case <-s.closeCh:
+			return
+		case key := <-s.updateCh:
 			if err := s.updateFileStatus(ctx, key); err != nil {
 				log.Error("check file",
 					zap.String("spaceID", key.spaceID),
@@ -164,4 +169,8 @@ func (s *StatusWatcher) Unwatch(spaceID, fileID string) {
 	s.filesToWatchLock.Lock()
 	defer s.filesToWatchLock.Unlock()
 	delete(s.filesToWatch, fileWithSpace{spaceID: spaceID, fileID: fileID})
+}
+
+func (s *StatusWatcher) Close() {
+	close(s.closeCh)
 }

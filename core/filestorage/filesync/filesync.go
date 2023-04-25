@@ -15,6 +15,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 )
 
@@ -158,7 +159,6 @@ func (f *fileSync) tryToUpload() (string, error) {
 			log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
 			return fileId, f.queue.DoneUpload(spaceId, fileId)
 		}
-
 		// Push to the back of the queue
 		if qerr := f.queue.QueueUpload(spaceId, fileId); qerr != nil {
 			log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
@@ -170,11 +170,11 @@ func (f *fileSync) tryToUpload() (string, error) {
 }
 
 func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
-	files, err := f.fileStore.ListByTarget(fileID)
-	if err != nil {
+	keys, err := f.fileStore.GetFileKeys(fileID)
+	if err != localstore.ErrNotFound && err != nil {
 		return false, err
 	}
-	return len(files) > 0, nil
+	return len(keys) > 0, nil
 }
 
 func (f *fileSync) removeLoop() {

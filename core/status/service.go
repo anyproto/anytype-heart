@@ -207,7 +207,7 @@ func (s *service) updateLinkedFilesSummary(parentObjectID string, filesGetter fu
 	for _, fileID := range fileIDs {
 		status, err := s.fileStatusService.GetFileStatus(context.Background(), s.spaceService.AccountId(), fileID)
 		if err != nil {
-			log.Error("can't get status of dependent file", zap.String("fileID", fileID), zap.Error(err))
+			log.Desugar().Error("can't get status of dependent file", zap.String("fileID", fileID), zap.Error(err))
 		}
 
 		switch status {
@@ -259,6 +259,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	for _, closeCh := range s.linkedFilesCloseCh {
 		close(closeCh)
 	}
+	s.fileStatusService.Close()
 	return nil
 }
 
