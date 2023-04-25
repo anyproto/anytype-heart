@@ -439,122 +439,44 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	if flags.fileObjects {
-		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
+		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
-		}
-		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-		if metrics.Enabled && len(ids) > 0 {
-			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType:    metrics.ReindexTypeFiles,
-				Total:          len(ids),
-				Success:        successfullyReindexed,
-				SpentMs:        int(time.Since(start).Milliseconds()),
-				IndexesRemoved: indexesWereRemoved,
-			})
-		}
-		msg := fmt.Sprintf("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
-		if len(ids)-successfullyReindexed != 0 {
-			log.Error(msg)
-		} else {
-			log.Info(msg)
 		}
 	}
 	if flags.bundledRelations {
-		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeBundledRelation)
+		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledRelations, indexesWereRemoved, smartblock.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return err
-		}
-		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-		if metrics.Enabled && len(ids) > 0 {
-			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType:    metrics.ReindexTypeBundledRelations,
-				Total:          len(ids),
-				Success:        successfullyReindexed,
-				SpentMs:        int(time.Since(start).Milliseconds()),
-				IndexesRemoved: indexesWereRemoved,
-			})
-		}
-		msg := fmt.Sprintf("%d/%d bundled relations have been successfully reindexed", successfullyReindexed, len(ids))
-		if len(ids)-successfullyReindexed != 0 {
-			log.Error(msg)
-		} else {
-			log.Info(msg)
 		}
 	}
 	if flags.bundledTypes {
-		// lets add anytypeProfile here, because it's seems too much to create one more counter especially for it
-		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledTypes, indexesWereRemoved, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
-		}
-		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-		if metrics.Enabled && len(ids) > 0 {
-			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType:    metrics.ReindexTypeBundledTypes,
-				Total:          len(ids),
-				Success:        successfullyReindexed,
-				SpentMs:        int(time.Since(start).Milliseconds()),
-				IndexesRemoved: indexesWereRemoved,
-			})
-		}
-		msg := fmt.Sprintf("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
-		if len(ids)-successfullyReindexed != 0 {
-			log.Error(msg)
-		} else {
-			log.Info(msg)
 		}
 	}
 	if flags.bundledObjects {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId}
-		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-		if metrics.Enabled && len(ids) > 0 {
-			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType: metrics.ReindexTypeBundledTemplates,
-				Total:       len(ids),
-				Success:     successfullyReindexed,
-				SpentMs:     int(time.Since(start).Milliseconds()),
-			})
-		}
-		msg := fmt.Sprintf("%d/%d bundled objects have been successfully reindexed", successfullyReindexed, len(ids))
-		if len(ids)-successfullyReindexed != 0 {
-			log.Error(msg)
-		} else {
-			log.Info(msg)
+		err = i.reindexIDs(ctx, metrics.ReindexTypeBundledObjects, false, ids)
+		if err != nil {
+			return err
 		}
 	}
 
 	if flags.bundledTemplates {
-		existsRec, _, err := i.store.QueryObjectInfo(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
+		existing, _, err := i.store.QueryObjectIds(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
 		if err != nil {
 			return err
 		}
-		existsIds := make([]string, 0, len(existsRec))
-		for _, rec := range existsRec {
-			existsIds = append(existsIds, rec.Id)
+		for _, id := range existing {
+			i.store.DeleteObject(id)
 		}
-		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeBundledTemplate)
+
+		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledTemplates, indexesWereRemoved, smartblock.SmartBlockTypeBundledTemplate)
 		if err != nil {
 			return err
-		}
-		var removed int
-		for _, eId := range existsIds {
-			if slice.FindPos(ids, eId) == -1 {
-				removed++
-				i.store.DeleteObject(eId)
-			}
-		}
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed; removed: %d", successfullyReindexed, len(ids), removed)
-		if len(ids)-successfullyReindexed != 0 {
-			log.Error(msg)
-		} else {
-			log.Info(msg)
 		}
 	}
 	if flags.fulltext {
@@ -580,6 +502,35 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	return i.saveLatestChecksums()
+}
+
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
+	ids, err := i.getIdsForTypes(sbTypes...)
+	if err != nil {
+		return err
+	}
+	return i.reindexIDs(ctx, reindexType, indexesWereRemoved, ids)
+}
+
+func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
+	start := time.Now()
+	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
+	if metrics.Enabled && len(ids) > 0 {
+		metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+			ReindexType:    reindexType,
+			Total:          len(ids),
+			Success:        successfullyReindexed,
+			SpentMs:        int(time.Since(start).Milliseconds()),
+			IndexesRemoved: indexesWereRemoved,
+		})
+	}
+	msg := fmt.Sprintf("%d/%d %s have been successfully reindexed", successfullyReindexed, len(ids), reindexType)
+	if len(ids)-successfullyReindexed != 0 {
+		log.Error(msg)
+	} else {
+		log.Info(msg)
+	}
+	return nil
 }
 
 func (i *indexer) ensurePreinstalledObjects() error {

@@ -64,6 +64,26 @@ const (
 	ReindexTypeOutdatedHeads
 )
 
+func (t ReindexType) String() string {
+	switch t {
+	case ReindexTypeThreads:
+		return "threads"
+	case ReindexTypeFiles:
+		return "files"
+	case ReindexTypeBundledRelations:
+		return "bundled_relations"
+	case ReindexTypeBundledTypes:
+		return "bundled_types"
+	case ReindexTypeBundledObjects:
+		return "bundled_objects"
+	case ReindexTypeBundledTemplates:
+		return "bundled_templates"
+	case ReindexTypeOutdatedHeads:
+		return "outdated_heads"
+	}
+	return "unknown"
+}
+
 const IndexEventThresholdMs = 10
 
 type IndexEvent struct {
