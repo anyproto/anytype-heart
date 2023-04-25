@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	htmlconverter "github.com/JohannesKaufmann/html-to-markdown"
+	"github.com/JohannesKaufmann/html-to-markdown/plugin"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -64,6 +65,36 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
+	converter := htmlconverter.NewConverter("", true, &htmlconverter.Options{
+		DisableEscaping:  true,
+		AllowHeaderBreak: true,
+		EmDelimiter:      "*",
+	})
+	converter.AddRules(getCustomHTMLRules()...)
+	converter.Use(plugin.GitHubFlavored())
+	md, err := converter.ConvertString(preprocessedSource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// md := html2md.Convert(preprocessedSource)
+	md = whitespace.WhitespaceNormalizeString(md)
+	// md = strings.ReplaceAll(md, "*  *", "* *")
+
+	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
+
+	blRenderer := newBlocksRenderer("", nil)
+	r := NewRenderer(blRenderer)
+	tr := NewTableRenderer(blRenderer, table.NewEditor(nil))
+	err = convertBlocks([]byte(md), r, tr)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r.GetBlocks(), r.GetRootBlockIDs(), nil
+}
+
+func getCustomHTMLRules() []htmlconverter.Rule {
+	var rules []htmlconverter.Rule
 	strikethrough := htmlconverter.Rule{
 		Filter: []string{"span"},
 		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
@@ -107,28 +138,71 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 		},
 	}
 
-	converter := htmlconverter.NewConverter("", true, &htmlconverter.Options{
-		DisableEscaping:  true,
-		AllowHeaderBreak: true,
-		EmDelimiter:      "*",
-	})
-	converter.AddRules(strikethrough, br, underscore, anohref)
-
-	md, err := converter.ConvertString(preprocessedSource)
-	if err != nil {
-		return nil, nil, err
+	simpleText := htmlconverter.Rule{
+		Filter: []string{"pre", "small", "sub", "sup", "caption"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			return htmlconverter.String(content)
+		},
 	}
 
-	// md := html2md.Convert(preprocessedSource)
-	md = whitespace.WhitespaceNormalizeString(md)
-	// md = strings.ReplaceAll(md, "*  *", "* *")
-
-	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
-
-	r := NewRenderer(newBlocksRenderer("", nil))
-	err = convertBlocks([]byte(md), r)
-	if err != nil {
-		return nil, nil, err
+	blockquote := htmlconverter.Rule{
+		Filter: []string{"blockquote", "q"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			return htmlconverter.String("> " + content)
+		},
 	}
-	return r.GetBlocks(), r.GetRootBlockIDs(), nil
+
+	italic := htmlconverter.Rule{
+		Filter: []string{"cite", "dfn", "address"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			return htmlconverter.String("*" + content + "*")
+		},
+	}
+
+	code := htmlconverter.Rule{
+		Filter: []string{"code", "var"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			return htmlconverter.String("`" + content + "`")
+		},
+	}
+
+	bdo := htmlconverter.Rule{
+		Filter: []string{"bdo"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			runes := []rune(content)
+			for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+				runes[i], runes[j] = runes[j], runes[i]
+			}
+			return htmlconverter.String(string(runes))
+		},
+	}
+
+	div := htmlconverter.Rule{
+		Filter: []string{"hr"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			return htmlconverter.String("___")
+		},
+	}
+
+	img := htmlconverter.Rule{
+		Filter: []string{"img"},
+		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			var (
+				src, title string
+				ok         bool
+			)
+			if src, ok = selec.Attr("src"); !ok {
+				return nil
+			}
+
+			title, _ = selec.Attr("alt")
+
+			if title != "" {
+				return htmlconverter.String("![" + title + "]" + "(" + src + ")")
+			}
+			return htmlconverter.String(src)
+		},
+	}
+	rules = append(rules, strikethrough, underscore, br, anohref, simpleText, blockquote, italic, code, bdo, div, img)
+	return rules
 }
