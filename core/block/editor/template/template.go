@@ -294,6 +294,16 @@ var WithAddedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
 	}
 }
 
+var WithRemovedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		var featRels = pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+		if slice.FindPos(featRels, key.String()) > -1 {
+			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(slice.Remove(featRels, key.String())))
+			return
+		}
+	}
+}
+
 var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 
@@ -355,15 +365,10 @@ var WithForcedDescription = func(s *state.State) {
 var WithDescription = func(s *state.State) {
 	WithHeader(s)
 
-	blockShouldExists := slice.FindPos(pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String()), DescriptionBlockId) > -1
-	if !blockShouldExists {
-		if s.Exists(DescriptionBlockId) {
-			s.Unlink(DescriptionBlockId)
-		}
-		return
+	WithAddedFeaturedRelation(bundle.RelationKeyDescription)(s)
+	if !s.Exists(DescriptionBlockId) {
+		WithForcedDescription(s)
 	}
-
-	WithForcedDescription(s)
 }
 
 var WithNoTitle = StateTransformer(func(s *state.State) {
@@ -398,6 +403,7 @@ var WithFirstTextBlockContent = func(text string) StateTransformer {
 }
 
 var WithNoDescription = StateTransformer(func(s *state.State) {
+	WithRemovedFeaturedRelation(bundle.RelationKeyDescription)(s)
 	s.Unlink(DescriptionBlockId)
 })
 

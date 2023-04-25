@@ -388,6 +388,12 @@ func (bs *basic) FeaturedRelationAdd(ctx *session.Context, relations ...string) 
 	copy(frc, fr)
 	for _, r := range relations {
 		if bs.HasRelation(s, r) && slice.FindPos(frc, r) == -1 {
+			// special cases
+			switch r {
+			case bundle.RelationKeyDescription.String():
+				// todo: looks like it's not ok to ise templates here but it has a lot of logic inside
+				template.WithForcedDescription(s)
+			}
 			frc = append(frc, r)
 		}
 	}
@@ -405,6 +411,11 @@ func (bs *basic) FeaturedRelationRemove(ctx *session.Context, relations ...strin
 	copy(frc, fr)
 	for _, r := range relations {
 		if slice.FindPos(frc, r) != -1 {
+			// special cases
+			switch r {
+			case bundle.RelationKeyDescription.String():
+				s.Unlink(state.DescriptionBlockID)
+			}
 			frc = slice.Remove(frc, r)
 		}
 	}
