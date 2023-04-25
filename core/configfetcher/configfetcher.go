@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
 	"github.com/anytypeio/any-sync/util/periodicsync"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"sync"
 	"time"
@@ -58,7 +57,6 @@ type configFetcher struct {
 	fetched       chan struct{}
 	fetchedClosed sync.Once
 
-	observers    []util.CafeAccountStateUpdateObserver
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
 	spaceService space.Service
