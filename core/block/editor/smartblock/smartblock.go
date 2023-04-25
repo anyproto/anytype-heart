@@ -919,8 +919,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 func (sb *smartBlock) getCreatedDate(s *state.State, createdDate int64) int64 {
 	combinedDetails := s.CombinedDetails()
 	originalCreatedDate := pbtypes.GetFloat64(combinedDetails, bundle.RelationKeyOriginalCreatedDate.String())
-	objectSource := pbtypes.GetString(combinedDetails, bundle.RelationKeySource.String())
-	if objectSource != "" && originalCreatedDate != 0 {
+	if originalCreatedDate != 0 {
 		createdDate = int64(originalCreatedDate)
 	}
 	return createdDate

@@ -141,11 +141,22 @@ func UpdateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]st
 			relLink.Format != model.RelationFormat_status {
 			continue
 		}
-
-		objectsIDs := pbtypes.GetStringListValue(v)
-		objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID)
-		st.SetDetail(k, pbtypes.StringList(objectsIDs))
+		handleObjectRelation(st, pageID, oldIDtoNew, v, k)
 	}
+}
+
+func handleObjectRelation(st *state.State, pageID string, oldIDtoNew map[string]string, v *types.Value, k string) {
+	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
+		objectsID := v.GetStringValue()
+		newObjectIDs := getNewRelationsID([]string{objectsID}, oldIDtoNew, pageID)
+		if len(newObjectIDs) != 0 {
+			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
+		}
+		return
+	}
+	objectsIDs := pbtypes.GetStringListValue(v)
+	objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID)
+	st.SetDetail(k, pbtypes.StringList(objectsIDs))
 }
 
 func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID string) []string {
