@@ -82,49 +82,6 @@ type Hasher interface {
 	Hash() string
 }
 
-type reindexFlags struct {
-	bundledTypes            bool
-	removeAllIndexedObjects bool
-	bundledRelations        bool
-	eraseIndexes            bool
-	threadObjects           bool
-	fileObjects             bool
-	fulltext                bool
-	bundledTemplates        bool
-	bundledObjects          bool
-	fileKeys                bool
-}
-
-func (f *reindexFlags) any() bool {
-	return f.bundledTypes ||
-		f.removeAllIndexedObjects ||
-		f.bundledRelations ||
-		f.eraseIndexes ||
-		f.threadObjects ||
-		f.fileObjects ||
-		f.fulltext ||
-		f.bundledTemplates ||
-		f.bundledObjects ||
-		f.fileKeys
-}
-
-func (f *reindexFlags) enableAll() {
-	f.bundledTypes = true
-	f.removeAllIndexedObjects = true
-	f.bundledRelations = true
-	f.eraseIndexes = true
-	f.threadObjects = true
-	f.fileObjects = true
-	f.fulltext = true
-	f.bundledTemplates = true
-	f.bundledObjects = true
-	f.fileKeys = true
-}
-
-func (f *reindexFlags) String() string {
-	return fmt.Sprintf("%#v", f)
-}
-
 type subObjectCreator interface {
 	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
@@ -301,7 +258,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
 		// file's hash is id
-		err = i.reindexDoc(ctx, id, false)
+		err = i.reindexDoc(ctx, id)
 		if err != nil {
 			log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
 		}
@@ -392,7 +349,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			log.Errorf("reindex failed to erase indexes: %v", err.Error())
 		} else {
 			log.Infof("all store indexes succesfully erased")
-			// store this flag because underlying localstore needs to now if it needs to amend indexes based on the prev value
 			indexesWereRemoved = true
 		}
 	}
@@ -410,7 +366,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		return fmt.Errorf("ensure preinstalled objects: %w", err)
 	}
 
-	// TODO If we use the single mechanism for indexing using only Index method, we need to always index isArchived and isFavorite
 	if flags.any() {
 		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)
 		if err != nil {
@@ -451,7 +406,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 		if metrics.Enabled {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 				ReindexType:    metrics.ReindexTypeThreads,
@@ -489,7 +444,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 		if metrics.Enabled && len(ids) > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 				ReindexType:    metrics.ReindexTypeFiles,
@@ -512,7 +467,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 		if metrics.Enabled && len(ids) > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 				ReindexType:    metrics.ReindexTypeBundledRelations,
@@ -536,7 +491,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 		if metrics.Enabled && len(ids) > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 				ReindexType:    metrics.ReindexTypeBundledTypes,
@@ -557,7 +512,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 		if metrics.Enabled && len(ids) > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 				ReindexType: metrics.ReindexTypeBundledTemplates,
@@ -594,7 +549,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 				i.store.DeleteObject(eId)
 			}
 		}
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed; removed: %d", successfullyReindexed, len(ids), removed)
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -603,7 +558,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		}
 	}
 	if flags.fulltext {
-		var ids []string
 		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
@@ -723,31 +677,13 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 			idsToReindex = append(idsToReindex, tid)
 		}
 	}
-	if len(idsToReindex) > 0 {
-		for _, id := range idsToReindex {
-			// TODO: we should reindex it I guess at start
-			// if i.anytype.PredefinedBlocks().IsAccount(id) {
-			//	continue
-			// }
 
-			ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "reindexOutdatedThreads")
-			d, err := i.getObjectInfo(ctx, id)
-			if err != nil {
-				continue
-			}
-
-			err = i.Index(ctx, d)
-			if err == nil {
-				success++
-			} else {
-				log.With("thread", id).Errorf("reindexOutdatedThreads failed to index doc: %s", err.Error())
-			}
-		}
-	}
+	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "reindexOutdatedThreads")
+	success = i.reindexIdsIgnoreErr(ctx, idsToReindex...)
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved bool) error {
+func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 	_, isArchived := i.archivedMap[id]
 	_, isFavorite := i.favoriteMap[id]
 
@@ -766,9 +702,9 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	})
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
-		err := i.reindexDoc(ctx, id, indexRemoved)
+		err := i.reindexDoc(ctx, id)
 		if err != nil {
 			log.With("thread", id).Errorf("failed to reindex: %v", err)
 		} else {
