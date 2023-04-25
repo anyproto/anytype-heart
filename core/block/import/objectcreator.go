@@ -29,6 +29,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
+const relationsLimit = 10
+
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
@@ -313,9 +315,10 @@ func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels 
 }
 
 func (oc *ObjectCreator) handleDataviewBlock(bl simple.Block, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat, dv simpleDataview.Block) bool {
-	for _, rel := range rels {
+	for i, rel := range rels {
 		if relation, exist := createdRelations[rel.Name]; exist {
-			if err := oc.addRelationToView(bl, relation, rel, dv); err != nil {
+			isVisible := i <= relationsLimit
+			if err := oc.addRelationToView(bl, relation, rel, dv, isVisible); err != nil {
 				log.Errorf("can't add relations to view: %s", err.Error())
 			}
 		}
@@ -323,7 +326,7 @@ func (oc *ObjectCreator) handleDataviewBlock(bl simple.Block, rels []*converter.
 	return false
 }
 
-func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsIDToFormat, rel *converter.Relation, dv simpleDataview.Block) error {
+func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsIDToFormat, rel *converter.Relation, dv simpleDataview.Block, visible bool) error {
 	for _, relFormat := range relation {
 		if relFormat.Format == rel.Format {
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
@@ -332,7 +335,7 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 			for _, view := range bl.Model().GetDataview().GetViews() {
 				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
 					Key:       relFormat.ID,
-					IsVisible: true,
+					IsVisible: visible,
 					Width:     192,
 				})
 				if err != nil {

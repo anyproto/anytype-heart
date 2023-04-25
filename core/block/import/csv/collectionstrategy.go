@@ -29,15 +29,7 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(
-	path string,
-	csvTable [][]string,
-) (
-	[]string,
-	[]*converter.Snapshot,
-	map[string][]*converter.Relation,
-	error,
-) {
+func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	details := converter.GetDetails(path)
@@ -47,8 +39,9 @@ func (c *CollectionStrategy) CreateObjects(
 		return nil, nil, nil, err
 	}
 
-	relations := getDetailsFromCSVTable(csvTable)
-	objectsSnapshots, objectsRelations := getEmptyObjects(csvTable, relations)
+	useFirstColumn := params.GetUseFirstColumnForRelations()
+	relations := getDetailsFromCSVTable(csvTable, useFirstColumn)
+	objectsSnapshots, objectsRelations := getEmptyObjects(csvTable, relations, useFirstColumn)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -85,11 +78,15 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *st
 	return snapshot
 }
 
-func getEmptyObjects(csvTable [][]string, relations []*converter.Relation) ([]*converter.Snapshot, map[string][]*converter.Relation) {
+func getEmptyObjects(csvTable [][]string, relations []*converter.Relation, useFirstColumn bool) ([]*converter.Snapshot, map[string][]*converter.Relation) {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
 	objectsRelations := make(map[string][]*converter.Relation, len(csvTable))
+	var i = 1
 
-	for i := 1; i < len(csvTable); i++ {
+	if useFirstColumn {
+		i = 0
+	}
+	for i = 1; i < len(csvTable); i++ {
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{
 				Content: &model.BlockContentOfSmartblock{
@@ -98,7 +95,14 @@ func getEmptyObjects(csvTable [][]string, relations []*converter.Relation) ([]*c
 			}),
 		}).NewState()
 		details := &types.Struct{Fields: map[string]*types.Value{}}
-		for j, value := range csvTable[i] {
+		var (
+			j     = 0
+			value string
+		)
+		if useFirstColumn {
+			j = 1
+		}
+		for j, value = range csvTable[i] {
 			name := strings.TrimSpace(whitespace.WhitespaceNormalizeString(relations[j].Name))
 			if strings.EqualFold(name, "name") {
 				relations[j].Name = bundle.RelationKeyName.String()

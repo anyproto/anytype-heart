@@ -21,8 +21,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) (
-	[]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{

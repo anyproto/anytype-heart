@@ -19,7 +19,7 @@ import (
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
 const (
 	Name               = "Txt"
-	rootCollectionName = "Txt Import"
+	rootCollectionName = "TXT Import"
 )
 
 type TXT struct {
