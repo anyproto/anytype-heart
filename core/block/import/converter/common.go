@@ -47,54 +47,70 @@ func GetDetails(name string) *types.Struct {
 
 func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
-		switch a := bl.(type) {
+		switch block := bl.(type) {
 		case link.Block:
-			newTarget := oldIDtoNew[a.Model().GetLink().TargetBlockId]
-			if newTarget == "" {
-				log.With("object", st.RootId()).Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
-				return true
-			}
-
-			a.Model().GetLink().TargetBlockId = newTarget
-			st.Set(simple.New(a.Model()))
+			handleLinkBlock(oldIDtoNew, block, st)
 		case bookmark.Block:
-			newTarget := oldIDtoNew[a.Model().GetBookmark().TargetObjectId]
-			if newTarget == "" {
-				log.With("object", pageID).Errorf("cant find target id for bookmark: %s", a.Model().GetBookmark().TargetObjectId)
-				return true
-			}
-
-			a.Model().GetBookmark().TargetObjectId = newTarget
-			st.Set(simple.New(a.Model()))
+			handleBookmarkBlock(oldIDtoNew, block, pageID, st)
 		case text.Block:
-			marks := a.Model().GetText().GetMarks().GetMarks()
-			for i, mark := range marks {
-				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
-					continue
-				}
-				newTarget := oldIDtoNew[mark.Param]
-				if newTarget == "" {
-					log.With("object", pageID).Errorf("cant find target id for mention: %s", mark.Param)
-					continue
-				}
-
-				marks[i].Param = newTarget
-			}
-			st.Set(simple.New(a.Model()))
+			handleMarkdownTest(oldIDtoNew, block, st, pageID)
 		case dataview.Block:
-			target := a.Model().GetDataview().TargetObjectId
-			if target == "" {
-				return true
-			}
-			newTarget := oldIDtoNew[target]
-			if newTarget == "" {
-				log.With("object", st.RootId()).Errorf("cant find target id for dataview: %s", a.Model().GetDataview().TargetObjectId)
-				return true
-			}
-
-			a.Model().GetDataview().TargetObjectId = newTarget
-			st.Set(simple.New(a.Model()))
+			handleDataviewBlock(block, oldIDtoNew, st)
 		}
 		return true
 	})
+}
+
+func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
+	target := block.Model().GetDataview().TargetObjectId
+	if target == "" {
+		return
+	}
+	newTarget := oldIDtoNew[target]
+	if newTarget == "" {
+		log.With("object", st.RootId()).Errorf("cant find target id for dataview: %s", block.Model().GetDataview().TargetObjectId)
+		return
+	}
+
+	block.Model().GetDataview().TargetObjectId = newTarget
+	st.Set(simple.New(block.Model()))
+}
+
+func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, pageID string, st *state.State) {
+	newTarget := oldIDtoNew[block.Model().GetBookmark().TargetObjectId]
+	if newTarget == "" {
+		log.With("object", pageID).Errorf("cant find target id for bookmark: %s", block.Model().GetBookmark().TargetObjectId)
+		return
+	}
+
+	block.Model().GetBookmark().TargetObjectId = newTarget
+	st.Set(simple.New(block.Model()))
+}
+
+func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+	newTarget := oldIDtoNew[block.Model().GetLink().TargetBlockId]
+	if newTarget == "" {
+		log.With("object", st.RootId()).Errorf("cant find target id for link: %s", block.Model().GetLink().TargetBlockId)
+		return
+	}
+
+	block.Model().GetLink().TargetBlockId = newTarget
+	st.Set(simple.New(block.Model()))
+}
+
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, objectID string) {
+	marks := block.Model().GetText().GetMarks().GetMarks()
+	for i, mark := range marks {
+		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
+			continue
+		}
+		newTarget := oldIDtoNew[mark.Param]
+		if newTarget == "" {
+			log.With("object", objectID).Errorf("cant find target id for mention: %s", mark.Param)
+			continue
+		}
+
+		marks[i].Param = newTarget
+	}
+	st.Set(simple.New(block.Model()))
 }
