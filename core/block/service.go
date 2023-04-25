@@ -200,7 +200,16 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	// TODO: [MR] add status logic somewhere
+	// TODO: [MR] improve status logic
+	if tp, err := coresb.SmartBlockTypeFromID(id); err == nil && tp == coresb.SmartBlockTypePage {
+		s.status.Watch(id, func() []string {
+			return nil
+		})
+		ob.AddHook(func(_ smartblock.ApplyInfo) error {
+			s.status.Unwatch(id)
+			return nil
+		}, smartblock.HookOnClose)
+	}
 	//if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 	//	var (
 	//		fList = func() []string {
