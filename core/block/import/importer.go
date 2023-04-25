@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/csv"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/html"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
 	pbc "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
@@ -61,13 +60,12 @@ func (i *Import) Init(a *app.App) (err error) {
 	coreService := a.MustComponent(core.CName).(core.Service)
 	col := app.MustComponent[*collection.Service](a)
 	converters := []converter.Converter{
-		markdown.New(i.tempDirProvider),
+		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(i.sbtProvider),
+		pbc.New(col, i.sbtProvider),
 		web.NewConverter(),
-		newinfra.New(),
-		html.New(),
-		txt.New(),
+		html.New(col),
+		txt.New(col),
 		csv.New(col),
 	}
 	for _, c := range converters {
@@ -79,10 +77,9 @@ func (i *Import) Init(a *app.App) (err error) {
 	objCreator := a.MustComponent(object.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
-	ou := NewObjectUpdater(i.s, store, factory, relationCreator)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	i.oc = NewCreator(i.s, objCreator, ou, coreService, factory, relationCreator, store, fileStore)
+	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore)
 	return nil
 }
 
@@ -181,17 +178,6 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	}
 
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
-}
-
-func ImportUserProfile(ctx *session.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
-	defer progress.Finish()
-	progress.SetProgressMessage("Getting user data from path")
-	profile, err := newinfra.GetUserProfile(req, progress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read user mnemonic, %v", err)
-	}
-	return profile, nil
 }
 
 func (i *Import) createObjects(ctx *session.Context, res *converter.Response, progress *process.Progress, req *pb.RpcObjectImportRequest, allErrors map[string]error) map[string]*types.Struct {

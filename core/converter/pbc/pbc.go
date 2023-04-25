@@ -10,7 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-var log = logging.Logger("pb-converter")
+var log = logging.Logger("converter")
 
 func NewConverter(s state.Doc) converter.Converter {
 	return &pbc{s}
@@ -35,7 +35,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
 
-	mo := &pb.SnapshotWithType{
+	mo := &pb.MigrationObject{
 		SbType:   sbType,
 		Snapshot: snapshot,
 	}

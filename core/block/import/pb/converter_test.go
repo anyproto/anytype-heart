@@ -3,7 +3,6 @@ package pb
 import (
 	"archive/zip"
 	"bufio"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 )
 
 func Test_GetSnapshotsSuccess(t *testing.T) {
@@ -25,17 +25,18 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	defer os.RemoveAll(path)
 	wr, err := newZipWriter(path)
 	assert.NoError(t, err)
-	f, err := os.Open("testdata/bafybbyyhrncspdsr3nwoneemm4v7sbjqzl2e2d3egjc5ut7nxnnlk5fh.pb")
+	f, err := os.Open("testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb")
 	reader := bufio.NewReader(f)
 
 	assert.NoError(t, err)
-	assert.NoError(t, wr.WriteFile("bafybbyyhrncspdsr3nwoneemm4v7sbjqzl2e2d3egjc5ut7nxnnlk5fh.pb", reader))
+	assert.NoError(t, wr.WriteFile("bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb", reader))
 	assert.NoError(t, wr.Close())
 
 	p := &Pb{}
 
+	zipPath := wr.Path()
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: wr.Path()}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{zipPath}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -51,21 +52,10 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 }
 
 func Test_GetSnapshotsFailedReadZip(t *testing.T) {
-	path, err := ioutil.TempDir("", "")
-	assert.NoError(t, err)
-	defer os.RemoveAll(path)
-	wr, err := newZipWriter(path)
-	f, err := os.Open("testdata/bafybbyyhrncspdsr3nwoneemm4v7sbjqzl2e2d3egjc5ut7nxnnlk5fh.pb")
-	reader := bufio.NewReader(f)
-
-	assert.NoError(t, err)
-	assert.NoError(t, wr.WriteFile("bafybbyyhrncspdsr3nwoneemm4v7sbjqzl2e2d3egjc5ut7nxnnlk5fh.pb", reader))
-	assert.NoError(t, wr.Close())
-
 	p := &Pb{}
 
 	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "not exists"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"not exist"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -90,7 +80,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 	p := &Pb{}
 
 	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "notexist.zip"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{wr.Path()}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -98,33 +88,15 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 
 	assert.NotNil(t, ce)
 	assert.Len(t, ce, 1)
-	assert.NotEmpty(t, ce.Get("notexist.zip"))
 }
 
 func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
-	path, err := ioutil.TempDir("", "")
-	assert.NoError(t, err)
-	defer os.RemoveAll(path)
-	wr, err := newZipWriter(path)
-	assert.NoError(t, err)
-	f, err := os.Open("testdata/test.pb")
-	assert.NoError(t, err)
-	reader := bufio.NewReader(f)
-
-	assert.NoError(t, wr.WriteFile("test.pb", reader))
-
-	secondfile, err := os.Open("testdata/bafybbyyhrncspdsr3nwoneemm4v7sbjqzl2e2d3egjc5ut7nxnnlk5fh.pb")
-	reader = bufio.NewReader(secondfile)
-
-	assert.NoError(t, err)
-	assert.NoError(t, wr.WriteFile("bafybbyyhrncspdsr3nwoneemm4v7sbjqzl2e2d3egjc5ut7nxnnlk5fh.pb", reader))
-	assert.NoError(t, wr.Close())
-
 	p := &Pb{}
 
+	paths := []string{"testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb", "testdata/test.pb"}
 	// ALL_OR_NOTHING mode
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: wr.Path()}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: paths}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -132,11 +104,11 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	assert.NotNil(t, ce)
 	assert.Nil(t, res)
-	assert.NotEmpty(t, ce.Get("test.pb"))
+	assert.NotNil(t, ce.Get("testdata/test.pb"))
 
 	// IGNORE_ERRORS mode
 	res, ce = p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: wr.Path()}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: paths}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -144,9 +116,9 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
-	assert.Len(t, res.Snapshots, 1)
+	assert.Len(t, res.Snapshots, 2)
 	assert.Len(t, ce, 1)
-	assert.NotEmpty(t, ce.Get("test.pb"))
+	assert.NotEmpty(t, ce.Get("testdata/test.pb"))
 }
 
 func newZipWriter(path string) (*zipWriter, error) {

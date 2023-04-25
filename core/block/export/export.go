@@ -252,7 +252,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert())); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
 		return 0, err
 	}
 
@@ -299,7 +299,7 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
-		result := conv.Convert()
+		result := conv.Convert(b.Type())
 		filename := docId + conv.Ext()
 		if format == pb.RpcObjectListExport_Markdown {
 			s := b.NewState()

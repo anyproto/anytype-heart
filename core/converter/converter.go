@@ -1,13 +1,14 @@
 package converter
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/types"
 )
 
 type Converter interface {
-	Convert(model.SmartBlockType) (result []byte)
+	Convert(sbType model.SmartBlockType) (result []byte)
 	SetKnownDocs(docs map[string]*types.Struct) Converter
 	FileHashes() []string
 	ImageHashes() []string
