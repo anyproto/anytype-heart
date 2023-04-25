@@ -10,6 +10,7 @@ import (
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/zap"
@@ -83,8 +84,13 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveObject(ctx context.Context, tp coresb.SmartBlockType, newAccount bool) (id string, err error)
+	DeriveObject(ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
+	DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
 }
+
+//type ObjectsDeriver interface {
+//	DeriveObject(ctx context.Context, tp coresb.SmartBlockType, newAccount bool) (id string, err error)
+//}
 
 type Anytype struct {
 	files        *files.Service
@@ -226,15 +232,34 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 		coresb.SmartBlockTypeWidget,
 		coresb.SmartBlockTypeHome,
 	}
-	for _, sbt := range sbTypes {
-		var id string
-		id, err = a.deriver.DeriveObject(ctx, sbt, a.config.NewAccount)
+	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
+	for i, sbt := range sbTypes {
+		//id, err = a.deriver.DeriveObject(ctx, sbt, a.config.NewAccount)
+		payloads[i], err = a.deriver.DeriveTreeObject(ctx, sbt)
+		if err != nil {
+			log.With(zap.Error(err)).Debug("derived tree object with error")
+			return
+		}
+		a.predefinedBlockIds.InsertId(sbt, payloads[i].RootRawChange.Id)
+	}
+
+	for _, payload := range payloads {
+		err = a.deriver.DeriveObject(ctx, payload, a.config.NewAccount)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return
 		}
-		a.predefinedBlockIds.InsertId(sbt, id)
 	}
+
+	//for _, sbt := range sbTypes {
+	//	var id string
+	//	id, err = a.deriver.DeriveObject(ctx, sbt, a.config.NewAccount)
+	//	if err != nil {
+	//		log.With(zap.Error(err)).Debug("derived object with error")
+	//		return
+	//	}
+	//	a.predefinedBlockIds.InsertId(sbt, id)
+	//}
 
 	return nil
 }

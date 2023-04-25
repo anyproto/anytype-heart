@@ -45,7 +45,7 @@ type DerivedSmartblockIds struct {
 	Widgets             string
 }
 
-func (d *DerivedSmartblockIds) IsAccount(id string) bool {
+func (d DerivedSmartblockIds) IsAccount(id string) bool {
 	return id == d.Account || id == d.AccountOld
 }
 

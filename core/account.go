@@ -31,7 +31,6 @@ import (
 	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
@@ -319,17 +318,6 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
-	}
-
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.PredefinedBlocks().Account,
-		Details: []*pb.RpcObjectSetDetailsDetail{{
-			Key:   bundle.RelationKeyCreator.String(),
-			Value: pbtypes.String(coreService.PredefinedBlocks().Profile),
-		}},
-	}); err != nil {
-		// need to create other RPC error
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
