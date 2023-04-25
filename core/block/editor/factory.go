@@ -2,12 +2,11 @@ package editor
 
 import (
 	"fmt"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -24,11 +23,12 @@ type ObjectFactory struct {
 	bookmarkService      bookmark.BookmarkService
 	detailsModifier      DetailsModifier
 	fileBlockService     file.BlockService
+	importerCtrl         _import.Services
+	objectCreator        _import.ObjectCreator
 	objectStore          objectstore.ObjectStore
 	relationService      relation2.Service
 	sourceService        source.Service
 	sendEvent            func(e *pb.Event)
-	collectionService    CollectionService
 
 	app *app.App
 }
@@ -43,11 +43,12 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
+	f.importerCtrl = app.MustComponent[_import.Services](a)
+	f.objectCreator = app.MustComponent[_import.ObjectCreator](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.relationService = app.MustComponent[relation2.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
-	f.collectionService = app.MustComponent[CollectionService](a)
 
 	f.app = a
 	return nil
@@ -102,6 +103,8 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
 		return NewPage(
 			f.objectStore,
+			f.importerCtrl,
+			f.objectCreator,
 			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,
@@ -117,6 +120,8 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 		return NewDashboard(
 			f.detailsModifier,
 			f.objectStore,
+			f.importerCtrl,
+			f.objectCreator,
 			f.anytype,
 		)
 	case model.SmartBlockType_Set:
@@ -124,13 +129,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.anytype,
 			f.objectStore,
 			f.relationService,
-		)
-	case model.SmartBlockType_Collection:
-		return NewCollection(
-			f.anytype,
-			f.objectStore,
-			f.relationService,
-			f.collectionService,
 		)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		return NewProfile(
@@ -155,7 +153,12 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.relationService,
 		)
 	case model.SmartBlockType_SubObject:
-		panic("subobject not supported via factory")
+		return NewSubObject(
+			f.objectStore,
+			f.fileBlockService,
+			f.anytype,
+			f.relationService,
+		)
 	case model.SmartBlockType_File:
 		return NewFiles()
 	case model.SmartBlockType_MarketplaceType:
@@ -179,6 +182,8 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 	case model.SmartBlockType_Template:
 		return NewTemplate(
 			f.objectStore,
+			f.importerCtrl,
+			f.objectCreator,
 			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,
@@ -188,6 +193,8 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
 			f.objectStore,
+			f.importerCtrl,
+			f.objectCreator,
 			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,

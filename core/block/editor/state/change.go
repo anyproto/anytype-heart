@@ -88,14 +88,11 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	return s
 }
 
-func (s *State) SetLastModified(ts int64, accountId string) {
+func (s *State) SetLastModified(ts int64, profileId string) {
 	if ts > 0 {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(ts))
 	}
-	// TODO: [MR] Think about profiles
-	//if profileId, err := threads.ProfileThreadIDFromAccountAddress(accountId); err == nil {
-	//	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(profileId.String()))
-	//}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(profileId))
 }
 
 func (s *State) SetChangeId(id string) {

@@ -2,22 +2,19 @@ package source
 
 import (
 	"fmt"
+	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"sync"
 
-	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/gogo/protobuf/types"
 )
 
 const CName = "source"
@@ -42,10 +39,9 @@ type service struct {
 	statusService status.Service
 	typeProvider  typeprovider.ObjectTypeProvider
 	account       accountservice.Service
-	fileStore     filestore.FileStore
-	spaceService  space.Service
-	staticIds     map[string]func() Source
-	mu            sync.Mutex
+
+	staticIds map[string]func() Source
+	mu        sync.Mutex
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -54,8 +50,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.statusService = a.MustComponent(status.CName).(status.Service)
 	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 
@@ -70,7 +64,7 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 	st, err := smartblock.SmartBlockTypeFromID(id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFiles(s.anytype, s.fileStore, id), nil
+		return NewFiles(s.anytype, id), nil
 	case smartblock.SmartBlockTypeDate:
 		return NewDate(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBundledObjectType:
@@ -105,7 +99,6 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 		accountService: s.account,
 		sbt:            sbt,
 		ot:             ot,
-		spaceService:   s.spaceService,
 	}
 	return newTreeSource(id, deps)
 }

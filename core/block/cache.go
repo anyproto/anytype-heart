@@ -54,57 +54,56 @@ func (s *Service) createCache() ocache.OCache {
 }
 
 func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
-	cacheOpts := ctx.Value(optsKey).(cacheOpts)
-	spc, err := s.clientService.GetSpace(ctx, cacheOpts.spaceId)
+	opts := ctx.Value(optsKey).(cacheOpts)
+	spc, err := s.clientService.GetSpace(ctx, opts.spaceId)
 	if err != nil {
 		return
 	}
 
-	// creating tree if needed
-	if cacheOpts.createOption != nil {
-		var (
-			ot  objecttree.ObjectTree
-			opt = cacheOpts.createOption
-		)
-		ot, err = spc.PutTree(ctx, opt.treeCreate, nil)
+	buildTreeObject := func(id string) (sb smartblock.SmartBlock, err error) {
+		var ot objecttree.ObjectTree
+		ot, err = spc.BuildTree(ctx, id, opts.buildOption)
+		if err != nil {
+			return
+		}
+		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, ObjectTree: ot})
+	}
+	createTreeObject := func(ot objecttree.ObjectTree) (sb smartblock.SmartBlock, err error) {
+		initCtx := opts.createOption.initFunc(id)
+		initCtx.ObjectTree = ot
+		return s.objectFactory.InitObject(id, initCtx)
+	}
+
+	switch {
+	case opts.createOption != nil:
+		// creating tree if needed
+		var ot objecttree.ObjectTree
+		ot, err = spc.PutTree(ctx, opts.createOption.treeCreate, nil)
 		if err != nil {
 			if err == treestorage.ErrTreeExists {
-				return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx})
+				return buildTreeObject(id)
 			}
 			return
 		}
-		ot.Close()
-		return s.objectFactory.InitObject(id, opt.initFunc(id))
-	}
-
-	// putting object through cache
-	if cacheOpts.putObject != nil {
-		return cacheOpts.putObject, nil
+		return createTreeObject(ot)
+	case opts.putObject != nil:
+		// putting object through cache
+		return opts.putObject, nil
+	default:
+		break
 	}
 
 	sbt, _ := coresb.SmartBlockTypeFromID(id)
-	// if it is subObject
-	if sbt == coresb.SmartBlockTypeSubObject {
+	switch sbt {
+	case coresb.SmartBlockTypeSubObject:
 		return s.initSubObject(ctx, id)
+	case coresb.SmartBlockTypePage:
+		return buildTreeObject(id)
+	default:
+		return s.objectFactory.InitObject(id, &smartblock.InitContext{
+			Ctx: ctx,
+		})
 	}
-
-	// if it is tree based object, then checking that the tree exists
-	if sbt == coresb.SmartBlockTypePage {
-		// getting tree from remote, if it doesn't exist locally
-		if _, err = spc.Storage().TreeRoot(id); err != nil {
-			var ot objecttree.ObjectTree
-			ot, err = spc.BuildTree(ctx, id, cacheOpts.buildOption)
-			if err != nil {
-				return
-			}
-			ot.Close()
-		}
-	}
-
-	// otherwise general init
-	return s.objectFactory.InitObject(id, &smartblock.InitContext{
-		Ctx: ctx,
-	})
 }
 
 // GetTree should only be called by either space services or debug apis, not the client code
@@ -161,6 +160,7 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 		log.With(zap.Error(err)).Error("failed to execute on delete for tree")
 	}
 	// this should be done not inside lock
+	// TODO: looks very complicated, I know
 	err = obj.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
 	if err != nil {
 		return
@@ -185,7 +185,8 @@ func (s *Service) DeleteObject(id string) (err error) {
 	sbt, _ := coresb.SmartBlockTypeFromID(id)
 	switch sbt {
 	case coresb.SmartBlockTypePage:
-		space, err := s.clientService.AccountSpace(context.Background())
+		var space commonspace.Space
+		space, err = s.clientService.AccountSpace(context.Background())
 		if err != nil {
 			return
 		}

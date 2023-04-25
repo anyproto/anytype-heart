@@ -45,7 +45,6 @@ const (
 type Service interface {
 	Account() string // deprecated, use wallet component
 	Device() string  // deprecated, use wallet component
-	Start() error
 	Stop() error
 	IsStarted() bool
 	SpaceService() space.Service
@@ -178,11 +177,16 @@ func (a *Anytype) Device() string {
 }
 
 func (a *Anytype) Run(ctx context.Context) (err error) {
-	if err = a.Start(); err != nil {
+	if err = a.RunMigrations(); err != nil {
 		return
 	}
 
-	return a.EnsurePredefinedBlocks(ctx, a.config.NewAccount)
+	err = a.EnsurePredefinedBlocks(ctx, a.config.NewAccount)
+	if err != nil {
+		return
+	}
+	a.start()
+	return nil
 }
 
 func (a *Anytype) IsStarted() bool {
@@ -216,36 +220,26 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	// TODO: [MR] mdns
 }
 
-func (a *Anytype) Start() error {
-	err := a.RunMigrations()
-	if err != nil {
-		return err
-	}
-
-	return a.start()
-}
-
-func (a *Anytype) start() error {
+func (a *Anytype) start() {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	if a.isStarted {
-		return nil
+		return
 	}
 
 	a.isStarted = true
-	return nil
 }
 
 func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
 	sbTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypeWorkspace,
+		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeArchive,
 		coresb.SmartblockTypeMarketplaceType,
 		coresb.SmartblockTypeMarketplaceRelation,
 		coresb.SmartblockTypeMarketplaceTemplate,
 		coresb.SmartBlockTypeWidget,
-		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeHome,
 	}
 	for _, sbt := range sbTypes {

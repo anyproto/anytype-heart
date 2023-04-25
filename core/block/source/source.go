@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/synctree"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 	"math/rand"
@@ -93,16 +93,24 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	}
 }
 
-func newTreeSource(a core.Service, ss status.Service, acc accountservice.Service, sbt smartblock.SmartBlockType, id string, listenToOwnChanges bool) (s Source, err error) {
+type sourceDeps struct {
+	anytype        core.Service
+	statusService  status.Service
+	accountService accountservice.Service
+	sbt            smartblock.SmartBlockType
+	ot             objecttree.ObjectTree
+}
+
+func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
 	return &source{
-		id:                       id,
-		a:                        a,
-		ss:                       ss,
-		listenToOwnDeviceChanges: listenToOwnChanges,
-		logId:                    a.Device(),
-		openedAt:                 time.Now(),
-		smartblockType:           sbt,
-		acc:                      acc,
+		ObjectTree:     deps.ot,
+		id:             id,
+		a:              deps.anytype,
+		ss:             deps.statusService,
+		logId:          deps.anytype.Device(),
+		openedAt:       time.Now(),
+		smartblockType: deps.sbt,
+		acc:            deps.accountService,
 	}, nil
 }
 
@@ -112,19 +120,18 @@ type ObjectTreeProvider interface {
 
 type source struct {
 	objecttree.ObjectTree
-	id, logId                string
-	tid                      thread.ID
-	smartblockType           smartblock.SmartBlockType
-	a                        core.Service
-	ss                       status.Service
-	lastSnapshotId           string
-	receiver                 ChangeReceiver
-	unsubscribe              func()
-	metaOnly                 bool
-	listenToOwnDeviceChanges bool // false means we will ignore own(same-logID) changes in applyRecords
-	closed                   chan struct{}
-	openedAt                 time.Time
-	acc                      accountservice.Service
+	id, logId      string
+	tid            thread.ID
+	smartblockType smartblock.SmartBlockType
+	a              core.Service
+	ss             status.Service
+	lastSnapshotId string
+	receiver       ChangeReceiver
+	unsubscribe    func()
+	metaOnly       bool
+	closed         chan struct{}
+	openedAt       time.Time
+	acc            accountservice.Service
 }
 
 func (s *source) Tree() objecttree.ObjectTree {
@@ -134,8 +141,8 @@ func (s *source) Tree() objecttree.ObjectTree {
 func (s *source) Update(ot objecttree.ObjectTree) {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
-	err := s.receiver.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
-		return BuildState(d.(*state.State), ot)
+	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
+		return s.BuildState(d.(*state.State), ot)
 	})
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
@@ -184,28 +191,20 @@ func (s *source) ReadDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 
 func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	s.receiver = receiver
-	spc, err := s.a.SpaceService().AccountSpace(context.Background())
-	if err != nil {
+	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
+	if !ok {
+		err = fmt.Errorf("should be able to set listner inside object tree")
 		return
 	}
-
-	s.ObjectTree, err = spc.BuildTree(ctx, s.id, commonspace.BuildTreeOpts{
-		Listener:           s,
-		WaitTreeRemoteSync: false,
-	})
-	if err != nil {
-		return
-	}
-
+	setter.SetListener(s)
 	return s.buildState()
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, err := BuildState(nil, s.ObjectTree)
+	st, _, err := s.BuildState(nil, s.ObjectTree)
 	if err != nil {
 		return
 	}
-	// TODO: [MR] check if we need to check this validation
 	err = st.Validate()
 	if err != nil {
 		return
@@ -395,10 +394,10 @@ func (s *source) Close() (err error) {
 		s.unsubscribe()
 		<-s.closed
 	}
-	return nil
+	return s.ObjectTree.Close()
 }
 
-func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.State, appliedContent []*pb.ChangeContent, err error) {
+func (s *source) BuildState(initState *state.State, ot objecttree.ObjectTree) (st *state.State, appliedContent []*pb.ChangeContent, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -408,8 +407,8 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 	if initState == nil {
 		startId = ot.Root().Id
 	} else {
-		s = initState
-		startId = s.ChangeId()
+		st = initState
+		startId = st.ChangeId()
 	}
 
 	err = ot.IterateFrom(startId,
@@ -425,23 +424,23 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 			lastChange = change
 			// that means that we are starting from tree root
 			if change.Id == ot.Id() {
-				s = state.NewDoc(ot.Id(), nil).(*state.State)
-				s.SetChangeId(change.Id)
+				st = state.NewDoc(ot.Id(), nil).(*state.State)
+				st.SetChangeId(change.Id)
 				return true
 			}
 
 			model := change.Model.(*pb.Change)
 			if startId == change.Id {
-				if s == nil {
-					s = state.NewDocFromSnapshot(ot.Id(), model.Snapshot).(*state.State)
-					s.SetChangeId(startId)
+				if st == nil {
+					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot).(*state.State)
+					st.SetChangeId(startId)
 					return true
 				} else {
-					s = s.NewState()
+					st = st.NewState()
 				}
 				return true
 			}
-			ns := s.NewState()
+			ns := st.NewState()
 			appliedContent = append(appliedContent, model.Content...)
 			ns.ApplyChangeIgnoreErr(model.Content...)
 			ns.SetChangeId(change.Id)
@@ -456,7 +455,7 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 		return
 	}
 	if lastChange != nil {
-		s.SetLastModified(lastChange.Timestamp, lastChange.Identity)
+		st.SetLastModified(lastChange.Timestamp, s.Anytype().PredefinedBlocks().Profile)
 	}
 	return
 }
