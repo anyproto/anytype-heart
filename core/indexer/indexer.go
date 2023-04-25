@@ -224,7 +224,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 			log.With("thread", info.Id).Debugf("to index queue")
 		}
 
-		go i.indexLinkedFiles(ctx, info.FileHashes)
+		i.indexLinkedFiles(ctx, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -260,12 +260,6 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	}
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
-		// file's hash is id
-		err = i.reindexDoc(ctx, id)
-		if err != nil {
-			log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
-		}
-
 		err = i.store.AddToIndexQueue(id)
 		if err != nil {
 			log.With("id", id).Error(err.Error())

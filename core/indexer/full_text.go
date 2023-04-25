@@ -60,6 +60,15 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
+
+	// Placed it here because I don't want to introduce a new queue now
+	if sbType == smartblock.SmartBlockTypeFile {
+		// file's hash is id
+		err = i.reindexDoc(ctx, id)
+		if err != nil {
+			log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
+		}
+	}
 	indexDetails, _ := sbType.Indexable()
 	if !indexDetails {
 		return nil

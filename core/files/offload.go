@@ -68,9 +68,11 @@ func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 		if err != nil {
 			return 0, 0, fmt.Errorf("list all files: %w", err)
 		}
-		fileIDs = lo.Map(allFiles, func(file *storage.FileInfo, _ int) string {
-			return file.Hash
+
+		allTargets := lo.Map(allFiles, func(file *storage.FileInfo, _ int) []string {
+			return file.Targets
 		})
+		fileIDs = lo.Uniq(lo.Flatten(allTargets))
 	}
 
 	if !includeNotPinned {
