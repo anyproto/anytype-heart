@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -23,8 +24,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtintemplate"
@@ -96,7 +95,9 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	if err = snapshot.Unmarshal(data); err != nil {
 		return
 	}
+
 	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)
+	st = st.NewState()
 	id := st.RootId()
 	st = st.Copy()
 	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))

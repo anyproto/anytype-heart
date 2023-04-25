@@ -826,6 +826,13 @@ func (s *State) SetDetailAndBundledRelation(key bundle.RelationKey, value *types
 
 func (s *State) SetLocalDetail(key string, value *types.Value) {
 	if s.localDetails == nil && s.parent != nil {
+		d := s.parent.Details()
+		if d.GetFields() != nil {
+			// optimisation so we don't need to copy the struct if nothing has changed
+			if prev, exists := d.Fields[key]; exists && prev.Equal(value) {
+				return
+			}
+		}
 		s.localDetails = pbtypes.CopyStruct(s.parent.LocalDetails())
 	}
 	if s.localDetails == nil || s.localDetails.Fields == nil {
@@ -861,7 +868,14 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	}
 
 	if s.details == nil && s.parent != nil {
-		s.details = pbtypes.CopyStruct(s.parent.Details())
+		d := s.parent.Details()
+		if d.GetFields() != nil {
+			// optimisation so we don't need to copy the struct if nothing has changed
+			if prev, exists := d.Fields[key]; exists && prev.Equal(value) {
+				return
+			}
+		}
+		s.details = pbtypes.CopyStruct(d)
 	}
 	if s.details == nil || s.details.Fields == nil {
 		s.details = &types.Struct{Fields: map[string]*types.Value{}}
@@ -910,16 +924,18 @@ func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
-	if s.IsTheHeaderChange() {
-		return
+	id := s.RootId()
+	if id != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
-
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(s.Snippet()))
 
+	snippet := s.Snippet()
+	if snippet != "" || s.LocalDetails() != nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
+	}
 }
 
 func ListSmartblockTypes(objectId string) ([]int, error) {
@@ -946,9 +962,6 @@ func ListSmartblockTypes(objectId string) ([]int, error) {
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
-	if s.IsTheHeaderChange() {
-		return
-	}
 	for key, v := range localDetails.GetFields() {
 		if v == nil {
 			continue
@@ -1387,7 +1400,11 @@ func (s *State) ParentState() *State {
 // IsTheHeaderChange return true if the state is the initial header change
 // header change is the empty change without any blocks or details except protocol data
 func (s *State) IsTheHeaderChange() bool {
-	return s.changeId == s.rootId || s.changeId == "" && s.parent == nil
+	b := s.changeId == s.rootId || s.changeId == "" && s.parent == nil
+	if b {
+		return true
+	}
+	return false
 }
 
 func (s *State) RemoveDetail(keys ...string) (ok bool) {

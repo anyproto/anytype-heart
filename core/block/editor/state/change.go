@@ -77,7 +77,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		rootId:          rootId,
 		blocks:          blocks,
 		details:         detailsToSave,
-		extraRelations:  snapshot.Data.ExtraRelations,
 		relationLinks:   snapshot.Data.RelationLinks,
 		objectTypes:     snapshot.Data.ObjectTypes,
 		fileKeys:        fileKeys,

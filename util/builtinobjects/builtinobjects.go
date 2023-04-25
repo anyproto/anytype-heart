@@ -306,13 +306,13 @@ func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 	if isArchived {
 		return fmt.Errorf("object has isarchived == true")
 	}
-	st := state.NewDocFromSnapshot("", snapshot).(*state.State)
-	oldId := st.RootId()
+	oldId := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
 	newId, exists := b.idsMap[oldId]
 	if !exists {
-		return fmt.Errorf("new id not found for '%s'", st.RootId())
+		return fmt.Errorf("new id not found for '%s'", oldId)
 	}
 
+	st := state.NewDocFromSnapshot(oldId, snapshot).(*state.State)
 	st.SetRootId(newId)
 	a := st.Get(newId)
 	m := a.Model()
