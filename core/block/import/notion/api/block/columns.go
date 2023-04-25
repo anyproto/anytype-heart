@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/samber/lo"
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
@@ -99,20 +100,13 @@ func (c *ColumnListBlock) getChildBlocksForColumn(resp *MapResponse) []string {
 			childBlocks = append(childBlocks, b.ChildrenIds...)
 		}
 	}
-	notChildBlocks := make([]string, 0)
+	rootChild := make([]string, 0)
 	for _, b := range resp.Blocks {
-		var found bool
-		for _, blockID := range childBlocks {
-			if b.Id == blockID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			notChildBlocks = append(notChildBlocks, b.Id)
+		if !lo.Contains(childBlocks, b.Id) {
+			rootChild = append(rootChild, b.Id)
 		}
 	}
-	return notChildBlocks
+	return rootChild
 }
 
 func (c *ColumnListBlock) addRowBlock(resultResponse *MapResponse, rowBlock simple.Block) {
