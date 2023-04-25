@@ -2,22 +2,34 @@ package csv
 
 import (
 	"encoding/csv"
-	"os"
-	"path/filepath"
-
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	te "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"io"
 )
 
 const (
 	Name               = "Csv"
 	rootCollectionName = "CSV Import"
 )
+
+type Result struct {
+	objectIDs []string
+	snapshots []*converter.Snapshot
+	relations map[string][]*converter.Relation
+}
+
+func (r *Result) Merge(r2 *Result) {
+	r.objectIDs = append(r.objectIDs, r2.objectIDs...)
+	r.snapshots = append(r.snapshots, r2.snapshots...)
+	r.relations = mergeRelationsMaps(r.relations, r2.relations)
+}
 
 var log = logging.Logger("csv-import")
 
@@ -47,69 +59,103 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
-
-	allObjectsIDs, allSnapshots, allRelations, cErr := c.CreateObjectsFromCSVFiles(req, progress, params)
-
+	cErr := converter.NewError()
+	result, cancelError := c.CreateObjectsFromCSVFiles(req, progress, params, cErr)
+	if !cancelError.IsEmpty() {
+		return nil, cancelError
+	}
+	if !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		return nil, cErr
+	}
 	rootCollection := converter.NewRootCollection(c.collectionService)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjectsIDs)
+	rootCol, err := rootCollection.AddObjects(rootCollectionName, result.objectIDs)
 	if err != nil {
 		cErr.Add(rootCollectionName, err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, cErr
 		}
 	}
-
 	if rootCol != nil {
-		allSnapshots = append(allSnapshots, rootCol)
+		result.snapshots = append(result.snapshots, rootCol)
 	}
-	progress.SetTotal(int64(len(allObjectsIDs)))
-
+	progress.SetTotal(int64(len(result.objectIDs)))
 	if cErr.IsEmpty() {
 		return &converter.Response{
-			Snapshots: allSnapshots,
-			Relations: allRelations,
+			Snapshots: result.snapshots,
+			Relations: result.relations,
 		}, nil
 	}
 
 	return &converter.Response{
-		Snapshots: allSnapshots,
-		Relations: allRelations,
+		Snapshots: result.snapshots,
+		Relations: result.relations,
 	}, cErr
 }
 
-func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest, progress process.Progress, params *pb.RpcObjectImportRequestCsvParams) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
+func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+	params *pb.RpcObjectImportRequestCsvParams,
+	cErr converter.ConvertError) (*Result, converter.ConvertError) {
 	csvMode := params.GetMode()
 	str := c.chooseStrategy(csvMode)
-	allSnapshots := make([]*converter.Snapshot, 0)
-	allRelations := make(map[string][]*converter.Relation, 0)
-	allObjectsIDs := make([]string, 0)
-	cErr := converter.NewError()
+	result := &Result{}
 	for _, p := range params.GetPath() {
 		if err := progress.TryStep(1); err != nil {
 			cancelError := converter.NewFromError(p, err)
-			return nil, nil, nil, cancelError
+			return nil, cancelError
 		}
-		if filepath.Ext(p) != ".csv" {
-			continue
+		pathResult := c.handlePath(req, p, cErr, str)
+		if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, nil
 		}
-		csvTable, err := readCsvFile(p, params.GetDelimiter())
-		if err != nil {
-			cErr.Add(p, err)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, nil, nil, cErr
-			}
-			continue
-		}
+		result.Merge(pathResult)
+	}
+	return result, nil
+}
 
+func (c *CSV) handlePath(req *pb.RpcObjectImportRequest, p string, cErr converter.ConvertError, str Strategy) *Result {
+	params := req.GetCsvParams()
+	s := source.GetSource(p)
+	if s == nil {
+		cErr.Add(p, fmt.Errorf("failed to identify source: %s", p))
+		return nil
+	}
+	readers, err := s.GetFileReaders(p)
+	if err != nil {
+		cErr.Add(p, fmt.Errorf("failed to get readers: %s", err.Error()))
+		if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil
+		}
+	}
+	csvTables, err := readCsvFile(params.GetDelimiter(), readers)
+	if err != nil {
+		cErr.Add(p, err)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil
+		}
+	}
+
+	return c.handleCSVTables(req.Mode, csvTables, params, str, p, cErr)
+}
+
+func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
+	csvTables [][][]string,
+	params *pb.RpcObjectImportRequestCsvParams,
+	str Strategy,
+	p string,
+	cErr converter.ConvertError) *Result {
+	allSnapshots := make([]*converter.Snapshot, 0)
+	allRelations := make(map[string][]*converter.Relation, 0)
+	allObjectsIDs := make([]string, 0)
+	for _, csvTable := range csvTables {
 		if c.needToTranspose(params) && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-
 		objectsIDs, snapshots, relations, err := str.CreateObjects(p, csvTable)
 		if err != nil {
 			cErr.Add(p, err)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, nil, nil, cErr
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil
 			}
 			continue
 		}
@@ -117,7 +163,11 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest, progress
 		allSnapshots = append(allSnapshots, snapshots...)
 		allRelations = mergeRelationsMaps(allRelations, relations)
 	}
-	return allObjectsIDs, allSnapshots, allRelations, cErr
+	return &Result{
+		objectIDs: allObjectsIDs,
+		snapshots: allSnapshots,
+		relations: allRelations,
+	}
 }
 
 func (c *CSV) needToTranspose(params *pb.RpcObjectImportRequestCsvParams) bool {
@@ -147,21 +197,20 @@ func transpose(csvTable [][]string) [][]string {
 	return result
 }
 
-func readCsvFile(filePath string, delimiter string) ([][]string, error) {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	csvReader := csv.NewReader(f)
-	if len(delimiter) != 0 {
-		characters := []rune(delimiter)
-		csvReader.Comma = characters[0]
-	}
-	records, err := csvReader.ReadAll()
-	if err != nil {
-		return nil, err
+func readCsvFile(delimiter string, readers map[string]io.ReadCloser) ([][][]string, error) {
+	var records [][][]string
+	for _, rc := range readers {
+		csvReader := csv.NewReader(rc)
+		if len(delimiter) != 0 {
+			characters := []rune(delimiter)
+			csvReader.Comma = characters[0]
+		}
+		record, err := csvReader.ReadAll()
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+		rc.Close()
 	}
 
 	return records, nil

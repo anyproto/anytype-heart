@@ -1,10 +1,10 @@
 package txt
 
 import (
-	"os"
-	"path/filepath"
-
+	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/source"
 	"github.com/google/uuid"
+	"io"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -47,51 +47,14 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if len(path) == 0 {
 		return nil, nil
 	}
-	progress.SetTotal(int64(numberOfStages * len(path)))
 	progress.SetProgressMessage("Start creating snapshots from files")
-	snapshots := make([]*converter.Snapshot, 0)
 	cErr := converter.NewError()
-	targetObjects := make([]string, 0, len(path))
-	for _, p := range path {
-		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(p, err)
-			return nil, cancelError
-		}
-		if filepath.Ext(p) != ".txt" {
-			continue
-		}
-		source, err := os.ReadFile(p)
-		if err != nil {
-			cErr.Add(p, err)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, cErr
-			}
-			continue
-		}
-
-		blocks, _, err := anymark.MarkdownToBlocks(source, "", []string{})
-		if err != nil {
-			cErr.Add(p, err)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, cErr
-			}
-			continue
-		}
-
-		sn := &model.SmartBlockSnapshotBase{
-			Blocks:      blocks,
-			Details:     converter.GetDetails(p),
-			ObjectTypes: []string{bundle.TypeKeyPage.URL()},
-		}
-
-		snapshot := &converter.Snapshot{
-			Id:       uuid.New().String(),
-			FileName: p,
-			Snapshot: &pb.ChangeSnapshot{Data: sn},
-			SbType:   smartblock.SmartBlockTypePage,
-		}
-		snapshots = append(snapshots, snapshot)
-		targetObjects = append(targetObjects, snapshot.Id)
+	snapshots, targetObjects, cancelError := t.getSnapshotsForImport(req, progress, path, cErr)
+	if !cancelError.IsEmpty() {
+		return nil, cancelError
+	}
+	if !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		return nil, cErr
 	}
 
 	rootCollection := converter.NewRootCollection(t.service)
@@ -102,11 +65,11 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 			return nil, cErr
 		}
 	}
-
 	if rootCol != nil {
 		snapshots = append(snapshots, rootCol)
 	}
 
+	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if cErr.IsEmpty() {
 		return &converter.Response{Snapshots: snapshots}, nil
 	}
@@ -114,4 +77,87 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	return &converter.Response{
 		Snapshots: snapshots,
 	}, cErr
+}
+
+func (t *TXT) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+	path []string,
+	cErr converter.ConvertError) ([]*converter.Snapshot, []string, converter.ConvertError) {
+	snapshots := make([]*converter.Snapshot, 0)
+	targetObjects := make([]string, 0)
+	for _, p := range path {
+		if err := progress.TryStep(1); err != nil {
+			cancelError := converter.NewFromError(p, err)
+			return nil, nil, cancelError
+		}
+		sn, to, err := t.handleImportPath(p, req.GetMode())
+		if err != nil {
+			cErr.Add(p, err)
+			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, nil, nil
+			}
+			continue
+		}
+		snapshots = append(snapshots, sn...)
+		targetObjects = append(targetObjects, to...)
+	}
+	return snapshots, targetObjects, nil
+}
+
+func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
+	s := source.GetSource(p)
+	if s == nil {
+		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
+	}
+
+	readers, err := s.GetFileReaders(p)
+	if err != nil {
+		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, nil, err
+		}
+	}
+	snapshots := make([]*converter.Snapshot, 0, len(readers))
+	targetObjects := make([]string, 0, len(readers))
+	for _, rc := range readers {
+		blocks, err := t.getBlocksForFile(rc)
+		if err != nil {
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, nil, err
+			}
+			continue
+		}
+		sn, id := t.getSnapshot(blocks, p)
+		snapshots = append(snapshots, sn)
+		targetObjects = append(targetObjects, id)
+	}
+	return snapshots, targetObjects, nil
+}
+
+func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
+	sn := &model.SmartBlockSnapshotBase{
+		Blocks:      blocks,
+		Details:     converter.GetDetails(p),
+		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
+	}
+
+	snapshot := &converter.Snapshot{
+		Id:       uuid.New().String(),
+		FileName: p,
+		Snapshot: &pb.ChangeSnapshot{Data: sn},
+		SbType:   smartblock.SmartBlockTypePage,
+	}
+	return snapshot, snapshot.Id
+}
+
+func (t *TXT) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
+	defer rc.Close()
+	b, err := io.ReadAll(rc)
+	if err != nil {
+		return nil, err
+	}
+	blocks, _, err := anymark.MarkdownToBlocks(b, "", []string{})
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
 }
