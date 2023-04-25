@@ -209,6 +209,7 @@ func (rc *RelationService) create(ctx *session.Context,
 			}
 		}
 		rc.updateDetails(snapshot, r.Name, relationID)
+		rc.addRelationLink(snapshot, relationID, r)
 	}
 
 	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {
@@ -218,6 +219,13 @@ func (rc *RelationService) create(ctx *session.Context,
 	}
 
 	return filesToDelete, oldRelationBlockToNew, nil
+}
+
+func (rc *RelationService) addRelationLink(snapshot *model.SmartBlockSnapshotBase, relationID string, r *converter.Relation) {
+	snapshot.RelationLinks = append(snapshot.RelationLinks, &model.RelationLink{
+		Key:    relationID,
+		Format: r.Format,
+	})
 }
 
 func (rc *RelationService) update(ctx *session.Context,
@@ -253,6 +261,7 @@ func (rc *RelationService) update(ctx *session.Context,
 			}
 		}
 		rc.updateDetails(snapshot, r.Name, key)
+		rc.addRelationLink(snapshot, key, r)
 	}
 
 	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {

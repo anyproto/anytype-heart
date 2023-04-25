@@ -115,16 +115,10 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateRelationsIDs(sn *Snapshot, pageID string, oldIDtoNew map[string]string) {
-	rels := sn.Snapshot.Data.RelationLinks
-	for k, v := range sn.Snapshot.Data.Details.GetFields() {
-		var relLink *model.RelationLink
-		for _, rel := range rels {
-			if rel.Key == k {
-				relLink = rel
-				break
-			}
-		}
+func UpdateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]string) {
+	rels := st.GetRelationLinks()
+	for k, v := range st.Details().GetFields() {
+		relLink := rels.Get(k)
 		if relLink == nil {
 			continue
 		}
@@ -136,7 +130,7 @@ func UpdateRelationsIDs(sn *Snapshot, pageID string, oldIDtoNew map[string]strin
 
 		objectsIDs := pbtypes.GetStringListValue(v)
 		objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID, k)
-		sn.Snapshot.Data.Details.Fields[k] = pbtypes.StringList(objectsIDs)
+		st.SetDetail(k, pbtypes.StringList(objectsIDs))
 	}
 }
 

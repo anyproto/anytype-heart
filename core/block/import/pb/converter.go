@@ -243,8 +243,10 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors con
 			}
 			continue
 		}
-		converter.UpdateRelationsIDs(snapshot, snapshot.Id, newIDToOld)
+		converter.UpdateRelationsIDs(st.(*state.State), snapshot.Id, newIDToOld)
 		snapshot.Snapshot.Data.Blocks = st.Blocks()
+		details := pbtypes.StructCutKeys(st.CombinedDetails(), append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+		snapshot.Snapshot.Data.Details = details
 	}
 }
 func (p *Pb) GetSnapshot(rd io.ReadCloser, name string) (*pb.SnapshotWithType, error) {
