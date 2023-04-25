@@ -10,27 +10,28 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-const Name = "PB"
+const (
+	Name               = "PB"
+	rootCollectionName = "Protobuf Import"
+)
 
-type Pb struct{}
-
-func init() {
-	converter.RegisterFunc(New)
+type Pb struct {
+	service *collection.Service
 }
 
-func New(core.Service, *collection.Service) converter.Converter {
-	return new(Pb)
+func New(service *collection.Service) converter.Converter {
+	return &Pb{service: service}
 }
 
 func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
@@ -51,6 +52,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetProgressMessage("Start creating snapshots from files")
 	progress.SetTotal(int64(len(pbFiles) * 2))
 
+	var targetObject []string
 	for name, file := range pbFiles {
 		if err := progress.TryStep(1); err != nil {
 			ce := converter.NewFromError(name, err)
@@ -91,8 +93,21 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 			Id:       id,
 			SbType:   sbt,
 			FileName: name,
-			Snapshot: snapshot,
+			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		})
+		targetObject = append(targetObject, id)
+	}
+
+	rootCol, colErr := converter.AddObjectsToRootCollection(p.service, rootCollectionName, targetObject)
+	if err != nil {
+		allErrors.Add(path, colErr)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, allErrors
+		}
+	}
+
+	if rootCol != nil {
+		allSnapshots = append(allSnapshots, rootCol)
 	}
 
 	if allErrors.IsEmpty() {

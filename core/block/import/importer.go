@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/html"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
@@ -51,15 +52,16 @@ func New(tempDirProvider core.TempDirProvider) Importer {
 func (i *Import) Init(a *app.App) (err error) {
 	i.s = a.MustComponent(block.CName).(*block.Service)
 	coreService := a.MustComponent(core.CName).(core.Service)
+	col := app.MustComponent[*collection.Service](a)
 
 	converters := []converter.Converter{
-		markdown.New(i.tempDirProvider),
-		notion.New(),
-		pbc.New(),
+		markdown.New(i.tempDirProvider, col),
+		notion.New(col),
+		pbc.New(col),
 		web.NewConverter(),
 		newinfra.New(),
-		html.New(),
-		txt.New(),
+		html.New(col),
+		txt.New(col),
 	}
 	for _, c := range converters {
 		i.converters[c.Name()] = c
@@ -70,9 +72,10 @@ func (i *Import) Init(a *app.App) (err error) {
 	objCreator := a.MustComponent(object.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
+	ou := NewObjectUpdater(i.s, store, factory, relationCreator)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore)
+	i.oc = NewCreator(i.s, objCreator, ou, coreService, factory, relationCreator, store, fileStore)
 	return nil
 }
 

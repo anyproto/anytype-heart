@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -32,18 +33,18 @@ var (
 
 const numberOfStages = 9 // 8 cycles to get snaphots and 1 cycle to create objects
 
-func init() {
-	converter.RegisterFunc(New)
-}
-
 type Markdown struct {
 	blockConverter *mdConverter
+	service        *collection.Service
 }
 
-const Name = "Markdown"
+const (
+	Name               = "Markdown"
+	rootCollectionName = "Markdown Import"
+)
 
-func New(s core.Service, _ *collection.Service) converter.Converter {
-	return &Markdown{blockConverter: newMDConverter(s)}
+func New(tempDirProvider core.TempDirProvider, service *collection.Service) converter.Converter {
+	return &Markdown{blockConverter: newMDConverter(tempDirProvider), service: service}
 }
 
 func (m *Markdown) Name() string {
@@ -141,6 +142,20 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	if len(snapshots) == 0 {
 		allErrors.Add(path, fmt.Errorf("failed to get snaphots from path, no md files"))
+	}
+
+	targetObjects := m.getObjectIDs(snapshots)
+
+	rootCol, err := converter.AddObjectsToRootCollection(m.service, rootCollectionName, targetObjects)
+	if err != nil {
+		allErrors.Add(path, err)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, allErrors
+		}
+	}
+
+	if rootCol != nil {
+		snapshots = append(snapshots, rootCol)
 	}
 
 	if allErrors.IsEmpty() {
@@ -244,9 +259,9 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 
 			if file == nil || len(file.PageID) == 0 {
 				text += potentialFileName
-				log.Errorf("target file not found")
+				log.Errorf("target file not found:", shortPath, potentialFileName)
 			} else {
-				log.Debug("target file found:", file.PageID)
+				log.Debug("target file found:", file.PageID, shortPath)
 				file.HasInboundLinks = true
 				if file.Title == "" {
 					// shouldn't be a case
@@ -316,7 +331,6 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
 		}
 
 		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
-			details[name].Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 			file.ParsedBlocks = m.convertCsvToLinks(name, files)
 		}
 
@@ -586,4 +600,12 @@ func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string
 	}
 
 	return title, emoji
+}
+
+func (m *Markdown) getObjectIDs(snapshots []*converter.Snapshot) []string {
+	var targetObject []string
+	for _, snapshot := range snapshots {
+		targetObject = append(targetObject, snapshot.Id)
+	}
+	return targetObject
 }

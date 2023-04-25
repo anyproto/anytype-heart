@@ -2,9 +2,6 @@ package database
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -203,70 +200,30 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots *converter.Response,
 		}
 	}
 	for db, objects := range databaseToObjects {
-		ds.addObjectToCollection(snapshots[db], objects)
+		converter.AddObjectToSnapshot(snapshots[db], objects)
 	}
 }
 
-func (ds *Service) AddPagesToRootCollections(databaseSnapshots *converter.Response, pagesSnapshots *converter.Response) error {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySource.String()] = pbtypes.String(rootCollection)
-	details[bundle.RelationKeyName.String()] = pbtypes.String(rootCollection)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
-	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots *converter.Response, pagesSnapshots *converter.Response) error {
 
-	detailsStruct := &types.Struct{Fields: details}
-	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
-	if err != nil {
-		return err
-	}
-
-	for _, relation := range []*model.Relation{
-		{
-			Key:    bundle.RelationKeyTag.String(),
-			Format: model.RelationFormat_tag,
-		},
-		{
-			Key:    bundle.RelationKeyCreatedDate.String(),
-			Format: model.RelationFormat_date,
-		},
-	} {
-		err = ds.addRelationsToCollectionDataView(st, relation)
-		if err != nil {
-			return err
-		}
-	}
-
-	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
-	rootCol := &converter.Snapshot{
-		Id:       uuid.New().String(),
-		FileName: rootCollection,
-		SbType:   sb.SmartBlockTypeCollection,
-		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-			Blocks:        st.Blocks(),
-			Details:       detailsStruct,
-			ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
-			RelationLinks: st.GetRelationLinks(),
-			Collections:   st.GetCollection(smartblock.CollectionStoreKey),
-		},
-		},
-	}
 	allObjects := make([]string, 0, len(databaseSnapshots.Snapshots)+len(pagesSnapshots.Snapshots))
 
 	for _, snapshot := range databaseSnapshots.Snapshots {
 		allObjects = append(allObjects, snapshot.Id)
 	}
 
-	ds.addObjectToCollection(rootCol, allObjects)
+	for _, snapshot := range pagesSnapshots.Snapshots {
+		allObjects = append(allObjects, snapshot.Id)
+	}
+
+	rootCol, err := converter.AddObjectsToRootCollection(ds.collectionService, rootCollection, allObjects)
+	if err != nil {
+		return err
+	}
 
 	databaseSnapshots.Snapshots = append(databaseSnapshots.Snapshots, rootCol)
 
 	return nil
-}
-
-func (ds *Service) addObjectToCollection(snapshots *converter.Snapshot, targetID []string) {
-	snapshots.Snapshot.Data.Collections = &types.Struct{
-		Fields: map[string]*types.Value{smartblock.CollectionStoreKey: pbtypes.StringList(targetID)},
-	}
 }
 
 // MapProperties add properties from pages to related database, because if notion pages have the same properties
@@ -299,30 +256,4 @@ func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*conve
 		snapshotsMap[s.Id] = s
 	}
 	return snapshotsMap
-}
-
-func (ds *Service) addRelationsToCollectionDataView(st *state.State, rel *model.Relation) error {
-	return st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if dv, ok := bl.(simpleDataview.Block); ok {
-			if len(bl.Model().GetDataview().GetViews()) == 0 {
-				return false
-			}
-			err := dv.AddViewRelation(bl.Model().GetDataview().GetViews()[0].GetId(), &model.BlockContentDataviewRelation{
-				Key:       rel.Key,
-				IsVisible: true,
-				Width:     192,
-			})
-			if err != nil {
-				return false
-			}
-			err = dv.AddRelation(&model.RelationLink{
-				Key:    rel.Key,
-				Format: rel.Format,
-			})
-			if err != nil {
-				return false
-			}
-		}
-		return true
-	})
 }

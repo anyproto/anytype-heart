@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"os"
 	"path/filepath"
 
@@ -16,13 +17,17 @@ import (
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
-const Name = "Txt"
+const (
+	Name               = "Txt"
+	rootCollectionName = "Txt Import"
+)
 
 type TXT struct {
+	service *collection.Service
 }
 
-func New() converter.Converter {
-	return &TXT{}
+func New(service *collection.Service) converter.Converter {
+	return &TXT{service: service}
 }
 
 func (t *TXT) Name() string {
@@ -46,6 +51,8 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetTotal(int64(numberOfStages * len(path)))
 	progress.SetProgressMessage("Start creating snapshots from files")
 	snapshots := make([]*converter.Snapshot, 0)
+	cErr := converter.NewError()
+	var targetObject []string
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
 			cancelError := converter.NewFromError(p, err)
@@ -54,7 +61,6 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
 		if filepath.Ext(p) != ".txt" {
 			continue
 		}
-		cErr := converter.NewError()
 		source, err := os.ReadFile(p)
 		if err != nil {
 			cErr.Add(p, err)
@@ -86,7 +92,25 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
 			SbType:   smartblock.SmartBlockTypePage,
 		}
 		snapshots = append(snapshots, snapshot)
+		targetObject = append(targetObject, snapshot.Id)
 	}
+
+	rootCol, err := converter.AddObjectsToRootCollection(t.service, rootCollectionName, targetObject)
+	if err != nil {
+		cErr.Add(rootCollectionName, err)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, cErr
+		}
+	}
+
+	if rootCol != nil {
+		snapshots = append(snapshots, rootCol)
+	}
+
+	if cErr.IsEmpty() {
+		return &converter.Response{Snapshots: snapshots}, nil
+	}
+
 	return &converter.Response{
 		Snapshots: snapshots,
 	}, nil

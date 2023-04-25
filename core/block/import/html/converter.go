@@ -1,6 +1,7 @@
 package html
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"os"
 	"path/filepath"
 
@@ -16,13 +17,19 @@ import (
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
-const Name = "Html"
+const (
+	Name               = "Html"
+	rootCollectionName = "HTML Import"
+)
 
 type HTML struct {
+	collectionService *collection.Service
 }
 
-func New() converter.Converter {
-	return &HTML{}
+func New(c *collection.Service) converter.Converter {
+	return &HTML{
+		collectionService: c,
+	}
 }
 
 func (h *HTML) Name() string {
@@ -46,6 +53,8 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetTotal(int64(numberOfStages * len(path)))
 	progress.SetProgressMessage("Start creating snapshots from files")
 	snapshots := make([]*converter.Snapshot, 0)
+	var targetObject []string
+	cErr := converter.NewError()
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
 			cancellError := converter.NewFromError(p, err)
@@ -54,7 +63,6 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 		if filepath.Ext(p) != ".html" {
 			continue
 		}
-		cErr := converter.NewError()
 		source, err := os.ReadFile(p)
 		if err != nil {
 			cErr.Add(p, err)
@@ -86,7 +94,25 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 			SbType:   smartblock.SmartBlockTypePage,
 		}
 		snapshots = append(snapshots, snapshot)
+		targetObject = append(targetObject, snapshot.Id)
 	}
+
+	rootCol, err := converter.AddObjectsToRootCollection(h.collectionService, rootCollectionName, targetObject)
+	if err != nil {
+		cErr.Add(rootCollectionName, err)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, cErr
+		}
+	}
+
+	if rootCol != nil {
+		snapshots = append(snapshots, rootCol)
+	}
+
+	if cErr.IsEmpty() {
+		return &converter.Response{Snapshots: snapshots}, nil
+	}
+
 	return &converter.Response{
 		Snapshots: snapshots,
 	}, nil
