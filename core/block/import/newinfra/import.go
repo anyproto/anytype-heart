@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"errors"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -78,6 +79,10 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcObjectImportRequest, progress *proces
 		}
 		// skip files from account directory
 		if strings.Contains(f.FileHeader.Name, address) {
+			continue
+		}
+		// object files have no extension
+		if filepath.Ext(f.FileHeader.Name) != "" {
 			continue
 		}
 		reader, err := f.Open()

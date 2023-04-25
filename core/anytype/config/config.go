@@ -15,7 +15,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
@@ -68,9 +67,13 @@ type Config struct {
 
 	Threads              threads.Config
 	DS                   clientds.Config
-	FS                   filestorage.FSConfig
+	FS                   FSConfig
 	DisableFileConfig    bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 	CreateBuiltinObjects bool
+}
+
+type FSConfig struct {
+	IPFSStorageAddr string
 }
 
 type DebugAPIConfig struct {
@@ -260,14 +263,14 @@ func (c *Config) DSConfig() clientds.Config {
 	return c.DS
 }
 
-func (c *Config) FSConfig() (filestorage.FSConfig, error) {
+func (c *Config) FSConfig() (FSConfig, error) {
 	res := ConfigRequired{}
 	err := files.GetFileConfig(c.GetConfigPath(), &res)
 	if err != nil {
-		return filestorage.FSConfig{}, err
+		return FSConfig{}, err
 	}
 
-	return filestorage.FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
+	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
 }
 
 func (c *Config) ThreadsConfig() threads.Config {
