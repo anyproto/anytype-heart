@@ -32,7 +32,7 @@ func TestService_Add(t *testing.T) {
 			t.Error("timeout")
 		}
 	}
-	assert.NoError(t, s.Close())
+	assert.NoError(t, s.Close(context.Background()))
 }
 
 func TestService_Cancel(t *testing.T) {
@@ -47,7 +47,7 @@ func TestService_Cancel(t *testing.T) {
 	assert.Error(t, s.Cancel("2"))
 	assert.NoError(t, s.Cancel("1"))
 
-	assert.NoError(t, s.Close())
+	assert.NoError(t, s.Close(context.Background()))
 	for i := 0; i < 2; i++ {
 		select {
 		case <-events:

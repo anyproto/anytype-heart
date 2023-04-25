@@ -5,20 +5,19 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/accountservice"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"net/url"
+	"github.com/hashicorp/go-multierror"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/app/ocache"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -49,7 +48,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -446,14 +444,15 @@ func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 }
 
 func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
-	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
-	})
+	panic("is not implemented")
+	//workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	//return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+	//	workspace, ok := b.(*editor.Workspaces)
+	//	if !ok {
+	//		return fmt.Errorf("incorrect object with workspace id")
+	//	}
+	//	return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
+	//})
 }
 
 func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
@@ -470,50 +469,53 @@ func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest)
 	if err != nil {
 		return fmt.Errorf("failed unmarshalling the payload: %w", err)
 	}
-	return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-
-		return workspace.AddObject(req.ObjectId, protoPayload.Key, protoPayload.Addrs)
-	})
+	// TODO: [MR] check the meaning of method and what should be the result
+	return fmt.Errorf("not implemented")
+	//return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+	//	workspace, ok := b.(*editor.Workspaces)
+	//	if !ok {
+	//		return fmt.Errorf("incorrect object with workspace id")
+	//	}
+	//
+	//	return workspace.AddObject(req.ObjectId, protoPayload.Key, protoPayload.Addrs)
+	//})
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
-	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	if err == core.ErrObjectDoesNotBelongToWorkspace {
-		workspaceId = s.Anytype().PredefinedBlocks().Account
-	}
-	var key string
-	var addrs []string
-	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
-		return err
-	})
-	if err != nil {
-		return "", err
-	}
-	payload := &model.ThreadDeeplinkPayload{
-		Key:   key,
-		Addrs: addrs,
-	}
-	marshalledPayload, err := proto.Marshal(payload)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
-	}
-	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
-
-	params := url.Values{}
-	params.Add("id", req.ObjectId)
-	params.Add("payload", encodedPayload)
-	encoded := params.Encode()
-
-	return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
+	return "", fmt.Errorf("not implemented")
+	//workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	//if err == core.ErrObjectDoesNotBelongToWorkspace {
+	//	workspaceId = s.Anytype().PredefinedBlocks().Account
+	//}
+	//var key string
+	//var addrs []string
+	//err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+	//	workspace, ok := b.(*editor.Workspaces)
+	//	if !ok {
+	//		return fmt.Errorf("incorrect object with workspace id")
+	//	}
+	//	key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
+	//	return err
+	//})
+	//if err != nil {
+	//	return "", err
+	//}
+	//payload := &model.ThreadDeeplinkPayload{
+	//	Key:   key,
+	//	Addrs: addrs,
+	//}
+	//marshalledPayload, err := proto.Marshal(payload)
+	//if err != nil {
+	//	return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
+	//}
+	//encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
+	//
+	//params := url.Values{}
+	//params.Add("id", req.ObjectId)
+	//params.Add("payload", encodedPayload)
+	//encoded := params.Encode()
+	//
+	//return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 // SetPagesIsArchived is deprecated
@@ -703,16 +705,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 }
 
 func (s *Service) AddCreatorInfoIfNeeded(workspaceId string) error {
-	if s.Anytype().PredefinedBlocks().IsAccount(workspaceId) {
-		return nil
-	}
-	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		return workspace.AddCreatorInfoIfNeeded()
-	})
+	return fmt.Errorf("not implemented")
 }
 
 func (s *Service) OnDelete(b smartblock.SmartBlock) (err error) {
@@ -860,22 +853,6 @@ func (s *Service) StateFromTemplate(templateID string, name string) (st *state.S
 	}); err != nil {
 		return nil, fmt.Errorf("can't apply template: %v", err)
 	}
-	return
-}
-
-func (s *Service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err error) {
-	err = s.DoWithContext(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "migrate_many"), s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-
-		migrated, err = workspace.MigrateMany(objects)
-		if err != nil {
-			return err
-		}
-		return err
-	})
 	return
 }
 

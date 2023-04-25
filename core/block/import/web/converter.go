@@ -3,14 +3,9 @@ package web
 import (
 	"fmt"
 
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 )
 
 const name = "web"
@@ -31,48 +26,40 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest,
-	progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
-
-	progress.SetTotal(1)
-
 	if err != nil {
 		we.Add(url, err)
-		return nil, we
+		return &converter.Response{Error: we}
 	}
 	p := c.GetParser(url)
 	if p == nil {
 		we.Add(url, fmt.Errorf("unknown url format"))
-		return nil, we
+		return &converter.Response{Error: we}
 	}
-
-	progress.SetProgressMessage("Start parsing url to snapshot")
 	snapshots, err := p.ParseUrl(url)
-
-	progress.AddDone(1)
-
 	if err != nil {
 		we.Add(url, err)
-		return nil, we
+		return &converter.Response{Error: we}
 	}
-
-	tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+	// TODO: [MR] fix imports
+	panic("can't convert")
+	//tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	if err != nil {
 		we.Add(url, err)
-		return nil, we
+		return &converter.Response{Error: we}
 	}
 	s := &converter.Snapshot{
-		Id:       tid.String(),
+		//Id:       tid.String(),
 		FileName: url,
 		Snapshot: snapshots,
 	}
 	res := &converter.Response{
 		Snapshots: []*converter.Snapshot{s},
+		Error:     nil,
 	}
-
-	return res, nil
+	return res
 }
 
 func (p *Converter) Name() string {

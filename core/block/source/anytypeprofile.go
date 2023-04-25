@@ -93,3 +93,7 @@ func (v *anytypeProfile) LogHeads() map[string]string {
 func (s *anytypeProfile) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
+
+func (s *anytypeProfile) PushChange(params PushChangeParams) (id string, err error) {
+	return
+}

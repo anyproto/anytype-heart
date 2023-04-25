@@ -6,9 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space/clientcache"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
@@ -26,10 +23,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
+	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("object-service")
@@ -174,30 +171,6 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	return id, sb.CombinedDetails(), nil
 }
 
-// todo: rewrite with options
-// withId may me empty
-func (c *Creator) CreateObjectInWorkspace(ctx context.Context, workspaceID string, withID thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
-	startTime := time.Now()
-	ev, exists := ctx.Value(eventCreate).(*metrics.CreateObjectEvent)
-	err = block.DoWithContext(ctx, c.blockPicker, workspaceID, func(workspace *editor.Workspaces) error {
-		if exists {
-			ev.GetWorkspaceBlockWaitMs = time.Since(startTime).Milliseconds()
-		}
-		csm, err = workspace.CreateObject(withID, sbType)
-		if exists {
-			ev.WorkspaceCreateMs = time.Since(startTime).Milliseconds() - ev.GetWorkspaceBlockWaitMs
-		}
-		if err != nil {
-			return fmt.Errorf("anytype.CreateBlock error: %v", err)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return csm, nil
-}
-
 func (c *Creator) InjectWorkspaceID(details *types.Struct, objectID string) {
 	workspaceID, err := c.anytype.GetWorkspaceIdForObject(objectID)
 	if err != nil {
@@ -206,9 +179,6 @@ func (c *Creator) InjectWorkspaceID(details *types.Struct, objectID string) {
 	if workspaceID == "" || details == nil {
 		return
 	}
-	threads.WorkspaceLogger.
-		With("workspace id", workspaceID).
-		Debug("adding workspace id to new object")
 	if details.Fields == nil {
 		details.Fields = make(map[string]*types.Value)
 	}

@@ -27,7 +27,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -643,7 +642,7 @@ func (s *Service) ModifyLocalDetails(
 	// we set pending details if object is not in cache
 	// we do this under lock to prevent races if the object is created in parallel
 	// because in that case we can lose changes
-	err = s.cache.ObjectCache().DoLockedIfNotExists(objectId, func() error {
+	err = s.cache.DoLockedIfNotExists(objectId, func() error {
 		objectDetails, err := s.objectStore.GetPendingLocalDetails(objectId)
 		if err != nil && err != ds.ErrNotFound {
 			return err
@@ -695,22 +694,7 @@ func (s *Service) SetObjectTypes(ctx *session.Context, objectId string, objectTy
 }
 
 func (s *Service) DeleteObjectFromWorkspace(workspaceId string, objectId string) error {
-	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-
-		st, err := coresb.SmartBlockTypeFromID(objectId)
-		if err != nil {
-			return err
-		}
-		if st == coresb.SmartBlockTypeSubObject {
-			return workspace.DeleteSubObject(objectId)
-		}
-
-		return workspace.DeleteObject(objectId)
-	})
+	return s.DeleteObject(objectId)
 }
 
 func (s *Service) RemoveExtraRelations(ctx *session.Context, objectTypeId string, relationKeys []string) (err error) {

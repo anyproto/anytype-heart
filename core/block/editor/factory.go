@@ -177,8 +177,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.detailsModifier,
 			f.fileBlockService,
 		)
-	case model.SmartBlockType_AccountOld:
-		return NewThreadDB(f.accountMigrator)
 	case model.SmartBlockType_Widget:
 		return NewWidgetObject()
 	default:

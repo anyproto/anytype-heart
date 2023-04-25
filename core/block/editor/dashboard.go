@@ -13,7 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -76,8 +75,6 @@ func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	if err != nil {
 		return
 	}
-
-	p.anytype.ThreadsService().ThreadQueue().UpdatePriority(favoritedIds, threads.HighPriority)
 
 	records, _, err := p.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{

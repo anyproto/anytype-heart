@@ -31,7 +31,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -102,7 +101,6 @@ type indexer struct {
 	// todo: move logstore to separate component?
 	anytype         core.Service
 	source          source.Service
-	threadService   threads.Service
 	relationService relation.Service
 
 	doc         doc.Service
@@ -122,10 +120,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	ts := a.Component(threads.CName)
-	if ts != nil {
-		i.threadService = ts.(threads.Service)
-	}
 	i.relationService = a.MustComponent(relation.CName).(relation.Service)
 
 	i.source = a.MustComponent(source.CName).(source.Service)
@@ -273,43 +267,44 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
-	if i.threadService == nil {
-		return 0, 0, nil
-	}
-	tids, err := i.threadService.Logstore().Threads()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	var idsToReindex []string
-	for _, tid := range tids {
-		lastHash, err := i.store.GetLastIndexedHeadsHash(tid.String())
-		if err != nil {
-			log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
-			continue
-		}
-
-		info, err := i.threadService.Logstore().GetThread(tid)
-		if err != nil {
-			log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
-			continue
-		}
-		var heads = make(map[string]string, len(info.Logs))
-		for _, li := range info.Logs {
-			head := li.Head.ID
-			if !head.Defined() {
-				continue
-			}
-
-			heads[li.ID.String()] = head.String()
-		}
-		hh := headsHash(heads)
-		if lastHash != hh {
-			log.With("thread", tid.String()).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
-			idsToReindex = append(idsToReindex, tid.String())
-		}
-	}
-
+	// TODO: [MR] check reindexing logic
+	//if i.threadService == nil {
+	//	return 0, 0, nil
+	//}
+	//tids, err := i.threadService.Logstore().Threads()
+	//if err != nil {
+	//	return 0, 0, err
+	//}
+	//
+	//var idsToReindex []string
+	//for _, tid := range tids {
+	//	lastHash, err := i.store.GetLastIndexedHeadsHash(tid.String())
+	//	if err != nil {
+	//		log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
+	//		continue
+	//	}
+	//
+	//	info, err := i.threadService.Logstore().GetThread(tid)
+	//	if err != nil {
+	//		log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
+	//		continue
+	//	}
+	//	var heads = make(map[string]string, len(info.Logs))
+	//	for _, li := range info.Logs {
+	//		head := li.Head.ID
+	//		if !head.Defined() {
+	//			continue
+	//		}
+	//
+	//		heads[li.ID.String()] = head.String()
+	//	}
+	//	hh := headsHash(heads)
+	//	if lastHash != hh {
+	//		log.With("thread", tid.String()).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+	//		idsToReindex = append(idsToReindex, tid.String())
+	//	}
+	//}
+	idsToReindex := []string{}
 	var ctx context.Context
 	if len(idsToReindex) > 0 {
 		for _, id := range idsToReindex {

@@ -18,7 +18,7 @@ import (
 
 func TestService_ReportChange(t *testing.T) {
 	l := New()
-	defer l.Close()
+	defer l.Close(context.Background())
 
 	var calls int
 
@@ -49,7 +49,7 @@ func TestService_WakeupLoop(t *testing.T) {
 	a := new(app.App)
 	a.Register(rb).Register(dh).Register(New())
 	require.NoError(t, a.Start(context.Background()))
-	defer a.Close()
+	defer a.Close(context.Background())
 
 	recId := func(id string) core.ThreadRecordInfo {
 		return core.ThreadRecordInfo{ThreadID: id}

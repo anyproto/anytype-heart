@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -18,7 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -74,7 +72,9 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 				continue
 			}
 		}
-		sbt, err := smartblock.SmartBlockTypeFromID(id)
+		// TODO: [MR] fix imports
+		panic("can't convert")
+		_, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
 			allErrors.Add(path, e)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -83,7 +83,8 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 				continue
 			}
 		}
-		tid, err := threads.ThreadCreateID(thread.AccessControlled, sbt)
+		//tid, err := threads.ThreadCreateID(thread.AccessControlled, sbt)
+		//sbt
 		if err != nil {
 			allErrors.Add(path, e)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -95,7 +96,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 		source := converter.GetSourceDetail(name, path)
 		snapshot.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
-			Id:       tid.String(),
+			//Id:       tid.String(),
 			FileName: name,
 			Snapshot: snapshot,
 		})

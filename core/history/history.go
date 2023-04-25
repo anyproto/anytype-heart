@@ -1,17 +1,15 @@
 package history
 
 import (
-	"context"
 	"fmt"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -102,85 +100,86 @@ func (h *history) Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.
 }
 
 func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	profileId, profileName, err := h.getProfileInfo()
-	if err != nil {
-		return
-	}
-	var includeLastId = true
-
-	reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
-		for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {
-			vers[i], vers[j] = vers[j], vers[i]
-		}
-		return vers
-	}
-
-	for len(resp) < limit {
-		tree, _, e := h.buildTree(pageId, lastVersionId, includeLastId)
-		if e != nil {
-			return nil, e
-		}
-		var data []*pb.RpcHistoryVersion
-
-		tree.Iterate(tree.RootId(), func(c *change.Change) (isContinue bool) {
-			data = append(data, &pb.RpcHistoryVersion{
-				Id:          c.Id,
-				PreviousIds: c.PreviousIds,
-				AuthorId:    profileId,
-				AuthorName:  profileName,
-				Time:        c.Timestamp,
-			})
-			return true
-		})
-		if len(data[0].PreviousIds) == 0 {
-			if h.isEmpty(tree.Get(data[0].Id)) {
-				data = data[1:]
-			}
-			resp = append(data, resp...)
-			break
-		} else {
-			resp = append(data, resp...)
-			lastVersionId = tree.RootId()
-			includeLastId = false
-		}
-
-		if len(data) == 0 {
-			break
-		}
-
-	}
-
-	resp = reverse(resp)
-
-	var groupId int64
-	var nextVersionTimestamp int64
-
-	for i := 0; i < len(resp); i++ {
-		if nextVersionTimestamp-resp[i].Time > int64(versionGroupInterval.Seconds()) {
-			groupId++
-		}
-		nextVersionTimestamp = resp[i].Time
-		resp[i].GroupId = groupId
-	}
+	// TODO: [MR] implement history
+	//if limit <= 0 {
+	//	limit = 100
+	//}
+	//profileId, profileName, err := h.getProfileInfo()
+	//if err != nil {
+	//	return
+	//}
+	//var includeLastId = true
+	//
+	//reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
+	//	for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {
+	//		vers[i], vers[j] = vers[j], vers[i]
+	//	}
+	//	return vers
+	//}
+	//
+	//for len(resp) < limit {
+	//	tree, _, e := h.buildTree(pageId, lastVersionId, includeLastId)
+	//	if e != nil {
+	//		return nil, e
+	//	}
+	//	var data []*pb.RpcHistoryVersion
+	//
+	//	tree.Iterate(tree.RootId(), func(c *change.Change) (isContinue bool) {
+	//		data = append(data, &pb.RpcHistoryVersion{
+	//			Id:          c.Id,
+	//			PreviousIds: c.PreviousIds,
+	//			AuthorId:    profileId,
+	//			AuthorName:  profileName,
+	//			Time:        c.Timestamp,
+	//		})
+	//		return true
+	//	})
+	//	if len(data[0].PreviousIds) == 0 {
+	//		if h.isEmpty(tree.Get(data[0].Id)) {
+	//			data = data[1:]
+	//		}
+	//		resp = append(data, resp...)
+	//		break
+	//	} else {
+	//		resp = append(data, resp...)
+	//		lastVersionId = tree.RootId()
+	//		includeLastId = false
+	//	}
+	//
+	//	if len(data) == 0 {
+	//		break
+	//	}
+	//
+	//}
+	//
+	//resp = reverse(resp)
+	//
+	//var groupId int64
+	//var nextVersionTimestamp int64
+	//
+	//for i := 0; i < len(resp); i++ {
+	//	if nextVersionTimestamp-resp[i].Time > int64(versionGroupInterval.Seconds()) {
+	//		groupId++
+	//	}
+	//	nextVersionTimestamp = resp[i].Time
+	//	resp[i].GroupId = groupId
+	//}
 
 	return
 }
 
-func (h *history) isEmpty(c *change.Change) bool {
-	if c.Snapshot != nil && c.Snapshot.Data != nil {
-		if c.Snapshot.Data.Details != nil && c.Snapshot.Data.Details.Fields != nil && len(c.Snapshot.Data.Details.Fields) > 0 {
-			return false
-		}
-		for _, b := range c.Snapshot.Data.Blocks {
-			if b.GetSmartblock() != nil && b.GetLayout() != nil {
-				return false
-			}
-		}
-		return true
-	}
+func (h *history) isEmpty(c *objecttree.Change) bool {
+	//if c.Snapshot != nil && c.Snapshot.Data != nil {
+	//	if c.Snapshot.Data.Details != nil && c.Snapshot.Data.Details.Fields != nil && len(c.Snapshot.Data.Details.Fields) > 0 {
+	//		return false
+	//	}
+	//	for _, b := range c.Snapshot.Data.Blocks {
+	//		if b.GetSmartblock() != nil && b.GetLayout() != nil {
+	//			return false
+	//		}
+	//	}
+	//	return true
+	//}
 	return false
 }
 
@@ -192,62 +191,63 @@ func (h *history) SetVersion(pageId, versionId string) (err error) {
 	return h.blockService.ResetToState(pageId, s)
 }
 
-func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree *change.Tree, blockType smartblock.SmartBlockType, err error) {
-	sb, err := h.a.GetBlock(pageId)
-	if err != nil {
-		err = fmt.Errorf("history: anytype.GetBlock error: %v", err)
-		return
-	}
-	if versionId != "" {
-		if tree, err = change.BuildTreeBefore(context.TODO(), sb, versionId, includeLastId); err != nil {
-			return
-		}
-	} else {
-		if tree, _, err = change.BuildTree(context.TODO(), sb); err != nil {
-			return
-		}
-	}
-	return tree, sb.Type(), nil
+func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree *objecttree.Tree, blockType smartblock.SmartBlockType, err error) {
+	//sb, err := h.a.GetBlock(pageId)
+	//if err != nil {
+	//	err = fmt.Errorf("history: anytype.GetBlock error: %v", err)
+	//	return
+	//}
+	//if versionId != "" {
+	//	if tree, err = change.BuildTreeBefore(context.TODO(), sb, versionId, includeLastId); err != nil {
+	//		return
+	//	}
+	//} else {
+	//	if tree, _, err = change.BuildTree(context.TODO(), sb); err != nil {
+	//		return
+	//	}
+	//}
+	//return tree, sb.Type(), nil
+	return
 }
 
 func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.RpcHistoryVersion, err error) {
-	tree, sbType, err := h.buildTree(pageId, versionId, true)
-	if err != nil {
-		return
-	}
-	root := tree.Root()
-	if root == nil || root.GetSnapshot() == nil {
-		return nil, nil, fmt.Errorf("root missing or not a snapshot")
-	}
-	s = state.NewDocFromSnapshot(pageId, root.GetSnapshot()).(*state.State)
-	s.SetChangeId(root.Id)
-	st, err := change.BuildStateSimpleCRDT(s, tree)
-	if err != nil {
-		return
-	}
-	if _, _, err = state.ApplyStateFast(st); err != nil {
-		return
-	}
-	switch sbType {
-	case smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeProfilePage, smartblock.SmartBlockTypeSet:
-		// todo: set case not handled
-		template.InitTemplate(s, template.WithTitle)
-	}
-	s.BlocksInit(s)
-	if ch := tree.Get(versionId); ch != nil {
-		profileId, profileName, e := h.getProfileInfo()
-		if e != nil {
-			err = e
-			return
-		}
-		ver = &pb.RpcHistoryVersion{
-			Id:          ch.Id,
-			PreviousIds: ch.PreviousIds,
-			AuthorId:    profileId,
-			AuthorName:  profileName,
-			Time:        ch.Timestamp,
-		}
-	}
+	//tree, sbType, err := h.buildTree(pageId, versionId, true)
+	//if err != nil {
+	//	return
+	//}
+	//root := tree.Root()
+	//if root == nil || root.GetSnapshot() == nil {
+	//	return nil, nil, fmt.Errorf("root missing or not a snapshot")
+	//}
+	//s = state.NewDocFromSnapshot(pageId, root.GetSnapshot()).(*state.State)
+	//s.SetChangeId(root.Id)
+	//st, err := change.BuildStateSimpleCRDT(s, tree)
+	//if err != nil {
+	//	return
+	//}
+	//if _, _, err = state.ApplyStateFast(st); err != nil {
+	//	return
+	//}
+	//switch sbType {
+	//case smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeProfilePage, smartblock.SmartBlockTypeSet:
+	//	// todo: set case not handled
+	//	template.InitTemplate(s, template.WithTitle)
+	//}
+	//s.BlocksInit(s)
+	//if ch := tree.Get(versionId); ch != nil {
+	//	profileId, profileName, e := h.getProfileInfo()
+	//	if e != nil {
+	//		err = e
+	//		return
+	//	}
+	//	ver = &pb.RpcHistoryVersion{
+	//		Id:          ch.Id,
+	//		PreviousIds: ch.PreviousIds,
+	//		AuthorId:    profileId,
+	//		AuthorName:  profileName,
+	//		Time:        ch.Timestamp,
+	//	}
+	//}
 	return
 }
 

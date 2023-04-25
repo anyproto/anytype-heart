@@ -68,8 +68,6 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return NewVirtual(s.anytype, st.ToProto()), nil
 	case smartblock.SmartBlockTypeWorkspaceOld:
 		return nil, fmt.Errorf("threadDB-based workspaces are deprecated")
-	case smartblock.SmartBlockTypeAccountOld:
-		return NewThreadDB(s.anytype, id), nil
 	}
 
 	s.mu.Lock()

@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"

@@ -23,7 +23,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 )
 
 var log = logging.Logger("anytype-mw-status")
@@ -47,8 +46,8 @@ type LogTime struct {
 }
 
 type Service interface {
-	Watch(objID string, tid thread.ID, fileList func() []string) (new bool)
-	Unwatch(objID string, tid thread.ID)
+	Watch(thread.ID, func() []string) (new bool)
+	Unwatch(thread.ID)
 	UpdateTimeline(thread.ID, []LogTime)
 
 	app.ComponentRunnable
@@ -57,15 +56,13 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	ts          threads.Service
 	fInfo       pin.FilePinService
 	profile     core.ProfileInfo
 	ownDeviceID string
 	cafeID      string
 
-	subobjectToThread map[string]thread.ID
-	watchers          map[thread.ID]func()
-	threads           map[thread.ID]*threadStatus
+	watchers map[thread.ID]func()
+	threads  map[thread.ID]*threadStatus
 
 	// deviceID => { thread.ID }
 	devThreads map[string]hashset.HashSet
@@ -86,14 +83,13 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.watchers = make(map[thread.ID]func())
-	s.subobjectToThread = make(map[string]thread.ID)
 	s.threads = make(map[thread.ID]*threadStatus)
 	s.devThreads = make(map[string]hashset.HashSet)
 	s.devAccount = make(map[string]string)
 	s.connMap = make(map[string]bool)
 	s.tsTrigger = queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2)
 	anytype := a.MustComponent(core.CName).(core.Service)
-	s.ts = a.MustComponent(threads.CName).(threads.Service)
+	//s.ts = a.MustComponent(threads.CName).(threads.Service)
 	s.fInfo = a.MustComponent(pin.CName).(pin.FilePinService)
 	s.profile = anytype
 	disableEvents := a.MustComponent(config.CName).(*config.Config).DisableThreadsSyncEvents
@@ -106,7 +102,7 @@ func (s *service) Init(a *app.App) (err error) {
 		cafePeer string
 		cafeAddr ma.Multiaddr
 	)
-	cafeAddr = a.MustComponent(threads.CName).(threads.Service).CafePeer()
+	//cafeAddr = a.MustComponent(threads.CName).(threads.Service).CafePeer()
 	if cafeAddr != nil {
 		cafePeer, _ = cafeAddr.ValueForProtocol(ma.P_P2P)
 	}
@@ -130,7 +126,6 @@ func (s *service) Run(context.Context) error {
 	if err := s.startConnectivityTracking(); err != nil {
 		return err
 	}
-	go s.startSendingThreadStatus()
 	return nil
 }
 
@@ -138,13 +133,9 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) Watch(objID string, tid thread.ID, fList func() []string) bool {
+func (s *service) Watch(tid thread.ID, fList func() []string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if tid.String() != objID {
-		s.subobjectToThread[objID] = tid
-	}
 
 	if _, exist := s.watchers[tid]; exist {
 		// send current status to init stateless caller
@@ -175,8 +166,8 @@ func (s *service) Watch(objID string, tid thread.ID, fList func() []string) bool
 			}
 
 			var (
-				tStat, _ = s.ts.Threads().View(tid)
-				pStat    = s.fInfo.PinStatus(fList()...)
+				//tStat, _ = s.ts.Threads().View(tid)
+				pStat = s.fInfo.PinStatus(fList()...)
 			)
 
 			s.mu.Lock()
@@ -184,9 +175,9 @@ func (s *service) Watch(objID string, tid thread.ID, fList func() []string) bool
 			s.mu.Unlock()
 
 			ts.Lock()
-			for pid, status := range tStat {
-				ts.UpdateStatus(pid.String(), status)
-			}
+			//for pid, status := range tStat {
+			//	ts.UpdateStatus(pid.String(), status)
+			//}
 			for cid, info := range pStat {
 				ts.UpdateFiles(cid, info)
 			}
@@ -201,17 +192,13 @@ func (s *service) Watch(objID string, tid thread.ID, fList func() []string) bool
 	return true
 }
 
-func (s *service) Unwatch(objID string, tid thread.ID) {
+func (s *service) Unwatch(tid thread.ID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if objID != tid.String() {
-		delete(s.subobjectToThread, objID)
-	} else {
-		if stop, found := s.watchers[tid]; found {
-			delete(s.watchers, tid)
-			stop()
-		}
+	if stop, found := s.watchers[tid]; found {
+		delete(s.watchers, tid)
+		stop()
 	}
 }
 
@@ -267,95 +254,80 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) startConnectivityTracking() error {
-	connEvents, err := s.ts.Threads().Connectivity()
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for event := range connEvents {
-			var (
-				devID = event.Peer.String()
-				ts    []thread.ID
-			)
-
-			s.mu.Lock()
-			// update peer connectivity
-			s.connMap[devID] = event.Connected
-
-			// find threads shared with peer / cafe replicated
-			if tids, exist := s.devThreads[devID]; exist {
-				for _, i := range tids.List() {
-					var tid = i.(thread.ID)
-					// notify currently watched threads only
-					if _, watched := s.watchers[tid]; watched {
-						ts = append(ts, tid)
-					}
-				}
-			}
-			s.mu.Unlock()
-
-			for _, tid := range ts {
-				if !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
-					log.Warn("unable to submit connectivity update notification for more than 2 seconds")
-				}
-			}
-		}
-	}()
-
+	// TODO: [MR] fix status service
+	//	connEvents, err := s.ts.Threads().Connectivity()
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	go func() {
+	//		for event := range connEvents {
+	//			var (
+	//				devID = event.Peer.String()
+	//				ts    []thread.ID
+	//			)
+	//
+	//			s.mu.Lock()
+	//			// update peer connectivity
+	//			s.connMap[devID] = event.Connected
+	//
+	//			// find threads shared with peer / cafe replicated
+	//			if tids, exist := s.devThreads[devID]; exist {
+	//				for _, i := range tids.List() {
+	//					var tid = i.(thread.ID)
+	//					// notify currently watched threads only
+	//					if _, watched := s.watchers[tid]; watched {
+	//						ts = append(ts, tid)
+	//					}
+	//				}
+	//			}
+	//			s.mu.Unlock()
+	//
+	//			for _, tid := range ts {
+	//				if !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
+	//					log.Warn("unable to submit connectivity update notification for more than 2 seconds")
+	//				}
+	//			}
+	//		}
+	//	}()
+	//
+	//	return nil
+	//}
+	//
+	//func (s *service) startSendingThreadStatus() {
+	//	var (
+	//		profile        core.Profile
+	//		profileUpdated time.Time
+	//	)
+	//
+	//	for is := range s.tsTrigger.RunBulk() {
+	//		var ts = make(map[thread.ID]*threadStatus, len(is))
+	//
+	//		s.mu.Lock()
+	//		for i := 0; i < len(is); i++ {
+	//			id := is[i].(thread.ID)
+	//			ts[id] = s.getThreadStatus(id)
+	//		}
+	//		s.mu.Unlock()
+	//
+	//		if now := time.Now(); now.Sub(profileUpdated) > profileInformationLifetime {
+	//			profileUpdated = now
+	//			if updated, err := s.profile.LocalProfile(); err != nil {
+	//				log.Errorf("unable to get local profile: %v", err)
+	//			} else {
+	//				profile = updated
+	//			}
+	//		}
+	//
+	//		for id, t := range ts {
+	//			event := s.constructEvent(t, profile)
+	//			s.sendEvent(
+	//				id.String(),
+	//				&pb.EventMessageValueOfThreadStatus{ThreadStatus: &event},
+	//			)
+	//		}
+	//	}
 	return nil
-}
-
-func (s *service) startSendingThreadStatus() {
-	var (
-		profile        core.Profile
-		profileUpdated time.Time
-	)
-
-	for is := range s.tsTrigger.RunBulk() {
-		var ts = make(map[thread.ID]*threadStatus, len(is))
-
-		s.mu.Lock()
-		threadToSubObjects := make(map[thread.ID][]string)
-		for i := 0; i < len(is); i++ {
-			id := is[i].(thread.ID)
-			ts[id] = s.getThreadStatus(id)
-		}
-		for objID, tid := range s.subobjectToThread {
-			v, exists := threadToSubObjects[tid]
-			if !exists {
-				v = make([]string, 0, 1)
-			}
-			v = append(v, objID)
-			threadToSubObjects[tid] = v
-		}
-		s.mu.Unlock()
-
-		if now := time.Now(); now.Sub(profileUpdated) > profileInformationLifetime {
-			profileUpdated = now
-			if updated, err := s.profile.LocalProfile(); err != nil {
-				log.Errorf("unable to get local profile: %v", err)
-			} else {
-				profile = updated
-			}
-		}
-
-		for id, t := range ts {
-			event := s.constructEvent(t, profile)
-
-			for _, obj := range threadToSubObjects[id] {
-				s.sendEvent(
-					obj,
-					&pb.EventMessageValueOfThreadStatus{ThreadStatus: &event},
-				)
-			}
-
-			s.sendEvent(
-				id.String(),
-				&pb.EventMessageValueOfThreadStatus{ThreadStatus: &event},
-			)
-		}
-	}
 }
 
 // Unsafe, use under the global lock!

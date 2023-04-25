@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"fmt"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -12,7 +11,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -71,14 +69,16 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 	//
 	// this will return "graphviz is not supported on the current platform" error if no graphviz!
 	// generate a filename just like zip file had
-	maxReplacements := 1
-	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
+	// TODO: [MR] think about debugging this
+	panic("not implemented")
+	//maxReplacements := 1
+	//svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
 
-	err = change.CreateSvg(block, svgFilename)
-	if err != nil {
-		logger.Fatal("svg build error:", err)
-		return "", err
-	}
+	//err = change.CreateSvg(block, svgFilename)
+	//if err != nil {
+	//	logger.Fatal("svg build error:", err)
+	//	return "", err
+	//}
 
 	// return zip filename, but not svgFilename
 	return zipFilename, nil

@@ -15,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -93,9 +92,10 @@ func (s *State) SetLastModified(ts int64, accountId string) {
 	if ts > 0 {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(ts))
 	}
-	if profileId, err := threads.ProfileThreadIDFromAccountAddress(accountId); err == nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(profileId.String()))
-	}
+	// TODO: [MR] Think about profiles
+	//if profileId, err := threads.ProfileThreadIDFromAccountAddress(accountId); err == nil {
+	//	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(profileId.String()))
+	//}
 }
 
 func (s *State) SetChangeId(id string) {
