@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
@@ -143,7 +144,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 		ot := st.ObjectTypes()
 		req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
 		id, subObjectDetails, err := oc.service.CreateObject(req, "")
-		if err != nil {
+		if err != nil && err != editor.ErrSubObjectAlreadyExists {
 			return nil, err
 		}
 		newID = id
