@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mb0/diff"
+	"golang.org/x/exp/slices"
 )
 
 // StringIdentity is identity function: it returns its argument as string
@@ -137,6 +138,8 @@ func (m *MixedInput[T]) Equal(a, b int) bool {
 	return m.getID(m.A[a]) == m.getID(m.B[b])
 }
 
+// Diff returns a list of changes that need to be applied to origin slice to become changed
+// returned slice is reproducible and deterministic
 func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) bool) []Change[T] {
 	m := &MixedInput[T]{
 		origin,
@@ -224,6 +227,8 @@ func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) boo
 		for id := range delMap {
 			delIDs = append(delIDs, id)
 		}
+		// because before we have iterated on map, make sure we always have the same output for the same input
+		slices.Sort(delIDs)
 		result = append(result, MakeChangeRemove[T](delIDs))
 	}
 	return result
