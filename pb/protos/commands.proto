@@ -1291,6 +1291,7 @@ message Rpc {
                 string relationKey = 2;
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 3;
                 repeated string source = 4;
+                string collectionId = 5;
             }
 
             message Response {

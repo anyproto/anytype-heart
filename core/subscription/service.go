@@ -284,7 +284,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		Filters: req.Filters,
 	}
 
-	f, err := database.NewFilters(q, nil, s.objectStore, time.Now().Location())
+	flt, err := database.NewFilters(q, nil, s.objectStore, time.Now().Location())
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,23 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
-		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
+		flt.FilterObj = filter.AndFilters{flt.FilterObj, sourceFilter}
+	}
+
+	var colObserver *collectionObserver
+	if req.CollectionId != "" {
+		colObserver, err = s.newCollectionObserver(req.CollectionId, req.SubId)
+		if err != nil {
+			return nil, err
+		}
+		if flt == nil {
+			flt = &database.Filters{}
+		}
+		if flt.FilterObj == nil {
+			flt.FilterObj = colObserver
+		} else {
+			flt.FilterObj = filter.AndFilters{colObserver, flt.FilterObj}
+		}
 	}
 
 	grouper, err := s.kanban.Grouper(req.RelationKey)
@@ -302,7 +318,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		return nil, err
 	}
 
-	if err := grouper.InitGroups(f); err != nil {
+	if err := grouper.InitGroups(flt); err != nil {
 		return nil, err
 	}
 
@@ -321,7 +337,13 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		if subId == "" {
 			subId = bson.NewObjectId().Hex()
 		}
-		sub := s.newGroupSub(subId, req.RelationKey, f, groups)
+
+		var sub subscription
+		if colObserver != nil {
+			sub = s.newCollectionGroupSub(subId, req.RelationKey, flt, groups, colObserver)
+		} else {
+			sub = s.newGroupSub(subId, req.RelationKey, flt, groups)
+		}
 
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {
@@ -334,7 +356,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		if err := sub.init(entries); err != nil {
 			return nil, err
 		}
-		s.subscriptions[sub.id] = sub
+		s.subscriptions[subId] = sub
 
 		// add empty groups with single tags
 		records, err := s.objectStore.GetAggregatedOptions(req.RelationKey)
@@ -359,6 +381,8 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 				})
 			}
 		}
+	} else if colObserver != nil {
+		colObserver.close()
 	}
 
 	return &pb.RpcObjectGroupsSubscribeResponse{

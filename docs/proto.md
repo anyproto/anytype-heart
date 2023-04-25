@@ -10130,6 +10130,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | relationKey | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | source | [string](#string) | repeated |  |
+| collectionId | [string](#string) |  |  |
 
 
 

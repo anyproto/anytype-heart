@@ -1,16 +1,17 @@
 package subscription
 
 import (
+	"testing"
+	"time"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"testing"
-	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
 func genTagEntries() []*entry {
@@ -45,15 +46,14 @@ func TestGroupTag(t *testing.T) {
 	entries := genTagEntries()
 	groups := tagEntriesToGroups(entries)
 
-	q := database.Query{
-	}
+	q := database.Query{}
 
 	f, err := database.NewFilters(q, nil, nil, time.Now().Location())
 	require.NoError(t, err)
 
 	t.Run("change existing groups", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -69,7 +69,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("add new group", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -85,7 +85,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("remove existing group by setting tag null", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -101,7 +101,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("remove existing group by removing record", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -117,7 +117,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("remove from group with single tag", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: bundle.RelationKeyTag.String(), f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: bundle.RelationKeyTag.String(), filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
