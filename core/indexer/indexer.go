@@ -131,6 +131,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
 	i.forceFt = make(chan struct{})
+	i.doc.OnWholeChange(i.index)
 	return
 }
 
@@ -175,7 +176,6 @@ func (i *indexer) Run(context.Context) (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
-	i.doc.OnWholeChange(i.index)
 	err = i.reindexIfNeeded()
 	if err != nil {
 		return err

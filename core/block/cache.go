@@ -223,8 +223,7 @@ func (s *Service) cacheCreatedObject(ctx context.Context, spaceId string, initFu
 }
 
 func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.Object, err error) {
-	accountId := s.clientService.AccountId()
-	if account, err = s.cache.Get(ctx, accountId); err != nil {
+	if account, err = s.cache.Get(ctx, s.anytype.PredefinedBlocks().Account); err != nil {
 		return
 	}
 	return account.(SmartblockOpener).Open(id)

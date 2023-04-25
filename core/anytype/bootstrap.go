@@ -142,6 +142,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pin.New()).
 		Register(status.New()).
 		Register(block.New()).
+		Register(doc.New()).
 		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).
@@ -150,7 +151,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
-		Register(doc.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
