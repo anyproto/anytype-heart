@@ -902,7 +902,7 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 		case pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED:
 			err.Description = "Sorry, token not found. Please check Notion integrations."
 		case pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN:
-			err.Description = "Can't access user information, please fill user capabilities."
+			err.Description = "Unable to access user information, check capabilities in Notion (requires reading user information)."
 		case pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE:
 			err.Description = "Notion is currently unavailable."
 		case pb.RpcObjectImportNotionValidateTokenResponseError_NULL:
