@@ -3,17 +3,16 @@ package export
 import (
 	"bytes"
 	"context"
+	"github.com/anytypeio/any-sync/app"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/gosimple/slug"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/anytypeio/any-sync/app"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/gosimple/slug"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -103,8 +102,6 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		}
 	}
 
-	defer wr.Close()
-
 	queue.SetMessage("export docs")
 	if req.Format == pb.RpcObjectListExport_DOT || req.Format == pb.RpcObjectListExport_SVG {
 		var format = dot.ExportFormatDOT
@@ -152,9 +149,11 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		succeed = 0
 		return
 	}
+	wr.Close()
 	zipName := getZipName(req.Path)
 	err = os.Rename(wr.Path(), zipName)
 	if err != nil {
+		os.Remove(wr.Path())
 		return
 	}
 	return zipName, succeed, nil
