@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-datastore/query"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -12,9 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore/query"
 )
 
 var log = logging.Logger("anytype-database")
@@ -36,14 +37,7 @@ type Reader interface {
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetRelationById(id string) (relation *model.Relation, err error)
 
-	// ListRelations returns both indexed and bundled relations
-	ListRelations(objType string) (relations []*model.Relation, err error)
 	ListRelationsKeys() ([]string, error)
-
-	AggregateRelationsFromObjectsOfType(objType string) (relations []*model.Relation, err error)
-	AggregateRelationsFromSetsOfType(objType string) (relations []*model.Relation, err error)
-	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
-	AggregateObjectIdsForOptionAndRelation(relationKey, optionId string) (objIds []string, err error)
 
 	SubscribeForAll(callback func(rec Record))
 }
@@ -67,7 +61,7 @@ type Database interface {
 	Reader
 	Writer
 
-	//Schema() string
+	// Schema() string
 }
 
 type Query struct {
@@ -165,7 +159,7 @@ func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *tim
 		mainFilter = append(mainFilter, qFilter)
 	}
 	// TODO: check if this logic should be finally removed
-	//if q.SearchInWorkspace {
+	// if q.SearchInWorkspace {
 	//	if q.WorkspaceId != "" {
 	//		threads.WorkspaceLogger.
 	//			With("workspace id", q.WorkspaceId).
@@ -188,10 +182,10 @@ func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *tim
 	//		}
 	//		mainFilter = append(mainFilter, filterOr)
 	//	}
-	//} else {
+	// } else {
 	//	threads.WorkspaceLogger.
 	//		Info("searching in all workspaces and account")
-	//}
+	// }
 	f.FilterObj = mainFilter
 	if len(q.Sorts) > 0 {
 		ord := filter.SetOrder{}
@@ -203,10 +197,10 @@ func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *tim
 			}
 
 			keyOrd := &filter.KeyOrder{
-				Key:       s.RelationKey,
-				Type:      s.Type,
-				EmptyLast: emptyLast,
-				IncludeTime: s.IncludeTime,
+				Key:            s.RelationKey,
+				Type:           s.Type,
+				EmptyLast:      emptyLast,
+				IncludeTime:    s.IncludeTime,
 				RelationFormat: s.Format,
 				Store:          store,
 			}

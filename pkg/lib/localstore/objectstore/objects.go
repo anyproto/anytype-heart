@@ -9,22 +9,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
-
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
@@ -60,108 +58,10 @@ var (
 
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
-	workspaceMapBase = ds.NewKey("/" + workspacesPrefix + "/workspacemap")
-
-	threadCreateQueuePrefix = "threadcreatequeue"
-	threadCreateQueueBase   = ds.NewKey("/" + threadCreateQueuePrefix)
 
 	relationsPrefix = "relations"
-	// /relations/options/<relOptionId>: option model
-	relationsOptionsBase = ds.NewKey("/" + relationsPrefix + "/options")
 	// /relations/relations/<relKey>: relation model
 	relationsBase = ds.NewKey("/" + relationsPrefix + "/relations")
-
-	// /relations/objtype_relkey_objid/<objType>/<relKey>/<objId>
-	indexObjectTypeRelationObjectId = localstore.Index{
-		Prefix: relationsPrefix,
-		Name:   "objtype_relkey_objid",
-		Keys: func(val interface{}) []localstore.IndexKeyParts {
-			if v, ok := val.(*relationObjectType); ok {
-				var indexes []localstore.IndexKeyParts
-				for _, rk := range v.relationKeys {
-					for _, ot := range v.objectTypes {
-						otCompact, err := objTypeCompactEncode(ot)
-						if err != nil {
-							log.Errorf("objtype_relkey_objid index construction error(ot '%s'): %s", ot, err.Error())
-							continue
-						}
-
-						indexes = append(indexes, localstore.IndexKeyParts([]string{otCompact, rk}))
-					}
-				}
-				return indexes
-			}
-			return nil
-		},
-		Unique:             false,
-		SplitIndexKeyParts: true,
-	}
-
-	// /relations/objtype_relkey_setid/<objType>/<relKey>/<setObjId>
-	indexObjectTypeRelationSetId = localstore.Index{
-		Prefix: relationsPrefix,
-		Name:   "objtype_relkey_setid",
-		Keys: func(val interface{}) []localstore.IndexKeyParts {
-			if v, ok := val.(*relationObjectType); ok {
-				var indexes []localstore.IndexKeyParts
-				for _, rk := range v.relationKeys {
-					for _, ot := range v.objectTypes {
-						otCompact, err := objTypeCompactEncode(ot)
-						if err != nil {
-							log.Errorf("objtype_relkey_setid index construction error('%s'): %s", ot, err.Error())
-							continue
-						}
-
-						indexes = append(indexes, localstore.IndexKeyParts([]string{otCompact, rk}))
-					}
-				}
-				return indexes
-			}
-			return nil
-		},
-		Unique:             false,
-		SplitIndexKeyParts: true,
-	}
-
-	// /relations/relkey_optid/<relKey>/<optId>/<objId>
-	indexRelationOptionObject = localstore.Index{
-		Prefix: pagesPrefix,
-		Name:   "relkey_optid",
-		Keys: func(val interface{}) []localstore.IndexKeyParts {
-			if v, ok := val.(*model.Relation); ok {
-				var indexes []localstore.IndexKeyParts
-				if v.Format != model.RelationFormat_tag && v.Format != model.RelationFormat_status {
-					return nil
-				}
-				if len(v.SelectDict) == 0 {
-					return nil
-				}
-
-				for _, opt := range v.SelectDict {
-					// todo: migration?
-
-					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Key, opt.Id}))
-				}
-				return indexes
-			}
-			return nil
-		},
-		Unique:             false,
-		SplitIndexKeyParts: true,
-	}
-
-	// /relations/relkey/<relKey>/<objId>
-	indexRelationObject = localstore.Index{
-		Prefix: pagesPrefix,
-		Name:   "relkey",
-		Keys: func(val interface{}) []localstore.IndexKeyParts {
-			if v, ok := val.(*model.Relation); ok {
-				return []localstore.IndexKeyParts{[]string{v.Key}}
-			}
-			return nil
-		},
-		Unique: false,
-	}
 
 	// /pages/type/<objType>/<objId>
 	indexObjectTypeObject = localstore.Index{
@@ -279,11 +179,6 @@ type ObjectStore interface {
 	GetCurrentWorkspaceId() (string, error)
 	SetCurrentWorkspaceId(threadId string) (err error)
 	RemoveCurrentWorkspaceId() (err error)
-}
-
-type relationObjectType struct {
-	relationKeys []string
-	objectTypes  []string
 }
 
 var ErrNotAnObject = fmt.Errorf("not an object")
@@ -485,53 +380,6 @@ func (m *dsObjectStore) Run(context.Context) (err error) {
 
 func (m *dsObjectStore) Close(ctx context.Context) (err error) {
 	return nil
-}
-
-func (m *dsObjectStore) AggregateObjectIdsForOptionAndRelation(relationKey, optId string) (objectsIds []string, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	defer txn.Discard()
-
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey, optId}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	return localstore.GetLeavesFromResults(res)
-}
-
-func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	defer txn.Discard()
-
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	keys, err := localstore.ExtractKeysFromResults(res)
-	if err != nil {
-		return nil, err
-	}
-
-	objectsByOptionId = make(map[string][]string)
-
-	for _, key := range keys {
-		optionId, err := localstore.CarveKeyParts(key, -2, -1)
-		if err != nil {
-			return nil, err
-		}
-		objId, err := localstore.CarveKeyParts(key, -1, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, exists := objectsByOptionId[optionId]; !exists {
-			objectsByOptionId[optionId] = []string{}
-		}
-
-		objectsByOptionId[optionId] = append(objectsByOptionId[optionId], objId)
-	}
-	return
 }
 
 // GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
@@ -979,87 +827,6 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	return rel.Relation, nil
 }
 
-// ListRelations retrieves all available relations and sort them in this order:
-// 1. extraRelations aggregated from object of specific type (scope objectsOfTheSameType)
-// 2. relations aggregated from sets of specific type  (scope setsOfTheSameType)
-// 3. user-defined relations aggregated from all objects (scope library)
-// 4. the rest of bundled relations (scope library)
-func (m *dsObjectStore) ListRelations(objType string) ([]*model.Relation, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if objType == "" {
-		rels, err := m.listRelations(txn, 0)
-		if err != nil {
-			return nil, err
-		}
-		// todo: omit when we will have everything in index
-		relsKeys2 := bundle.ListRelationsKeys()
-		for _, relKey := range relsKeys2 {
-			if pbtypes.HasRelation(rels, relKey.String()) {
-				continue
-			}
-
-			rel := bundle.MustGetRelation(relKey)
-			rel.Scope = model.Relation_library
-			rels = append(rels, rel)
-		}
-		return rels, nil
-	}
-
-	rels, err := m.AggregateRelationsFromObjectsOfType(objType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to aggregate relations from objects: %w", err)
-	}
-
-	rels2, err := m.AggregateRelationsFromSetsOfType(objType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to aggregate relations from sets: %w", err)
-	}
-
-	for i, rel := range rels2 {
-		if pbtypes.HasRelation(rels, rel.Key) {
-			continue
-		}
-		rels = append(rels, rels2[i])
-	}
-
-	relsKeys, err := m.listRelationsKeys(txn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list relations from store index: %w", err)
-	}
-
-	// todo: omit when we will have everything in index
-	for _, relKey := range relsKeys {
-		if pbtypes.HasRelation(rels, relKey) {
-			continue
-		}
-		rel, err := getRelation(txn, relKey)
-		if err != nil {
-			log.Errorf("relation found in index but failed to retrieve from store")
-			continue
-		}
-		rel.Scope = model.Relation_library
-		rels = append(rels, rel)
-	}
-
-	relsKeys2 := bundle.ListRelationsKeys()
-	for _, relKey := range relsKeys2 {
-		if pbtypes.HasRelation(rels, relKey.String()) {
-			continue
-		}
-
-		rel := bundle.MustGetRelation(relKey)
-		rel.Scope = model.Relation_library
-		rels = append(rels, rel)
-	}
-
-	return rels, nil
-}
-
 func (m *dsObjectStore) ListRelationsKeys() ([]string, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -1068,78 +835,6 @@ func (m *dsObjectStore) ListRelationsKeys() ([]string, error) {
 	defer txn.Discard()
 
 	return m.listRelationsKeys(txn)
-}
-
-func (m *dsObjectStore) AggregateRelationsFromObjectsOfType(objType string) ([]*model.Relation, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	var rels []*model.Relation
-	objTypeCompact, err := objTypeCompactEncode(objType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode object type '%s': %s", objType, err.Error())
-	}
-	res, err := localstore.GetKeysByIndexParts(txn, indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, []string{objTypeCompact}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	relKeys, err := localstore.GetKeyPartFromResults(res, -2, -1, true)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, relKey := range relKeys {
-		rel, err := getRelation(txn, relKey)
-		if err != nil {
-			log.Errorf("relation '%s' found in the index but failed to retreive: %s", relKey, err.Error())
-			continue
-		}
-
-		rel.Scope = model.Relation_objectsOfTheSameType
-		rels = append(rels, rel)
-	}
-
-	return rels, nil
-}
-
-func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*model.Relation, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	var rels []*model.Relation
-	objTypeCompact, err := objTypeCompactEncode(objType)
-	if err != nil {
-		return nil, err
-	}
-	res, err := localstore.GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objTypeCompact}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	relKeys, err := localstore.GetKeyPartFromResults(res, -2, -1, true)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, relKey := range relKeys {
-		rel, err := getRelation(txn, relKey)
-		if err != nil {
-			log.Errorf("relation '%s' found in the index but failed to retreive: %s", relKey, err.Error())
-			continue
-		}
-
-		rel.Scope = model.Relation_setOfTheSameType
-		rels = append(rels, rel)
-	}
-
-	return rels, nil
 }
 
 func (m *dsObjectStore) DeleteDetails(id string) error {
@@ -1793,7 +1488,7 @@ func (m *dsObjectStore) Prefix() string {
 }
 
 func (m *dsObjectStore) Indexes() []localstore.Index {
-	return []localstore.Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexObjectTypeObject}
+	return []localstore.Index{indexObjectTypeObject}
 }
 
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
@@ -1850,30 +1545,6 @@ func getRelation(txn noctxds.Txn, key string) (*model.Relation, error) {
 	}
 
 	return &rel, nil
-}
-
-func (m *dsObjectStore) listRelations(txn noctxds.Txn, limit int) ([]*model.Relation, error) {
-	var rels []*model.Relation
-
-	res, err := txn.Query(query.Query{
-		Prefix:   relationsBase.String(),
-		Limit:    limit,
-		KeysOnly: false,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	for r := range res.Next() {
-		var rel model.Relation
-		if err = proto.Unmarshal(r.Value, &rel); err != nil {
-			log.Errorf("listRelations failed to unmarshal relation: %s", err.Error())
-			continue
-		}
-		rels = append(rels, &rel)
-	}
-
-	return rels, nil
 }
 
 /* internal */
@@ -2194,7 +1865,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 	}
 
 	details := ois[0].Details
-	//relationKeys := ois[0].RelationKeys
+	// relationKeys := ois[0].RelationKeys
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
 		rk, err := pbtypes.RelationIdToKey(relId)
 		if err != nil {
