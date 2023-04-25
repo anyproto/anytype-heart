@@ -13,6 +13,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+
+	. "github.com/anytypeio/go-anytype-middleware/tests/blockbuilder"
 )
 
 func makeStoreWithTwoKeysAndValue(first, second, value string) *types.Struct {
@@ -268,6 +270,58 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 	_, _, err = ApplyState(s2, true)
 	require.NoError(t, err)
 	assert.Equal(t, d.(*State).String(), dc.(*State).String())
+}
+
+func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
+	s1 := buildStateFromAST(
+		Root(
+			ID("root"),
+			Children(
+				Text("1", ID("1")),
+				Text("2", ID("2")),
+				Text("3", ID("3")),
+			),
+		),
+	)
+
+	originalState := s1.Copy()
+
+	s2 := buildStateFromAST(
+		Root(
+			ID("root"),
+			Children(
+				Text("1", ID("1")),
+				Row(Children(
+					Column(Children(
+						Text("2", ID("2")))),
+					Column(Children(
+						Text("4", ID("4")))))),
+				Text("3", ID("3")))))
+
+	newBlock := simple.New(Text("4", ID("4")).Block())
+	s1.Add(newBlock)
+	err := s1.InsertTo("2", model.Block_Right, "4")
+	require.NoError(t, err)
+
+	AssertPagesEqual(t, s2.Blocks(), s1.Blocks())
+
+	_, _, err = ApplyState(s1, true)
+	require.NoError(t, err)
+	changes := s1.GetChanges()
+	err = originalState.ApplyChange(changes...)
+	require.NoError(t, err)
+
+	AssertPagesEqual(t, s2.Blocks(), originalState.Blocks())
+}
+
+func buildStateFromAST(root *Block) *State {
+	st := NewDocFromSnapshot("", &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks: root.Build(),
+		},
+	}).(*State)
+	ApplyState(st, true)
+	return st
 }
 
 func TestState_SetParent(t *testing.T) {

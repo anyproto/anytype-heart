@@ -1,6 +1,9 @@
 package blockbuilder
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -15,6 +18,10 @@ type Block struct {
 
 func (b *Block) Block() *model.Block {
 	return b.block
+}
+
+func (b *Block) String() string {
+	return strings.TrimPrefix(fmt.Sprintf("%T %s", b.block.Content, b.block.Content), "*model.BlockContentOf")
 }
 
 func (b *Block) Copy() *Block {
@@ -57,6 +64,7 @@ func mkBlock(b *model.Block, opts ...Option) *Block {
 	}
 	b.Restrictions = o.restrictions
 	b.Fields = o.fields
+	b.Id = o.id
 	return &Block{
 		block:    b,
 		children: o.children,
@@ -70,9 +78,16 @@ type options struct {
 	textStyle    model.BlockContentTextStyle
 	marks        *model.BlockContentTextMarks
 	fields       *types.Struct
+	id           string
 }
 
 type Option func(*options)
+
+func ID(id string) Option {
+	return func(o *options) {
+		o.id = id
+	}
+}
 
 func Children(v ...*Block) Option {
 	return func(o *options) {
@@ -166,4 +181,12 @@ func Text(s string, opts ...Option) *Block {
 			},
 		},
 	}, opts...)
+}
+
+func Row(opts ...Option) *Block {
+	return Layout(model.BlockContentLayout_Row, opts...)
+}
+
+func Column(opts ...Option) *Block {
+	return Layout(model.BlockContentLayout_Column, opts...)
 }

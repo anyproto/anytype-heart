@@ -1,6 +1,8 @@
 package blockbuilder
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -111,7 +113,14 @@ func AssertPagesEqual(t *testing.T, want, got []*model.Block) bool {
 	dropBlockIDs(wantTree)
 	dropBlockIDs(gotTree)
 
-	return assert.Equal(t, wantTree, gotTree)
+	ok := assert.Equal(t, wantTree, gotTree)
+	if !ok {
+		fmt.Println("Want tree:")
+		printTree(wantTree)
+		fmt.Println("Got tree:")
+		printTree(gotTree)
+	}
+	return ok
 }
 
 func AssertPagesEqualWithLinks(t *testing.T, want, got []*model.Block, idsMap map[string]string) bool {
@@ -122,6 +131,20 @@ func AssertPagesEqualWithLinks(t *testing.T, want, got []*model.Block, idsMap ma
 	dropBlockIDs(gotTree)
 
 	remapLinks(gotTree, idsMap)
-
 	return assert.Equal(t, wantTree, gotTree)
+}
+
+func printTree(root *Block) {
+	b := &strings.Builder{}
+	renderNode(b, root, 0)
+	fmt.Println(b.String())
+}
+
+func renderNode(b *strings.Builder, node *Block, lvl int) {
+	b.WriteString(strings.Repeat("  ", lvl))
+	b.WriteString(node.String())
+	b.WriteString("\n")
+	for _, c := range node.children {
+		renderNode(b, c, lvl+1)
+	}
 }
