@@ -37,5 +37,5 @@ func TestTreesEquality(t *testing.T) {
 	a := makeTree()
 	b := makeTree()
 
-	AssertPagesEqual(t, a.Build(), b.Build())
+	AssertTreesEqual(t, a.Build(), b.Build())
 }

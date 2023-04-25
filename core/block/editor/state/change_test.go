@@ -273,45 +273,78 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 }
 
 func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
-	s1 := buildStateFromAST(
-		Root(
-			ID("root"),
-			Children(
-				Text("1", ID("1")),
-				Text("2", ID("2")),
-				Text("3", ID("3")),
+	makeState := func() *State {
+		return buildStateFromAST(
+			Root(
+				ID("root"),
+				Children(
+					Text("1", ID("1")),
+					Text("2", ID("2")),
+					Text("3", ID("3")),
+				),
 			),
-		),
-	)
+		)
+	}
+	assertApplyingChanges := func(t *testing.T, state *State, wantState *State, originalState *State) {
+		AssertTreesEqual(t, wantState.Blocks(), state.Blocks())
 
-	originalState := s1.Copy()
+		_, _, err := ApplyState(state, true)
+		require.NoError(t, err)
+		changes := state.GetChanges()
+		err = originalState.ApplyChange(changes...)
+		require.NoError(t, err)
 
-	s2 := buildStateFromAST(
-		Root(
-			ID("root"),
-			Children(
-				Text("1", ID("1")),
-				Row(Children(
-					Column(Children(
-						Text("2", ID("2")))),
-					Column(Children(
-						Text("4", ID("4")))))),
-				Text("3", ID("3")))))
+		AssertTreesEqual(t, wantState.Blocks(), originalState.Blocks())
+	}
 
-	newBlock := simple.New(Text("4", ID("4")).Block())
-	s1.Add(newBlock)
-	err := s1.InsertTo("2", model.Block_Right, "4")
-	require.NoError(t, err)
+	t.Run("only one new block", func(t *testing.T) {
+		state := makeState()
+		originalState := state.Copy()
 
-	AssertPagesEqual(t, s2.Blocks(), s1.Blocks())
+		wantState := buildStateFromAST(
+			Root(
+				ID("root"),
+				Children(
+					Text("1", ID("1")),
+					Row(Children(
+						Column(Children(
+							Text("2", ID("2")))),
+						Column(Children(
+							Text("4", ID("4")))))),
+					Text("3", ID("3")))))
 
-	_, _, err = ApplyState(s1, true)
-	require.NoError(t, err)
-	changes := s1.GetChanges()
-	err = originalState.ApplyChange(changes...)
-	require.NoError(t, err)
+		newBlock := simple.New(Text("4", ID("4")).Block())
+		state.Add(newBlock)
+		err := state.InsertTo("2", model.Block_Right, "4")
+		require.NoError(t, err)
 
-	AssertPagesEqual(t, s2.Blocks(), originalState.Blocks())
+		assertApplyingChanges(t, state, wantState, originalState)
+	})
+
+	t.Run("mixed old and new blocks", func(t *testing.T) {
+		state := makeState()
+		originalState := state.Copy()
+
+		wantState := buildStateFromAST(
+			Root(
+				ID("root"),
+				Children(
+					Text("1", ID("1")),
+					Row(Children(
+						Column(Children(
+							Text("2", ID("2")))),
+						Column(Children(
+							Text("4", ID("4")),
+							Text("3", ID("3")))))))))
+
+		newBlock := simple.New(Text("4", ID("4")).Block())
+		state.Unlink("3")
+		state.Add(newBlock)
+		err := state.InsertTo("2", model.Block_Right, "4", "3")
+		require.NoError(t, err)
+
+		assertApplyingChanges(t, state, wantState, originalState)
+	})
 }
 
 func buildStateFromAST(root *Block) *State {
@@ -321,7 +354,7 @@ func buildStateFromAST(root *Block) *State {
 		},
 	}).(*State)
 	ApplyState(st, true)
-	return st
+	return st.NewState()
 }
 
 func TestState_SetParent(t *testing.T) {

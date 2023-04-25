@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -106,16 +105,43 @@ func makeOpId(target simple.Block, pos model.BlockPosition, ids ...string) strin
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPosition, ids ...string) (err error) {
-	change := &pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfBlockMove{
-			BlockMove: &pb.ChangeBlockMove{
-				TargetId: target.Model().Id,
-				Position: pos,
-				Ids:      ids,
-			},
-		},
+// addChangesForSideMoving adds changes for moving blocks to side of another blocks.
+// It creates the first change with position=Left or position=Right to create row-column structure, then
+// other changes are created with position=Bottom to only add blocks into existing row-column structure.
+func (s *State) addChangesForSideMoving(targetID string, pos model.BlockPosition, ids ...string) {
+	type operation int
+	const (
+		operationNone operation = iota
+		operationAdd
+		operationMove
+	)
+	cb := &changeBuilder{changes: s.changes}
+	lastTargetID := targetID
+	lastOperation := operationNone
+	for _, id := range ids {
+		if s.parent.Exists(id) {
+			if lastOperation == operationAdd {
+				targetID = lastTargetID
+				pos = model.Block_Bottom
+			}
+			cb.Move(targetID, pos, id)
+			lastOperation = operationMove
+		} else {
+			if lastOperation == operationMove {
+				targetID = lastTargetID
+				pos = model.Block_Bottom
+			}
+			cb.Add(targetID, pos, s.Get(id).Model())
+			lastOperation = operationAdd
+		}
+		lastTargetID = id
 	}
+	s.changes = cb.Build()
+}
+
+func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPosition, ids ...string) (err error) {
+	s.addChangesForSideMoving(target.Model().Id, pos, ids...)
+
 	opId := makeOpId(target, pos, ids...)
 	row := parent
 	if row == nil {
@@ -153,7 +179,6 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 	}
 	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, columnPos, column.Model().Id)
 	s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, "cd-"+opId, "ct-"+opId, "r-"+opId, row.Model().Id)
-	s.changes = append(s.changes, change)
 	return
 }
 

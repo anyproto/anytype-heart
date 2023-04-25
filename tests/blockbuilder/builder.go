@@ -106,7 +106,7 @@ func remapLinks(root *Block, idsMap map[string]string) {
 	}
 }
 
-func AssertPagesEqual(t *testing.T, want, got []*model.Block) bool {
+func AssertTreesEqual(t *testing.T, want, got []*model.Block) bool {
 	wantTree := BuildAST(want)
 	gotTree := BuildAST(got)
 

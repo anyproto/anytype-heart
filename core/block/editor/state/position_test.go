@@ -3,10 +3,14 @@ package state
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+
+	. "github.com/anytypeio/go-anytype-middleware/tests/blockbuilder"
 )
 
 func TestState_InsertTo(t *testing.T) {
@@ -233,5 +237,224 @@ func TestState_InsertTo(t *testing.T) {
 		assert.NotEqual(t, rowId, row.Model().Id)
 		assert.NotEqual(t, c1Id, c1.Model().Id)
 		assert.NotEqual(t, c2Id, c2.Model().Id)
+	})
+}
+
+func Test_addChangesForSideMoving(t *testing.T) {
+	makeState := func() *State {
+		return buildStateFromAST(
+			Root(
+				ID("root"),
+				Children(
+					Text("1", ID("1")),
+					Text("2", ID("2")),
+					Text("3", ID("3")),
+				),
+			),
+		)
+	}
+
+	t.Run("move one existing block", func(t *testing.T) {
+		state := makeState()
+
+		state.addChangesForSideMoving("1", model.Block_Left, "2")
+
+		want := []*pb.ChangeContent{
+			{
+				Value: &pb.ChangeContentValueOfBlockMove{
+					BlockMove: &pb.ChangeBlockMove{
+						TargetId: "1",
+						Position: model.Block_Left,
+						Ids:      []string{"2"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, state.GetChanges())
+	})
+
+	t.Run("move multiple existing blocks", func(t *testing.T) {
+		state := makeState()
+
+		state.addChangesForSideMoving("1", model.Block_Left, "2", "3")
+
+		want := []*pb.ChangeContent{
+			{
+				Value: &pb.ChangeContentValueOfBlockMove{
+					BlockMove: &pb.ChangeBlockMove{
+						TargetId: "1",
+						Position: model.Block_Left,
+						Ids:      []string{"2", "3"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, state.GetChanges())
+	})
+
+	t.Run("add one new block", func(t *testing.T) {
+		state := makeState()
+
+		newBlock := simple.New(Text("4", ID("4")).Block())
+		state.Add(newBlock)
+		state.addChangesForSideMoving("1", model.Block_Left, "4")
+
+		want := []*pb.ChangeContent{
+			{
+				Value: &pb.ChangeContentValueOfBlockCreate{
+					BlockCreate: &pb.ChangeBlockCreate{
+						TargetId: "1",
+						Position: model.Block_Left,
+						Blocks: []*model.Block{
+							newBlock.Model(),
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, state.GetChanges())
+	})
+	t.Run("add multiple new blocks", func(t *testing.T) {
+		state := makeState()
+
+		newBlock1 := simple.New(Text("4", ID("4")).Block())
+		newBlock2 := simple.New(Text("5", ID("5")).Block())
+		state.Add(newBlock1)
+		state.Add(newBlock2)
+		state.addChangesForSideMoving("1", model.Block_Left, "4", "5")
+
+		want := []*pb.ChangeContent{
+			{
+				Value: &pb.ChangeContentValueOfBlockCreate{
+					BlockCreate: &pb.ChangeBlockCreate{
+						TargetId: "1",
+						Position: model.Block_Left,
+						Blocks: []*model.Block{
+							newBlock1.Model(),
+							newBlock2.Model(),
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, state.GetChanges())
+	})
+	t.Run("add one new block and move multiple existing blocks", func(t *testing.T) {
+		state := makeState()
+
+		newBlock := simple.New(Text("4", ID("4")).Block())
+		state.Add(newBlock)
+		state.addChangesForSideMoving("1", model.Block_Left, "4", "2", "3")
+
+		want := []*pb.ChangeContent{
+			{
+				Value: &pb.ChangeContentValueOfBlockCreate{
+					BlockCreate: &pb.ChangeBlockCreate{
+						TargetId: "1",
+						Position: model.Block_Left,
+						Blocks: []*model.Block{
+							newBlock.Model(),
+						},
+					},
+				},
+			},
+			{
+				Value: &pb.ChangeContentValueOfBlockMove{
+					BlockMove: &pb.ChangeBlockMove{
+						TargetId: "4",
+						Position: model.Block_Bottom,
+						Ids:      []string{"2", "3"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, state.GetChanges())
+	})
+	t.Run("move multiple existing blocks and add multiple new blocks", func(t *testing.T) {
+		state := makeState()
+
+		newBlock1 := simple.New(Text("4", ID("4")).Block())
+		newBlock2 := simple.New(Text("5", ID("5")).Block())
+		state.Add(newBlock1)
+		state.Add(newBlock2)
+		state.addChangesForSideMoving("1", model.Block_Left, "2", "3", "4", "5")
+
+		want := []*pb.ChangeContent{
+			{
+				Value: &pb.ChangeContentValueOfBlockMove{
+					BlockMove: &pb.ChangeBlockMove{
+						TargetId: "1",
+						Position: model.Block_Left,
+						Ids:      []string{"2", "3"},
+					},
+				},
+			},
+			{
+				Value: &pb.ChangeContentValueOfBlockCreate{
+					BlockCreate: &pb.ChangeBlockCreate{
+						TargetId: "3",
+						Position: model.Block_Bottom,
+						Blocks: []*model.Block{
+							newBlock1.Model(),
+							newBlock2.Model(),
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, state.GetChanges())
+	})
+	t.Run("move multiple existing blocks and add multiple new blocks, but mixed", func(t *testing.T) {
+		state := makeState()
+
+		newBlock1 := simple.New(Text("4", ID("4")).Block())
+		newBlock2 := simple.New(Text("5", ID("5")).Block())
+		state.Add(newBlock1)
+		state.Add(newBlock2)
+		state.addChangesForSideMoving("1", model.Block_Left, "2", "4", "3", "5")
+
+		want := []*pb.ChangeContent{
+			{
+				Value: &pb.ChangeContentValueOfBlockMove{
+					BlockMove: &pb.ChangeBlockMove{
+						TargetId: "1",
+						Position: model.Block_Left,
+						Ids:      []string{"2"},
+					},
+				},
+			},
+			{
+				Value: &pb.ChangeContentValueOfBlockCreate{
+					BlockCreate: &pb.ChangeBlockCreate{
+						TargetId: "2",
+						Position: model.Block_Bottom,
+						Blocks: []*model.Block{
+							newBlock1.Model(),
+						},
+					},
+				},
+			},
+			{
+				Value: &pb.ChangeContentValueOfBlockMove{
+					BlockMove: &pb.ChangeBlockMove{
+						TargetId: "4",
+						Position: model.Block_Bottom,
+						Ids:      []string{"3"},
+					},
+				},
+			},
+			{
+				Value: &pb.ChangeContentValueOfBlockCreate{
+					BlockCreate: &pb.ChangeBlockCreate{
+						TargetId: "3",
+						Position: model.Block_Bottom,
+						Blocks: []*model.Block{
+							newBlock2.Model(),
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, state.GetChanges())
 	})
 }

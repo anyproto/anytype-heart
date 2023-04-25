@@ -129,7 +129,7 @@ func (s *testSuite) testOnNewObject(objectType bundle.TypeKey, fn func(objectID 
 		ObjectId: resp.ObjectId,
 	})
 
-	AssertPagesEqual(s.T(), wantPage.Build(), sresp.ObjectView.Blocks)
+	AssertTreesEqual(s.T(), wantPage.Build(), sresp.ObjectView.Blocks)
 }
 
 func (s *testSuite) TestEditor_CreateBlocks() {
