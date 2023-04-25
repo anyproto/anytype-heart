@@ -50,6 +50,8 @@ var log = logging.Logger("anytype-mw-builtinobjects")
 const (
 	analyticsContext         = "get-started"
 	builtInDashboardObjectID = "bafybajhnav5nrikgey5hb6rwiq6j6mulyon3my4ehg3riia37cape4ru"
+
+	injectionTimeout = 30 * time.Second
 )
 
 func New() BuiltinObjects {
@@ -91,12 +93,17 @@ func (b *builtinObjects) Run(context.Context) (err error) {
 
 	var ctx context.Context
 	ctx, b.cancel = context.WithCancel(context.Background())
-	go func() {
-		err = b.inject(ctx)
-		if err != nil {
-			log.Errorf("failed to import builtinObjects: %s", err.Error())
-		}
-	}()
+	start := time.Now()
+
+	err = b.inject(ctx)
+	if err != nil {
+		log.Errorf("failed to import builtinObjects: %s", err.Error())
+	}
+
+	spent := time.Now().Sub(start)
+	if spent > injectionTimeout {
+		log.Debugf("built-in objects injection time exceeded timeout of %s and is %s", injectionTimeout.String(), spent.String())
+	}
 
 	return
 }

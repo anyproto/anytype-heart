@@ -11878,7 +11878,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| workspaceId | [string](#string) |  |  |
 | objectId | [string](#string) |  |  |
 
 

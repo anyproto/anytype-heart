@@ -654,7 +654,7 @@ func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.
 		err   error
 	)
 	err = mw.doBlockService(func(bs *block.Service) error {
-		if setId, err = bs.SetWorkspaceDashboardId(cctx, req.WorkspaceId, req.ObjectId); err != nil {
+		if setId, err = bs.SetWorkspaceDashboardId(cctx, req.ContextId, req.ObjectId); err != nil {
 			return err
 		}
 		return nil
