@@ -29,7 +29,7 @@ import (
 	"github.com/textileio/go-threads/db/keytransform"
 	"google.golang.org/grpc"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -251,7 +251,7 @@ func (s *service) Run(context.Context) (err error) {
 	return nil
 }
 
-func (s *service) Close() (err error) {
+func (s *service) Close(ctx context.Context) (err error) {
 	s.Lock()
 	defer s.Unlock()
 	if s.stopped {

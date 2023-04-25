@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"net/http"
 	_ "net/http/pprof"
 	"os"

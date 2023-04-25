@@ -2,7 +2,7 @@ package wallet
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -96,7 +96,7 @@ func (r *wallet) Name() (name string) {
 	return CName
 }
 
-func (r *wallet) Close() (err error) {
+func (r *wallet) Close(ctx context.Context) (err error) {
 	return nil
 }
 

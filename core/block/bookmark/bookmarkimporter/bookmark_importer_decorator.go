@@ -3,7 +3,7 @@ package bookmarkimporter
 import (
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -41,7 +41,7 @@ func (bd *BookmarkImporterDecorator) Init(a *app.App) (err error) {
 func (bd *BookmarkImporterDecorator) CreateBookmarkObject(details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error) {
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 	if objectId, newDetails, err = bd.Importer.ImportWeb(nil, &pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: url}},
+		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: url}},
 		UpdateExistingObjects: true,
 	}); err != nil {
 		log.With(zap.String("function", "BookmarkFetch")).With(zap.String("message", "failed to import bookmark")).Error(err)

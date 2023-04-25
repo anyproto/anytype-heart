@@ -18,7 +18,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
@@ -619,7 +619,7 @@ func (m *dsObjectStore) Run(context.Context) (err error) {
 	return
 }
 
-func (m *dsObjectStore) Close() (err error) {
+func (m *dsObjectStore) Close(ctx context.Context) (err error) {
 	return nil
 }
 

@@ -2,7 +2,8 @@ package ipfs
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -13,6 +14,8 @@ import (
 )
 
 const CName = "ipfs"
+
+var log = logging.Logger("anytype-core-ipfs")
 
 const (
 	IpfsPrivateNetworkKey = `/key/swarm/psk/1.0.0/

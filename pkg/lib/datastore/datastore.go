@@ -2,7 +2,8 @@ package datastore
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/dgraph-io/badger/v3"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/db/keytransform"
 )
@@ -16,6 +17,7 @@ type Datastore interface {
 	RunBlockstoreGC() (freed int64, err error)
 	LogstoreDS() (DSTxnBatching, error)
 	LocalstoreDS() (DSTxnBatching, error)
+	Badger() (*badger.DB, error)
 	ThreadsDbDS() (keytransform.TxnDatastoreExtended, error)
 }
 

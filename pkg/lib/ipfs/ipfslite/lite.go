@@ -33,7 +33,7 @@ import (
 	madns "github.com/multiformats/go-multiaddr-dns"
 	"github.com/textileio/go-threads/util"
 
-	app "github.com/anytypeio/go-anytype-middleware/app"
+	app "github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -266,7 +266,7 @@ func (ln *liteNet) Bootstrap(addrs []peer.AddrInfo) {
 	ln.Peer.Bootstrap(addrs)
 }
 
-func (ln *liteNet) Close() (err error) {
+func (ln *liteNet) Close(ctx context.Context) (err error) {
 	if ln.peerStoreCtxCancel != nil {
 		ln.peerStoreCtxCancel()
 	}

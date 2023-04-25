@@ -3,23 +3,19 @@ package export
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
 	"math/rand"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/dot"
@@ -32,20 +28,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 )
 
 const CName = "export"
-
-const (
-	profileFile  = "profile"
-	tempFileName = "temp_anytype_backup"
-)
 
 var log = logging.Logger("anytype-mw-export")
 
@@ -54,24 +43,18 @@ func New() Export {
 }
 
 type Export interface {
-	Export(req pb.RpcObjectListExportRequest) (path string, succeed int, failed int, err error)
+	Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
 	app.Component
 }
 
-type pathProvider interface {
-	GetBlockStorePath() string
-}
-
 type export struct {
-	bs           *block.Service
-	a            core.Service
-	pathProvider pathProvider
+	bs *block.Service
+	a  core.Service
 }
 
 func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
-	e.pathProvider = app.MustComponent[pathProvider](a)
 	return
 }
 
@@ -79,7 +62,7 @@ func (e *export) Name() (name string) {
 	return CName
 }
 
-func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed int, failed int, err error) {
+func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
 	queue := e.bs.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
@@ -92,15 +75,14 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 	defer queue.Stop(err)
 
-	start := time.Now()
-	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived)
+	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested)
 	if err != nil {
 		return
 	}
 
 	var wr writer
 	if req.Zip {
-		if wr, err = newZipWriter(req.Path, tempFileName); err != nil {
+		if wr, err = newZipWriter(req.Path); err != nil {
 			return
 		}
 	} else {
@@ -108,6 +90,8 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 			return
 		}
 	}
+
+	defer wr.Close()
 
 	queue.SetMessage("export docs")
 	if req.Format == pb.RpcObjectListExport_DOT || req.Format == pb.RpcObjectListExport_SVG {
@@ -129,194 +113,143 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
-		if req.Format == pb.RpcObjectListExport_Protobuf {
-			if len(req.ObjectIds) == 0 {
-				if err = e.createProfileFile(wr); err != nil {
-					log.Errorf("failed to create profile file: %s", err.Error())
-				}
-			}
-			if req.IncludeConfig {
-				wErr := e.writeConfig(wr)
-				if wErr != nil {
-					log.Errorf("failed to create profile file: %s", wErr.Error())
-				}
-			}
-		}
-		log.Errorf("export %d docs", len(docs))
-		tasks := make([]process.Task, 0, len(docs))
-
 		for docId := range docs {
-			var did = docId
-			f := func() {
+			did := docId
+			if err = queue.Wait(func() {
+				log.With("threadId", did).Debugf("write doc")
 				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles); werr != nil {
 					log.With("threadId", did).Warnf("can't export doc: %v", werr)
-					failed++
 				} else {
 					succeed++
 				}
+			}); err != nil {
+				succeed = 0
+				return
 			}
-			tasks = append(tasks, f)
 		}
-		queue.SetMessage("export files")
-		queue.Wait(tasks...)
 	}
-	if failed > 0 || succeed == 0 {
-		log.With("spent", time.Since(start).Milliseconds()).Errorf("export finished with problems: %d docs succeed, %d docs failed", succeed, failed)
-	}
+	queue.SetMessage("export files")
 	if err = queue.Finalize(); err != nil {
-		e.cleanupFile(wr)
 		succeed = 0
 		return
 	}
-	wr.Close()
-	zipName := getZipName(req.Path)
-	err = os.Rename(wr.Path(), zipName)
-	if err != nil {
-		os.Remove(wr.Path())
-		return
-	}
-	return zipName, succeed, failed, nil
+	return wr.Path(), succeed, nil
 }
 
-func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool) (docs map[string]*types.Struct, err error) {
+func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[string]*types.Struct, err error) {
+	docs = make(map[string]*types.Struct)
 	if len(reqIds) == 0 {
-		return e.getExistedObjects(includeArchived)
+		var res []*model.ObjectInfo
+		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+			},
+		}, []smartblock.SmartBlockType{
+			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeProfilePage,
+			smartblock.SmartBlockTypePage,
+		})
+		if err != nil {
+			return
+		}
+
+		for _, r := range res {
+			docs[r.Id] = r.Details
+		}
+		return docs, nil
 	}
 
+	var getNested func(id string)
+	getNested = func(id string) {
+		links, err := e.a.ObjectStore().GetOutboundLinksById(id)
+		if err != nil {
+			log.Errorf("export failed to get outbound links for id: %s", err.Error())
+			return
+		}
+		for _, link := range links {
+			if _, exists := docs[link]; !exists {
+				sbt, err2 := smartblock.SmartBlockTypeFromID(link)
+				if err2 != nil {
+					log.Errorf("failed to get smartblocktype of id %s", link)
+					continue
+				}
+				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
+					continue
+				}
+				rec, _ := e.a.ObjectStore().QueryById(links)
+				if len(rec) > 0 {
+					docs[link] = rec[0].Details
+					getNested(link)
+				}
+			}
+		}
+	}
 	if len(reqIds) > 0 {
-		return e.getObjectsByIDs(reqIds, includeNested)
+		var res []*model.ObjectInfo
+		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.StringList(reqIds),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+			},
+		}, nil)
+		if err != nil {
+			return
+		}
+		var ids []string
+		for _, r := range res {
+			docs[r.Id] = r.Details
+			ids = append(ids, r.Id)
+		}
+		if includeNested {
+			for _, id := range ids {
+				getNested(id)
+			}
+		}
 	}
 	return
-}
-
-func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
-	var res []*model.ObjectInfo
-	docs := make(map[string]*types.Struct)
-	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyId.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(reqIds),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-		},
-	}, nil)
-	if err != nil {
-		return nil, err
-	}
-	ids := make([]string, 0, len(res))
-	for _, r := range res {
-		docs[r.Id] = r.Details
-		ids = append(ids, r.Id)
-	}
-	if includeNested {
-		for _, id := range ids {
-			e.getNested(id, docs)
-		}
-	}
-	return docs, err
-}
-
-func (e *export) getNested(id string, docs map[string]*types.Struct) {
-	links, err := e.a.ObjectStore().GetOutboundLinksById(id)
-	if err != nil {
-		log.Errorf("export failed to get outbound links for id: %s", err.Error())
-		return
-	}
-	for _, link := range links {
-		if _, exists := docs[link]; !exists {
-			sbt, sbtErr := smartblock.SmartBlockTypeFromID(link)
-			if sbtErr != nil {
-				log.Errorf("failed to get smartblocktype of id %s", link)
-				continue
-			}
-			if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
-				continue
-			}
-			rec, qErr := e.a.ObjectStore().QueryById(links)
-			if qErr != nil {
-				log.Errorf("failed to query object with id %s, err: %s", link, err.Error())
-				continue
-			}
-			if len(rec) > 0 {
-				docs[link] = rec[0].Details
-				e.getNested(link, docs)
-			}
-		}
-	}
-}
-
-func (e *export) getExistedObjects(includeArchived bool) (map[string]*types.Struct, error) {
-	res, err := e.a.ObjectStore().List()
-	if err != nil {
-		return nil, err
-	}
-	objectDetails := make(map[string]*types.Struct, len(res))
-	for _, r := range res {
-		if !e.objectValid(r.Id, r, includeArchived) {
-			continue
-		}
-		objectDetails[r.Id] = r.Details
-
-	}
-	if err != nil {
-		return nil, err
-	}
-	return objectDetails, nil
-}
-
-func (e *export) getDeletedObjects() ([]*model.ObjectInfo, error) {
-	deletedObjects, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeyIsDeleted.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.Bool(true),
-		},
-		},
-	}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to QueryObjectIds: %v", err)
-	}
-	return deletedObjects, nil
 }
 
 func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("threadId", did).Debugf("write doc")
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-			defer cancel()
-
-			ctx = context.WithValue(ctx, core.ThreadLoadSkipMissingRecords, true)
-
-			sb, release, werr := e.bs.PickBlockOffload(ctx, did)
-			defer release()
-			if werr != nil {
+			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
+				return mw.Add(b.NewState().Copy())
+			})
+			if err != nil {
 				log.With("threadId", did).Warnf("can't export doc: %v", werr)
 			} else {
 				succeed++
 			}
-			werr = mw.Add(sb.NewState().Copy())
-			if werr != nil {
-				log.With("threadId", did).Warnf("can't add doc to converter: %v", werr)
-			}
+
 		}); err != nil {
 			return
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert())); err != nil {
 		return 0, err
 	}
 
@@ -346,74 +279,64 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 }
 
 func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
-	// lets set the context timeout cause we don't want to load all the objects in the background forever
-	// it may be very expensive in case we are exporting a lot of objects
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*26)
-	ctx = context.WithValue(ctx, ocache.CacheTimeout, time.Second*25)
-	defer cancel()
-
-	ctx = context.WithValue(ctx, core.ThreadLoadSkipMissingRecords, true)
-	b, release, err := e.bs.PickBlockOffload(ctx, docId)
-	if err != nil {
-		log.With("threadId", docId).Errorf("can't export doc: %v", err)
-		return err
-	}
-
-	defer release()
-
-	if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
-		return nil
-	}
-	var conv converter.Converter
-	switch format {
-	case pb.RpcObjectListExport_Markdown:
-		conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
-	case pb.RpcObjectListExport_Protobuf:
-		conv = pbc.NewConverter(b)
-	case pb.RpcObjectListExport_JSON:
-		conv = pbjson.NewConverter(b)
-	}
-	conv.SetKnownDocs(docInfo)
-	result := conv.Convert(b.Type())
-	filename := docId + conv.Ext()
-	if format == pb.RpcObjectListExport_Markdown {
-		s := b.NewState()
-		name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
-		if name == "" {
-			name = s.Snippet()
+	return e.bs.Do(docId, func(b sb.SmartBlock) error {
+		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
+			return nil
 		}
-		filename = wr.Namer().Get("", docId, name, conv.Ext())
-	}
-	if docId == e.a.PredefinedBlocks().Home {
-		filename = "index" + conv.Ext()
-	}
-	if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
-		return err
-	}
-	if !exportFiles {
-		return nil
-	}
-	for _, fh := range conv.FileHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveFile(wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
+		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
+			return nil
+		}
+		var conv converter.Converter
+		switch format {
+		case pb.RpcObjectListExport_Markdown:
+			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
+		case pb.RpcObjectListExport_Protobuf:
+			conv = pbc.NewConverter(b)
+		case pb.RpcObjectListExport_JSON:
+			conv = pbjson.NewConverter(b)
+		}
+		conv.SetKnownDocs(docInfo)
+		result := conv.Convert()
+		filename := docId + conv.Ext()
+		if format == pb.RpcObjectListExport_Markdown {
+			s := b.NewState()
+			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
+			if name == "" {
+				name = s.Snippet()
 			}
-		}); err != nil {
+			filename = wr.Namer().Get("", docId, name, conv.Ext())
+		}
+		if docId == e.a.PredefinedBlocks().Home {
+			filename = "index" + conv.Ext()
+		}
+		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
 			return err
 		}
-	}
-	for _, fh := range conv.ImageHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveImage(wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-			}
-		}); err != nil {
-			return err
+		if !exportFiles {
+			return nil
 		}
-	}
-	return nil
+		for _, fh := range conv.FileHashes() {
+			fileHash := fh
+			if err = queue.Add(func() {
+				if werr := e.saveFile(wr, fileHash); werr != nil {
+					log.With("hash", fileHash).Warnf("can't save file: %v", werr)
+				}
+			}); err != nil {
+				return err
+			}
+		}
+		for _, fh := range conv.ImageHashes() {
+			fileHash := fh
+			if err = queue.Add(func() {
+				if werr := e.saveImage(wr, fileHash); werr != nil {
+					log.With("hash", fileHash).Warnf("can't save image: %v", werr)
+				}
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (e *export) saveFile(wr writer, hash string) (err error) {
@@ -446,64 +369,6 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 		return
 	}
 	return wr.WriteFile(filename, rd)
-}
-
-func (e *export) createProfileFile(wr writer) error {
-	localProfile, err := e.a.LocalProfile()
-	if err != nil {
-		return err
-	}
-	profile := &pb.Profile{
-		Name:        localProfile.Name,
-		Avatar:      localProfile.IconImage,
-		Address:     localProfile.AccountAddr,
-		ProfileId:   e.a.ProfileID(), // save profile id to restore user profile during import
-		AnalyticsId: localProfile.AccountAddr,
-	}
-	data, err := profile.Marshal()
-	if err != nil {
-		return err
-	}
-	err = wr.WriteFile(profileFile, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (e *export) writeConfig(wr writer) error {
-	cfg := struct {
-		LegacyFileStorePath string
-	}{
-		LegacyFileStorePath: e.pathProvider.GetBlockStorePath(),
-	}
-
-	data, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-	err = wr.WriteFile(config.ConfigFileName, bytes.NewReader(data))
-	if err != nil {
-		return fmt.Errorf("failed to create config file: %v", err)
-	}
-	return nil
-}
-
-func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool) bool {
-	if r.Id == addr.AnytypeProfileId {
-		return false
-	}
-	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
-		log.Errorf("invalid type %s for object %s", r.ObjectType.String(), id)
-		return false
-	}
-	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
-		return false
-	}
-	if pbtypes.GetBool(r.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
-		return false
-	}
-	return true
 }
 
 func newNamer() *namer {
@@ -544,21 +409,4 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 		n := int64(i * b)
 		gname = filepath.Join(path, name+"_"+strconv.FormatInt(rand.Int63n(n), b)+ext)
 	}
-}
-
-func validType(sbType smartblock.SmartBlockType) bool {
-	return sbType == smartblock.SmartBlockTypeHome ||
-		sbType == smartblock.SmartBlockTypeProfilePage ||
-		sbType == smartblock.SmartBlockTypePage ||
-		sbType == smartblock.SmartBlockTypeSubObject ||
-		sbType == smartblock.SmartBlockTypeTemplate ||
-		sbType == smartblock.SmartBlockTypeDate ||
-		sbType == smartblock.SmartBlockTypeObjectType ||
-		sbType == smartblock.SmartBlockTypeSet ||
-		sbType == smartblock.SmartBlockTypeWorkspace
-}
-
-func (e *export) cleanupFile(wr writer) {
-	wr.Close()
-	os.Remove(wr.Path())
 }

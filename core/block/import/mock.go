@@ -7,16 +7,14 @@ package importer
 import (
 	reflect "reflect"
 
-	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
-
-	app "github.com/anytypeio/go-anytype-middleware/app"
+	app "github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	session "github.com/anytypeio/go-anytype-middleware/core/session"
 	pb "github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	types "github.com/gogo/protobuf/types"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockImporter is a mock of Importer interface.
@@ -122,18 +120,17 @@ func (m *MockConverter) EXPECT() *MockConverterMockRecorder {
 }
 
 // GetSnapshots mocks base method.
-func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSnapshots", req, progress)
+	ret := m.ctrl.Call(m, "GetSnapshots", req)
 	ret0, _ := ret[0].(*converter.Response)
-	ret1, _ := ret[1].(converter.ConvertError)
-	return ret0, ret1
+	return ret0
 }
 
 // GetSnapshots indicates an expected call of GetSnapshots.
-func (mr *MockConverterMockRecorder) GetSnapshots(req interface{}, progress interface{}) *gomock.Call {
+func (mr *MockConverterMockRecorder) GetSnapshots(req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnapshots", reflect.TypeOf((*MockConverter)(nil).GetSnapshots), req, progress)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnapshots", reflect.TypeOf((*MockConverter)(nil).GetSnapshots), req)
 }
 
 // Name mocks base method.
@@ -191,7 +188,7 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, relations []*converter.Relation, pageID string, sbType smartblock.SmartBlockType, updateExisting bool) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, sbType smartblock.SmartBlockType, updateExisting bool) (*types.Struct, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, cs, pageID, sbType, updateExisting)
 	ret0, _ := ret[0].(*types.Struct)
@@ -200,7 +197,7 @@ func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotB
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockCreatorMockRecorder) Create(ctx, cs, relations, pageID, sbType, updateExisting interface{}) *gomock.Call {
+func (mr *MockCreatorMockRecorder) Create(ctx, cs, pageID, sbType, updateExisting interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, pageID, sbType, updateExisting)
 }

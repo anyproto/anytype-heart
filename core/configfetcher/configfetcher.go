@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	pbMiddle "github.com/anytypeio/go-anytype-middleware/pb"
 	cafeClient "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
@@ -237,7 +237,7 @@ func (c *configFetcher) Refetch() {
 	}
 }
 
-func (c *configFetcher) Close() (err error) {
+func (c *configFetcher) Close(ctx context.Context) (err error) {
 	c.cancel()
 	<-c.stopped
 

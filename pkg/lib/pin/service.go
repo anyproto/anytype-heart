@@ -3,7 +3,7 @@ package pin
 import (
 	"context"
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"sync"
 	"time"
@@ -83,7 +83,7 @@ func (f *filePinService) Run(context.Context) error {
 	return nil
 }
 
-func (f *filePinService) Close() error {
+func (f *filePinService) Close(ctx context.Context) error {
 	f.ctxCancel()
 	return nil
 }

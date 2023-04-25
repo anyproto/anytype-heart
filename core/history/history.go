@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
+
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -24,6 +27,8 @@ import (
 const CName = "history"
 
 const versionGroupInterval = time.Minute * 5
+
+var log = logging.Logger("anytype-mw-history")
 
 func New() History {
 	return new(history)
@@ -206,7 +211,7 @@ func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree 
 }
 
 func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.RpcHistoryVersion, err error) {
-	tree, _, err := h.buildTree(pageId, versionId, true)
+	tree, sbType, err := h.buildTree(pageId, versionId, true)
 	if err != nil {
 		return
 	}
@@ -216,12 +221,17 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 	}
 	s = state.NewDocFromSnapshot(pageId, root.GetSnapshot()).(*state.State)
 	s.SetChangeId(root.Id)
-	st, _, err := change.BuildStateSimpleCRDT(s, tree)
+	st, err := change.BuildStateSimpleCRDT(s, tree)
 	if err != nil {
 		return
 	}
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
+	}
+	switch sbType {
+	case smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeProfilePage, smartblock.SmartBlockTypeSet:
+		// todo: set case not handled
+		template.InitTemplate(s, template.WithTitle)
 	}
 	s.BlocksInit(s)
 	if ch := tree.Get(versionId); ch != nil {

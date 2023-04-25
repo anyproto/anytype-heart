@@ -3,7 +3,7 @@ package filestore
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	ds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
@@ -603,6 +603,6 @@ func (m *dsFileStore) DeleteByHash(hash string) error {
 	return m.ds.Delete(fileInfoKey)
 }
 
-func (ls *dsFileStore) Close() (err error) {
+func (ls *dsFileStore) Close(ctx context.Context) (err error) {
 	return nil
 }

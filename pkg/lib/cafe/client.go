@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
@@ -321,6 +321,6 @@ func New() Client {
 	}
 }
 
-func (c *Online) Close() error {
+func (c *Online) Close(ctx context.Context) (err error) {
 	return c.conn.Close()
 }

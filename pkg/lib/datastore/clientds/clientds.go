@@ -3,6 +3,7 @@ package clientds
 import (
 	"context"
 	"fmt"
+	"github.com/dgraph-io/badger/v3"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,7 +21,7 @@ import (
 	dsbadgerv3 "github.com/textileio/go-ds-badger3"
 	"github.com/textileio/go-threads/db/keytransform"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -460,6 +461,13 @@ func (r *clientds) LogstoreDS() (datastore.DSTxnBatching, error) {
 	return r.localstoreDS, nil
 }
 
+func (r *clientds) Badger() (*badger.DB, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.localstoreDS.DB, nil
+}
+
 func (r *clientds) ThreadsDbDS() (keytransform.TxnDatastoreExtended, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
@@ -478,7 +486,7 @@ func (r *clientds) Name() (name string) {
 	return CName
 }
 
-func (r *clientds) Close() (err error) {
+func (r *clientds) Close(ctx context.Context) (err error) {
 	if r.litestoreOldDS != nil {
 		err2 := r.litestoreOldDS.Close()
 		if err2 != nil {

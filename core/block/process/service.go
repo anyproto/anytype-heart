@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -149,7 +149,7 @@ func (s *service) Cancel(id string) error {
 	return ErrNotFound
 }
 
-func (s *service) Close() error {
+func (s *service) Close(ctx context.Context) (err error) {
 	s.m.Lock()
 	var ids []string
 	for id := range s.processes {

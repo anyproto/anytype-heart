@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
@@ -113,7 +113,7 @@ func (g *gateway) Run(context.Context) error {
 }
 
 // Close stops the gateway
-func (g *gateway) Close() error {
+func (g *gateway) Close(ctx context.Context) (err error) {
 	err := g.stopServer()
 	return err
 }

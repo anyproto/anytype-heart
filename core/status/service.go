@@ -15,7 +15,7 @@ import (
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -250,7 +250,7 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 	}
 }
 
-func (s *service) Close() error {
+func (s *service) Close(ctx context.Context) (err error) {
 	s.tsTrigger.Stop()
 
 	s.mu.Lock()

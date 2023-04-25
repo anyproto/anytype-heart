@@ -3,17 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
-
-	"github.com/libp2p/go-libp2p/core/peer"
-	pstore "github.com/libp2p/go-libp2p/core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"github.com/textileio/go-threads/core/net"
-
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -33,6 +23,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/libp2p/go-libp2p/core/peer"
+	pstore "github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+	"github.com/textileio/go-threads/core/net"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 )
 
 var log = logging.Logger("anytype-core")
@@ -61,11 +60,15 @@ type Service interface {
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
+	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
+	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
 	FileGetKeys(hash string) (*files.FileKeys, error)
 	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
+	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
+	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
@@ -137,7 +140,7 @@ func (a *Anytype) ThreadsIds() ([]string, error) {
 
 type batchAdder interface {
 	Add(msgs ...interface{}) error
-	Close() error
+	Close(ctx context.Context) (err error)
 }
 
 func New() *Anytype {
@@ -287,7 +290,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (
 	return nil
 }
 
-func (a *Anytype) Close() (err error) {
+func (a *Anytype) Close(ctx context.Context) (err error) {
 	metrics.SharedClient.Close()
 	return a.Stop()
 }
