@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -28,6 +28,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -48,13 +49,15 @@ type Export interface {
 }
 
 type export struct {
-	bs *block.Service
-	a  core.Service
+	bs          *block.Service
+	objectStore objectstore.ObjectStore
+	a           core.Service
 }
 
 func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
+	e.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 
@@ -140,7 +143,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 	docs = make(map[string]*types.Struct)
 	if len(reqIds) == 0 {
 		var res []*model.ObjectInfo
-		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
+		res, _, err = e.objectStore.QueryObjectInfo(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
@@ -170,7 +173,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 
 	var getNested func(id string)
 	getNested = func(id string) {
-		links, err := e.a.ObjectStore().GetOutboundLinksById(id)
+		links, err := e.objectStore.GetOutboundLinksById(id)
 		if err != nil {
 			log.Errorf("export failed to get outbound links for id: %s", err.Error())
 			return
@@ -185,7 +188,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
 					continue
 				}
-				rec, _ := e.a.ObjectStore().QueryById(links)
+				rec, _ := e.objectStore.QueryById(links)
 				if len(rec) > 0 {
 					docs[link] = rec[0].Details
 					getNested(link)
@@ -195,7 +198,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 	}
 	if len(reqIds) > 0 {
 		var res []*model.ObjectInfo
-		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
+		res, _, err = e.objectStore.QueryObjectInfo(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyId.String(),

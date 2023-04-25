@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -32,7 +32,8 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
+	store := app.MustComponent[objectstore.ObjectStore](mw.app)
+	objType, err := objectstore.GetObjectType(store, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -196,10 +197,6 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	}
 
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
-}
-
-func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectType, error) {
-	return objectstore.GetObjectType(at.ObjectStore(), url)
 }
 
 func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {

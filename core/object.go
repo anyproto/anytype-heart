@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
@@ -400,7 +401,8 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	rs := mw.app.MustComponent(relation.CName).(relation.Service)
 
-	records, _, err := at.ObjectStore().Query(nil, database.Query{
+	store := app.MustComponent[objectstore.ObjectStore](mw.app)
+	records, _, err := store.Query(nil, database.Query{
 		Filters:          req.Filters,
 		Limit:            int(req.Limit),
 		ObjectTypeFilter: req.ObjectTypeFilter,
@@ -427,7 +429,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	homeId := at.PredefinedBlocks().Home
 	if _, exists := nodeExists[homeId]; !exists {
 		// we don't index home object, but we DO index outgoing links from it
-		links, _ := at.ObjectStore().GetOutboundLinksById(homeId)
+		links, _ := store.GetOutboundLinksById(homeId)
 		records = append(records, database.Record{&types.Struct{
 			Fields: map[string]*types.Value{
 				"id":        pbtypes.String(homeId),
@@ -856,7 +858,7 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 
 func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	request *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
-	//nolint: lll
+	// nolint: lll
 	response := func(code pb.RpcObjectImportNotionValidateTokenResponseErrorCode) *pb.RpcObjectImportNotionValidateTokenResponse {
 		err := &pb.RpcObjectImportNotionValidateTokenResponseError{Code: code}
 		switch code {

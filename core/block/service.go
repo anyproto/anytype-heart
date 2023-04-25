@@ -5,19 +5,18 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/hashicorp/go-multierror"
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore/query"
-
+	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-datastore/query"
+
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -48,6 +47,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -210,7 +210,7 @@ func (s *Service) OpenBlock(
 			return nil
 		}, smartblock.HookOnClose)
 	}
-	//if tid := ob.threadId; tid != thread.Undef && s.status != nil {
+	// if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 	//	var (
 	//		fList = func() []string {
 	//			ob.Lock()
@@ -226,7 +226,7 @@ func (s *Service) OpenBlock(
 	//			return nil
 	//		}, smartblock.HookOnClose)
 	//	}
-	//}
+	// }
 	afterHashesTime := time.Now()
 	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
@@ -287,7 +287,7 @@ func (s *Service) CloseBlock(id string) error {
 		b.ObjectClose()
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
-		//workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		// workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
 		return nil
 	})
 	if err != nil {
@@ -388,7 +388,7 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	workspaceId, err := s.objectStore.GetCurrentWorkspaceId()
 	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
 		return "", nil
 	}
@@ -401,14 +401,14 @@ func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 
 func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
 	panic("is not implemented")
-	//workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	//return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+	// workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	// return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 	//	workspace, ok := b.(*editor.Workspaces)
 	//	if !ok {
 	//		return fmt.Errorf("incorrect object with workspace id")
 	//	}
 	//	return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
-	//})
+	// })
 }
 
 func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
@@ -427,51 +427,51 @@ func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest)
 	}
 	// TODO: [MR] check the meaning of method and what should be the result
 	return fmt.Errorf("not implemented")
-	//return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+	// return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 	//	workspace, ok := b.(*editor.Workspaces)
 	//	if !ok {
 	//		return fmt.Errorf("incorrect object with workspace id")
 	//	}
 	//
 	//	return workspace.AddObject(req.ObjectId, protoPayload.Key, protoPayload.Addrs)
-	//})
+	// })
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
 	return "", fmt.Errorf("not implemented")
-	//workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	//if err == core.ErrObjectDoesNotBelongToWorkspace {
+	// workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	// if err == core.ErrObjectDoesNotBelongToWorkspace {
 	//	workspaceId = s.Anytype().PredefinedBlocks().Account
-	//}
-	//var key string
-	//var addrs []string
-	//err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+	// }
+	// var key string
+	// var addrs []string
+	// err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 	//	workspace, ok := b.(*editor.Workspaces)
 	//	if !ok {
 	//		return fmt.Errorf("incorrect object with workspace id")
 	//	}
 	//	key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
 	//	return err
-	//})
-	//if err != nil {
+	// })
+	// if err != nil {
 	//	return "", err
-	//}
-	//payload := &model.ThreadDeeplinkPayload{
+	// }
+	// payload := &model.ThreadDeeplinkPayload{
 	//	Key:   key,
 	//	Addrs: addrs,
-	//}
-	//marshalledPayload, err := proto.Marshal(payload)
-	//if err != nil {
+	// }
+	// marshalledPayload, err := proto.Marshal(payload)
+	// if err != nil {
 	//	return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
-	//}
-	//encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
+	// }
+	// encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
 	//
-	//params := url.Values{}
-	//params.Add("id", req.ObjectId)
-	//params.Add("payload", encodedPayload)
-	//encoded := params.Encode()
+	// params := url.Values{}
+	// params.Add("id", req.ObjectId)
+	// params.Add("payload", encodedPayload)
+	// encoded := params.Encode()
 	//
-	//return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
+	// return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 // SetPagesIsArchived is deprecated
@@ -685,13 +685,13 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 	}
 
 	for _, fileHash := range fileHashes {
-		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
+		inboundLinks, err := s.objectStore.GetOutboundLinksById(fileHash)
 		if err != nil {
 			log.Errorf("failed to get inbound links for file %s: %s", fileHash, err.Error())
 			continue
 		}
 		if len(inboundLinks) == 0 {
-			if err = s.Anytype().ObjectStore().DeleteObject(fileHash); err != nil {
+			if err = s.objectStore.DeleteObject(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from objectstore: %s", err.Error())
 			}
 			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
@@ -787,7 +787,7 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	//return s.cache.Close()
+	// return s.cache.Close()
 	return
 }
 

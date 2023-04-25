@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -11,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -30,8 +32,6 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 		return response(pb.RpcNavigationListObjectsResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	at := mw.app.MustComponent(core.CName).(core.Service)
-
 	objectTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeProfilePage,
@@ -46,7 +46,9 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 			coresb.SmartBlockTypeObjectType,
 		}
 	}
-	records, _, err := at.ObjectStore().QueryObjectInfo(database.Query{
+
+	store := app.MustComponent[objectstore.ObjectStore](mw.app)
+	records, _, err := store.QueryObjectInfo(database.Query{
 		FullText: req.FullText,
 		Limit:    int(req.Limit),
 		Offset:   int(req.Offset),

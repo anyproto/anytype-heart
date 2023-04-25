@@ -22,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -36,6 +37,7 @@ type ObjectCreator struct {
 	service         *block.Service
 	objCreator      objectCreator
 	core            core.Service
+	objectStore     objectstore.ObjectStore
 	updater         Updater
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
@@ -47,7 +49,9 @@ func NewCreator(service *block.Service,
 	updater Updater,
 	core core.Service,
 	syncFactory *syncer.Factory,
-	relationCreator RelationCreator) Creator {
+	relationCreator RelationCreator,
+	objectStore objectstore.ObjectStore,
+) Creator {
 	return &ObjectCreator{
 		service:         service,
 		objCreator:      objCreator,
@@ -56,6 +60,7 @@ func NewCreator(service *block.Service,
 		syncFactory:     syncFactory,
 		relationCreator: relationCreator,
 		oldIDToNew:      map[string]string{},
+		objectStore:     objectStore,
 	}
 }
 
@@ -223,13 +228,13 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 }
 
 func (oc *ObjectCreator) deleteFile(hash string) {
-	inboundLinks, err := oc.core.ObjectStore().GetOutboundLinksById(hash)
+	inboundLinks, err := oc.objectStore.GetOutboundLinksById(hash)
 	if err != nil {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err.Error())
 		return
 	}
 	if len(inboundLinks) == 0 {
-		if err = oc.core.ObjectStore().DeleteObject(hash); err != nil {
+		if err = oc.objectStore.DeleteObject(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
 		}
 		if err = oc.core.FileStore().DeleteByHash(hash); err != nil {

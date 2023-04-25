@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -34,19 +35,23 @@ type RelationService struct {
 	objCreator       objectCreator
 	createdRelations map[string]relations // need this field to avoid creation of the same relations
 	store            filestore.FileStore
+	objectStore      objectstore.ObjectStore
 }
 
 // NewRelationCreator constructor for RelationService
 func NewRelationCreator(service *block.Service,
 	objCreator objectCreator,
 	store filestore.FileStore,
-	core core.Service) RelationCreator {
+	core core.Service,
+	objectStore objectstore.ObjectStore,
+) RelationCreator {
 	return &RelationService{
 		service:          service,
 		objCreator:       objCreator,
 		core:             core,
 		createdRelations: make(map[string]relations, 0),
 		store:            store,
+		objectStore:      objectStore,
 	}
 }
 
@@ -73,7 +78,7 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 				continue
 			}
 		}
-		records, _, err := rc.core.ObjectStore().Query(nil, database.Query{
+		records, _, err := rc.objectStore.Query(nil, database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Condition:   model.BlockContentDataviewFilter_Equal,
@@ -326,7 +331,7 @@ func (rc *RelationService) handleListValue(ctx *session.Context,
 		err            error
 		existedOptions = make(map[string]string, 0)
 	)
-	options, err := rc.service.Anytype().ObjectStore().GetAggregatedOptions(relationID)
+	options, err := rc.objectStore.GetAggregatedOptions(relationID)
 	if err != nil {
 		log.Errorf("get relations options %s", err)
 	}

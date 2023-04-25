@@ -70,9 +70,8 @@ type Service interface {
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
-	ObjectStore() objectstore.ObjectStore // deprecated
-	FileStore() filestore.FileStore       // deprecated
-	ThreadsIds() ([]string, error)        // deprecated
+	FileStore() filestore.FileStore // deprecated
+	ThreadsIds() ([]string, error)  // deprecated
 
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 
@@ -108,7 +107,6 @@ type Anytype struct {
 
 	opts ServiceOptions
 
-	replicationWG    sync.WaitGroup
 	migrationOnce    sync.Once
 	lock             sync.Mutex
 	isStarted        bool // use under the lock
@@ -265,9 +263,6 @@ func (a *Anytype) Stop() error {
 	if a.shutdownStartsCh != nil {
 		close(a.shutdownStartsCh)
 	}
-
-	// fixme useless!
-	a.replicationWG.Wait()
 
 	return nil
 }
