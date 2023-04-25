@@ -35,7 +35,7 @@ type Service interface {
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
-	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
+	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
 }
@@ -131,19 +131,6 @@ func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
 	}
 	_ = ss.Close()
 	return nil, fmt.Errorf("date source miss the details")
-}
-
-func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	if !strings.HasPrefix(id, addr.DatePrefix) {
-		return nil, fmt.Errorf("id unsupported")
-	}
-	ss := NewDate(s.anytype, id)
-	defer ss.Close()
-	if v, ok := ss.(SourceIdEndodedDetails); ok {
-		return v.DetailsFromId()
-	}
-	_ = ss.Close()
-	return nil, fmt.Errorf("id unsupported")
 }
 
 func (s *service) RegisterStaticSource(id string, src Source) {
