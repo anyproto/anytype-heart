@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -1152,8 +1153,8 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
-			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) &&
-			(slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+			!slices.Contains(bundle.LocalRelationsKeys, rel.Key) &&
+			!slices.Contains(bundle.DerivedRelationsKeys, rel.Key) {
 			relInt := pbtypes.GetInt64(det, rel.Key)
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)

@@ -4,18 +4,17 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
-	"golang.org/x/exp/slices"
 	"math"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
+	"golang.org/x/exp/slices"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -32,6 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -49,7 +49,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 35
+	ForceIdxRebuildCounter int32 = 36
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 4
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -382,7 +382,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		if err != nil {
 			log.Errorf("reindex failed to erase indexes: %v", err.Error())
 		} else {
-			log.Infof("all store indexes successfully erased")
+			log.Infof("all store indexes succesfully erased")
 			// store this flag because underlying localstore needs to now if it needs to amend indexes based on the prev value
 			indexesWereRemoved = true
 		}
@@ -408,7 +408,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	}
 
 	// for all ids except home and archive setting cache timeout for reindexing
-	//ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
+	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if reindex&reindexThreadObjects != 0 {
 		ids, err := i.getIdsForTypes(
 			smartblock.SmartBlockTypePage,
@@ -687,10 +687,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	if err != nil {
 		return fmt.Errorf("incorrect sb type: %v", err)
 	}
-	// add timeout so we don't stuck forever on the reindex
-	ctx = context.WithValue(ctx, ocache.CacheTimeout, time.Second*10)
-	// do not fetch missing records on reindex: this can lead to bad situations
-	ctx = context.WithValue(ctx, core.ThreadLoadSkipMissingRecords, true)
+
 	d, err := i.doc.GetDocInfo(ctx, id)
 	if err != nil {
 		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
@@ -795,20 +792,6 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
 		}
 	}
-	if !indexDetails {
-		d, _ := i.store.GetDetails(info.Id)
-		if d != nil {
-			i.store.DeleteDetails(info.Id)
-		}
-	}
-
-	if !indexLinks {
-		d, _ := i.store.GetOutboundLinksById(info.Id)
-		if d != nil {
-			i.store.UpdateObjectLinks(info.Id, nil)
-		}
-	}
-
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
 		return nil
@@ -895,7 +878,7 @@ func (i *indexer) ftIndex() {
 
 func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
-	//ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
+	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "index_fulltext")
 
 	info, err := i.doc.GetDocInfo(ctx, id)
