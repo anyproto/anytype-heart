@@ -160,6 +160,7 @@ func (s *Service) DeleteObject(id string) (err error) {
 		}
 		return nil
 	})
+	// TODO: [MR] Delete subObjects
 	if err != nil {
 		return
 	}
