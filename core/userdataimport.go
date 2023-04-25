@@ -192,8 +192,14 @@ func (mw *Middleware) createAccountFile(fName string, file *zip.File) error {
 	}
 
 	defer targetFile.Close()
-	if _, err = io.Copy(targetFile, fileReader); err != nil {
-		return err
+	for {
+		_, err := io.CopyN(targetFile, fileReader, 1024)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
 	}
 	return nil
 }
