@@ -24,7 +24,7 @@ import (
 const (
 	CName  = "fts"
 	ftsDir = "fts"
-	ftsVer = "1"
+	ftsVer = "2"
 
 	fieldTitle        = "Title"
 	fieldText         = "Text"

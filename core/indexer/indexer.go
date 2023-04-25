@@ -52,7 +52,7 @@ const (
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceIdxRebuildCounter int32 = 40
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
-	ForceFulltextIndexCounter int32 = 4
+	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
 	ForceFilestoreKeysReindexCounter int32 = 2
 )
