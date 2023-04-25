@@ -131,11 +131,12 @@ type Service struct {
 	relationService relation.Service
 	cache           ocache.OCache
 
-	objectCreator objectCreator
-	objectFactory *editor.ObjectFactory
-	clientService space.Service
-	commonAccount accountservice.Service
-	fileStore     filestore.FileStore
+	objectCreator   objectCreator
+	objectFactory   *editor.ObjectFactory
+	clientService   space.Service
+	commonAccount   accountservice.Service
+	fileStore       filestore.FileStore
+	tempDirProvider core.TempDirProvider
 }
 
 func (s *Service) Name() string {

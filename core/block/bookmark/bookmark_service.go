@@ -3,7 +3,6 @@ package bookmark
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,9 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -57,15 +57,16 @@ type DetailsSetter interface {
 }
 
 type service struct {
-	detailsSetter DetailsSetter
-	creator       ObjectCreator
-	store         objectstore.ObjectStore
-	linkPreview   linkpreview.LinkPreview
-	svc           core.Service
+	detailsSetter  DetailsSetter
+	creator        ObjectCreator
+	store          objectstore.ObjectStore
+	linkPreview    linkpreview.LinkPreview
+	tempDirService *core.TempDirService
+	coreService    core.Service
 }
 
-func New() Service {
-	return &service{}
+func New(tempDirService *core.TempDirService) Service {
+	return &service{tempDirService: tempDirService}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -73,7 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	s.svc = a.MustComponent(core.CName).(core.Service)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
 	return nil
 }
 
@@ -89,6 +90,9 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 	}
 
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	if url == "" {
+		return "", nil, fmt.Errorf("source field is empty or not provided")
+	}
 
 	records, _, err := s.store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
@@ -124,15 +128,13 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		}
 	}
 
-	if url != "" {
-		go func() {
-			if err := s.UpdateBookmarkObject(objectId, getContent); err != nil {
+	go func() {
+		if err := s.UpdateBookmarkObject(objectId, getContent); err != nil {
 
-				log.Errorf("update bookmark object %s: %s", objectId, err)
-				return
-			}
-		}()
-	}
+			log.Errorf("update bookmark object %s: %s", objectId, err)
+			return
+		}
+	}()
 
 	return objectId, newDetails, nil
 }
@@ -236,7 +238,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.svc, data.Title, data.ImageUrl)
+			hash, err := loadImage(s.coreService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
 			if err != nil {
 				log.Errorf("can't load image url %s: %s", data.ImageUrl, err)
 				return
@@ -250,7 +252,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.svc, "", data.FaviconUrl)
+			hash, err := loadImage(s.coreService, s.tempDirService.TempDir(), "", data.FaviconUrl)
 			if err != nil {
 				log.Errorf("can't load favicon url %s: %s", data.FaviconUrl, err)
 				return
@@ -290,7 +292,7 @@ func (s *service) fetcher(id string, params bookmark.FetchParams) error {
 	return nil
 }
 
-func loadImage(stor core.Service, title, url string) (hash string, err error) {
+func loadImage(coreService core.Service, tempDir string, title, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -308,7 +310,7 @@ func loadImage(stor core.Service, title, url string) (hash string, err error) {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	tmpFile, err := ioutil.TempFile(stor.TempDir(), "anytype_downloaded_file_*")
+	tmpFile, err := ioutil.TempFile(tempDir, "anytype_downloaded_file_*")
 	if err != nil {
 		return "", err
 	}
@@ -337,7 +339,7 @@ func loadImage(stor core.Service, title, url string) (hash string, err error) {
 		fileName = title
 	}
 
-	im, err := stor.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(fileName))
+	im, err := coreService.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(fileName))
 	if err != nil {
 		return
 	}

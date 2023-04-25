@@ -26,12 +26,13 @@ type ObjectFactory struct {
 	relationService      relation2.Service
 	sourceService        source.Service
 	sendEvent            func(e *pb.Event)
+	tempDirProvider      core.TempDirProvider
 
 	app *app.App
 }
 
-func NewObjectFactory() *ObjectFactory {
-	return &ObjectFactory{}
+func NewObjectFactory(tempDirProvider core.TempDirProvider) *ObjectFactory {
+	return &ObjectFactory{tempDirProvider: tempDirProvider}
 }
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
@@ -103,6 +104,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.relationService,
+			f.tempDirProvider,
 		)
 	case model.SmartBlockType_Archive:
 		return NewArchive(
@@ -129,6 +131,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.sendEvent,
+			f.tempDirProvider,
 		)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
@@ -173,6 +176,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.relationService,
+			f.tempDirProvider,
 		)
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
@@ -182,6 +186,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.relationService,
+			f.tempDirProvider,
 		)
 	case model.SmartBlockType_Breadcrumbs:
 		return NewBreadcrumbs()
@@ -193,6 +198,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.sourceService,
 			f.detailsModifier,
 			f.fileBlockService,
+			f.tempDirProvider,
 		)
 	case model.SmartBlockType_Widget:
 		return NewWidgetObject()

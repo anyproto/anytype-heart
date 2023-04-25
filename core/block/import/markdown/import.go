@@ -40,8 +40,8 @@ type Markdown struct {
 
 const Name = "Notion"
 
-func New(s core.Service) converter.Converter {
-	return &Markdown{blockConverter: newMDConverter(s)}
+func New(tempDirProvider core.TempDirProvider) converter.Converter {
+	return &Markdown{blockConverter: newMDConverter(tempDirProvider)}
 }
 
 func (m *Markdown) Name() string {

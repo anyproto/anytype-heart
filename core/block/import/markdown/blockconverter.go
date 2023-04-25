@@ -15,16 +15,13 @@ import (
 	ce "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
-type Service interface {
-	TempDir() string
-}
-
 type mdConverter struct {
-	Service
+	tempDirProvider core.TempDirProvider
 }
 
 type FileInfo struct {
@@ -38,8 +35,8 @@ type FileInfo struct {
 	Source          string
 }
 
-func newMDConverter(s Service) *mdConverter {
-	return &mdConverter{Service: s}
+func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
+	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
 func (m *mdConverter) markdownToBlocks(importPath string, mode string) (map[string]*FileInfo, ce.ConvertError) {
@@ -347,7 +344,7 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 
 func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map[string]*FileInfo) {
 	baseName := filepath.Base(f.Name) + id
-	tempDir := m.TempDir()
+	tempDir := m.tempDirProvider.TempDir()
 	newFile := filepath.Join(tempDir, baseName)
 	tmpFile, err := os.Create(newFile)
 	if err != nil {

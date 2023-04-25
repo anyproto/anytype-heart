@@ -2,14 +2,14 @@ package editor
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"strings"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -38,13 +38,13 @@ const (
 
 const (
 	collectionKeyRelationOptions = "opt"
-	CollectionKeyRelations       = "rel"
-	CollectionKeyObjectTypes     = "ot"
+	collectionKeyRelations       = "rel"
+	collectionKeyObjectTypes     = "ot"
 )
 
 var objectTypeToCollection = map[bundle.TypeKey]string{
-	bundle.TypeKeyObjectType:     CollectionKeyObjectTypes,
-	bundle.TypeKeyRelation:       CollectionKeyRelations,
+	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
+	bundle.TypeKeyRelation:       collectionKeyRelations,
 	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
 }
 
@@ -66,6 +66,7 @@ func NewWorkspace(
 	sourceService source.Service,
 	modifier DetailsModifier,
 	fileBlockService file.BlockService,
+	tempDirProvider core.TempDirProvider,
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
@@ -75,6 +76,7 @@ func NewWorkspace(
 			relationService,
 			sourceService,
 			fileBlockService,
+			tempDirProvider,
 		),
 		DetailsModifier: modifier,
 		anytype:         anytype,
@@ -172,7 +174,7 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 		key = bson.NewObjectId().Hex()
 	} else {
 		// no need to check for the generated bson's
-		if st.HasInStore([]string{CollectionKeyRelations, key}) {
+		if st.HasInStore([]string{collectionKeyRelations, key}) {
 			return id, object, ErrSubObjectAlreadyExists
 		}
 		if bundle.HasRelation(key) {
@@ -195,10 +197,10 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	}
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
-	st.SetInStore([]string{CollectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, CollectionKeyRelations, key, true); err != nil {
+	if err = w.initSubObject(st, collectionKeyRelations, key, true); err != nil {
 		return
 	}
 	return
@@ -302,15 +304,15 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	object.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbType...)
 
 	// no need to check for the generated bson's
-	if st.HasInStore([]string{CollectionKeyObjectTypes, key}) {
+	if st.HasInStore([]string{collectionKeyObjectTypes, key}) {
 		// todo: optimize this
 		return id, object, ErrSubObjectAlreadyExists
 	}
 
-	st.SetInStore([]string{CollectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, CollectionKeyObjectTypes, key, true); err != nil {
+	if err = w.initSubObject(st, collectionKeyObjectTypes, key, true); err != nil {
 		return
 	}
 

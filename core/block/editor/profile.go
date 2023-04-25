@@ -38,12 +38,14 @@ func NewProfile(
 	bookmarkBlockService bookmark.BlockService,
 	bookmarkService bookmark.BookmarkService,
 	sendEvent func(e *pb.Event),
+	tempDirProvider core.TempDirProvider,
 ) *Profile {
 	sb := smartblock.New()
 	f := file.NewFile(
 		sb,
 		fileBlockService,
 		anytype,
+		tempDirProvider,
 	)
 	return &Profile{
 		SmartBlock:    sb,
@@ -59,6 +61,7 @@ func NewProfile(
 			sb,
 			f,
 			anytype,
+			tempDirProvider,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,

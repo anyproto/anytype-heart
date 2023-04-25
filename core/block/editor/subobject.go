@@ -42,6 +42,7 @@ func NewSubObject(
 	anytype core.Service,
 	relationService relation2.Service,
 	forcedObjectType bundle.TypeKey,
+	tempDirProvider core.TempDirProvider,
 ) *SubObject {
 	sb := smartblock.New()
 	return &SubObject{
@@ -58,8 +59,10 @@ func NewSubObject(
 				sb,
 				fileBlockService,
 				anytype,
+				tempDirProvider,
 			),
 			anytype,
+			tempDirProvider,
 		),
 		Dataview: dataview.NewDataview(
 			sb,

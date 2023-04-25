@@ -27,6 +27,7 @@ func NewTemplate(
 	bookmarkBlockService bookmark.BlockService,
 	bookmarkService bookmark.BookmarkService,
 	relationService relation2.Service,
+	tempDirProvider core.TempDirProvider,
 ) *Template {
 	return &Template{Page: NewPage(
 		objectStore,
@@ -35,6 +36,7 @@ func NewTemplate(
 		bookmarkBlockService,
 		bookmarkService,
 		relationService,
+		tempDirProvider,
 	)}
 }
 

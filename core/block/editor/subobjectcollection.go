@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -61,6 +61,7 @@ type SubObjectCollection struct {
 	anytype          core.Service
 	relationService  relation2.Service
 	fileBlockService file.BlockService
+	tempDirProvider  core.TempDirProvider
 }
 
 func NewSubObjectCollection(
@@ -70,6 +71,7 @@ func NewSubObjectCollection(
 	relationService relation2.Service,
 	sourceService source.Service,
 	fileBlockService file.BlockService,
+	tempDirProvider core.TempDirProvider,
 ) *SubObjectCollection {
 	sb := smartblock.New()
 	return &SubObjectCollection{
@@ -92,6 +94,7 @@ func NewSubObjectCollection(
 		anytype:               anytype,
 		relationService:       relationService,
 		fileBlockService:      fileBlockService,
+		tempDirProvider:       tempDirProvider,
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
 	}
@@ -292,14 +295,14 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	}
 
 	switch collection {
-	case CollectionKeyObjectTypes:
+	case collectionKeyObjectTypes:
 		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)
 	default:
 		ot, ok := collectionKeyToObjectType(collection)
 		if !ok {
 			return fmt.Errorf("unknown collection '%s'", collection)
 		}
-		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService, ot)
+		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService, ot, c.tempDirProvider)
 	}
 
 	var fullId string

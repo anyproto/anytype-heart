@@ -3,7 +3,6 @@ package file
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -37,11 +37,13 @@ func NewFile(
 	sb smartblock.SmartBlock,
 	fileSource BlockService,
 	anytype core.Service,
+	tempDirProvider core.TempDirProvider,
 ) File {
 	return &sfile{
-		SmartBlock: sb,
-		fileSource: fileSource,
-		anytype:    anytype,
+		SmartBlock:      sb,
+		fileSource:      fileSource,
+		anytype:         anytype,
+		tempDirProvider: tempDirProvider,
 	}
 }
 
@@ -49,7 +51,6 @@ type BlockService interface {
 	DoFile(id string, apply func(f File) error) error
 	CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
 	ProcessAdd(p process.Process) (err error)
-	Anytype() core.Service
 }
 
 type File interface {
@@ -73,8 +74,9 @@ type FileSource struct {
 
 type sfile struct {
 	smartblock.SmartBlock
-	fileSource BlockService
-	anytype    core.Service
+	fileSource      BlockService
+	anytype         core.Service
+	tempDirProvider core.TempDirProvider
 }
 
 func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -163,10 +165,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 }
 
 func (sf *sfile) newUploader() Uploader {
-	return &uploader{
-		service: sf.fileSource,
-		anytype: sf.anytype,
-	}
+	return newUploader(sf.fileSource, sf.anytype, sf.tempDirProvider)
 }
 
 func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
@@ -183,12 +182,16 @@ func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) 
 }
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
-	process := &dropFilesProcess{s: sf.fileSource}
-	if err = process.Init(req.LocalFilePaths); err != nil {
+	proc := &dropFilesProcess{
+		s:               sf.fileSource,
+		coreService:     sf.anytype,
+		tempDirProvider: sf.tempDirProvider,
+	}
+	if err = proc.Init(req.LocalFilePaths); err != nil {
 		return
 	}
 	var ch = make(chan error)
-	go process.Start(sf.RootId(), req.DropTargetId, req.Position, ch)
+	go proc.Start(sf.RootId(), req.DropTargetId, req.Position, ch)
 	err = <-ch
 	return
 }
@@ -293,14 +296,16 @@ type dropFilesHandler interface {
 }
 
 type dropFilesProcess struct {
-	id          string
-	s           BlockService
-	root        *dropFileEntry
-	total, done int64
-	cancel      chan struct{}
-	doneCh      chan struct{}
-	canceling   int32
-	groupId     string
+	id              string
+	s               BlockService
+	coreService     core.Service
+	tempDirProvider core.TempDirProvider
+	root            *dropFileEntry
+	total, done     int64
+	cancel          chan struct{}
+	doneCh          chan struct{}
+	canceling       int32
+	groupId         string
 }
 
 func (dp *dropFilesProcess) Id() string {
@@ -511,10 +516,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 }
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
-	upl := &uploader{
-		service: dp.s,
-		anytype: dp.s.Anytype(),
-	}
+	upl := newUploader(dp.s, dp.coreService, dp.tempDirProvider)
 	res := upl.SetName(f.name).AutoType(true).SetFile(f.path).Upload(context.TODO())
 	if res.Err != nil {
 		f.err = fmt.Errorf("upload error")

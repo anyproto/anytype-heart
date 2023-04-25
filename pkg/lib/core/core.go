@@ -3,8 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -32,8 +30,7 @@ var log = logging.Logger("anytype-core")
 var ErrObjectDoesNotBelongToWorkspace = fmt.Errorf("object does not belong to workspace")
 
 const (
-	CName  = "anytype"
-	tmpDir = "tmp"
+	CName = "anytype"
 )
 
 type Service interface {
@@ -64,7 +61,6 @@ type Service interface {
 	ProfileInfo
 
 	app.ComponentRunnable
-	TempDir() string
 }
 
 var _ app.Component = (*Anytype)(nil)
@@ -89,12 +85,11 @@ type Anytype struct {
 	shutdownStartsCh chan struct {
 	} // closed when node shutdown starts
 
-	subscribeOnce       sync.Once
-	config              *config.Config
-	wallet              wallet.Wallet
-	tmpFolderAutocreate sync.Once
-	tempDir             string
-	commonFiles         fileservice.FileService
+	subscribeOnce sync.Once
+	config        *config.Config
+	wallet        wallet.Wallet
+
+	commonFiles fileservice.FileService
 }
 
 func New() *Anytype {
@@ -225,26 +220,4 @@ func (a *Anytype) Stop() error {
 	}
 
 	return nil
-}
-
-func (a *Anytype) TempDir() string {
-	// it shouldn't be a case when it is called before wallet init, but just in case lets add the check here
-	if a.wallet == nil || a.wallet.RootPath() == "" {
-		return os.TempDir()
-	}
-
-	var err error
-	// simultaneous calls to TempDir will wait for the once func to finish, so it will be fine
-	a.tmpFolderAutocreate.Do(func() {
-		path := filepath.Join(a.wallet.RootPath(), tmpDir)
-		err = os.MkdirAll(path, 0700)
-		if err != nil {
-			log.Errorf("failed to make temp dir, use the default system one: %s", err.Error())
-			a.tempDir = os.TempDir()
-		} else {
-			a.tempDir = path
-		}
-	})
-
-	return a.tempDir
 }

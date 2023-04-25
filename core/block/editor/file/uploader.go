@@ -37,10 +37,15 @@ func init() {
 	}
 }
 
-func NewUploader(s BlockService) Uploader {
+func NewUploader(
+	s BlockService,
+	coreService core.Service,
+	provider core.TempDirProvider,
+) Uploader {
 	return &uploader{
-		service: s,
-		anytype: s.Anytype(),
+		service:         s,
+		anytype:         coreService,
+		tempDirProvider: provider,
 	}
 }
 
@@ -92,7 +97,6 @@ func (ur UploadResult) ToBlock() file.Block {
 
 type uploader struct {
 	service      BlockService
-	anytype      core.Service
 	block        file.Block
 	getReader    func(ctx context.Context) (*fileReader, error)
 	name         string
@@ -103,6 +107,17 @@ type uploader struct {
 	fileStyle    model.BlockContentFileStyle
 	opts         []files.AddOption
 	groupId      string
+
+	anytype         core.Service
+	tempDirProvider core.TempDirProvider
+}
+
+func newUploader(s BlockService, coreService core.Service, tmpDirService core.TempDirProvider) *uploader {
+	return &uploader{
+		service:         s,
+		anytype:         coreService,
+		tempDirProvider: tmpDirService,
+	}
 }
 
 type bufioSeekClose struct {
@@ -205,7 +220,7 @@ func (u *uploader) SetUrl(url string) Uploader {
 			}
 		}
 
-		tmpFile, err := ioutil.TempFile(u.anytype.TempDir(), "anytype_downloaded_file_*")
+		tmpFile, err := ioutil.TempFile(u.tempDirProvider.TempDir(), "anytype_downloaded_file_*")
 		if err != nil {
 			return nil, err
 		}

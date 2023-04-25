@@ -41,12 +41,14 @@ func NewPage(
 	bookmarkBlockService bookmark.BlockService,
 	bookmarkService bookmark.BookmarkService,
 	relationService relation2.Service,
+	tempDirProvider core.TempDirProvider,
 ) *Page {
 	sb := smartblock.New()
 	f := file.NewFile(
 		sb,
 		fileBlockService,
 		anytype,
+		tempDirProvider,
 	)
 	return &Page{
 		SmartBlock:    sb,
@@ -61,6 +63,7 @@ func NewPage(
 			sb,
 			f,
 			anytype,
+			tempDirProvider,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,

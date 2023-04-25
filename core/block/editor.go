@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 
-	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -474,7 +474,7 @@ func (s *Service) CreateAndUploadFile(
 }
 
 func (s *Service) UploadFile(req pb.RpcFileUploadRequest) (hash string, err error) {
-	upl := file.NewUploader(s)
+	upl := file.NewUploader(s, s.anytype, s.tempDirProvider)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}

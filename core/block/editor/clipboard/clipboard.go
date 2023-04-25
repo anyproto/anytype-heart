@@ -43,18 +43,21 @@ func NewClipboard(
 	sb smartblock.SmartBlock,
 	file file.File,
 	anytype core.Service,
+	tempDirProvider core.TempDirProvider,
 ) Clipboard {
 	return &clipboard{
-		SmartBlock: sb,
-		file:       file,
-		anytype:    anytype,
+		SmartBlock:      sb,
+		file:            file,
+		anytype:         anytype,
+		tempDirProvider: tempDirProvider,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file    file.File
-	anytype core.Service
+	file            file.File
+	anytype         core.Service
+	tempDirProvider core.TempDirProvider
 }
 
 func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -237,7 +240,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 	s := cb.blocksToState(req.Blocks)
 	htmlData := html.NewHTMLConverter(cb.anytype, s).Export()
 
-	dir := cb.anytype.TempDir()
+	dir := cb.tempDirProvider.TempDir()
 	fileName := "export-" + cb.Id() + ".html"
 	filePath := filepath.Join(dir, fileName)
 	err = ioutil.WriteFile(filePath, []byte(htmlData), 0644)
