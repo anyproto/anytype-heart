@@ -357,30 +357,6 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 			return nil, err
 		}
 		s.subscriptions[subId] = sub
-
-		// add empty groups with single tags
-		records, err := s.objectStore.GetAggregatedOptions(req.RelationKey)
-		if err != nil {
-			return nil, fmt.Errorf("fail to get tags records: %v", err)
-		}
-		for _, rec := range records {
-			idHash := kanban.Hash(rec.Id)
-			hashExist := false
-			for _, g := range dataViewGroups {
-				if idHash == g.Id {
-					hashExist = true
-					break
-				}
-			}
-			if !hashExist {
-				dataViewGroups = append(dataViewGroups, &model.BlockContentDataviewGroup{
-					Id: idHash,
-					Value: &model.BlockContentDataviewGroupValueOfTag{Tag: &model.BlockContentDataviewTag{
-						Ids: []string{rec.Id},
-					}},
-				})
-			}
-		}
 	} else if colObserver != nil {
 		colObserver.close()
 	}

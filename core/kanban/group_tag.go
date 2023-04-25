@@ -2,6 +2,7 @@ package kanban
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -26,6 +27,19 @@ func (t *GroupTag) InitGroups(f *database.Filters) error {
 		f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}
 	}
 
+	f.FilterObj = filter.OrFilters{f.FilterObj, filter.AndFilters{
+		filter.Eq{
+			Key:   bundle.RelationKeyRelationKey.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(t.Key),
+		},
+		filter.Eq{
+			Key:   bundle.RelationKeyType.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		},
+	}}
+
 	records, err := t.store.QueryRaw(query.Query{
 		Filters: []query.Filter{f},
 	})
@@ -44,14 +58,25 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 	uniqMap := make(map[string]bool)
 
 	for _, v := range t.Records {
-		if tags := pbtypes.GetStringList(v.Details, t.Key); len(tags) > 0 {
-			sort.Strings(tags)
-			hash := strings.Join(tags, "")
+		if tagRecord := pbtypes.GetStringList(v.Details, t.Key); len(tagRecord) > 0 {
+			sort.Strings(tagRecord)
+			hash := strings.Join(tagRecord, "")
 			if !uniqMap[hash] {
 				uniqMap[hash] = true
 				groups = append(groups, Group{
 					Id:   hash,
-					Data: GroupData{Ids: tags},
+					Data: GroupData{Ids: tagRecord},
+				})
+			}
+		}
+
+		if tagOption := pbtypes.GetString(v.Details, bundle.RelationKeyRelationKey.String()); tagOption == t.Key {
+			optionId := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
+			if !uniqMap[optionId] {
+				uniqMap[optionId] = true
+				groups = append(groups, Group{
+					Id:   optionId,
+					Data: GroupData{Ids: []string{optionId}},
 				})
 			}
 		}

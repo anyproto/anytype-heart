@@ -62,6 +62,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 			if !inFilter {
 				gs.cache.RemoveSubId(ctxEntry.id, gs.id)
 				delete(gs.set, ctxEntry.id)
+				checkGroups = true
 			}
 		} else if inFilter { // if not in cache but has been added new tags
 			gs.cache.Set(ctxEntry)
@@ -95,7 +96,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 		if len(removedIds) > 0 || len(addedIds) > 0 {
 			for _, removedGroup := range removedIds {
 				for _, g := range gs.groups {
-					if len(g.GetTag().Ids) > 1 && removedGroup == g.Id {
+					if removedGroup == g.Id {
 						ctx.groups = append(ctx.groups, opGroup{subId: gs.id, group: g, remove: true})
 					}
 				}
