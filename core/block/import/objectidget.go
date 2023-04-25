@@ -102,13 +102,13 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, sn *converter.Snapshot, sbTy
 		}
 	}
 	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeyId.String()] != nil && updateExisting {
-		source := snapshot.Details.Fields[bundle.RelationKeyId.String()]
+		id := sn.Id
 		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					RelationKey: bundle.RelationKeyId.String(),
-					Value:       pbtypes.String(source.GetStringValue()),
+					Value:       pbtypes.String(id),
 				},
 			},
 			Limit: 1,
