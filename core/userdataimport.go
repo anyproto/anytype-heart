@@ -148,6 +148,13 @@ func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcUs
 		return err
 	}
 	path := filepath.Join(mw.rootPath, profile.Address)
+	_, err = os.Stat(path)
+	if err == nil {
+		err = os.Rename(path, path+"_backup")
+		if err != nil {
+			return err
+		}
+	}
 	err = os.MkdirAll(path, 0700)
 	if err != nil {
 		return err

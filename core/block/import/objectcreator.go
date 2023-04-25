@@ -278,7 +278,9 @@ func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldI
 			log.With("object", pageID).Errorf("failed to find relation %s: %s", k, err.Error())
 			continue
 		}
-		if rel.Format != model.RelationFormat_object {
+		if rel.Format != model.RelationFormat_object &&
+			rel.Format != model.RelationFormat_tag &&
+			rel.Format != model.RelationFormat_status {
 			continue
 		}
 
