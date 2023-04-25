@@ -1750,6 +1750,12 @@ message Rpc {
                 bool includeFiles = 6;
                 // for protobuf export
                 bool isJson = 7;
+                // for migration
+                bool includeDeleted = 8;
+                // for migration
+                bool includeArchived = 9;
+                // for migration
+                bool includeConfig = 10;
             }
 
             message Response {
