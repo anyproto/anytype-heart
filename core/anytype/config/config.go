@@ -141,7 +141,7 @@ func DisableFileConfig(disable bool) func(*Config) {
 func New(options ...func(*Config)) *Config {
 	cfg := DefaultConfig
 	if randomPort, err := netutil.GetRandomPort(); err == nil {
-		cfg.LocalServerAddr = fmt.Sprintf("127.0.0.1:%d", randomPort)
+		cfg.LocalServerAddr = fmt.Sprintf("0.0.0.0:%d", randomPort)
 	}
 	for _, opt := range options {
 		opt(&cfg)
