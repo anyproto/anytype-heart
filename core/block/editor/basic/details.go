@@ -13,31 +13,27 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/console"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var log = logging.Logger("anytype-mw-editor-basic")
 
+type detailUpdate struct {
+	key   string
+	value *types.Value
+}
+
 func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	s := bs.NewStateCtx(ctx)
-	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
-	if detCopy == nil || detCopy.Fields == nil {
-		detCopy = &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}
-	}
 
-	for _, detail := range details {
-		if err := bs.setDetail(ctx, s, detCopy, detail); err != nil {
-			log.Errorf("can't set detail %s: %s", detail.Key, err)
-		}
-	}
-	if detCopy.Equal(s.CombinedDetails()) {
-		return
-	}
+	// Collect updates handling special cases. These cases could update details themselves, so we
+	// have to apply changes later
+	updates := bs.collectDetailUpdates(details, s)
+	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
+	s.SetDetails(newDetails)
 
-	s.SetDetails(detCopy)
 	if err = bs.Apply(s, smartblock.NoRestrictions); err != nil {
 		return
 	}
@@ -46,25 +42,55 @@ func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDeta
 	return nil
 }
 
-func (bs *basic) setDetail(ctx *session.Context, st *state.State, detCopy *types.Struct, detail *pb.RpcObjectSetDetailsDetail) error {
+func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s *state.State) []*detailUpdate {
+	updates := make([]*detailUpdate, 0, len(details))
+	for _, detail := range details {
+		update, err := bs.createDetailUpdate(s, detail)
+		if err == nil {
+			updates = append(updates, update)
+		} else {
+			log.Errorf("can't set detail %s: %s", detail.Key, err)
+		}
+	}
+	return updates
+}
+
+func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
+	newDetails := pbtypes.CopyStruct(oldDetails)
+	if newDetails == nil || newDetails.Fields == nil {
+		newDetails = &types.Struct{
+			Fields: make(map[string]*types.Value),
+		}
+	}
+	for _, update := range updates {
+		if update.value == nil {
+			delete(newDetails.Fields, update.key)
+		} else {
+			newDetails.Fields[update.key] = update.value
+		}
+	}
+	return newDetails
+}
+
+func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDetailsDetail) (*detailUpdate, error) {
 	if detail.Value != nil {
 		if err := pbtypes.ValidateValue(detail.Value); err != nil {
-			return fmt.Errorf("detail %s validation error: %s", detail.Key, err.Error())
+			return nil, fmt.Errorf("detail %s validation error: %s", detail.Key, err.Error())
 		}
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
-			return fmt.Errorf("special case: %w", err)
+			return nil, fmt.Errorf("special case: %w", err)
 		}
 		if err := bs.addRelationLink(detail.Key, st); err != nil {
-			return err
+			return nil, err
 		}
 		if err := bs.relationService.ValidateFormat(detail.Key, detail.Value); err != nil {
-			return fmt.Errorf("failed to validate relation: %w", err)
+			return nil, fmt.Errorf("failed to validate relation: %w", err)
 		}
-		detCopy.Fields[detail.Key] = detail.Value
-	} else {
-		delete(detCopy.Fields, detail.Key)
 	}
-	return nil
+	return &detailUpdate{
+		key:   detail.Key,
+		value: detail.Value,
+	}, nil
 }
 
 func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetDetailsDetail) error {
@@ -187,8 +213,14 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
 
+	fmt.Println("BEFORE")
+	console.PrintBlocks(s)
+
 	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
+
+	fmt.Println("AFTER")
+	console.PrintBlocks(s)
 	return nil
 }
