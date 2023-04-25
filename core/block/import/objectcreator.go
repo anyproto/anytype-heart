@@ -118,7 +118,11 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		return oc.handleSubObject(ctx, snapshot, newID, workspaceID, details), nil
+		return oc.handleSubObject(ctx, snapshot, newID, details), nil
+	}
+
+	if sn.SbType == coresb.SmartBlockTypeWorkspace {
+		return oc.handleWorkspace(ctx, sn, oldIDtoNew)
 	}
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
@@ -149,28 +153,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 
-	var respDetails *types.Struct
-	err = oc.service.Do(newID, func(b sb.SmartBlock) error {
-		err = b.SetObjectTypes(ctx, snapshot.ObjectTypes)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set object types %s: %s", newID, err.Error())
-		}
-
-		err = b.ResetToVersion(st)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
-		}
-
-		err = b.SetDetails(ctx, details, true)
-		if err != nil {
-			return err
-		}
-		respDetails = b.CombinedDetails()
-		return nil
-	})
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err.Error())
-	}
+	respDetails := oc.resetState(ctx, newID, snapshot, st, details)
 
 	if isFavorite {
 		err = oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
@@ -202,6 +185,50 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	})
 
 	return respDetails, nil
+}
+
+func (oc *ObjectCreator) handleWorkspace(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string) (*types.Struct, error) {
+	spaceDashBoardID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
+	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
+		err := oc.service.Do(oc.core.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+			return b.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
+				{
+					Key:   bundle.RelationKeySpaceDashboardId.String(),
+					Value: pbtypes.String(id),
+				},
+			}, false)
+		})
+		if err != nil {
+			log.Errorf("failed to set dashboardID: %s", err.Error())
+		}
+	}
+	return nil, nil
+}
+
+func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, snapshot *model.SmartBlockSnapshotBase, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+	var respDetails *types.Struct
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+		err := b.SetObjectTypes(ctx, snapshot.ObjectTypes)
+		if err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to set object types %s: %s", newID, err.Error())
+		}
+
+		err = b.ResetToVersion(st)
+		if err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
+		}
+
+		err = b.SetDetails(ctx, details, true)
+		if err != nil {
+			return err
+		}
+		respDetails = b.CombinedDetails()
+		return nil
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err.Error())
+	}
+	return respDetails
 }
 
 func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
@@ -254,13 +281,10 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
-func (oc *ObjectCreator) handleSubObject(ctx *session.Context,
-	snapshot *model.SmartBlockSnapshotBase,
-	newID, workspaceID string,
-	details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, newID string, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
 	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
 		if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
-			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID, true)
+			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, oc.core.PredefinedBlocks().Account, true)
 			if err != nil {
 				log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
 			}

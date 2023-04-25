@@ -65,6 +65,7 @@ func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
 func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
+	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	return
 }
 
@@ -125,7 +126,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	} else {
 		if req.Format == pb.RpcObjectListExport_Protobuf {
 			if len(req.ObjectIds) == 0 {
-				if err = e.createProfileFile(e.a.PredefinedBlocks().Account, wr, docs); err != nil {
+				if err = e.createProfileFile(wr); err != nil {
 					log.Errorf("failed to create profile file: %s", err.Error())
 				}
 			}
@@ -154,36 +155,8 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 }
 
 func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, includeDeleted bool) (docs map[string]*types.Struct, err error) {
-	var getNested func(id string)
-	getNested = func(id string) {
-		links, err := e.objectStore.GetOutboundLinksById(id)
-		if err != nil {
-			log.Errorf("export failed to get outbound links for id: %s", err.Error())
-			return
-		}
-		for _, link := range links {
-			if _, exists := docs[link]; !exists {
-				sbt, err2 := e.sbtProvider.Type(link)
-				if err2 != nil {
-					log.Errorf("failed to get smartblocktype of id %s", link)
-					continue
-				}
-				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet && sbt != smartblock.SmartBlockTypeCollection {
-					continue
-				}
-				rec, qErr := e.objectStore.QueryById(links)
-				if qErr != nil {
-					log.Error("failed to query object by id, err: ", err)
-				}
-				if len(rec) > 0 {
-					docs[link] = rec[0].Details
-					getNested(link)
-				}
-			}
-		}
-	}
 	if len(reqIds) == 0 {
-		return e.getAllObjects(includeArchived, includeDeleted, includeNested)
+		return e.getAllObjects(includeArchived, includeDeleted)
 	}
 
 	if len(reqIds) > 0 {
@@ -217,7 +190,7 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	if err != nil {
 		return nil, err
 	}
-	var ids []string
+	ids := make([]string, len(res))
 	for _, r := range res {
 		docs[r.Id] = r.Details
 		ids = append(ids, r.Id)
@@ -230,7 +203,7 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	return docs, err
 }
 
-func (e *export) getAllObjects(includeArchived bool, includeDeleted bool, includeNested bool) (map[string]*types.Struct, error) {
+func (e *export) getAllObjects(includeArchived bool, includeDeleted bool) (map[string]*types.Struct, error) {
 	var res []*model.ObjectInfo
 	docs := make(map[string]*types.Struct)
 
@@ -253,7 +226,14 @@ func (e *export) getAllObjects(includeArchived bool, includeDeleted bool, includ
 		return nil, err
 	}
 	for _, r := range res {
-		if !e.objectValid(r) {
+		if !e.objectValid(r.Details) {
+			continue
+		}
+		sbType, sbErr := e.sbtProvider.Type(r.Id)
+		if sbErr != nil {
+			continue
+		}
+		if skipObject(sbType) {
 			continue
 		}
 		docs[r.Id] = r.Details
@@ -269,15 +249,19 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 	for _, link := range links {
 		if _, exists := docs[link]; !exists {
-			sbt, err2 := e.sbtProvider.Type(link)
-			if err2 != nil {
+			sbt, sbtErr := e.sbtProvider.Type(link)
+			if sbtErr != nil {
 				log.Errorf("failed to get smartblocktype of id %s", link)
 				continue
 			}
 			if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
 				continue
 			}
-			rec, _ := e.objectStore.QueryById(links)
+			rec, qErr := e.objectStore.QueryById(links)
+			if qErr != nil {
+				log.Errorf("failed to query id %s, err: %s", qErr, err.Error())
+				continue
+			}
 			if len(rec) > 0 {
 				docs[link] = rec[0].Details
 				e.getNested(link, docs)
@@ -364,7 +348,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0, ""))); err != nil {
 		return 0, err
 	}
 
@@ -393,8 +377,8 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	return
 }
 
-func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool, isJson bool) (err error) {
-	return e.bs.Do(docId, func(b sb.SmartBlock) error {
+func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
+	return e.bs.Do(docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
 			return nil
 		}
@@ -406,22 +390,22 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 		case pb.RpcObjectListExport_Markdown:
 			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
 		case pb.RpcObjectListExport_Protobuf:
-			conv = pbc.NewConverter(b, isJson)
+			conv = pbc.NewConverter(b, isJSON)
 		case pb.RpcObjectListExport_JSON:
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
-		result := conv.Convert(b.Type())
-		filename := docId + conv.Ext()
+		result := conv.Convert(b.Type(), docID)
+		filename := docID + conv.Ext()
 		if format == pb.RpcObjectListExport_Markdown {
 			s := b.NewState()
 			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 			if name == "" {
 				name = s.Snippet()
 			}
-			filename = wr.Namer().Get("", docId, name, conv.Ext())
+			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docId == e.a.PredefinedBlocks().Home {
+		if docID == e.a.PredefinedBlocks().Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -486,30 +470,54 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	return wr.WriteFile(filename, rd)
 }
 
-func (e *export) createProfileFile(account string, wr writer, docs map[string]*types.Struct) error {
-	if r, ok := docs[account]; ok {
-		spaceDashBoardID := pbtypes.GetString(r, bundle.RelationKeySpaceDashboardId.String())
-		profile := &pb.Profile{SpaceDashboardId: spaceDashBoardID}
-		data, err := profile.Marshal()
-		if err != nil {
-			return err
-		}
-		err = wr.WriteFile(profileFile, bytes.NewReader(data))
-		if err != nil {
-			return err
-		}
+func (e *export) createProfileFile(wr writer) error {
+	var spaceDashBoardID string
+	pr, err := e.a.LocalProfile()
+	if err != nil {
+		return err
+	}
+	err = e.bs.Do(e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	profile := &pb.Profile{SpaceDashboardId: spaceDashBoardID, Address: pr.AccountAddr, Name: pr.Name, Avatar: pr.IconImage}
+	data, err := profile.Marshal()
+	if err != nil {
+		return err
+	}
+	err = wr.WriteFile(profileFile, bytes.NewReader(data))
+	if err != nil {
+		return err
 	}
 	return fmt.Errorf("account predefined block not found")
 }
 
-func (e *export) objectValid(r *model.ObjectInfo) bool {
-	if sourceObject := pbtypes.GetString(r.Details, bundle.RelationKeySourceObject.String()); sourceObject != "" {
+func (e *export) objectValid(r *types.Struct) bool {
+	if sourceObject := pbtypes.GetString(r, bundle.RelationKeySourceObject.String()); sourceObject != "" {
+		// Export such objects, so we can delete them from library during migration import
+		if deleted := pbtypes.GetBool(r, bundle.RelationKeyIsDeleted.String()); deleted {
+			return true
+		}
 		if strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) ||
 			strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) {
 			return false
 		}
 	}
 	return true
+}
+
+func skipObject(objectType smartblock.SmartBlockType) bool {
+	return objectType == smartblock.SmartBlockTypeBundledObjectType ||
+		objectType == smartblock.SmartBlockTypeBundledTemplate ||
+		objectType == smartblock.SmartBlockTypeBundledRelation ||
+		objectType == smartblock.SmartBlockTypeWorkspaceOld ||
+		objectType == smartblock.SmartBlockTypeArchive ||
+		objectType == smartblock.SmartblockTypeMarketplaceRelation ||
+		objectType == smartblock.SmartblockTypeMarketplaceType ||
+		objectType == smartblock.SmartBlockTypeFile
 }
 
 func newNamer() *namer {

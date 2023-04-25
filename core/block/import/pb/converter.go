@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -31,8 +30,6 @@ const (
 	profileFile        = "profile"
 	configFile         = "config.json"
 )
-
-var log = logging.Logger("pb-converter")
 
 type Pb struct {
 	service     *collection.Service
@@ -70,6 +67,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProg
 			allSnapshots = append(allSnapshots, rootCol)
 		}
 	}
+
 	progress.SetTotal(int64(len(allSnapshots)) * 2)
 	if allErrors.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots}, nil
@@ -87,13 +85,19 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.IProg
 			allErrors.Merge(err)
 			return nil, nil, allErrors
 		}
-		needToImportWidgets := p.needToImportWidgets(profile.Address, accountID)
-		snapshots, objects, ce := p.getSnapshotsFromFiles(req, progress, pbFiles, allErrors, path, needToImportWidgets, profile.SpaceDashboardId)
+		var needToImportWidgets bool
+		if profile != nil {
+			needToImportWidgets = p.needToImportWidgets(profile.Address, accountID)
+		}
+		snapshots, objects, ce := p.getSnapshotsFromFiles(req, progress, pbFiles, allErrors, path, needToImportWidgets)
 		if !ce.IsEmpty() {
 			return nil, nil, ce
 		}
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, allErrors
+		}
+		if sn := p.setDashboardID(profile, snapshots); sn != nil {
+			allSnapshots = append(allSnapshots, sn)
 		}
 		allSnapshots = append(allSnapshots, snapshots...)
 		targetObjects = append(targetObjects, objects...)
@@ -101,13 +105,39 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.IProg
 	return allSnapshots, targetObjects, allErrors
 }
 
+func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot) *converter.Snapshot {
+	var (
+		newSpaceDashBoardID string
+		workspace           *converter.Snapshot
+	)
+	if profile == nil {
+		return nil
+	}
+	for _, snapshot := range snapshots {
+		if snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
+			workspace = snapshot
+		}
+		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		if id == profile.SpaceDashboardId {
+			newSpaceDashBoardID = snapshot.Id
+		}
+	}
+
+	if workspace != nil {
+		workspace.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(newSpaceDashBoardID)
+		return nil
+	}
+
+	sn := p.setSpaceDashboardID(newSpaceDashBoardID)
+	return sn
+}
+
 func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	progress process.IProgress,
 	pbFiles map[string]*converter.IOReader,
 	allErrors converter.ConvertError,
 	path string,
-	needToCreateWidgets bool,
-	spaceDashboardID string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+	needToCreateWidgets bool) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
@@ -118,10 +148,9 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 			ce := converter.NewFromError(name, err)
 			return nil, nil, ce
 		}
-
 		id := uuid.New().String()
 		rc := file.Reader
-		mo, errGS := p.GetSnapshot(rc, name, needToCreateWidgets, spaceDashboardID)
+		mo, errGS := p.GetSnapshot(rc, name, needToCreateWidgets)
 		rc.Close()
 		if errGS != nil {
 			allErrors.Add(name, errGS)
@@ -245,7 +274,7 @@ func (p *Pb) handleFile(importPath string, files map[string]*converter.IOReader)
 	return files, pr, nil
 }
 
-func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool, spaceDashboardID string) (*pb.SnapshotWithType, error) {
+func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool) (*pb.SnapshotWithType, error) {
 	defer rd.Close()
 	snapshot := &pb.SnapshotWithType{}
 	if filepath.Ext(name) == ".json" {
@@ -265,7 +294,6 @@ func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool,
 	if snapshot.SbType == model.SmartBlockType_Widget && !needToCreateWidget {
 		return nil, nil
 	}
-	p.setSpaceDashboardID(spaceDashboardID, snapshot)
 	return snapshot, nil
 }
 
@@ -281,27 +309,25 @@ func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
 	return profile, nil
 }
 
-func (p *Pb) needToImportWidgets(address string, accountId string) bool {
-	if address == accountId {
-		return true
-	}
-	return false
+func (p *Pb) needToImportWidgets(address string, accountID string) bool {
+	return address == accountID
 }
 
-func (p *Pb) setSpaceDashboardID(spaceDashboardID string, snapshot *pb.SnapshotWithType) {
-	if snapshot.SbType == model.SmartBlockType_Workspace && spaceDashboardID != "" {
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
-		if id != "" {
-			return
+func (p *Pb) setSpaceDashboardID(spaceDashboardID string) *converter.Snapshot {
+	if spaceDashboardID != "" {
+		sn := &converter.Snapshot{
+			Id:       uuid.New().String(),
+			SbType:   smartblock.SmartBlockTypeWorkspace,
+			FileName: profileFile,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{Fields: map[string]*types.Value{
+						bundle.RelationKeySpaceDashboardId.String(): pbtypes.String(spaceDashboardID),
+					}},
+				},
+			},
 		}
-		details := snapshot.Snapshot.Data.Details
-		if details == nil || details.Fields == nil {
-			snapshot.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-		snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(spaceDashboardID)
-		snapshot.Snapshot.Data.RelationLinks = append(snapshot.Snapshot.Data.RelationLinks, &model.RelationLink{
-			Key:    bundle.RelationKeySpaceDashboardId.String(),
-			Format: model.RelationFormat_object,
-		})
+		return sn
 	}
+	return nil
 }

@@ -7,25 +7,27 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var log = logging.Logger("pb-converter")
 
-func NewConverter(s state.Doc, isJson bool) converter.Converter {
+func NewConverter(s state.Doc, isJSON bool) converter.Converter {
 	return &pbc{
 		s:      s,
-		isJson: isJson,
+		isJSON: isJSON,
 	}
 }
 
 type pbc struct {
 	s      state.Doc
-	isJson bool
+	isJSON bool
 }
 
-func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
+func (p *pbc) Convert(sbType model.SmartBlockType, id string) []byte {
 	st := p.s.NewState()
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
@@ -40,11 +42,16 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
 
+	if snapshot.Data.Details == nil || snapshot.Data.Details.Fields == nil {
+		snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
+
 	mo := &pb.SnapshotWithType{
 		SbType:   sbType,
 		Snapshot: snapshot,
 	}
-	if p.isJson {
+	if p.isJSON {
 		m := jsonpb.Marshaler{Indent: " "}
 		result, err := m.MarshalToString(mo)
 		if err != nil {
@@ -60,6 +67,9 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 }
 
 func (p *pbc) Ext() string {
+	if p.isJSON {
+		return ".pb.json"
+	}
 	return ".pb"
 }
 
