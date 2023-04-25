@@ -69,21 +69,21 @@ func (f *ObjectFactory) Name() (name string) {
 }
 
 func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	var ot objecttree.ObjectTree
-	if initCtx != nil {
-		ot = initCtx.ObjectTree
-	}
-
-	defer func() {
-		if err != nil && ot != nil {
-			initCtx.ObjectTree.Close()
-		}
-	}()
-
-	sc, err := f.sourceService.NewSource(id, ot)
+	sc, err := f.sourceService.NewSource(id, initCtx.SpaceID, initCtx.BuildTreeOpts)
 	if err != nil {
 		return
 	}
+
+	var ot objecttree.ObjectTree
+	if p, ok := sc.(source.ObjectTreeProvider); ok {
+		ot = p.Tree()
+	}
+	defer func() {
+		if err != nil && ot != nil {
+			ot.Close()
+		}
+	}()
+
 	sb = f.New(sc.Type())
 
 	if ot != nil {

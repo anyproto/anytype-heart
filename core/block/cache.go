@@ -27,8 +27,7 @@ const (
 )
 
 type treeCreateCache struct {
-	treeCreate treestorage.TreeStorageCreatePayload
-	initFunc   InitFunc
+	initFunc InitFunc
 }
 
 type cacheOpts struct {
@@ -54,38 +53,22 @@ func (s *Service) createCache() ocache.OCache {
 }
 
 func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
+	// TODO Pass options as parameter?
 	opts := ctx.Value(optsKey).(cacheOpts)
-	spc, err := s.clientService.GetSpace(ctx, opts.spaceId)
-	if err != nil {
-		return
-	}
 
 	buildTreeObject := func(id string) (sb smartblock.SmartBlock, err error) {
-		var ot objecttree.ObjectTree
-		ot, err = spc.BuildTree(ctx, id, opts.buildOption)
-		if err != nil {
-			return
-		}
-		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, ObjectTree: ot})
+		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildTreeOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
-	createTreeObject := func(ot objecttree.ObjectTree) (sb smartblock.SmartBlock, err error) {
+	createTreeObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)
-		initCtx.ObjectTree = ot
+		initCtx.SpaceID = opts.spaceId
+		initCtx.BuildTreeOpts = opts.buildOption
 		return s.objectFactory.InitObject(id, initCtx)
 	}
 
 	switch {
 	case opts.createOption != nil:
-		// creating tree if needed
-		var ot objecttree.ObjectTree
-		ot, err = spc.PutTree(ctx, opts.createOption.treeCreate, nil)
-		if err != nil {
-			if err == treestorage.ErrTreeExists {
-				return buildTreeObject(id)
-			}
-			return
-		}
-		return createTreeObject(ot)
+		return createTreeObject()
 	case opts.putObject != nil:
 		// putting object through cache
 		return opts.putObject, nil
@@ -93,17 +76,12 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 		break
 	}
 
-	// TODO Move to source service. IT WILL NOT WORK FOR SETS/COLLECTIONS
 	sbt, _ := s.sbtProvider.Type(id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		return s.initSubObject(ctx, id)
-	case coresb.SmartBlockTypePage:
-		return buildTreeObject(id)
 	default:
-		return s.objectFactory.InitObject(id, &smartblock.InitContext{
-			Ctx: ctx,
-		})
+		return buildTreeObject(id)
 	}
 }
 
@@ -188,17 +166,8 @@ func (s *Service) DeleteObject(id string) (err error) {
 		return
 	}
 
-	// TODO Move to source service ?
 	sbt, _ := s.sbtProvider.Type(id)
 	switch sbt {
-	case coresb.SmartBlockTypePage:
-		var space commonspace.Space
-		space, err = s.clientService.AccountSpace(context.Background())
-		if err != nil {
-			return
-		}
-		// this will call DeleteTree asynchronously in the end
-		return space.DeleteTree(context.Background(), id)
 	case coresb.SmartBlockTypeSubObject:
 		err = s.OnDelete(id, func() error {
 			return Do(s, s.anytype.PredefinedBlocks().Account, func(w editor.Workspaces) error {
@@ -206,7 +175,13 @@ func (s *Service) DeleteObject(id string) (err error) {
 			})
 		})
 	default:
-		err = s.OnDelete(id, nil)
+		var space commonspace.Space
+		space, err = s.clientService.AccountSpace(context.Background())
+		if err != nil {
+			return
+		}
+		// this will call DeleteTree asynchronously in the end
+		return space.DeleteTree(context.Background(), id)
 	}
 	if err != nil {
 		return
@@ -233,7 +208,12 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
-	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
+	_, err = space.PutTree(ctx, create, nil)
+	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+		err = fmt.Errorf("failed to put tree: %w", err)
+		return
+	}
+	return s.cacheCreatedObject(ctx, create.RootRawChange.Id, space.Id(), initFunc)
 }
 
 func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType, newAccount bool, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {
@@ -252,9 +232,14 @@ func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
+	_, err = space.PutTree(ctx, create, nil)
+	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+		err = fmt.Errorf("failed to put tree: %w", err)
+		return
+	}
 	// not trying to get object from remote for new accounts
 	if newAccount {
-		return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
+		return s.cacheCreatedObject(ctx, create.RootRawChange.Id, space.Id(), initFunc)
 	}
 
 	var (
@@ -300,14 +285,13 @@ func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.Smart
 	return s.GetAccountObject(ctx, id)
 }
 
-func (s *Service) cacheCreatedObject(ctx context.Context, spaceId string, initFunc InitFunc, create treestorage.TreeStorageCreatePayload) (sb smartblock.SmartBlock, release func(), err error) {
+func (s *Service) cacheCreatedObject(ctx context.Context, id string, spaceId string, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {
 	ctx = context.WithValue(ctx, optsKey, cacheOpts{
 		createOption: &treeCreateCache{
-			treeCreate: create,
-			initFunc:   initFunc,
+			initFunc: initFunc,
 		},
 	})
-	return s.GetObject(ctx, spaceId, create.RootRawChange.Id)
+	return s.GetObject(ctx, spaceId, id)
 }
 
 func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.Object, err error) {

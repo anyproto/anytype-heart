@@ -1,11 +1,13 @@
 package source
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
@@ -27,7 +29,7 @@ func New() Service {
 }
 
 type Service interface {
-	NewSource(id string, ot objecttree.ObjectTree) (s Source, err error)
+	NewSource(id string, spaceID string, buildOptions commonspace.BuildTreeOpts) (source Source, err error)
 	RegisterStaticSource(id string, s Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
@@ -63,7 +65,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source, err error) {
+func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.BuildTreeOpts) (source Source, err error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(s.anytype, id), nil
 	}
@@ -89,8 +91,14 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 		return src, nil
 	}
 
-	if ot == nil {
-		err = fmt.Errorf("for this type we need an object tree to create a source")
+	ctx := context.Background()
+	spc, err := s.spaceService.GetSpace(ctx, spaceID)
+	if err != nil {
+		return
+	}
+	var ot objecttree.ObjectTree
+	ot, err = spc.BuildTree(ctx, id, buildOptions)
+	if err != nil {
 		return
 	}
 
@@ -112,7 +120,7 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 }
 
 func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	ss, err := s.NewSource(id, nil)
+	ss, err := s.NewSource(id, "", commonspace.BuildTreeOpts{})
 	if err != nil {
 		return nil, err
 	}
