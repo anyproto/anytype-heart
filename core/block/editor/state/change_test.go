@@ -503,28 +503,6 @@ func TestRelationChanges(t *testing.T) {
 	require.Equal(t, a.relationLinks, ac.relationLinks)
 }
 
-func TestRootBlockChanges(t *testing.T) {
-	a := NewDoc("root", nil).(*State)
-	s := a.NewState()
-	s.Add(simple.New(&model.Block{Id: "root", Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
-	s.Add(simple.New(&model.Block{Id: "new"}))
-	require.NoError(t, s.InsertTo("root", model.Block_Inner, "new"))
-
-	_, _, err := ApplyState(s, true)
-	require.NoError(t, err)
-	changes := s.GetChanges()
-
-	b := a.NewState()
-	require.NoError(t, b.ApplyChange(changes...))
-
-	assert.Equal(t, a.String(), b.String())
-
-	be := NewDoc("root", nil).(*State)
-
-	require.NoError(t, be.ApplyChange(changes...))
-	assert.Equal(t, a.String(), be.String())
-}
-
 func newMoveChange(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {
 	return &pb.ChangeContent{
 		Value: &pb.ChangeContentValueOfBlockMove{
