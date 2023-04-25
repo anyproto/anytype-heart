@@ -6,7 +6,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -50,7 +49,6 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
 	updateExisting bool) (string, bool, error) {
-	snapshot := sn.Snapshot
 	if predefinedSmartBlockType(sbType) {
 		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{}, []sb.SmartBlockType{sbType})
 		if err != nil {
@@ -73,22 +71,13 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 			},
 		}, []sb.SmartBlockType{sbType})
 		if err == nil && len(ids) > 0 {
-			return ids[0], false, nil
+			id = ids[0]
 		}
-		if len(snapshot.ObjectTypes) > 0 {
-			ot := snapshot.ObjectTypes
-			req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
-			id, _, err := ou.service.CreateObject(req, "")
-			if err != nil && err != editor.ErrSubObjectAlreadyExists {
-				return "", true, nil
-			}
-			return id, false, nil
-		}
-		return "", false, nil
+		return id, false, nil
 	}
 
 	if updateExisting {
-		source := sn.Id
+		source := sn.Snapshot.Details.Fields[bundle.RelationKeySource.String()].GetStringValue()
 		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -105,10 +94,8 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 				return id, true, nil
 			}
 		}
-	}
-	if updateExisting {
 		id := sn.Id
-		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
+		records, _, err = ou.core.ObjectStore().Query(nil, database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Condition:   model.BlockContentDataviewFilter_Equal,
