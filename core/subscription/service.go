@@ -104,7 +104,7 @@ func (s *service) Run(context.Context) (err error) {
 	return
 }
 
-func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error) {
+func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}
@@ -117,7 +117,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 
 	f, err := database.NewFilters(q, nil, s.objectStore, time.Now().Location())
 	if err != nil {
-		return
+		return nil, fmt.Errorf("new database filters: %w", err)
 	}
 
 	if len(req.Source) > 0 {
@@ -126,13 +126,6 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
 		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
-	}
-
-	records, err := s.objectStore.QueryRaw(query.Query{
-		Filters: []query.Filter{f},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("objectStore query error: %v", err)
 	}
 
 	s.m.Lock()
@@ -150,14 +143,24 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	}
 
 	if req.CollectionId != "" {
-		return s.makeCollectionSub(req, f, filterDepIds)
+		return s.subscribeForCollection(req, f, filterDepIds)
 	}
+	return s.subscribeForQuery(req, f, filterDepIds)
+}
 
+func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
 	} else {
 		sub.forceSubIds = filterDepIds
+	}
+
+	records, err := s.objectStore.QueryRaw(query.Query{
+		Filters: []query.Filter{f},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("objectStore query error: %v", err)
 	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
@@ -179,7 +182,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		depRecords = sub.depSub.getActiveRecords()
 	}
 
-	resp = &pb.RpcObjectSearchSubscribeResponse{
+	return &pb.RpcObjectSearchSubscribeResponse{
 		Records:      subRecords,
 		Dependencies: depRecords,
 		SubId:        sub.id,
@@ -188,11 +191,10 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},
-	}
-	return
+	}, nil
 }
 
-func (s *service) makeCollectionSub(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
+func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if err != nil {
 		return nil, err
