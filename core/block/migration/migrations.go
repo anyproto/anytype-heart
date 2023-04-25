@@ -54,8 +54,10 @@ func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) er
 
 	if initCtx.IsNewObject {
 		def := migrator.CreationStateMigration(initCtx)
-		def.Proc(initCtx.State)
-		initCtx.State.SetMigrationVersion(def.Version)
+		if initCtx.State.MigrationVersion() < def.Version {
+			def.Proc(initCtx.State)
+			initCtx.State.SetMigrationVersion(def.Version)
+		}
 	}
 
 	migs := migrator.StateMigrations()
