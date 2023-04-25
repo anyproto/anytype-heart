@@ -126,24 +126,35 @@ func (pt *Task) handleProperty(ctx context.Context,
 	propObject property.Object, req *block.MapRequest,
 	details map[string]*types.Value) (*converter.Relation, error) {
 	if isPropertyPaginated(propObject) {
-		properties, err := pt.propertyService.GetPropertyObject(ctx, pageID, propObject.GetID(), apiKey, propObject.GetPropertyType())
-		if err != nil {
+		if err := pt.handlePaginatedProperty(ctx, propObject, apiKey, pageID); err != nil {
 			return nil, fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
 		}
-		pt.handlePaginatedProperty(propObject, properties)
 	}
 	if r, ok := propObject.(*property.RelationItem); ok {
 		linkRelationsIDWithAnytypeID(r, req.NotionPageIdsToAnytype, req.NotionDatabaseIdsToAnytype)
 	}
+	err := pt.setDetails(propObject, key, details)
+	if err != nil {
+		return nil, err
+	}
+
+	rel := pt.getRelation(key, propObject)
+	return rel, nil
+}
+
+func (pt *Task) setDetails(propObject property.Object, key string, details map[string]*types.Value) error {
 	var (
 		ds property.DetailSetter
 		ok bool
 	)
 	if ds, ok = propObject.(property.DetailSetter); !ok {
-		return nil, fmt.Errorf("failed to convert to interface DetailSetter, %s", propObject.GetPropertyType())
+		return fmt.Errorf("failed to convert to interface DetailSetter, %s", propObject.GetPropertyType())
 	}
 	ds.SetDetail(key, details)
+	return nil
+}
 
+func (pt *Task) getRelation(key string, propObject property.Object) *converter.Relation {
 	rel := &converter.Relation{
 		Relation: &model.Relation{
 			Name:   key,
@@ -153,10 +164,14 @@ func (pt *Task) handleProperty(ctx context.Context,
 	if isPropertyTag(propObject) {
 		setOptionsForListRelation(propObject, rel.Relation)
 	}
-	return rel, nil
+	return rel
 }
 
-func (pt *Task) handlePaginatedProperty(v property.Object, properties []interface{}) {
+func (pt *Task) handlePaginatedProperty(ctx context.Context, v property.Object, pageID, apiKey string) error {
+	properties, err := pt.propertyService.GetPropertyObject(ctx, pageID, v.GetID(), apiKey, v.GetPropertyType())
+	if err != nil {
+		return err
+	}
 	switch pr := v.(type) {
 	case *property.RelationItem:
 		relationItems := make([]*property.Relation, 0, len(properties))
@@ -177,6 +192,7 @@ func (pt *Task) handlePaginatedProperty(v property.Object, properties []interfac
 		}
 		pr.People = pList
 	}
+	return nil
 }
 
 // linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
@@ -245,7 +261,6 @@ func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
 			color = append(color, api.DefaultColor)
 		}
 	}
-
 	for i := 0; i < len(text); i++ {
 		rel.SelectDict = append(rel.SelectDict, &model.RelationOption{
 			Text:  text[i],
