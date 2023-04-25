@@ -18,16 +18,14 @@ type Profile struct {
 
 func (a *Anytype) LocalProfile() (Profile, error) {
 	var (
-		profile   = Profile{AccountAddr: a.Account()}
+		profile   = Profile{AccountAddr: a.wallet.GetAccountPrivkey().GetPublic().Account()}
 		profileId = a.predefinedBlockIds.Profile
 	)
-
-	ps := a.objectStore
-	if ps == nil {
-		return profile, errors.New("no pagestore available")
+	if a.objectStore == nil {
+		return profile, errors.New("objectstore not available")
 	}
 
-	profileDetails, err := ps.GetDetails(profileId)
+	profileDetails, err := a.objectStore.GetDetails(profileId)
 	if err != nil {
 		return profile, err
 	}
