@@ -50,7 +50,7 @@ func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreate
 func (mw *Middleware) setMnemonic(mnemonic string) error {
 	mw.mnemonic = mnemonic
 	// TODO: I guess we can use any random bytes here
-	buf := make([]byte, 0, 64)
+	buf := make([]byte, 64)
 	if _, err := rand.Read(buf); err != nil {
 		return err
 	}
