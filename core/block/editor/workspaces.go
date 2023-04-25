@@ -145,7 +145,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDetail(bundle.RelationKeyName, pbtypes.String("Personal space")),
 		template.WithDetail(bundle.RelationKeySpaceDashboardId, pbtypes.String(spaceDashboardID)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
-		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(addr.ObjectTypeKeyToIdPrefix+bundle.TypeKeySpace.String())),
+		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeySpace.URL())),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 	)
