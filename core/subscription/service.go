@@ -461,7 +461,7 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 
 	for _, source := range sources {
 		if source == "" {
-			return nil, fmt.Errorf("source could not be empty")
+			continue
 		}
 		sbt, err := s.sbtProvider.Type(source)
 		if err != nil {
