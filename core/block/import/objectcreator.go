@@ -116,6 +116,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(st, oldIDtoNew)
+		return nil, newID, nil
 	}
 
 	converter.UpdateObjectType(oldIDtoNew, st)
@@ -305,7 +306,11 @@ func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
 		}
 		return
 	}
-	_, _, err := oc.service.AddSubObjectToWorkspace(newID, oc.core.PredefinedBlocks().Account)
+	so := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySourceObject.String())
+	if so == "" {
+		so = newID
+	}
+	_, _, err := oc.service.AddSubObjectToWorkspace(so, oc.core.PredefinedBlocks().Account)
 	if err != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to add object to workspace %s: %s", newID, err.Error())
 	}

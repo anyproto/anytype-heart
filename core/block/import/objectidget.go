@@ -112,6 +112,46 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 }
 
 func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {
+	ids, err := ou.extractID(sn, sbType)
+	if err == nil && len(ids) > 0 {
+		return ids[0], true, nil
+	}
+	if id := ou.getIDBySourceObject(sn); id != "" {
+		return id, true, nil
+	}
+	var id string
+	if len(sn.Snapshot.Data.ObjectTypes) > 0 {
+		id = ou.createSubObject(sn)
+	}
+	return id, false, nil
+}
+
+func (ou *ObjectIDGetter) createSubObject(sn *converter.Snapshot) string {
+	ot := sn.Snapshot.Data.ObjectTypes
+	var (
+		objects *types.Struct
+		id      string
+	)
+	ou.cleanupSubObjectID(sn)
+	req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Data.Details}
+	id, objects, err := ou.service.CreateObject(req, "")
+	if err != nil {
+		id = sn.Id
+	}
+	sn.Snapshot.Data.Details = pbtypes.StructMerge(sn.Snapshot.Data.Details, objects, false)
+	return id
+}
+
+func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
+	so := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceObject.String())
+	if strings.HasPrefix(so, addr.BundledObjectTypeURLPrefix) ||
+		strings.HasPrefix(so, addr.BundledRelationURLPrefix) {
+		return sn.Id
+	}
+	return ""
+}
+
+func (ou *ObjectIDGetter) extractID(sn *converter.Snapshot, sbType sb.SmartBlockType) ([]string, error) {
 	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -122,29 +162,19 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 			},
 		},
 	}, []sb.SmartBlockType{sbType})
-	if err == nil && len(ids) > 0 {
-		id = ids[0]
-		return id, true, nil
-	}
-	if len(sn.Snapshot.Data.ObjectTypes) > 0 {
-		ot := sn.Snapshot.Data.ObjectTypes
-		var objects *types.Struct
-		ou.cleanupSubObjectID(sn)
-		req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Data.Details}
-		id, objects, err = ou.service.CreateObject(req, "")
-		if err != nil {
-			id = sn.Id
-		}
-		sn.Snapshot.Data.Details = pbtypes.StructMerge(sn.Snapshot.Data.Details, objects, false)
-	}
-	return id, false, nil
+	return ids, err
 }
 
 func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
 	subID := sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+	subID = ou.removePrefixesFromSubID(subID)
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subID)
+}
+
+func (ou *ObjectIDGetter) removePrefixesFromSubID(subID string) string {
 	subID = strings.TrimPrefix(subID, addr.RelationKeyToIdPrefix)
 	subID = strings.TrimPrefix(subID, addr.ObjectTypeKeyToIdPrefix)
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subID)
+	return subID
 }
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
