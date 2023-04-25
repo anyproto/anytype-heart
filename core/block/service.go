@@ -1108,7 +1108,8 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 
 		if toLayout, ok := orig.Layout(); ok {
-			if err := converter.ConvertLayout(orig, 0, toLayout); err != nil {
+			conv := converter.NewLayoutConverter(s.objectStore)
+			if err := conv.Convert(orig, 0, toLayout); err != nil {
 				return fmt.Errorf("convert layout: %w", err)
 			}
 		}

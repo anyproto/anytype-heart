@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
@@ -255,6 +255,6 @@ func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*conve
 
 func addObjectToSnapshot(snapshots *converter.Snapshot, targetID []string) {
 	snapshots.Snapshot.Data.Collections = &types.Struct{
-		Fields: map[string]*types.Value{smartblock.CollectionStoreKey: pbtypes.StringList(targetID)},
+		Fields: map[string]*types.Value{template.CollectionStoreKey: pbtypes.StringList(targetID)},
 	}
 }

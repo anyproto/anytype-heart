@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -25,16 +25,16 @@ func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 	}, p)
 
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 2) //test + root collection
+	assert.Len(t, sn.Snapshots, 2) // test + root collection
 	assert.Contains(t, sn.Snapshots[0].FileName, "test.csv")
-	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, smartblock.CollectionStoreKey), 0)
-	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes) //empty collection
+	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, template.CollectionStoreKey), 0)
+	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes) // empty collection
 	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
 
 	assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
 	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
 	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
-	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[1].Snapshot.Data.Collections, smartblock.CollectionStoreKey), 1)
+	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[1].Snapshot.Data.Collections, template.CollectionStoreKey), 1)
 	assert.Nil(t, err)
 }
 
@@ -52,9 +52,9 @@ func TestCsv_GetSnapshots(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 4) //test + root collection + 2 objects in Journal.csv
+	assert.Len(t, sn.Snapshots, 4) // test + root collection + 2 objects in Journal.csv
 	assert.Contains(t, sn.Snapshots[0].FileName, "Journal.csv")
-	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, smartblock.CollectionStoreKey), 2) //2 objects
+	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, template.CollectionStoreKey), 2) // 2 objects
 
 	var found bool
 	for _, snapshot := range sn.Snapshots {
@@ -62,7 +62,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 			found = true
 			assert.NotEmpty(t, snapshot.Snapshot.Data.ObjectTypes)
 			assert.Equal(t, snapshot.Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
-			assert.Len(t, pbtypes.GetStringList(snapshot.Snapshot.Data.Collections, smartblock.CollectionStoreKey), 3) //all objects
+			assert.Len(t, pbtypes.GetStringList(snapshot.Snapshot.Data.Collections, template.CollectionStoreKey), 3) // all objects
 		}
 	}
 
@@ -86,7 +86,7 @@ func TestCsv_GetSnapshotsTable(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 2) //1 page with table + root collection
+	assert.Len(t, sn.Snapshots, 2) // 1 page with table + root collection
 	assert.Contains(t, sn.Snapshots[0].FileName, "Journal.csv")
 
 	var found bool
@@ -111,9 +111,9 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 10) //8 objects + root collection + semicolon collection
+	assert.Len(t, sn.Snapshots, 10) // 8 objects + root collection + semicolon collection
 	assert.Contains(t, sn.Snapshots[0].FileName, "semicolon.csv")
-	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, smartblock.CollectionStoreKey), 8)
+	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, template.CollectionStoreKey), 8)
 	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
 }
 
@@ -135,7 +135,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 3) //1 object + root collection + transpose collection
+	assert.Len(t, sn.Snapshots, 3) // 1 object + root collection + transpose collection
 
 	relations := sn.Relations[sn.Snapshots[0].Id]
 	assert.Len(t, relations, 2)

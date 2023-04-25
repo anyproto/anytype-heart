@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -46,7 +45,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]
 	}
 	allObjectsIDs = append(allObjectsIDs, targetIDs...)
 
-	st.StoreSlice(sb.CollectionStoreKey, targetIDs)
+	st.StoreSlice(template.CollectionStoreKey, targetIDs)
 	snapshot := c.getCollectionSnapshot(details, st, path)
 
 	snapshots = append(snapshots, snapshot)

@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
@@ -411,18 +412,18 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
 	var existedObjects []string
 	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
-		existedObjects = pbtypes.GetStringList(s.Store(), sb.CollectionStoreKey)
+		existedObjects = pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
 		return nil
 	})
 	if err != nil {
 		log.Errorf("failed to get existed objects in collection, %s", err)
 	}
-	objectsInCollections := pbtypes.GetStringList(st.Store(), sb.CollectionStoreKey)
+	objectsInCollections := pbtypes.GetStringList(st.Store(), template.CollectionStoreKey)
 	for i, id := range objectsInCollections {
 		if newID, ok := oldIDtoNew[id]; ok {
 			objectsInCollections[i] = newID
 		}
 	}
 	result := slice.Union(existedObjects, objectsInCollections)
-	st.StoreSlice(sb.CollectionStoreKey, result)
+	st.StoreSlice(template.CollectionStoreKey, result)
 }

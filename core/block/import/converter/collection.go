@@ -5,8 +5,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -37,7 +37,7 @@ func (r *RootCollection) AddObjects(collectionName string, targetObjects []strin
 	}
 
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
-	st.StoreSlice(smartblock.CollectionStoreKey, targetObjects)
+	st.StoreSlice(template.CollectionStoreKey, targetObjects)
 
 	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct), nil
 }

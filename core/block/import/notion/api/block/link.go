@@ -5,7 +5,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	textUtil "github.com/anytypeio/go-anytype-middleware/util/text"
@@ -154,7 +154,7 @@ func (c *ChildDatabase) GetDataviewBlock(notionIdsToAnytype, idToName map[string
 
 	id := bson.NewObjectId().Hex()
 
-	block := collection.MakeDataviewContent()
+	block := template.MakeCollectionDataviewContent()
 
 	block.Dataview.TargetObjectId = targetBlockID
 

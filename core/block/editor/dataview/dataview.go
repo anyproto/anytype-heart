@@ -35,19 +35,6 @@ const DefaultDetailsFieldName = "_defaultRecordFields"
 
 var log = logging.Logger("anytype-mw-editor-dataview")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
-var DefaultDataviewRelations = make([]bundle.RelationKey, 0, len(bundle.RequiredInternalRelations))
-
-func init() {
-	// fill DefaultDataviewRelations
-	// deprecated: we should remove this after we merge relations as objects
-	for _, rel := range bundle.RequiredInternalRelations {
-		if bundle.MustGetRelation(rel).Hidden {
-			continue
-		}
-		DefaultDataviewRelations = append(DefaultDataviewRelations, rel)
-	}
-	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyDone)
-}
 
 type Dataview interface {
 	SetSource(ctx *session.Context, blockId string, source []string) (err error)
@@ -621,7 +608,7 @@ func DataviewBlockBySource(sbtProvider typeprovider.SmartBlockTypeProvider, stor
 		schemaRelations = append([]*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyName)}, schemaRelations...)
 	}
 
-	for _, relKey := range DefaultDataviewRelations {
+	for _, relKey := range template.DefaultDataviewRelations {
 		if pbtypes.HasRelationLink(relations, relKey.String()) {
 			continue
 		}

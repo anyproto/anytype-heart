@@ -49,8 +49,6 @@ var (
 	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
-const CollectionStoreKey = "objects"
-
 const (
 	NoHistory ApplyFlag = iota
 	NoEvent
@@ -514,7 +512,7 @@ func (sb *smartBlock) navigationalLinks() []string {
 	s := sb.Doc.(*state.State)
 
 	// Objects from collection
-	ids := pbtypes.GetStringList(s.Store(), CollectionStoreKey)
+	ids := pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
 
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
@@ -991,7 +989,9 @@ func (sb *smartBlock) SetObjectTypes(ctx *session.Context, objectTypes []string)
 		fromLayout = layout
 	}
 
-	if err = converter.ConvertLayout(s, fromLayout, toLayout); err != nil {
+	// TODO Temp
+	conv := converter.NewLayoutConverter(sb.objectStore)
+	if err = conv.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 
@@ -1066,7 +1066,8 @@ func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (
 	}
 
 	template.InitTemplate(s, template.ByLayout(layout)...)
-	if err = converter.ConvertLayout(s, fromLayout, layout); err != nil {
+	conv := converter.NewLayoutConverter(sb.objectStore)
+	if err = conv.Convert(s, fromLayout, layout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil

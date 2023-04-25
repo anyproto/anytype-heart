@@ -2,26 +2,20 @@ package collection
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -115,9 +109,9 @@ func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequ
 
 func (s *Service) updateCollection(ctx *session.Context, contextID string, modifier func(src []string) []string) error {
 	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
-		lst := pbtypes.GetStringList(s.Store(), smartblock.CollectionStoreKey)
+		lst := pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
 		lst = modifier(lst)
-		s.StoreSlice(smartblock.CollectionStoreKey, lst)
+		s.StoreSlice(template.CollectionStoreKey, lst)
 		return nil
 	})
 }
@@ -133,8 +127,8 @@ func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
 
 	sb.AddHook(func(info smartblock.ApplyInfo) (err error) {
 		for _, ch := range info.Changes {
-			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == smartblock.CollectionStoreKey {
-				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), smartblock.CollectionStoreKey))
+			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == template.CollectionStoreKey {
+				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), template.CollectionStoreKey))
 				return nil
 			}
 		}
@@ -168,7 +162,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 	var initialObjectIDs []string
 	// Waking up of collection smart block will automatically add hook used in RegisterCollection
 	err := block.DoState(s.picker, collectionID, func(s *state.State, sb smartblock.SmartBlock) error {
-		initialObjectIDs = pbtypes.GetStringList(s.Store(), smartblock.CollectionStoreKey)
+		initialObjectIDs = pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
 		return nil
 	})
 	if err != nil {
@@ -214,7 +208,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 		template.WithRequiredRelations(),
 	}
 
-	blockContent := MakeDataviewContent()
+	blockContent := template.MakeCollectionDataviewContent()
 	tmpls = append(tmpls,
 		template.WithDataview(*blockContent, false),
 	)
@@ -223,91 +217,12 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	return coresb.SmartBlockTypeCollection, details, newState, nil
 }
 
-func MakeDataviewContent() *model.BlockContentOfDataview {
-	relations := []*model.RelationLink{
-		{
-			Format: model.RelationFormat_shorttext,
-			Key:    bundle.RelationKeyName.String(),
-		},
-	}
-	viewRelations := []*model.BlockContentDataviewRelation{
-		{
-			Key:       bundle.RelationKeyName.String(),
-			IsVisible: true,
-		},
-	}
-	for _, relKey := range dataview.DefaultDataviewRelations {
-		if pbtypes.HasRelationLink(relations, relKey.String()) {
-			continue
-		}
-		rel := bundle.MustGetRelation(relKey)
-		if rel.Hidden {
-			continue
-		}
-		relations = append(relations, &model.RelationLink{
-			Format: rel.Format,
-			Key:    rel.Key,
-		})
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
-	}
-
-	blockContent := &model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			IsCollection:  true,
-			RelationLinks: relations,
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:   bson.NewObjectId().Hex(),
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
-					Filters:   nil,
-					Relations: viewRelations,
-				},
-			},
-		},
-	}
-	return blockContent
-}
-
+// TODO To be removed
 func (s *Service) ObjectToCollection(id string) (string, error) {
 	var (
-		details             *types.Struct
-		dvBlock             *model.Block
-		typesAndRelsFromSet []string
+		details *types.Struct
 	)
-	if err := block.Do(s.picker, id, func(sb smartblock.SmartBlock) error {
-		details = pbtypes.CopyStruct(sb.Details())
 
-		st := sb.NewState()
-		if layout, ok := st.Layout(); ok && layout == model.ObjectType_note {
-			textBlock, err := st.GetFirstTextBlock()
-			if err != nil {
-				return err
-			}
-			if textBlock != nil {
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Model().GetText().Text)
-			}
-		}
-
-		b := st.Pick(template.DataviewBlockId)
-		if b != nil {
-			typesAndRelsFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
-			delete(details.Fields, bundle.RelationKeySetOf.String())
-			pbtypes.UpdateStringList(details, bundle.RelationKeyFeaturedRelations.String(), func(fr []string) []string {
-				return slice.Remove(fr, bundle.RelationKeySetOf.String())
-			})
-			dvBlock = b.Model()
-		}
-		return nil
-	}); err != nil {
-		return "", err
-	}
 	// cleanup details
 	delete(details.Fields, bundle.RelationKeyLayout.String())
 	delete(details.Fields, bundle.RelationKeyType.String())
@@ -317,32 +232,6 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	}, bundle.TypeKeyCollection)
 	if err != nil {
 		return "", err
-	}
-
-	if dvBlock != nil {
-		filters := s.generateFilters(typesAndRelsFromSet)
-		err = block.DoState(s.picker, newID, func(st *state.State, sb smartblock.SmartBlock) error {
-			dvBlock.Id = template.DataviewBlockId
-			dvBlock.GetDataview().IsCollection = true
-			b := simple.New(dvBlock)
-			st.Set(b)
-
-			recs, _, qErr := s.objectStore.Query(nil, database.Query{
-				Filters: filters,
-			})
-			if qErr != nil {
-				return fmt.Errorf("can't get records for collection: %w", err)
-			}
-			ids := make([]string, 0, len(recs))
-			for _, r := range recs {
-				ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
-			}
-			st.StoreSlice(smartblock.CollectionStoreKey, ids)
-			return nil
-		})
-		if err != nil {
-			return newID, fmt.Errorf("can't update dataview block: %w", err)
-		}
 	}
 
 	res, err := s.objectStore.GetWithLinksInfoByID(id)
@@ -364,34 +253,4 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	}
 
 	return newID, nil
-}
-
-func (s *Service) generateFilters(typesAndRels []string) []*model.BlockContentDataviewFilter {
-	var (
-		types, rels []string
-		filters     []*model.BlockContentDataviewFilter
-	)
-	for _, id := range typesAndRels {
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			types = append(types, id)
-		} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			rels = append(rels, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
-		}
-	}
-	if len(types) != 0 {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyType.String(),
-			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList(types),
-		})
-	}
-	if len(rels) != 0 {
-		for _, rel := range rels {
-			filters = append(filters, &model.BlockContentDataviewFilter{
-				RelationKey: rel,
-				Condition:   model.BlockContentDataviewFilter_NotEmpty,
-			})
-		}
-	}
-	return filters
 }
