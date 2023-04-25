@@ -632,7 +632,7 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 
 func (mw *Middleware) AccountRemoveLocalData() error {
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
-	address := mw.app.MustComponent(core.CName).(core.Service).Account()
+	address := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 
 	configPath := conf.GetConfigPath()
 	fileConf := config.ConfigRequired{}
@@ -672,12 +672,12 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	if err != nil {
 		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
 	}
-	code, err := mw.createAccountFromExport(profile, req)
+	address, code, err := mw.createAccountFromExport(profile, req)
 	if err != nil {
 		return response("", code, err)
 	}
 
-	return response(profile.Address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil)
+	return response(address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil)
 }
 
 func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
@@ -706,49 +706,49 @@ func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profi
 	return &profile, nil
 }
 
-func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
+func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (accountId string, code pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, err error) {
 	mw.m.Lock()
 	defer mw.m.Unlock()
-	err := mw.stop()
+	err = mw.stop()
 	if err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
 	res, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 	address := res.Identity.GetPublic().Account()
 	if profile.Address != res.OldAccountKey.GetPublic().Account() && profile.Address != address {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
 	}
 	mw.rootPath = req.RootPath
 	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 	mw.accountSearchCancel()
 	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) {
 		if walletErr := core.WalletInitRepo(mw.rootPath, res.Identity); walletErr != nil {
-			return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr
+			return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr
 		}
 	}
 	cfg, err := mw.getBootstrapConfig(err, req)
 	if err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
 	err = mw.startApp(cfg, res, err)
 	if err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
 	err = mw.setDetails(profile, err)
 	if err != nil {
-		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	return pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
+	return address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
 }
 
 func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.DerivationResult, err error) error {
