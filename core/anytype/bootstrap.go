@@ -2,6 +2,8 @@ package anytype
 
 import (
 	"context"
+	"github.com/anytypeio/any-sync/commonspace/credentialprovider"
+	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
 	"os"
 
 	"github.com/anytypeio/any-sync/app"
@@ -139,6 +141,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pool.New()).
 		Register(streampool.New()).
 		Register(clientserver.New()).
+		Register(coordinatorclient.New()).
+		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).

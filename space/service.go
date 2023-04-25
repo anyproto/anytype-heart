@@ -7,10 +7,13 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/peermanager"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
+	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/rpc/server"
@@ -41,6 +44,8 @@ type Service interface {
 	AccountId() string
 	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
+	DeleteSpace(ctx context.Context, spaceId string, revert bool) (payload SpaceStatusPayload, err error)
+	DeleteAccount(ctx context.Context, revert bool) (payload SpaceStatusPayload, err error)
 	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
 }
@@ -49,6 +54,7 @@ type service struct {
 	conf                 commonspace.Config
 	spaceCache           ocache.OCache
 	commonSpace          commonspace.SpaceService
+	client               coordinatorclient.CoordinatorClient
 	account              accountservice.Service
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
@@ -63,6 +69,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.conf = a.MustComponent("config").(commonspace.ConfigGetter).GetSpace()
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
+	s.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
@@ -149,6 +156,34 @@ func (s *service) HandleMessage(ctx context.Context, senderId string, req *space
 
 func (s *service) StreamPool() streampool.StreamPool {
 	return s.streamPool
+}
+
+func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload SpaceStatusPayload, err error) {
+	return s.DeleteSpace(ctx, s.accountId, revert)
+}
+
+func (s *service) DeleteSpace(ctx context.Context, spaceId string, revert bool) (payload SpaceStatusPayload, err error) {
+	space, err := s.GetSpace(ctx, spaceId)
+	if err != nil {
+		return
+	}
+	var (
+		raw    *treechangeproto.RawTreeChangeWithId
+		status *coordinatorproto.SpaceStatusPayload
+	)
+	if !revert {
+		raw, err = space.SpaceDeleteRawChange(ctx)
+		if err != nil {
+			return
+		}
+	}
+	status, err = s.client.ChangeStatus(ctx, spaceId, raw)
+	if err != nil {
+		err = coordError(err)
+		return
+	}
+	payload = newSpaceStatus(status)
+	return
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {

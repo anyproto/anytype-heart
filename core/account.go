@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"io"
 	"io/ioutil"
 	"net"
@@ -19,13 +20,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gogo/status"
-	cp "github.com/otiai10/copy"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 
-	"github.com/anytypeio/go-anytype-middleware/core/account"
+	cp "github.com/otiai10/copy"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -35,7 +34,6 @@ import (
 	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
@@ -298,20 +296,10 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
+	coreService := mw.app.MustComponent(core.CName).(core.Service)
+	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
-	commonDetails := []*pb.RpcObjectSetDetailsDetail{
-		{
-			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(req.Name),
-		},
-		{
-			Key:   bundle.RelationKeyIconOption.String(),
-			Value: pbtypes.Int64(req.Icon),
-		},
-	}
-	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
-	profileDetails = append(profileDetails, commonDetails...)
-
+	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 	if req.GetAvatarLocalPath() != "" {
 		hash, err := bs.UploadFile(pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
@@ -321,27 +309,17 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 			log.Warnf("can't add avatar: %v", err)
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-			profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
 				Key:   "iconImage",
 				Value: pbtypes.String(hash),
 			})
 		}
 	}
-
-	newAcc.Name = req.Name
 	newAcc.Info = mw.getInfo()
 
-	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
-		Details:   profileDetails,
-	}); err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
-	}
-
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.PredefinedBlocks().Account,
-		Details:   commonDetails,
+		Details:   details,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
@@ -604,7 +582,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+func (mw *Middleware) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
 	response := func(status *model.AccountStatus, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
 		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
 		if err != nil {
@@ -617,42 +595,34 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 	}
 
 	var st *model.AccountStatus
-	err := mw.doAccountService(func(a account.Service) (err error) {
-		resp, err := a.DeleteAccount(context.Background(), req.Revert)
-		if resp.GetStatus() != nil {
-			st = &model.AccountStatus{
-				StatusType:   model.AccountStatusType(resp.Status.Status),
-				DeletionDate: resp.Status.DeletionDate,
-			}
+	err := mw.doAccountService(func(a space.Service) (err error) {
+		resp, err := a.DeleteAccount(ctx, req.Revert)
+		if err != nil {
+			return
+		}
+		st = &model.AccountStatus{
+			StatusType:   model.AccountStatusType(resp.Status),
+			DeletionDate: resp.DeletionDate.Unix(),
 		}
 		return
 	})
 
 	mw.refetch()
-
-	if err != nil {
-		// TODO: maybe this logic should be in a.DeleteAccount
-		code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
-		st, ok := status.FromError(err)
-		if ok {
-			for _, detail := range st.Details() {
-				if at, ok := detail.(*cafePb.ErrorAttachment); ok {
-					switch at.Code {
-					case cafePb.ErrorCodes_AccountIsDeleted:
-						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
-					// this code is returned if we call revert but an account is active
-					case cafePb.ErrorCodes_AccountIsActive:
-						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
-					default:
-						break
-					}
-				}
-			}
-		}
-		return response(nil, code, err)
+	if err == nil {
+		return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
 	}
-
-	return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
+	code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
+	switch err {
+	case space.ErrSpaceIsDeleted:
+		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+	case space.ErrSpaceDeletionPending:
+		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+	case space.ErrSpaceIsCreated:
+		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
+	default:
+		break
+	}
+	return response(nil, code, err)
 }
 
 func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {

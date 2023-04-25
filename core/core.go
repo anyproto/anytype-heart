@@ -3,12 +3,12 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"os"
 	"runtime/debug"
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -91,11 +91,11 @@ func (mw *Middleware) getRelationService() (rs relation.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
-func (mw *Middleware) getAccountService() (a account.Service, err error) {
+func (mw *Middleware) getAccountService() (a space.Service, err error) {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	if mw.app != nil {
-		return mw.app.MustComponent(account.CName).(account.Service), nil
+		return mw.app.MustComponent(space.CName).(space.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -126,7 +126,7 @@ func (mw *Middleware) doRelationService(f func(rs relation.Service) error) (err 
 	return f(rs)
 }
 
-func (mw *Middleware) doAccountService(f func(a account.Service) error) (err error) {
+func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error) {
 	bs, err := mw.getAccountService()
 	if err != nil {
 		return
