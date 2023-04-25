@@ -123,5 +123,5 @@ func (f *file) Hash() string {
 }
 
 func (f *file) Reader() (io.ReadSeeker, error) {
-	return f.node.FileContentReader(context.Background(), f.info)
+	return f.node.getContentReader(context.Background(), f.info)
 }

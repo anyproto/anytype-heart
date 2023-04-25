@@ -287,7 +287,7 @@ func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 	return node, keys, nil
 }
 
-func (s *Service) FileGetInfoForPath(pth string) (*storage.FileInfo, error) {
+func (s *Service) fileGetInfoForPath(pth string) (*storage.FileInfo, error) {
 	if !strings.HasPrefix(pth, "/ipfs/") {
 		return nil, fmt.Errorf("path should starts with '/dagService/...'")
 	}
@@ -462,11 +462,11 @@ func (s *Service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, 
 	if err != nil {
 		return nil, nil, err
 	}
-	reader, err = s.FileContentReader(ctx, file)
+	reader, err = s.getContentReader(ctx, file)
 	return reader, file, err
 }
 
-func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
+func (s *Service) getContentReader(ctx context.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
 		return nil, err
@@ -666,7 +666,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 			Name:      filename,
 			Plaintext: sch.Plaintext || plaintext,
 		}
-		err := s.NormalizeOptions(ctx, &opts)
+		err := s.normalizeOptions(ctx, &opts)
 		if err != nil {
 			return nil, err
 		}
@@ -699,7 +699,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 					Name:      filename,
 					Plaintext: step.Link.Plaintext || plaintext,
 				}
-				err = s.NormalizeOptions(ctx, opts)
+				err = s.normalizeOptions(ctx, opts)
 				if err != nil {
 					return nil, err
 				}
@@ -717,7 +717,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 					Plaintext: step.Link.Plaintext || plaintext,
 				}
 
-				err = s.NormalizeOptions(ctx, opts)
+				err = s.normalizeOptions(ctx, opts)
 				if err != nil {
 					return nil, err
 				}
@@ -737,7 +737,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 	return dir, nil
 }
 
-func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
+func (s *Service) fileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
 	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
@@ -791,7 +791,7 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists
 	return files, nil
 }
 
-// looksLikeFileNode returns whether or not a node appears to
+// looksLikeFileNode returns whether a node appears to
 // be a textile node. It doesn't inspect the actual data.
 func looksLikeFileNode(node ipld.Node) bool {
 	links := node.Links()
@@ -858,7 +858,7 @@ func (s *Service) FileByHash(ctx context.Context, hash string) (File, error) {
 
 	if len(fileList) == 0 || fileList[0].MetaHash == "" {
 		// info from ipfs
-		fileList, err = s.FileIndexInfo(ctx, hash, false)
+		fileList, err = s.fileIndexInfo(ctx, hash, false)
 		if err != nil {
 			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
@@ -880,7 +880,7 @@ func (s *Service) FileAdd(ctx context.Context, options ...AddOption) (File, erro
 		opt(&opts)
 	}
 
-	err := s.NormalizeOptions(ctx, &opts)
+	err := s.normalizeOptions(ctx, &opts)
 	if err != nil {
 		return nil, err
 	}

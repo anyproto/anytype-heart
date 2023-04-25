@@ -20,7 +20,7 @@ func (s *Service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	// check the image files count explicitly because we have a bug when the info can be cached not fully(only for some files)
 	if len(files) < 4 || files[0].MetaHash == "" {
 		// index image files info from ipfs
-		files, err = s.FileIndexInfo(ctx, hash, true)
+		files, err = s.fileIndexInfo(ctx, hash, true)
 		if err != nil {
 			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrImageNotFound
@@ -52,7 +52,7 @@ func (s *Service) ImageAdd(ctx context.Context, options ...AddOption) (Image, er
 		opt(&opts)
 	}
 
-	err := s.NormalizeOptions(ctx, &opts)
+	err := s.normalizeOptions(ctx, &opts)
 	if err != nil {
 		return nil, err
 	}
