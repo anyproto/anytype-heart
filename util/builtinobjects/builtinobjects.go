@@ -237,7 +237,7 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 
 func (b *builtinObjects) getFirstWidgetBlockId() (string, error) {
 	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
-	if err != nil || len(w.Blocks()) < 2 {
+	if err != nil {
 		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
 	}
 	if len(w.Blocks()) < 2 {
