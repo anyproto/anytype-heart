@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -165,35 +164,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	blockMigration := cleanupEmptyBlockMigration()
-	return migration.MakeMigrations([]migration.Migration{blockMigration})
-}
-
-// cleanupEmptyBlockMigration is fixing existing pages, imported from Notion
-func cleanupEmptyBlockMigration() migration.Migration {
-	return migration.Migration{
-		Version: 2,
-		Proc: func(s *state.State) {
-			if s.Exists(s.RootId()) {
-				block := s.Get(s.RootId())
-				if isBlockEmpty(block) {
-					newBlock := block.Copy()
-					newBlock.Model().Content = &model.BlockContentOfSmartblock{
-						Smartblock: &model.BlockContentSmartblock{},
-					}
-					s.Set(newBlock)
-				}
-			}
-		},
-	}
-}
-
-func isBlockEmpty(block simple.Block) bool {
-	if block.Model().Content == nil {
-		return true
-	}
-	smartBlock := block.Model().Content.(*model.BlockContentOfSmartblock)
-	return smartBlock == nil || smartBlock.Smartblock == nil
+	return migration.MakeMigrations(nil)
 }
 
 func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
