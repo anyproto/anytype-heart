@@ -3,6 +3,8 @@ package clipboard
 import (
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -66,7 +68,7 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	p.normalize()
 
 	if p.mode.singleRange && req.FocusedBlockId != "" {
-		p.setTargetIdForLastBlock(req.FocusedBlockId)
+		p.restoreFocusedBlockId(req.FocusedBlockId)
 	}
 
 	p.processFiles()
@@ -345,13 +347,33 @@ func (p *pasteCtrl) intoCodeBlock() (err error) {
 	return err
 }
 
-func (p *pasteCtrl) setTargetIdForLastBlock(target string) {
-	root := p.s.Get(p.s.RootId())
-	rootChildren := root.Model().ChildrenIds
-	lastBlockId := rootChildren[len(rootChildren)-1]
-	root.Model().ChildrenIds = append(rootChildren[:len(rootChildren)-1], target)
+// TODO: GO-1394 Changing id of new block to old one conflicts the idea of changes and multiplatform. Needs redesign
+func (p *pasteCtrl) restoreFocusedBlockId(target string) {
+	isTargetFound := false
+	p.s.Iterate(func(b simple.Block) (isContinue bool) {
+		if b.Model().Id == target {
+			isTargetFound = true
+			return false
+		}
+		return true
+	})
 
-	lastBlock := p.s.Get(lastBlockId)
+	if isTargetFound {
+		return
+	}
+
+	lastPasteText := p.getLastPasteText()
+	p.caretPos = int32(len(lastPasteText.GetText()))
+	lastPasteTextId := lastPasteText.Model().Id
+	lastBlock := p.s.Get(lastPasteTextId)
 	lastBlock.Model().Id = target
 	p.s.Set(lastBlock)
+
+	p.s.Iterate(func(b simple.Block) (isContinue bool) {
+		if lo.Contains(b.Model().ChildrenIds, lastPasteTextId) {
+			b.Model().ChildrenIds = lo.Replace(b.Model().ChildrenIds, lastPasteTextId, target, 1)
+			return false
+		}
+		return true
+	})
 }

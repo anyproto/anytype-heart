@@ -141,6 +141,13 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 		checkBlockText(t, sb, []string{"11111", "22222", "aaaaa", "bbbbb", "55555"})
 	})
 
+	t.Run("9. Save id of focused block", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
+		pasteAny(t, sb, "4", model.Range{}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "44444", "55555"})
+		assert.Equal(t, sb.Blocks()[5].Id, "4")
+	})
+
 }
 
 func TestCommonSmart_splitMarks(t *testing.T) {
