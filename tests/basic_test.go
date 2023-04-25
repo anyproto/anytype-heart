@@ -72,5 +72,64 @@ func (s *testSuite) TestBasic() {
 			s.Contains(sa.ObjectDetailsSet.Details.Fields, bundle.RelationKeyLastOpenedDate.String())
 		})
 	})
+}
 
+func pageTemplate(children ...*Block) *Block {
+	cs := []*Block{
+		Header(Children(
+			Text("",
+				TextStyle(model.BlockContentText_Title),
+				Fields(&types.Struct{
+					Fields: map[string]*types.Value{
+						"_detailsKey": pbtypes.StringList([]string{"name", "done"}),
+					},
+				}),
+				Restrictions(model.BlockRestrictions{
+					Remove: true,
+					Drag:   true,
+					DropOn: true,
+				})),
+			FeaturedRelations())),
+	}
+	cs = append(cs, children...)
+	return Root(Children(cs...))
+}
+
+func (s *testSuite) TestSimpleEditor() {
+	resp := call(s, s.ObjectCreate, &pb.RpcObjectCreateRequest{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyPage.BundledURL()),
+			},
+		},
+	})
+
+	s.NotEmpty(resp.ObjectId)
+
+	bresp := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
+		ContextId: resp.ObjectId,
+		Block:     Text("Level 1", Color("red")).block,
+		TargetId:  "",
+		Position:  model.Block_Inner,
+	})
+	s.NotEmpty(bresp.BlockId)
+
+	bresp2 := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
+		ContextId: resp.ObjectId,
+		Block:     Text("Level 2").block,
+		TargetId:  bresp.BlockId,
+		Position:  model.Block_Inner,
+	})
+	s.NotEmpty(bresp2.BlockId)
+
+	sresp := call(s, s.ObjectShow, &pb.RpcObjectShowRequest{
+		ObjectId: resp.ObjectId,
+	})
+
+	want := pageTemplate(
+		Text("Level 1", Color("red"), Children(
+			Text("Level 2")),
+		))
+
+	AssertTreesEqual(s.T(), BuildAST(want.Build()), BuildAST(sresp.ObjectView.Blocks))
 }
