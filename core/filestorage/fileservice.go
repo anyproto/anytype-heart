@@ -114,7 +114,7 @@ func (f *fileStorage) initOldStore() (*badger.DB, error) {
 	if _, err := os.Stat(f.cfg.LegacyFileStorePath); os.IsNotExist(err) {
 		return nil, nil
 	}
-	return badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
+	return badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath).WithReadOnly(true).WithBypassLockGuard(true))
 }
 
 func (f *fileStorage) LocalDiskUsage(ctx context.Context) (uint64, error) {
