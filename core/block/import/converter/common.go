@@ -5,17 +5,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
-	"github.com/gogo/protobuf/types"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 

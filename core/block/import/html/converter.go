@@ -1,33 +1,25 @@
 package html
 
 import (
+	"github.com/google/uuid"
 	"os"
 	"path/filepath"
-
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
 const Name = "Html"
 
-func init() {
-	converter.RegisterFunc(New)
-}
-
 type HTML struct {
 }
 
-func New(core.Service) converter.Converter {
+func New() converter.Converter {
 	return &HTML{}
 }
 
@@ -84,19 +76,11 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 			Details:     converter.GetDetails(p),
 			ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 		}
-		tid, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-		if err != nil {
-			cErr.Add(p, err)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, cErr
-			}
-			continue
-		}
 
 		snapshot := &converter.Snapshot{
-			Id:       tid.String(),
+			Id:       uuid.New().String(),
 			FileName: p,
-			Snapshot: sn,
+			Snapshot: &pb.ChangeSnapshot{Data: sn},
 		}
 		snapshots = append(snapshots, snapshot)
 	}

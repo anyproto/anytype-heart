@@ -136,18 +136,18 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, snapshot, oldIDtoNew, existing)
+	ret := m.ctrl.Call(m, "Create", ctx, snapshot, relations, oldIDtoNew, existing)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockCreatorMockRecorder) Create(ctx, cs, oldIDtoNew, existing interface{}) *gomock.Call {
+func (mr *MockCreatorMockRecorder) Create(ctx, cs, relations, oldIDtoNew, existing interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, oldIDtoNew, existing)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, relations, oldIDtoNew, existing)
 }
 
 // MockIDGetter is a mock of IDGetter interface.

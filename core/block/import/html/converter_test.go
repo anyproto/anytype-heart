@@ -22,8 +22,8 @@ func TestHTML_GetSnapshots(t *testing.T) {
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 1)
 	assert.Contains(t, sn.Snapshots[0].FileName, "test.html")
-	assert.NotEmpty(t, sn.Snapshots[0].Snapshot.Details.Fields["name"])
-	assert.Equal(t, sn.Snapshots[0].Snapshot.Details.Fields["name"], pbtypes.String("test"))
+	assert.NotEmpty(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"])
+	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"], pbtypes.String("test"))
 
 	assert.Nil(t, err)
 }

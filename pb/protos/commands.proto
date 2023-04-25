@@ -1786,12 +1786,14 @@ message Rpc {
                     BookmarksParams bookmarksParams = 2; //for internal use
                     MarkdownParams markdownParams = 3;
                     MigrationParams migrationParams = 4;
-                    TxtParams txtParams = 5;
+                    HtmlParams htmlParams = 5;
+                    TxtParams txtParams = 6;
+                    PbParams pbParams = 7;
                 }
-                repeated Snapshot snapshots = 6; // optional, for external developers usage
-                bool updateExistingObjects = 7;
-                Type type = 8;
-                Mode mode = 9;
+                repeated Snapshot snapshots = 8; // optional, for external developers usage
+                bool updateExistingObjects = 9;
+                Type type = 10;
+                Mode mode = 11;
 
                 message NotionParams {
                     string apiKey = 1;
@@ -1805,6 +1807,10 @@ message Rpc {
                     string url = 1;
                 }
 
+                message HtmlParams {
+                    repeated string path = 1;
+                }
+
                 message MigrationParams {
                     string address = 1;
                     string path = 2;
@@ -1812,6 +1818,10 @@ message Rpc {
 
                 message TxtParams {
                     repeated string path = 1;
+                }
+
+                message PbParams {
+                    string path = 1;
                 }
 
                 enum Mode {

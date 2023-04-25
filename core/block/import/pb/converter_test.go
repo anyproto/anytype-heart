@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -32,14 +33,14 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 
 	p := &Pb{}
 
-	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: wr.Path()}},
+	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: wr.Path()}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	})
+	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.Nil(t, res.Error)
+	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 1)
 }
@@ -57,14 +58,15 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 	assert.NoError(t, wr.Close())
 
 	p := &Pb{}
-	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "not exists"}},
+
+	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "not exists"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	})
+	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.NotNil(t, res.Error)
+	assert.NotNil(t, ce)
 }
 
 func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
@@ -82,16 +84,16 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 
 	p := &Pb{}
 
-	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "notexist.zip"}},
+	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "notexist.zip"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	})
+	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.NotNil(t, res.Error)
-	assert.Len(t, res.Error, 1)
-	assert.NotEmpty(t, res.Error.Get("notexist.zip"))
+	assert.NotNil(t, ce)
+	assert.Len(t, ce, 1)
+	assert.NotEmpty(t, ce.Get("notexist.zip"))
 }
 
 func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
@@ -116,30 +118,30 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	p := &Pb{}
 
 	// ALL_OR_NOTHING mode
-	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: wr.Path()}},
+	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: wr.Path()}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	})
+	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.NotNil(t, res.Error)
-	assert.Nil(t, res.Snapshots)
-	assert.NotEmpty(t, res.Error.Get("test.pb"))
+	assert.NotNil(t, ce)
+	assert.Nil(t, res)
+	assert.NotEmpty(t, ce.Get("test.pb"))
 
 	// IGNORE_ERRORS mode
-	res = p.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: wr.Path()}},
+	res, ce = p.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: wr.Path()}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
-	})
+	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.NotNil(t, res.Error)
+	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 1)
-	assert.Len(t, res.Error, 1)
-	assert.NotEmpty(t, res.Error.Get("test.pb"))
+	assert.Len(t, ce, 1)
+	assert.NotEmpty(t, ce.Get("test.pb"))
 }
 
 func newZipWriter(path string) (*zipWriter, error) {

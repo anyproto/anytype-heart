@@ -22,31 +22,33 @@ func Test_ImportSuccess(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
-		Snapshot: &model.SmartBlockSnapshotBase{
-			Blocks: []*model.Block{&model.Block{
-				Id: "1",
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{
-						Text:  "test",
-						Style: model.BlockContentText_Numbered,
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{&model.Block{
+					Id: "1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text:  "test",
+							Style: model.BlockContentText_Numbered,
+						},
 					},
 				},
-			},
+				},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: nil}).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -62,9 +64,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	converter := cv.NewMockConverter(ctrl)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{
-		Error: e,
-	}).Times(1)
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
@@ -72,7 +72,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -87,31 +87,33 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
-		Snapshot: &model.SmartBlockSnapshotBase{
-			Blocks: []*model.Block{&model.Block{
-				Id: "1",
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{
-						Text:  "test",
-						Style: model.BlockContentText_Numbered,
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{&model.Block{
+					Id: "1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text:  "test",
+							Style: model.BlockContentText_Numbered,
+						},
 					},
 				},
-			},
+				},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: nil}).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -128,8 +130,8 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	converter := cv.NewMockConverter(ctrl)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
-		Snapshot: &model.SmartBlockSnapshotBase{
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
 				Content: &model.BlockContentOfText{
@@ -141,17 +143,18 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 			},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: e}).Times(1)
+		},
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -168,31 +171,33 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	converter := cv.NewMockConverter(ctrl)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
-		Snapshot: &model.SmartBlockSnapshotBase{
-			Blocks: []*model.Block{&model.Block{
-				Id: "1",
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{
-						Text:  "test",
-						Style: model.BlockContentText_Numbered,
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{&model.Block{
+					Id: "1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text:  "test",
+							Style: model.BlockContentText_Numbered,
+						},
 					},
 				},
-			},
+				},
 			},
 		},
-		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}, Error: e}).Times(1)
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -211,7 +216,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
@@ -241,7 +246,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		Params:                nil,
 		Snapshots:             snapshots,
 		UpdateExistingObjects: false,
-		Type:                  1,
+		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
 	})
 	assert.Nil(t, res)
@@ -262,7 +267,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Params:                nil,
 		Snapshots:             nil,
 		UpdateExistingObjects: false,
-		Type:                  1,
+		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
 	})
 	assert.NotNil(t, res)
@@ -275,7 +280,7 @@ func Test_ListImports(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = pbc.New(nil)
+	i.converters["Notion"] = pbc.New()
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
@@ -294,7 +299,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters[web.Name] = web.NewConverter(nil)
+	i.converters[web.Name] = web.NewConverter()
 
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
@@ -315,7 +320,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters[web.Name] = web.NewConverter(nil)
+	i.converters[web.Name] = web.NewConverter()
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
@@ -345,10 +350,10 @@ func Test_ImportWebSuccess(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 
-	i.converters[web.Name] = web.NewConverter(nil)
+	i.converters[web.Name] = web.NewConverter()
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
@@ -385,11 +390,11 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters[web.Name] = web.NewConverter(nil)
+	i.converters[web.Name] = web.NewConverter()
 
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
