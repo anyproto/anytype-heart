@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/ipfs/go-datastore/query"
 	"sort"
 	"strings"
@@ -57,19 +58,8 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	uniqMap := make(map[string]bool)
 
+	// single tag groups
 	for _, v := range t.Records {
-		if tagRecord := pbtypes.GetStringList(v.Details, t.Key); len(tagRecord) > 0 {
-			sort.Strings(tagRecord)
-			hash := strings.Join(tagRecord, "")
-			if !uniqMap[hash] {
-				uniqMap[hash] = true
-				groups = append(groups, Group{
-					Id:   hash,
-					Data: GroupData{Ids: tagRecord},
-				})
-			}
-		}
-
 		if tagOption := pbtypes.GetString(v.Details, bundle.RelationKeyRelationKey.String()); tagOption == t.Key {
 			optionId := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
 			if !uniqMap[optionId] {
@@ -77,6 +67,25 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 				groups = append(groups, Group{
 					Id:   optionId,
 					Data: GroupData{Ids: []string{optionId}},
+				})
+			}
+		}
+	}
+
+	// multiple tag groups
+	for _, rec := range t.Records {
+		tagIDs := slice.Filter(pbtypes.GetStringList(rec.Details, t.Key), func(tagID string) bool { // filter removed options
+			return uniqMap[tagID]
+		})
+
+		if len(tagIDs) > 1 {
+			sort.Strings(tagIDs)
+			hash := strings.Join(tagIDs, "")
+			if !uniqMap[hash] {
+				uniqMap[hash] = true
+				groups = append(groups, Group{
+					Id:   hash,
+					Data: GroupData{Ids: tagIDs},
 				})
 			}
 		}
