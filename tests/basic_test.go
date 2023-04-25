@@ -9,11 +9,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+
+	. "github.com/anytypeio/go-anytype-middleware/tests/blockbuilder"
 )
 
 func (s *testSuite) TestBasic() {
 	s.Run("open dashboard", func() {
-		resp := call(s, s.ObjectOpen, &pb.RpcObjectOpenRequest{
+		cctx := s.newCallCtx(s.T())
+		resp := call(cctx, s.ObjectOpen, &pb.RpcObjectOpenRequest{
 			ObjectId: s.acc.Info.HomeObjectId,
 		})
 
@@ -25,13 +28,14 @@ func (s *testSuite) TestBasic() {
 		s.NotZero(resp.ObjectView.Type)
 	})
 
+	cctx := s.newCallCtx(s.T())
 	s.Require().NotEmpty(
-		call(s, s.ObjectSearch, &pb.RpcObjectSearchRequest{
+		call(cctx, s.ObjectSearch, &pb.RpcObjectSearchRequest{
 			Keys: []string{"id", "type", "name"},
 		}).Records,
 	)
 
-	call(s, s.ObjectSearchSubscribe, &pb.RpcObjectSearchSubscribeRequest{
+	call(cctx, s.ObjectSearchSubscribe, &pb.RpcObjectSearchSubscribeRequest{
 		SubId: "recent",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -43,7 +47,8 @@ func (s *testSuite) TestBasic() {
 	})
 
 	s.Run("create and open an object", func() {
-		objId := call(s, s.BlockLinkCreateWithObject, &pb.RpcBlockLinkCreateWithObjectRequest{
+		cctx := s.newCallCtx(s.T())
+		objId := call(cctx, s.BlockLinkCreateWithObject, &pb.RpcBlockLinkCreateWithObjectRequest{
 			InternalFlags: []*model.InternalFlag{
 				{
 					Value: model.InternalFlag_editorDeleteEmpty,
@@ -59,15 +64,15 @@ func (s *testSuite) TestBasic() {
 			},
 		}).TargetId
 
-		resp := call(s, s.ObjectOpen, &pb.RpcObjectOpenRequest{
+		resp := call(cctx, s.ObjectOpen, &pb.RpcObjectOpenRequest{
 			ObjectId: objId,
 		})
 		s.Require().NotNil(resp.ObjectView)
 
-		waitEvent(s, func(sa *pb.EventMessageValueOfSubscriptionAdd) {
+		waitEvent(cctx.t, s, func(sa *pb.EventMessageValueOfSubscriptionAdd) {
 			s.Equal(sa.SubscriptionAdd.Id, objId)
 		})
-		waitEvent(s, func(sa *pb.EventMessageValueOfObjectDetailsSet) {
+		waitEvent(cctx.t, s, func(sa *pb.EventMessageValueOfObjectDetailsSet) {
 			s.Equal(sa.ObjectDetailsSet.Id, objId)
 			s.Contains(sa.ObjectDetailsSet.Details.Fields, bundle.RelationKeyLastOpenedDate.String())
 		})
@@ -96,7 +101,8 @@ func pageTemplate(children ...*Block) *Block {
 }
 
 func (s *testSuite) testOnNewObject(objectType bundle.TypeKey, fn func(objectID string), wantPage *Block) {
-	resp := call(s, s.ObjectCreate, &pb.RpcObjectCreateRequest{
+	cctx := s.newCallCtx(s.T())
+	resp := call(cctx, s.ObjectCreate, &pb.RpcObjectCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyType.String(): pbtypes.String(objectType.BundledURL()),
@@ -107,7 +113,7 @@ func (s *testSuite) testOnNewObject(objectType bundle.TypeKey, fn func(objectID 
 
 	fn(resp.ObjectId)
 
-	sresp := call(s, s.ObjectShow, &pb.RpcObjectShowRequest{
+	sresp := call(cctx, s.ObjectShow, &pb.RpcObjectShowRequest{
 		ObjectId: resp.ObjectId,
 	})
 
@@ -120,18 +126,19 @@ func (s *testSuite) TestEditor_CreateBlocks() {
 			Text("Level 2")),
 		))
 
+	cctx := s.newCallCtx(s.T())
 	s.testOnNewObject(bundle.TypeKeyPage, func(objectID string) {
-		bresp := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
+		bresp := call(cctx, s.BlockCreate, &pb.RpcBlockCreateRequest{
 			ContextId: objectID,
-			Block:     Text("Level 1", Color("red")).block,
+			Block:     Text("Level 1", Color("red")).Block(),
 			TargetId:  "",
 			Position:  model.Block_Inner,
 		})
 		s.NotEmpty(bresp.BlockId)
 
-		bresp2 := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
+		bresp2 := call(cctx, s.BlockCreate, &pb.RpcBlockCreateRequest{
 			ContextId: objectID,
-			Block:     Text("Level 2").block,
+			Block:     Text("Level 2").Block(),
 			TargetId:  bresp.BlockId,
 			Position:  model.Block_Inner,
 		})

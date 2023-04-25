@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -55,8 +56,12 @@ func startEventReceiver(ctx context.Context, c service.ClientCommandsClient, tok
 	return er, nil
 }
 
-func waitEvent[t pb.IsEventMessageValue](s *testSuite, fn func(x t)) {
-	er := s.events
+type eventReceiverProvider interface {
+	EventReceiver() *eventReceiver
+}
+
+func waitEvent[msgType pb.IsEventMessageValue](t *testing.T, provider eventReceiverProvider, fn func(x msgType)) {
+	er := provider.EventReceiver()
 
 	ticker := time.NewTicker(10 * time.Millisecond)
 	timeout := time.NewTimer(2 * time.Second)
@@ -67,7 +72,7 @@ func waitEvent[t pb.IsEventMessageValue](s *testSuite, fn func(x t)) {
 			if m == nil {
 				continue
 			}
-			if v, ok := m.Value.(t); ok {
+			if v, ok := m.Value.(msgType); ok {
 				fn(v)
 				er.events[i] = nil
 				er.lock.Unlock()
@@ -79,7 +84,7 @@ func waitEvent[t pb.IsEventMessageValue](s *testSuite, fn func(x t)) {
 		select {
 		case <-ticker.C:
 		case <-timeout.C:
-			s.FailNow("wait event timeout")
+			t.Fatal("wait event timeout")
 		}
 	}
 }

@@ -1,260 +1,113 @@
 package tests
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
-type options struct {
-	children     []*Block
-	color        string
-	restrictions *model.BlockRestrictions
-	textStyle    model.BlockContentTextStyle
-	marks        *model.BlockContentTextMarks
-	fields       *types.Struct
-}
+const cacheDir = ".cache"
 
-type Option func(*options)
+func cachedString(key string, rewriteCache bool, proc func() (string, error)) (string, bool, error) {
+	filename := filepath.Join(cacheDir, key)
+	raw, err := os.ReadFile(filename)
+	result := string(raw)
 
-func Children(v ...*Block) Option {
-	return func(o *options) {
-		o.children = v
-	}
-}
-
-func Restrictions(r model.BlockRestrictions) Option {
-	return func(o *options) {
-		o.restrictions = &r
-	}
-}
-
-func Fields(v *types.Struct) Option {
-	return func(o *options) {
-		o.fields = v
-	}
-}
-
-func Color(v string) Option {
-	return func(o *options) {
-		o.color = v
-	}
-}
-
-func TextStyle(s model.BlockContentTextStyle) Option {
-	return func(o *options) {
-		o.textStyle = s
-	}
-}
-
-func TextMarks(m model.BlockContentTextMarks) Option {
-	return func(o *options) {
-		o.marks = &m
-	}
-}
-
-type Block struct {
-	block    *model.Block
-	children []*Block
-}
-
-func (b *Block) Copy() *Block {
-	children := make([]*Block, 0, len(b.children))
-	for _, c := range b.children {
-		children = append(children, c.Copy())
-	}
-	bc := Block{
-		block:    pbtypes.CopyBlock(b.block),
-		children: children,
-	}
-	return &bc
-}
-
-func (b *Block) Build() []*model.Block {
-	if b.block.Id == "" {
-		b.block.Id = bson.NewObjectId().Hex()
-	}
-
-	var descendants []*model.Block
-	b.block.ChildrenIds = b.block.ChildrenIds[:0]
-	for _, c := range b.children {
-		descendants = append(descendants, c.Build()...)
-		b.block.ChildrenIds = append(b.block.ChildrenIds, c.block.Id)
-	}
-
-	return append([]*model.Block{
-		b.block,
-	}, descendants...)
-}
-
-func mkBlock(b *model.Block, opts ...Option) *Block {
-	o := options{
-		// Init children for easier equality check in tests
-		children:     []*Block{},
-		restrictions: &model.BlockRestrictions{},
-	}
-	for _, apply := range opts {
-		apply(&o)
-	}
-	b.Restrictions = o.restrictions
-	b.Fields = o.fields
-	return &Block{
-		block:    b,
-		children: o.children,
-	}
-}
-
-func Root(opts ...Option) *Block {
-	return mkBlock(&model.Block{
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-	}, opts...)
-}
-
-func Layout(style model.BlockContentLayoutStyle, opts ...Option) *Block {
-	return mkBlock(&model.Block{
-		Content: &model.BlockContentOfLayout{
-			Layout: &model.BlockContentLayout{Style: style},
-		},
-	}, opts...)
-}
-
-func Header(opts ...Option) *Block {
-	return Layout(model.BlockContentLayout_Header, append(opts, Restrictions(
-		model.BlockRestrictions{
-			Edit:   true,
-			Remove: true,
-			Drag:   true,
-			DropOn: true,
-		}))...)
-}
-
-func FeaturedRelations(opts ...Option) *Block {
-	return mkBlock(&model.Block{
-		Content: &model.BlockContentOfFeaturedRelations{
-			FeaturedRelations: &model.BlockContentFeaturedRelations{},
-		},
-	}, append(opts, Restrictions(model.BlockRestrictions{
-		Remove: true,
-		Drag:   true,
-		DropOn: true,
-	}))...)
-}
-
-func Text(s string, opts ...Option) *Block {
-	o := options{
-		marks: &model.BlockContentTextMarks{},
-	}
-	for _, apply := range opts {
-		apply(&o)
-	}
-
-	return mkBlock(&model.Block{
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:  s,
-				Style: o.textStyle,
-				Color: o.color,
-				Marks: o.marks,
-			},
-		},
-	}, opts...)
-}
-
-func BuildAST(raw []*model.Block) *Block {
-	rawMap := make(map[string]*model.Block, len(raw))
-	for _, b := range raw {
-		rawMap[b.Id] = b
-	}
-
-	blocks := make(map[string]*Block, len(raw))
-	for _, b := range raw {
-		blocks[b.Id] = &Block{
-			block: b,
+	if rewriteCache || os.IsNotExist(err) || result == "" {
+		res, err := proc()
+		if err != nil {
+			return "", false, fmt.Errorf("running proc for caching %s: %w", key, err)
 		}
+		err = os.WriteFile(filename, []byte(res), 0600)
+		if err != nil {
+			return "", false, fmt.Errorf("writing cache for %s: %w", key, err)
+		}
+		return res, false, nil
 	}
 
-	isChildOf := map[string]string{}
+	return result, true, nil
+}
 
-	for _, b := range raw {
-		children := make([]*Block, 0, len(b.ChildrenIds))
-		for _, id := range b.ChildrenIds {
-			isChildOf[id] = b.Id
-			v, ok := blocks[id]
-			if !ok {
-				continue
+func getError(i interface{}) error {
+	v := reflect.ValueOf(i).Elem()
+
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.Kind() != reflect.Pointer {
+			continue
+		}
+		el := f.Elem()
+		if !el.IsValid() {
+			continue
+		}
+		if strings.Contains(el.Type().Name(), "ResponseError") {
+			code := el.FieldByName("Code").Int()
+			desc := el.FieldByName("Description").String()
+			if code > 0 {
+				return fmt.Errorf("error code %d: %s", code, desc)
 			}
-			children = append(children, v)
-		}
-
-		blocks[b.Id].children = children
-	}
-
-	for _, b := range raw {
-		if _, ok := isChildOf[b.Id]; !ok {
-			return blocks[b.Id]
+			return nil
 		}
 	}
 	return nil
 }
 
-func dropBlockIDs(b *Block) {
-	b.block.Id = ""
-	for i := range b.block.ChildrenIds {
-		b.block.ChildrenIds[i] = ""
-	}
+type callCtx struct {
+	t     *testing.T
+	token string
+}
 
-	for _, c := range b.children {
-		dropBlockIDs(c)
+func (c callCtx) newContext() context.Context {
+	return metadata.AppendToOutgoingContext(context.Background(), "token", c.token)
+}
+
+func (s testSession) newCallCtx(t *testing.T) callCtx {
+	return callCtx{
+		t:     t,
+		token: s.token,
 	}
 }
 
-func AssertPagesEqual(t *testing.T, want, got []*model.Block) bool {
-	wantTree := BuildAST(want)
-	gotTree := BuildAST(got)
-
-	dropBlockIDs(wantTree)
-	dropBlockIDs(gotTree)
-
-	return assert.Equal(t, wantTree, gotTree)
+func call[reqT, respT any](
+	cctx callCtx,
+	method func(context.Context, reqT, ...grpc.CallOption) (respT, error),
+	req reqT,
+) respT {
+	resp, err := callReturnError(cctx, method, req)
+	require.NoError(cctx.t, err)
+	require.NotNil(cctx.t, resp)
+	return resp
 }
 
-func TestBuilder(t *testing.T) {
-	makeTree := func() *Block {
-		return Text("kek", Children(
-			Text("level 2", Color("red")),
-			Text("level 2.1", Children(
-				Text("level 3.1"), Text("level 3.2"), Text("level 3.3"))),
-		))
+func callReturnError[reqT any, respT any](
+	cctx callCtx,
+	method func(context.Context, reqT, ...grpc.CallOption) (respT, error),
+	req reqT,
+) (respT, error) {
+	name := runtime.FuncForPC(reflect.ValueOf(method).Pointer()).Name()
+	name = name[strings.LastIndex(name, ".")+1:]
+	name = name[:strings.LastIndex(name, "-")]
+	cctx.t.Logf("calling %s", name)
+
+	var nilResp respT
+
+	resp, err := method(cctx.newContext(), req)
+	if err != nil {
+		return nilResp, err
 	}
-
-	b := makeTree()
-	blocks := b.Build()
-
-	root := BuildAST(blocks)
-
-	assert.Equal(t, b, root)
-
-}
-
-func TestTreesEquality(t *testing.T) {
-	makeTree := func() *Block {
-		root := Text("level 1", Children(
-			Text("level 2", Color("red")),
-			Text("level 2.1", Children(
-				Text("level 3.1"), Text("level 3.2"), Text("level 3.3"))),
-		))
-
-		return BuildAST(root.Build())
+	err = getError(resp)
+	if err != nil {
+		return nilResp, err
 	}
-	a := makeTree()
-	b := makeTree()
-
-	AssertPagesEqual(t, a.Build(), b.Build())
+	require.NotNil(cctx.t, resp)
+	return resp, nil
 }
