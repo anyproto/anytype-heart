@@ -6,11 +6,14 @@ import (
 
 	"github.com/anytypeio/any-sync/app"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const CName = "restriction"
@@ -30,6 +33,7 @@ type Service interface {
 type service struct {
 	anytype     core.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
+	store       objectstore.ObjectStore
 }
 
 func New(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
@@ -40,6 +44,8 @@ func New(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
+	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+
 	return
 }
 
@@ -70,10 +76,21 @@ func (s *service) RestrictionsById(id string) (r Restrictions, err error) {
 	if err != nil {
 		return Restrictions{}, fmt.Errorf("get smartblock type: %w", err)
 	}
-	obj, err := newSimpleObject(id, sbType)
+	layout := model.ObjectTypeLayout(-1)
+	d, err := s.store.GetDetails(id)
+	if err == nil {
+		if pbtypes.HasField(d.GetDetails(), bundle.RelationKeyLayout.String()) {
+			layoutIndex := pbtypes.GetInt64(d.GetDetails(), bundle.RelationKeyLayout.String())
+			if _, ok := model.ObjectTypeLayout_name[int32(layoutIndex)]; ok {
+				layout = model.ObjectTypeLayout(layoutIndex)
+			}
+		}
+	}
+	obj, err := newSimpleObject(id, sbType, layout)
 	if err != nil {
 		return Restrictions{}, err
 	}
+
 	return s.RestrictionsByObj(obj), nil
 }
 
@@ -83,10 +100,11 @@ type simpleObject struct {
 	layout model.ObjectTypeLayout
 }
 
-func newSimpleObject(id string, sbType smartblock.SmartBlockType) (Object, error) {
+func newSimpleObject(id string, sbType smartblock.SmartBlockType, layout model.ObjectTypeLayout) (Object, error) {
 	return &simpleObject{
-		id: id,
-		tp: sbType.ToProto(),
+		id:     id,
+		tp:     sbType.ToProto(),
+		layout: layout,
 	}, nil
 }
 
@@ -99,7 +117,7 @@ func (s *simpleObject) Type() model.SmartBlockType {
 }
 
 func (s *simpleObject) Layout() (model.ObjectTypeLayout, bool) {
-	return 0, false
+	return s.layout, s.layout != -1
 }
 
 type Object interface {
