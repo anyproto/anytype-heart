@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -81,6 +82,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	sn *converter.Snapshot,
 	relations []*converter.Relation,
 	oldIDtoNew map[string]string,
+	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	existing bool) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 
@@ -90,8 +92,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	oc.setWorkspaceID(err, newID, snapshot)
 
-	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
+	filesToDelete, _, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
 		return nil, "", fmt.Errorf("relation create '%s'", err)
 	}
@@ -127,14 +128,29 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return nil, newID, nil
 	}
 
+	var respDetails *types.Struct
 	converter.UpdateObjectType(oldIDtoNew, st)
-	respDetails := oc.resetState(ctx, newID, st)
-
+	if payload := createPayloads[newID]; payload.RootRawChange != nil {
+		sb, err := oc.service.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
+			return &sb.InitContext{
+				IsNewObject: true,
+				State:       st,
+			}
+		})
+		if err != nil {
+			log.With("object", newID).Errorf("failed to create %s: %s", newID, err.Error())
+			return nil, "", err
+		}
+		respDetails = sb.Details()
+	} else {
+		respDetails = oc.resetState(ctx, newID, st)
+	}
 	oc.setFavorite(snapshot, newID)
 
 	oc.setArchived(snapshot, newID)
 
-	oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
+	// we do not change relation ids during the migration
+	//oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
 
 	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
 	if syncErr != nil {

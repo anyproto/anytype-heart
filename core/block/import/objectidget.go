@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -37,9 +37,10 @@ func (c CreateSubObjectRequest) GetDetails() *types.Struct {
 }
 
 type ObjectIDGetter struct {
-	objectStore objectstore.ObjectStore
-	core        core.Service
-	service     *block.Service
+	objectStore   objectstore.ObjectStore
+	core          core.Service
+	createPayload map[string]treestorage.TreeStorageCreatePayload
+	service       *block.Service
 }
 
 func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDGetter {
@@ -53,44 +54,41 @@ func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, s
 func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
-	getExisting bool) (string, bool, error) {
+	getExisting bool) (string, bool, treestorage.TreeStorageCreatePayload, error) {
 	if sbType == sb.SmartBlockTypeWorkspace {
 		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(sn.Id)
 		if wErr == nil {
-			return workspaceID, true, nil
+			return workspaceID, true, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
 	if sbType == sb.SmartBlockTypeWidget {
 		widgetID := ou.core.PredefinedBlocks().Widgets
-		return widgetID, false, nil
+		return widgetID, false, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
 	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
 	if id != "" {
-		return id, true, err
+		return id, true, treestorage.TreeStorageCreatePayload{}, err
 	}
 	if sbType == sb.SmartBlockTypeSubObject {
-		return ou.getSubObjectID(sn, sbType)
+		id, exist, err := ou.getSubObjectID(sn, sbType)
+		return id, exist, treestorage.TreeStorageCreatePayload{}, err
 	}
 
 	if getExisting || sbType == sb.SmartBlockTypeProfilePage {
 		id, exist := ou.getExisting(sn)
 		if id != "" {
-			return id, exist, nil
+			return id, exist, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
 
 	cctx := context.Background()
 
-	sb, err := ou.service.CreateTreeObject(cctx, sbType, func(id string) *smartblock.InitContext {
-		return &smartblock.InitContext{
-			Ctx: cctx,
-		}
-	})
+	payload, err := ou.service.CreateTreePayload(cctx, sbType)
 	if err != nil {
-		return "", false, err
+		return "", false, treestorage.TreeStorageCreatePayload{}, err
 	}
-	return sb.Id(), false, nil
+	return payload.RootRawChange.Id, false, payload, nil
 }
 
 func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {

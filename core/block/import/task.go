@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -15,8 +16,9 @@ type Task struct {
 }
 
 type DataObject struct {
-	oldIDtoNew map[string]string
-	ctx        *session.Context
+	oldIDtoNew     map[string]string
+	createPayloads map[string]treestorage.TreeStorageCreatePayload
+	ctx            *session.Context
 }
 
 type Result struct {
@@ -25,8 +27,8 @@ type Result struct {
 	err     error
 }
 
-func NewDataObject(oldIDtoNew map[string]string, ctx *session.Context) *DataObject {
-	return &DataObject{oldIDtoNew: oldIDtoNew, ctx: ctx}
+func NewDataObject(oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, ctx *session.Context) *DataObject {
+	return &DataObject{oldIDtoNew: oldIDtoNew, createPayloads: createPayloads, ctx: ctx}
 }
 
 func NewTask(sn *converter.Snapshot, relations []*converter.Relation, existing bool, oc Creator) *Task {
@@ -35,7 +37,7 @@ func NewTask(sn *converter.Snapshot, relations []*converter.Relation, existing b
 
 func (t *Task) Execute(data interface{}) interface{} {
 	dataObject := data.(*DataObject)
-	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, t.relations, dataObject.oldIDtoNew, t.existing)
+	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, t.relations, dataObject.oldIDtoNew, dataObject.createPayloads, t.existing)
 	return &Result{
 		details: details,
 		newID:   newID,

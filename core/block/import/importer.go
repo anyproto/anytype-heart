@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -216,21 +217,26 @@ func (i *Import) createObjects(ctx *session.Context,
 	}
 
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
+	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	existedObject := make(map[string]struct{}, 0)
 	for _, snapshot := range res.Snapshots {
 		var (
-			err   error
-			id    string
-			exist bool
+			err     error
+			id      string
+			payload treestorage.TreeStorageCreatePayload
+			exist   bool
 		)
 
-		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
+		if id, exist, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
 			if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 				oldIDToNew[snapshot.Id] = snapshot.Id
 			}
 			if exist {
 				existedObject[snapshot.Id] = struct{}{}
+			}
+			if payload.RootRawChange != nil {
+				createPayloads[id] = payload
 			}
 			continue
 		}
@@ -246,7 +252,7 @@ func (i *Import) createObjects(ctx *session.Context,
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(oldIDToNew, ctx)
+	do := NewDataObject(oldIDToNew, createPayloads, ctx)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(res, existedObject, pool)

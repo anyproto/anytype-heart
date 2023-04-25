@@ -208,14 +208,18 @@ func (s *Service) DeleteObject(id string) (err error) {
 	return
 }
 
-func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+func (s *Service) CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType) (treestorage.TreeStorageCreatePayload, error) {
 	space, err := s.clientService.AccountSpace(ctx)
 	if err != nil {
-		return
+		return treestorage.TreeStorageCreatePayload{}, err
 	}
+	return s.CreateTreePayloadWithSpace(ctx, space, tp)
+}
+
+func (s *Service) CreateTreePayloadWithSpace(ctx context.Context, space commonspace.Space, tp coresb.SmartBlockType) (treestorage.TreeStorageCreatePayload, error) {
 	changePayload, err := createChangePayload(tp)
 	if err != nil {
-		return
+		return treestorage.TreeStorageCreatePayload{}, err
 	}
 	payload := objecttree.ObjectTreeCreatePayload{
 		PrivKey:       s.commonAccount.Account().SignKey,
@@ -224,17 +228,49 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 		SpaceId:       space.Id(),
 		IsEncrypted:   true,
 	}
-	create, err := space.CreateTree(context.Background(), payload)
+	return space.CreateTree(ctx, payload)
+}
+
+func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+	space, err := s.clientService.AccountSpace(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
-	tr, err := space.PutTree(ctx, create, nil)
+	tr, err := space.PutTree(ctx, payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
 	tr.Close()
-	return s.cacheCreatedObject(ctx, create.RootRawChange.Id, space.Id(), initFunc)
+	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
+}
+
+func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+	space, err := s.clientService.AccountSpace(ctx)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := s.CreateTreePayloadWithSpace(ctx, space, tp)
+	if err != nil {
+		return nil, err
+	}
+
+	tr, err := space.PutTree(ctx, payload, nil)
+	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+		err = fmt.Errorf("failed to put tree: %w", err)
+		return
+	}
+	tr.Close()
+	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
+}
+
+func (s *Service) ResetTreeObject(ctx context.Context, id string, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+	space, err := s.clientService.AccountSpace(ctx)
+	if err != nil {
+		return
+	}
+
+	return s.cacheCreatedObject(ctx, id, space.Id(), initFunc)
 }
 
 // DeriveTreeCreatePayload creates payload for the tree of derived object.
