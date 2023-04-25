@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -105,6 +106,16 @@ func (mw *Middleware) doBlockService(f func(bs *block.Service) error) (err error
 		return
 	}
 	return f(bs)
+}
+
+func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) (err error) {
+	mw.m.RLock()
+	a := mw.app
+	mw.m.RUnlock()
+	if a == nil {
+		return ErrNotLoggedIn
+	}
+	return f(app.MustComponent[*collection.Service](a))
 }
 
 func (mw *Middleware) doRelationService(f func(rs relation.Service) error) (err error) {

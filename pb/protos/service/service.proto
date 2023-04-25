@@ -86,6 +86,12 @@ service ClientCommands {
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
 
+    // Collections
+    // ***
+    rpc ObjectCollectionAdd (anytype.Rpc.ObjectCollection.Add.Request) returns (anytype.Rpc.ObjectCollection.Add.Response);
+    rpc ObjectCollectionRemove (anytype.Rpc.ObjectCollection.Remove.Request) returns (anytype.Rpc.ObjectCollection.Remove.Response);
+    rpc ObjectCollectionSort (anytype.Rpc.ObjectCollection.Sort.Request) returns (anytype.Rpc.ObjectCollection.Sort.Response);
+
     // Relations
     // ***
     rpc ObjectCreateRelation (anytype.Rpc.Object.CreateRelation.Request) returns (anytype.Rpc.Object.CreateRelation.Response);

@@ -2,22 +2,23 @@ package anytype
 
 import (
 	"context"
-	"os"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/metric"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
+	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/secureservice"
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
-
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
@@ -51,7 +52,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
@@ -62,6 +62,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
+	"os"
 )
 
 func StartAccountRecoverApp(ctx context.Context, eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
@@ -118,10 +119,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
-
-	walletService := a.Component(wallet.CName).(wallet.Wallet)
-	tempDirService := core.NewTempDirService(walletService)
-
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
@@ -130,7 +127,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(dialer.New()).
 		Register(pool.New()).
 		Register(streampool.New()).
-		Register(clientserver.New()).
+		Register(metric.New()).
+		Register(server.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
@@ -154,23 +152,25 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(builtintemplate.New()).
 		Register(status.New()).
 		Register(block.New()).
+		Register(doc.New()).
 		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
 		Register(linkpreview.New()).
-		Register(unsplash.New(tempDirService)).
+		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
-		Register(bookmark.New(tempDirService)).
+		Register(bookmark.New()).
 		Register(session.New()).
-		Register(importer.New(tempDirService)).
+		Register(importer.New()).
 		Register(decorator.New()).
 		Register(object.NewCreator()).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService))
+		Register(editor.NewObjectFactory()).
+		Register(collection.New())
 	return
 }

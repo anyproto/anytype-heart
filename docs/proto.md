@@ -710,6 +710,19 @@
     - [Rpc.Object.Undo.Response](#anytype-Rpc-Object-Undo-Response)
     - [Rpc.Object.Undo.Response.Error](#anytype-Rpc-Object-Undo-Response-Error)
     - [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter)
+    - [Rpc.ObjectCollection](#anytype-Rpc-ObjectCollection)
+    - [Rpc.ObjectCollection.Add](#anytype-Rpc-ObjectCollection-Add)
+    - [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request)
+    - [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response)
+    - [Rpc.ObjectCollection.Add.Response.Error](#anytype-Rpc-ObjectCollection-Add-Response-Error)
+    - [Rpc.ObjectCollection.Remove](#anytype-Rpc-ObjectCollection-Remove)
+    - [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request)
+    - [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response)
+    - [Rpc.ObjectCollection.Remove.Response.Error](#anytype-Rpc-ObjectCollection-Remove-Response-Error)
+    - [Rpc.ObjectCollection.Sort](#anytype-Rpc-ObjectCollection-Sort)
+    - [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request)
+    - [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response)
+    - [Rpc.ObjectCollection.Sort.Response.Error](#anytype-Rpc-ObjectCollection-Sort-Response-Error)
     - [Rpc.ObjectRelation](#anytype-Rpc-ObjectRelation)
     - [Rpc.ObjectRelation.Add](#anytype-Rpc-ObjectRelation-Add)
     - [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request)
@@ -1014,6 +1027,9 @@
     - [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype-Rpc-Object-ToSet-Response-Error-Code)
     - [Rpc.Object.Undo.Response.Error.Code](#anytype-Rpc-Object-Undo-Response-Error-Code)
+    - [Rpc.ObjectCollection.Add.Response.Error.Code](#anytype-Rpc-ObjectCollection-Add-Response-Error-Code)
+    - [Rpc.ObjectCollection.Remove.Response.Error.Code](#anytype-Rpc-ObjectCollection-Remove-Response-Error-Code)
+    - [Rpc.ObjectCollection.Sort.Response.Error.Code](#anytype-Rpc-ObjectCollection-Sort-Response-Error-Code)
     - [Rpc.ObjectRelation.Add.Response.Error.Code](#anytype-Rpc-ObjectRelation-Add-Response-Error-Code)
     - [Rpc.ObjectRelation.AddFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-AddFeatured-Response-Error-Code)
     - [Rpc.ObjectRelation.Delete.Response.Error.Code](#anytype-Rpc-ObjectRelation-Delete-Response-Error-Code)
@@ -1418,6 +1434,9 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
+| ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
+| ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
+| ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
 | ObjectCreateRelation | [Rpc.Object.CreateRelation.Request](#anytype-Rpc-Object-CreateRelation-Request) | [Rpc.Object.CreateRelation.Response](#anytype-Rpc-Object-CreateRelation-Response) | Relations *** |
 | ObjectCreateRelationOption | [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request) | [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response) |  |
 | RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response) |  |
@@ -11853,6 +11872,191 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-ObjectCollection"></a>
+
+### Rpc.ObjectCollection
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Add"></a>
+
+### Rpc.ObjectCollection.Add
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Add-Request"></a>
+
+### Rpc.ObjectCollection.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| afterId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Add-Response"></a>
+
+### Rpc.ObjectCollection.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectCollection.Add.Response.Error](#anytype-Rpc-ObjectCollection-Add-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Add-Response-Error"></a>
+
+### Rpc.ObjectCollection.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectCollection.Add.Response.Error.Code](#anytype-Rpc-ObjectCollection-Add-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Remove"></a>
+
+### Rpc.ObjectCollection.Remove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Remove-Request"></a>
+
+### Rpc.ObjectCollection.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Remove-Response"></a>
+
+### Rpc.ObjectCollection.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectCollection.Remove.Response.Error](#anytype-Rpc-ObjectCollection-Remove-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Remove-Response-Error"></a>
+
+### Rpc.ObjectCollection.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectCollection.Remove.Response.Error.Code](#anytype-Rpc-ObjectCollection-Remove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Sort"></a>
+
+### Rpc.ObjectCollection.Sort
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Sort-Request"></a>
+
+### Rpc.ObjectCollection.Sort.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Sort-Response"></a>
+
+### Rpc.ObjectCollection.Sort.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectCollection.Sort.Response.Error](#anytype-Rpc-ObjectCollection-Sort-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Sort-Response-Error"></a>
+
+### Rpc.ObjectCollection.Sort.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectCollection.Sort.Response.Error.Code](#anytype-Rpc-ObjectCollection-Sort-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-ObjectRelation"></a>
 
 ### Rpc.ObjectRelation
@@ -16018,6 +16222,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_MOVE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Add-Response-Error-Code"></a>
+
+### Rpc.ObjectCollection.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Remove-Response-Error-Code"></a>
+
+### Rpc.ObjectCollection.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-ObjectCollection-Sort-Response-Error-Code"></a>
+
+### Rpc.ObjectCollection.Sort.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
