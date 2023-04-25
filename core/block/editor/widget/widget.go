@@ -15,6 +15,7 @@ const (
 	DefaultWidgetSet      = "set"
 	DefaultWidgetRecent   = "recent"
 
+	LayoutLink = 0
 	LayoutTree = 1
 	LayoutList = 2
 )

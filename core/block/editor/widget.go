@@ -90,7 +90,7 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 				},
 			},
 		}); err != nil {
-			log.Errorf(BlockAdditionError, widget.DefaultWidgetFavorite, err)
+			log.Errorf(BlockAdditionError, id, err)
 		}
 	}
 }

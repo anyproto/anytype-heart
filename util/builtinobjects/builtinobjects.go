@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -168,17 +169,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		}
 		newId := obj.Id()
 		if id == builtInDashboardObjectID {
-			if err2 := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-				ContextId: b.coreService.PredefinedBlocks().Account,
-				Details: []*pb.RpcObjectSetDetailsDetail{
-					{
-						Key:   bundle.RelationKeySpaceDashboardId.String(),
-						Value: pbtypes.String(newId),
-					},
-				},
-			}); err2 != nil {
-				log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err2.Error())
-			}
+			b.handleSpaceDashboard(newId)
 		}
 		b.idsMap[id] = newId
 	}
@@ -197,6 +188,47 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		}
 	}
 	return nil
+}
+
+func (b *builtinObjects) handleSpaceDashboard(id string) {
+	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: b.coreService.PredefinedBlocks().Account,
+		Details: []*pb.RpcObjectSetDetailsDetail{
+			{
+				Key:   bundle.RelationKeySpaceDashboardId.String(),
+				Value: pbtypes.String(id),
+			},
+		},
+	}); err != nil {
+		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err.Error())
+	}
+
+	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
+	if err != nil || len(w.Blocks()) < 2 {
+		log.Errorf("Failed to get first block of Widget object: %s", err.Error())
+	}
+
+	if _, err := b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+		ContextId:    b.coreService.PredefinedBlocks().Widgets,
+		TargetId:     w.Blocks()[1].Id,
+		Position:     model.Block_Top,
+		WidgetLayout: widget.LayoutLink,
+		Block: &model.Block{
+			Id:          "",
+			ChildrenIds: nil,
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: id,
+					Style:         model.BlockContentLink_Page,
+					IconSize:      model.BlockContentLink_SizeNone,
+					CardStyle:     model.BlockContentLink_Inline,
+					Description:   model.BlockContentLink_None,
+				},
+			},
+		},
+	}); err != nil {
+		log.Errorf("Failed to link SpaceDashboard to Widget object: %s", err.Error())
+	}
 }
 
 func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (err error) {
