@@ -3,6 +3,8 @@ package rpcstore
 import (
 	"context"
 	"errors"
+	"sync"
+
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/ipfs/go-cid"
@@ -10,7 +12,6 @@ import (
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
-	"sync"
 )
 
 var closedBlockChan chan blocks.Block
@@ -42,7 +43,7 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 		data  []byte
 	)
 	if err = s.cm.ReadOp(ctx, ready, func(c *client) (e error) {
-		data, e = c.get(ctx, k)
+		data, e = c.get(ctx, fileblockstore.CtxGetSpaceId(ctx), k)
 		return
 	}, k); err != nil {
 		return
@@ -65,7 +66,7 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 	)
 	var newGetFunc = func(k cid.Cid) func(c *client) error {
 		return func(c *client) error {
-			data, err := c.get(ctx, k)
+			data, err := c.get(ctx, fileblockstore.CtxGetSpaceId(ctx), k)
 			if err != nil {
 				return err
 			}
@@ -116,13 +117,13 @@ func (s *store) Add(ctx context.Context, bs []blocks.Block) error {
 	return ErrUnsupported
 }
 
-func (s *store) add(ctx context.Context, bs []blocks.Block) error {
+func (s *store) add(ctx context.Context, spaceID string, fileID string, bs []blocks.Block) error {
 	var (
 		ready = make(chan result, len(bs))
 	)
 	var newPutFunc = func(b blocks.Block) func(c *client) error {
 		return func(c *client) error {
-			return c.put(ctx, b.Cid(), b.RawData())
+			return c.put(ctx, spaceID, fileID, b.Cid(), b.RawData())
 		}
 	}
 	for _, b := range bs {
@@ -147,7 +148,7 @@ func (s *store) add(ctx context.Context, bs []blocks.Block) error {
 	return nil
 }
 
-func (s *store) AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error) {
+func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs []blocks.Block) (err error) {
 	var cids = make([]cid.Cid, 0, len(bs))
 
 	for _, b := range bs {
@@ -155,7 +156,7 @@ func (s *store) AddToFile(ctx context.Context, spaceId string, fileId string, bs
 	}
 
 	// check blocks for existing
-	checkResult, err := s.checkAvailability(ctx, cids)
+	checkResult, err := s.checkAvailability(ctx, spaceID, cids)
 	if err != nil {
 		return err
 	}
@@ -172,7 +173,7 @@ func (s *store) AddToFile(ctx context.Context, spaceId string, fileId string, bs
 
 	if len(excludeCids) > 0 {
 		// bind existing ids
-		if err = s.bindCids(ctx, excludeCids); err != nil {
+		if err = s.bindCids(ctx, spaceID, fileID, excludeCids); err != nil {
 			return err
 		}
 
@@ -189,16 +190,14 @@ func (s *store) AddToFile(ctx context.Context, spaceId string, fileId string, bs
 	if len(bs) == 0 {
 		return nil
 	}
-	ctx = fileblockstore.CtxWithSpaceId(ctx, spaceId)
-	ctx = fileblockstore.CtxWithFileId(ctx, fileId)
-	return s.add(ctx, bs)
+	return s.add(ctx, spaceID, fileID, bs)
 }
 
-func (s *store) checkAvailability(ctx context.Context, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error) {
+func (s *store) checkAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error) {
 	var ready = make(chan result, 1)
 	// check blocks availability
 	if err = s.cm.WriteOp(ctx, ready, func(c *client) (err error) {
-		checkResult, err = c.checkBlocksAvailability(ctx, cids...)
+		checkResult, err = c.checkBlocksAvailability(ctx, spaceID, cids...)
 		return err
 	}, cid.Cid{}); err != nil {
 		return
@@ -209,17 +208,17 @@ func (s *store) checkAvailability(ctx context.Context, cids []cid.Cid) (checkRes
 		return nil, ctx.Err()
 	case res := <-ready:
 		if res.err != nil {
-			return nil, err
+			return checkResult, err
 		}
 	}
 	return
 }
 
-func (s *store) bindCids(ctx context.Context, cids []cid.Cid) (err error) {
+func (s *store) bindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error) {
 	var ready = make(chan result, 1)
 	// check blocks availability
 	if err = s.cm.WriteOp(ctx, ready, func(c *client) (err error) {
-		return c.bind(ctx, cids...)
+		return c.bind(ctx, spaceID, fileID, cids...)
 	}, cid.Cid{}); err != nil {
 		return
 	}
@@ -241,9 +240,8 @@ func (s *store) Delete(ctx context.Context, c cid.Cid) error {
 
 func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) error {
 	var ready = make(chan result, 1)
-	ctx = fileblockstore.CtxWithSpaceId(ctx, spaceId)
 	if err := s.cm.WriteOp(ctx, ready, func(c *client) error {
-		return c.delete(ctx, fileIds...)
+		return c.delete(ctx, spaceId, fileIds...)
 	}, cid.Cid{}); err != nil {
 		return err
 	}

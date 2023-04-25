@@ -2,17 +2,19 @@ package filesync
 
 import (
 	"context"
+	"time"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-libipfs/blocks"
 	"go.uber.org/zap"
-	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 )
 
 const CName = "filesync"
@@ -153,6 +155,7 @@ func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
 }
 
 func (f *fileSync) addLoop() {
+	f.addOperation()
 	for {
 		select {
 		case <-f.loopCtx.Done():
@@ -160,22 +163,26 @@ func (f *fileSync) addLoop() {
 		case <-f.uploadPingCh:
 		case <-time.After(loopTimeout):
 		}
-		for {
-			spaceId, fileId, err := f.queue.GetUpload()
-			if err != nil {
-				if err != errQueueIsEmpty {
-					log.Warn("queue get upload task error", zap.Error(err))
-				}
-				break
+		f.addOperation()
+	}
+}
+
+func (f *fileSync) addOperation() {
+	for {
+		spaceId, fileId, err := f.queue.GetUpload()
+		if err != nil {
+			if err != errQueueIsEmpty {
+				log.Warn("queue get upload task error", zap.Error(err))
 			}
-			if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
-				log.Warn("upload file error", zap.Error(err))
+			break
+		}
+		if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
+			log.Warn("upload file error", zap.Error(err))
+			break
+		} else {
+			if err = f.queue.DoneUpload(spaceId, fileId); err != nil {
+				log.Warn("can't mark upload task as done", zap.Error(err))
 				break
-			} else {
-				if err = f.queue.DoneUpload(spaceId, fileId); err != nil {
-					log.Warn("can't mark upload task as done", zap.Error(err))
-					break
-				}
 			}
 		}
 	}

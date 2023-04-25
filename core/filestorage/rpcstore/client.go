@@ -2,15 +2,15 @@ package rpcstore
 
 import (
 	"context"
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
+	"sync"
+	"time"
+
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/net/rpc/rpcerr"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
-	"sync"
-	"time"
 )
 
 func newClient(ctx context.Context, s *service, peerId string, tq *mb.MB[*task]) (*client, error) {
@@ -73,13 +73,13 @@ func (c *client) opLoop(ctx context.Context) {
 	}
 }
 
-func (c *client) delete(ctx context.Context, fileIds ...string) (err error) {
+func (c *client) delete(ctx context.Context, spaceID string, fileIds ...string) (err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
 	if _, err = fileproto.NewDRPCFileClient(p).FilesDelete(ctx, &fileproto.FilesDeleteRequest{
-		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
+		SpaceId: spaceID,
 		FileIds: fileIds,
 	}); err != nil {
 		return rpcerr.Unwrap(err)
@@ -88,15 +88,15 @@ func (c *client) delete(ctx context.Context, fileIds ...string) (err error) {
 	return
 }
 
-func (c *client) put(ctx context.Context, cd cid.Cid, data []byte) (err error) {
+func (c *client) put(ctx context.Context, spaceID string, fileID string, cd cid.Cid, data []byte) (err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
 	st := time.Now()
 	if _, err = fileproto.NewDRPCFileClient(p).BlockPush(ctx, &fileproto.BlockPushRequest{
-		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
-		FileId:  fileblockstore.CtxGetFileId(ctx),
+		SpaceId: spaceID,
+		FileId:  fileID,
 		Cid:     cd.Bytes(),
 		Data:    data,
 	}); err != nil {
@@ -108,14 +108,14 @@ func (c *client) put(ctx context.Context, cd cid.Cid, data []byte) (err error) {
 }
 
 // get sends the get request to the stream and adds task to waiting list
-func (c *client) get(ctx context.Context, cd cid.Cid) (data []byte, err error) {
+func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []byte, err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
 	st := time.Now()
 	resp, err := fileproto.NewDRPCFileClient(p).BlockGet(ctx, &fileproto.BlockGetRequest{
-		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
+		SpaceId: spaceID,
 		Cid:     cd.Bytes(),
 	})
 	if err != nil {
@@ -126,7 +126,7 @@ func (c *client) get(ctx context.Context, cd cid.Cid) (data []byte, err error) {
 	return resp.Data, nil
 }
 
-func (c *client) checkBlocksAvailability(ctx context.Context, cids ...cid.Cid) ([]*fileproto.BlockAvailability, error) {
+func (c *client) checkBlocksAvailability(ctx context.Context, spaceID string, cids ...cid.Cid) ([]*fileproto.BlockAvailability, error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func (c *client) checkBlocksAvailability(ctx context.Context, cids ...cid.Cid) (
 		cidsB[i] = c.Bytes()
 	}
 	resp, err := fileproto.NewDRPCFileClient(p).BlocksCheck(ctx, &fileproto.BlocksCheckRequest{
-		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
+		SpaceId: spaceID,
 		Cids:    cidsB,
 	})
 	if err != nil {
@@ -145,7 +145,7 @@ func (c *client) checkBlocksAvailability(ctx context.Context, cids ...cid.Cid) (
 	return resp.BlocksAvailability, nil
 }
 
-func (c *client) bind(ctx context.Context, cids ...cid.Cid) error {
+func (c *client) bind(ctx context.Context, spaceID string, fileID string, cids ...cid.Cid) error {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return err
@@ -155,8 +155,8 @@ func (c *client) bind(ctx context.Context, cids ...cid.Cid) error {
 		cidsB[i] = c.Bytes()
 	}
 	_, err = fileproto.NewDRPCFileClient(p).BlocksBind(ctx, &fileproto.BlocksBindRequest{
-		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
-		FileId:  fileblockstore.CtxGetFileId(ctx),
+		SpaceId: spaceID,
+		FileId:  fileID,
 		Cids:    cidsB,
 	})
 	return err

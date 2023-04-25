@@ -5,10 +5,14 @@ import (
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -16,9 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-
-	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 )
 
 var log = logging.Logger("anytype-mw-status")
@@ -34,11 +35,12 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	typeProvider typeprovider.SmartBlockTypeProvider
-	emitter      func(event *pb.Event)
-	spaceService space.Service
-	watcher      syncstatus.StatusWatcher
-	coreService  core.Service
+	typeProvider      typeprovider.SmartBlockTypeProvider
+	emitter           func(event *pb.Event)
+	spaceService      space.Service
+	watcher           syncstatus.StatusWatcher
+	coreService       core.Service
+	fileStatusService *filesync.Status
 
 	nodeConnected bool
 	subObjects    []string
@@ -62,7 +64,7 @@ func (s *service) UpdateTree(ctx context.Context, objId string, status syncstatu
 	case syncstatus.StatusSynced:
 		objStatus = pb.EventStatusThread_Synced
 	case syncstatus.StatusNotSynced:
-		objStatus = pb.EventStatusThread_Unknown
+		objStatus = pb.EventStatusThread_Syncing
 	}
 	if !nodeConnected {
 		objStatus = pb.EventStatusThread_Offline
@@ -101,6 +103,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.coreService = a.MustComponent(core.CName).(core.Service)
+
+	dagService := a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
+	fileSyncService := app.MustComponent[filesync.FileSync](a)
+	s.fileStatusService = filesync.NewStatus(s, dagService, fileSyncService)
 	return
 }
 
@@ -116,6 +122,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	s.watcher.SetUpdateReceiver(s)
 	s.isRunning = true
 	_, err = s.watch(s.coreService.PredefinedBlocks().Account)
+	s.fileStatusService.Run()
 	return
 }
 
@@ -139,9 +146,20 @@ func (s *service) watch(id string) (new bool, err error) {
 	if !s.isRunning {
 		return false, nil
 	}
-	if s.tryRegister(id) {
+	tp, err := s.typeProvider.Type(id)
+	if err != nil {
+		log.Debug("failed to get type of", zap.String("objectID", id))
+	}
+	if tp == smartblock.SmartBlockTypeSubObject {
+		s.subObjects = append(s.subObjects, id)
 		return true, nil
 	}
+
+	if tp == smartblock.SmartBlockTypeFile {
+		s.fileStatusService.Watch(s.spaceService.AccountId(), id)
+		return false, nil
+	}
+
 	if err = s.watcher.Watch(id); err != nil {
 		return false, err
 	}
@@ -153,6 +171,14 @@ func (s *service) unwatch(id string) {
 		return
 	}
 	if s.tryUnregister(id) {
+		return
+	}
+	tp, err := s.typeProvider.Type(id)
+	if err != nil {
+		log.Debug("failed to get type of", zap.String("objectID", id))
+	}
+	if tp == smartblock.SmartBlockTypeFile {
+		s.fileStatusService.Unwatch(s.spaceService.AccountId(), id)
 		return
 	}
 	s.watcher.Unwatch(id)
@@ -174,19 +200,6 @@ func (s *service) sendEvent(ctx string, event pb.IsEventMessageValue) {
 		Messages:  []*pb.EventMessage{{Value: event}},
 		ContextId: ctx,
 	})
-}
-
-func (s *service) tryRegister(id string) bool {
-	tp, err := s.typeProvider.Type(id)
-	if err != nil {
-		log.Debug("failed to get type of", zap.String("objectID", id))
-		return false
-	}
-	if tp == smartblock.SmartBlockTypeSubObject {
-		s.subObjects = append(s.subObjects, id)
-		return true
-	}
-	return false
 }
 
 func (s *service) tryUnregister(id string) bool {
