@@ -1145,11 +1145,11 @@ func (m *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	key := pendingDetailsBase.ChildString(id)
 
 	objDetails, err := m.getPendingLocalDetails(txn, id)
-	if err != nil {
+	if err != nil && err != ds.ErrNotFound {
 		return fmt.Errorf("get pending details: %w", err)
 	}
 
-	details := objDetails.Details
+	details := objDetails.GetDetails()
 	if details == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}

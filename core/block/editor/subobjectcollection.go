@@ -313,9 +313,10 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		fullId = collection + addr.SubObjectCollectionIdSeparator + subId
 	}
 
-	ws := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
-	if ws == "" && c.anytype.PredefinedBlocks().Account == st.RootId() {
-		ws = st.RootId()
+	workspaceID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
+	if workspaceID == "" {
+		// SubObjectCollection is used only workspaces now so get ID from the workspace object
+		workspaceID = st.RootId()
 	}
 	if v := st.StoreKeysRemoved(); v != nil {
 		if _, exists := v[fullId]; exists {
@@ -333,7 +334,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		}
 	}
 
-	subState, err := SubState(st, collection, fullId, ws)
+	subState, err := SubState(st, collection, fullId, workspaceID)
 	if err != nil {
 		return
 	}
