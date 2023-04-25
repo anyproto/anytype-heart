@@ -3,13 +3,13 @@ package pb
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/gogo/protobuf/types"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 

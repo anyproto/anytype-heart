@@ -1,15 +1,17 @@
 package metrics
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/textileio/go-threads/metrics"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/textileio/go-threads/metrics"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-logger")
