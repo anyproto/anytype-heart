@@ -891,6 +891,21 @@ func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.Smart
 	}, nil
 }
 
+// PickBlockOffload returns opened smartBlock or opens smartBlock in silent mode
+// if the smartBlock is not used after the release(has 0 ref counter), it will be removed from cache
+func (s *Service) PickBlockOffload(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+	ob, err := s.getSmartblock(ctx, id)
+	if err != nil {
+		return
+	}
+	return ob.SmartBlock, func() {
+		stillUsed := s.cache.Release(id)
+		if !stillUsed {
+			s.cache.Remove(id)
+		}
+	}, nil
+}
+
 func (s *Service) getSmartblock(ctx context.Context, id string) (ob *openedBlock, err error) {
 	val, err := s.cache.Get(ctx, id)
 	if err != nil {

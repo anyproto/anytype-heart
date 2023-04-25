@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -19,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/dot"
@@ -286,15 +286,23 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("threadId", did).Debugf("write doc")
-			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
-				return mw.Add(b.NewState().Copy())
-			})
-			if err != nil {
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+			defer cancel()
+
+			ctx = context.WithValue(ctx, core.ThreadLoadSkipMissingRecords, true)
+
+			sb, release, werr := e.bs.PickBlockOffload(ctx, did)
+			defer release()
+			if werr != nil {
 				log.With("threadId", did).Warnf("can't export doc: %v", werr)
 			} else {
 				succeed++
 			}
-
+			werr = mw.Add(sb.NewState().Copy())
+			if werr != nil {
+				log.With("threadId", did).Warnf("can't add doc to converter: %v", werr)
+			}
 		}); err != nil {
 			return
 		}
@@ -330,61 +338,76 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 }
 
 func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
-	return e.bs.Do(docId, func(b sb.SmartBlock) error {
-		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
-			return nil
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	ctx = context.WithValue(ctx, core.ThreadLoadSkipMissingRecords, true)
+	start := time.Now()
+	t, _ := smartblock.SmartBlockTypeFromID(docId)
+	if t == smartblock.SmartBlockTypeSubObject {
+		fmt.Println()
+	}
+	b, release, err := e.bs.PickBlockOffload(ctx, docId)
+	defer release()
+	if err != nil {
+		log.Errorf("pick block %s: %s; error: %s", docId, time.Since(start), err.Error())
+
+		log.With("threadId", docId).Warnf("can't export doc: %v", err)
+		return err
+	}
+	log.Errorf("pick block %s: %s", docId, time.Since(start))
+	if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
+		return nil
+	}
+	var conv converter.Converter
+	switch format {
+	case pb.RpcObjectListExport_Markdown:
+		conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
+	case pb.RpcObjectListExport_Protobuf:
+		conv = pbc.NewConverter(b)
+	case pb.RpcObjectListExport_JSON:
+		conv = pbjson.NewConverter(b)
+	}
+	conv.SetKnownDocs(docInfo)
+	result := conv.Convert(b.Type())
+	filename := docId + conv.Ext()
+	if format == pb.RpcObjectListExport_Markdown {
+		s := b.NewState()
+		name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
+		if name == "" {
+			name = s.Snippet()
 		}
-		var conv converter.Converter
-		switch format {
-		case pb.RpcObjectListExport_Markdown:
-			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
-		case pb.RpcObjectListExport_Protobuf:
-			conv = pbc.NewConverter(b)
-		case pb.RpcObjectListExport_JSON:
-			conv = pbjson.NewConverter(b)
-		}
-		conv.SetKnownDocs(docInfo)
-		result := conv.Convert(b.Type())
-		filename := docId + conv.Ext()
-		if format == pb.RpcObjectListExport_Markdown {
-			s := b.NewState()
-			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
-			if name == "" {
-				name = s.Snippet()
+		filename = wr.Namer().Get("", docId, name, conv.Ext())
+	}
+	if docId == e.a.PredefinedBlocks().Home {
+		filename = "index" + conv.Ext()
+	}
+	if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
+		return err
+	}
+	if !exportFiles {
+		return nil
+	}
+	for _, fh := range conv.FileHashes() {
+		fileHash := fh
+		if err = queue.Add(func() {
+			if werr := e.saveFile(wr, fileHash); werr != nil {
+				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
 			}
-			filename = wr.Namer().Get("", docId, name, conv.Ext())
-		}
-		if docId == e.a.PredefinedBlocks().Home {
-			filename = "index" + conv.Ext()
-		}
-		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
+		}); err != nil {
 			return err
 		}
-		if !exportFiles {
-			return nil
-		}
-		for _, fh := range conv.FileHashes() {
-			fileHash := fh
-			if err = queue.Add(func() {
-				if werr := e.saveFile(wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save file: %v", werr)
-				}
-			}); err != nil {
-				return err
+	}
+	for _, fh := range conv.ImageHashes() {
+		fileHash := fh
+		if err = queue.Add(func() {
+			if werr := e.saveImage(wr, fileHash); werr != nil {
+				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
 			}
+		}); err != nil {
+			return err
 		}
-		for _, fh := range conv.ImageHashes() {
-			fileHash := fh
-			if err = queue.Add(func() {
-				if werr := e.saveImage(wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-				}
-			}); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 
 func (e *export) saveFile(wr writer, hash string) (err error) {

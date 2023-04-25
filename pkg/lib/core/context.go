@@ -15,6 +15,7 @@ type ThreadLoadProgress struct {
 type contextKey string
 
 const ThreadLoadProgressContextKey contextKey = "threadload"
+const ThreadLoadSkipMissingRecords contextKey = "threadSkipMissingRecords"
 
 // DeriveContext returns a new context with value "progress" derived from
 // the given one.

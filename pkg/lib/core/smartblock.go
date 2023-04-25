@@ -391,18 +391,23 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 		return nil, err
 	}
 
+	cid, err := cid.Parse(rid)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := block.node.ipfs.HasBlock(cid)
+	if err != nil {
+		return nil, err
+	}
+	skipMissing, ok := ctx.Value(ThreadLoadSkipMissingRecords).(bool)
+
+	if ok && skipMissing && !b {
+		return nil, fmt.Errorf("record not found locally")
+	}
+
 	ctxProgress, _ := ctx.Value(ThreadLoadProgressContextKey).(*ThreadLoadProgress)
 	if ctxProgress != nil {
-		cid, err := cid.Parse(rid)
-		if err != nil {
-			return nil, err
-		}
-
-		b, err := block.node.ipfs.HasBlock(cid)
-		if err != nil {
-			return nil, err
-		}
-
 		if !b {
 			ctxProgress.IncrementMissingRecord()
 		}
