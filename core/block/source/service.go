@@ -85,9 +85,10 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 	}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if src := s.staticIds[id]; src != nil {
-		return src, nil
+	staticSrc := s.staticIds[id]
+	s.mu.Unlock()
+	if staticSrc != nil {
+		return staticSrc, nil
 	}
 
 	ctx := context.Background()
