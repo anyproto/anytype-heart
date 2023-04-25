@@ -2,11 +2,14 @@ package space
 
 import (
 	"context"
+	"time"
+
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
+	//nolint: misspell
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/peermanager"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
@@ -18,12 +21,12 @@ import (
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/streampool"
+	"go.uber.org/zap"
+
 	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	"go.uber.org/zap"
-	"time"
 )
 
 const CName = "client.clientspace"
@@ -44,8 +47,8 @@ type Service interface {
 	AccountId() string
 	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
-	DeleteSpace(ctx context.Context, spaceId string, revert bool) (payload SpaceStatusPayload, err error)
-	DeleteAccount(ctx context.Context, revert bool) (payload SpaceStatusPayload, err error)
+	DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error)
+	DeleteAccount(ctx context.Context, revert bool) (payload StatusPayload, err error)
 	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
 }
@@ -158,12 +161,12 @@ func (s *service) StreamPool() streampool.StreamPool {
 	return s.streamPool
 }
 
-func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload SpaceStatusPayload, err error) {
+func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload StatusPayload, err error) {
 	return s.DeleteSpace(ctx, s.accountId, revert)
 }
 
-func (s *service) DeleteSpace(ctx context.Context, spaceId string, revert bool) (payload SpaceStatusPayload, err error) {
-	space, err := s.GetSpace(ctx, spaceId)
+func (s *service) DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error) {
+	space, err := s.GetSpace(ctx, spaceID)
 	if err != nil {
 		return
 	}
@@ -177,7 +180,7 @@ func (s *service) DeleteSpace(ctx context.Context, spaceId string, revert bool) 
 			return
 		}
 	}
-	status, err = s.client.ChangeStatus(ctx, spaceId, raw)
+	status, err = s.client.ChangeStatus(ctx, spaceID, raw)
 	if err != nil {
 		err = coordError(err)
 		return

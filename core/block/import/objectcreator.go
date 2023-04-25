@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -15,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -105,7 +105,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
+	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
 		return nil, fmt.Errorf("relation create '%s'", err)
 	}
@@ -144,6 +144,13 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		log.With("object", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
+	if sn.SbType == coresb.SmartBlockTypeCollection {
+		oc.updateLinksInCollections(st, oldIDtoNew)
+		if err = oc.addRelationsToCollectionDataView(st, relations, createdRelations); err != nil {
+			log.With("object", newID).Errorf("failed to add relations to object view: %s", err.Error())
+		}
+	}
+
 	var respDetails *types.Struct
 	err = oc.service.Do(newID, func(b sb.SmartBlock) error {
 		err = b.SetObjectTypes(ctx, snapshot.ObjectTypes)
@@ -170,7 +177,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	if isFavorite {
 		err = oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object %s: %s", pageID, err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
 			err = nil
 		}
 	}
@@ -202,38 +209,29 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
 	var (
 		childrenIds = make([]string, 0, len(snapshot.Blocks))
-		err         error
 	)
 	for i, b := range snapshot.Blocks {
-		_, err = thread.Decode(b.Id)
-		if err == nil {
-			childrenIds = append(childrenIds, b.ChildrenIds...)
-			snapshot.Blocks[i] = &model.Block{
-				Id:          pageID,
-				Content:     &model.BlockContentOfSmartblock{},
-				ChildrenIds: childrenIds,
-			}
-			break
+		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
+			snapshot.Blocks[i].Id = pageID
+			return
 		}
 	}
-	if err != nil {
-		notRootBlockChild := make(map[string]bool, 0)
-		for _, b := range snapshot.Blocks {
-			if len(b.ChildrenIds) != 0 {
-				for _, id := range b.ChildrenIds {
-					notRootBlockChild[id] = true
-				}
-			}
-			if _, ok := notRootBlockChild[b.Id]; !ok {
-				childrenIds = append(childrenIds, b.Id)
+	notRootBlockChild := make(map[string]bool, 0)
+	for _, b := range snapshot.Blocks {
+		if len(b.ChildrenIds) != 0 {
+			for _, id := range b.ChildrenIds {
+				notRootBlockChild[id] = true
 			}
 		}
-		snapshot.Blocks = append(snapshot.Blocks, &model.Block{
-			Id:          pageID,
-			Content:     &model.BlockContentOfSmartblock{},
-			ChildrenIds: childrenIds,
-		})
+		if _, ok := notRootBlockChild[b.Id]; !ok {
+			childrenIds = append(childrenIds, b.Id)
+		}
 	}
+	snapshot.Blocks = append(snapshot.Blocks, &model.Block{
+		Id:          pageID,
+		Content:     &model.BlockContentOfSmartblock{},
+		ChildrenIds: childrenIds,
+	})
 }
 
 func (oc *ObjectCreator) deleteFile(hash string) {
@@ -307,6 +305,64 @@ func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldI
 		}
 		st.SetDetail(k, pbtypes.StringList(vals))
 	}
+}
+
+func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat) error {
+	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if dv, ok := bl.(simpleDataview.Block); ok {
+			return oc.handleDataviewBlock(bl, rels, createdRelations, dv)
+		}
+		return true
+	})
+}
+
+func (oc *ObjectCreator) handleDataviewBlock(bl simple.Block, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat, dv simpleDataview.Block) bool {
+	for _, rel := range rels {
+		if relation, exist := createdRelations[rel.Name]; exist {
+			if err := oc.addRelationToView(bl, relation, rel, dv); err != nil {
+				log.Errorf("can't add relations to view: %s", err.Error())
+			}
+		}
+	}
+	return false
+}
+
+func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsIDToFormat, rel *converter.Relation, dv simpleDataview.Block) error {
+	for _, relFormat := range relation {
+		if relFormat.Format == rel.Format {
+			if len(bl.Model().GetDataview().GetViews()) == 0 {
+				return nil
+			}
+			err := dv.AddViewRelation(bl.Model().GetDataview().GetViews()[0].GetId(), &model.BlockContentDataviewRelation{
+				Key:       relFormat.ID,
+				IsVisible: true,
+				Width:     192,
+			})
+			if err != nil {
+				return err
+			}
+			err = dv.AddRelation(&model.RelationLink{
+				Key:    relFormat.ID,
+				Format: relFormat.Format,
+			})
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return nil
+}
+
+func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
+	objectsInCollections := pbtypes.GetStringList(st.Store(), sb.CollectionStoreKey)
+	newIDs := make([]string, 0)
+	for _, id := range objectsInCollections {
+		if newID, ok := oldIDtoNew[id]; ok {
+			newIDs = append(newIDs, newID)
+		}
+	}
+	st.StoreSlice(sb.CollectionStoreKey, newIDs)
 }
 
 func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {

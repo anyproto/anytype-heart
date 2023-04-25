@@ -2,22 +2,22 @@ package configfetcher
 
 import (
 	"context"
-	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
-	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
-	"github.com/anytypeio/any-sync/util/periodicsync"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/app/logger"
+	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
+	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
+	"github.com/anytypeio/any-sync/util/periodicsync"
+
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	pbMiddle "github.com/anytypeio/go-anytype-middleware/pb"
-	cafeClient "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
 var log = logging.Logger("anytype-mw-configfetcher")
@@ -52,7 +52,6 @@ type ConfigFetcher interface {
 
 type configFetcher struct {
 	store         objectstore.ObjectStore
-	cafe          cafeClient.Client
 	eventSender   func(event *pbMiddle.Event)
 	fetched       chan struct{}
 	fetchedClosed sync.Once
@@ -109,13 +108,13 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 	}()
 	res, err := c.client.StatusCheck(ctx, c.spaceService.AccountId())
 	if err == coordinatorproto.ErrSpaceNotExists {
-		sp, err := c.spaceService.GetSpace(ctx, c.spaceService.AccountId())
-		if err != nil {
-			return err
+		sp, cErr := c.spaceService.GetSpace(ctx, c.spaceService.AccountId())
+		if cErr != nil {
+			return cErr
 		}
-		header, err := sp.Storage().SpaceHeader()
-		if err != nil {
-			return err
+		header, sErr := sp.Storage().SpaceHeader()
+		if sErr != nil {
+			return sErr
 		}
 		// registering space inside coordinator
 		_, err = c.client.SpaceSign(ctx, header.Id, header.RawHeader)
@@ -138,7 +137,10 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 func (c *configFetcher) Refetch() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	c.updateStatus(ctx)
+	err := c.updateStatus(ctx)
+	if err != nil {
+		log.Errorf("failed to update status: %s", err.Error())
+	}
 }
 
 func (c *configFetcher) Close(ctx context.Context) (err error) {

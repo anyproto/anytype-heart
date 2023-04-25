@@ -7,6 +7,9 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
+	//nolint: misspell
+	"github.com/anytypeio/any-sync/commonspace/credentialprovider"
+	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/secureservice"

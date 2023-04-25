@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"

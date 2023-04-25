@@ -151,7 +151,7 @@ func (ds *Service) transformPages(ctx context.Context,
 		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*p.Icon.Emoji)
 	}
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(p.Archived)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 
 	allErrors := converter.ConvertError{}
 	relations := ds.handlePageProperties(ctx, apiKey, p.ID, p.Properties, details, request)

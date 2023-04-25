@@ -2,11 +2,12 @@ package space
 
 import (
 	"errors"
-	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
 	"time"
+
+	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
 )
 
-type SpaceStatus int32
+type Status int32
 
 var (
 	ErrSpaceDeleteUnexpected = errors.New("unexpected error while deleting space")
@@ -16,20 +17,20 @@ var (
 )
 
 const (
-	SpaceStatusCreated SpaceStatus = iota
+	SpaceStatusCreated Status = iota
 	SpaceStatusPendingDeletion
 	SpaceStatusDeletionStarted
 	SpaceStatusDeleted
 )
 
-type SpaceStatusPayload struct {
-	Status       SpaceStatus
+type StatusPayload struct {
+	Status       Status
 	DeletionDate time.Time
 }
 
-func newSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) SpaceStatusPayload {
-	return SpaceStatusPayload{
-		Status:       SpaceStatus(payload.Status),
+func newSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) StatusPayload {
+	return StatusPayload{
+		Status:       Status(payload.Status),
 		DeletionDate: time.Unix(payload.DeletionTimestamp, 0),
 	}
 }

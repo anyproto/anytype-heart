@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
 	"github.com/anytypeio/go-anytype-middleware/pb"

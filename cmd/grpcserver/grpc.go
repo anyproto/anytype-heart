@@ -8,13 +8,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
-
-	"github.com/uber/jaeger-client-go"
 
 	"github.com/anytypeio/any-sync/app"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -23,17 +20,19 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/opentracing/opentracing-go"
+	"github.com/uber/jaeger-client-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
 
+	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pb/service"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 
-	"github.com/anytypeio/go-anytype-middleware/core"
-	"github.com/anytypeio/go-anytype-middleware/pb/service"
-
-	jaegercfg "github.com/uber/jaeger-client-go/config"
+	//nolint: gosec
+	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"

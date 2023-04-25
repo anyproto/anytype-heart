@@ -176,8 +176,8 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 	return
 }
 
-func (s *Service) DeleteSpace(ctx context.Context, spaceId string) error {
-	log.Debug("space deleted", zap.String("spaceId", spaceId))
+func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
+	log.Debug("space deleted", zap.String("spaceID", spaceID))
 	return nil
 }
 
