@@ -861,7 +861,7 @@ func (s *Service) CopyDataviewToBlock(ctx *session.Context,
 		st := b.NewStateCtx(ctx)
 		block := st.Get(req.BlockId)
 		if block == nil {
-			return fmt.Errorf("invalid block id")
+			return fmt.Errorf("block is not found")
 		}
 
 		dvContent, ok := block.Model().Content.(*model.BlockContentOfDataview)
