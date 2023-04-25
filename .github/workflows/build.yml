@@ -184,6 +184,23 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
+
+      - name: Setup license repositor
+        uses: actions/checkout@master
+        with:
+          repository: anytypeio/open
+          ref: refs/heads/main
+          path: ./open
+
+      - name: Check licenses
+        run: |
+          cd open
+          python3 tools/generate.py --platform golang
+          cd ..
+          sudo gem install license_finder
+          license_finder inherited_decisions add open/decisions.yml
+          license_finder --enabled-package-managers gomodules
+
       - name: Install patched gox
         run: |
           mkdir -p $GOPATH/src/github.com/mitchellh
