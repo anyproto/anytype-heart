@@ -8,9 +8,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -90,10 +93,14 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.ObjectTypeUrls == nil {
 		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
-	newDoc := ctx.State != nil
+
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
+	return nil
+}
+
+func (p *Page) DefaultState(ctx *smartblock.InitContext) migration.Migration {
 	layout, ok := ctx.State.Layout()
 	if !ok {
 		// nolint:errcheck
@@ -108,18 +115,61 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		bookmarksvc.WithFixedBookmarks(p.Bookmark),
 	}
 
+	// TODO Introduce Converter module
 	// replace title to text block for note
-	if newDoc && layout == model.ObjectType_note {
+	if layout == model.ObjectType_note {
 		if name := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyName.String()); name != "" {
 			ctx.State.RemoveDetail(bundle.RelationKeyName.String())
 			tmpls = append(tmpls, template.WithFirstTextBlockContent(name))
 		}
 	}
 
-	return smartblock.ObjectApplyTemplate(p, ctx.State,
-		template.ByLayout(
-			layout,
-			tmpls...,
-		)...,
-	)
+	return migration.Migration{
+		Version: 2,
+		Proc: func(s *state.State) {
+			trans := template.ByLayout(
+				layout,
+				tmpls...,
+			)
+			for _, t := range trans {
+				t(s)
+			}
+		},
+	}
+}
+
+func (p *Page) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations(
+		[]migration.Migration{
+			{
+				Version: 2,
+				Proc: func(s *state.State) {
+					b := simple.New(&model.Block{
+						Content: &model.BlockContentOfText{
+							Text: &model.BlockContentText{
+								Text: "Test 1 " + p.Id(),
+							},
+						},
+					})
+
+					s.Add(b)
+					s.InsertTo("", model.Block_Inner, b.Model().Id)
+				},
+			},
+			{
+				Version: 3,
+				Proc: func(s *state.State) {
+					b := simple.New(&model.Block{
+						Content: &model.BlockContentOfText{
+							Text: &model.BlockContentText{
+								Text: "Test 2 " + p.Id(),
+							},
+						},
+					})
+
+					s.Add(b)
+					s.InsertTo("", model.Block_Inner, b.Model().Id)
+				},
+			},
+		})
 }

@@ -17,7 +17,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -258,8 +257,9 @@ type PushChangeParams struct {
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	c := &pb.Change{
 		Timestamp: time.Now().Unix(),
-		Version:   migration.LastMigrationVersion(),
+		Version:   params.State.MigrationVersion(),
 	}
+	fmt.Println("PUSH VER", s.id, params.State.MigrationVersion())
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{

@@ -142,7 +142,8 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		// create object
 		obj, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
 			return &sb.InitContext{
-				Ctx: ctx,
+				IsNewObject: true,
+				Ctx:         ctx,
 			}
 		})
 		if err != nil {

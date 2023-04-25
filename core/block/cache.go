@@ -64,6 +64,7 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	}
 	createTreeObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)
+		initCtx.IsNewObject = true
 		initCtx.SpaceID = opts.spaceId
 		initCtx.BuildTreeOpts = opts.buildOption
 		return s.objectFactory.InitObject(id, initCtx)

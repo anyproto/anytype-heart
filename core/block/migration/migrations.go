@@ -1,111 +1,52 @@
 package migration
 
 import (
-	"fmt"
+	"sort"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-type SmartBlock interface {
-	Id() string
-	Type() model.SmartBlockType
-	ObjectType() string
-}
-
-type MigrationSelector func(sb SmartBlock) bool
-
-func TypeSelector(t bundle.TypeKey) MigrationSelector {
-	return func(sb SmartBlock) bool {
-		return sb.ObjectType() == t.URL()
-	}
+type Migrator interface {
+	DefaultState(ctx *smartblock.InitContext) Migration
+	StateMigrations() Migrations
 }
 
 type Migration struct {
 	Version uint32
-	Steps   []MigrationStep
+	Proc    func(s *state.State)
 }
 
-type MigrationStep struct {
-	Selector MigrationSelector
-	Proc     func(s *state.State, sb SmartBlock) error
+type Migrations struct {
+	LastVersion uint32
+	Migrations  []Migration
 }
 
-func ApplyMigrations(st *state.State, sb SmartBlock) error {
-	for _, m := range migrations {
-		if st.MigrationVersion() >= m.Version {
-			fmt.Println("SKIP", m.Version, "FOR", sb.Id())
-			continue
-		}
-		for _, s := range m.Steps {
-			if s.Selector(sb) {
-				fmt.Println("APPLY", m.Version, "FOR", sb.Id())
-				if err := s.Proc(st, sb); err != nil {
-					return fmt.Errorf("MIGRATION FAIL: %w", err)
-				}
-			}
+func (m Migrations) Len() int {
+	return len(m.Migrations)
+}
+
+func (m Migrations) Less(i, j int) bool {
+	return m.Migrations[i].Version < m.Migrations[j].Version
+}
+
+func (m Migrations) Swap(i, j int) {
+	m.Migrations[i], m.Migrations[j] = m.Migrations[j], m.Migrations[i]
+}
+
+func MakeMigrations(migrations []Migration) Migrations {
+	res := Migrations{
+		Migrations: migrations,
+	}
+	sort.Sort(res)
+	for i := 0; i < len(res.Migrations)-1; i++ {
+		if res.Migrations[i].Version == res.Migrations[i+1].Version {
+			panic("two migrations have the same version")
 		}
 	}
-	return nil
-}
-
-var migrations = []Migration{
-	{
-		Version: 1,
-		Steps: []MigrationStep{
-			{
-				Selector: TypeSelector(bundle.TypeKeyPage),
-				Proc: func(s *state.State, sb SmartBlock) error {
-					b := simple.New(&model.Block{
-						Content: &model.BlockContentOfText{
-							Text: &model.BlockContentText{
-								Text: "Test 1 " + sb.Id(),
-							},
-						},
-					})
-
-					s.Add(b)
-
-					return s.InsertTo("", model.Block_Inner, b.Model().Id)
-				},
-			},
-		},
-	},
-	{
-		Version: 2,
-		Steps: []MigrationStep{
-			{
-				Selector: TypeSelector(bundle.TypeKeyPage),
-				Proc: func(s *state.State, _ SmartBlock) error {
-					b := simple.New(&model.Block{
-						Content: &model.BlockContentOfText{
-							Text: &model.BlockContentText{
-								Text: "Second one",
-							},
-						},
-					})
-
-					s.Add(b)
-
-					return s.InsertTo("", model.Block_Inner, b.Model().Id)
-				},
-			},
-		},
-	},
-}
-
-var lastMigrationVersion uint32
-
-func LastMigrationVersion() uint32 {
-	return lastMigrationVersion
-}
-
-func init() {
-	for _, m := range migrations {
-		if lastMigrationVersion < m.Version {
-			lastMigrationVersion = m.Version
-		}
+	if len(migrations) > 0 {
+		res.LastVersion = migrations[len(migrations)-1].Version
 	}
+
+	return res
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
@@ -103,7 +104,48 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	initCtx.App = f.app
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
+	if err != nil {
+		return nil, fmt.Errorf("init smartblock: %w", err)
+	}
+	err = f.runMigrations(sb, initCtx)
+	if err != nil {
+		return nil, fmt.Errorf("run migrations: %w", err)
+	}
 	return
+}
+
+func (f *ObjectFactory) runMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) error {
+	migrator, ok := sb.(migration.Migrator)
+	if !ok {
+		return nil
+	}
+
+	apply := func() error {
+		return sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
+	}
+
+	if initCtx.IsNewObject {
+		def := migrator.DefaultState(initCtx)
+		def.Proc(initCtx.State)
+		initCtx.State.SetMigrationVersion(def.Version)
+		// TODO Do not return, proceed with other migrations
+		return apply()
+	}
+
+	// TODO Remove Migrations struct, I don't like it
+	migs := migrator.StateMigrations()
+	ver := initCtx.State.MigrationVersion()
+	if migs.LastVersion <= ver {
+		return apply()
+	}
+
+	for _, m := range migs.Migrations {
+		if m.Version > ver {
+			m.Proc(initCtx.State)
+			initCtx.State.SetMigrationVersion(m.Version)
+		}
+	}
+	return apply()
 }
 
 func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
