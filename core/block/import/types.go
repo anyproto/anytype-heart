@@ -4,9 +4,9 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 )
@@ -21,7 +21,7 @@ type Importer interface {
 
 // Creator incapsulate logic with creation of given smartblocks
 type Creator interface {
-	Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, sbType smartblock.SmartBlockType, updateExisting bool) (*types.Struct, error)
+	Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, updateExisting bool) (*types.Struct, error)
 }
 
 // Updater is interface for updating existing objects

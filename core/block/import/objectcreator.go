@@ -9,71 +9,46 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
-	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
-}
-
 type ObjectCreator struct {
-	service         *block.Service
-	objCreator      objectCreator
-	core            core.Service
-	updater         Updater
-	relationCreator RelationCreator
-	syncFactory     *syncer.Factory
+	service       *block.Service
+	objectCreator objectCreator
+	core          core.Service
+	updater       Updater
+	syncFactory   *syncer.Factory
 }
 
-func NewCreator(service *block.Service,
-	objCreator objectCreator,
-	updater Updater,
-	syncFactory *syncer.Factory,
-	relationCreator RelationCreator) Creator {
-	return &ObjectCreator{
-		service:         service,
-		objCreator:      objCreator,
-		updater:         updater,
-		syncFactory:     syncFactory,
-		relationCreator: relationCreator,
-	}
+type objectCreator interface {
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
+}
+
+func NewCreator(service *block.Service, objCreator objectCreator, core core.Service, updater Updater, syncFactory *syncer.Factory) Creator {
+	return &ObjectCreator{service: service, objectCreator: objCreator, core: core, updater: updater, syncFactory: syncFactory}
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context,
-	snapshot *model.SmartBlockSnapshotBase,
-	relations []*converter.Relation,
-	pageID string,
-	sbType smartblock.SmartBlockType,
-	updateExisting bool) (*types.Struct, error) {
+func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, updateExisting bool) (*types.Struct, error) {
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 
 	var err error
 
 	if updateExisting {
-		var (
-			filesToDelete []string
-			details       *types.Struct
-		)
-		if details, filesToDelete, err = oc.updater.Update(ctx, snapshot, relations, pageID); err == nil {
+		if details, uErr := oc.updater.Update(ctx, snapshot, pageID); uErr == nil {
 			return details, nil
-		}
-		for _, hash := range filesToDelete {
-			oc.deleteFile(hash)
 		}
 		log.Warn("failed to update existing object: %s", err)
 	}
@@ -98,30 +73,34 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
 
-	var filesToDelete []string
+	if err = oc.validate(st); err != nil {
+		return nil, fmt.Errorf("new id not found for '%s'", st.RootId())
+	}
+
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		if err != nil {
 			for _, bl := range st.Blocks() {
 				if f := bl.GetFile(); f != nil {
-					oc.deleteFile(f.Hash)
-				}
-				for _, hash := range filesToDelete {
-					oc.deleteFile(hash)
+					oc.deleteFile(f)
 				}
 			}
 		}
 	}()
 
-	newID, details, err := oc.objCreator.CreateSmartBlockFromState(context.TODO(), sbType, nil, st)
+	err = oc.service.Do(pageID, func(b sb.SmartBlock) error {
+		return b.ResetToVersion(st)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("create object '%s'", st.RootId())
+		return nil, err
 	}
+	err = oc.service.Do(pageID, func(b sb.SmartBlock) error {
+		return nil
+	})
 
-	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, err = oc.relationCreator.CreateRelations(ctx, snapshot, pageID, relations)
+	err = oc.service.SetObjectTypes(ctx, pageID, snapshot.ObjectTypes)
 	if err != nil {
-		return nil, fmt.Errorf("relation create '%s'", err)
+		log.With(zap.String("object id", pageID)).Errorf("failed to set object types %s: %s", pageID, err.Error())
 	}
 
 	if isFavorite {
@@ -132,19 +111,53 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 
-	oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, pageID)
+	var details []*pb.RpcObjectSetDetailsDetail
+	if snapshot.Details != nil {
+		for key, value := range snapshot.Details.Fields {
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
+				Key:   key,
+				Value: value,
+			})
+		}
+	}
+
+	oc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
+		ContextId: pageID,
+		Details:   details,
+	})
 
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
-			if serr := s.Sync(ctx, newID, bl); serr != nil {
+			if serr := s.Sync(ctx, pageID, bl); serr != nil {
 				log.With(zap.String("object id", pageID)).Errorf("sync: %s", serr)
 			}
 		}
 		return true
 	})
 
-	return details, nil
+	return nil, nil
+}
+
+func (oc *ObjectCreator) validate(st *state.State) (err error) {
+	var relKeys []string
+	for _, rel := range st.OldExtraRelations() {
+		if !bundle.HasRelation(rel.Key) {
+			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+		}
+	}
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		if rb, ok := b.(relation.Block); ok {
+			relKeys = append(relKeys, rb.Model().GetRelation().Key)
+		}
+		return true
+	})
+	for _, rk := range relKeys {
+		if !st.HasRelation(rk) {
+			return fmt.Errorf("bundled template validation: relation '%v' exists in block but not in extra relations", rk)
+		}
+	}
+	return nil
 }
 
 func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
@@ -165,16 +178,8 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 		}
 	}
 	if err != nil {
-		notRootBlockChild := make(map[string]bool, 0)
 		for _, b := range snapshot.Blocks {
-			if len(b.ChildrenIds) != 0 {
-				for _, id := range b.ChildrenIds {
-					notRootBlockChild[id] = true
-				}
-			}
-			if _, ok := notRootBlockChild[b.Id]; !ok {
-				childrenIds = append(childrenIds, b.Id)
-			}
+			childrenIds = append(childrenIds, b.Id)
 		}
 		snapshot.Blocks = append(snapshot.Blocks, &model.Block{
 			Id:          pageID,
@@ -184,24 +189,24 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 	}
 }
 
-func (oc *ObjectCreator) deleteFile(hash string) {
-	inboundLinks, err := oc.core.ObjectStore().GetOutboundLinksById(hash)
+func (oc *ObjectCreator) deleteFile(f *model.BlockContentFile) {
+	inboundLinks, err := oc.core.ObjectStore().GetOutboundLinksById(f.Hash)
 	if err != nil {
-		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err.Error())
+		log.With("file", f.Hash).Errorf("failed to get inbound links for file: %s", err.Error())
 		return
 	}
 	if len(inboundLinks) == 0 {
-		if err = oc.core.ObjectStore().DeleteObject(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
+		if err = oc.core.ObjectStore().DeleteObject(f.Hash); err != nil {
+			log.With("file", f.Hash).Errorf("failed to delete file from objectstore: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteByHash(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
+		if err = oc.core.FileStore().DeleteByHash(f.Hash); err != nil {
+			log.With("file", f.Hash).Errorf("failed to delete file from filestore: %s", err.Error())
 		}
-		if _, err = oc.core.FileOffload(hash); err != nil {
-			log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
+		if _, err = oc.core.FileOffload(f.Hash); err != nil {
+			log.With("file", f.Hash).Errorf("failed to offload file: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteFileKeys(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
+		if err = oc.core.FileStore().DeleteFileKeys(f.Hash); err != nil {
+			log.With("file", f.Hash).Errorf("failed to delete file keys: %s", err.Error())
 		}
 	}
 }

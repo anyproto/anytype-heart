@@ -8,10 +8,8 @@ import (
 	reflect "reflect"
 
 	app "github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	session "github.com/anytypeio/go-anytype-middleware/core/session"
 	pb "github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	types "github.com/gogo/protobuf/types"
 	gomock "github.com/golang/mock/gomock"
@@ -41,10 +39,10 @@ func (m *MockImporter) EXPECT() *MockImporterMockRecorder {
 }
 
 // Import mocks base method.
-func (m *MockImporter) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) *types.Struct {
+func (m *MockImporter) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Import", ctx, req)
-	ret0, _ := ret[0].(*types.Struct)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -52,6 +50,22 @@ func (m *MockImporter) Import(ctx *session.Context, req *pb.RpcObjectImportReque
 func (mr *MockImporterMockRecorder) Import(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Import", reflect.TypeOf((*MockImporter)(nil).Import), ctx, req)
+}
+
+// ImportWeb mocks base method.
+func (m *MockImporter) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImportWeb", ctx, req)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(*types.Struct)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ImportWeb indicates an expected call of ImportWeb.
+func (mr *MockImporterMockRecorder) ImportWeb(ctx, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportWeb", reflect.TypeOf((*MockImporter)(nil).ImportWeb), ctx, req)
 }
 
 // Init mocks base method.
@@ -68,6 +82,21 @@ func (mr *MockImporterMockRecorder) Init(a interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockImporter)(nil).Init), a)
 }
 
+// ListImports mocks base method.
+func (m *MockImporter) ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListImports", ctx, req)
+	ret0, _ := ret[0].([]*pb.RpcObjectImportListImportResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListImports indicates an expected call of ListImports.
+func (mr *MockImporterMockRecorder) ListImports(ctx, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListImports", reflect.TypeOf((*MockImporter)(nil).ListImports), ctx, req)
+}
+
 // Name mocks base method.
 func (m *MockImporter) Name() string {
 	m.ctrl.T.Helper()
@@ -80,88 +109,6 @@ func (m *MockImporter) Name() string {
 func (mr *MockImporterMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockImporter)(nil).Name))
-}
-
-// Register mocks base method.
-func (m *MockImporter) Register(c converter.Converter) Importer {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Register", c)
-	ret0, _ := ret[0].(Importer)
-	return ret0
-}
-
-// Register indicates an expected call of Register.
-func (mr *MockImporterMockRecorder) Register(c interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockImporter)(nil).Register), c)
-}
-
-// MockConverter is a mock of Converter interface.
-type MockConverter struct {
-	ctrl     *gomock.Controller
-	recorder *MockConverterMockRecorder
-}
-
-// MockConverterMockRecorder is the mock recorder for MockConverter.
-type MockConverterMockRecorder struct {
-	mock *MockConverter
-}
-
-// NewMockConverter creates a new mock instance.
-func NewMockConverter(ctrl *gomock.Controller) *MockConverter {
-	mock := &MockConverter{ctrl: ctrl}
-	mock.recorder = &MockConverterMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockConverter) EXPECT() *MockConverterMockRecorder {
-	return m.recorder
-}
-
-// GetSnapshots mocks base method.
-func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSnapshots", req)
-	ret0, _ := ret[0].(*converter.Response)
-	return ret0
-}
-
-// GetSnapshots indicates an expected call of GetSnapshots.
-func (mr *MockConverterMockRecorder) GetSnapshots(req interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnapshots", reflect.TypeOf((*MockConverter)(nil).GetSnapshots), req)
-}
-
-// Name mocks base method.
-func (m *MockConverter) Name() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Name")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetImage mocks base method.
-func (m *MockConverter) GetImage() ([]byte, int64, int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetImage")
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(int64)
-	ret2, _ := ret[2].(int64)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
-}
-
-// GetImage indicates an expected call of GetImage.
-func (mr *MockConverterMockRecorder) GetImage() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetImage", reflect.TypeOf((*MockConverter)(nil).GetImage))
-}
-
-// Name indicates an expected call of Name.
-func (mr *MockConverterMockRecorder) Name() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockConverter)(nil).Name))
 }
 
 // MockCreator is a mock of Creator interface.
@@ -188,51 +135,54 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, sbType smartblock.SmartBlockType, updateExisting bool) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, updateExisting bool) (*types.Struct, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, cs, pageID, sbType, updateExisting)
+	ret := m.ctrl.Call(m, "Create", ctx, cs, pageID, updateExisting)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockCreatorMockRecorder) Create(ctx, cs, pageID, sbType, updateExisting interface{}) *gomock.Call {
+func (mr *MockCreatorMockRecorder) Create(ctx, cs, pageID, updateExisting interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, pageID, sbType, updateExisting)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, pageID, updateExisting)
 }
 
-// MockError is a mock of Error interface.
-type MockError struct {
+// MockUpdater is a mock of Updater interface.
+type MockUpdater struct {
 	ctrl     *gomock.Controller
-	recorder *MockErrorMockRecorder
+	recorder *MockUpdaterMockRecorder
 }
 
-// MockErrorMockRecorder is the mock recorder for MockError.
-type MockErrorMockRecorder struct {
-	mock *MockError
+// MockUpdaterMockRecorder is the mock recorder for MockUpdater.
+type MockUpdaterMockRecorder struct {
+	mock *MockUpdater
 }
 
-// NewMockError creates a new mock instance.
-func NewMockError(ctrl *gomock.Controller) *MockError {
-	mock := &MockError{ctrl: ctrl}
-	mock.recorder = &MockErrorMockRecorder{mock}
+// NewMockUpdater creates a new mock instance.
+func NewMockUpdater(ctrl *gomock.Controller) *MockUpdater {
+	mock := &MockUpdater{ctrl: ctrl}
+	mock.recorder = &MockUpdaterMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockError) EXPECT() *MockErrorMockRecorder {
+func (m *MockUpdater) EXPECT() *MockUpdaterMockRecorder {
 	return m.recorder
 }
 
-// ConvertToImportMap mocks base method.
-func (m *MockError) ConvertToImportMap(importErrors map[string]error) {
+// Update mocks base method.
+func (m *MockUpdater) Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string) (*types.Struct, error) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ConvertToImportMap", importErrors)
+	ret := m.ctrl.Call(m, "Update", ctx, cs, pageID)
+	ret0, _ := ret[0].(*types.Struct)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// ConvertToImportMap indicates an expected call of ConvertToImportMap.
-func (mr *MockErrorMockRecorder) ConvertToImportMap(importErrors interface{}) *gomock.Call {
+// Update indicates an expected call of Update.
+func (mr *MockUpdaterMockRecorder) Update(ctx, cs, pageID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConvertToImportMap", reflect.TypeOf((*MockError)(nil).ConvertToImportMap), importErrors)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUpdater)(nil).Update), ctx, cs, pageID)
 }

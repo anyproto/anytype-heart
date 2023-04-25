@@ -4,8 +4,6 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -13,28 +11,34 @@ import (
 
 	"github.com/pkg/errors"
 
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const Name = "PB"
 
-type Pb struct{}
+type Pb struct {
+	otc converter.ObjectTreeCreator
+}
 
 func init() {
 	converter.RegisterFunc(New)
 }
 
-func New(core.Service) converter.Converter {
-	return new(Pb)
+func New(s core.Service, otc converter.ObjectTreeCreator) converter.Converter {
+	return &Pb{
+		otc: otc,
+	}
 }
 
-func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTreeCreator) *converter.Response {
+func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	path, e := p.GetParams(req.Params)
 	allErrors := converter.NewError()
 	if e != nil {
@@ -78,7 +82,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTre
 			}
 		}
 		ctx := context.Background()
-		obj, release, err := oc.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
+		obj, release, err := p.otc.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
 			return &sb.InitContext{
 				Ctx: ctx,
 			}
@@ -92,10 +96,14 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTre
 				continue
 			}
 		}
+		var objID string
+		if obj != nil {
+			objID = obj.Id()
+		}
 		source := converter.GetSourceDetail(name, path)
 		snapshot.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
-			Id:       obj.Id(),
+			Id:       objID,
 			FileName: name,
 			Snapshot: snapshot,
 		})
