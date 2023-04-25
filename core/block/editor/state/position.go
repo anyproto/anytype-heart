@@ -126,15 +126,18 @@ func (s *State) addChangesForSideMoving(targetID string, pos model.BlockPosition
 			}
 			cb.Move(targetID, pos, id)
 			lastOperation = operationMove
-		} else {
+			lastTargetID = id
+		} else if blockToAdd := s.Get(id); blockToAdd != nil {
 			if lastOperation == operationMove {
 				targetID = lastTargetID
 				pos = model.Block_Bottom
 			}
-			cb.Add(targetID, pos, s.Get(id).Model())
+			cb.Add(targetID, pos, blockToAdd.Model())
 			lastOperation = operationAdd
+			lastTargetID = id
+		} else {
+			log.With("rootID", s.RootId()).Errorf("side moving: trying to add change for missing block: %s", id)
 		}
-		lastTargetID = id
 	}
 	s.changes = cb.Build()
 }

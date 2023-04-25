@@ -292,6 +292,15 @@ func Test_addChangesForSideMoving(t *testing.T) {
 		assert.Equal(t, want, state.GetChanges())
 	})
 
+	t.Run("try to move missing block", func(t *testing.T) {
+		state := makeState()
+
+		state.addChangesForSideMoving("1", model.Block_Left, "4")
+
+		var want []*pb.ChangeContent
+		assert.Equal(t, want, state.GetChanges())
+	})
+
 	t.Run("add one new block", func(t *testing.T) {
 		state := makeState()
 
@@ -411,7 +420,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 		newBlock2 := simple.New(Text("5", ID("5")).Block())
 		state.Add(newBlock1)
 		state.Add(newBlock2)
-		state.addChangesForSideMoving("1", model.Block_Left, "2", "4", "3", "5")
+		state.addChangesForSideMoving("1", model.Block_Left, "2", "4", "missing!", "3", "5")
 
 		want := []*pb.ChangeContent{
 			{
