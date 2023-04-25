@@ -2,16 +2,18 @@ package filesync
 
 import (
 	"context"
-	"io"
+	"fmt"
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
+	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/cheggaaa/mb/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
@@ -25,6 +27,8 @@ const CName = "filesync"
 var log = logger.NewNamed(CName)
 
 var loopTimeout = time.Minute
+
+var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
 func New() FileSync {
 	return new(fileSync)
@@ -211,15 +215,6 @@ func (f *fileSync) removeLoop() {
 func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err error) {
 	log.Info("uploading file", zap.String("fileId", fileId))
 
-	fileCid, err := cid.Parse(fileId)
-	if err != nil {
-		return
-	}
-	node, err := f.dagService.Get(ctx, fileCid)
-	if err != nil {
-		return
-	}
-
 	var (
 		batcher = mb.New[blocks.Block](10)
 		dagErr  = make(chan error, 1)
@@ -229,11 +224,39 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 		_ = batcher.Close()
 	}()
 
+	fileBlocks, err := f.collectFileBlocks(ctx, fileId)
+	if err != nil {
+		return fmt.Errorf("collect file blocks: %w", err)
+	}
+
+	bytesToUpload, blocksToUpload, err := f.selectBlocksToUpload(ctx, spaceId, fileBlocks)
+	if err != nil {
+		return fmt.Errorf("select blocks to upload: %w", err)
+	}
+
+	stat, err := f.SpaceStat(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space stat: %w", err)
+	}
+
+	bytesLeft := stat.BytesLimit - stat.BytesUsage
+	if bytesToUpload > bytesLeft {
+		return errReachedLimit
+	}
+
 	go func() {
 		defer func() {
 			_ = batcher.Close()
 		}()
-		dagErr <- f.dagWalk(ctx, node, batcher)
+		proc := func() error {
+			for _, b := range blocksToUpload {
+				if addErr := batcher.Add(ctx, b); addErr != nil {
+					return addErr
+				}
+			}
+			return nil
+		}
+		dagErr <- proc()
 	}()
 
 	for {
@@ -253,26 +276,63 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 	return <-dagErr
 }
 
-func (f *fileSync) dagWalk(
-	ctx context.Context,
-	node ipld.Node,
-	batcher *mb.MB[blocks.Block],
-) (err error) {
+func (f *fileSync) selectBlocksToUpload(ctx context.Context, spaceId string, fileBlocks []blocks.Block) (int, []blocks.Block, error) {
+	fileCids := lo.Map(fileBlocks, func(b blocks.Block, _ int) cid.Cid {
+		return b.Cid()
+	})
+	availabilities, err := f.rpcStore.CheckAvailability(ctx, spaceId, fileCids)
+	if err != nil {
+		return 0, nil, fmt.Errorf("check availabilit: %w", err)
+	}
+
+	var (
+		bytesToUpload  int
+		blocksToUpload []blocks.Block
+	)
+	for _, availability := range availabilities {
+		if availability.Status == fileproto.AvailabilityStatus_NotExists {
+			blockCid, err := cid.Cast(availability.Cid)
+			if err != nil {
+				return 0, nil, fmt.Errorf("cast cid: %w", err)
+			}
+
+			b, ok := lo.Find(fileBlocks, func(b blocks.Block) bool {
+				return b.Cid() == blockCid
+			})
+			if !ok {
+				return 0, nil, fmt.Errorf("block %s not found", blockCid)
+			}
+
+			blocksToUpload = append(blocksToUpload, b)
+			bytesToUpload += len(b.RawData())
+		}
+	}
+	return bytesToUpload, blocksToUpload, nil
+}
+
+func (f *fileSync) collectFileBlocks(ctx context.Context, fileId string) (result []blocks.Block, err error) {
+	fileCid, err := cid.Parse(fileId)
+	if err != nil {
+		return
+	}
+	node, err := f.dagService.Get(ctx, fileCid)
+	if err != nil {
+		return
+	}
+
 	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
 	err = walker.Iterate(func(node ipld.NavigableNode) error {
 		b, err := blocks.NewBlockWithCid(node.GetIPLDNode().RawData(), node.GetIPLDNode().Cid())
 		if err != nil {
 			return err
 		}
-		if err = batcher.Add(ctx, b); err != nil {
-			return err
-		}
+		result = append(result, b)
 		return nil
 	})
 	if err == ipld.EndOfDag {
 		err = nil
 	}
-	return err
+	return
 }
 
 func (f *fileSync) removeFile(ctx context.Context, spaceId, fileId string) (err error) {
@@ -283,10 +343,5 @@ func (f *fileSync) Close(ctx context.Context) (err error) {
 	if f.loopCancel != nil {
 		f.loopCancel()
 	}
-	if closer, ok := f.rpcStore.(io.Closer); ok {
-		if err = closer.Close(); err != nil {
-			log.Error("can't close rpc store", zap.Error(err))
-		}
-	}
-	return nil
+	return
 }
