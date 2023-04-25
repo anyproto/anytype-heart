@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"strings"
 	"time"
 
@@ -100,7 +101,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	p.app = ctx.App
 	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
-	p.templateCloner = p.app.MustComponent("blockService").(templateCloner)
+	p.templateCloner = p.app.MustComponent(treegetter.CName).(templateCloner)
 	p.threadService = p.anytype.ThreadsService()
 	p.threadQueue = p.anytype.ThreadsService().ThreadQueue()
 

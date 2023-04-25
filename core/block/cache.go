@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"time"
 )
 
@@ -97,6 +98,24 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 	}
 	_, err = s.cache.Remove(treeId)
 	return
+}
+
+func (s *Service) DeleteObject(id string) (err error) {
+	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+	space, err := s.clientService.AccountSpace(context.Background())
+	if err != nil {
+		return
+	}
+	// this will call DeleteTree in the end
+	return space.DeleteTree(context.Background(), id)
 }
 
 func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {

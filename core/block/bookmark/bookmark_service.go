@@ -3,6 +3,7 @@ package bookmark
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -68,7 +69,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.detailsSetter = a.MustComponent("blockService").(DetailsSetter)
+	s.detailsSetter = a.MustComponent(treegetter.CName).(DetailsSetter)
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)

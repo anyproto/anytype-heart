@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/accountservice"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"net/url"
 	"strings"
@@ -61,7 +62,7 @@ import (
 )
 
 const (
-	CName           = "blockService"
+	CName           = treegetter.CName
 	linkObjectShare = "anytype://object/share?"
 )
 
@@ -311,7 +312,7 @@ func (s *Service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectV
 	}); err != nil {
 		return
 	}
-	_, _, err = s.cache.PutObject(bs.Id(), bs)
+	_, _, err = s.PutObject(context.Background(), bs.Id(), bs)
 	if err != nil {
 		return
 	}
@@ -340,30 +341,22 @@ func (s *Service) CloseBlock(id string) error {
 	}
 
 	if isDraft {
-		if err = s.cache.DeleteObject(id); err != nil {
+		if err = s.DeleteObject(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
 			s.sendOnRemoveEvent(id)
 		}
-		//
-		//_, _ = s.cache.Remove(id)
-		//if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
-		//	log.Errorf("error while block delete: %v", err)
-		//} else {
-		//	s.sendOnRemoveEvent(id)
-		//}
 	}
 	return nil
 }
 
 func (s *Service) CloseBlocks() {
-	// TODO: [MR] provide maybe new logic in clientcache to call ObjectClose()
-	s.cache.ObjectCache().ForEach(func(v ocache.Object) (isContinue bool) {
+	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
 		ob := v.(smartblock.SmartBlock)
 		ob.Lock()
 		ob.ObjectClose()
 		ob.Unlock()
-		s.cache.ObjectCache().Reset(ob.Id())
+		s.cache.Reset(ob.Id())
 		return true
 	})
 }
@@ -722,42 +715,19 @@ func (s *Service) AddCreatorInfoIfNeeded(workspaceId string) error {
 	})
 }
 
-func (s *Service) DeleteObject(id string) (err error) {
-	// TODO: [MR] Fix deletion logic
-
-	err = s.Do(id, func(b smartblock.SmartBlock) error {
-		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return
-	}
-	return s.cache.DeleteObject(id)
-}
-
 func (s *Service) OnDelete(b smartblock.SmartBlock) (err error) {
 	var (
-		fileHashes  []string
-		workspaceId string
-		isFavorite  bool
-		id          = b.Id()
+		fileHashes []string
+		isFavorite bool
+		id         = b.Id()
 	)
 
 	b.ObjectClose()
 	st := b.NewState()
 	fileHashes = st.GetAllFileHashes(b.FileRelationKeys(st))
-	workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
-	if workspaceId == "" {
-		workspaceId = s.anytype.PredefinedBlocks().Account
-	}
 	isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 	if isFavorite {
 		_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
-	}
-	if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
-		return err
 	}
 	b.SetIsDeleted()
 
@@ -876,7 +846,7 @@ func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.Smart
 }
 
 func (s *Service) getSmartblock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
-	return s.cache.GetObject(ctx, id)
+	return s.GetObject(ctx, id)
 }
 
 func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
@@ -1217,6 +1187,7 @@ func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err 
 }
 
 func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
+	// TODO: [MR] Add SubObjects logic
 	//sbt, _ := coresb.SmartBlockTypeFromID(id)
 	//if sbt == coresb.SmartBlockTypeSubObject {
 	//	workspaceId := s.anytype.PredefinedBlocks().Account

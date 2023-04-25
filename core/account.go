@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io/ioutil"
 	"net"
@@ -528,7 +529,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
-		mw.app.MustComponent("blockService").(*block.Service).CloseBlocks()
+		mw.app.MustComponent(treegetter.CName).(*block.Service).CloseBlocks()
 		acc := &model.Account{Id: req.Id}
 		acc.Info = mw.getInfo()
 		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)

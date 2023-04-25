@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	threadsUtil "github.com/textileio/go-threads/util"
 	"sync"
@@ -136,7 +137,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
-	s.blockServiceObjectDeleter = a.MustComponent("blockService").(ObjectDeleter)
+	s.blockServiceObjectDeleter = a.MustComponent(treegetter.CName).(ObjectDeleter)
 	s.objectStoreDeleter = a.MustComponent("objectstore").(ObjectDeleter)
 	threadWorkspaceStore := a.MustComponent("objectstore").(ThreadWorkspaceStore)
 	s.threadQueue = NewThreadQueue(s, threadWorkspaceStore)

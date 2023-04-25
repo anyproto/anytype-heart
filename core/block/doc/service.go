@@ -2,6 +2,7 @@ package doc
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -61,7 +62,7 @@ type listener struct {
 }
 
 func (l *listener) Init(a *app.App) (err error) {
-	l.docInfoHandler = a.MustComponent("blockService").(docInfoHandler)
+	l.docInfoHandler = a.MustComponent(treegetter.CName).(docInfoHandler)
 	l.records = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
 	return
 }

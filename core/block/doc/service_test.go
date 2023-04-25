@@ -2,6 +2,7 @@ package doc
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"testing"
 	"time"
 
@@ -86,5 +87,5 @@ func (t *testDocInfoHandler) Init(a *app.App) (err error) {
 }
 
 func (t *testDocInfoHandler) Name() (name string) {
-	return "blockService"
+	return treegetter.CName
 }

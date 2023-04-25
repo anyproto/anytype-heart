@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"testing"
 
@@ -96,7 +97,7 @@ func (b *bs) Init(_ *app.App) (err error) {
 }
 
 func (b *bs) Name() (name string) {
-	return "blockService"
+	return treegetter.CName
 }
 
 func (b *bs) ResetToState(pageId string, s *state.State) (err error) {

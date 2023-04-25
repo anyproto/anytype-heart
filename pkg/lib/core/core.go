@@ -3,7 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -166,7 +167,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.ipfs = ap.MustComponent(ipfs.CName).(ipfs.Node)
 	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
 	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	a.creatorInfoAdder = ap.MustComponent("blockService").(CreatorInfoAdder)
+	a.creatorInfoAdder = ap.MustComponent(treegetter.CName).(CreatorInfoAdder)
 	a.spaceService = ap.MustComponent(space.CName).(space.Service)
 	return
 }
