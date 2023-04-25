@@ -313,6 +313,15 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 
+	// TODO FIX FIRST
+	if sb.Id() == "bafybanjhjpw3dmpumc44e2aiynd6p4pcs3v3rrq64far3kslt3aix6ut" {
+		type collectionService interface {
+			RegisterCollection(sb SmartBlock)
+		}
+		colService := app.MustComponent[collectionService](ctx.App)
+		colService.RegisterCollection(sb)
+	}
+
 	return
 }
 

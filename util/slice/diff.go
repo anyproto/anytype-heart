@@ -6,6 +6,7 @@ import (
 	"github.com/mb0/diff"
 )
 
+// StringIdentity is identity function: it returns its argument as string
 func StringIdentity[T ~string](x T) string {
 	return string(x)
 }

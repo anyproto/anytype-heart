@@ -1,6 +1,9 @@
 package collection
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -13,10 +16,16 @@ import (
 
 type Service struct {
 	picker block.Picker
+
+	lock        *sync.RWMutex
+	collections map[string]chan []slice.Change[string]
 }
 
 func New() *Service {
-	return &Service{}
+	return &Service{
+		lock:        &sync.RWMutex{},
+		collections: map[string]chan []slice.Change[string]{},
+	}
 }
 
 func (s *Service) Init(a *app.App) (err error) {
@@ -37,7 +46,7 @@ func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddReques
 		if pos >= 0 {
 			col = slice.Insert(col, pos+1, toAdd...)
 		} else {
-			col = append(col, toAdd...)
+			col = append(toAdd, col...)
 		}
 		return col
 	})
@@ -71,10 +80,61 @@ func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequ
 
 func (s *Service) updateCollection(ctx *session.Context, contextID string, modifier func(src []string) []string) error {
 	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
-		store := s.Store()
-		lst := pbtypes.GetStringList(store, storeKey)
+		lst := pbtypes.GetStringList(s.Store(), storeKey)
 		lst = modifier(lst)
 		s.StoreSlice(storeKey, lst)
 		return nil
 	})
+}
+
+func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
+	s.lock.Lock()
+	changesCh, ok := s.collections[sb.Id()]
+	if !ok {
+		changesCh = make(chan []slice.Change[string])
+		s.collections[sb.Id()] = changesCh
+	}
+	s.lock.Unlock()
+
+	sb.AddHook(func(info smartblock.ApplyInfo) (err error) {
+		// TODO: I don't like that changes converted to marshalling format and then back again
+		var changes []slice.Change[string]
+		for _, ch := range info.Changes {
+			upd := ch.GetStoreSliceUpdate()
+			if upd == nil {
+				continue
+			}
+			if v := upd.GetAdd(); v != nil {
+				changes = append(changes, slice.MakeChangeAdd(v.Ids, v.AfterId))
+			} else if v := upd.GetRemove(); v != nil {
+				changes = append(changes, slice.MakeChangeRemove[string](v.Ids))
+			} else if v := upd.GetMove(); v != nil {
+				changes = append(changes, slice.MakeChangeMove[string](v.Ids, v.AfterId))
+			}
+		}
+
+		go func() {
+			changesCh <- changes
+		}()
+		return nil
+	}, smartblock.HookAfterApply)
+}
+
+func (s *Service) SubscribeForCollection(contextID string) ([]string, <-chan []slice.Change[string], error) {
+	var initialObjectIDs []string
+	// Waking up of collection smart block will automatically add hook used in RegisterCollection
+	err := block.DoState(s.picker, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
+		initialObjectIDs = pbtypes.GetStringList(s.Store(), storeKey)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	s.lock.RLock()
+	ch, ok := s.collections[contextID]
+	s.lock.RUnlock()
+	if !ok {
+		return nil, nil, fmt.Errorf("collection is not registered")
+	}
+	return initialObjectIDs, ch, err
 }

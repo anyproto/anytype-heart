@@ -1257,6 +1257,7 @@ message Rpc {
                 string ignoreWorkspace = 12;
                 // disable dependent subscription
                 bool noDepSubscription = 13;
+                string collectionId = 14;
             }
 
             message Response {

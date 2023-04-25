@@ -26,6 +26,10 @@
     - [Change.Snapshot.LogHeadsEntry](#anytype-Change-Snapshot-LogHeadsEntry)
     - [Change.StoreKeySet](#anytype-Change-StoreKeySet)
     - [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset)
+    - [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate)
+    - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
+    - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
+    - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
     - [Change._RelationAdd](#anytype-Change-_RelationAdd)
     - [Change._RelationRemove](#anytype-Change-_RelationRemove)
     - [Change._RelationUpdate](#anytype-Change-_RelationUpdate)
@@ -1696,6 +1700,7 @@ the element of change tree used to store and internal apply smartBlock history
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove) |  |  |
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
 | storeKeyUnset | [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset) |  |  |
+| storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
 
 
 
@@ -1883,6 +1888,71 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Change-StoreSliceUpdate"></a>
+
+### Change.StoreSliceUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| add | [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add) |  |  |
+| remove | [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove) |  |  |
+| move | [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-StoreSliceUpdate-Add"></a>
+
+### Change.StoreSliceUpdate.Add
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| afterId | [string](#string) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Change-StoreSliceUpdate-Move"></a>
+
+### Change.StoreSliceUpdate.Move
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| afterId | [string](#string) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Change-StoreSliceUpdate-Remove"></a>
+
+### Change.StoreSliceUpdate.Remove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
 
 
 
@@ -10926,6 +10996,7 @@ deprecated, to be removed |
 | source | [string](#string) | repeated |  |
 | ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
+| collectionId | [string](#string) |  |  |
 
 
 

@@ -3,28 +3,30 @@ package subscription
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/kanban"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/cheggaaa/mb"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-datastore/query"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/kanban"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/cheggaaa/mb"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore/query"
 )
 
 const CName = "subscription"
@@ -65,6 +67,7 @@ type service struct {
 
 	objectStore objectstore.ObjectStore
 	kanban      kanban.Service
+	collections *collection.Service
 	sendEvent   func(e *pb.Event)
 
 	m      sync.Mutex
@@ -79,6 +82,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.collections = app.MustComponent[*collection.Service](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
@@ -139,6 +143,15 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	if req.Limit < 0 {
 		req.Limit = 0
 	}
+
+	// if req.SubId == "bafyecciobreco4u7pixvnzzkg4ktheglgiexzcv2qhqo2upzsznho7xz-dataview" {
+	// 	req.CollectionId = "bafybanjhjpw3dmpumc44e2aiynd6p4pcs3v3rrq64far3kslt3aix6ut"
+	// }
+
+	if req.CollectionId != "" {
+		return s.makeCollectionSubscription(req, f, records)
+	}
+
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
@@ -176,6 +189,50 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		},
 	}
 	return
+}
+
+func (s *service) makeCollectionSubscription(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, records []database.Record) (*pb.RpcObjectSearchSubscribeResponse, error) {
+	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return nil, err
+	}
+	// TODO
+	// if req.NoDepSubscription {
+	// 	sub.sortedSub.disableDep = true
+	// } else {
+	// 	sub.sortedSub.forceSubIds = filterDepIds
+	// }
+	entries := make([]*entry, 0, len(records))
+	for _, r := range records {
+		entries = append(entries, &entry{
+			id:   pbtypes.GetString(r.Details, "id"),
+			data: r.Details,
+		})
+	}
+	if err = sub.init(entries); err != nil {
+		return nil, fmt.Errorf("subscription init error: %v", err)
+	}
+	s.subscriptions[sub.id] = sub
+	prev, next := sub.counters()
+
+	var depRecords, subRecords []*types.Struct
+	subRecords = sub.getActiveRecords()
+
+	// TODO
+	// if sub.depSub != nil {
+	// 	depRecords = sub.depSub.getActiveRecords()
+	// }
+
+	return &pb.RpcObjectSearchSubscribeResponse{
+		Records:      subRecords,
+		Dependencies: depRecords,
+		SubId:        sub.id,
+		Counters: &pb.EventObjectSubscriptionCounters{
+			Total:     int64(len(sub.activeEntries)),
+			NextCount: int64(prev),
+			PrevCount: int64(next),
+		},
+	}, nil
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
