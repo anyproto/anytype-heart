@@ -860,6 +860,9 @@ func (s *Service) CopyDataviewToBlock(ctx *session.Context,
 	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		block := st.Get(req.BlockId)
+		if block == nil {
+			return fmt.Errorf("invalid block id")
+		}
 
 		dvContent, ok := block.Model().Content.(*model.BlockContentOfDataview)
 		if !ok {
