@@ -1643,6 +1643,7 @@
     "hidden": false,
     "key": "spaceDashboardId",
     "maxCount": 1,
+    "hidden": true,
     "name": "Space Dashboard ID",
     "readonly": false,
     "source": "details"

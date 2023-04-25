@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "93f1f075340e0db0a3dfc7f74442023cc52919023eeb8c8af8d9eae7ac0c8863"
+const RelationChecksum = "548c38f3ef3bb21d84d5659420a0286cd101ab327f85b06849dc61294373e1fe"
 
 type RelationKey string
 
@@ -2100,6 +2100,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Space Dashboard object ID",
 			Format:           model.RelationFormat_object,
+			Hidden:           true,
 			Id:               "_brspaceDashboardId",
 			Key:              "spaceDashboardId",
 			MaxCount:         1,
