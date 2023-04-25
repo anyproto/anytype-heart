@@ -811,14 +811,16 @@ func buildDetails(profile *pb.Profile, icon int64) (
 	profileDetails = []*pb.RpcObjectSetDetailsDetail{{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(profile.Name),
-	}, {
-		Key:   bundle.RelationKeyIconImage.String(),
-		Value: pbtypes.String(profile.Avatar),
 	}}
 	if profile.Avatar == "" {
 		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
 			Key:   bundle.RelationKeyIconOption.String(),
 			Value: pbtypes.Int64(icon),
+		})
+	} else {
+		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyIconImage.String(),
+			Value: pbtypes.String(profile.Avatar),
 		})
 	}
 	accountDetails = []*pb.RpcObjectSetDetailsDetail{{
