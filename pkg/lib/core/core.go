@@ -75,7 +75,6 @@ type Service interface {
 	ThreadsIds() ([]string, error)        // deprecated
 
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
-	ObjectList() ([]*model.ObjectInfo, error)
 
 	ProfileInfo
 
