@@ -1187,14 +1187,6 @@ func (sb *smartBlock) ObjectClose() {
 	sb.SetEventFunc(nil)
 }
 
-func (sb *smartBlock) Locked() bool {
-	if !sb.Locker.TryLock() {
-		return true
-	}
-	defer sb.Locker.Unlock()
-	return sb.IsLocked()
-}
-
 func (sb *smartBlock) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if !sb.Locker.TryLock() {
 		return false, nil
