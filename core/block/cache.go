@@ -7,17 +7,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/any-sync/util/crypto"
-
-	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
-
-	spaceservice "github.com/anytypeio/go-anytype-middleware/space"
-
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
+	"github.com/anytypeio/any-sync/util/crypto"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -26,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	spaceservice "github.com/anytypeio/go-anytype-middleware/space"
 )
 
 type ctxKey int
@@ -180,6 +177,20 @@ func (s *Service) DeleteObject(id string) (err error) {
 			return Do(s, s.anytype.PredefinedBlocks().Account, func(w *editor.Workspaces) error {
 				return w.DeleteSubObject(id)
 			})
+		})
+	case coresb.SmartBlockTypeFile:
+		err = s.OnDelete(id, func() error {
+			if err = s.fileStore.DeleteByTarget(id); err != nil {
+				return err
+			}
+			if err = s.fileStore.DeleteFileKeys(id); err != nil {
+				return err
+			}
+			_, err = s.fileService.FileOffload(id, true)
+			if err != nil {
+				return err
+			}
+			return s.fileSync.RemoveFile(s.clientService.AccountId(), id)
 		})
 	default:
 		var space commonspace.Space

@@ -26,8 +26,9 @@ func Test_ValidateTokenNotValid(t *testing.T) {
 	tv := NewTokenValidator()
 	tv.ping = p
 
-	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED)
+	errCode, err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, errCode, pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED)
+	assert.Equal(t, nil, err)
 }
 
 func Test_ValidateTokenSuccess(t *testing.T) {
@@ -41,8 +42,9 @@ func Test_ValidateTokenSuccess(t *testing.T) {
 	tv := NewTokenValidator()
 	tv.ping = p
 
-	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_NULL)
+	errCode, err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, errCode, pb.RpcObjectImportNotionValidateTokenResponseError_NULL)
+	assert.Equal(t, nil, err)
 }
 
 func Test_ValidateTokenInternalError(t *testing.T) {
@@ -59,8 +61,9 @@ func Test_ValidateTokenInternalError(t *testing.T) {
 	tv := NewTokenValidator()
 	tv.ping = p
 
-	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR)
+	errCode, err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, errCode, pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR)
+	assert.NotNil(t, err)
 }
 
 func Test_ValidateTokenNotionUnavailable(t *testing.T) {
@@ -77,8 +80,9 @@ func Test_ValidateTokenNotionUnavailable(t *testing.T) {
 	tv := NewTokenValidator()
 	tv.ping = p
 
-	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE)
+	errCode, err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, errCode, pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE)
+	assert.Equal(t, nil, err)
 }
 
 func Test_ValidateTokenNotionForbidden(t *testing.T) {
@@ -95,6 +99,7 @@ func Test_ValidateTokenNotionForbidden(t *testing.T) {
 	tv := NewTokenValidator()
 	tv.ping = p
 
-	err := tv.Validate(context.TODO(), "123123")
-	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN)
+	errCode, err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, errCode, pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN)
+	assert.Equal(t, nil, err)
 }
