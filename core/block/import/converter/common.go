@@ -52,9 +52,9 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID 
 		case link.Block:
 			handleLinkBlock(oldIDtoNew, block, st)
 		case bookmark.Block:
-			handleBookmarkBlock(oldIDtoNew, block, pageID, st)
+			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleMarkdownTest(oldIDtoNew, block, st, pageID)
+			handleMarkdownTest(oldIDtoNew, block, st)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		}
@@ -76,10 +76,11 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 	st.Set(simple.New(block.Model()))
 }
 
-func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, pageID string, st *state.State) {
+func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	newTarget := oldIDtoNew[block.Model().GetBookmark().TargetObjectId]
 	if newTarget == "" {
-		newTarget = addr.MissingObject
+		log.Errorf("failed to find bookmark object")
+		return
 	}
 
 	block.Model().GetBookmark().TargetObjectId = newTarget
@@ -112,7 +113,7 @@ func isBundledObjects(targetBlockID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, objectID string) {
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
