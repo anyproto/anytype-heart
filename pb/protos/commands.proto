@@ -1830,6 +1830,7 @@ message Rpc {
                     repeated string path = 1;
                     Mode mode = 2;
                     bool useFirstColumnForRelations = 3; // use for collection mode
+                    string delimiter = 4;
 
                     enum Mode {
                         COLLECTION = 0;

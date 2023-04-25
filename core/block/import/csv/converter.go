@@ -94,7 +94,7 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest, progress
 		if filepath.Ext(p) != ".csv" {
 			continue
 		}
-		csvTable, err := readCsvFile(p)
+		csvTable, err := readCsvFile(p, params.GetDelimiter())
 		if err != nil {
 			cErr.Add(p, err)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -125,7 +125,7 @@ func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strate
 	return NewTableStrategy(te.NewEditor(nil))
 }
 
-func readCsvFile(filePath string) ([][]string, error) {
+func readCsvFile(filePath string, delimiter string) ([][]string, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -133,6 +133,10 @@ func readCsvFile(filePath string) ([][]string, error) {
 	defer f.Close()
 
 	csvReader := csv.NewReader(f)
+	if len(delimiter) != 0 {
+		characters := []rune(delimiter)
+		csvReader.Comma = characters[0]
+	}
 	records, err := csvReader.ReadAll()
 	if err != nil {
 		return nil, err

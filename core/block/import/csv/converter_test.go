@@ -103,7 +103,7 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 	p := process.NewProgress(pb.ModelProcess_Import)
 	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
-			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/semicolon.csv"}},
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/semicolon.csv"}, Delimiter: ";"},
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
