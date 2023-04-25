@@ -2,12 +2,15 @@ package localdiscovery
 
 import (
 	"context"
+	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/go-anytype-middleware/net/addrs"
+	"github.com/anytypeio/any-sync/net"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/libp2p/zeroconf/v2"
 	"go.uber.org/zap"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -15,9 +18,8 @@ import (
 const (
 	CName = "client.space.localdiscovery"
 
-	serviceName   = "_p2p._localdiscovery"
-	mdnsDomain    = "local"
-	anytypePrefix = "anytype="
+	serviceName = "_p2p._localdiscovery"
+	mdnsDomain  = "local"
 )
 
 var log = logger.NewNamed(CName)
@@ -39,6 +41,7 @@ type LocalDiscovery interface {
 type localDiscovery struct {
 	server *zeroconf.Server
 	peerId string
+	addrs  []string
 
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -57,15 +60,19 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
+	l.addrs = a.MustComponent(config.CName).(net.ConfigGetter).GetNet().Server.ListenAddrs
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
+	if len(l.addrs) == 0 {
+		return
+	}
 	l.ctx, l.cancel = context.WithCancel(ctx)
 	if err = l.startServer(); err != nil {
 		return
 	}
-	l.startListener(l.ctx)
+	l.startQuerying(l.ctx)
 	return
 }
 
@@ -74,6 +81,9 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
+	if len(l.addrs) == 0 {
+		return
+	}
 	l.cancel()
 	if l.server != nil {
 		l.server.Shutdown()
@@ -83,62 +93,54 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 }
 
 func (l *localDiscovery) startServer() (err error) {
-	interfaceAddrs, err := addrs.InterfaceAddrs()
+	// for now assuming that we have just one address
+	split := strings.Split(l.addrs[0], ":")
+	ip, portString := split[0], split[1]
+	port, err := strconv.Atoi(portString)
 	if err != nil {
 		return
-	}
-	var (
-		ips  []string
-		txts []string
-	)
-	for _, addr := range interfaceAddrs {
-		ip := strings.Split(addr.String(), "/")[0]
-		ips = append(ips, ip)
-		txts = append(txts, anytypePrefix+ip)
 	}
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
 		serviceName,
 		mdnsDomain,
-		4001,
+		port,
 		l.peerId,
-		ips,
-		txts,
+		[]string{ip},
+		nil,
 		nil,
 	)
 	return
 }
 
-func (l *localDiscovery) startListener(ctx context.Context) {
+func (l *localDiscovery) startQuerying(ctx context.Context) {
 	l.closeWait.Add(2)
 	listenCh := make(chan *zeroconf.ServiceEntry, 10)
-	go l.readChannel(listenCh)
-	go l.writeChannel(ctx, listenCh)
+	go l.readAnswers(listenCh)
+	go l.browse(ctx, listenCh)
 }
 
-func (l *localDiscovery) readChannel(ch chan *zeroconf.ServiceEntry) {
+func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
 	for entry := range ch {
-		for _, text := range entry.Text {
-			if !strings.HasPrefix(text, anytypePrefix) {
-				log.Debug("incorrect prefix, text", zap.String("text", text))
-				continue
-			}
-			peer := DiscoveredPeer{
-				Addr:   text[len(anytypePrefix):],
-				PeerId: entry.Service,
-			}
-			log.Debug("discovered peer", zap.String("addr", peer.Addr), zap.String("peerId", peer.PeerId))
-			if l.notifier != nil {
-				l.notifier.PeerDiscovered(peer)
-			}
+		// TODO: check why this happens
+		if entry.Instance == l.peerId {
+			continue
+		}
+		peer := DiscoveredPeer{
+			Addr:   fmt.Sprintf("%s:%d", entry.AddrIPv4, entry.Port),
+			PeerId: entry.Instance,
+		}
+		log.Debug("discovered peer", zap.String("addr", peer.Addr), zap.String("peerId", peer.PeerId))
+		if l.notifier != nil {
+			l.notifier.PeerDiscovered(peer)
 		}
 	}
 }
 
-func (l *localDiscovery) writeChannel(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
+func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	if err := zeroconf.Browse(ctx, l.peerId, mdnsDomain, ch); err != nil {
+	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch); err != nil {
 		log.Debug("browsing failed", zap.Error(err))
 	}
 }

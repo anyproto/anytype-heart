@@ -3,9 +3,11 @@ package config
 import (
 	"fmt"
 	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/metric"
 	commonnet "github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/nodeconf"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
+	"github.com/anytypeio/go-anytype-middleware/util/netutil"
 	"gopkg.in/yaml.v2"
 	"net"
 	"path/filepath"
@@ -60,7 +62,8 @@ type Config struct {
 	CafePeerId      string
 	CafeAPIInsecure bool
 
-	DebugAddr string
+	DebugAddr       string
+	LocalServerAddr string
 
 	Threads           threads.Config
 	DS                clientds.Config
@@ -81,6 +84,7 @@ var DefaultConfig = Config{
 	Offline:              false,
 	SwarmLowWater:        10,
 	SwarmHighWater:       50,
+	LocalServerAddr:      "0.0.0.0:9091",
 	PrivateNetworkSecret: ipfs.IpfsPrivateNetworkKey,
 	BootstrapNodes: []string{
 		"/ip4/54.93.109.23/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",           // fra1
@@ -122,6 +126,12 @@ func WithDebugAddr(addr string) func(*Config) {
 	}
 }
 
+func WithLocalServer(addr string) func(*Config) {
+	return func(c *Config) {
+		c.LocalServerAddr = addr
+	}
+}
+
 func DisableFileConfig(disable bool) func(*Config) {
 	return func(c *Config) {
 		c.DisableFileConfig = disable
@@ -130,6 +140,9 @@ func DisableFileConfig(disable bool) func(*Config) {
 
 func New(options ...func(*Config)) *Config {
 	cfg := DefaultConfig
+	if randomPort, err := netutil.GetRandomPort(); err == nil {
+		cfg.LocalServerAddr = fmt.Sprintf("127.0.0.1:%d", randomPort)
+	}
 	for _, opt := range options {
 		opt(&cfg)
 	}
@@ -282,8 +295,15 @@ func (c *Config) GetSpace() commonspace.Config {
 	}
 }
 
+func (c *Config) GetMetric() metric.Config {
+	return metric.Config{}
+}
+
 func (c *Config) GetNet() commonnet.Config {
 	return commonnet.Config{
+		Server: commonnet.ServerConfig{
+			ListenAddrs: []string{c.LocalServerAddr},
+		},
 		Stream: commonnet.StreamConfig{
 			TimeoutMilliseconds: 1000,
 			MaxMsgSizeMb:        256,
@@ -294,7 +314,9 @@ func (c *Config) GetNet() commonnet.Config {
 func (c *Config) GetDebugAPIConfig() DebugAPIConfig {
 	return DebugAPIConfig{
 		Config: commonnet.Config{
-			Server: commonnet.ServerConfig{ListenAddrs: []string{c.DebugAddr}},
+			Server: commonnet.ServerConfig{
+				ListenAddrs: []string{c.DebugAddr},
+			},
 			Stream: commonnet.StreamConfig{
 				TimeoutMilliseconds: 1000,
 				MaxMsgSizeMb:        256,

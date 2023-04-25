@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/netutil"
 	"net"
 	"net/http"
 	"os"
@@ -65,7 +66,7 @@ func GatewayAddr() string {
 		return addr
 	}
 
-	port, err := getRandomPort()
+	port, err := netutil.GetRandomPort()
 	if err != nil {
 		log.Errorf("failed to get random port for gateway, go with the default %d", defaultPort)
 		port = defaultPort
