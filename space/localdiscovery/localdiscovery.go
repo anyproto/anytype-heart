@@ -45,9 +45,10 @@ type localDiscovery struct {
 	addrs  []string
 	port   int
 
-	ctx       context.Context
-	cancel    context.CancelFunc
-	closeWait sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
+	closeWait       sync.WaitGroup
+	interfacesAddrs addrs.InterfacesAddrs
 
 	notifier Notifier
 }
@@ -96,16 +97,15 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 }
 
 func (l *localDiscovery) startServer() (err error) {
-	interfaceAddrs, err := addrs.InterfaceAddrs()
+	l.interfacesAddrs, err = addrs.GetInterfacesAddrs()
 	if err != nil {
 		return
 	}
 	var ips []string
-	for _, addr := range interfaceAddrs {
+	for _, addr := range l.interfacesAddrs.Addrs {
 		ip := strings.Split(addr.String(), "/")[0]
 		ips = append(ips, ip)
 	}
-
 	// for now assuming that we have just one address
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
@@ -115,7 +115,7 @@ func (l *localDiscovery) startServer() (err error) {
 		l.peerId,
 		ips,
 		nil,
-		nil,
+		l.interfacesAddrs.Interfaces,
 		zeroconf.TTL(60),
 	)
 	return
@@ -133,6 +133,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 	for entry := range ch {
 		// TODO: check why this happens
 		if entry.Instance == l.peerId {
+			log.Debug("discovered self")
 			continue
 		}
 		var portAddrs []string
@@ -152,8 +153,8 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch); err != nil {
-		log.Debug("browsing failed", zap.Error(err))
+	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch, zeroconf.SelectIfaces(l.interfacesAddrs.Interfaces)); err != nil {
+		log.Error("browsing failed", zap.Error(err))
 	}
 }
 

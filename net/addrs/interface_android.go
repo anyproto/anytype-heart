@@ -7,9 +7,16 @@ import (
 )
 
 var lock = sync.Mutex{}
-var interfaceGetter InterfaceAddrsGetter
+var interfaceAddrGetter InterfaceAddrsGetter
+var interfaceGetter InterfaceGetter
 
 func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {
+	lock.Lock()
+	defer lock.Unlock()
+	interfaceAddrGetter = getter
+}
+
+func SetInterfaceGetter(getter InterfaceGetter) {
 	lock.Lock()
 	defer lock.Unlock()
 	interfaceGetter = getter
@@ -18,6 +25,20 @@ func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {
 type InterfaceAddr struct {
 	Ip     []byte
 	Prefix int
+}
+
+type Interface struct {
+	net.Interface
+	Addrs []InterfaceAddr
+}
+
+type InterfacesAddrs struct {
+	Interfaces []net.Interface
+	Addrs      []net.Addr
+}
+
+type InterfaceGetter interface {
+	Interfaces() []Interface
 }
 
 type InterfaceAddrsGetter interface {
@@ -43,25 +64,27 @@ func ipV4MaskFromPrefix(prefix int) net.IPMask {
 	return maskFromPrefix(prefix, 32)
 }
 
-func InterfaceAddrs() (addrs []net.Addr, err error) {
+func GetInterfacesAddrs() (addrs InterfacesAddrs, err error) {
 	lock.Lock()
 	if interfaceGetter == nil {
 		lock.Unlock()
-		return nil, fmt.Errorf("interface getter not set for Android")
+		return InterfacesAddrs{}, fmt.Errorf("interface getter not set for Android")
 	}
-	lock.Unlock()
-	unmaskedAddrs := interfaceGetter.InterfaceAddrs()
-	for _, addr := range unmaskedAddrs {
-		var mask []byte
-		if len(addr.Ip) == 4 {
-			mask = ipV4MaskFromPrefix(addr.Prefix)
-		} else {
-			mask = ipV6MaskFromPrefix(addr.Prefix)
+	for _, iface := range interfaceGetter.Interfaces() {
+		addrs.Interfaces = append(addrs.Interfaces, iface.Interface)
+		unmaskedAddrs := iface.Addrs
+		for _, addr := range unmaskedAddrs {
+			var mask []byte
+			if len(addr.Ip) == 4 {
+				mask = ipV4MaskFromPrefix(addr.Prefix)
+			} else {
+				mask = ipV6MaskFromPrefix(addr.Prefix)
+			}
+			addrs.Addrs = append(addrs.Addrs, &net.IPNet{
+				IP:   addr.Ip,
+				Mask: mask,
+			})
 		}
-		addrs = append(addrs, &net.IPNet{
-			IP:   addr.Ip,
-			Mask: mask,
-		})
 	}
-	return addrs, nil
+	return
 }
