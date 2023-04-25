@@ -156,12 +156,13 @@ func (mw *Middleware) extractAccountDirectory(req *pb.RpcUserDataImportRequest) 
 		}
 	}
 	for _, file := range archive.File {
-		if file.FileInfo().Name() == accountName {
+		if strings.EqualFold(file.FileInfo().Name(), accountName) {
 			continue
 		}
 
 		n := file.FileHeader.Name
-		if strings.HasPrefix(n, accountName) {
+		// extract from zip archive only files in account directory
+		if strings.Contains(n, accountName) {
 			path := filepath.Join(mw.rootPath, n)
 			if file.FileInfo().IsDir() {
 				os.MkdirAll(path, file.Mode())
@@ -171,17 +172,20 @@ func (mw *Middleware) extractAccountDirectory(req *pb.RpcUserDataImportRequest) 
 			if err != nil {
 				return err
 			}
-			defer fileReader.Close()
 
-			targetFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(file.Mode()))
+			targetFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, file.Mode())
 			if err != nil {
+				fileReader.Close()
 				return err
 			}
-			defer targetFile.Close()
 
 			if _, err := io.Copy(targetFile, fileReader); err != nil {
+				fileReader.Close()
+				targetFile.Close()
 				return err
 			}
+			targetFile.Close()
+			fileReader.Close()
 		}
 	}
 	return nil
