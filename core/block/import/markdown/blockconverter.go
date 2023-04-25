@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/pkg/errors"
 
 	ce "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
@@ -39,7 +40,7 @@ func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath string, mode string) (map[string]*FileInfo, ce.ConvertError) {
+func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*FileInfo, ce.ConvertError) {
 	allErrors := ce.NewError()
 	files := m.processFiles(importPath, mode, allErrors)
 
@@ -48,22 +49,13 @@ func (m *mdConverter) markdownToBlocks(importPath string, mode string) (map[stri
 	return files, allErrors
 }
 
-func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
-	fileInfo := make(map[string]*FileInfo, 0)
+func (m *mdConverter) processFiles(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	ext := filepath.Ext(importPath)
 	if strings.EqualFold(ext, ".zip") {
-		fileInfo = m.processZipFile(importPath, mode, allErrors)
-	} else if strings.EqualFold(ext, ".md") {
-		m.processFile(importPath, fileInfo, allErrors)
+		return m.processZipFile(importPath, mode, allErrors)
 	} else {
-		fileInfo = m.processDirectory(importPath, allErrors)
+		return m.processDirectory(importPath, mode, allErrors)
 	}
-	for _, file := range fileInfo {
-		for _, b := range file.ParsedBlocks {
-			m.processFileBlock(b, fileInfo)
-		}
-	}
-	return fileInfo
 }
 
 func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
@@ -83,13 +75,21 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 		// remove zip root folder if exists
 		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
 
+		if err != nil {
+			allErrors.Add(shortPath, err)
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
+				return nil
+			}
+			log.Errorf("failed to read file: %s", err.Error())
+			continue
+		}
 		rc, err := f.Open()
 		if err != nil {
 			allErrors.Add(shortPath, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 				return nil
 			}
-			log.Errorf("failed to read file %s: %s", shortPath, err.Error())
+			log.Errorf("failed to read file: %s", err.Error())
 			continue
 		}
 		files[shortPath] = &FileInfo{}
@@ -99,18 +99,27 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 				return nil
 			}
-			log.Errorf("failed to create blocks from file %s: %s", shortPath, err.Error())
+			log.Errorf("failed to create blocks from file: %s", err.Error())
+		}
+	}
+	for _, file := range files {
+		for _, b := range file.ParsedBlocks {
+			m.processFileBlock(b, files)
 		}
 	}
 
 	return files
 }
 
-func (m *mdConverter) processDirectory(importPath string, allErrors ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processDirectory(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	files := make(map[string]*FileInfo)
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
-			if info != nil && !info.IsDir() {
+			if err != nil {
+				return errors.Wrap(err, "markdown import: processDirectory")
+			}
+
+			if !info.IsDir() {
 				shortPath, err := filepath.Rel(importPath+string(filepath.Separator), path)
 				if err != nil {
 					return fmt.Errorf("failed to get relative path %s", err)
@@ -121,7 +130,7 @@ func (m *mdConverter) processDirectory(importPath string, allErrors ce.ConvertEr
 				}
 				files[shortPath] = &FileInfo{}
 				if err = m.createBlocksFromFile(shortPath, f, files); err != nil {
-					log.Errorf("failed to create blocks from file %s: %s", shortPath, err)
+					log.Errorf("failed to create blocks from file: %s", err)
 				}
 				files[shortPath].Source = ce.GetSourceDetail(shortPath, importPath)
 			}
@@ -330,7 +339,7 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		}
 		files[shortPath].ParsedBlocks, _, err = anymark.MarkdownToBlocks(b, filepath.Dir(shortPath), nil)
 		if err != nil {
-			log.Errorf("failed to read blocks %s: %s", shortPath, err.Error())
+			log.Errorf("failed to read blocks: %s", err.Error())
 		}
 		// md file no longer needed
 		m.processBlocks(shortPath, files[shortPath], files)
@@ -348,46 +357,29 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 	newFile := filepath.Join(tempDir, baseName)
 	tmpFile, err := os.Create(newFile)
 	if err != nil {
-		log.Errorf("failed to create file file %s: %s", baseName, err.Error())
+		log.Errorf("failed to create file: %s", err.Error())
 		return
 	}
 	w := bufio.NewWriter(tmpFile)
 	shortPath := f.Name
 	targetFile, found := files[shortPath]
 	if !found {
-		log.Errorf("file %s not found", newFile)
+		log.Errorf("file not found")
 		return
 	}
 
 	_, err = w.ReadFrom(targetFile.ReadCloser)
 	if err != nil {
-		log.Errorf("failed to read file %s: %s", shortPath, err.Error())
+		log.Errorf("failed to read file: %s", err.Error())
 		return
 	}
 
 	if err := w.Flush(); err != nil {
-		log.Errorf("failed to flush file %s: %s", shortPath, err.Error())
+		log.Errorf("failed to flush file: %s", err.Error())
 		return
 	}
 
 	targetFile.Close()
 	tmpFile.Close()
 	f.Name = newFile
-}
-
-func (m *mdConverter) processFile(fName string, files map[string]*FileInfo, allErrors ce.ConvertError) {
-	shortPath := filepath.Clean(fName)
-
-	f, err := os.Open(fName)
-	if err != nil {
-		allErrors.Add(shortPath, err)
-		log.Errorf("failed to read file %s: %s", shortPath, err.Error())
-		return
-	}
-	files[shortPath] = &FileInfo{}
-	files[shortPath].Source = ce.GetSourceDetail(fName, fName)
-	if err = m.createBlocksFromFile(shortPath, f, files); err != nil {
-		allErrors.Add(shortPath, err)
-		log.Errorf("failed to create block from file %s: %s", shortPath, err.Error())
-	}
 }

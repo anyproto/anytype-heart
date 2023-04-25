@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
@@ -99,41 +100,27 @@ type Child struct {
 func (c *Child) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) (*model.Block, string) {
 	var (
 		targetBlockID string
-		ok            bool
 	)
 	for id, name := range idToName {
 		if strings.EqualFold(name, c.Title) {
 			if len(notionIdsToAnytype) > 0 {
-				targetBlockID, ok = notionIdsToAnytype[id]
+				targetBlockID = notionIdsToAnytype[id]
 			}
 			break
 		}
 	}
 
 	id := bson.NewObjectId().Hex()
-	if !ok {
-		return &model.Block{
-			Id:          id,
-			ChildrenIds: nil,
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{
-					Text: notFoundPageMessage,
-					Marks: &model.BlockContentTextMarks{
-						Marks: []*model.BlockContentTextMark{},
-					},
-				},
-			},
-		}, id
-	}
+
+	block := collection.GetDataviewContent()
+
+	block.Dataview.TargetObjectId = targetBlockID
 
 	return &model.Block{
 		Id:          id,
 		ChildrenIds: nil,
-		Content: &model.BlockContentOfLink{
-			Link: &model.BlockContentLink{
-				TargetBlockId: targetBlockID,
-			},
-		}}, id
+		Content:     block,
+	}, id
 }
 
 type LinkToPageBlock struct {

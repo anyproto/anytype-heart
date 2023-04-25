@@ -96,7 +96,7 @@ func (ds *Service) GetPages(ctx context.Context,
 			if t, ok := v.(*property.TitleItem); ok {
 				properties, err := ds.propertyService.GetPropertyObject(ctx, p.ID, t.GetID(), apiKey, t.GetPropertyType())
 				if err != nil {
-					logger.With("method", "handlePageProperties").Errorf("failed to get paginated property, %s", v.GetPropertyType())
+					logger.With("method", "handlePageProperties").Errorf("failed to get paginated property, %s, %s", v.GetPropertyType(), err)
 					continue
 				}
 				title := make([]*api.RichText, 0, len(properties))
@@ -187,7 +187,7 @@ func (ds *Service) handlePageProperties(ctx context.Context,
 		if isPropertyPaginated(v) {
 			properties, err := ds.propertyService.GetPropertyObject(ctx, pageID, v.GetID(), apiKey, v.GetPropertyType())
 			if err != nil {
-				logger.With("method", "handlePageProperties").Errorf("failed to get paginated property, %s", v.GetPropertyType())
+				logger.With("method", "handlePageProperties").Errorf("failed to get paginated property, %s, %s", v.GetPropertyType(), err)
 				continue
 			}
 			ds.handlePaginatedProperty(v, properties)

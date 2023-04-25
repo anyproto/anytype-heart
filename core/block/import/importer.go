@@ -70,10 +70,9 @@ func (i *Import) Init(a *app.App) (err error) {
 	objCreator := a.MustComponent(object.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
-	ou := NewObjectUpdater(i.s, store, factory, relationCreator)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	i.oc = NewCreator(i.s, objCreator, ou, coreService, factory, relationCreator, store, fileStore)
+	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore)
 	return nil
 }
 

@@ -244,9 +244,9 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 
 			if file == nil || len(file.PageID) == 0 {
 				text += potentialFileName
-				log.Errorf("target file not found:", shortPath, potentialFileName)
+				log.Errorf("target file not found")
 			} else {
-				log.Debug("target file found:", file.PageID, shortPath)
+				log.Debug("target file found:", file.PageID)
 				file.HasInboundLinks = true
 				if file.Title == "" {
 					// shouldn't be a case

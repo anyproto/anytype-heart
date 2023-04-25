@@ -40,15 +40,12 @@ type ObjectCreator struct {
 	core            core.Service
 	objectStore     objectstore.ObjectStore
 	fileStore       filestore.FileStore
-	updater         Updater
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
-	oldIDToNew      map[string]string
 }
 
 func NewCreator(service *block.Service,
 	objCreator objectCreator,
-	updater Updater,
 	core core.Service,
 	syncFactory *syncer.Factory,
 	relationCreator RelationCreator,
@@ -59,10 +56,8 @@ func NewCreator(service *block.Service,
 		service:         service,
 		objCreator:      objCreator,
 		core:            core,
-		updater:         updater,
 		syncFactory:     syncFactory,
 		relationCreator: relationCreator,
-		oldIDToNew:      map[string]string{},
 		objectStore:     objectStore,
 		fileStore:       fileStore,
 	}
@@ -402,6 +397,19 @@ func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[st
 
 				marks[i].Param = newTarget
 			}
+			st.Set(simple.New(a.Model()))
+		case simpleDataview.Block:
+			target := a.Model().GetDataview().TargetObjectId
+			if target == "" {
+				return true
+			}
+			newTarget := oldIDtoNew[target]
+			if newTarget == "" {
+				log.With("object", st.RootId()).Errorf("cant find target id for dataview: %s", a.Model().GetDataview().TargetObjectId)
+				return true
+			}
+
+			a.Model().GetDataview().TargetObjectId = newTarget
 			st.Set(simple.New(a.Model()))
 		}
 		return true

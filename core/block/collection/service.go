@@ -214,6 +214,18 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 		template.WithRequiredRelations(),
 	}
 
+	blockContent := GetDataviewContent()
+	tmpls = append(tmpls,
+		template.WithDataview(*blockContent, false),
+	)
+
+	if err := template.InitTemplate(newState, tmpls...); err != nil {
+		return coresb.SmartBlockTypeCollection, nil, nil, err
+	}
+	return coresb.SmartBlockTypeCollection, details, newState, nil
+}
+
+func GetDataviewContent() *model.BlockContentOfDataview {
 	relations := []*model.RelationLink{
 		{
 			Format: model.RelationFormat_shorttext,
@@ -261,14 +273,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 			},
 		},
 	}
-	tmpls = append(tmpls,
-		template.WithDataview(*blockContent, false),
-	)
-
-	if err := template.InitTemplate(newState, tmpls...); err != nil {
-		return coresb.SmartBlockTypeCollection, nil, nil, err
-	}
-	return coresb.SmartBlockTypeCollection, details, newState, nil
+	return blockContent
 }
 
 func (s *Service) ObjectToCollection(id string) (string, error) {
