@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.30-0.20230403111912-e9d1de77819e
+	github.com/anytypeio/any-sync v0.0.30
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.6
