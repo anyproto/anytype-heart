@@ -26,9 +26,6 @@ func MakeCollectionDataviewContent() *model.BlockContentOfDataview {
 			continue
 		}
 		rel := bundle.MustGetRelation(relKey)
-		if rel.Hidden {
-			continue
-		}
 		relations = append(relations, &model.RelationLink{
 			Format: rel.Format,
 			Key:    rel.Key,
@@ -72,6 +69,7 @@ func init() {
 		DefaultDataviewRelations = append(DefaultDataviewRelations, rel)
 	}
 	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyDone)
+	DefaultDataviewRelations = append(DefaultDataviewRelations, bundle.RelationKeyTag)
 }
 
 const CollectionStoreKey = "objects"
