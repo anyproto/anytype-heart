@@ -107,10 +107,8 @@ func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
-
-	err2 := c.fromAnyToSet(st)
-	if err2 != nil {
-		return err2
+	if err := c.fromAnyToSet(st); err != nil {
+		return err
 	}
 	return nil
 }
