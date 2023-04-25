@@ -137,6 +137,7 @@ jobs:
         run: |
           mkdir -p json/
           cp pkg/lib/bundle/systemRelations.json ./json
+          cp pkg/lib/bundle/relations.json ./json
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json

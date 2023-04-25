@@ -99,6 +99,7 @@ build-ios: setup-go
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 	@mkdir -p dist/ios/json/
 	@cp pkg/lib/bundle/system*.json dist/ios/json/
+	@cp pkg/lib/bundle/relations.json dist/ios/json/
 	@cp pkg/lib/bundle/internal*.json dist/ios/json/
 	@go mod tidy
 
