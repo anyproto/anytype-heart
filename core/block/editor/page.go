@@ -90,7 +90,9 @@ func NewPage(
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.ObjectTypeUrls == nil {
+	if ctx.ObjectTypeUrls == nil && (ctx.State == nil || len(ctx.State.ObjectTypes()) == 0) {
+		// todo: revise this logic
+		// we can have other default type on client side
 		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
 
@@ -112,12 +114,14 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					layout = ot.Layout
 				}
 			}
-
+			if len(ctx.ObjectTypeUrls) > 0 && len(ctx.State.ObjectTypes()) == 0 {
+				ctx.State.SetObjectTypes(ctx.ObjectTypeUrls)
+			}
 			// TODO Templates must be dumb here, no migration logic
 
 			templates := []template.StateTransformer{
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls, layout),
+				template.WithObjectTypesAndLayout(ctx.State.ObjectTypes(), layout),
 				bookmarksvc.WithFixedBookmarks(p.Bookmark),
 				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
