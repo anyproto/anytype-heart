@@ -349,20 +349,8 @@ func (cb *clipboard) pasteAny(
 			delete(b.Fields.Fields, text.DetailsKeyFieldName)
 		}
 		if d, ok := b.Content.(*model.BlockContentOfDataview); ok {
-			var relationKeys []string
-			if len(d.Dataview.RelationLinks) == 0 && len(d.Dataview.Views) != 0 {
-				for _, r := range d.Dataview.Views[0].Relations {
-					relationKeys = append(relationKeys, r.Key)
-				}
-				if len(relationKeys) != 0 {
-					relations, _ := cb.relationService.FetchKeys(relationKeys...)
-					links := make([]*model.RelationLink, 0, len(relations))
-					for _, r := range relations {
-						links = append(links, r.RelationLink())
-					}
-					d.Dataview.RelationLinks = links
-					fmt.Println()
-				}
+			if err = cb.addRelationLinksToDataview(d.Dataview); err != nil {
+				return
 			}
 		}
 	}
@@ -520,4 +508,27 @@ func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.Bl
 		return model.Block_Replace
 	}
 	return model.Block_Bottom
+}
+
+func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (err error) {
+	var relationKeys []string
+	if len(d.RelationLinks) != 0 || len(d.Views) == 0 {
+		return
+	}
+	for _, r := range d.Views[0].Relations {
+		relationKeys = append(relationKeys, r.Key)
+	}
+	if len(relationKeys) == 0 {
+		return
+	}
+	relations, err := cb.relationService.FetchKeys(relationKeys...)
+	if err != nil {
+		return fmt.Errorf("failed to fetch relation keys of dataview: %v", err)
+	}
+	links := make([]*model.RelationLink, 0, len(relations))
+	for _, r := range relations {
+		links = append(links, r.RelationLink())
+	}
+	d.RelationLinks = links
+	return
 }
