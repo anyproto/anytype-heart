@@ -2,6 +2,8 @@ package anytype
 
 import (
 	"context"
+	"os"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
@@ -10,6 +12,7 @@ import (
 	"github.com/anytypeio/any-sync/net/secureservice"
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
+
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -60,7 +63,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
-	"os"
 )
 
 func StartAccountRecoverApp(ctx context.Context, eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
@@ -145,12 +147,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
+		Register(indexer.New()).
 		Register(core.New()).
 		Register(builtintemplate.New()).
 		Register(status.New()).
 		Register(block.New()).
 		Register(doc.New()).
-		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
