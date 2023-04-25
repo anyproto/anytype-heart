@@ -1,9 +1,9 @@
 package conc
 
 import (
-	"errors"
 	"sync"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo/parallel"
 )
 
@@ -20,7 +20,7 @@ func MapErr[T, R any](input []T, f func(T) (R, error)) ([]R, error) {
 			if allErrors == nil {
 				allErrors = err
 			} else {
-				allErrors = errors.Join(allErrors, err)
+				allErrors = multierror.Append(allErrors, err)
 			}
 			errLock.Unlock()
 		}
