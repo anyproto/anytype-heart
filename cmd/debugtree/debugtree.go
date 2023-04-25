@@ -53,7 +53,7 @@ func main() {
 	if *changeIdx != -1 {
 		ch, err := importer.ChangeAt(*changeIdx)
 		if err != nil {
-			log.Fatal("can't get the change in tree", err)
+			log.Fatal("can't get the change in tree: ", err)
 		}
 		fmt.Println("Change:")
 		fmt.Println(pbtypes.Sprint(ch.Model))
