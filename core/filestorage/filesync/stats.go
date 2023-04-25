@@ -46,7 +46,9 @@ func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat,
 		FileCount:  int(info.FilesCount),
 		CidsCount:  int(info.CidsCount),
 		BytesUsage: int(info.UsageBytes),
-		BytesLimit: int(info.LimitBytes),
+		// TODO Remove after test
+		BytesLimit: 52_428_800,
+		// BytesLimit: int(info.LimitBytes),
 	}, nil
 }
 
