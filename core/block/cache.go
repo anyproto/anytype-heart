@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
-	spaceservice "github.com/anytypeio/go-anytype-middleware/space"
 	"time"
+
+	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
+
+	spaceservice "github.com/anytypeio/go-anytype-middleware/space"
 
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
@@ -171,7 +173,7 @@ func (s *Service) DeleteObject(id string) (err error) {
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		err = s.OnDelete(id, func() error {
-			return Do(s, s.anytype.PredefinedBlocks().Account, func(w editor.Workspaces) error {
+			return Do(s, s.anytype.PredefinedBlocks().Account, func(w *editor.Workspaces) error {
 				return w.DeleteSubObject(id)
 			})
 		})
