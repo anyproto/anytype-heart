@@ -5,10 +5,12 @@ import (
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -16,10 +18,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -199,6 +203,72 @@ func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID 
 	ch := col[subscriptionID]
 	close(ch)
 	delete(col, subscriptionID)
+}
+
+func (s *Service) CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error) {
+	details = internalflag.PutToDetails(details, flags)
+
+	newState := state.NewDoc("", nil).NewState()
+
+	tmpls := []template.StateTransformer{
+		template.WithRequiredRelations(),
+	}
+
+	relations := []*model.RelationLink{
+		{
+			Format: model.RelationFormat_shorttext,
+			Key:    bundle.RelationKeyName.String(),
+		},
+	}
+	viewRelations := []*model.BlockContentDataviewRelation{
+		{
+			Key:       bundle.RelationKeyName.String(),
+			IsVisible: true,
+		},
+	}
+	for _, relKey := range dataview.DefaultDataviewRelations {
+		if pbtypes.HasRelationLink(relations, relKey.String()) {
+			continue
+		}
+		rel := bundle.MustGetRelation(relKey)
+		if rel.Hidden {
+			continue
+		}
+		relations = append(relations, &model.RelationLink{
+			Format: rel.Format,
+			Key:    rel.Key,
+		})
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+	}
+
+	blockContent := &model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			RelationLinks: relations,
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   bson.NewObjectId().Hex(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Filters:   nil,
+					Relations: viewRelations,
+				},
+			},
+		},
+	}
+	tmpls = append(tmpls,
+		template.WithDataview(*blockContent, false),
+	)
+
+	if err := template.InitTemplate(newState, tmpls...); err != nil {
+		return coresb.SmartBlockTypeCollection, nil, nil, err
+	}
+	return coresb.SmartBlockTypeCollection, details, newState, nil
 }
 
 func (s *Service) ObjectToCollection(id string) (string, error) {

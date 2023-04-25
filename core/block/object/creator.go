@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -38,15 +37,20 @@ type eventKey int
 const eventCreate eventKey = 0
 
 type Creator struct {
-	blockService  BlockService
-	blockPicker   block.Picker
-	objectStore   objectstore.ObjectStore
-	bookmark      bookmark.Service
-	objectFactory *editor.ObjectFactory
-	app           *app.App
+	blockService      BlockService
+	blockPicker       block.Picker
+	objectStore       objectstore.ObjectStore
+	collectionService CollectionService
+	bookmark          bookmark.Service
+	objectFactory     *editor.ObjectFactory
+	app               *app.App
 
 	// TODO: remove it?
 	anytype core.Service
+}
+
+type CollectionService interface {
+	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 }
 
 func NewCreator() *Creator {
@@ -60,6 +64,7 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
+	c.collectionService = app.MustComponent[CollectionService](a)
 	c.app = a
 	return nil
 }
@@ -233,74 +238,6 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, req.Details, newState)
 }
 
-func (c *Creator) CreateCollection(details *types.Struct, flags []*model.InternalFlag) (setID string, newDetails *types.Struct, err error) {
-	details = internalflag.PutToDetails(details, flags)
-
-	newState := state.NewDoc("", nil).NewState()
-
-	tmpls := []template.StateTransformer{
-		template.WithRequiredRelations(),
-	}
-
-	relations := []*model.RelationLink{
-		{
-			Format: model.RelationFormat_shorttext,
-			Key:    bundle.RelationKeyName.String(),
-		},
-	}
-	viewRelations := []*model.BlockContentDataviewRelation{
-		{
-			Key:       bundle.RelationKeyName.String(),
-			IsVisible: true,
-		},
-	}
-	for _, relKey := range dataview.DefaultDataviewRelations {
-		if pbtypes.HasRelationLink(relations, relKey.String()) {
-			continue
-		}
-		rel := bundle.MustGetRelation(relKey)
-		if rel.Hidden {
-			continue
-		}
-		relations = append(relations, &model.RelationLink{
-			Format: rel.Format,
-			Key:    rel.Key,
-		})
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
-	}
-
-	blockContent := &model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			RelationLinks: relations,
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:   bson.NewObjectId().Hex(),
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
-					Filters:   nil,
-					Relations: viewRelations,
-				},
-			},
-		},
-	}
-	tmpls = append(tmpls,
-		template.WithDataview(*blockContent, false),
-	)
-
-	if err = template.InitTemplate(newState, tmpls...); err != nil {
-		return "", nil, err
-	}
-
-	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeCollection, details, newState)
-}
-
 // TODO: it must be in another component
 func (c *Creator) CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
@@ -376,7 +313,11 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 		})
 	case bundle.TypeKeyCollection.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-		return c.CreateCollection(details, internalFlags)
+		sbType, details, st, err := c.collectionService.CreateCollection(details, internalFlags)
+		if err != nil {
+			return "", nil, err
+		}
+		return c.CreateSmartBlockFromState(context.TODO(), sbType, details, st)
 	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 		return c.CreateSubObjectInWorkspace(details, c.anytype.PredefinedBlocks().Account)
