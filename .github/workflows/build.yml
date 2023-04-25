@@ -61,7 +61,7 @@ jobs:
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
-          git config --global url."https://${ANYTYPE_PAT}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
           go mod download
