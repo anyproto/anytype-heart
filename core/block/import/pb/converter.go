@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -61,7 +60,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		errors.Add("", fmt.Errorf("wrong parameters"))
 		return nil, errors
 	}
-	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath())
+	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, params.GetPath(), req.IsMigration)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
@@ -93,7 +92,8 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	return &converter.Response{Snapshots: allSnapshots}, allErrors
 }
 
-func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, allPaths []string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, allPaths []string, isMigration bool) (
+	[]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allErrors := converter.NewError()
@@ -120,7 +120,7 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 			needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
 			profileId = profile.ProfileId
 		}
-		snapshots, objects, ce := p.getSnapshotsFromFiles(req, progress, pbFiles, allErrors, path, needToImportWidgets, profileId)
+		snapshots, objects, ce := p.getSnapshotsFromFiles(req, pbFiles, allErrors, path, needToImportWidgets, profileId, isMigration)
 		if !ce.IsEmpty() {
 			return nil, nil, ce
 		}
@@ -135,10 +135,7 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 }
 
 func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Snapshot) {
-	var (
-		newSpaceDashBoardID string
-		workspace           *converter.Snapshot
-	)
+	var workspace *converter.Snapshot
 	if profile == nil {
 		return
 	}
@@ -146,21 +143,8 @@ func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Sna
 		if snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
 			workspace = snapshot
 		}
-
-		// todo: what is happening here?
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		normalizedID := whitespace.WhitespaceNormalizeString(id)
-		normalizedSpaceDashboardID := whitespace.WhitespaceNormalizeString(profile.SpaceDashboardId)
-		if strings.EqualFold(normalizedID, normalizedSpaceDashboardID) {
-			newSpaceDashBoardID = snapshot.Id
-		}
 	}
-
 	if workspace != nil {
-		if newSpaceDashBoardID != "" {
-			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(newSpaceDashBoardID)
-		}
-
 		spaceName := pbtypes.GetString(workspace.Snapshot.Data.Details, bundle.RelationKeyName.String())
 		if spaceName == "" || spaceName == "Personal space" { // migrate legacy name
 			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(profile.Name)
@@ -174,11 +158,12 @@ func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Sna
 
 }
 func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
-	progress process.Progress,
 	pbFiles map[string]*converter.IOReader,
-	allErrors converter.ConvertError, path string,
+	allErrors converter.ConvertError,
+	path string,
 	needToCreateWidgets bool,
-	profileID string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+	profileID string,
+	isMigration bool) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
@@ -209,7 +194,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 			id = p.getIDForSubObject(mo, id)
 		}
 		if mo.SbType == model.SmartBlockType_ProfilePage {
-			id = p.getIDForUserProfile(mo, profileID, id)
+			id = p.getIDForUserProfile(mo, profileID, id, isMigration)
 			p.setProfileIconOption(mo, profileID)
 		}
 		p.fillDetails(name, path, mo)
@@ -228,9 +213,9 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	return allSnapshots, targetObjects, nil
 }
 
-func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string) string {
+func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	if objectID == profileID {
+	if objectID == profileID && isMigration {
 		return p.core.ProfileID()
 	}
 	return id
