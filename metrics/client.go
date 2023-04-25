@@ -2,12 +2,13 @@ package metrics
 
 import (
 	"context"
-	"github.com/cheggaaa/mb"
 	"sync"
 	"time"
 
+	"github.com/cheggaaa/mb"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics/amplitude"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/msingleton/amplitude-go"
 )
 
 var (
@@ -255,9 +256,9 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 	}
 	c.lock.RLock()
 	ampEvent := amplitude.Event{
-		UserId:          c.userId,
+		UserID:          c.userId,
 		Platform:        c.platform,
-		DeviceId:        c.deviceId,
+		DeviceID:        c.deviceId,
 		EventType:       e.EventType,
 		EventProperties: e.EventData,
 		AppVersion:      c.appVersion,

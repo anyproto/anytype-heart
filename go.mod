@@ -70,7 +70,6 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.1
 	github.com/miolini/datacounter v1.0.2
 	github.com/mr-tron/base58 v1.2.0
-	github.com/msingleton/amplitude-go v0.0.0-20200312121213-b7c11448c30e
 	github.com/multiformats/go-base32 v0.1.0
 	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/multiformats/go-multiaddr-dns v0.3.1
