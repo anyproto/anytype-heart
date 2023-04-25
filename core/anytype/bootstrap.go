@@ -139,7 +139,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	fileService := files.New(fileSyncStatusWatcher)
 
-	indexerService := indexer.New(blockService, spaceService, fileSyncStatusWatcher)
+	indexerService := indexer.New(blockService, spaceService, fileService)
 
 	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).

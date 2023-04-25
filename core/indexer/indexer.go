@@ -19,7 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync/filesyncstatus"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -68,12 +68,12 @@ var (
 func New(
 	picker block.Picker,
 	spaceService space.Service,
-	fileSyncStatusWatcher filesyncstatus.StatusWatcher,
+	fileService files.Service,
 ) Indexer {
 	return &indexer{
-		picker:                picker,
-		spaceService:          spaceService,
-		fileSyncStatusWatcher: fileSyncStatusWatcher,
+		picker:       picker,
+		spaceService: spaceService,
+		fileService:  fileService,
 	}
 }
 
@@ -92,14 +92,14 @@ type subObjectCreator interface {
 }
 
 type indexer struct {
-	store                 objectstore.ObjectStore
-	fileStore             filestore.FileStore
-	anytype               core.Service
-	source                source.Service
-	picker                block.Picker
-	ftsearch              ftsearch.FTSearch
-	subObjectCreator      subObjectCreator
-	fileSyncStatusWatcher filesyncstatus.StatusWatcher
+	store            objectstore.ObjectStore
+	fileStore        filestore.FileStore
+	anytype          core.Service
+	source           source.Service
+	picker           block.Picker
+	ftsearch         ftsearch.FTSearch
+	subObjectCreator subObjectCreator
+	fileService      files.Service
 
 	quit        chan struct{}
 	mu          sync.Mutex
@@ -437,7 +437,9 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		}
 		fileIDs, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
 		for _, fileID := range fileIDs {
-			i.fileSyncStatusWatcher.Watch(i.spaceService.AccountId(), fileID)
+			if addErr := i.fileService.AddToSyncQueue(fileID); addErr != nil {
+				log.Errorf("failed to add file %s to sync queue: %s", fileID, addErr.Error())
+			}
 		}
 		if err != nil {
 			return fmt.Errorf("get all file ids: %w", err)

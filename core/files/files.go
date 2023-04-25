@@ -59,6 +59,7 @@ type Service interface {
 	ImageAdd(ctx context.Context, options ...AddOption) (Image, error)
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
+	AddToSyncQueue(fileID string) error
 
 	app.Component
 }
@@ -373,7 +374,7 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, data strin
 
 // fileIndexNode walks a file node, indexing file links
 func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string) error {
-	if err := s.addToSyncQueue(fileID); err != nil {
+	if err := s.AddToSyncQueue(fileID); err != nil {
 		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 	}
 
@@ -758,7 +759,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
-	if err := s.addToSyncQueue(hash); err != nil {
+	if err := s.AddToSyncQueue(hash); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
 	}
 
@@ -815,7 +816,7 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	return files, nil
 }
 
-func (s *service) addToSyncQueue(fileID string) error {
+func (s *service) AddToSyncQueue(fileID string) error {
 	spaceID := s.spaceService.AccountId()
 
 	if err := s.fileSync.AddFile(spaceID, fileID); err != nil {
