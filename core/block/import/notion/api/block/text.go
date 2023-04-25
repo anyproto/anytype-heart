@@ -21,7 +21,8 @@ func (p *ParagraphBlock) GetBlocks(req *MapRequest) *MapResponse {
 		mapper := ChildrenMapper(&p.Paragraph)
 		childResp = mapper.MapChildren(req)
 	}
-	resp := p.Paragraph.GetTextBlocks(model.BlockContentText_Paragraph, childResp.BlockIDs, req)
+	childID := getChildID(childResp)
+	resp := p.Paragraph.GetTextBlocks(model.BlockContentText_Paragraph, childID, req)
 	resp.Merge(childResp)
 	return resp
 }
@@ -184,7 +185,8 @@ func (q *QuoteBlock) GetBlocks(req *MapRequest) *MapResponse {
 		mapper := ChildrenMapper(&q.Quote)
 		childResp = mapper.MapChildren(req)
 	}
-	resp := q.Quote.GetTextBlocks(model.BlockContentText_Quote, childResp.BlockIDs, req)
+	childID := getChildID(childResp)
+	resp := q.Quote.GetTextBlocks(model.BlockContentText_Quote, childID, req)
 	resp.Merge(childResp)
 	return resp
 }
@@ -212,7 +214,8 @@ func (n *NumberedListBlock) GetBlocks(req *MapRequest) *MapResponse {
 		mapper := ChildrenMapper(&n.NumberedList)
 		childResp = mapper.MapChildren(req)
 	}
-	resp := n.NumberedList.GetTextBlocks(model.BlockContentText_Numbered, childResp.BlockIDs, req)
+	childID := getChildID(childResp)
+	resp := n.NumberedList.GetTextBlocks(model.BlockContentText_Numbered, childID, req)
 	resp.Merge(childResp)
 	return resp
 }
@@ -284,7 +287,8 @@ func (b *BulletedListBlock) GetBlocks(req *MapRequest) *MapResponse {
 		mapper := ChildrenMapper(&b.BulletedList)
 		childResp = mapper.MapChildren(req)
 	}
-	resp := b.BulletedList.GetTextBlocks(model.BlockContentText_Marked, childResp.BlockIDs, req)
+	childID := getChildID(childResp)
+	resp := b.BulletedList.GetTextBlocks(model.BlockContentText_Marked, childID, req)
 	resp.Merge(childResp)
 	return resp
 }
@@ -312,9 +316,28 @@ func (t *ToggleBlock) GetBlocks(req *MapRequest) *MapResponse {
 		mapper := ChildrenMapper(&t.Toggle)
 		childResp = mapper.MapChildren(req)
 	}
-	resp := t.Toggle.GetTextBlocks(model.BlockContentText_Toggle, childResp.BlockIDs, req)
+
+	childID := getChildID(childResp)
+	resp := t.Toggle.GetTextBlocks(model.BlockContentText_Toggle, childID, req)
 	resp.Merge(childResp)
 	return resp
+}
+
+func getChildID(childResp *MapResponse) []string {
+	childIDs := make(map[string]struct{})
+	for _, block := range childResp.Blocks {
+		for _, id := range block.ChildrenIds {
+			childIDs[id] = struct{}{}
+		}
+	}
+	var notChildID []string
+
+	for _, id := range childResp.BlockIDs {
+		if _, ok := childIDs[id]; !ok {
+			notChildID = append(notChildID, id)
+		}
+	}
+	return notChildID
 }
 
 func (t *ToggleBlock) HasChild() bool {
@@ -348,7 +371,7 @@ func (c *CodeBlock) GetBlocks(req *MapRequest) *MapResponse {
 			Fields: map[string]*types.Value{"lang": pbtypes.String(c.Code.Language)},
 		},
 	}
-	marks := []*model.BlockContentTextMark{}
+	var marks []*model.BlockContentTextMark
 	var code string
 	for _, rt := range c.Code.RichText {
 		from := textUtil.UTF16RuneCountString(code)
