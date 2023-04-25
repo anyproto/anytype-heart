@@ -1,8 +1,9 @@
 package subscription
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func newCache() *cache {
@@ -19,6 +20,7 @@ type entry struct {
 	subIsActive []bool
 }
 
+// SetSub marks provided subscription for the entry as active (within the current pagination window) or inactive
 func (e *entry) SetSub(subId string, isActive bool) {
 	if pos := slice.FindPos(e.subIds, subId); pos == -1 {
 		e.subIds = append(e.subIds, subId)
@@ -28,6 +30,7 @@ func (e *entry) SetSub(subId string, isActive bool) {
 	}
 }
 
+// IsActive indicates that entry is inside the current pagination window for all of provided subscription IDs
 func (e *entry) IsActive(subIds ...string) bool {
 	if len(subIds) == 0 {
 		return false

@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
@@ -71,15 +70,17 @@ func (c *collectionContainer) String() string {
 }
 
 type collectionSub struct {
-	id          string
-	keys        []string
-	col         *collectionContainer
-	sendEvent   func(event *pb.Event)
-	cache       *cache
-	objectStore objectstore.ObjectStore
-
+	id            string
+	keys          []string
+	col           *collectionContainer
+	sendEvent     func(event *pb.Event)
 	activeIDs     []string
 	activeEntries []*entry
+	dependentSub  *simpleSub
+
+	cache       *cache
+	objectStore objectstore.ObjectStore
+	depService  *dependencyService
 }
 
 func (s *service) newCollectionSub(id string, collectionID string, keys []string, filter filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
@@ -97,6 +98,7 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 		sendEvent:   s.sendEvent,
 		cache:       s.cache,
 		objectStore: s.objectStore,
+		depService:  s.ds,
 	}
 	col.onUpdate = sub.onCollectionUpdate
 
@@ -109,10 +111,14 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 }
 
 func (c *collectionSub) init(entries []*entry) (err error) {
-	entries = slice.Filter(entries, func(e *entry) bool {
-		return slices.Contains(c.col.List(), e.id)
-	})
-	c.activeEntries = entries
+	ids := c.col.List()
+	c.activeIDs = ids
+	newEntries := c.fetchEntries(ids)
+	for _, e := range newEntries {
+		// TODO Filter
+		e.SetSub(c.id, true)
+	}
+	c.activeEntries = newEntries
 	return nil
 }
 
@@ -122,29 +128,55 @@ func (c *collectionSub) counters() (prev, next int) {
 }
 
 func (c *collectionSub) onChange(ctx *opCtx) {
-	// TODO update details
+	// TODO Handle all cases, not only updating. Consider having a filter or sorting
+	for _, e := range ctx.entries {
+		if idx := slice.FindPos(c.activeIDs, e.id); idx >= 0 {
+			cur := c.cache.Get(e.id)
+			if cur != nil {
+				c.activeEntries[idx] = cur
+				cur.SetSub(c.id, true)
+				ctx.change = append(ctx.change, opChange{
+					id:    e.id,
+					subId: c.id,
+					keys:  c.keys,
+				})
+			}
+		}
+	}
 }
 
-func (c *collectionSub) onCollectionUpdate(changes []slice.Change[string]) {
-	c.activeIDs = slice.ApplyChanges(c.activeIDs, changes, slice.StringIdentity[string])
-
-	newEntries := make([]*entry, 0, len(c.activeIDs))
-	for _, id := range c.activeIDs {
+func (c *collectionSub) fetchEntries(ids []string) []*entry {
+	res := make([]*entry, 0, len(ids))
+	for _, id := range ids {
 		if e := c.cache.Get(id); e != nil {
-			newEntries = append(newEntries, e)
+			res = append(res, e)
 			continue
 		}
+		// TODO query in one batch
 		recs, err := c.objectStore.QueryById([]string{id})
 		if err != nil {
 			// TODO proper logging
 			fmt.Println("query new entry:", err)
 		}
 		if len(recs) > 0 {
-			newEntries = append(newEntries, &entry{
+			e := &entry{
 				id:   id,
 				data: recs[0].Details,
-			})
+			}
+			c.cache.Set(e)
+			res = append(res, e)
 		}
+	}
+	return res
+}
+
+func (c *collectionSub) onCollectionUpdate(changes []slice.Change[string]) {
+	c.activeIDs = slice.ApplyChanges(c.activeIDs, changes, slice.StringIdentity[string])
+
+	newEntries := c.fetchEntries(c.activeIDs)
+	for _, e := range newEntries {
+		// TODO Filter
+		e.SetSub(c.id, true)
 	}
 	ctx := &opCtx{
 		entries: newEntries,
@@ -171,6 +203,10 @@ func (c *collectionSub) onCollectionUpdate(changes []slice.Change[string]) {
 
 		if rm := ch.Remove(); rm != nil {
 			for _, id := range rm.IDs {
+				e := c.cache.Get(id)
+				if e != nil {
+					e.RemoveSubId(c.id)
+				}
 				ctx.remove = append(ctx.remove, opRemove{
 					id:    id,
 					subId: c.id,
@@ -203,6 +239,7 @@ func (c *collectionSub) onCollectionUpdate(changes []slice.Change[string]) {
 
 func (c *collectionSub) getActiveRecords() (res []*types.Struct) {
 	// TODO decide where to filter and reorder records. Here or in onChange?
+	// TODO check how this method works in simpleSub
 	for _, e := range c.activeEntries {
 		res = append(res, e.data)
 	}

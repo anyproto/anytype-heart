@@ -144,9 +144,9 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		req.Limit = 0
 	}
 
-	// if req.SubId == "bafyecciobreco4u7pixvnzzkg4ktheglgiexzcv2qhqo2upzsznho7xz-dataview" {
-	// 	req.CollectionId = "bafybanjhjpw3dmpumc44e2aiynd6p4pcs3v3rrq64far3kslt3aix6ut"
-	// }
+	if req.SubId == "bafyecciobreco4u7pixvnzzkg4ktheglgiexzcv2qhqo2upzsznho7xz-dataview" {
+		req.CollectionId = "bafybanjhjpw3dmpumc44e2aiynd6p4pcs3v3rrq64far3kslt3aix6ut"
+	}
 
 	if req.CollectionId != "" {
 		return s.makeCollectionSubscription(req, f, records)
