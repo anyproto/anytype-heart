@@ -285,3 +285,5 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 replace github.com/multiformats/go-multiaddr => github.com/anytypeio/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
 replace github.com/gogo/protobuf => github.com/anytypeio/protobuf v1.3.3-0.20220812130913-4790a673c288
+
+replace github.com/anytypeio/any-sync => ../any-sync

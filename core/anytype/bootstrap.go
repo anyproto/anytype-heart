@@ -137,7 +137,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	statusService := status.New(sbtProvider, coreService, fileStatusWatcher, objectStatusWatcher, subObjectsStatusWatcher, linkedFilesStatusWatcher)
 
-	fileService := files.New(fileSyncStatusWatcher)
+	fileService := files.New(fileSyncStatusWatcher, objectStore)
 
 	indexerService := indexer.New(blockService, spaceService, fileService)
 

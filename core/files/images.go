@@ -12,6 +12,14 @@ import (
 var ErrImageNotFound = fmt.Errorf("image not found")
 
 func (s *service) ImageByHash(ctx context.Context, hash string) (Image, error) {
+	ok, err := s.isDeleted(hash)
+	if err != nil {
+		return nil, fmt.Errorf("check if file is deleted: %w", err)
+	}
+	if ok {
+		return nil, ErrFileNotFound
+	}
+
 	files, err := s.fileStore.ListByTarget(hash)
 	if err != nil {
 		return nil, err

@@ -156,9 +156,6 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	if v := pbtypes.Get(largest.Info().GetMeta(), "width"); v != nil {
-		if v.GetNumberValue() <= maxFaviconPixelSize {
-			return nil, ErrFileNotIndexable
-		}
 		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
 		if v.GetNumberValue() < imageObjectHiddenWidth {
 			details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
@@ -166,9 +163,6 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	if v := pbtypes.Get(largest.Info().GetMeta(), "height"); v != nil {
-		if v.GetNumberValue() <= maxFaviconPixelSize {
-			return nil, ErrFileNotIndexable
-		}
 		details.Fields[bundle.RelationKeyHeightInPixels.String()] = v
 	}
 

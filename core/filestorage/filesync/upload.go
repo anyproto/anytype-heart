@@ -18,6 +18,23 @@ import (
 )
 
 func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
+	ok, storeErr := f.hasFileInStore(fileId)
+	if storeErr != nil {
+		return fmt.Errorf("check if file is in store: %w", storeErr)
+	}
+	if !ok {
+		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+		return nil
+	}
+
+	ok, err = f.queue.IsAlreadyUploaded(spaceId, fileId)
+	if err != nil {
+		return fmt.Errorf("check if file is already uploaded: %w", err)
+	}
+	if ok {
+		log.Info("file is already uploaded", zap.String("fileID", fileId))
+		return nil
+	}
 	log.Info("add file to uploading queue", zap.String("fileID", fileId))
 	defer func() {
 		if err == nil {
@@ -71,16 +88,15 @@ func (f *fileSync) tryToUpload() (string, error) {
 	if err != nil {
 		return fileId, err
 	}
+	ok, storeErr := f.hasFileInStore(fileId)
+	if storeErr != nil {
+		return fileId, fmt.Errorf("check if file is in store: %w", storeErr)
+	}
+	if !ok {
+		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+		return fileId, f.queue.DoneUpload(spaceId, fileId)
+	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
-		ok, storeErr := f.hasFileInStore(fileId)
-		if storeErr != nil {
-			return fileId, storeErr
-		}
-		if !ok {
-			log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
-			return fileId, f.queue.DoneUpload(spaceId, fileId)
-		}
-
 		if err == errReachedLimit {
 			if !wasDiscarded {
 				f.sendLimitReachedEvent(spaceId, fileId)
@@ -170,11 +186,11 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 }
 
 func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
-	keys, err := f.fileStore.GetFileKeys(fileID)
+	roots, err := f.fileStore.ListByTarget(fileID)
 	if err != localstore.ErrNotFound && err != nil {
 		return false, err
 	}
-	return len(keys) > 0, nil
+	return len(roots) > 0, nil
 }
 
 func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {

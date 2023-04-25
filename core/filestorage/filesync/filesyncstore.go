@@ -57,7 +57,7 @@ func (s *fileSyncStore) DoneUpload(spaceId, fileId string) (err error) {
 		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
 			return err
 		}
-		return txn.Set(doneKey(spaceId, fileId), binTime())
+		return txn.Set(doneUploadKey(spaceId, fileId), binTime())
 	})
 }
 
@@ -71,21 +71,15 @@ func removeFromUploadingQueue(txn *badger.Txn, spaceID string, fileID string) er
 	return nil
 }
 
-func (s *fileSyncStore) DoneDiscarded(spaceId, fileId string) (err error) {
-	return s.db.Update(func(txn *badger.Txn) error {
-		if err = txn.Delete(discardedKey(spaceId, fileId)); err != nil {
-			return err
-		}
-		return txn.Set(doneKey(spaceId, fileId), binTime())
-	})
-}
-
 func (s *fileSyncStore) DoneRemove(spaceId, fileId string) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
 		if err = txn.Delete(removeKey(spaceId, fileId)); err != nil {
 			return err
 		}
-		return txn.Set(doneKey(spaceId, fileId), binTime())
+		if err = txn.Delete(doneUploadKey(spaceId, fileId)); err != nil {
+			return err
+		}
+		return txn.Set(doneRemoveKey(spaceId, fileId), binTime())
 	})
 }
 
@@ -177,9 +171,9 @@ func (s *fileSyncStore) QueueLen() (l int, err error) {
 	return
 }
 
-func (s *fileSyncStore) IsDone(spaceId, fileId string) (done bool, err error) {
+func (s *fileSyncStore) IsAlreadyUploaded(spaceId, fileId string) (done bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
-		_, e := txn.Get(doneKey(spaceId, fileId))
+		_, e := txn.Get(doneUploadKey(spaceId, fileId))
 		if e != nil && e != badger.ErrKeyNotFound {
 			return e
 		}
@@ -203,8 +197,12 @@ func removeKey(spaceId, fileId string) (key []byte) {
 	return []byte(keyPrefix + "queue/remove/" + spaceId + "/" + fileId)
 }
 
-func doneKey(spaceId, fileId string) (key []byte) {
-	return []byte(keyPrefix + "done/" + spaceId + "/" + fileId)
+func doneUploadKey(spaceId, fileId string) (key []byte) {
+	return []byte(keyPrefix + "done/upload/" + spaceId + "/" + fileId)
+}
+
+func doneRemoveKey(spaceId, fileId string) (key []byte) {
+	return []byte(keyPrefix + "done/remove/" + spaceId + "/" + fileId)
 }
 
 func binTime() []byte {

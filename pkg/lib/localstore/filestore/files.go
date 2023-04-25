@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var (
@@ -94,7 +95,7 @@ type FileStore interface {
 	ListTargets() ([]string, error)
 	ListByTarget(target string) ([]*storage.FileInfo, error)
 	Count() (int, error)
-	DeleteByHash(hash string) error
+	DeleteFile(hash string) error
 	DeleteByTarget(targetHash string) error
 	DeleteFileKeys(hash string) error
 	ListFileKeys() ([]string, error)
@@ -296,18 +297,7 @@ func (m *dsFileStore) ListFileKeys() ([]string, error) {
 }
 
 func (m *dsFileStore) DeleteFileKeys(hash string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	fileKeysKey := filesKeysBase.ChildString(hash)
-	err = txn.Delete(fileKeysKey)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
+	return nil
 }
 
 func (m *dsFileStore) addSingleFileKeys(txn ds.Txn, hash string, keys map[string]string) error {
@@ -530,6 +520,15 @@ func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
 	}
 	defer txn.Discard()
 
+	files, err := m.listByTarget(target, txn)
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
+func (m *dsFileStore) listByTarget(target string, txn ds.Txn) ([]*storage.FileInfo, error) {
 	results, err := localstore.GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{target}, "", indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
@@ -555,7 +554,6 @@ func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
 
 		files = append(files, &file)
 	}
-
 	return files, nil
 }
 
@@ -598,36 +596,69 @@ func (m *dsFileStore) List() ([]*storage.FileInfo, error) {
 	return infos, nil
 }
 
-func (m *dsFileStore) DeleteByHash(hash string) error {
-	file, err := m.GetByHash(hash)
+func (m *dsFileStore) DeleteFile(hash string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+
+	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return fmt.Errorf("failed to find file by hash to remove")
+		return fmt.Errorf("create txn: %w", err)
+	}
+	defer txn.Discard()
+
+	files, err := m.listByTarget(hash, txn)
+	if err != nil {
+		return fmt.Errorf("list files by target: %w", err)
 	}
 
-	return m.deleteFile(file)
+	for _, f := range files {
+		// Remove indexed targets
+		if err = localstore.RemoveIndexWithTxn(indexTargets, txn, f, f.Hash); err != nil {
+			return fmt.Errorf("remove index: %w", err)
+		}
+		f.Targets = slice.Remove(f.Targets, hash)
+
+		if len(f.Targets) == 0 {
+			if derr := m.deleteFile(txn, f); derr != nil {
+				return fmt.Errorf("failed to delete file %s: %w", f.Hash, derr)
+			}
+		} else {
+			// Update targets
+			raw, err := proto.Marshal(f)
+			if err != nil {
+				return err
+			}
+			err = txn.Put(filesInfoBase.ChildString(f.Hash), raw)
+			if err != nil {
+				return err
+			}
+			// Add updated targets to index
+			if err = localstore.AddIndexWithTxn(indexTargets, txn, f, f.Hash); err != nil {
+				return fmt.Errorf("update index: %w", err)
+			}
+		}
+	}
+
+	err = txn.Delete(filesKeysBase.ChildString(hash))
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
 }
 
-func (m *dsFileStore) deleteFile(file *storage.FileInfo) error {
+func (m *dsFileStore) DeleteByTarget(targetHash string) error {
+	return nil
+}
+
+func (m *dsFileStore) deleteFile(txn ds.Txn, file *storage.FileInfo) error {
 	err := localstore.RemoveIndexes(m, m.ds, file, file.Hash)
 	if err != nil {
 		return err
 	}
 
 	fileInfoKey := filesInfoBase.ChildString(file.Hash)
-	return m.ds.Delete(fileInfoKey)
-}
-
-func (m *dsFileStore) DeleteByTarget(targetHash string) error {
-	files, err := m.ListByTarget(targetHash)
-	if err != nil {
-		return fmt.Errorf("failed to find files by target to remove: %w", err)
-	}
-	for _, f := range files {
-		if derr := m.deleteFile(f); derr != nil {
-			return fmt.Errorf("failed to delete file %s: %w", f.Hash, derr)
-		}
-	}
-	return nil
+	return txn.Delete(fileInfoKey)
 }
 
 func (m *dsFileStore) getInt(key dsCtx.Key) (int, error) {

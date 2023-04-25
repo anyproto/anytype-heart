@@ -61,7 +61,6 @@ func (f *file) getDetailsForFileOrImage(ctx context.Context, id string) (p *type
 		if err != nil {
 			return nil, false, err
 		}
-		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedBlocks().Account)
 		return d, true, nil
 	}
 
@@ -69,7 +68,6 @@ func (f *file) getDetailsForFileOrImage(ctx context.Context, id string) (p *type
 	if err != nil {
 		return nil, false, err
 	}
-	d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedBlocks().Account)
 	return d, false, nil
 }
 
@@ -81,10 +79,10 @@ func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 
 	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)
 	if err != nil {
-		if err == files.ErrFileNotIndexable {
-			return s, nil
-		}
 		return nil, err
+	}
+	if d.GetFields() != nil {
+		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedBlocks().Account)
 	}
 
 	s.SetDetails(d)
@@ -101,10 +99,10 @@ func (f *file) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, e
 
 	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)
 	if err != nil {
-		if err == files.ErrFileNotIndexable {
-			return s, nil
-		}
 		return nil, err
+	}
+	if d.GetFields() != nil {
+		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedBlocks().Account)
 	}
 
 	s.SetDetails(d)

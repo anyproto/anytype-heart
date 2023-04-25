@@ -180,17 +180,17 @@ func (s *Service) DeleteObject(id string) (err error) {
 		})
 	case coresb.SmartBlockTypeFile:
 		err = s.OnDelete(id, func() error {
-			if err = s.fileStore.DeleteByTarget(id); err != nil {
+			if err := s.fileStore.DeleteFile(id); err != nil {
 				return err
 			}
-			if err = s.fileStore.DeleteFileKeys(id); err != nil {
-				return err
+			if err := s.fileSync.RemoveFile(s.clientService.AccountId(), id); err != nil {
+				return fmt.Errorf("failed to remove file from sync: %w", err)
 			}
 			_, err = s.fileService.FileOffload(id, true)
 			if err != nil {
 				return err
 			}
-			return s.fileSync.RemoveFile(s.clientService.AccountId(), id)
+			return nil
 		})
 	default:
 		var space commonspace.Space

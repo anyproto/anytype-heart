@@ -95,11 +95,11 @@ func TestFileSyncStore_IsDone(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
 	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1"))
-	done, err := fx.IsDone("spaceId1", "fileId1")
+	done, err := fx.IsAlreadyUploaded("spaceId1", "fileId1")
 	require.NoError(t, err)
 	assert.False(t, done)
 	require.NoError(t, fx.DoneUpload("spaceId1", "fileId1"))
-	done, err = fx.IsDone("spaceId1", "fileId1")
+	done, err = fx.IsAlreadyUploaded("spaceId1", "fileId1")
 	require.NoError(t, err)
 	assert.True(t, done)
 }

@@ -92,7 +92,7 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
-	localStore, err := newFlatStore(f.flatfsPath, f.sendEvent, 2*time.Second)
+	localStore, err := newFlatStore(f.flatfsPath, f.sendEvent, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("flatstore: %w", err)
 	}
