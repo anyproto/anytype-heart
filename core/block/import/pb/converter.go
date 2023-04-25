@@ -424,12 +424,18 @@ func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
 
 // cleanupEmptyBlockMigration is fixing existing pages, imported from Notion
 func (p *Pb) cleanupEmptyBlock(snapshot *pb.SnapshotWithType) {
+	var (
+		emptyBlock *model.Block
+	)
+
 	for _, block := range snapshot.Snapshot.Data.Blocks {
 		if block.Content == nil {
-			block.Content = &model.BlockContentOfSmartblock{
-				Smartblock: &model.BlockContentSmartblock{},
-			}
-			break
+			emptyBlock = block
+		} else if block.GetSmartblock() != nil {
+			return
 		}
+	}
+	if emptyBlock != nil {
+		emptyBlock.Content = &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}
 	}
 }
