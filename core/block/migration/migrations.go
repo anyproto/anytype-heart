@@ -45,3 +45,25 @@ func MakeMigrations(migrations []Migration) Migrations {
 	}
 	return res
 }
+
+func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) error {
+	migrator, ok := sb.(Migrator)
+	if !ok {
+		return nil
+	}
+
+	if initCtx.IsNewObject {
+		def := migrator.CreationStateMigration(initCtx)
+		def.Proc(initCtx.State)
+		initCtx.State.SetMigrationVersion(def.Version)
+	}
+
+	migs := migrator.StateMigrations()
+	for _, m := range migs.Migrations {
+		if m.Version > initCtx.State.MigrationVersion() {
+			m.Proc(initCtx.State)
+			initCtx.State.SetMigrationVersion(m.Version)
+		}
+	}
+	return sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
+}

@@ -107,37 +107,11 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
-	err = f.runMigrations(sb, initCtx)
+	err = migration.RunMigrations(sb, initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 	return
-}
-
-func (f *ObjectFactory) runMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) error {
-	migrator, ok := sb.(migration.Migrator)
-	if !ok {
-		return nil
-	}
-
-	apply := func() error {
-		return sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
-	}
-
-	if initCtx.IsNewObject {
-		def := migrator.CreationStateMigration(initCtx)
-		def.Proc(initCtx.State)
-		initCtx.State.SetMigrationVersion(def.Version)
-	}
-
-	migs := migrator.StateMigrations()
-	for _, m := range migs.Migrations {
-		if m.Version > initCtx.State.MigrationVersion() {
-			m.Proc(initCtx.State)
-			initCtx.State.SetMigrationVersion(m.Version)
-		}
-	}
-	return apply()
 }
 
 func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {

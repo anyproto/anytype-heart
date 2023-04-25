@@ -28,6 +28,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -1124,9 +1125,9 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 	})
 }
 
-func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
+func (s *Service) ResetToState(pageId string, st *state.State) (err error) {
 	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
-		return sb.ResetToVersion(state)
+		return history.ResetToVersion(sb, st)
 	})
 }
 

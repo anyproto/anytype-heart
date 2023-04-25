@@ -10,7 +10,9 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	history2 "github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -43,13 +45,9 @@ type History interface {
 	app.Component
 }
 
-type BlockService interface {
-	ResetToState(pageId string, s *state.State) (err error)
-}
-
 type history struct {
 	a               core.Service
-	blockService    BlockService
+	picker          block.Picker
 	objectStore     objectstore.ObjectStore
 	relationService relation.Service
 	spaceService    space.Service
@@ -57,7 +55,7 @@ type history struct {
 
 func (h *history) Init(a *app.App) (err error) {
 	h.a = a.MustComponent(core.CName).(core.Service)
-	h.blockService = a.MustComponent(block.CName).(BlockService)
+	h.picker = app.MustComponent[block.Picker](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.relationService = a.MustComponent(relation.CName).(relation.Service)
 	h.spaceService = a.MustComponent(space.CName).(space.Service)
@@ -185,7 +183,9 @@ func (h *history) SetVersion(pageId, versionId string) (err error) {
 	if err != nil {
 		return
 	}
-	return h.blockService.ResetToState(pageId, s)
+	return block.Do(h.picker, pageId, func(sb smartblock2.SmartBlock) error {
+		return history2.ResetToVersion(sb, s)
+	})
 }
 
 func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {

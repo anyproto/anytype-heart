@@ -22,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -294,8 +295,8 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 		st.SetDetail(k, pbtypes.StringList(vals))
 	}
 	start := time.Now()
-	err = b.service.Do(newId, func(b sb.SmartBlock) error {
-		return b.ResetToVersion(st)
+	err = b.service.Do(newId, func(sb sb.SmartBlock) error {
+		return history.ResetToVersion(sb, st)
 	})
 	if err != nil {
 		return err
