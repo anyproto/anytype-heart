@@ -750,6 +750,10 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 		}
 	}
 
+	if err := s.objectStore.DeleteObject(id); err != nil {
+		return fmt.Errorf("delete object from local store: %w", err)
+	}
+
 	return
 }
 

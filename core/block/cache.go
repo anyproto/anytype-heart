@@ -4,18 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
+	"go.uber.org/zap"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"go.uber.org/zap"
-	"time"
 )
 
 type ctxKey int
@@ -45,7 +47,7 @@ type InitFunc = func(id string) *smartblock.InitContext
 func (s *Service) createCache() ocache.OCache {
 	return ocache.New(
 		s.cacheLoad,
-		//ocache.WithLogger(log.Desugar()),
+		// ocache.WithLogger(log.Desugar()),
 		ocache.WithRefCounter(true),
 		ocache.WithGCPeriod(time.Minute),
 		// TODO: [MR] Get ttl from config
