@@ -49,7 +49,7 @@ func NewPage(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService files.IService,
+	fileService files.Service,
 ) *Page {
 	f := file.NewFile(
 		sb,

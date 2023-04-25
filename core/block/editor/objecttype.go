@@ -40,7 +40,7 @@ func NewObjectType(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService files.IService,
+	fileService files.Service,
 ) *ObjectType {
 	return &ObjectType{
 		relationService: relationService,

@@ -36,7 +36,7 @@ func NewSubObject(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService files.IService,
+	fileService files.Service,
 ) *SubObject {
 	return &SubObject{
 		SmartBlock:    sb,

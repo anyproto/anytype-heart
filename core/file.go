@@ -68,7 +68,7 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileService := app.MustComponent[files.IService](mw.app)
+	fileService := app.MustComponent[files.Service](mw.app)
 	totalFilesOffloaded, totalBytesOffloaded, err := fileService.FileListOffload(req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
@@ -93,7 +93,7 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileService := app.MustComponent[files.IService](mw.app)
+	fileService := app.MustComponent[files.Service](mw.app)
 
 	bytesRemoved, err := fileService.FileOffload(req.Id, req.IncludeNotPinned)
 	if err != nil {
@@ -135,7 +135,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	usage, err := getService[files.IService](mw).GetSpaceUsage(cctx)
+	usage, err := getService[files.Service](mw).GetSpaceUsage(cctx)
 	if err != nil {
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}

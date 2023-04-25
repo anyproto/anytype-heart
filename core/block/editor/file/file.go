@@ -39,7 +39,7 @@ func NewFile(
 	sb smartblock.SmartBlock,
 	fileSource BlockService,
 	tempDirProvider core.TempDirProvider,
-	fileService files.IService,
+	fileService files.Service,
 ) File {
 	return &sfile{
 		SmartBlock:      sb,
@@ -79,7 +79,7 @@ type sfile struct {
 	smartblock.SmartBlock
 	fileSource      BlockService
 	tempDirProvider core.TempDirProvider
-	fileService     files.IService
+	fileService     files.Service
 }
 
 func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -301,7 +301,7 @@ type dropFilesHandler interface {
 type dropFilesProcess struct {
 	id              string
 	s               BlockService
-	fileService     files.IService
+	fileService     files.Service
 	tempDirProvider core.TempDirProvider
 	root            *dropFileEntry
 	total, done     int64

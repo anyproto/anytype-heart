@@ -47,9 +47,9 @@ const (
 var log = logging.Logger("anytype-files")
 var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
 
-var _ IService = (*service)(nil)
+var _ Service = (*service)(nil)
 
-type IService interface {
+type Service interface {
 	FileAdd(ctx context.Context, options ...AddOption) (File, error)
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileGetKeys(hash string) (*FileKeys, error)
@@ -91,7 +91,7 @@ type FileKeys struct {
 	Keys map[string]string
 }
 
-func New() IService {
+func New() Service {
 	return &service{}
 }
 

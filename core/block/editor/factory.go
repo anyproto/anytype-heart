@@ -41,7 +41,7 @@ type ObjectFactory struct {
 	sourceService        source.Service
 	tempDirProvider      core.TempDirProvider
 	templateCloner       templateCloner
-	fileService          files.IService
+	fileService          files.Service
 
 	smartblockFactory smartblockFactory
 }
@@ -69,7 +69,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	f.templateCloner = app.MustComponent[templateCloner](a)
-	f.fileService = app.MustComponent[files.IService](a)
+	f.fileService = app.MustComponent[files.Service](a)
 
 	f.smartblockFactory = smartblockFactory{
 		anytype:            f.anytype,

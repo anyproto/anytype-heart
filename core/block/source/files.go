@@ -19,7 +19,7 @@ import (
 
 var getFileTimeout = time.Second * 5
 
-func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.IService, id string) (s Source) {
+func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.Service, id string) (s Source) {
 	return &file{
 		id:          id,
 		a:           a,
@@ -32,7 +32,7 @@ type file struct {
 	id          string
 	a           core.Service
 	fileStore   filestore.FileStore
-	fileService files.IService
+	fileService files.Service
 }
 
 func (f *file) ReadOnly() bool {

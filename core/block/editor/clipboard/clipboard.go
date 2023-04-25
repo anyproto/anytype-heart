@@ -46,7 +46,7 @@ func NewClipboard(
 	file file.File,
 	tempDirProvider core.TempDirProvider,
 	relationService relation.Service,
-	fileService files.IService,
+	fileService files.Service,
 ) Clipboard {
 	return &clipboard{
 		SmartBlock:      sb,
@@ -62,7 +62,7 @@ type clipboard struct {
 	file            file.File
 	tempDirProvider core.TempDirProvider
 	relationService relation.Service
-	fileService     files.IService
+	fileService     files.Service
 }
 
 func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {

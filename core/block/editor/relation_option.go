@@ -28,7 +28,7 @@ func NewRelationOption(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService files.IService,
+	fileService files.Service,
 ) *RelationOption {
 	return &RelationOption{
 		SubObject: NewSubObject(
