@@ -639,7 +639,7 @@ func (mw *Middleware) ObjectSetDashboard(cctx context.Context, req *pb.RpcObject
 	ctx := mw.newContext(cctx)
 	response := func(setId string, err error) *pb.RpcObjectSetDashboardResponse {
 		resp := &pb.RpcObjectSetDashboardResponse{
-			NewDashboardId: setId,
+			ObjectId: setId,
 			Error: &pb.RpcObjectSetDashboardResponseError{
 				Code: pb.RpcObjectSetDashboardResponseError_NULL,
 			},

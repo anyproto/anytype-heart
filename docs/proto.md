@@ -11103,7 +11103,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.SetDashboard.Response.Error](#anytype-Rpc-Object-SetDashboard-Response-Error) |  |  |
-| newDashboardId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 
