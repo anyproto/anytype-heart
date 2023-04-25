@@ -97,11 +97,11 @@ func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 }
 
 func (s *service) isFileDeleted(fileID string) (bool, error) {
-	_, err := s.fileStore.GetByHash(fileID)
+	roots, err := s.fileStore.ListByTarget(fileID)
 	if err == localstore.ErrNotFound {
 		return true, nil
 	}
-	return false, err
+	return len(roots) == 0, err
 }
 
 func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
@@ -114,6 +114,7 @@ func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 	for _, fileStat := range fileStats {
 		if fileStat.IsPinned() {
 			fileIDs = append(fileIDs, fileStat.FileId)
+			continue
 		}
 		isDeleted, err := s.isFileDeleted(fileStat.FileId)
 		if err != nil {
