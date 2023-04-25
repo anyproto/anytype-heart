@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -974,49 +975,23 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 func (sb *smartBlock) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
 
+	var toLayout model.ObjectTypeLayout
 	if len(objectTypes) > 0 {
 		ot, err := objectstore.GetObjectType(sb.objectStore, objectTypes[0])
 		if err != nil {
 			return err
 		}
 
-		if ot.Layout == model.ObjectType_note {
-			if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; ok && name.GetStringValue() != "" {
-				newBlock := simple.New(&model.Block{
-					Content: &model.BlockContentOfText{
-						Text: &model.BlockContentText{Text: name.GetStringValue()},
-					},
-				})
-				s.Add(newBlock)
-
-				if err := s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, newBlock.Model().Id); err != nil {
-					return err
-				}
-
-				s.RemoveDetail(bundle.RelationKeyName.String())
-			}
-		}
+		toLayout = ot.Layout
 	}
 
-	if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
-		if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
-			textBlock, err := s.GetFirstTextBlock()
-			if err != nil {
-				return err
-			}
-			if textBlock != nil {
-				s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
+	var fromLayout model.ObjectTypeLayout
+	if layout, ok := s.Layout(); ok {
+		fromLayout = layout
+	}
 
-				for _, id := range textBlock.Model().ChildrenIds {
-					s.Unlink(id)
-				}
-				err = s.InsertTo(textBlock.Model().Id, model.Block_Bottom, textBlock.Model().ChildrenIds...)
-				if err != nil {
-					return fmt.Errorf("insert children: %w", err)
-				}
-				s.Unlink(textBlock.Model().Id)
-			}
-		}
+	if err = converter.ConvertLayout(s, fromLayout, toLayout); err != nil {
+		return fmt.Errorf("convert layout: %w", err)
 	}
 
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
@@ -1078,13 +1053,20 @@ func (sb *smartBlock) SetLayout(ctx *session.Context, layout model.ObjectTypeLay
 }
 
 func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (err error) {
+	fromLayout, _ := s.Layout()
+	if err = converter.ConvertLayout(s, fromLayout, layout); err != nil {
+		return fmt.Errorf("convert layout: %w", err)
+	}
+
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(layout)))
 	// reset align when layout todo
+	// TODO Move to converter
 	if layout == model.ObjectType_todo {
 		if err = sb.setAlign(s, model.Block_AlignLeft); err != nil {
 			return
 		}
 	}
+
 	return template.InitTemplate(s, template.ByLayout(layout)...)
 }
 
