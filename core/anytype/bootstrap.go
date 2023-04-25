@@ -28,7 +28,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
-	"github.com/anytypeio/go-anytype-middleware/core/block/object/creator"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object/objectcreator"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object/objectgraph"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -107,14 +107,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	spaceService := space.New()
 	sbtProvider := typeprovider.New(spaceService)
 	objectStore := objectstore.New(sbtProvider)
-	objectCreator := creator.NewCreator(sbtProvider)
+	objectCreator := objectcreator.NewCreator(sbtProvider)
 	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
 	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 	indexerService := indexer.New(blockService, spaceService)
 	relationService := relation.New()
 	coreService := core.New()
-	graphRenderer := objectgraph.NewGraphRender(sbtProvider, relationService, objectStore, coreService)
+	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
 
 	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).

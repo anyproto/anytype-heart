@@ -1,4 +1,4 @@
-package creator
+package objectcreator
 
 import (
 	"context"
@@ -47,7 +47,7 @@ type Service interface {
 	app.Component
 }
 
-type ObjectCreator struct {
+type Creator struct {
 	blockService      BlockService
 	blockPicker       block.Picker
 	objectStore       objectstore.ObjectStore
@@ -66,13 +66,13 @@ type CollectionService interface {
 	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 }
 
-func NewCreator(sbtProvider typeprovider.SmartBlockTypeProvider) *ObjectCreator {
-	return &ObjectCreator{
+func NewCreator(sbtProvider typeprovider.SmartBlockTypeProvider) *Creator {
+	return &Creator{
 		sbtProvider: sbtProvider,
 	}
 }
 
-func (c *ObjectCreator) Init(a *app.App) (err error) {
+func (c *Creator) Init(a *app.App) (err error) {
 	c.anytype = a.MustComponent(core.CName).(core.Service)
 	c.blockService = a.MustComponent(block.CName).(BlockService)
 	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
@@ -88,7 +88,7 @@ func (c *ObjectCreator) Init(a *app.App) (err error) {
 
 const CName = "objectCreator"
 
-func (c *ObjectCreator) Name() (name string) {
+func (c *Creator) Name() (name string) {
 	return CName
 }
 
@@ -98,7 +98,7 @@ type BlockService interface {
 	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
-func (c *ObjectCreator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
 		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -112,7 +112,7 @@ func (c *ObjectCreator) CreateSmartBlockFromTemplate(ctx context.Context, sbType
 
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
-func (c *ObjectCreator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -193,7 +193,7 @@ func (c *ObjectCreator) CreateSmartBlockFromState(ctx context.Context, sbType co
 	return id, sb.CombinedDetails(), nil
 }
 
-func (c *ObjectCreator) InjectWorkspaceID(details *types.Struct, objectID string) {
+func (c *Creator) InjectWorkspaceID(details *types.Struct, objectID string) {
 	workspaceID, err := c.anytype.GetWorkspaceIdForObject(objectID)
 	if err != nil {
 		workspaceID = ""
@@ -207,7 +207,7 @@ func (c *ObjectCreator) InjectWorkspaceID(details *types.Struct, objectID string
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
 }
 
-func (c *ObjectCreator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	// TODO remove it, when schema will be refactored
@@ -253,7 +253,7 @@ func (c *ObjectCreator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID stri
 }
 
 // TODO: it must be in another component
-func (c *ObjectCreator) CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = block.Do(c.blockPicker, workspaceID, func(ws *editor.Workspaces) error {
 		id, newDetails, err = ws.CreateSubObject(details)
@@ -263,7 +263,7 @@ func (c *ObjectCreator) CreateSubObjectInWorkspace(details *types.Struct, worksp
 }
 
 // TODO: it must be in another component
-func (c *ObjectCreator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+func (c *Creator) CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
 	// todo: rewrite to the current workspace id
 	err = block.Do(c.blockPicker, c.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
@@ -277,7 +277,7 @@ func (c *ObjectCreator) CreateSubObjectsInWorkspace(details []*types.Struct) (id
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (c *ObjectCreator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
+func (c *Creator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
 	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
 	var res bookmark.ContentFuture
 	if source != "" {
@@ -294,7 +294,7 @@ func (c *ObjectCreator) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequ
 	return c.bookmark.CreateBookmarkObject(req.Details, res)
 }
 
-func (c *ObjectCreator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
+func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
 	details = req.GetDetails()
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}

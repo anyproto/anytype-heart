@@ -32,7 +32,7 @@ type Builder struct {
 	*app.App
 }
 
-func NewGraphRender(
+func NewBuilder(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	relationService relation.Service,
 	objectStore objectstore.ObjectStore,
@@ -50,7 +50,7 @@ func (gr *Builder) Init(a *app.App) (err error) {
 	return nil
 }
 
-const CName = "graphRenderer"
+const CName = "graphBuilder"
 
 func (gr *Builder) Name() (name string) {
 	return CName
