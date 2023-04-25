@@ -48,7 +48,7 @@ func Test_ImportSuccess(t *testing.T) {
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -72,7 +72,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
 	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -113,7 +113,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
@@ -154,7 +154,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
@@ -197,7 +197,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", true, nil).Times(1)
 	i.objectIDGetter = idGetter
 	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
-		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: "test"}},
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
