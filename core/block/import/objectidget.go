@@ -103,7 +103,7 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 				Value:       pbtypes.String(oldAnytypeID),
 			},
 		},
-	}, nil)
+	}, []sb.SmartBlockType{sbType})
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}

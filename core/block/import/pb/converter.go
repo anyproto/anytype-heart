@@ -198,15 +198,19 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		if mo == nil {
 			continue
 		}
+		if _, ok := model.SmartBlockType_name[int32(mo.SbType)]; !ok {
+			newSbType := model.SmartBlockType_Page
+			if int32(mo.SbType) == 96 { // fallback for objectType smartblocktype
+				newSbType = model.SmartBlockType_SubObject
+			}
+			mo.SbType = newSbType
+		}
 		if mo.SbType == model.SmartBlockType_SubObject {
 			id = p.getIDForSubObject(mo, id)
 		}
 		if mo.SbType == model.SmartBlockType_ProfilePage {
 			id = p.getIDForUserProfile(mo, profileID, id)
 			p.setProfileIconOption(mo, profileID)
-		}
-		if _, ok := model.SmartBlockType_name[int32(mo.SbType)]; !ok {
-			mo.SbType = model.SmartBlockType_Page
 		}
 		p.fillDetails(name, path, mo)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
