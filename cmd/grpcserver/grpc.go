@@ -4,6 +4,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -123,8 +125,7 @@ func main() {
 				select {
 				case <-doneCh:
 				case <-time.After(defaultUnaryWarningAfter):
-					trace := base64.RawStdEncoding.EncodeToString(stackAllGoroutines())
-					log.With("method", info.FullMethod).With("in_progress", true).With("goroutines", trace).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
+					log.With("method", info.FullMethod).With("in_progress", true).With("goroutines", base64GzippedStack()).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
 				}
 			}()
 			resp, err = handler(ctx, req)
@@ -272,4 +273,13 @@ func stackAllGoroutines() []byte {
 		}
 		buf = make([]byte, 2*len(buf))
 	}
+}
+
+func base64GzippedStack() string {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	_, _ = gz.Write(stackAllGoroutines())
+	_ = gz.Close()
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }
