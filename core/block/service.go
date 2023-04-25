@@ -33,6 +33,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
@@ -140,6 +142,9 @@ type Service struct {
 	tempDirProvider core.TempDirProvider
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 	layoutConverter converter.LayoutConverter
+
+	fileSync    filesync.FileSync
+	fileService *files.Service
 }
 
 func (s *Service) Name() string {
@@ -162,6 +167,8 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.fileSync = app.MustComponent[filesync.FileSync](a)
+	s.fileService = app.MustComponent[*files.Service](a)
 	s.cache = s.createCache()
 	s.app = a
 	return
@@ -657,14 +664,12 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 
 func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) {
 	var (
-		fileHashes []string
 		isFavorite bool
 	)
 
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose()
 		st := b.NewState()
-		fileHashes = st.GetAllFileHashes(b.FileRelationKeys(st))
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 		if isFavorite {
 			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
@@ -678,32 +683,6 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
-
-	for _, fileHash := range fileHashes {
-		inboundLinks, err := s.objectStore.GetOutboundLinksById(fileHash)
-		if err != nil {
-			log.Errorf("failed to get inbound links for file %s: %s", fileHash, err.Error())
-			continue
-		}
-		if len(inboundLinks) == 0 {
-			if err = s.objectStore.DeleteObject(fileHash); err != nil {
-				log.With("file", fileHash).Errorf("failed to delete file from objectstore: %s", err.Error())
-			}
-			if err = s.fileStore.DeleteByHash(fileHash); err != nil {
-				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
-			}
-			// space will be reclaimed on the next GC cycle
-			// TODO FIXXXXXXXXXXX
-			// if _, err = s.Anytype().FileOffload(fileHash); err != nil {
-			// 	log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
-			// 	continue
-			// }
-			if err = s.fileStore.DeleteFileKeys(fileHash); err != nil {
-				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
-			}
-		}
-	}
-
 	if err := s.objectStore.DeleteObject(id); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)
 	}

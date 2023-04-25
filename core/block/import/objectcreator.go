@@ -304,22 +304,12 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 func (oc *ObjectCreator) deleteFile(hash string) {
 	inboundLinks, err := oc.objectStore.GetOutboundLinksById(hash)
 	if err != nil {
-		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err.Error())
-		return
+		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
 	}
 	if len(inboundLinks) == 0 {
-		if err = oc.objectStore.DeleteObject(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
-		}
-		if err = oc.fileStore.DeleteByHash(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
-		}
-		// TODO: FIXXXXXX
-		// if _, err = oc.core.FileOffload(hash); err != nil {
-		// 	log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
-		// }
-		if err = oc.fileStore.DeleteFileKeys(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
+		err = oc.service.DeleteObject(hash)
+		if err != nil {
+			log.With("file", hash).Errorf("failed to delete file: %s", err)
 		}
 	}
 }
