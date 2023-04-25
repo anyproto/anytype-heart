@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -350,14 +351,22 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
+	var existedObjects []string
+	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
+		existedObjects = pbtypes.GetStringList(s.Store(), sb.CollectionStoreKey)
+		return nil
+	})
+	if err != nil {
+		log.Errorf("failed to get existed objects in collection, %s", err)
+	}
 	objectsInCollections := pbtypes.GetStringList(st.Store(), sb.CollectionStoreKey)
-	newIDs := make([]string, 0)
-	for _, id := range objectsInCollections {
+	for i, id := range objectsInCollections {
 		if newID, ok := oldIDtoNew[id]; ok {
-			newIDs = append(newIDs, newID)
+			objectsInCollections[i] = newID
 		}
 	}
-	st.StoreSlice(sb.CollectionStoreKey, newIDs)
+	result := slice.Union(existedObjects, objectsInCollections)
+	st.StoreSlice(sb.CollectionStoreKey, result)
 }
 
 func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
