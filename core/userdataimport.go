@@ -38,13 +38,13 @@ func (mw *Middleware) UserDataImport(cctx context.Context,
 	if err != nil {
 		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
 	}
-	err = mw.createAccount(profile, req)
+	address, err := mw.createAccount(profile, req)
 	if err != nil {
 		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
 	}
 
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-	err = importer.ImportUserData(ctx, req)
+	err = importer.ImportUserData(ctx, req, address)
 
 	if err != nil {
 		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
@@ -55,12 +55,12 @@ func (mw *Middleware) UserDataImport(cctx context.Context,
 	return response(pb.RpcUserDataImportResponseError_NULL, nil)
 }
 
-func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImportRequest) error {
+func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImportRequest) (string, error) {
 	mw.m.Lock()
 
 	defer mw.m.Unlock()
 	if err := mw.stop(); err != nil {
-		return err
+		return "", err
 	}
 
 	mw.rootPath = req.RootPath
@@ -68,17 +68,17 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 
 	err := os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = mw.setMnemonic(profile.Mnemonic)
 	if err != nil {
-		return err
+		return "", err
 	}
 	mw.accountSearchCancel()
 
 	err = mw.extractAccountDirectory(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
@@ -86,7 +86,7 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 	var account wallet.Keypair
 	account, err = core.WalletAccountAt(mw.mnemonic, index, "")
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if req.StorePath != "" && req.StorePath != mw.rootPath {
@@ -96,11 +96,11 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 
 		err = os.MkdirAll(storePath, 0700)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		if err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
-			return err
+			return "", err
 		}
 	}
 
@@ -114,7 +114,7 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 
 	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
 	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
-		return err
+		return "", err
 	}
 
 	newAcc.Name = profile.Name
@@ -134,11 +134,11 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
-		return err
+		return "", err
 	}
 
 	mw.foundAccounts = append(mw.foundAccounts, newAcc)
-	return nil
+	return account.Address(), nil
 }
 
 func (mw *Middleware) extractAccountDirectory(req *pb.RpcUserDataImportRequest) error {
@@ -156,14 +156,13 @@ func (mw *Middleware) extractAccountDirectory(req *pb.RpcUserDataImportRequest) 
 		}
 	}
 	for _, file := range archive.File {
-		if strings.EqualFold(file.FileInfo().Name(), accountName) {
+		if file.FileInfo().Name() == accountName {
 			continue
 		}
 
-		n := file.FileHeader.Name
-		// extract from zip archive only files in account directory
-		if strings.Contains(n, accountName) {
-			path := filepath.Join(mw.rootPath, n)
+		fName := file.FileHeader.Name
+		if strings.Contains(fName, accountName) {
+			path := filepath.Join(mw.rootPath, fName)
 			if file.FileInfo().IsDir() {
 				os.MkdirAll(path, file.Mode())
 				continue

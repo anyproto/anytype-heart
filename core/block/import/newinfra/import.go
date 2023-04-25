@@ -3,6 +3,7 @@ package newinfra
 import (
 	"archive/zip"
 	"io"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -48,7 +49,7 @@ func (i *NewInfra) GetUserProfile(req *pb.RpcUserDataImportRequest, progress *pr
 	return &profile, nil
 }
 
-func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *process.Progress) *converter.Response {
+func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *process.Progress, address string) *converter.Response {
 	archive, err := zip.OpenReader(req.Path)
 	importError := converter.NewError()
 	if err != nil {
@@ -63,11 +64,25 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *proc
 		if f.Name == profileFile {
 			continue
 		}
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		// skip files from account directory
+		if strings.Contains(f.FileHeader.Name, address) {
+			continue
+		}
 		oldIDToNew[f.Name] = uuid.New().String()
 
 	}
 	for _, f := range archive.File {
 		if f.Name == profileFile {
+			continue
+		}
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		// skip files from account directory
+		if strings.Contains(f.FileHeader.Name, address) {
 			continue
 		}
 		reader, err := f.Open()

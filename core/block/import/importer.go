@@ -167,12 +167,12 @@ func ImportUserProfile(ctx *session.Context, req *pb.RpcUserDataImportRequest) (
 	return profile, nil
 }
 
-func (i *Import) ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportRequest) error {
+func (i *Import) ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportRequest, address string) error {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	progress.SetProgressMessage("Getting user data from path")
 	ni := newinfra.NewImporter()
-	res := ni.GetSnapshots(req, progress)
+	res := ni.GetSnapshots(req, progress, address)
 	if len(res.Error) != 0 {
 		return res.Error.Error()
 	}
