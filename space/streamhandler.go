@@ -22,14 +22,17 @@ type streamHandler struct {
 }
 
 func (s *streamHandler) OpenStream(ctx context.Context, p peer.Peer) (stream drpc.Stream, tags []string, err error) {
+	return s.OpenSpaceStream(ctx, p, s.s.getOpenedSpaceIds())
+}
+
+func (s *streamHandler) OpenSpaceStream(ctx context.Context, p peer.Peer, spaceIds []string) (stream drpc.Stream, tags []string, err error) {
 	objectStream, err := spacesyncproto.NewDRPCSpaceSyncClient(p).ObjectSyncStream(ctx)
 	if err != nil {
 		return
 	}
-	openedSpaceIds := s.s.getOpenedSpaceIds()
-	if len(openedSpaceIds) > 0 {
+	if len(spaceIds) > 0 {
 		var msg = &spacesyncproto.SpaceSubscription{
-			SpaceIds: openedSpaceIds,
+			SpaceIds: spaceIds,
 			Action:   spacesyncproto.SpaceSubscriptionAction_Subscribe,
 		}
 		payload, merr := msg.Marshal()
@@ -43,7 +46,7 @@ func (s *streamHandler) OpenStream(ctx context.Context, p peer.Peer) (stream drp
 			return
 		}
 	}
-	return objectStream, nil, nil
+	return objectStream, spaceIds, nil
 }
 
 func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg drpc.Message) (err error) {
@@ -53,6 +56,10 @@ func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg dr
 		return
 	}
 	ctx = peer.CtxWithPeerId(ctx, peerId)
+
+	if syncMsg.SpaceId == "" {
+		return s.s.HandleMessage(ctx, peerId, syncMsg)
+	}
 
 	space, err := s.s.GetSpace(ctx, syncMsg.SpaceId)
 	if err != nil {

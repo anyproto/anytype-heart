@@ -27,6 +27,22 @@ func Test_Insert(t *testing.T) {
 	assert.Equal(t, []string{"0", "1", "2", "2.1", "2.2", "2.3", "3"}, s)
 }
 
+func Test_Intersection(t *testing.T) {
+	var res []string
+	res = Intersection([]string{"1"}, []string{"1"})
+	assert.Equal(t, []string{"1"}, res)
+	res = Intersection([]string{"2", "1"}, []string{"1", "2"})
+	assert.Equal(t, []string{"1", "2"}, res)
+	res = Intersection(nil, []string{"1", "2"})
+	assert.Nil(t, res)
+	res = Intersection(nil, nil)
+	assert.Nil(t, res)
+	res = Intersection([]string{"2", "3", "4"}, []string{"1", "2"})
+	assert.Equal(t, []string{"2"}, res)
+	res = Intersection([]string{"1", "2"}, []string{"10", "10", "10", "2", "5", "1"})
+	assert.Equal(t, []string{"1", "2"}, res)
+}
+
 func Test_Remove(t *testing.T) {
 	var ids = []string{"1", "2", "3"}
 	assert.Equal(t, []string{"1", "3"}, Remove(ids, "2"))

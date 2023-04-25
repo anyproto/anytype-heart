@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"math/rand"
 	"sort"
+	"strings"
 )
 
 func Union(a, b []string) []string {
@@ -42,18 +43,30 @@ func DifferenceRemovedAdded(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func FindPos[T comparable](s []T, v T) int {
-	for i, sv := range s {
-		if sv == v {
-			return i
+func Intersection(a, b []string) (res []string) {
+	sort.Strings(a)
+	sort.Strings(b)
+	aIdx := 0
+	bIdx := 0
+	for aIdx < len(a) && bIdx < len(b) {
+		cmp := strings.Compare(a[aIdx], b[bIdx])
+		switch cmp {
+		case 0:
+			res = append(res, a[aIdx])
+			aIdx++
+			bIdx++
+		case -1:
+			aIdx++
+		case 1:
+			bIdx++
 		}
 	}
-	return -1
+	return
 }
 
-func Find[T comparable](s []T, cond func(T) bool) int {
+func FindPos(s []string, v string) int {
 	for i, sv := range s {
-		if cond(sv) {
+		if sv == v {
 			return i
 		}
 	}
@@ -71,7 +84,7 @@ func Difference(a, b []string) []string {
 	return diff
 }
 
-func Insert[T any](s []T, pos int, v ...T) []T {
+func Insert(s []string, pos int, v ...string) []string {
 	if len(s) <= pos {
 		return append(s, v...)
 	}
@@ -82,7 +95,7 @@ func Insert[T any](s []T, pos int, v ...T) []T {
 }
 
 // Remove reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
-func Remove[T comparable](s []T, v T) []T {
+func Remove(s []string, v string) []string {
 	var n int
 	for _, x := range s {
 		if x != v {
@@ -93,30 +106,8 @@ func Remove[T comparable](s []T, v T) []T {
 	return s[:n]
 }
 
-// RemoveIndex reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
-func RemoveIndex[T any](s []T, idx int) []T {
-	var n int
-	for i, x := range s {
-		if i != idx {
-			s[n] = x
-			n++
-		}
-	}
-	return s[:n]
-}
-
-func Filter[T any](vals []T, cond func(T) bool) []T {
-	var result = make([]T, 0, len(vals))
-	for i := range vals {
-		if cond(vals[i]) {
-			result = append(result, vals[i])
-		}
-	}
-	return result
-}
-
-func FilterMut[T any](vals []T, cond func(T) bool) []T {
-	result := vals[:0]
+func Filter(vals []string, cond func(string) bool) []string {
+	var result = make([]string, 0, len(vals))
 	for i := range vals {
 		if cond(vals[i]) {
 			result = append(result, vals[i])

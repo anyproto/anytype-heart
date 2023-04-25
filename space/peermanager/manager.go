@@ -49,7 +49,20 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 	if err != nil {
 		return
 	}
-	return []peer.Peer{p}, nil
+	peers = []peer.Peer{p}
+	streams := n.p.streamPool.Streams(n.spaceId)
+	for _, stream := range streams {
+		peerId, err := peer.CtxPeerId(stream.Context())
+		if err != nil {
+			continue
+		}
+		clientPeer, err := n.p.UnaryPeerPool().Get(ctx, peerId)
+		if err != nil {
+			continue
+		}
+		peers = append(peers, clientPeer)
+	}
+	return
 }
 
 func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context, exactId string) (peers []peer.Peer, err error) {

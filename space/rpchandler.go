@@ -5,10 +5,20 @@ import (
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/net/peer"
+	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
 )
 
 type rpcHandler struct {
 	s *service
+}
+
+func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceproto.SpaceExchangeRequest) (resp *clientspaceproto.SpaceExchangeResponse, err error) {
+	allIds, err := r.s.spaceStorageProvider.AllSpaceIds()
+	if err != nil {
+		return
+	}
+	resp = &clientspaceproto.SpaceExchangeResponse{SpaceIds: allIds}
+	return
 }
 
 func (r *rpcHandler) SpacePull(ctx context.Context, request *spacesyncproto.SpacePullRequest) (resp *spacesyncproto.SpacePullResponse, err error) {

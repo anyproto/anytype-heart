@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
-	github.com/anytypeio/any-sync v0.0.7
+	github.com/anytypeio/any-sync v0.0.7-0.20230201222102-36307440863f
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -61,6 +61,7 @@ require (
 	github.com/libp2p/go-libp2p v0.24.1
 	github.com/libp2p/go-libp2p-kad-dht v0.20.0
 	github.com/libp2p/go-libp2p-record v0.2.0
+	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.4
 	github.com/mauidude/go-readability v0.0.0-20220221173116-a9b3620098b7
@@ -213,7 +214,6 @@ require (
 	github.com/libp2p/go-openssl v0.1.0 // indirect
 	github.com/libp2p/go-reuseport v0.2.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
-	github.com/libp2p/zeroconf/v2 v2.2.0 // indirect
 	github.com/lucas-clemente/quic-go v0.31.1 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
 	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect

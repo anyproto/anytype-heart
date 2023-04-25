@@ -44,3 +44,11 @@ func (p *provider) NewPeerManager(ctx context.Context, spaceId string) (peermana
 	pm.init()
 	return pm, nil
 }
+
+func (p *provider) UnaryPeerPool() pool.Pool {
+	return p.commonPool
+}
+
+func (p *provider) StreamPeerPool() pool.Pool {
+	return p.pool
+}

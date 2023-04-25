@@ -7,11 +7,19 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/commonspace/peermanager"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anytypeio/any-sync/net/dialer"
+	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/streampool"
+	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
+	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
+	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -21,6 +29,11 @@ var log = logger.NewNamed(CName)
 
 func New() Service {
 	return &service{}
+}
+
+type PoolManager interface {
+	UnaryPeerPool() pool.Pool
+	StreamPeerPool() pool.Pool
 }
 
 type Service interface {
@@ -37,8 +50,11 @@ type service struct {
 	spaceCache           ocache.OCache
 	commonSpace          commonspace.SpaceService
 	account              accountservice.Service
-	spaceStorageProvider spacestorage.SpaceStorageProvider
+	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
+	poolManager          PoolManager
+	streamHandler        *streamHandler
+	dialer               dialer.Dialer
 	accountId            string
 }
 
@@ -46,8 +62,14 @@ func (s *service) Init(a *app.App) (err error) {
 	s.conf = a.MustComponent("config").(commonspace.ConfigGetter).GetSpace()
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(spacestorage.SpaceStorageProvider)
-	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(&streamHandler{s: s}, streampool.StreamConfig{
+	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
+	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	s.dialer = a.MustComponent(dialer.CName).(dialer.Dialer)
+	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
+	localDiscovery.SetNotifier(s)
+	s.streamHandler = &streamHandler{s: s}
+
+	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(s.streamHandler, streampool.StreamConfig{
 		SendQueueWorkers: 10,
 		SendQueueSize:    300,
 		DialQueueWorkers: 4,
@@ -59,7 +81,11 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithGCPeriod(time.Minute),
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
-	return spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
+	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
+	if err != nil {
+		return
+	}
+	return clientspaceproto.DRPCRegisterClientSpace(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 }
 
 func (s *service) Name() (name string) {
@@ -106,6 +132,19 @@ func (s *service) GetSpace(ctx context.Context, id string) (space commonspace.Sp
 	return v.(commonspace.Space), nil
 }
 
+func (s *service) HandleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
+	var msg = &spacesyncproto.SpaceSubscription{}
+	if err = msg.Unmarshal(req.Payload); err != nil {
+		return
+	}
+	log.InfoCtx(ctx, "got subscription message", zap.Strings("spaceIds", msg.SpaceIds))
+	if msg.Action == spacesyncproto.SpaceSubscriptionAction_Subscribe {
+		return s.streamPool.AddTagsCtx(ctx, msg.SpaceIds...)
+	} else {
+		return s.streamPool.RemoveTagsCtx(ctx, msg.SpaceIds...)
+	}
+}
+
 func (s *service) StreamPool() streampool.StreamPool {
 	return s.streamPool
 }
@@ -136,4 +175,36 @@ func (s *service) getOpenedSpaceIds() (ids []string) {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	return s.spaceCache.Close()
+}
+
+func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
+	s.dialer.SetPeerAddrs(peer.PeerId, []string{peer.Addr})
+	ctx := context.Background()
+	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
+	if err != nil {
+		return
+	}
+	allIds, err := s.spaceStorageProvider.AllSpaceIds()
+	if err != nil {
+		return
+	}
+	resp, err := clientspaceproto.NewDRPCClientSpaceClient(unaryPeer).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
+		SpaceIds: allIds,
+	})
+	if err != nil {
+		return
+	}
+	is := slice.Intersection(allIds, resp.SpaceIds)
+	if len(is) == 0 {
+		return
+	}
+	streamPeer, err := s.poolManager.StreamPeerPool().Get(ctx, peer.PeerId)
+	if err != nil {
+		return
+	}
+	stream, _, err := s.streamHandler.OpenSpaceStream(ctx, streamPeer, is)
+	if err != nil {
+		return
+	}
+	s.streamPool.AddStream(peer.PeerId, stream, is...)
 }
