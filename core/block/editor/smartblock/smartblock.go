@@ -745,11 +745,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
+	// TODO !!! Run migrations !!!
 	s.SetParent(sb.Doc.(*state.State))
-	// Do not reset migration version
-	if p := s.ParentState(); p != nil {
-		s.SetMigrationVersion(p.MigrationVersion())
-	}
 
 	sb.storeFileKeys(s)
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {

@@ -100,7 +100,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
-func (p *Page) DefaultState(ctx *smartblock.InitContext) migration.Migration {
+func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	layout, ok := ctx.State.Layout()
 	if !ok {
 		// nolint:errcheck
@@ -147,7 +147,7 @@ func (p *Page) StateMigrations() migration.Migrations {
 					b := simple.New(&model.Block{
 						Content: &model.BlockContentOfText{
 							Text: &model.BlockContentText{
-								Text: "Test 1 " + p.Id(),
+								Text: "VER 2 " + p.Id(),
 							},
 						},
 					})
@@ -162,7 +162,7 @@ func (p *Page) StateMigrations() migration.Migrations {
 					b := simple.New(&model.Block{
 						Content: &model.BlockContentOfText{
 							Text: &model.BlockContentText{
-								Text: "Test 2 " + p.Id(),
+								Text: "VER 3 " + p.Id(),
 							},
 						},
 					})

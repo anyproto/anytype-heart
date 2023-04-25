@@ -8,7 +8,7 @@ import (
 )
 
 type Migrator interface {
-	DefaultState(ctx *smartblock.InitContext) Migration
+	CreationStateMigration(ctx *smartblock.InitContext) Migration
 	StateMigrations() Migrations
 }
 
@@ -18,8 +18,7 @@ type Migration struct {
 }
 
 type Migrations struct {
-	LastVersion uint32
-	Migrations  []Migration
+	Migrations []Migration
 }
 
 func (m Migrations) Len() int {
@@ -44,9 +43,5 @@ func MakeMigrations(migrations []Migration) Migrations {
 			panic("two migrations have the same version")
 		}
 	}
-	if len(migrations) > 0 {
-		res.LastVersion = migrations[len(migrations)-1].Version
-	}
-
 	return res
 }

@@ -125,22 +125,14 @@ func (f *ObjectFactory) runMigrations(sb smartblock.SmartBlock, initCtx *smartbl
 	}
 
 	if initCtx.IsNewObject {
-		def := migrator.DefaultState(initCtx)
+		def := migrator.CreationStateMigration(initCtx)
 		def.Proc(initCtx.State)
 		initCtx.State.SetMigrationVersion(def.Version)
-		// TODO Do not return, proceed with other migrations
-		return apply()
 	}
 
-	// TODO Remove Migrations struct, I don't like it
 	migs := migrator.StateMigrations()
-	ver := initCtx.State.MigrationVersion()
-	if migs.LastVersion <= ver {
-		return apply()
-	}
-
 	for _, m := range migs.Migrations {
-		if m.Version > ver {
+		if m.Version > initCtx.State.MigrationVersion() {
 			m.Proc(initCtx.State)
 			initCtx.State.SetMigrationVersion(m.Version)
 		}
