@@ -250,29 +250,21 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 			b := simple.New(dvBlock)
 			st.Set(b)
 
-			typeFilter := &model.BlockContentDataviewFilter{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(typesFromSet),
+			recs, _, err := s.objectStore.Query(nil, database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyType.String(),
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       pbtypes.StringList(typesFromSet),
+					},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("can't get records for collection: %w", err)
 			}
-
-			uniqIDs := map[string]struct{}{}
-			for _, v := range dvBlock.GetDataview().Views {
-				recs, _, err := s.objectStore.Query(nil, database.Query{
-					Filters: append(v.Filters, typeFilter),
-				})
-				if err != nil {
-					return fmt.Errorf("can't get records for collection: %w", err)
-				}
-				for _, r := range recs {
-					id := pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
-					uniqIDs[id] = struct{}{}
-				}
-			}
-
-			ids := make([]string, 0, len(uniqIDs))
-			for id := range uniqIDs {
-				ids = append(ids, id)
+			ids := make([]string, 0, len(recs))
+			for _, r := range recs {
+				ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
 			}
 			st.StoreSlice(storeKey, ids)
 			return nil
