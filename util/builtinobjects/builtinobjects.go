@@ -12,15 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/textileio/go-threads/core/thread"
-
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -34,11 +32,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -51,7 +51,7 @@ var log = logging.Logger("anytype-mw-builtinobjects")
 
 const (
 	analyticsContext         = "get-started"
-	builtInDashboardObjectID = "bafybajhnav5nrikgey5hb6rwiq6j6mulyon3my4ehg3riia37cape4ru"
+	builtInDashboardObjectID = "bafyreiffhfg6rxuerttu2uhlvd6hlvhh4w3cd3iu6d7pge6eypwhw6mlsa"
 	bookmarkSetObjectID      = "bafyecaocfyfix22kzhfqt42r5xk2ngzwwmxchnhzcsz6akx4pqd6evez"
 	everythingSetObjectID    = "bafyedkxh25dd4ij7nlyogawdc6bsmj7skiqcjiwbckovqzqnacxx57mo"
 	videosViewID             = "c9e117ea-f101-491c-9622-524ec2a4d529"
@@ -60,22 +60,26 @@ const (
 	injectionTimeout = 30 * time.Second
 )
 
-func New() BuiltinObjects {
-	return new(builtinObjects)
-}
-
 type BuiltinObjects interface {
 	app.ComponentRunnable
 }
 
 type builtinObjects struct {
-	cancel     func()
-	source     source.Service
-	service    *block.Service
-	relService relation2.Service
+	cancel      func()
+	source      source.Service
+	service     *block.Service
+	relService  relation2.Service
+	sbtProvider typeprovider.SmartBlockTypeProvider
+	coreService core.Service
 
 	createBuiltinObjects bool
 	idsMap               map[string]string
+}
+
+func New(sbtProvider typeprovider.SmartBlockTypeProvider) BuiltinObjects {
+	return &builtinObjects{
+		sbtProvider: sbtProvider,
+	}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
@@ -83,6 +87,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.createBuiltinObjects = a.MustComponent(config.CName).(*config.Config).CreateBuiltinObjects
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
+	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.cancel = func() {}
 	return
 }
@@ -124,7 +129,13 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 	isSpaceDashboardIDFound := false
 	for _, zf := range zr.File {
 		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
-		sbt, err := smartblock.SmartBlockTypeFromID(id)
+		var sbt smartblock.SmartBlockType
+		if id == builtInDashboardObjectID {
+			isSpaceDashboardIDFound = true
+			sbt = smartblock.SmartBlockTypePage
+		} else {
+			sbt, err = b.sbtProvider.Type(id)
+		}
 		if err != nil {
 			sbt, err = SmartBlockTypeFromThreadID(id)
 			if err != nil {
@@ -144,14 +155,6 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			b.idsMap[id] = id
 			continue
 		}
-		if id == builtInDashboardObjectID {
-			b.idsMap[id], err = b.service.GetSpaceDashboardID(ctx)
-			if err != nil {
-				return err
-			}
-			isSpaceDashboardIDFound = true
-			continue
-		}
 
 		// create object
 		obj, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
@@ -164,6 +167,19 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			return err
 		}
 		newId := obj.Id()
+		if id == builtInDashboardObjectID {
+			if err2 := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+				ContextId: b.coreService.PredefinedBlocks().Account,
+				Details: []*pb.RpcObjectSetDetailsDetail{
+					{
+						Key:   bundle.RelationKeySpaceDashboardId.String(),
+						Value: pbtypes.String(newId),
+					},
+				},
+			}); err2 != nil {
+				log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err2.Error())
+			}
+		}
 		b.idsMap[id] = newId
 	}
 
@@ -188,7 +204,11 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	data, err := ioutil.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
 	if err = snapshot.Unmarshal(data); err != nil {
-		return
+		snapshotWithType := &pb.SnapshotWithType{}
+		if err = snapshotWithType.Unmarshal(data); err != nil {
+			return
+		}
+		snapshot = snapshotWithType.Snapshot
 	}
 
 	isFavorite := pbtypes.GetBool(snapshot.Data.Details, bundle.RelationKeyIsFavorite.String())
@@ -206,7 +226,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	st.SetRootId(newId)
 	a := st.Get(newId)
 	m := a.Model()
-	sbt, err := smartblock.SmartBlockTypeFromID(newId)
+	sbt, err := b.sbtProvider.Type(newId)
 	if sbt == smartblock.SmartBlockTypeSubObject {
 		ot, err := bundle.TypeKeyFromUrl(pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyType.String()))
 		if err != nil {
@@ -281,6 +301,19 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 		case dataview.Block:
 			// TODO: temporary solution of GO-1034, will be removed after GO-948 merge
 			b.putFirstRelationInViews(st, oldId, &a)
+			oldTarget := a.Model().GetDataview().TargetObjectId
+			if oldTarget == "" {
+				return true
+			}
+			newTarget := b.idsMap[oldTarget]
+			if newTarget == "" {
+				// maybe we should panic here?
+				log.With("object", oldId).Errorf("cant find target id for dataview: %s", oldTarget)
+				return true
+			}
+
+			a.Model().GetDataview().TargetObjectId = newTarget
+			st.Set(simple.New(a.Model()))
 		}
 		return true
 	})
