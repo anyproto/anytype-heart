@@ -1,26 +1,26 @@
 package markdown
 
 import (
-	"context"
 	"fmt"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -36,13 +36,12 @@ func init() {
 
 type Markdown struct {
 	blockConverter *mdConverter
-	otc            converter.ObjectTreeCreator
 }
 
 const Name = "Notion"
 
-func New(s core.Service, otc converter.ObjectTreeCreator) converter.Converter {
-	return &Markdown{blockConverter: newMDConverter(s), otc: otc}
+func New(s core.Service) converter.Converter {
+	return &Markdown{blockConverter: newMDConverter(s)}
 }
 
 func (m *Markdown) Name() string {
@@ -102,20 +101,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 	)
 	for name, file := range files {
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
-			ctx := context.Background()
-			obj, release, err := m.otc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
-				return &sb.InitContext{
-					Ctx: ctx,
-				}
-			})
-			if err != nil {
-				allErrors.Add(name, err)
-				if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-					return &converter.Response{Error: allErrors}
-				}
-			}
-			file.PageID = obj.Id()
-			release()
+			file.PageID = uuid.New().String()
 			if len(file.ParsedBlocks) > 0 {
 				if text := file.ParsedBlocks[0].GetText(); text != nil && text.Style == model.BlockContentText_Header1 {
 					title = text.Text
@@ -241,45 +227,6 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		}
 	}
 
-	for _, file := range files {
-		if file.PageID == "" {
-			// not a page
-			continue
-		}
-
-		if file.HasInboundLinks {
-			continue
-		}
-
-		file.ParsedBlocks = append(file.ParsedBlocks, &model.Block{
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: file.PageID,
-					Style:         model.BlockContentLink_Page,
-					Fields:        nil,
-				},
-			},
-		})
-	}
-
-	for _, file := range files {
-		if file.PageID == "" {
-			// not a page
-			continue
-		}
-
-		var childrenIds = make([]string, len(file.ParsedBlocks))
-		for _, b := range file.ParsedBlocks {
-			childrenIds = append(childrenIds, b.Id)
-		}
-
-		file.ParsedBlocks = append(file.ParsedBlocks, &model.Block{
-			Id:          file.PageID,
-			ChildrenIds: childrenIds,
-			Content:     &model.BlockContentOfSmartblock{},
-		})
-	}
-
 	snapshots := make([]*converter.Snapshot, 0)
 	for name, file := range files {
 		if file.PageID == "" {
@@ -288,6 +235,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 		}
 		snapshots = append(snapshots, &converter.Snapshot{
 			Id:       file.PageID,
+			SbType:   smartblock.SmartBlockTypePage,
 			FileName: name,
 			Snapshot: &model.SmartBlockSnapshotBase{
 				Blocks:      file.ParsedBlocks,
