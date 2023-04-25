@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -104,8 +103,8 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
 
-func (st *SmartTest) GetDocInfo() (doc.DocInfo, error) {
-	return doc.DocInfo{
+func (st *SmartTest) GetDocInfo() (DocInfo, error) {
+	return DocInfo{
 		Id: st.Id(),
 	}, nil
 }
