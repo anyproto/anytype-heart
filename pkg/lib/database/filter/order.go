@@ -91,14 +91,7 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 	}
 
 	if len(ko.Options) == 0 && ko.Store != nil {
-		options, err := ko.Store.GetAggregatedOptions(ko.Key)
-		if err != nil {
-			log.Warn("nil objectStore for getting options")
-			return pbtypes.String("")
-		}
-		for _, opt := range options {
-			ko.Options[opt.Id] = opt.Text
-		}
+		ko.Options = optionsToMap(ko.Key, ko.Store)
 	}
 
 	res := ""

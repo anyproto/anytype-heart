@@ -131,7 +131,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = enrichWithDateSuggestion(records, req)
+		records, err = enrichWithDateSuggestion(records, req, ds)
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
@@ -145,7 +145,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
 }
 
-func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearchRequest) ([]database.Record, error) {
+func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
 	dt := suggestDateForSearch(time.Now(), req.FullText)
 	if dt.IsZero() {
 		return records, nil
@@ -180,7 +180,7 @@ func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearch
 		}
 	}
 	rec = makeSuggestedDateRecord(dt, workspaceId)
-	f, _ := filter.MakeAndFilter(req.Filters)
+	f, _ := filter.MakeAndFilter(req.Filters, store)
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
 	}

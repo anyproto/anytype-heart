@@ -150,7 +150,7 @@ func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *tim
 		}
 	}
 
-	qFilter, err := filter.MakeAndFilter(q.Filters)
+	qFilter, err := filter.MakeAndFilter(q.Filters, store)
 	if err != nil {
 		return
 	}

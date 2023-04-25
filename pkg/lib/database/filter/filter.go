@@ -3,6 +3,7 @@ package filter
 import (
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -15,14 +16,14 @@ var (
 	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
-func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, error) {
+func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store OptionsGetter) (Filter, error) {
 
 	protoFilters = TransformQuickOption(protoFilters, nil)
 
 	var and AndFilters
 	for _, pf := range protoFilters {
 		if pf.Condition != model.BlockContentDataviewFilter_None {
-			f, err := MakeFilter(pf)
+			f, err := MakeFilter(pf, store)
 			if err != nil {
 				return nil, err
 			}
@@ -32,7 +33,7 @@ func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, er
 	return and, nil
 }
 
-func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
+func MakeFilter(proto *model.BlockContentDataviewFilter, store OptionsGetter) (Filter, error) {
 	// replaces "value == false" to "value != true" for expected work with checkboxes
 	if proto.Condition == model.BlockContentDataviewFilter_Equal && proto.Value != nil && proto.Value.Equal(pbtypes.Bool(false)) {
 		proto = &model.BlockContentDataviewFilter{
@@ -130,6 +131,7 @@ func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
 		return ExactIn{
 			Key:   proto.RelationKey,
 			Value: list,
+			Options: optionsToMap(proto.RelationKey, store),
 		}, nil
 	case model.BlockContentDataviewFilter_NotExactIn:
 		list, err := pbtypes.ValueListWrapper(proto.Value)
@@ -398,6 +400,7 @@ func (l AllIn) String() string {
 type ExactIn struct {
 	Key   string
 	Value *types.ListValue
+	Options map[string]string
 }
 
 func (exIn ExactIn) FilterObject(g Getter) bool {
@@ -412,6 +415,14 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 	if list == nil {
 		return false
 	}
+
+	if len(exIn.Options) > 0 {
+		list.Values = slice.Filter(list.GetValues(), func(value *types.Value) bool {
+			_, ok := exIn.Options[value.GetStringValue()]
+			return ok
+		})
+	}
+	
 	if len(list.GetValues()) != len(exIn.Value.GetValues()) {
 		return false
 	}
@@ -433,4 +444,18 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 
 func (exIn ExactIn) String() string {
 	return fmt.Sprintf("%s EXACTINN(%v)", exIn.Key, exIn.Value)
+}
+
+func optionsToMap(key string, store OptionsGetter) map[string]string {
+	result := make(map[string]string)
+	options, err := store.GetAggregatedOptions(key)
+	if err != nil {
+		log.Warn("nil objectStore for getting options")
+		return result
+	}
+	for _, opt := range options {
+		result[opt.Id] = opt.Text
+	}
+
+	return result
 }
