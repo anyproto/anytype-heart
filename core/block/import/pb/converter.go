@@ -144,6 +144,7 @@ func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Sna
 			workspace = snapshot
 		}
 	}
+
 	if workspace != nil {
 		spaceName := pbtypes.GetString(workspace.Snapshot.Data.Details, bundle.RelationKeyName.String())
 		if spaceName == "" || spaceName == "Personal space" { // migrate legacy name

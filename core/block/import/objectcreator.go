@@ -240,12 +240,12 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 
 func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, oldIDtoNew map[string]string) {
 	// hand-pick relation because space is a special case
-	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 	var details []*pb.RpcObjectSetDetailsDetail
-	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
+	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
+	if spaceDashBoardID != "" {
 		details = append(details, &pb.RpcObjectSetDetailsDetail{
 			Key:   bundle.RelationKeySpaceDashboardId.String(),
-			Value: pbtypes.String(id),
+			Value: pbtypes.String(spaceDashBoardID),
 		})
 	}
 
