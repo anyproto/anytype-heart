@@ -1,5 +1,6 @@
 export GOPRIVATE=github.com/anytypeio
 export GOLANGCI_LINT_VERSION=v1.49.0
+LOCALNODE ?= false
 
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
@@ -208,7 +209,11 @@ build-cli:
 build-server:
 	@echo 'Building middleware server...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
-	@go build -v -o dist/server -ldflags "$(FLAGS)" --tags "nosigar nowatchdog" ./cmd/grpcserver/grpc.go
+	@$(eval TAGS := nosigar nowatchdog)
+ifeq ($(LOCALNODE), true)
+	$(eval TAGS := $(TAGS) localnode)
+endif
+	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" ./cmd/grpcserver/grpc.go
 
 build-server-debug: protos-server
 	@echo 'Building middleware server with debug symbols...'
