@@ -2,7 +2,6 @@ package block
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
@@ -405,32 +403,6 @@ func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) 
 	//		return fmt.Errorf("incorrect object with workspace id")
 	//	}
 	//	return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
-	// })
-}
-
-func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
-	if req.ObjectId == "" || req.Payload == "" {
-		return fmt.Errorf("cannot add object without objectId or payload")
-	}
-	decodedPayload, err := base64.RawStdEncoding.DecodeString(req.Payload)
-	if err != nil {
-		return fmt.Errorf("error adding object: cannot decode base64 payload")
-	}
-
-	var protoPayload model.ThreadDeeplinkPayload
-	err = proto.Unmarshal(decodedPayload, &protoPayload)
-	if err != nil {
-		return fmt.Errorf("failed unmarshalling the payload: %w", err)
-	}
-	// TODO: [MR] check the meaning of method and what should be the result
-	return fmt.Errorf("not implemented")
-	// return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-	//	workspace, ok := b.(*editor.Workspaces)
-	//	if !ok {
-	//		return fmt.Errorf("incorrect object with workspace id")
-	//	}
-	//
-	//	return workspace.AddObject(req.ObjectId, protoPayload.Key, protoPayload.Addrs)
 	// })
 }
 
