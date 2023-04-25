@@ -21,6 +21,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 )
 
+var interfacesSortPriority = []string{"en", "wlan", "wl", "eth", "lo"}
+
 type localDiscovery struct {
 	server *zeroconf.Server
 	peerId string
@@ -97,7 +99,7 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 		return
 	}
 
-	newAddrs.SortWithPriority([]string{"en", "wlan", "eth", "lo"})
+	newAddrs.SortWithPriority(interfacesSortPriority)
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
 		return
 	}
@@ -178,7 +180,17 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch, zeroconf.ClientWriteTimeout(time.Second*30), zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
+	newAddrs, err := addrs.GetInterfacesAddrs()
+	if err != nil {
+		return
+	}
+
+	newAddrs.SortWithPriority(interfacesSortPriority)
+
+	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
+		zeroconf.ClientWriteTimeout(time.Second*1),
+		zeroconf.SelectIfaces(newAddrs.Interfaces),
+		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
 }
