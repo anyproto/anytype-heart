@@ -638,7 +638,7 @@ func (s *Service) ModifyLocalDetails(
 		if err != nil {
 			return err
 		}
-		return s.objectStore.UpdatePendingLocalDetails(objectId, modifiedDetails)
+		return s.objectStore.SetPendingLocalDetails(objectId, modifiedDetails)
 	})
 	if err != nil && err != ocache.ErrExists {
 		return err

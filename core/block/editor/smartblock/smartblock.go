@@ -911,7 +911,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	pendingDetails, err := sb.objectStore.GetPendingLocalDetails(sb.Id())
 	if err == nil {
 		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pendingDetails.GetDetails(), false)
-		err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), nil)
+		err = sb.objectStore.SetPendingLocalDetails(sb.Id(), nil)
 		if err != nil {
 			log.With("thread", sb.Id()).
 				With("sbType", sb.Type()).

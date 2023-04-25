@@ -686,9 +686,17 @@ func (i *indexer) migrateObjectTypes(ots []string) {
 }
 
 func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved bool) error {
-	t, err := i.typeProvider.Type(id)
+	_, isArchived := i.archivedMap[id]
+	_, isFavorite := i.favoriteMap[id]
+
+	err := i.store.SetPendingLocalDetails(id, &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyIsArchived.String(): pbtypes.Bool(isArchived),
+			bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(isFavorite),
+		},
+	})
 	if err != nil {
-		return fmt.Errorf("incorrect sb type: %v", err)
+		log.Errorf("failed to update isArchived and isFavorite details for %s: %s", id, err)
 	}
 
 	d, err := i.doc.GetDocInfo(ctx, id)
@@ -697,66 +705,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		return fmt.Errorf("failed to open doc: %s", err.Error())
 	}
 
-	indexDetails, indexLinks := t.Indexable()
-	if indexLinks {
-		if err := i.store.UpdateObjectLinks(d.Id, d.Links); err != nil {
-			log.With("thread", d.Id).Errorf("failed to save object links: %v", err)
-		}
-	}
-
-	if !indexDetails {
-		i.store.DeleteDetails(d.Id)
-		return nil
-	}
-
-	details := d.State.CombinedDetails()
-	_, isArchived := i.archivedMap[id]
-	_, isFavorite := i.favoriteMap[id]
-
-	details.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
-	details.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
-	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(d.Links)
-
-	var curDetails *types.Struct
-	curDetailsO, _ := i.store.GetDetails(id)
-	if curDetailsO.GetDetails().GetFields() != nil {
-		curDetails = curDetailsO.Details
-	}
-	// compare only real object scoped details
-	detailsObjectScope := pbtypes.StructCutKeys(details, bundle.LocalRelationsKeys)
-	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, bundle.LocalRelationsKeys)
-	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
-		if indexesWereRemoved || curDetails.GetFields() == nil {
-			if err := i.store.CreateObject(id, details, d.Links, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
-				return fmt.Errorf("can't create object in the store: %v", err)
-			}
-		} else {
-			if err := i.store.UpdateObjectDetails(id, details, true); err != nil {
-				return fmt.Errorf("can't update object in the store: %v", err)
-			}
-		}
-		if headsHash := headsHash(d.Heads); headsHash != "" {
-			err = i.store.SaveLastIndexedHeadsHash(id, headsHash)
-			if err != nil {
-				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
-			}
-		}
-
-		var skipFulltext bool
-		if i.store.FTSearch() != nil {
-			// skip fulltext if we already has the object indexed
-			if exists, _ := i.store.FTSearch().Has(id); exists {
-				skipFulltext = true
-			}
-		}
-
-		if !skipFulltext {
-			if err = i.store.AddToIndexQueue(id); err != nil {
-				log.With("thread", id).Errorf("can't add to index: %v", err)
-			}
-		}
-	}
-	return nil
+	return i.Index(ctx, d)
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, ids ...string) (successfullyReindexed int) {
