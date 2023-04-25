@@ -635,7 +635,7 @@ func (mw *Middleware) ObjectSetSource(cctx context.Context,
 	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
+func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
 	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
 		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
 			ObjectId: setId,
