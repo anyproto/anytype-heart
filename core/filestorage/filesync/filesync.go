@@ -16,7 +16,9 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
@@ -62,6 +64,7 @@ type fileSync struct {
 	removePingCh chan struct{}
 	dagService   ipld.DAGService
 	fileStore    filestore.FileStore
+	sendEvent    func(event *pb.Event)
 }
 
 func (f *fileSync) Init(a *app.App) (err error) {
@@ -71,6 +74,7 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
+	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	return
 }
 
@@ -250,6 +254,18 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 
 	bytesLeft := stat.BytesLimit - stat.BytesUsage
 	if bytesToUpload > bytesLeft {
+		f.sendEvent(&pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfFileLimitReached{
+						FileLimitReached: &pb.EventFileLimitReached{
+							SpaceId: spaceId,
+							FileId:  fileId,
+						},
+					},
+				},
+			},
+		})
 		return errReachedLimit
 	}
 
