@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/uber/jaeger-client-go"
 	"net"
 	"net/http"
 	_ "net/http/pprof"

@@ -305,7 +305,7 @@ func (b *builtinObjects) validate(st *state.State) (err error) {
 	return nil
 }
 
-func (b *builtinObjects) Close() (err error) {
+func (b *builtinObjects) Close(ctx context.Context) (err error) {
 	if b.cancel != nil {
 		b.cancel()
 	}

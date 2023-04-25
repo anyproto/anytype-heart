@@ -154,6 +154,6 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	return nil
 }
 
-func (b *builtinTemplate) Close() (err error) {
+func (b *builtinTemplate) Close(ctx context.Context) (err error) {
 	return
 }

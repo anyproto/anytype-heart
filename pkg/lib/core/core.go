@@ -6,8 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -89,9 +87,8 @@ var _ app.Component = (*Anytype)(nil)
 
 var _ Service = (*Anytype)(nil)
 
-type initFunc = func(id string) *smartblock.InitContext
 type ObjectsDeriver interface {
-	DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType, f initFunc) (sb smartblock.SmartBlock, release func(), err error)
+	DeriveObject(ctx context.Context, tp coresb.SmartBlockType) (id string, err error)
 }
 
 type Anytype struct {
@@ -254,18 +251,15 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (
 		coresb.SmartBlockTypeHome,
 	}
 	for _, sbt := range sbTypes {
-		obj, release, err := a.deriver.DeriveTreeObject(ctx, sbt, func(id string) *smartblock.InitContext {
-			return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
-		})
+		var id string
+		id, err = a.deriver.DeriveObject(ctx, sbt)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return
 		}
-		a.predefinedBlockIds.InsertId(sbt, obj.Id())
-		release()
+		a.predefinedBlockIds.InsertId(sbt, id)
 	}
 
-	// TODO: [MR] derive trees in the new infra
 	return nil
 }
 

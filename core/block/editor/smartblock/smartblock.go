@@ -150,7 +150,6 @@ type linkSource interface {
 
 type smartBlock struct {
 	state.Doc
-	sync.Locker
 	objecttree.ObjectTree
 	depIds              []string // slice must be sorted
 	sendEvent           func(e *pb.Event)

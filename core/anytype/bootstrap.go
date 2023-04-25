@@ -54,8 +54,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
-	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
@@ -138,7 +136,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(process.New()).
 		Register(source.New()).
 		Register(core.New()).
-		Register(builtintemplate.New()).
+		//Register(builtintemplate.New()).
 		Register(pin.New()).
 		Register(status.New()).
 		Register(block.New()).
@@ -152,7 +150,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(doc.New()).
 		Register(subscription.New()).
-		Register(builtinobjects.New()).
+		//Register(builtinobjects.New()).
 		Register(bookmark.New()).
 		Register(session.New()).
 		Register(importer.New()).

@@ -6,8 +6,10 @@ import (
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -37,7 +39,8 @@ func (s *Service) createCache() ocache.OCache {
 			// creating tree if needed
 			createPayload, exists := ctx.Value(treeCreateKey).(treeCreateCache)
 			if exists {
-				ot, err := spc.PutTree(ctx, createPayload.treeCreate, nil)
+				var ot objecttree.ObjectTree
+				ot, err = spc.PutTree(ctx, createPayload.treeCreate, nil)
 				if err != nil {
 					return
 				}
@@ -158,6 +161,18 @@ func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType
 		return
 	}
 	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
+}
+
+func (s *Service) DeriveObject(ctx context.Context, tp coresb.SmartBlockType) (id string, err error) {
+	obj, release, err := s.DeriveTreeObject(ctx, tp, func(id string) *smartblock.InitContext {
+		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
+	})
+	if err != nil {
+		log.With(zap.Error(err)).Debug("derived object with error")
+		return
+	}
+	defer release()
+	return obj.Id(), nil
 }
 
 func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.SmartBlock) (sb smartblock.SmartBlock, release func(), err error) {
