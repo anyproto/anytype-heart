@@ -733,8 +733,9 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	}
 
 	var (
-		address string
-		account wallet.Keypair
+		address    string
+		account    wallet.Keypair
+		newAccount bool
 	)
 	if len(mw.foundAccounts) > 0 {
 		address = mw.foundAccounts[0].GetInfo().GetAccountSpaceId()
@@ -744,6 +745,7 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 			return err, pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR
 		}
 		address = account.Address()
+		newAccount = true
 	}
 
 	if profile.Address != address {
@@ -751,13 +753,10 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	}
 
 	mw.rootPath = req.RootPath
-	mw.foundAccounts = nil
-
 	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
 		return err, pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR
 	}
-
 	mw.accountSearchCancel()
 
 	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) && account != nil {
@@ -783,8 +782,6 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
 	// todo: parse config.json from legacy export
 
-	newAcc := &model.Account{Id: address}
-
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(mw.rootPath, address),
@@ -796,17 +793,12 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return err, pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR
 	}
 
-	newAcc.Name = profile.Name
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
-	newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{
-		Image: &model.BlockContentFile{Hash: profile.Avatar},
-	}}
 	details = append(details, &pb.RpcObjectSetDetailsDetail{
 		Key:   "iconImage",
 		Value: pbtypes.String(profile.Avatar),
 	})
 
-	newAcc.Info = mw.getInfo()
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
@@ -816,7 +808,11 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return err, pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR
 	}
 
-	mw.foundAccounts = append(mw.foundAccounts, newAcc)
+	if newAccount {
+		avatar := &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: profile.Avatar}}}
+		newAcc := &model.Account{Id: address, Name: profile.Name, Avatar: avatar, Info: mw.getInfo()}
+		mw.foundAccounts = append(mw.foundAccounts, newAcc)
+	}
 	return nil, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL
 }
 
