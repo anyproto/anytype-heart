@@ -2,7 +2,10 @@ package pb
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -11,12 +14,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -24,34 +26,29 @@ const Name = "PB"
 
 type Pb struct{}
 
-func New() converter.Converter {
+func init() {
+	converter.RegisterFunc(New)
+}
+
+func New(core.Service) converter.Converter {
 	return new(Pb)
 }
 
-func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
-	progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTreeCreator) *converter.Response {
 	path, e := p.GetParams(req.Params)
 	allErrors := converter.NewError()
 	if e != nil {
 		allErrors.Add(path, e)
-		return nil, allErrors
+		return &converter.Response{Error: allErrors}
 	}
 	pbFiles, err := p.readFile(path, req.Mode.String())
 	if err != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-		allErrors.Merge(err)
-		return nil, allErrors
+		return &converter.Response{Error: err}
 	}
+
 	allSnapshots := make([]*converter.Snapshot, 0)
-
-	progress.SetProgressMessage("Start creating snapshots from files")
-	progress.SetTotal(int64(len(pbFiles) * 2))
-
+	allErrors.Merge(err)
 	for name, file := range pbFiles {
-		if err := progress.TryStep(1); err != nil {
-			ce := converter.NewFromError(name, err)
-			return nil, ce
-		}
-
 		id := strings.TrimSuffix(file.Name, filepath.Ext(file.Name))
 		var (
 			snapshot *model.SmartBlockSnapshotBase
@@ -63,7 +60,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 		if errGS != nil {
 			allErrors.Add(file.Name, errGS)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, allErrors
+				return &converter.Response{Error: allErrors}
 			} else {
 				continue
 			}
@@ -74,27 +71,41 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 			if err != nil {
 				allErrors.Add(path, e)
 				if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-					return nil, allErrors
+					return &converter.Response{Error: allErrors}
 				} else {
 					continue
 				}
 			}
 		}
+		ctx := context.Background()
+		obj, release, err := oc.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
+			return &sb.InitContext{
+				Ctx: ctx,
+			}
+		})
+		defer release()
+		if err != nil {
+			allErrors.Add(path, e)
+			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return &converter.Response{Error: allErrors}
+			} else {
+				continue
+			}
+		}
 		source := converter.GetSourceDetail(name, path)
 		snapshot.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
-			Id:       id,
-			SbType:   sbt,
+			Id:       obj.Id(),
 			FileName: name,
 			Snapshot: snapshot,
 		})
 	}
 
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, nil
+		return &converter.Response{Snapshots: allSnapshots, Error: nil}
 	}
 
-	return &converter.Response{Snapshots: allSnapshots}, allErrors
+	return &converter.Response{Snapshots: allSnapshots, Error: allErrors}
 }
 
 func (p *Pb) Name() string {
@@ -106,8 +117,8 @@ func (p *Pb) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (p *Pb) GetParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
-	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfMarkdownParams); ok {
-		return p.MarkdownParams.GetPath(), nil
+	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfNotionParams); ok {
+		return p.NotionParams.GetPath(), nil
 	}
 	return "", errors.New("PB: GetParams wrong parameters format")
 }

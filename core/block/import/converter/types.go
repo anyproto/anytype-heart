@@ -6,11 +6,22 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
+
+// Functions to create in-tree and plugin converters
+var converterCreators []ConverterCreator
+
+// Function to register converter
+type ConverterCreator = func(s core.Service) Converter
+
+// RegisterFunc add converter creation function to converterCreators
+func RegisterFunc(c ConverterCreator) {
+	converterCreators = append(converterCreators, c)
+}
 
 type ObjectTreeCreator interface {
 	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
@@ -18,7 +29,7 @@ type ObjectTreeCreator interface {
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(req *pb.RpcObjectImportRequest) *Response
+	GetSnapshots(req *pb.RpcObjectImportRequest, oc ObjectTreeCreator) *Response
 	Name() string
 }
 
@@ -34,7 +45,6 @@ type IOReader struct {
 }
 type Snapshot struct {
 	Id       string
-	SbType   coresb.SmartBlockType
 	FileName string
 	Snapshot *model.SmartBlockSnapshotBase
 }
@@ -43,4 +53,8 @@ type Snapshot struct {
 type Response struct {
 	Snapshots []*Snapshot
 	Error     ConvertError
+}
+
+func GetConverters() []func(s core.Service) Converter {
+	return converterCreators
 }

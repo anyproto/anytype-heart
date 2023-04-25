@@ -1,22 +1,22 @@
 package web
 
 import (
+	"context"
 	"fmt"
-	"github.com/google/uuid"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-const Name = "web"
+const name = "web"
 
-type Converter struct {
-	otc converter.ObjectTreeCreator
-}
+type Converter struct{}
 
 func NewConverter() converter.Converter {
-	return &Converter{}
+	return new(Converter)
 }
 
 func (*Converter) GetParser(url string) parsers.Parser {
@@ -29,7 +29,7 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTreeCreator) *converter.Response {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
 	if err != nil {
@@ -47,12 +47,19 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 		return &converter.Response{Error: we}
 	}
 
+	ctx := context.Background()
+	obj, release, err := oc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
+		return &sb.InitContext{
+			Ctx: ctx,
+		}
+	})
+	defer release()
 	if err != nil {
 		we.Add(url, err)
 		return &converter.Response{Error: we}
 	}
 	s := &converter.Snapshot{
-		Id:       uuid.New().String(),
+		Id:       obj.Id(),
 		FileName: url,
 		Snapshot: snapshots,
 	}
@@ -64,7 +71,7 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 }
 
 func (p *Converter) Name() string {
-	return Name
+	return name
 }
 
 func (p *Converter) getParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
