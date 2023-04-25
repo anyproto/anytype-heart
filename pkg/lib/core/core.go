@@ -23,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/libp2p/go-libp2p/core/peer"
 	pstore "github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
@@ -49,6 +50,7 @@ type Service interface {
 	Start() error
 	Stop() error
 	IsStarted() bool
+	SpaceService() space.Service
 
 	EnsurePredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
@@ -104,6 +106,7 @@ type Anytype struct {
 	fetcher          configfetcher.ConfigFetcher
 	sendEvent        func(event *pb.Event)
 	creatorInfoAdder CreatorInfoAdder
+	spaceService     space.Service
 
 	ds datastore.Datastore
 
@@ -164,11 +167,16 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
 	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	a.creatorInfoAdder = ap.MustComponent("blockService").(CreatorInfoAdder)
+	a.spaceService = ap.MustComponent(space.CName).(space.Service)
 	return
 }
 
 func (a *Anytype) Name() string {
 	return CName
+}
+
+func (a *Anytype) SpaceService() space.Service {
+	return a.spaceService
 }
 
 // Deprecated, use wallet component directly

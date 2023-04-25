@@ -8,7 +8,10 @@ import (
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/logger"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"go.uber.org/zap"
 	"time"
@@ -19,17 +22,22 @@ var ErrCacheObjectWithoutTree = errors.New("cache object contains no tree")
 
 type ctxKey int
 
-const spaceKey ctxKey = 0
+const (
+	spaceKey ctxKey = iota
+	treeCreateKey
+)
 
 type treeCache struct {
 	gcttl         int
 	cache         ocache.OCache
 	account       accountservice.Service
 	clientService space.Service
+	objectFactory *editor.ObjectFactory
 }
 
 type TreeCache interface {
 	treegetter.TreeGetter
+	treegetter.TreePutter
 }
 
 type updateListener struct {
@@ -66,14 +74,26 @@ func (c *treeCache) Close(ctx context.Context) (err error) {
 func (c *treeCache) Init(a *app.App) (err error) {
 	c.clientService = a.MustComponent(space.CName).(space.Service)
 	c.account = a.MustComponent(accountservice.CName).(accountservice.Service)
+	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.cache = ocache.New(
 		func(ctx context.Context, id string) (value ocache.Object, err error) {
 			spaceId := ctx.Value(spaceKey).(string)
-			_, err = c.clientService.AccountSpace(ctx, spaceId)
+			spc, err := c.clientService.GetSpace(ctx, spaceId)
 			if err != nil {
 				return
 			}
-			return
+			// creating tree if needed
+			createPayload, exists := ctx.Value(treeCreateKey).(treestorage.TreeStorageCreatePayload)
+			if exists {
+				ot, err := spc.PutTree(ctx, createPayload, &updateListener{})
+				if err != nil {
+					return
+				}
+				ot.Close()
+			}
+			return c.objectFactory.InitObject(id, &smartblock.InitContext{
+				Ctx: ctx,
+			})
 		},
 		ocache.WithLogger(log.Sugar()),
 		ocache.WithGCPeriod(time.Minute),
@@ -86,9 +106,21 @@ func (c *treeCache) Name() (name string) {
 	return treegetter.CName
 }
 
+func (c *treeCache) GetObject()
+
 func (c *treeCache) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
 	ctx = context.WithValue(ctx, spaceKey, spaceId)
 	v, err := c.cache.Get(ctx, id)
+	if err != nil {
+		return
+	}
+	return v.(objecttree.ObjectTree), nil
+}
+
+func (c *treeCache) PutTree(ctx context.Context, spaceId string, payload treestorage.TreeStorageCreatePayload) (ot objecttree.ObjectTree, err error) {
+	ctx = context.WithValue(ctx, spaceKey, spaceId)
+	ctx = context.WithValue(ctx, treeCreateKey, payload)
+	v, err := c.cache.Get(ctx, payload.RootRawChange.Id)
 	if err != nil {
 		return
 	}

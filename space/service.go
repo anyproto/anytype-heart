@@ -23,6 +23,7 @@ func New() Service {
 
 type Service interface {
 	AccountSpace(ctx context.Context) (commonspace.Space, error)
+	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
 	app.ComponentRunnable
 }
@@ -71,7 +72,11 @@ func (s *service) DeriveSpace(ctx context.Context, payload commonspace.SpaceDeri
 }
 
 func (s *service) AccountSpace(ctx context.Context) (container commonspace.Space, err error) {
-	v, err := s.spaceCache.Get(ctx, s.accountId)
+	return s.GetSpace(ctx, s.accountId)
+}
+
+func (s *service) GetSpace(ctx context.Context, id string) (space commonspace.Space, err error) {
+	v, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return
 	}

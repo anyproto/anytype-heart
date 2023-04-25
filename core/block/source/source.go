@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/synctree/updatelistener"
 	"math/rand"
 	"sync"
 	"time"
@@ -97,33 +99,27 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	}
 }
 
-func newSource(a core.Service, ss status.Service, tid thread.ID, listenToOwnChanges bool) (s Source, err error) {
-	id := tid.String()
-	sb, err := a.GetBlock(id)
+func newTreeSource(a core.Service, ss status.Service, id string, listenToOwnChanges bool) (s Source, err error) {
+	spc, err := a.SpaceService().AccountSpace(context.Background())
 	if err != nil {
-		if err == logstore.ErrThreadNotFound {
-			return nil, ErrObjectNotFound
-		}
-		err = fmt.Errorf("anytype.GetBlock error: %w", err)
 		return
 	}
-
-	sbt, err := smartblock.SmartBlockTypeFromID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	s = &source{
+	sc := &source{
 		id:                       id,
-		smartblockType:           sbt,
-		tid:                      tid,
 		a:                        a,
 		ss:                       ss,
-		sb:                       sb,
 		listenToOwnDeviceChanges: listenToOwnChanges,
 		logId:                    a.Device(),
 		openedAt:                 time.Now(),
+		smartblockType:           smartblock.SmartBlockTypePage,
 	}
+
+	ot, err := spc.BuildTree(context.Background(), id, sc)
+	if err != nil {
+		return
+	}
+	sc.objectTree = ot
+	s = sc
 	return
 }
 
@@ -133,8 +129,7 @@ type source struct {
 	smartblockType           smartblock.SmartBlockType
 	a                        core.Service
 	ss                       status.Service
-	sb                       core.SmartBlock
-	tree                     *change.Tree
+	objectTree               objecttree.ObjectTree
 	lastSnapshotId           string
 	changesSinceSnapshot     int
 	logHeads                 map[string]*change.Change
@@ -144,6 +139,14 @@ type source struct {
 	listenToOwnDeviceChanges bool // false means we will ignore own(same-logID) changes in applyRecords
 	closed                   chan struct{}
 	openedAt                 time.Time
+}
+
+func (s *source) Update(tree objecttree.ObjectTree) {
+
+}
+
+func (s *source) Rebuild(tree objecttree.ObjectTree) {
+
 }
 
 func (s *source) ReadOnly() bool {

@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
@@ -14,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/types"
 )
 
 const CName = "source"
@@ -80,13 +78,7 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return newStatic(), nil
 	}
 
-	tid, err := thread.Decode(id)
-	if err != nil {
-		err = fmt.Errorf("can't restore thread ID %s: %w", id, err)
-		return
-	}
-
-	return newSource(s.anytype, s.statusService, tid, listenToOwnChanges)
+	return newTreeSource(s.anytype, s.statusService, id, listenToOwnChanges)
 }
 
 func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {

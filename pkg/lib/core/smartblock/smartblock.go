@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -41,6 +42,8 @@ const (
 	SmartBlockTypeWidget              = SmartBlockType(model.SmartBlockType_Widget)
 )
 
+var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
+
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return SmartBlockTypeBundledRelation, nil
@@ -75,33 +78,22 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	}
 
 	c, err := cid.Decode(id)
-	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
-	if err == nil && c.Prefix().Codec == 0x70 && c.Prefix().MhType == multihash.SHA2_256 {
-		return SmartBlockTypeFile, nil
-	}
-
-	tid, err := thread.Decode(id)
 	if err != nil {
 		return SmartBlockTypePage, err
 	}
+	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
+	if c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256 {
+		return SmartBlockTypeFile, nil
+	}
+	if c.Prefix().Codec == cid.DagCBOR {
+		return SmartBlockTypePage, nil
+	}
 
-	return SmartBlockTypeFromThreadID(tid)
+	return SmartBlockTypePage, ErrNoSuchSmartblock
 }
 
 func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
-	rawid := tid.KeyString()
-	// skip version
-	_, n := uvarint(rawid)
-	// skip variant
-	_, n2 := uvarint(rawid[n:])
-	blockType, _ := uvarint(rawid[n+n2:])
-
-	// checks in order to detect invalid sb type
-	if err := SmartBlockType(blockType).Valid(); err != nil {
-		return 0, err
-	}
-
-	return SmartBlockType(blockType), nil
+	panic("should not be used")
 }
 
 // Panics in case of incorrect sb type!
