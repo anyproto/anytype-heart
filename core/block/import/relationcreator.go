@@ -212,11 +212,7 @@ func (rc *RelationService) create(ctx *session.Context,
 		rc.addRelationLink(snapshot, relationID, r)
 	}
 
-	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {
-		log.Errorf("failed to upload cover image %s", err)
-	} else {
-		filesToDelete = append(filesToDelete, ftd...)
-	}
+	filesToDelete = append(filesToDelete, rc.handleCoverRelation(ctx, snapshot)...)
 
 	return filesToDelete, oldRelationBlockToNew, nil
 }
@@ -264,11 +260,7 @@ func (rc *RelationService) update(ctx *session.Context,
 		rc.addRelationLink(snapshot, key, r)
 	}
 
-	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {
-		log.Errorf("failed to upload cover image %s", err)
-	} else {
-		filesToDelete = append(filesToDelete, ftd...)
-	}
+	filesToDelete = append(filesToDelete, rc.handleCoverRelation(ctx, snapshot)...)
 
 	return filesToDelete, oldRelationBlockToNew, failedRelations, nil
 
@@ -313,26 +305,16 @@ func (rc *RelationService) ReplaceRelationBlock(ctx *session.Context,
 }
 
 func (rc *RelationService) handleCoverRelation(ctx *session.Context,
-	snapshot *model.SmartBlockSnapshotBase,
-	pageID string) ([]string, error) {
+	snapshot *model.SmartBlockSnapshotBase) []string {
 
 	// todo: check if coverId is color
 	filesToDelete := rc.handleFileRelation(ctx, snapshot, bundle.RelationKeyCoverId.String())
-	details := make([]*pb.RpcObjectSetDetailsDetail, 0)
 	coverId := pbtypes.GetString(snapshot.Details, bundle.RelationKeyCoverId.String())
 	if coverId == "" {
-		return nil, nil
+		return nil
 	}
-	details = append(details, &pb.RpcObjectSetDetailsDetail{
-		Key:   bundle.RelationKeyCoverId.String(),
-		Value: pbtypes.String(coverId),
-	})
-	err := rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-		ContextId: pageID,
-		Details:   details,
-	})
 
-	return filesToDelete, err
+	return filesToDelete
 }
 
 func (rc *RelationService) handleListValue(ctx *session.Context,
