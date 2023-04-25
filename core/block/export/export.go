@@ -144,7 +144,6 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		}
 		log.Errorf("export %d docs", len(docs))
 		tasks := make([]process.Task, 0, len(docs))
-		time.Sleep(time.Second * 10)
 
 		for docId := range docs {
 			var did = docId
