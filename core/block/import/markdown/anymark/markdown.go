@@ -137,7 +137,7 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	}
 
 	simpleText := htmlconverter.Rule{
-		Filter: []string{"small", "sub", "sup", "caption", "pre"},
+		Filter: []string{"small", "sub", "sup", "caption"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
 			return htmlconverter.String(content)
 		},
