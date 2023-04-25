@@ -2,15 +2,14 @@ package doc
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -32,15 +31,9 @@ type DocInfo struct {
 	State      *state.State
 }
 
-type RelationOptionsInfo struct {
-	RelationId string
-	Options    []*types.Struct
-}
-
 type OnDocChangeCallback func(ctx context.Context, info DocInfo) error
 
 type Service interface {
-	GetDocInfo(ctx context.Context, id string) (info DocInfo, err error)
 	OnWholeChange(cb OnDocChangeCallback)
 	ReportChange(ctx context.Context, info DocInfo)
 	WakeupIds(ids ...string)
@@ -49,7 +42,6 @@ type Service interface {
 }
 
 type docInfoHandler interface {
-	GetDocInfo(ctx context.Context, id string) (info DocInfo, err error)
 	Wakeup(id string) (err error)
 }
 
@@ -96,10 +88,6 @@ func (l *listener) WakeupIds(ids ...string) {
 	for _, id := range ids {
 		l.records.Add(core.ThreadRecordInfo{ThreadID: id})
 	}
-}
-
-func (l *listener) GetDocInfo(ctx context.Context, id string) (info DocInfo, err error) {
-	return l.docInfoHandler.GetDocInfo(ctx, id)
 }
 
 func (l *listener) wakeupLoop() {

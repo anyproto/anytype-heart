@@ -8,7 +8,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -588,16 +587,6 @@ func (s *Service) AddRelationBlock(ctx *session.Context, req pb.RpcBlockRelation
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.AddRelationAndSet(ctx, s.relationService, req)
 	})
-}
-
-func (s *Service) GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, err error) {
-	if err = s.DoWithContext(ctx, id, func(b smartblock.SmartBlock) error {
-		info, err = b.GetDocInfo()
-		return err
-	}); err != nil {
-		return
-	}
-	return
 }
 
 func (s *Service) Wakeup(id string) (err error) {

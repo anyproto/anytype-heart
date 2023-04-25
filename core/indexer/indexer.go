@@ -15,7 +15,9 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -130,8 +132,8 @@ type indexer struct {
 	anytype         core.Service
 	source          source.Service
 	relationService relation.Service
+	picker          block.Picker
 
-	doc         doc.Service
 	quit        chan struct{}
 	mu          sync.Mutex
 	btHash      Hasher
@@ -154,7 +156,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
-	i.doc = a.MustComponent(doc.CName).(doc.Service)
+	i.picker = app.MustComponent[block.Picker](a)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.spaceService = app.MustComponent[space.Service](a)
 	i.quit = make(chan struct{})
@@ -400,7 +402,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	if flags.any() {
-		d, err := i.doc.GetDocInfo(ctx, i.anytype.PredefinedBlocks().Archive)
+		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)
 		if err != nil {
 			log.Errorf("reindex failed to open archive: %s", err.Error())
 		} else {
@@ -409,7 +411,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			}
 		}
 
-		d, err = i.doc.GetDocInfo(ctx, i.anytype.PredefinedBlocks().Home)
+		d, err = i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Home)
 		if err != nil {
 			log.Errorf("reindex failed to open archive: %s", err.Error())
 		} else {
@@ -708,7 +710,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 			// }
 
 			ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "reindexOutdatedThreads")
-			d, err := i.doc.GetDocInfo(ctx, id)
+			d, err := i.getObjectInfo(ctx, id)
 			if err != nil {
 				continue
 			}
@@ -730,7 +732,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		return fmt.Errorf("incorrect sb type: %v", err)
 	}
 
-	d, err := i.doc.GetDocInfo(ctx, id)
+	d, err := i.getObjectInfo(ctx, id)
 	if err != nil {
 		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
 		return fmt.Errorf("failed to open doc: %s", err.Error())
@@ -807,6 +809,14 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 			successfullyReindexed++
 		}
 	}
+	return
+}
+
+func (i *indexer) getObjectInfo(ctx context.Context, id string) (info doc.DocInfo, err error) {
+	err = block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
+		info, err = sb.GetDocInfo()
+		return err
+	})
 	return
 }
 

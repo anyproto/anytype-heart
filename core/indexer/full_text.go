@@ -52,7 +52,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "index_fulltext")
 
-	info, err := i.doc.GetDocInfo(ctx, id)
+	info, err := i.getObjectInfo(ctx, id)
 	if err != nil {
 		return
 	}
