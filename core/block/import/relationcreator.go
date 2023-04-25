@@ -6,6 +6,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -63,6 +64,9 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 	relations []*converter.Relation) ([]string, map[string]*model.Block, map[string]RelationsIDToFormat, error) {
 	notExistedRelations := make([]*converter.Relation, 0)
 	existedRelations := make(map[string]*converter.Relation, 0)
+	if len(relations) == 0 {
+		return nil, nil, nil, nil
+	}
 	defer rc.mu.Unlock()
 	rc.mu.Lock()
 	for _, r := range relations {
@@ -351,7 +355,7 @@ func (rc *RelationService) handleListValue(ctx *session.Context,
 				bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(tag.Color),
 			},
 		}, rc.core.PredefinedBlocks().Account); err != nil {
-			log.Errorf("add extra relation %s", err)
+			log.Errorf("create sub object %s", err)
 		}
 		optionIDs = append(optionIDs, id)
 	}
@@ -377,6 +381,10 @@ func (rc *RelationService) handleFileRelation(ctx *session.Context,
 	filesToDelete := make([]string, 0, len(allFiles))
 	for _, f := range allFiles {
 		if f == "" {
+			continue
+		}
+		_, err := cid.Decode(f)
+		if err != nil {
 			continue
 		}
 		if _, err := rc.store.GetByHash(f); err == nil {

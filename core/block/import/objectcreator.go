@@ -182,6 +182,9 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 }
 
 func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model.SmartBlockSnapshotBase) {
+	if oc.core.PredefinedBlocks().Account == newID {
+		return
+	}
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
 	if err != nil {
 		// todo: GO-1304 I catch this during the import, we need find the root cause and fix it
