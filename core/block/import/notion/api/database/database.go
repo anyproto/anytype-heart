@@ -177,11 +177,8 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 	return snapshot, relations, nil
 }
 
-func (ds *Service) AddPagesToCollections(databaseSnapshots *converter.Response,
-	pages []page.Page,
-	databases []Database,
-	notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
-	snapshots := makeSnapshotMapFromArray(databaseSnapshots.Snapshots)
+func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
+	snapshots := makeSnapshotMapFromArray(databaseSnapshots)
 
 	databaseToObjects := make(map[string][]string, 0)
 	for _, p := range pages {
@@ -203,51 +200,48 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots *converter.Response,
 	}
 }
 
-func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots *converter.Response, pagesSnapshots *converter.Response) error {
+func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots []*converter.Snapshot, pagesSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
 
-	allObjects := make([]string, 0, len(databaseSnapshots.Snapshots)+len(pagesSnapshots.Snapshots))
+	allObjects := make([]string, 0, len(databaseSnapshots)+len(pagesSnapshots))
 
-	for _, snapshot := range databaseSnapshots.Snapshots {
+	for _, snapshot := range databaseSnapshots {
 		allObjects = append(allObjects, snapshot.Id)
 	}
 
-	for _, snapshot := range pagesSnapshots.Snapshots {
+	for _, snapshot := range pagesSnapshots {
 		allObjects = append(allObjects, snapshot.Id)
 	}
 
 	rootCollection := converter.NewRootCollection(ds.collectionService)
 	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjects)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	databaseSnapshots.Snapshots = append(databaseSnapshots.Snapshots, rootCol)
+	databaseSnapshots = append(databaseSnapshots, rootCol)
 
-	return nil
+	return databaseSnapshots, nil
 }
 
 // MapProperties add properties from pages to related database, because if notion pages have the same properties
 // as their database, need this method because database properties doesn't contain information about rollup and formula property format
 // so we use pages relations, because they have this information
-func (ds *Service) MapProperties(databaseSnapshots *converter.Response,
-	relations map[string][]*converter.Relation,
-	pages []page.Page,
-	databases []Database,
-	notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
+func (ds *Service) MapProperties(databaseRelations, relations map[string][]*converter.Relation, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) map[string][]*converter.Relation {
 	for _, d := range databases {
 		for _, p := range pages {
 			if p.Parent.DatabaseID == d.ID {
 				if parentID, ok := notionDatabaseIdsToAnytype[d.ID]; ok {
 					anytypeID := notionPageIdsToAnytype[p.ID]
-					if databaseSnapshots.Relations == nil {
-						databaseSnapshots.Relations = make(map[string][]*converter.Relation, 0)
+					if len(databaseRelations) == 0 {
+						databaseRelations = make(map[string][]*converter.Relation, 0)
 					}
-					databaseSnapshots.Relations[parentID] = relations[anytypeID]
+					databaseRelations[parentID] = relations[anytypeID]
 					break
 				}
 			}
 		}
 	}
+	return databaseRelations
 }
 
 func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*converter.Snapshot {
