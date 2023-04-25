@@ -34,7 +34,6 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 		if len(ids) > 0 {
 			return ids[0], true, err
 		}
-		return "", false, nil
 	}
 
 	if bundledSmartBlockType(sbType) {
@@ -57,7 +56,6 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 				if len(ids) > 0 {
 					return ids[0], true, err
 				}
-				return "", false, nil
 			}
 		}
 	}
