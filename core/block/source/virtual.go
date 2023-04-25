@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -57,10 +56,6 @@ func (v *virtual) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc
 
 func (v *virtual) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
-}
-
-func (v *virtual) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
-	return nil, change.ErrEmpty
 }
 
 func (v *virtual) ListIds() ([]string, error) {

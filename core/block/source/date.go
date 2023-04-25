@@ -7,7 +7,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -110,10 +109,6 @@ func (v *date) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, e
 
 func (v *date) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
-}
-
-func (v *date) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
-	return nil, change.ErrEmpty
 }
 
 func (v *date) Close() (err error) {

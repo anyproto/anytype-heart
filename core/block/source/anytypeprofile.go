@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -81,14 +80,6 @@ func (v *anytypeProfile) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc st
 	s.SetDetails(d)
 	s.SetObjectType(bundle.TypeKeyProfile.URL())
 	return s, nil
-}
-
-func (v *anytypeProfile) PushChange(params PushChangeParams) (id string, err error) {
-	return "", nil
-}
-
-func (v *anytypeProfile) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
-	return nil, change.ErrEmpty
 }
 
 func (v *anytypeProfile) Close() (err error) {

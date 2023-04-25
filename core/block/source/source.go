@@ -14,7 +14,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -126,7 +125,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
 	err := s.receiver.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
-		return change.BuildState(d.(*state.State), ot)
+		return BuildState(d.(*state.State), ot)
 	})
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
@@ -185,7 +184,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, err := change.BuildState(nil, s.ObjectTree)
+	st, _, err := BuildState(nil, s.ObjectTree)
 	if err != nil {
 		return
 	}
@@ -366,10 +365,6 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	return fileKeys
 }
 
-func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
-	panic("is not implemented")
-}
-
 func (s *source) LogHeads() map[string]string {
 	return nil
 }
@@ -380,4 +375,65 @@ func (s *source) Close() (err error) {
 		<-s.closed
 	}
 	return nil
+}
+
+func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.State, appliedContent []*pb.ChangeContent, err error) {
+	var (
+		startId    string
+		lastChange *objecttree.Change
+		count      int
+	)
+	// if the state has no first change
+	if initState == nil {
+		startId = ot.Root().Id
+	} else {
+		s = initState
+		startId = s.ChangeId()
+	}
+
+	err = ot.IterateFrom(startId,
+		func(decrypted []byte) (any, error) {
+			ch := &pb.Change{}
+			err = proto.Unmarshal(decrypted, ch)
+			if err != nil {
+				return nil, err
+			}
+			return ch, nil
+		}, func(change *objecttree.Change) bool {
+			count++
+			lastChange = change
+			// that means that we are starting from tree root
+			if change.Id == ot.Id() {
+				s = state.NewDoc(ot.Id(), nil).(*state.State)
+				s.SetChangeId(change.Id)
+				return true
+			}
+
+			model := change.Model.(*pb.Change)
+			if startId == change.Id {
+				if s == nil {
+					s = state.NewDocFromSnapshot(change.Id, model.Snapshot, nil).(*state.State)
+					s.SetChangeId(startId)
+					return true
+				}
+				return true
+			}
+			ns := s.NewState()
+			appliedContent = append(appliedContent, model.Content...)
+			ns.ApplyChangeIgnoreErr(model.Content...)
+			ns.SetChangeId(change.Id)
+			ns.AddFileKeys(model.FileKeys...)
+			_, _, err = state.ApplyStateFastOne(ns)
+			if err != nil {
+				return false
+			}
+			return true
+		})
+	if err != nil {
+		return
+	}
+	if lastChange != nil {
+		s.SetLastModified(lastChange.Timestamp, lastChange.Identity)
+	}
+	return
 }

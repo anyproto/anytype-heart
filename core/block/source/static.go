@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -64,10 +63,6 @@ func (s *static) PushChange(params PushChangeParams) (id string, err error) {
 		return s.pushChange(params)
 	}
 	return
-}
-
-func (s *static) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
-	return nil, change.ErrEmpty
 }
 
 func (s *static) ListIds() (result []string, err error) {
