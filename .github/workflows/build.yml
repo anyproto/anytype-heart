@@ -53,8 +53,6 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Set env vars
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_KEY }}
-          GITHUB_USER: ${{ secrets.GH_USER }}
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
         run: |
@@ -63,7 +61,7 @@ jobs:
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
-          git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${ANYTYPE_PAT}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
           go mod download
@@ -113,7 +111,7 @@ jobs:
           do
           OSARCH=${i%.*}
           cp ./${i}* ./grpc-server.exe
-          zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf relations
+          zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
       - name: Pack server unix
@@ -123,7 +121,7 @@ jobs:
           do
           OSARCH=${i%.*}
           cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Make swift protos
@@ -147,7 +145,7 @@ jobs:
         run: |
           gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
-          gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf relations
+          gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf json
           mv ios_framework_${VERSION}.tar.gz .release/
       - name: Make java protos
         run: |
@@ -169,7 +167,7 @@ jobs:
         run: |
           gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
-          gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf relations
+          gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven
         run: |
@@ -243,15 +241,13 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Set env vars
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_KEY }}
-          GITHUB_USER: ${{ secrets.GH_USER }}
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
         run: |
           echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
           echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anytypeio/go-anytype-middleware/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
           go mod download
@@ -298,7 +294,7 @@ jobs:
           do
           OSARCH=${i%.*}
           cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf relations
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Release
