@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
@@ -48,35 +49,62 @@ func Test_GrouperTags(t *testing.T) {
 			"id":             pbtypes.String("rel-tag"),
 			"relationKey":    pbtypes.String("tag"),
 			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
+			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
+		},
+	}, nil, ""))
 
-			"type": pbtypes.String("ot-relation"),
+	idTag1 := bson.NewObjectId().Hex()
+	idTag2 := bson.NewObjectId().Hex()
+	idTag3 := bson.NewObjectId().Hex()
+	require.NoError(t, ds.CreateObject(idTag1, &types.Struct{
+		Fields: map[string]*types.Value{
+			"id":          pbtypes.String(idTag1),
+			"relationKey": pbtypes.String("tag"),
+			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		},
+	}, nil, ""))
+	require.NoError(t, ds.CreateObject(idTag2, &types.Struct{
+		Fields: map[string]*types.Value{
+			"id":          pbtypes.String(idTag2),
+			"relationKey": pbtypes.String("tag"),
+			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		},
+	}, nil, ""))
+	require.NoError(t, ds.CreateObject(idTag3, &types.Struct{
+		Fields: map[string]*types.Value{
+			"id":          pbtypes.String(idTag3),
+			"relationKey": pbtypes.String("tag"),
+			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 		},
 	}, nil, ""))
 
 	id1 := bson.NewObjectId().String()
 	id2 := bson.NewObjectId().String()
 	id3 := bson.NewObjectId().String()
+	id4 := bson.NewObjectId().String()
 	tp.RegisterStaticType(id1, smartblock2.SmartBlockTypePage)
 	tp.RegisterStaticType(id2, smartblock2.SmartBlockTypePage)
 	tp.RegisterStaticType(id3, smartblock2.SmartBlockTypePage)
+	tp.RegisterStaticType(id4, smartblock2.SmartBlockTypePage)
 
 	require.NoError(t, ds.CreateObject(id1, &types.Struct{
-		Fields: map[string]*types.Value{
-			"name": pbtypes.String("one"),
-			"type": pbtypes.StringList([]string{"ot-a1"}),
-		},
+		Fields: map[string]*types.Value{"name": pbtypes.String("one")},
 	}, nil, "s1"))
 
 	require.NoError(t, ds.CreateObject(id2, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("two"),
-		"type": pbtypes.StringList([]string{"ot-a2"}),
-		"tag":  pbtypes.StringList([]string{"tag1"}),
+		"tag":  pbtypes.StringList([]string{idTag1}),
 	}}, nil, "s2"))
+
 	require.NoError(t, ds.CreateObject(id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
-		"type": pbtypes.StringList([]string{"ot-a2"}),
-		"tag":  pbtypes.StringList([]string{"tag1", "tag2", "tag3"}),
+		"tag":  pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
 	}}, nil, "s3"))
+
+	require.NoError(t, ds.CreateObject(id4, &types.Struct{Fields: map[string]*types.Value{
+		"name": pbtypes.String("four"),
+		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
+	}}, nil, "s4"))
 
 	grouper, err := kanbanSrv.Grouper("tag")
 	require.NoError(t, err)
@@ -84,12 +112,12 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, err)
 	groups, err := grouper.MakeDataViewGroups()
 	require.NoError(t, err)
-	require.Len(t, groups, 3)
+	require.Len(t, groups, 6)
 
 	f := &database.Filters{FilterObj: filter.Eq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
 	err = grouper.InitGroups(f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
 	require.NoError(t, err)
-	require.Len(t, groups, 2) // because results should always contain an option with empty tags set
+	require.Len(t, groups, 5)
 }

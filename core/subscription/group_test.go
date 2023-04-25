@@ -53,7 +53,7 @@ func makeTag(key string) *entry {
 	return &entry{id: key, data: &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():          pbtypes.String(key),
 		bundle.RelationKeyRelationKey.String(): pbtypes.String(kanbanKey),
-		bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 	}}}
 }
 
@@ -98,7 +98,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("add_new_group_from_existing_tags", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -119,7 +119,7 @@ func TestGroupTag(t *testing.T) {
 		require.NoError(t, sub.init(entries))
 
 		ctx := &opCtx{c: sub.cache}
-		ctx.entries = append(ctx.entries, makeTag("tag_4"),)
+		ctx.entries = append(ctx.entries, makeTag("tag_4"))
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 1, 0)
@@ -175,7 +175,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("remove_tag_which_exist_in_two_groups", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -191,7 +191,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("add_new_tag", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -204,7 +204,7 @@ func TestGroupTag(t *testing.T) {
 
 	t.Run("add_new_tag_and_set_to_record", func(t *testing.T) {
 		entries := genTagEntries()
-		sub := groupSub{relKey: kanbanKey, f: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
+		sub := groupSub{relKey: kanbanKey, filter: f, groups: groups, set: make(map[string]struct{}), cache: newCache()}
 
 		require.NoError(t, sub.init(entries))
 
@@ -212,7 +212,7 @@ func TestGroupTag(t *testing.T) {
 		ctx.entries = append(ctx.entries,
 			makeTag("tag_4"),
 			&entry{id: "record_one", data: &types.Struct{Fields: map[string]*types.Value{
-					kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_4"}),
+				kanbanKey: pbtypes.StringList([]string{"tag_1", "tag_4"}),
 			}}},
 		)
 		sub.onChange(ctx)
