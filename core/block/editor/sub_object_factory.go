@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
@@ -22,7 +22,7 @@ type subObjectFactory struct {
 	indexer            smartblock.Indexer
 	layoutConverter    converter.LayoutConverter
 	objectStore        objectstore.ObjectStore
-	relationService    relation2.Service
+	relationService    relation.Service
 	restrictionService restriction.Service
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	sourceService      source.Service

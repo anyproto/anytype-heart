@@ -13,7 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -62,7 +62,7 @@ func NewDataview(
 	sb smartblock.SmartBlock,
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
-	relationService relation2.Service,
+	relationService relation.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) Dataview {
 	dv := &sdataview{
@@ -80,7 +80,7 @@ type sdataview struct {
 	smartblock.SmartBlock
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
-	relationService relation2.Service
+	relationService relation.Service
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 }
 

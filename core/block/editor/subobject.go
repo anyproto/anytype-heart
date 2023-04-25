@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
@@ -32,7 +32,7 @@ func NewSubObject(
 	objectStore objectstore.ObjectStore,
 	fileBlockService file.BlockService,
 	anytype core.Service,
-	relationService relation2.Service,
+	relationService relation.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,

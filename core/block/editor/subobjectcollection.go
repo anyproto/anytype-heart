@@ -16,7 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -67,7 +67,7 @@ func NewSubObjectCollection(
 	defaultCollectionName string,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
-	relationService relation2.Service,
+	relationService relation.Service,
 	sourceService source.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,

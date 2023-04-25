@@ -8,7 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -28,7 +28,7 @@ func NewRelation(
 	objectStore objectstore.ObjectStore,
 	fileBlockService file.BlockService,
 	anytype core.Service,
-	relationService relation2.Service,
+	relationService relation.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,

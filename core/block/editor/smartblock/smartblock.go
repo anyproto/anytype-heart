@@ -23,7 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -86,7 +86,7 @@ func New(
 	fileService files.Service,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
-	relationService relation2.Service,
+	relationService relation.Service,
 	indexer Indexer,
 ) SmartBlock {
 	s := &smartBlock{
@@ -212,7 +212,7 @@ type smartBlock struct {
 	fileService        files.Service
 	restrictionService restriction.Service
 	objectStore        objectstore.ObjectStore
-	relationService    relation2.Service
+	relationService    relation.Service
 	indexer            Indexer
 }
 
@@ -832,7 +832,7 @@ func (sb *smartBlock) Anytype() core.Service {
 	return sb.coreService
 }
 
-func (sb *smartBlock) RelationService() relation2.Service {
+func (sb *smartBlock) RelationService() relation.Service {
 	return sb.relationService
 }
 

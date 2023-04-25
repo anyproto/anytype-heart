@@ -16,7 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -35,7 +35,7 @@ type ObjectFactory struct {
 	fileBlockService     file.BlockService
 	layoutConverter      converter.LayoutConverter
 	objectStore          objectstore.ObjectStore
-	relationService      relation2.Service
+	relationService      relation.Service
 	sbtProvider          typeprovider.SmartBlockTypeProvider
 	sendEvent            func(e *pb.Event)
 	sourceService        source.Service
@@ -65,7 +65,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	f.relationService = app.MustComponent[relation2.Service](a)
+	f.relationService = app.MustComponent[relation.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	f.templateCloner = app.MustComponent[templateCloner](a)

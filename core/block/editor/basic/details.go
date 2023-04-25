@@ -105,7 +105,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 }
 
 func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
-	// TODO: add relation2.WithWorkspaceId(workspaceId) filter
+	// TODO: add relation.WithWorkspaceId(workspaceId) filter
 	rel, err := bs.relationService.FetchKey(relationKey)
 	if err != nil || rel == nil {
 		return fmt.Errorf("failed to get relation: %w", err)

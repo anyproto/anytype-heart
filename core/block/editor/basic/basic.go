@@ -14,9 +14,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	relationblock "github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -45,7 +45,7 @@ type CommonOperations interface {
 	SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextRequest) error
 
 	SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSetKeyRequest) error
-	AddRelationAndSet(ctx *session.Context, service relation2.Service, req pb.RpcBlockRelationAddRequest) error
+	AddRelationAndSet(ctx *session.Context, service relation.Service, req pb.RpcBlockRelationAddRequest) error
 	FeaturedRelationAdd(ctx *session.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *session.Context, relations ...string) error
 
@@ -96,7 +96,7 @@ var ErrNotSupported = fmt.Errorf("operation not supported for this type of smart
 func NewBasic(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
-	relationService relation2.Service,
+	relationService relation.Service,
 	layoutConverter converter.LayoutConverter,
 ) AllOperations {
 	return &basic{
@@ -111,7 +111,7 @@ type basic struct {
 	smartblock.SmartBlock
 
 	objectStore     objectstore.ObjectStore
-	relationService relation2.Service
+	relationService relation.Service
 	layoutConverter converter.LayoutConverter
 }
 
@@ -342,7 +342,7 @@ func (bs *basic) SetRelationKey(ctx *session.Context, req pb.RpcBlockRelationSet
 	if !bs.HasRelation(s, req.Key) {
 		return fmt.Errorf("relation with given key not found")
 	}
-	if rel, ok := b.(relation.Block); ok {
+	if rel, ok := b.(relationblock.Block); ok {
 		rel.SetKey(req.Key)
 	} else {
 		return fmt.Errorf("unexpected block type: %T (want relation)", b)
@@ -365,7 +365,7 @@ func (bs *basic) SetLatexText(ctx *session.Context, req pb.RpcBlockLatexSetTextR
 	return bs.Apply(s, smartblock.NoEvent)
 }
 
-func (bs *basic) AddRelationAndSet(ctx *session.Context, relationService relation2.Service, req pb.RpcBlockRelationAddRequest) (err error) {
+func (bs *basic) AddRelationAndSet(ctx *session.Context, relationService relation.Service, req pb.RpcBlockRelationAddRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {
@@ -377,7 +377,7 @@ func (bs *basic) AddRelationAndSet(ctx *session.Context, relationService relatio
 		return
 	}
 
-	if rb, ok := b.(relation.Block); ok {
+	if rb, ok := b.(relationblock.Block); ok {
 		rb.SetKey(rel.Key)
 	} else {
 		return fmt.Errorf("unexpected block type: %T (want relation)", b)

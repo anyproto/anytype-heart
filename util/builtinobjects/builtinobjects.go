@@ -25,10 +25,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	relationblock "github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -75,7 +75,7 @@ type builtinObjects struct {
 	cancel      func()
 	source      source.Service
 	service     *block.Service
-	relService  relation2.Service
+	relService  relation.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
 	coreService core.Service
 
@@ -93,7 +93,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.createBuiltinObjects = a.MustComponent(config.CName).(*config.Config).CreateBuiltinObjects
-	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
+	b.relService = a.MustComponent(relation.CName).(relation.Service)
 	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.cancel = func() {}
 	return
@@ -466,7 +466,7 @@ func (b *builtinObjects) validate(st *state.State) (err error) {
 	}
 
 	st.Iterate(func(b simple.Block) (isContinue bool) {
-		if rb, ok := b.(relation.Block); ok {
+		if rb, ok := b.(relationblock.Block); ok {
 			relKeys = append(relKeys, rb.Model().GetRelation().Key)
 		}
 		return true

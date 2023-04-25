@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -31,7 +31,7 @@ func NewTemplate(
 	fileBlockService file.BlockService,
 	bookmarkBlockService bookmark.BlockService,
 	bookmarkService bookmark.BookmarkService,
-	relationService relation2.Service,
+	relationService relation.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
