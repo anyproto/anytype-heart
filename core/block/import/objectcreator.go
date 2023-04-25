@@ -203,6 +203,11 @@ func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase,
 }
 
 func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
+	for _, fileID := range st.FileRelationLinks() {
+		if sErr := oc.syncFactory.FileSyncer().SyncExistingFile(fileID); sErr != nil {
+			log.With(zap.String("object id", newID)).Errorf("sync file link: %s", sErr)
+		}
+	}
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {

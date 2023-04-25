@@ -3,13 +3,17 @@ package syncer
 import "github.com/anytypeio/go-anytype-middleware/core/block/simple"
 
 type Factory struct {
-	fs Syncer
-	bs Syncer
-	is Syncer
+	fs *FileSyncer
+	bs *BookmarkSyncer
+	is *IconSyncer
 }
 
 func New(fs *FileSyncer, bs *BookmarkSyncer, is *IconSyncer) *Factory {
 	return &Factory{fs: fs, bs: bs, is: is}
+}
+
+func (f *Factory) FileSyncer() *FileSyncer {
+	return f.fs
 }
 
 func (f *Factory) GetSyncer(b simple.Block) Syncer {

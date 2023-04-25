@@ -47,6 +47,9 @@ type service struct {
 	isRunning     bool
 
 	sync.Mutex
+
+	dependentFilesCloseCh map[string]chan struct{}
+	dependentFilesStats   map[string]pb.EventStatusThreadCafePinStatus
 }
 
 func (s *service) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) (err error) {
@@ -57,6 +60,7 @@ func (s *service) UpdateTree(ctx context.Context, objId string, status syncstatu
 	)
 	s.Lock()
 	nodeConnected = s.nodeConnected
+	pinStatus := s.dependentFilesStats[objId]
 	s.Unlock()
 	switch status {
 	case syncstatus.StatusUnknown:
@@ -71,16 +75,16 @@ func (s *service) UpdateTree(ctx context.Context, objId string, status syncstatu
 	}
 	generalStatus = objStatus
 
-	s.notify(objId, objStatus, generalStatus)
-	if objId != s.coreService.PredefinedBlocks().Account {
-		return
-	}
-	s.Lock()
-	cp := slice.Copy(s.subObjects)
-	s.Unlock()
+	s.notify(objId, objStatus, generalStatus, pinStatus)
 
-	for _, obj := range cp {
-		s.notify(obj, objStatus, generalStatus)
+	if objId == s.coreService.PredefinedBlocks().Account {
+		s.Lock()
+		cp := slice.Copy(s.subObjects)
+		s.Unlock()
+
+		for _, obj := range cp {
+			s.notify(obj, objStatus, generalStatus, pinStatus)
+		}
 	}
 	return
 }
@@ -92,7 +96,10 @@ func (s *service) UpdateNodeConnection(online bool) {
 }
 
 func New() Service {
-	return new(service)
+	return &service{
+		dependentFilesStats:   map[string]pb.EventStatusThreadCafePinStatus{},
+		dependentFilesCloseCh: map[string]chan struct{}{},
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -120,7 +127,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	s.watcher = res.SyncStatus().(syncstatus.StatusWatcher)
 	s.watcher.SetUpdateReceiver(s)
 	s.isRunning = true
-	_, err = s.watch(s.coreService.PredefinedBlocks().Account)
+	_, err = s.watch(s.coreService.PredefinedBlocks().Account, nil)
 	s.fileStatusService.Run()
 	return
 }
@@ -129,10 +136,10 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) Watch(id string, fileFunc func() []string) (new bool, err error) {
+func (s *service) Watch(id string, filesGetter func() []string) (new bool, err error) {
 	s.Lock()
 	defer s.Unlock()
-	return s.watch(id)
+	return s.watch(id, filesGetter)
 }
 
 func (s *service) Unwatch(id string) {
@@ -141,7 +148,7 @@ func (s *service) Unwatch(id string) {
 	s.unwatch(id)
 }
 
-func (s *service) watch(id string) (new bool, err error) {
+func (s *service) watch(id string, filesGetter func() []string) (new bool, err error) {
 	if !s.isRunning {
 		return false, nil
 	}
@@ -159,10 +166,63 @@ func (s *service) watch(id string) (new bool, err error) {
 		return false, nil
 	}
 
+	s.watchDependentFiles(id, filesGetter)
 	if err = s.watcher.Watch(id); err != nil {
 		return false, err
 	}
 	return true, nil
+}
+
+func (s *service) watchDependentFiles(parentObjectID string, filesGetter func() []string) {
+	if filesGetter == nil {
+		return
+	}
+
+	unwatch, ok := s.dependentFilesCloseCh[parentObjectID]
+	if ok {
+		close(unwatch)
+	}
+	unwatch = make(chan struct{})
+	s.dependentFilesCloseCh[parentObjectID] = unwatch
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		for {
+			select {
+			case <-unwatch:
+				return
+			case <-ticker.C:
+				fileIDs := filesGetter()
+
+				var pinStatus pb.EventStatusThreadCafePinStatus
+				for _, fileID := range fileIDs {
+					status, err := s.fileStatusService.GetFileStatus(context.Background(), s.spaceService.AccountId(), fileID)
+					if err != nil {
+						log.Error("can't get status of dependent file", zap.String("fileID", fileID), zap.Error(err))
+					}
+
+					switch status {
+					case syncstatus.StatusUnknown:
+						// skip
+					case syncstatus.StatusNotSynced:
+						pinStatus.Pinning++
+					case syncstatus.StatusSynced:
+						pinStatus.Pinned++
+					}
+				}
+
+				s.Lock()
+				s.dependentFilesStats[parentObjectID] = pinStatus
+				s.Unlock()
+			}
+		}
+	}()
+}
+
+func (s *service) unwatchDependentFiles(parentObjectID string) {
+	if ch, ok := s.dependentFilesCloseCh[parentObjectID]; ok {
+		close(ch)
+	}
 }
 
 func (s *service) unwatch(id string) {
@@ -180,6 +240,7 @@ func (s *service) unwatch(id string) {
 		s.fileStatusService.Unwatch(s.spaceService.AccountId(), id)
 		return
 	}
+	s.unwatchDependentFiles(id)
 	s.watcher.Unwatch(id)
 }
 
@@ -210,12 +271,16 @@ func (s *service) tryUnregister(id string) bool {
 	return false
 }
 
-func (s *service) notify(objId string, objStatus, generalStatus pb.EventStatusThreadSyncStatus) {
+func (s *service) notify(
+	objId string,
+	objStatus, generalStatus pb.EventStatusThreadSyncStatus,
+	pinStatus pb.EventStatusThreadCafePinStatus,
+) {
 	s.sendEvent(objId, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 		Summary: &pb.EventStatusThreadSummary{Status: objStatus},
 		Cafe: &pb.EventStatusThreadCafe{
 			Status: generalStatus,
-			Files:  &pb.EventStatusThreadCafePinStatus{},
+			Files:  &pinStatus,
 		},
 	}})
 }

@@ -31,9 +31,13 @@ func NewFileSyncer(
 	}
 }
 
+func (fs *FileSyncer) SyncExistingFile(fileID string) error {
+	return fs.fileSync.AddFile(fs.spaceService.AccountId(), fileID)
+}
+
 func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
-		return fs.fileSync.AddFile(fs.spaceService.AccountId(), hash)
+		return fs.SyncExistingFile(hash)
 	}
 
 	params := pb.RpcBlockUploadRequest{

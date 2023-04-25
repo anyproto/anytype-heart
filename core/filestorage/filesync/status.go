@@ -27,8 +27,9 @@ type StatusWatcher struct {
 	filesToWatchLock *sync.Mutex
 	filesToWatch     map[fileWithSpace]struct{}
 
-	files    map[fileWithSpace]fileStatus
-	updateCh chan fileWithSpace
+	filesLock *sync.Mutex
+	files     map[fileWithSpace]fileStatus
+	updateCh  chan fileWithSpace
 
 	updateInterval  time.Duration
 	statusService   StatusService
@@ -37,8 +38,9 @@ type StatusWatcher struct {
 
 func (f *fileSync) NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher {
 	return &StatusWatcher{
-		filesToWatchLock: &sync.Mutex{},
+		filesLock:        &sync.Mutex{},
 		files:            map[fileWithSpace]fileStatus{},
+		filesToWatchLock: &sync.Mutex{},
 		filesToWatch:     map[fileWithSpace]struct{}{},
 		updateCh:         make(chan fileWithSpace),
 		statusService:    statusService,
@@ -82,13 +84,27 @@ func (s *StatusWatcher) checkFiles(ctx context.Context) {
 	}
 }
 
+func (s *StatusWatcher) GetFileStatus(ctx context.Context, spaceID string, fileID string) (syncstatus.SyncStatus, error) {
+	s.filesLock.Lock()
+	defer s.filesLock.Unlock()
+
+	status, err := s.getFileStatus(ctx, fileWithSpace{
+		spaceID: spaceID,
+		fileID:  fileID,
+	})
+
+	return status.status, err
+}
+
 func (s *StatusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
+	s.filesLock.Lock()
+	defer s.filesLock.Unlock()
+
 	status, err := s.getFileStatus(ctx, key)
 	if err != nil {
 		return fmt.Errorf("get file status: %w", err)
 	}
 	s.files[key] = status
-
 	return s.statusService.UpdateTree(context.Background(), key.fileID, status.status)
 }
 

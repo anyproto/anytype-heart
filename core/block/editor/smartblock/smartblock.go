@@ -212,15 +212,7 @@ func (sb *smartBlock) Inner() SmartBlock {
 }
 
 func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
-	for _, rel := range s.GetRelationLinks() {
-		// coverId can contains both hash or predefined cover id
-		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
-			if slice.FindPos(fileKeys, rel.Key) == -1 {
-				fileKeys = append(fileKeys, rel.Key)
-			}
-		}
-	}
-	return
+	return s.FileRelationLinks()
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {

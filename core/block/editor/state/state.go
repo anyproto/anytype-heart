@@ -1044,6 +1044,19 @@ func (s *State) Snippet() (snippet string) {
 	return textutil.Truncate(snippet, snippetMaxSize)
 }
 
+func (s *State) FileRelationLinks() []string {
+	var fileIDs []string
+	for _, rel := range s.GetRelationLinks() {
+		// coverId can contain both hash or predefined cover id
+		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
+			if slice.FindPos(fileIDs, rel.Key) == -1 {
+				fileIDs = append(fileIDs, rel.Key)
+			}
+		}
+	}
+	return fileIDs
+}
+
 func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {

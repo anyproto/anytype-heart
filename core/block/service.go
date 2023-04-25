@@ -213,9 +213,11 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	// TODO: [MR] add files to status logic
 	_, err = s.status.Watch(id, func() []string {
-		return nil
+		ob.Lock()
+		defer ob.Unlock()
+		bs := ob.NewState()
+		return bs.GetAllFileHashes(ob.FileRelationKeys(bs))
 	})
 	if err == nil {
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
@@ -226,24 +228,6 @@ func (s *Service) OpenBlock(
 	if err != nil && err != treestorage.ErrUnknownTreeId {
 		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
 	}
-
-	// if tid := ob.threadId; tid != thread.Undef && s.status != nil {
-	//	var (
-	//		fList = func() []string {
-	//			ob.Lock()
-	//			defer ob.Unlock()
-	//			bs := ob.NewState()
-	//			return bs.GetAllFileHashes(ob.FileRelationKeys(bs))
-	//		}
-	//	)
-	//
-	//	if newWatcher := s.status.Watch(tid, fList); newWatcher {
-	//		ob.AddHook(func(_ smartblock.ApplyInfo) error {
-	//			s.status.Unwatch(tid)
-	//			return nil
-	//		}, smartblock.HookOnClose)
-	//	}
-	// }
 
 	sbType, err := s.sbtProvider.Type(id)
 	if err != nil {
