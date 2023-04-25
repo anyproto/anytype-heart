@@ -424,7 +424,7 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 			model := change.Model.(*pb.Change)
 			if startId == change.Id {
 				if s == nil {
-					s = state.NewDocFromSnapshot(change.Id, model.Snapshot).(*state.State)
+					s = state.NewDocFromSnapshot(ot.Id(), model.Snapshot).(*state.State)
 					s.SetChangeId(startId)
 					return true
 				}
