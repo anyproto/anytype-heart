@@ -69,10 +69,10 @@ func (b *LinkToWeb) GetBlocks(*MapRequest) *MapResponse {
 
 type ChildPageBlock struct {
 	Block
-	ChildPage ChildPG `json:"child_page"`
+	ChildPage ChildPage `json:"child_page"`
 }
 
-type ChildPG struct {
+type ChildPage struct {
 	Title string `json:"title"`
 }
 
@@ -84,7 +84,7 @@ func (b *ChildPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 	}
 }
 
-func (p ChildPG) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
+func (p ChildPage) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
 	var (
 		targetBlockID string
 		ok            bool
@@ -124,7 +124,7 @@ func (p ChildPG) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]st
 
 type ChildDatabaseBlock struct {
 	Block
-	ChildDatabase ChildDB `json:"child_database"`
+	ChildDatabase ChildDatabase `json:"child_database"`
 }
 
 func (b *ChildDatabaseBlock) GetBlocks(req *MapRequest) *MapResponse {
@@ -135,11 +135,11 @@ func (b *ChildDatabaseBlock) GetBlocks(req *MapRequest) *MapResponse {
 	}
 }
 
-type ChildDB struct {
+type ChildDatabase struct {
 	Title string `json:"title"`
 }
 
-func (c *ChildDB) GetDataviewBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
+func (c *ChildDatabase) GetDataviewBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
 	var (
 		targetBlockID string
 	)

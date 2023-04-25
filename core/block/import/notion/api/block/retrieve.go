@@ -119,7 +119,7 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 	blocks := make([]interface{}, 0)
 	switch blockType {
-	case Paragraph:
+	case TypeParagraph:
 		var p ParagraphBlock
 		err := json.Unmarshal(buffer, &p)
 		if err != nil {
@@ -127,7 +127,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &p)
-	case Heading1:
+	case TypeHeading1:
 		var h Heading1Block
 		err := json.Unmarshal(buffer, &h)
 		if err != nil {
@@ -135,7 +135,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &h)
-	case Heading2:
+	case TypeHeading2:
 		var h Heading2Block
 		err := json.Unmarshal(buffer, &h)
 		if err != nil {
@@ -143,7 +143,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &h)
-	case Heading3:
+	case TypeHeading3:
 		var h Heading3Block
 		err := json.Unmarshal(buffer, &h)
 		if err != nil {
@@ -151,7 +151,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &h)
-	case Callout:
+	case TypeCallout:
 		var c CalloutBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
@@ -159,7 +159,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &c)
-	case Quote:
+	case TypeQuote:
 		var q QuoteBlock
 		err := json.Unmarshal(buffer, &q)
 		if err != nil {
@@ -167,7 +167,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &q)
-	case BulletList:
+	case TypeBulletList:
 		var list BulletedListBlock
 		err := json.Unmarshal(buffer, &list)
 		if err != nil {
@@ -175,7 +175,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &list)
-	case NumberList:
+	case TypeNumberList:
 		var nl NumberedListBlock
 		err := json.Unmarshal(buffer, &nl)
 		if err != nil {
@@ -183,7 +183,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &nl)
-	case Toggle:
+	case TypeToggle:
 		var t ToggleBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
@@ -191,7 +191,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &t)
-	case Code:
+	case TypeCode:
 		var c CodeBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
@@ -199,7 +199,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &c)
-	case Equation:
+	case TypeEquation:
 		var e EquationBlock
 		err := json.Unmarshal(buffer, &e)
 		if err != nil {
@@ -207,7 +207,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &e)
-	case ToDo:
+	case TypeToDo:
 		var t ToDoBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
@@ -215,7 +215,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &t)
-	case File:
+	case TypeFile:
 		var f FileBlock
 		err := json.Unmarshal(buffer, &f)
 		if err != nil {
@@ -223,7 +223,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &f)
-	case Image:
+	case TypeImage:
 		var i ImageBlock
 		err := json.Unmarshal(buffer, &i)
 		if err != nil {
@@ -231,7 +231,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &i)
-	case Video:
+	case TypeVideo:
 		var v VideoBlock
 		err := json.Unmarshal(buffer, &v)
 		if err != nil {
@@ -239,7 +239,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &v)
-	case Audio:
+	case TypeAudio:
 		var v AudioBlock
 		err := json.Unmarshal(buffer, &v)
 		if err != nil {
@@ -247,7 +247,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &v)
-	case Pdf:
+	case TypePdf:
 		var p PdfBlock
 		err := json.Unmarshal(buffer, &p)
 		if err != nil {
@@ -255,7 +255,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &p)
-	case Bookmark:
+	case TypeBookmark:
 		var b BookmarkBlock
 		err := json.Unmarshal(buffer, &b)
 		if err != nil {
@@ -263,7 +263,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &b)
-	case Divider:
+	case TypeDivider:
 		var d DividerBlock
 		err := json.Unmarshal(buffer, &d)
 		if err != nil {
@@ -271,7 +271,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &d)
-	case TableOfContents:
+	case TypeTableOfContents:
 		var t TableOfContentsBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
@@ -279,7 +279,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &t)
-	case Embed:
+	case TypeEmbed:
 		var e EmbedBlock
 		err := json.Unmarshal(buffer, &e)
 		if err != nil {
@@ -287,7 +287,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &e)
-	case LinkPreview:
+	case TypeLinkPreview:
 		var lp LinkPreviewBlock
 		err := json.Unmarshal(buffer, &lp)
 		if err != nil {
@@ -295,7 +295,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &lp)
-	case ChildDatabase:
+	case TypeChildDatabase:
 		var c ChildDatabaseBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
@@ -303,7 +303,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &c)
-	case ChildPage:
+	case TypeChildPage:
 		var c ChildPageBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
@@ -311,7 +311,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &c)
-	case LinkToPage:
+	case TypeLinkToPage:
 		var l LinkToPageBlock
 		err := json.Unmarshal(buffer, &l)
 		if err != nil {
@@ -319,7 +319,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &l)
-	case Unsupported, Template, SyncedBlock:
+	case TypeUnsupported, TypeTemplate, TypeSyncedBlock:
 		var u UnsupportedBlock
 		err := json.Unmarshal(buffer, &u)
 		if err != nil {
@@ -327,7 +327,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &u)
-	case Table:
+	case TypeTable:
 		var t TableBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
@@ -335,7 +335,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &t)
-	case TableRow:
+	case TypeTableRow:
 		var t TableRowBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
@@ -343,7 +343,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &t)
-	case ColumnList:
+	case TypeColumnList:
 		var cl ColumnListBlock
 		err := json.Unmarshal(buffer, &cl)
 		if err != nil {
@@ -351,7 +351,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			return blocks
 		}
 		blocks = append(blocks, &cl)
-	case Column:
+	case TypeColumn:
 		var cb ColumnBlock
 		err := json.Unmarshal(buffer, &cb)
 		if err != nil {
