@@ -98,7 +98,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if workspaceID == "" {
 		// todo: pass it explicitly
-		workspaceID = oc.core.Account()
+		workspaceID = oc.core.PredefinedBlocks().Account
 	}
 
 	if snapshot.Details != nil && snapshot.Details.Fields != nil {
