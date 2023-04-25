@@ -113,6 +113,11 @@ func (s *spaceStorage) SpaceSettingsId() string {
 	return s.spaceSettingsId
 }
 
+func (s *spaceStorage) HasTree(id string) (bool, error) {
+	keys := newTreeKeys(s.spaceId, id)
+	return hasDB(s.objDb, keys.RootIdKey()), nil
+}
+
 func (s *spaceStorage) TreeStorage(id string) (storage.TreeStorage, error) {
 	return newTreeStorage(s.objDb, s.spaceId, id)
 }

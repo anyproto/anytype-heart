@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -70,7 +70,7 @@ func New(tempDirService *core.TempDirService) Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.detailsSetter = a.MustComponent(treegetter.CName).(DetailsSetter)
+	s.detailsSetter = a.MustComponent(treemanager.CName).(DetailsSetter)
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)

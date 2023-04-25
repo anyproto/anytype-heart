@@ -23,7 +23,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	cp "github.com/otiai10/copy"
 
@@ -382,7 +382,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account() {
-		mw.app.MustComponent(treegetter.CName).(*block.Service).CloseBlocks()
+		mw.app.MustComponent(treemanager.CName).(*block.Service).CloseBlocks()
 		acc := &model.Account{Id: req.Id}
 		acc.Info = mw.getInfo()
 		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)

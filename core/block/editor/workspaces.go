@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -100,7 +100,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	p.app = ctx.App
 	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
-	p.templateCloner = p.app.MustComponent(treegetter.CName).(templateCloner)
+	p.templateCloner = p.app.MustComponent(treemanager.CName).(templateCloner)
 
 	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 

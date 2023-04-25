@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
@@ -63,7 +63,7 @@ import (
 )
 
 const (
-	CName           = treegetter.CName
+	CName           = treemanager.CName
 	linkObjectShare = "anytype://object/share?"
 )
 

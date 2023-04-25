@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
 
@@ -23,7 +23,7 @@ import (
 
 const CName = "relation"
 
-const blockServiceCName = treegetter.CName
+const blockServiceCName = treemanager.CName
 
 var (
 	ErrNotFound = errors.New("relation not found")

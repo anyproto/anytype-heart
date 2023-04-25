@@ -57,6 +57,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
+	return nil
 	l.port = l.portProvider.Port()
 	l.periodicCheck.Run()
 	return
@@ -67,6 +68,7 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
+	return nil
 	l.periodicCheck.Close()
 	l.cancel()
 	if l.server != nil {

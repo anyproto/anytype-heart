@@ -9,16 +9,15 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -41,13 +40,16 @@ type Service interface {
 	EnsurePredefinedBlocks(ctx context.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
+	// FileOffload removes file blocks recursively, but leave details
+	FileOffload(id string) (bytesRemoved uint64, err error)
+
 	FileByHash(ctx context.Context, hash string) (File, error)
-	FileAdd(ctx context.Context, opts ...files2.AddOption) (File, error)
-	FileGetKeys(hash string) (*files2.FileKeys, error)
-	FileStoreKeys(fileKeys ...files2.FileKeys) error
+	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
+	FileGetKeys(hash string) (*files.FileKeys, error)
+	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
-	ImageAdd(ctx context.Context, opts ...files2.AddOption) (Image, error)
+	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
@@ -67,11 +69,10 @@ type ObjectsDeriver interface {
 }
 
 type Anytype struct {
-	files            *files2.Service
-	objectStore      objectstore.ObjectStore
-	fileStore        filestore.FileStore
-	fileBlockStorage filestorage.FileStorage
-	deriver          ObjectsDeriver
+	files       *files.Service
+	objectStore objectstore.ObjectStore
+	fileStore   filestore.FileStore
+	deriver     ObjectsDeriver
 
 	predefinedBlockIds threads.DerivedSmartblockIds
 
@@ -99,10 +100,9 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
-	a.files = ap.MustComponent(files2.CName).(*files2.Service)
+	a.files = ap.MustComponent(files.CName).(*files.Service)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
-	a.deriver = ap.MustComponent(treegetter.CName).(ObjectsDeriver)
-	a.fileBlockStorage = app.MustComponent[filestorage.FileStorage](ap)
+	a.deriver = ap.MustComponent(treemanager.CName).(ObjectsDeriver)
 	return
 }
 
