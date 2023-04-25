@@ -36,12 +36,13 @@ func init() {
 
 type Markdown struct {
 	blockConverter *mdConverter
+	otc            converter.ObjectTreeCreator
 }
 
 const Name = "Notion"
 
-func New(s core.Service) converter.Converter {
-	return &Markdown{blockConverter: newMDConverter(s)}
+func New(s core.Service, otc converter.ObjectTreeCreator) converter.Converter {
+	return &Markdown{blockConverter: newMDConverter(s), otc: otc}
 }
 
 func (m *Markdown) Name() string {
@@ -59,7 +60,7 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTreeCreator) *converter.Response {
+func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	path, err := m.GetParams(req.Params)
 	allErrors := converter.NewError()
 	if err != nil {
@@ -102,7 +103,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.Obj
 	for name, file := range files {
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
 			ctx := context.Background()
-			obj, release, err := oc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
+			obj, release, err := m.otc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
 				return &sb.InitContext{
 					Ctx: ctx,
 				}
@@ -113,7 +114,11 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.Obj
 					return &converter.Response{Error: allErrors}
 				}
 			}
-			file.PageID = obj.Id()
+			var objID string
+			if obj != nil {
+				objID = obj.Id()
+			}
+			file.PageID = objID
 			release()
 			if len(file.ParsedBlocks) > 0 {
 				if text := file.ParsedBlocks[0].GetText(); text != nil && text.Style == model.BlockContentText_Header1 {
@@ -144,9 +149,10 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.Obj
 			file.Title = title
 			// FIELD-BLOCK
 			fields := map[string]*types.Value{
-				bundle.RelationKeyName.String():      pbtypes.String(title),
-				bundle.RelationKeyIconEmoji.String(): pbtypes.String(emoji),
-				bundle.RelationKeySource.String():    pbtypes.String(file.Source),
+				bundle.RelationKeyName.String():       pbtypes.String(title),
+				bundle.RelationKeyIconEmoji.String():  pbtypes.String(emoji),
+				bundle.RelationKeySource.String():     pbtypes.String(file.Source),
+				bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(true),
 			}
 
 			details[name] = &types.Struct{Fields: fields}
@@ -290,7 +296,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.Obj
 			Snapshot: &model.SmartBlockSnapshotBase{
 				Blocks:      file.ParsedBlocks,
 				Details:     details[name],
-				ObjectTypes: pbtypes.GetStringList(details[name], bundle.RelationKeyType.String()),
+				ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 			},
 		})
 	}

@@ -16,7 +16,7 @@ import (
 var converterCreators []ConverterCreator
 
 // Function to register converter
-type ConverterCreator = func(s core.Service) Converter
+type ConverterCreator = func(s core.Service, otc ObjectTreeCreator) Converter
 
 // RegisterFunc add converter creation function to converterCreators
 func RegisterFunc(c ConverterCreator) {
@@ -29,7 +29,7 @@ type ObjectTreeCreator interface {
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(req *pb.RpcObjectImportRequest, oc ObjectTreeCreator) *Response
+	GetSnapshots(req *pb.RpcObjectImportRequest) *Response
 	Name() string
 }
 
@@ -55,6 +55,6 @@ type Response struct {
 	Error     ConvertError
 }
 
-func GetConverters() []func(s core.Service) Converter {
+func GetConverters() []func(s core.Service, otc ObjectTreeCreator) Converter {
 	return converterCreators
 }

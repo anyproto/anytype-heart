@@ -10,7 +10,6 @@ import (
 	app "github.com/anytypeio/any-sync/app"
 	session "github.com/anytypeio/go-anytype-middleware/core/session"
 	pb "github.com/anytypeio/go-anytype-middleware/pb"
-	smartblock "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	types "github.com/gogo/protobuf/types"
 	gomock "github.com/golang/mock/gomock"
@@ -136,54 +135,54 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, updateExisting bool) (*types.Struct, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, cs, pageID, oldIDtoNew, existing)
+	ret := m.ctrl.Call(m, "Create", ctx, cs, pageID, updateExisting)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockCreatorMockRecorder) Create(ctx, cs, pageID, oldIDtoNew, existing interface{}) *gomock.Call {
+func (mr *MockCreatorMockRecorder) Create(ctx, cs, pageID, updateExisting interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, pageID, oldIDtoNew, existing)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), ctx, cs, pageID, updateExisting)
 }
 
-// MockIDGetter is a mock of IDGetter interface.
-type MockIDGetter struct {
+// MockUpdater is a mock of Updater interface.
+type MockUpdater struct {
 	ctrl     *gomock.Controller
-	recorder *MockIDGetterMockRecorder
+	recorder *MockUpdaterMockRecorder
 }
 
-// MockIDGetterMockRecorder is the mock recorder for MockIDGetter.
-type MockIDGetterMockRecorder struct {
-	mock *MockIDGetter
+// MockUpdaterMockRecorder is the mock recorder for MockUpdater.
+type MockUpdaterMockRecorder struct {
+	mock *MockUpdater
 }
 
-// NewMockIDGetter creates a new mock instance.
-func NewMockIDGetter(ctrl *gomock.Controller) *MockIDGetter {
-	mock := &MockIDGetter{ctrl: ctrl}
-	mock.recorder = &MockIDGetterMockRecorder{mock}
+// NewMockUpdater creates a new mock instance.
+func NewMockUpdater(ctrl *gomock.Controller) *MockUpdater {
+	mock := &MockUpdater{ctrl: ctrl}
+	mock.recorder = &MockUpdaterMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockIDGetter) EXPECT() *MockIDGetterMockRecorder {
+func (m *MockUpdater) EXPECT() *MockUpdaterMockRecorder {
 	return m.recorder
 }
 
-// Get mocks base method.
-func (m *MockIDGetter) Get(ctx *session.Context, cs *model.SmartBlockSnapshotBase, sbType smartblock.SmartBlockType, updateExisting bool) (string, bool, error) {
+// Update mocks base method.
+func (m *MockUpdater) Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string) (*types.Struct, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", ctx, cs, sbType, updateExisting)
-	ret0, _ := ret[0].(string)
+	ret := m.ctrl.Call(m, "Update", ctx, cs, pageID)
+	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(error)
-	return ret0, false, ret1
+	return ret0, ret1
 }
 
-// Get indicates an expected call of Get.
-func (mr *MockIDGetterMockRecorder) Get(ctx, cs, sbType, updateExisting interface{}) *gomock.Call {
+// Update indicates an expected call of Update.
+func (mr *MockUpdaterMockRecorder) Update(ctx, cs, pageID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockIDGetter)(nil).Get), ctx, cs, sbType, updateExisting)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUpdater)(nil).Update), ctx, cs, pageID)
 }

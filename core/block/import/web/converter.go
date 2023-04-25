@@ -3,20 +3,29 @@ package web
 import (
 	"context"
 	"fmt"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 )
 
-const name = "web"
+const Name = "web"
 
-type Converter struct{}
+type Converter struct {
+	otc converter.ObjectTreeCreator
+}
 
-func NewConverter() converter.Converter {
-	return new(Converter)
+func init() {
+	converter.RegisterFunc(NewConverter)
+}
+
+func NewConverter(s core.Service, otc converter.ObjectTreeCreator) converter.Converter {
+	return &Converter{
+		otc: otc,
+	}
 }
 
 func (*Converter) GetParser(url string) parsers.Parser {
@@ -29,7 +38,7 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.ObjectTreeCreator) *converter.Response {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
 	if err != nil {
@@ -48,7 +57,7 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.Ob
 	}
 
 	ctx := context.Background()
-	obj, release, err := oc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
+	obj, release, err := c.otc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
 		return &sb.InitContext{
 			Ctx: ctx,
 		}
@@ -58,8 +67,12 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.Ob
 		we.Add(url, err)
 		return &converter.Response{Error: we}
 	}
+	var objID string
+	if obj != nil {
+		objID = obj.Id()
+	}
 	s := &converter.Snapshot{
-		Id:       obj.Id(),
+		Id:       objID,
 		FileName: url,
 		Snapshot: snapshots,
 	}
@@ -71,7 +84,7 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, oc converter.Ob
 }
 
 func (p *Converter) Name() string {
-	return name
+	return Name
 }
 
 func (p *Converter) getParams(params pb.IsRpcObjectImportRequestParams) (string, error) {

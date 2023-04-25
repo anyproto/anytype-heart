@@ -17,7 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
@@ -41,7 +40,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.s = a.MustComponent(block.CName).(*block.Service)
 	core := a.MustComponent(core.CName).(core.Service)
 	for _, f := range converter.GetConverters() {
-		converter := f(core)
+		converter := f(core, i.s)
 		i.converters[converter.Name()] = converter
 	}
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s))
@@ -118,8 +117,8 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	defer progress.Finish()
 	allErrors := make(map[string]error, 0)
 	progress.SetProgressMessage("parse url")
-	w := web.NewConverter()
-	res := w.GetSnapshots(req, i.s)
+	w := i.converters[web.Name]
+	res := w.GetSnapshots(req)
 	if res.Error != nil {
 		return "", nil, res.Error.Error()
 	}
@@ -136,14 +135,10 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 }
 
 func (i *Import) importObjects(c converter.Converter, req *pb.RpcObjectImportRequest) *converter.Response {
-	return c.GetSnapshots(req, i.s)
+	return c.GetSnapshots(req)
 }
 
 func (i *Import) createObjects(ctx *session.Context, res *converter.Response, progress *process.Progress, req *pb.RpcObjectImportRequest, allErrors map[string]error) map[string]*types.Struct {
-	var (
-		sbType smartblock.SmartBlockType
-		err    error
-	)
 	getFileName := func(object *converter.Snapshot) string {
 		if object.FileName != "" {
 			return object.FileName
@@ -156,19 +151,6 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 
 	details := make(map[string]*types.Struct, 0)
 	for _, snapshot := range res.Snapshots {
-		switch {
-		case snapshot.Id != "":
-			sbType, err = smartblock.SmartBlockTypeFromID(snapshot.Id)
-			if err != nil {
-				allErrors[getFileName(snapshot)] = err
-				if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
-					return nil
-				}
-				log.With(zap.String("object name", snapshot.Id)).Error(err)
-			}
-		default:
-			sbType = smartblock.SmartBlockTypePage
-		}
 		progress.SetTotal(int64(len(res.Snapshots)))
 		select {
 		case <-progress.Canceled():
@@ -177,7 +159,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 		default:
 		}
 		progress.AddDone(1)
-		detail, err := i.oc.Create(ctx, snapshot.Snapshot, snapshot.Id, sbType, req.UpdateExistingObjects)
+		detail, err := i.oc.Create(ctx, snapshot.Snapshot, snapshot.Id, req.UpdateExistingObjects)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
