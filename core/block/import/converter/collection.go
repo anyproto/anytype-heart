@@ -24,7 +24,7 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 	return &RootCollection{service: service}
 }
 
-func (r *RootCollection) AddObjects(collectionName string, targetObject []string) (*Snapshot, error) {
+func (r *RootCollection) AddObjects(collectionName string, targetObjects []string) (*Snapshot, error) {
 	detailsStruct := r.getCreateCollectionRequest(collectionName)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, nil)
 	if err != nil {
@@ -37,7 +37,7 @@ func (r *RootCollection) AddObjects(collectionName string, targetObject []string
 	}
 
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
-	st.StoreSlice(smartblock.CollectionStoreKey, targetObject)
+	st.StoreSlice(smartblock.CollectionStoreKey, targetObjects)
 
 	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct), nil
 }
