@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
+	"io"
 	"strings"
 )
 
@@ -70,8 +71,7 @@ func (z *zipAclReadStorage) readRecord(id string) (rec *aclrecordproto.RawAclRec
 	}
 	defer opened.Close()
 
-	var buf []byte
-	_, err = opened.Read(buf)
+	buf, err := io.ReadAll(opened)
 	if err != nil {
 		return
 	}
