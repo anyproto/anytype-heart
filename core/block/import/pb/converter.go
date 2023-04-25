@@ -143,6 +143,8 @@ func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot
 		if snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
 			workspace = snapshot
 		}
+
+		// todo: what is happening here?
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		normalizedID := whitespace.WhitespaceNormalizeString(id)
 		normalizedSpaceDashboardID := whitespace.WhitespaceNormalizeString(profile.SpaceDashboardId)
@@ -151,11 +153,23 @@ func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot
 		}
 	}
 
-	if workspace != nil && newSpaceDashBoardID != "" {
-		workspace.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(newSpaceDashBoardID)
-	}
-}
+	if workspace != nil {
+		if newSpaceDashBoardID != "" {
+			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(newSpaceDashBoardID)
+		}
 
+		spaceName := pbtypes.GetString(workspace.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		if spaceName == "" || spaceName == "Personal space" { // migrate legacy name
+			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(profile.Name)
+		}
+
+		iconOption := pbtypes.GetInt64(workspace.Snapshot.Data.Details, bundle.RelationKeyIconOption.String())
+		if iconOption == 0 {
+			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(int64(rand.Intn(16) + 1))
+		}
+	}
+
+}
 func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	pbFiles map[string]*converter.IOReader,
