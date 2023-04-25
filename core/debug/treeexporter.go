@@ -28,25 +28,25 @@ type treeExporter struct {
 
 func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (filename string, err error) {
 	filename = filepath.Join(path, fmt.Sprintf("at.dbg.%s.%s.zip", e.id, time.Now().Format("20060102.150405.99")))
-	archiveWriter, err := treearchive.NewArchiveWriter(filename)
+	exp, err := treearchive.NewExporter(filename)
 	if err != nil {
 		return
 	}
-	defer archiveWriter.Close()
+	defer exp.Close()
 
-	e.zw = archiveWriter.ZipWriter()
+	e.zw = exp.Writer()
 	params := exporter.TreeExporterParams{
-		ListStorageExporter: archiveWriter,
-		TreeStorageExporter: archiveWriter,
+		ListStorageExporter: exp,
+		TreeStorageExporter: exp,
 		DataConverter:       &changeDataConverter{anonymize: e.anonymized},
 	}
-	anySyncExporter := exporter.NewTreeExporter(params)
 	logBuf := bytes.NewBuffer(nil)
-
 	e.log = log.New(io.MultiWriter(logBuf, os.Stderr), "", log.LstdFlags)
-	e.log.Printf("exporting tree and acl")
+
 	st := time.Now()
-	err = anySyncExporter.ExportUnencrypted(tree)
+	treeExporter := exporter.NewTreeExporter(params)
+	e.log.Printf("exporting tree and acl")
+	err = treeExporter.ExportUnencrypted(tree)
 	if err != nil {
 		e.log.Printf("export tree in zip error: %v", err)
 		return
@@ -54,14 +54,15 @@ func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (
 
 	e.log.Printf("exported tree for a %v", time.Since(st))
 	data, err := e.s.GetByIDs(e.id)
+
 	if err != nil {
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {
 		if len(data) > 0 {
-			data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Struct)
-			data[0].Snippet = transform(data[0].Snippet, e.anonymized, anonymize.Text)
+			data[0].Details = anonymize.Struct(data[0].Details)
+			data[0].Snippet = anonymize.Text(data[0].Snippet)
 			for i, r := range data[0].Relations {
-				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)
+				data[0].Relations[i] = anonymize.Relation(r)
 			}
 			osData := pbtypes.Sprint(data[0])
 			lsWr, er := e.zw.Create("localstore.json")
@@ -84,11 +85,4 @@ func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (
 	}
 	io.Copy(logW, logBuf)
 	return
-}
-
-func transform[T any](in T, transformed bool, f func(T) T) T {
-	if transformed {
-		return f(in)
-	}
-	return in
 }

@@ -1,4 +1,4 @@
-package ziparchive
+package treearchive
 
 import (
 	"archive/zip"
@@ -7,8 +7,8 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anytypeio/go-anytype-middleware/core/debug/ziparchive/zipaclstorage"
-	"github.com/anytypeio/go-anytype-middleware/core/debug/ziparchive/ziptreestorage"
+	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive/zipaclstorage"
+	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive/ziptreestorage"
 	"github.com/hashicorp/go-multierror"
 	"io/fs"
 	"os"

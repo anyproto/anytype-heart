@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	"io"
 	"strings"
 )
 
@@ -25,9 +24,9 @@ func NewZipTreeReadStorage(id string, zr *zip.ReadCloser) (st treestorage.TreeSt
 		files: map[string]*zip.File{},
 		zr:    zr,
 	}
-	for _, f := range zr.Reader.File {
+	for _, f := range zr.File {
 		if len(f.Name) > len(id) && strings.Contains(f.Name, id) {
-			split := strings.Split(f.Name, "/")
+			split := strings.SplitAfter(id, "/")
 			last := split[len(split)-1]
 			zrs.files[last] = f
 		}
@@ -100,7 +99,8 @@ func (z *zipTreeReadStorage) readChange(id string) (change *treechangeproto.RawT
 	}
 	defer opened.Close()
 
-	buf, err := io.ReadAll(opened)
+	var buf []byte
+	_, err = opened.Read(buf)
 	if err != nil {
 		return
 	}

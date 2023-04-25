@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/anytypeio/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
-	"io"
 	"strings"
 )
 
@@ -24,7 +23,7 @@ func NewZipAclReadStorage(id string, zr *zip.ReadCloser) (ls liststorage.ListSto
 		files: map[string]*zip.File{},
 		zr:    zr,
 	}
-	for _, f := range zr.Reader.File {
+	for _, f := range zr.File {
 		if len(f.Name) > len(id) && strings.Contains(f.Name, id) {
 			split := strings.SplitAfter(id, "/")
 			last := split[len(split)-1]
@@ -71,7 +70,8 @@ func (z *zipAclReadStorage) readRecord(id string) (rec *aclrecordproto.RawAclRec
 	}
 	defer opened.Close()
 
-	buf, err := io.ReadAll(opened)
+	var buf []byte
+	_, err = opened.Read(buf)
 	if err != nil {
 		return
 	}
