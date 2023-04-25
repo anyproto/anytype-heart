@@ -126,7 +126,7 @@ type SmartBlock interface {
 	FileRelationKeys(s *state.State) []string
 	Inner() SmartBlock
 
-	ocache.ObjectLocker
+	ocache.Object
 	state.Doc
 	sync.Locker
 }
@@ -569,14 +569,6 @@ func (sb *smartBlock) navigationalLinks() []string {
 
 func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 	sb.sendEvent = f
-}
-
-func (sb *smartBlock) Locked() bool {
-	if !sb.Locker.TryLock() {
-		return true
-	}
-	defer sb.Locker.Unlock()
-	return sb.IsLocked()
 }
 
 func (sb *smartBlock) IsLocked() bool {
@@ -1195,8 +1187,27 @@ func (sb *smartBlock) ObjectClose() {
 	sb.SetEventFunc(nil)
 }
 
+func (sb *smartBlock) Locked() bool {
+	if !sb.Locker.TryLock() {
+		return true
+	}
+	defer sb.Locker.Unlock()
+	return sb.IsLocked()
+}
+
+func (sb *smartBlock) TryClose(objectTTL time.Duration) (res bool, err error) {
+	if !sb.Locker.TryLock() {
+		return false, nil
+	}
+	return true, sb.closeLocked()
+}
+
 func (sb *smartBlock) Close() (err error) {
 	sb.Lock()
+	return sb.closeLocked()
+}
+
+func (sb *smartBlock) closeLocked() (err error) {
 	sb.execHooks(HookOnClose, ApplyInfo{State: sb.Doc.(*state.State)})
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()

@@ -78,7 +78,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 
 	cctx := context.Background()
 
-	sb, release, err := ou.service.CreateTreeObject(cctx, sbType, func(id string) *smartblock.InitContext {
+	sb, err := ou.service.CreateTreeObject(cctx, sbType, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
 			Ctx: cctx,
 		}
@@ -86,7 +86,6 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	if err != nil {
 		return "", false, err
 	}
-	release()
 	return sb.Id(), false, nil
 }
 

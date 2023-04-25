@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,13 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/textileio/go-threads/core/thread"
+
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -29,16 +32,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -55,26 +54,22 @@ const (
 	injectionTimeout = 30 * time.Second
 )
 
+func New() BuiltinObjects {
+	return new(builtinObjects)
+}
+
 type BuiltinObjects interface {
 	app.ComponentRunnable
 }
 
 type builtinObjects struct {
-	cancel      func()
-	source      source.Service
-	service     *block.Service
-	relService  relation2.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-	coreService core.Service
+	cancel     func()
+	source     source.Service
+	service    *block.Service
+	relService relation2.Service
 
 	createBuiltinObjects bool
 	idsMap               map[string]string
-}
-
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) BuiltinObjects {
-	return &builtinObjects{
-		sbtProvider: sbtProvider,
-	}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
@@ -82,7 +77,6 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.createBuiltinObjects = a.MustComponent(config.CName).(*config.Config).CreateBuiltinObjects
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
-	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.cancel = func() {}
 	return
 }
@@ -123,7 +117,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 	isSpaceDashboardIDFound := false
 	for _, zf := range zr.File {
 		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
-		sbt, err := b.sbtProvider.Type(id)
+		sbt, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
 			sbt, err = SmartBlockTypeFromThreadID(id)
 			if err != nil {
@@ -136,9 +130,17 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			b.idsMap[id] = id
 			continue
 		}
+		if id == builtInDashboardObjectID {
+			b.idsMap[id], err = b.service.GetSpaceDashboardID(ctx)
+			if err != nil {
+				return err
+			}
+			isSpaceDashboardIDFound = true
+			continue
+		}
 
 		// create object
-		obj, release, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
+		obj, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
 			return &sb.InitContext{
 				Ctx: ctx,
 			}
@@ -147,23 +149,6 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			return err
 		}
 		newId := obj.Id()
-
-		if id == builtInDashboardObjectID {
-			isSpaceDashboardIDFound = true
-			if err2 := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-				ContextId: b.coreService.PredefinedBlocks().Account,
-				Details: []*pb.RpcObjectSetDetailsDetail{
-					{
-						Key:   bundle.RelationKeySpaceDashboardId.String(),
-						Value: pbtypes.String(newId),
-					},
-				},
-			}); err2 != nil {
-				log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err2.Error())
-			}
-		}
-
-		release()
 		b.idsMap[id] = newId
 	}
 
@@ -206,7 +191,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	st.SetRootId(newId)
 	a := st.Get(newId)
 	m := a.Model()
-	sbt, err := b.sbtProvider.Type(newId)
+	sbt, err := smartblock.SmartBlockTypeFromID(newId)
 	if sbt == smartblock.SmartBlockTypeSubObject {
 		ot, err := bundle.TypeKeyFromUrl(pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyType.String()))
 		if err != nil {

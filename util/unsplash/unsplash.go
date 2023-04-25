@@ -80,7 +80,11 @@ type results struct {
 	results []Result
 }
 
-func (results) Close() error {
+func (r results) TryClose(objectTTL time.Duration) (bool, error) {
+	return true, r.Close()
+}
+
+func (r results) Close() error {
 	return nil
 }
 

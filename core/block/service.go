@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -48,7 +47,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -88,14 +86,8 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func New(
-	tempDirProvider *core.TempDirService,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) *Service {
-	return &Service{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-	}
+func New(tempDirProvider *core.TempDirService) *Service {
+	return &Service{tempDirProvider: tempDirProvider}
 }
 
 type objectCreator interface {
@@ -136,7 +128,8 @@ type Service struct {
 	commonAccount   accountservice.Service
 	fileStore       filestore.FileStore
 	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
+
+	spaceDashboardID string
 }
 
 func (s *Service) Name() string {
@@ -168,6 +161,21 @@ func (s *Service) Run(ctx context.Context) (err error) {
 	return
 }
 
+func (s *Service) GetSpaceDashboardID(ctx context.Context) (string, error) {
+	if s.spaceDashboardID == "" {
+		obj, err := s.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *smartblock.InitContext {
+			return &smartblock.InitContext{
+				Ctx: ctx,
+			}
+		})
+		if err != nil {
+			return "", err
+		}
+		s.spaceDashboardID = obj.Id()
+	}
+	return s.spaceDashboardID, nil
+}
+
 func (s *Service) Anytype() core.Service {
 	return s.anytype
 }
@@ -176,7 +184,7 @@ func (s *Service) OpenBlock(
 	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
-	ob, release, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
+	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +192,7 @@ func (s *Service) OpenBlock(
 		ob.EnabledRelationAsDependentObjects()
 	}
 	afterSmartBlockTime := time.Now()
-	defer release()
+
 	ob.Lock()
 	defer ob.Unlock()
 	ob.SetEventFunc(s.sendEvent)
@@ -204,19 +212,15 @@ func (s *Service) OpenBlock(
 	}
 	afterShowTime := time.Now()
 	// TODO: [MR] add files to status logic
-	_, err = s.status.Watch(id, func() []string {
-		return nil
-	})
-	if err == nil {
+	if tp, err := coresb.SmartBlockTypeFromID(id); err == nil && tp == coresb.SmartBlockTypePage {
+		s.status.Watch(id, func() []string {
+			return nil
+		})
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
 			s.status.Unwatch(id)
 			return nil
 		}, smartblock.HookOnClose)
 	}
-	if err != nil && err != treestorage.ErrUnknownTreeId {
-		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
-	}
-
 	// if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 	//	var (
 	//		fList = func() []string {
@@ -234,12 +238,8 @@ func (s *Service) OpenBlock(
 	//		}, smartblock.HookOnClose)
 	//	}
 	// }
-
-	sbType, err := s.sbtProvider.Type(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get smartblock type: %w", err)
-	}
 	afterHashesTime := time.Now()
+	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
 		ObjectId:       id,
 		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
@@ -247,7 +247,7 @@ func (s *Service) OpenBlock(
 		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
 		ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
-		SmartblockType: int(sbType),
+		SmartblockType: int(tp),
 	})
 	return obj, nil
 }
@@ -277,7 +277,7 @@ func (s *Service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectV
 	}); err != nil {
 		return
 	}
-	_, _, err = s.PutObject(context.Background(), bs.Id(), bs)
+	_, err = s.PutObject(context.Background(), bs.Id(), bs)
 	if err != nil {
 		return
 	}
@@ -321,7 +321,6 @@ func (s *Service) CloseBlocks() {
 		ob.Lock()
 		ob.ObjectClose()
 		ob.Unlock()
-		s.cache.Reset(ob.Id())
 		return true
 	})
 }
@@ -612,6 +611,7 @@ func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId stri
 		}, false); err != nil {
 			return err
 		}
+		s.spaceDashboardID = id
 		return nil
 	})
 	return id, nil
@@ -836,11 +836,11 @@ func (s *Service) Close(ctx context.Context) (err error) {
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	return s.getSmartblock(ctx, id)
 }
 
-func (s *Service) getSmartblock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+func (s *Service) getSmartblock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	return s.GetAccountObject(ctx, id)
 }
 
@@ -859,11 +859,11 @@ func (s *Service) StateFromTemplate(templateID string, name string) (st *state.S
 }
 
 func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(basic.AllOperations); ok {
 		sb.Lock()
 		defer sb.Unlock()
@@ -873,11 +873,11 @@ func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations)
 }
 
 func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(clipboard.Clipboard); ok {
 		sb.Lock()
 		defer sb.Unlock()
@@ -887,11 +887,11 @@ func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 }
 
 func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(stext.Text); ok {
 		sb.Lock()
 		defer sb.Unlock()
@@ -901,11 +901,11 @@ func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
 }
 
 func (s *Service) DoFile(id string, apply func(b file.File) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(file.File); ok {
 		sb.Lock()
 		defer sb.Unlock()
@@ -915,11 +915,11 @@ func (s *Service) DoFile(id string, apply func(b file.File) error) error {
 }
 
 func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(bookmark.Bookmark); ok {
 		sb.Lock()
 		defer sb.Unlock()
@@ -929,11 +929,11 @@ func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 }
 
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(file.File); ok {
 		return apply(bb)
 	}
@@ -941,11 +941,11 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(basic.IHistory); ok {
 		sb.Lock()
 		defer sb.Unlock()
@@ -955,11 +955,11 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 }
 
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	if bb, ok := sb.(dataview.Dataview); ok {
 		sb.Lock()
 		defer sb.Unlock()
@@ -969,26 +969,25 @@ func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 }
 
 func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	sb.Lock()
 	defer sb.Unlock()
 	return apply(sb)
 }
 
 type Picker interface {
-	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error)
+	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 }
 
 func Do[t any](p Picker, id string, apply func(sb t) error) error {
-	sb, release, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
 
 	bb, ok := sb.(t)
 	if !ok {
@@ -1002,11 +1001,11 @@ func Do[t any](p Picker, id string, apply func(sb t) error) error {
 }
 
 func DoWithContext[t any](ctx context.Context, p Picker, id string, apply func(sb t) error) error {
-	sb, release, err := p.PickBlock(ctx, id)
+	sb, err := p.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	callerID, _ := ctx.Value(smartblock.CallerKey).(string)
 	if callerID != id {
 		sb.Lock()
@@ -1054,11 +1053,10 @@ func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.St
 }
 
 func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	sb, release, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
 	if err != nil {
 		return err
 	}
-	defer release()
 
 	bb, ok := sb.(t)
 	if !ok {
@@ -1079,11 +1077,11 @@ func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *
 }
 
 func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, release, err := s.PickBlock(ctx, id)
+	sb, err := s.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}
-	defer release()
+
 	callerId, _ := ctx.Value(smartblock.CallerKey).(string)
 	if callerId != id {
 		sb.Lock()

@@ -30,7 +30,6 @@ func newClientManager(s *service) *clientManager {
 				return nil, fmt.Errorf("load func shouldn't be used")
 			},
 			ocache.WithTTL(time.Minute*5),
-			ocache.WithRefCounter(false),
 			ocache.WithLogger(log.Sugar()),
 			ocache.WithGCPeriod(0),
 		),

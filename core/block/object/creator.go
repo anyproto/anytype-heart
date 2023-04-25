@@ -82,7 +82,7 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
-	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
+	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
@@ -158,7 +158,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		return c.CreateSubObjectInWorkspace(createState.CombinedDetails(), workspaceID)
 	}
 
-	sb, release, err := c.blockService.CreateTreeObject(ctx, sbType, func(id string) *smartblock.InitContext {
+	sb, err := c.blockService.CreateTreeObject(ctx, sbType, func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()
@@ -173,7 +173,6 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		return
 	}
 	id = sb.Id()
-	defer release()
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
