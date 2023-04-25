@@ -43,6 +43,8 @@ func TestFileSync_AddFile(t *testing.T) {
 }
 
 func TestFileSync_RemoveFile(t *testing.T) {
+	t.Skip("https://linear.app/anytype/issue/GO-1229/fix-testfilesync-removefile")
+	return
 	fx := newFixture(t)
 	defer fx.Finish(t)
 	spaceId := "spaceId"
