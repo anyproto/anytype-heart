@@ -17,3 +17,4 @@ dist/cli
 grpc-web
 .gradle
 tests/mnemonic.txt
+.env

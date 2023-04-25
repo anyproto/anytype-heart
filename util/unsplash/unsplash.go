@@ -3,6 +3,7 @@ package unsplash
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -28,9 +29,10 @@ import (
 
 var log = logging.Logger("unsplash")
 
+var DefaultToken = ""
+
 const (
 	CName         = "unsplash"
-	DefaultToken  = "TLKq5P192MptAcTHnGM8WQPZV8kKNn1eT9FEi5Srem0"
 	cacheTTL      = time.Minute * 10
 	cacheGCPeriod = time.Minute * 5
 )
@@ -298,4 +300,10 @@ func injectIntoExif(filePath, artistName, artistUrl, description string) error {
 		return fmt.Errorf("failed to write exif: %s", err.Error())
 	}
 	return nil
+}
+
+func init() {
+	if DefaultToken == "" {
+		DefaultToken = loadenv.Get("UNSPLASH_KEY")
+	}
 }

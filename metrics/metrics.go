@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
 	"net/http"
 	"os"
 	"sync"
@@ -16,7 +17,7 @@ import (
 
 var log = logging.Logger("anytype-logger")
 
-const DefaultAmplitudeKey = "406eb9bda5a4f8b94d1ca05936acab59"
+var DefaultAmplitudeKey = ""
 
 type threadsMetrics struct {
 	client Client
@@ -315,6 +316,10 @@ func MetricTimeBuckets(scale []time.Duration) []float64 {
 }
 
 func init() {
+	if DefaultAmplitudeKey == "" {
+		DefaultAmplitudeKey = loadenv.Get("AMPLITUDE_KEY")
+	}
+
 	if addr := os.Getenv("ANYTYPE_PROM"); addr != "" {
 		runPrometheusHttp(addr)
 	}
