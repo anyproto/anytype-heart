@@ -2,15 +2,15 @@ package editor
 
 import (
 	"fmt"
-	
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -40,6 +40,13 @@ func NewWidgetObject() *WidgetObject {
 func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = w.SmartBlock.Init(ctx); err != nil {
 		return
+	}
+
+	if err = smartblock.ObjectApplyTemplate(w, ctx.State,
+		template.WithEmpty,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
+	); err != nil {
+		return fmt.Errorf("failed to apply template: %w", err)
 	}
 
 	defaultWidgetBlocks := []string{
@@ -72,11 +79,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}
 	}
-
-	return smartblock.ObjectApplyTemplate(w, ctx.State,
-		template.WithEmpty,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
-	)
+	return nil
 }
 
 func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
