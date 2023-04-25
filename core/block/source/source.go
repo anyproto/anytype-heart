@@ -252,12 +252,16 @@ type PushChangeParams struct {
 	State             *state.State
 	Changes           []*pb.ChangeContent
 	FileChangedHashes []string
+	Time              time.Time // used to derive the lastModifiedDate; Default is time.Now()
 	DoSnapshot        bool
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+	if params.Time.IsZero() {
+		params.Time = time.Now()
+	}
 	c := &pb.Change{
-		Timestamp: time.Now().Unix(),
+		Timestamp: params.Time.Unix(),
 		Version:   params.State.MigrationVersion(),
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {

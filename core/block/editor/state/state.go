@@ -1378,6 +1378,12 @@ func (s *State) ParentState() *State {
 	return s.parent
 }
 
+// IsTheHeaderChange return true if the state is the initial header change
+// header change is the empty change without any blocks or details except protocol data
+func (s *State) IsTheHeaderChange() bool {
+	return s.changeId == s.rootId
+}
+
 func (s *State) RemoveDetail(keys ...string) (ok bool) {
 	det := pbtypes.CopyStruct(s.Details())
 	if det != nil && det.Fields != nil {

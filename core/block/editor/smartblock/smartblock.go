@@ -631,12 +631,23 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
+
+	var lastModified = time.Now()
+	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
+		// in case it is the first change, allow to explicitly set the last modified time
+		// this case is used when we import existing data from other sources and want to preserve the original dates
+		if err != nil {
+			log.Errorf("failed to get creation info: %s", err)
+		} else {
+			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
+		}
+	}
 	if err = sb.onApply(s); err != nil {
 		return
 	}
 	if sb.Anytype() != nil {
 		// this one will be reverted in case we don't have any actual change being made
-		s.SetLastModified(time.Now().Unix(), sb.Anytype().PredefinedBlocks().Profile)
+		s.SetLastModified(lastModified.Unix(), sb.Anytype().PredefinedBlocks().Profile)
 	}
 	beforeApplyStateTime := time.Now()
 
@@ -671,6 +682,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			}
 		}
 		pushChangeParams := source.PushChangeParams{
+			Time:              lastModified,
 			State:             st,
 			Changes:           changes,
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),

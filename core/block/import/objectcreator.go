@@ -99,7 +99,8 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
-
+	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
+	st.SetLastModified(pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String()), oc.core.ProfileID())
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		oc.onFinish(err, st, filesToDelete)
@@ -195,6 +196,7 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model.SmartBlockSnapshotBase) {
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
 	if err != nil {
+		// todo: GO-1304 I catch this during the import, we need find the root cause and fix it
 		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", newID, err.Error())
 	}
 

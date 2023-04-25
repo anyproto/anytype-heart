@@ -628,7 +628,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 	_, isArchived := i.archivedMap[id]
 	_, isFavorite := i.favoriteMap[id]
-
+	// todo: this may be racy because of reindexOutdatedThreads
 	err := i.store.UpdatePendingLocalDetails(id, func(pending *types.Struct) (*types.Struct, error) {
 		pending.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
 		pending.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
