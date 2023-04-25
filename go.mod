@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
-	github.com/anytypeio/any-sync v0.0.7-0.20230201222102-36307440863f
+	github.com/anytypeio/any-sync v0.0.7-0.20230203115544-9ba0620cab5c
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
