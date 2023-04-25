@@ -56,7 +56,6 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, cErr
 	}
-
 	rootCollection := converter.NewRootCollection(t.service)
 	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
 	if err != nil {
@@ -68,12 +67,10 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if rootCol != nil {
 		snapshots = append(snapshots, rootCol)
 	}
-
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if cErr.IsEmpty() {
 		return &converter.Response{Snapshots: snapshots}, nil
 	}
-
 	return &converter.Response{
 		Snapshots: snapshots,
 	}, cErr
@@ -110,7 +107,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
 	}
 
-	readers, err := s.GetFileReaders(p)
+	readers, err := s.GetFileReaders(p, []string{".txt"})
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
@@ -133,6 +130,19 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 	return snapshots, targetObjects, nil
 }
 
+func (t *TXT) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
+	defer rc.Close()
+	b, err := io.ReadAll(rc)
+	if err != nil {
+		return nil, err
+	}
+	blocks, _, err := anymark.MarkdownToBlocks(b, "", []string{})
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
 func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
@@ -147,17 +157,4 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot,
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id
-}
-
-func (t *TXT) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
-	defer rc.Close()
-	b, err := io.ReadAll(rc)
-	if err != nil {
-		return nil, err
-	}
-	blocks, _, err := anymark.MarkdownToBlocks(b, "", []string{})
-	if err != nil {
-		return nil, err
-	}
-	return blocks, nil
 }

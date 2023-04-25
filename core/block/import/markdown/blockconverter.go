@@ -53,7 +53,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 	if s == nil {
 		return nil
 	}
-	readers, err := s.GetFileReaders(importPath)
+	readers, err := s.GetFileReaders(importPath, []string{".md"})
 	if err != nil {
 		allErrors.Add(importPath, err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {

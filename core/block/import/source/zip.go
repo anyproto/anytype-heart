@@ -13,7 +13,7 @@ func NewZip() *Zip {
 	return &Zip{}
 }
 
-func (d *Zip) GetFileReaders(importPath, expectedExt string) (map[string]io.ReadCloser, error) {
+func (d *Zip) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
 	r, err := zip.OpenReader(importPath)
 	if err != nil {
 		return nil, err
@@ -25,9 +25,8 @@ func (d *Zip) GetFileReaders(importPath, expectedExt string) (map[string]io.Read
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
-		actualExt := filepath.Ext(importPath)
-		if !strings.EqualFold(actualExt, expectedExt) {
-			log.Errorf("not expected extension: %s, %s", expectedExt, actualExt)
+		if isSupportedExtension(filepath.Ext(importPath), expectedExt) {
+			log.Errorf("not expected extension")
 			continue
 		}
 		shortPath := filepath.Clean(f.Name)

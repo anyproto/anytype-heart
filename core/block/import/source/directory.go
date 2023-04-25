@@ -4,7 +4,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type Directory struct{}
@@ -13,7 +12,7 @@ func NewDirectory() *Directory {
 	return &Directory{}
 }
 
-func (d *Directory) GetFileReaders(importPath, expectedExt string) (map[string]io.ReadCloser, error) {
+func (d *Directory) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
 	files := make(map[string]io.ReadCloser)
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -23,9 +22,8 @@ func (d *Directory) GetFileReaders(importPath, expectedExt string) (map[string]i
 					log.Errorf("failed to get relative path %s", err)
 					return nil
 				}
-				actualExt := filepath.Ext(importPath)
-				if !strings.EqualFold(actualExt, expectedExt) {
-					log.Errorf("not expected extension: %s, %s", expectedExt, actualExt)
+				if isSupportedExtension(filepath.Ext(importPath), expectedExt) {
+					log.Errorf("not suppoted extensions")
 					return nil
 				}
 				f, err := os.Open(path)

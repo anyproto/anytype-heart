@@ -113,7 +113,7 @@ func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([
 		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
 	}
 
-	readers, err := s.GetFileReaders(p)
+	readers, err := s.GetFileReaders(p, []string{".html"})
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
@@ -136,6 +136,19 @@ func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([
 	return snapshots, targetObjects, nil
 }
 
+func (h *HTML) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
+	defer rc.Close()
+	b, err := io.ReadAll(rc)
+	if err != nil {
+		return nil, err
+	}
+	blocks, _, err := anymark.HTMLToBlocks(b)
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
 func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
@@ -150,17 +163,4 @@ func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id
-}
-
-func (h *HTML) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
-	defer rc.Close()
-	b, err := io.ReadAll(rc)
-	if err != nil {
-		return nil, err
-	}
-	blocks, _, err := anymark.HTMLToBlocks(b)
-	if err != nil {
-		return nil, err
-	}
-	return blocks, nil
 }

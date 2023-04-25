@@ -120,26 +120,18 @@ func (c *CSV) handlePath(req *pb.RpcObjectImportRequest, p string, cErr converte
 		cErr.Add(p, fmt.Errorf("failed to identify source: %s", p))
 		return nil
 	}
-	readers, err := s.GetFileReaders(p)
+	readers, err := s.GetFileReaders(p, []string{".csv"})
 	if err != nil {
 		cErr.Add(p, fmt.Errorf("failed to get readers: %s", err.Error()))
 		if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil
 		}
 	}
-	csvTables, err := readCsvFile(params.GetDelimiter(), readers)
-	if err != nil {
-		cErr.Add(p, err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil
-		}
-	}
-
-	return c.handleCSVTables(req.Mode, csvTables, params, str, p, cErr)
+	return c.handleCSVTables(req.Mode, readers, params, str, p, cErr)
 }
 
 func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
-	csvTables [][][]string,
+	readers map[string]io.ReadCloser,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
 	p string,
@@ -147,7 +139,15 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allRelations := make(map[string][]*converter.Relation, 0)
 	allObjectsIDs := make([]string, 0)
-	for _, csvTable := range csvTables {
+	for _, rc := range readers {
+		csvTable, err := c.getCSVTable(rc, params.GetDelimiter())
+		if err != nil {
+			cErr.Add(p, err)
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil
+			}
+			continue
+		}
 		if c.needToTranspose(params) && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
@@ -163,11 +163,20 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 		allSnapshots = append(allSnapshots, snapshots...)
 		allRelations = mergeRelationsMaps(allRelations, relations)
 	}
-	return &Result{
-		objectIDs: allObjectsIDs,
-		snapshots: allSnapshots,
-		relations: allRelations,
+	return &Result{objectIDs: allObjectsIDs, snapshots: allSnapshots, relations: allRelations}
+}
+
+func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error) {
+	csvReader := csv.NewReader(rc)
+	if delimiter != "" {
+		characters := []rune(delimiter)
+		csvReader.Comma = characters[0]
 	}
+	csvTable, err := csvReader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	return csvTable, nil
 }
 
 func (c *CSV) needToTranspose(params *pb.RpcObjectImportRequestCsvParams) bool {
@@ -195,25 +204,6 @@ func transpose(csvTable [][]string) [][]string {
 		}
 	}
 	return result
-}
-
-func readCsvFile(delimiter string, readers map[string]io.ReadCloser) ([][][]string, error) {
-	var records [][][]string
-	for _, rc := range readers {
-		csvReader := csv.NewReader(rc)
-		if len(delimiter) != 0 {
-			characters := []rune(delimiter)
-			csvReader.Comma = characters[0]
-		}
-		record, err := csvReader.ReadAll()
-		if err != nil {
-			return nil, err
-		}
-		records = append(records, record)
-		rc.Close()
-	}
-
-	return records, nil
 }
 
 func getDetailsFromCSVTable(csvTable [][]string) []*converter.Relation {
