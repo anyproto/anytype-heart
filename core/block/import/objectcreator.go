@@ -107,10 +107,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 		}
 	}
 
-	if snapshot.Details != nil {
-		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
-	}
-
 	var details []*pb.RpcObjectSetDetailsDetail
 	if snapshot.Details != nil {
 		for key, value := range snapshot.Details.Fields {
@@ -120,6 +116,11 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 			})
 		}
 	}
+
+	details = append(details, &pb.RpcObjectSetDetailsDetail{
+		Key:   bundle.RelationKeyWorkspaceId.String(),
+		Value: pbtypes.String(workspaceID),
+	})
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
