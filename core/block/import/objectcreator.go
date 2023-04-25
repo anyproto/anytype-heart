@@ -76,31 +76,11 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
 
-	var (
-		err    error
-		pageID = sn.Id
-	)
+	var err error
+	newID := oldIDtoNew[sn.Id]
+	oc.updateRootBlock(snapshot, newID)
 
-	newID := oldIDtoNew[pageID]
-	var found bool
-	for _, b := range snapshot.Blocks {
-		if b.Id == newID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		oc.addRootBlock(snapshot, newID)
-	}
-
-	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
-	}
-
-	if snapshot.Details != nil && snapshot.Details.Fields != nil {
-		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
-	}
+	oc.setWorkspaceID(err, newID, snapshot)
 
 	var oldRelationBlocksToNew map[string]*model.Block
 	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
@@ -108,21 +88,14 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return nil, fmt.Errorf("relation create '%s'", err)
 	}
 
-	var details []*pb.RpcObjectSetDetailsDetail
-	if snapshot.Details != nil {
-		for key, value := range snapshot.Details.Fields {
-			details = append(details, &pb.RpcObjectSetDetailsDetail{
-				Key:   key,
-				Value: value,
-			})
-		}
-	}
+	details := oc.getDetails(snapshot)
+
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		return oc.handleSubObject(ctx, snapshot, newID, details), nil
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		return oc.handleWorkspace(ctx, sn, oldIDtoNew)
+		oc.setSpaceDashboardID(sn, oldIDtoNew)
 	}
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
@@ -130,16 +103,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	defer func() {
 		// delete file in ipfs if there is error after creation
-		if err != nil {
-			for _, bl := range st.Blocks() {
-				if f := bl.GetFile(); f != nil {
-					oc.deleteFile(f.Hash)
-				}
-				for _, hash := range filesToDelete {
-					oc.deleteFile(hash)
-				}
-			}
-		}
+		oc.onFinish(err, st, filesToDelete)
 	}()
 
 	if err = oc.updateLinksToObjects(st, oldIDtoNew, newID); err != nil {
@@ -174,7 +138,53 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
 
-	st.Iterate(func(bl simple.Block) (isContinue bool) {
+	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
+	if syncErr != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to sync %s: %s", newID, err.Error())
+	}
+
+	return respDetails, nil
+}
+
+func (oc *ObjectCreator) getDetails(snapshot *model.SmartBlockSnapshotBase) []*pb.RpcObjectSetDetailsDetail {
+	var details []*pb.RpcObjectSetDetailsDetail
+	if snapshot.Details != nil {
+		for key, value := range snapshot.Details.Fields {
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
+				Key:   key,
+				Value: value,
+			})
+		}
+	}
+	return details
+}
+
+func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model.SmartBlockSnapshotBase) {
+	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", newID, err.Error())
+	}
+
+	if snapshot.Details != nil && snapshot.Details.Fields != nil {
+		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
+	}
+}
+
+func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase, newID string) {
+	var found bool
+	for _, b := range snapshot.Blocks {
+		if b.Id == newID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		oc.addRootBlock(snapshot, newID)
+	}
+}
+
+func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
+	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
 			if sErr := s.Sync(ctx, newID, bl); sErr != nil {
@@ -183,26 +193,29 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 		return true
 	})
-
-	return respDetails, nil
 }
 
-func (oc *ObjectCreator) handleWorkspace(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string) (*types.Struct, error) {
-	spaceDashBoardID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
-	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
-		err := oc.service.Do(oc.core.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
-			return b.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
-				{
-					Key:   bundle.RelationKeySpaceDashboardId.String(),
-					Value: pbtypes.String(id),
-				},
-			}, false)
-		})
-		if err != nil {
-			log.Errorf("failed to set dashboardID: %s", err.Error())
+func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []string) {
+	if err != nil {
+		for _, bl := range st.Blocks() {
+			if f := bl.GetFile(); f != nil {
+				oc.deleteFile(f.Hash)
+			}
+			for _, hash := range filesToDelete {
+				oc.deleteFile(hash)
+			}
 		}
 	}
-	return nil, nil
+}
+
+func (oc *ObjectCreator) setSpaceDashboardID(sn *converter.Snapshot, oldIDtoNew map[string]string) {
+	spaceDashBoardID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
+	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
+		if sn.Snapshot.Data.Details == nil || sn.Snapshot.Data.Details.Fields == nil {
+			sn.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+		sn.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(id)
+	}
 }
 
 func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, snapshot *model.SmartBlockSnapshotBase, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {

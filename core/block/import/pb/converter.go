@@ -96,22 +96,20 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.IProg
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, allErrors
 		}
-		if sn := p.setDashboardID(profile, snapshots); sn != nil {
-			allSnapshots = append(allSnapshots, sn)
-		}
+		p.setDashboardID(profile, snapshots)
 		allSnapshots = append(allSnapshots, snapshots...)
 		targetObjects = append(targetObjects, objects...)
 	}
 	return allSnapshots, targetObjects, allErrors
 }
 
-func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot) *converter.Snapshot {
+func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot) {
 	var (
 		newSpaceDashBoardID string
 		workspace           *converter.Snapshot
 	)
 	if profile == nil {
-		return nil
+		return
 	}
 	for _, snapshot := range snapshots {
 		if snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
@@ -123,13 +121,9 @@ func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot
 		}
 	}
 
-	if workspace != nil {
+	if workspace != nil && newSpaceDashBoardID != "" {
 		workspace.Snapshot.Data.Details.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String(newSpaceDashBoardID)
-		return nil
 	}
-
-	sn := p.setSpaceDashboardID(newSpaceDashBoardID)
-	return sn
 }
 
 func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
@@ -317,23 +311,4 @@ func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
 
 func (p *Pb) needToImportWidgets(address string, accountID string) bool {
 	return address == accountID
-}
-
-func (p *Pb) setSpaceDashboardID(spaceDashboardID string) *converter.Snapshot {
-	if spaceDashboardID != "" {
-		sn := &converter.Snapshot{
-			Id:       uuid.New().String(),
-			SbType:   smartblock.SmartBlockTypeWorkspace,
-			FileName: profileFile,
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Details: &types.Struct{Fields: map[string]*types.Value{
-						bundle.RelationKeySpaceDashboardId.String(): pbtypes.String(spaceDashboardID),
-					}},
-				},
-			},
-		}
-		return sn
-	}
-	return nil
 }
