@@ -54,8 +54,8 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	}
 
 	if getExisting {
-		id, exist, err := ou.getExisting(sn)
-		if err == nil {
+		id, exist := ou.getExisting(sn)
+		if id != "" {
 			return id, exist, nil
 		}
 	}
@@ -90,7 +90,7 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 	return id, false, nil
 }
 
-func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool, error) {
+func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
 	source := pbtypes.GetString(sn.Snapshot.Details, bundle.RelationKeySource.String())
 	records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -105,7 +105,7 @@ func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool, err
 	if err == nil {
 		if len(records) > 0 {
 			id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-			return id, true, nil
+			return id, true
 		}
 	}
 	id := sn.Id
@@ -122,8 +122,8 @@ func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool, err
 	if err == nil {
 		if len(records) > 0 {
 			id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-			return id, true, nil
+			return id, true
 		}
 	}
-	return "", false, err
+	return "", false
 }
