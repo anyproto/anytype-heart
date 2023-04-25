@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/anytypeio/any-sync/util/keys"
+	"github.com/anytypeio/any-sync/util/keys/asymmetric/encryptionkey"
+	"github.com/anytypeio/any-sync/util/keys/asymmetric/signingkey"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/strkey"
@@ -22,6 +25,8 @@ type Keypair interface {
 	PeerId() (peer.ID, error)
 	KeypairType() KeypairType
 	MarshalBinary() ([]byte, error)
+	AnySyncSignKey() (signingkey.PrivKey, error)
+	AnySyncEncKey() (encryptionkey.PrivKey, error)
 
 	crypto.PrivKey
 }
@@ -156,4 +161,36 @@ func (kp keypair) seed() (string, error) {
 	} else {
 		return strkey.Encode(deviceSeedVersionByte, pkey)
 	}
+}
+
+type signPrivKey struct {
+	keypair
+}
+
+func (k signPrivKey) Equals(key keys.Key) bool {
+	return keys.KeyEquals(k, key)
+}
+
+func (k signPrivKey) GetPublic() signingkey.PubKey {
+	return sigPubKey{k.keypair.GetPublic()}
+}
+
+type sigPubKey struct {
+	crypto.PubKey
+}
+
+func (s sigPubKey) Equals(key keys.Key) bool {
+	return keys.KeyEquals(s, key)
+}
+
+func (kp keypair) AnySyncSignKey() (signingkey.PrivKey, error) {
+	return signPrivKey{keypair: kp}, nil
+}
+
+func (kp keypair) AnySyncEncKey() (encryptionkey.PrivKey, error) {
+	raw, err := kp.Raw()
+	if err != nil {
+		return nil, err
+	}
+	return encryptionkey.NewEncryptionRsaPrivKeyFromBytes(raw)
 }

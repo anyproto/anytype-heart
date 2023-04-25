@@ -2,7 +2,9 @@ package wallet
 
 import (
 	"fmt"
+	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/accountdata"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -24,6 +26,8 @@ type wallet struct {
 
 	accountKeypair walletUtil.Keypair
 	deviceKeypair  walletUtil.Keypair
+
+	accountData *accountdata.AccountData
 }
 
 func (r *wallet) GetAccountPrivkey() (walletUtil.Keypair, error) {
@@ -80,7 +84,36 @@ func (r *wallet) Init(a *app.App) (err error) {
 	if r.accountKeypair != nil {
 		logging.SetAccount(r.accountKeypair.Address())
 		metrics.SharedClient.SetUserId(r.accountKeypair.Address())
+
+		rawAccountPubKey, e := r.accountKeypair.GetPublic().Raw()
+		if e != nil {
+			return e
+		}
+		peerID, e := r.deviceKeypair.PeerId()
+		if e != nil {
+			return e
+		}
+		deviceSigKey, e := r.deviceKeypair.AnySyncSignKey()
+		if e != nil {
+			return e
+		}
+		accountSigKey, e := r.accountKeypair.AnySyncSignKey()
+		if e != nil {
+			return e
+		}
+		accountEncKey, e := r.accountKeypair.AnySyncEncKey()
+		if e != nil {
+			return e
+		}
+		r.accountData = &accountdata.AccountData{
+			Identity: rawAccountPubKey,
+			PeerKey:  deviceSigKey,
+			SignKey:  accountSigKey,
+			EncKey:   accountEncKey,
+			PeerId:   peerID.String(),
+		}
 	}
+
 	return nil
 }
 
@@ -96,8 +129,8 @@ func (r *wallet) Name() (name string) {
 	return CName
 }
 
-func (r *wallet) Close(ctx context.Context) (err error) {
-	return nil
+func (r *wallet) Account() *accountdata.AccountData {
+	return r.accountData
 }
 
 func NewWithAccountRepo(rootpath, accountId string) Wallet {
@@ -123,5 +156,6 @@ type Wallet interface {
 	RepoPath() string
 	GetAccountPrivkey() (walletUtil.Keypair, error)
 	GetDevicePrivkey() (walletUtil.Keypair, error)
+	accountservice.Service
 	app.Component
 }

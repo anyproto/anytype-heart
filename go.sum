@@ -82,6 +82,10 @@ github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31 h1:fCXBjRAx
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
 github.com/anytypeio/any-sync v0.0.1 h1:5CnfvhL/kqgeXc6uiv4GtCfvbvRLN2vCnv1hReA5+50=
 github.com/anytypeio/any-sync v0.0.1/go.mod h1:tjXvTv0Uux70pZxJkrv+zrc3lunj9KScxwzQ6r7/lPM=
+github.com/anytypeio/any-sync v0.0.2-0.20230105145324-7f5df5706310 h1:RXJKjvRZFqn8qlK4m6UrTvATIvafsAPP9DJxzsPkmc0=
+github.com/anytypeio/any-sync v0.0.2-0.20230105145324-7f5df5706310/go.mod h1:tjXvTv0Uux70pZxJkrv+zrc3lunj9KScxwzQ6r7/lPM=
+github.com/anytypeio/any-sync v0.0.2-0.20230105152448-4c56d3261aad h1:RMEc/9Zs5vqHcY7hM4LxLdaYukKqvsJov1qWF1dPDVk=
+github.com/anytypeio/any-sync v0.0.2-0.20230105152448-4c56d3261aad/go.mod h1:tjXvTv0Uux70pZxJkrv+zrc3lunj9KScxwzQ6r7/lPM=
 github.com/anytypeio/go-chash v0.0.0-20220629194632-4ad1154fe232 h1:kMPPZYmJgbs4AJfodbg2OCXg5cp+9LPAJcLZJqmcghk=
 github.com/anytypeio/go-chash v0.0.0-20220629194632-4ad1154fe232/go.mod h1:+PeHBAWp7gUh/yw6uAauKc5ku0w4cFNg6DUddGxoGq0=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
