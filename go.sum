@@ -1398,8 +1398,6 @@ github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpP
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
 github.com/textileio/go-datastore-extensions v1.1.0 h1:rU2oz3iZ50eukiWztXsG3FmSAKwUvIGH1sRv//QXoDs=
 github.com/textileio/go-datastore-extensions v1.1.0/go.mod h1:+LryCa08vOxyo7RwPIshXCqE7TnyV1QyrJ1fQtCipVo=
-github.com/textileio/go-ds-badger v0.2.7-0.20211028235339-0e5e9267e2f5 h1:WDfUNJ7sJu/NApDhv3Yq+qN0ndA6Y5oYYhAW86hVkdE=
-github.com/textileio/go-ds-badger v0.2.7-0.20211028235339-0e5e9267e2f5/go.mod h1:W1agQmIUEx6T6CimFfciftyt2PdJpbmPPSFJiQONZ04=
 github.com/tidwall/gjson v1.10.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/gjson v1.14.0 h1:6aeJ0bzojgWLa82gDQHcx3S0Lr/O51I9bJ5nv6JFx5w=
 github.com/tidwall/gjson v1.14.0/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=

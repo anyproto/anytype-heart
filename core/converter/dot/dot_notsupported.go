@@ -4,14 +4,14 @@
 package dot
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
-	"github.com/gogo/protobuf/types"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
-func NewMultiConverter(format int) converter.MultiConverter {
+func NewMultiConverter(format int, sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
 	return &dot{}
 }
 
@@ -46,7 +46,7 @@ func (d *dot) Add(st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(model.SmartBlockType) []byte {
+func (d *dot) Convert() []byte {
 	panic("not supported on windows")
 	return nil
 }
