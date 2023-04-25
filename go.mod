@@ -48,6 +48,7 @@ require (
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger v0.3.1-0.20211203181443-9205b3779632
+	github.com/ipfs/go-ds-flatfs v0.5.1
 	github.com/ipfs/go-ipfs-blockstore v1.2.0
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
@@ -182,7 +183,6 @@ require (
 	github.com/ipfs/go-bitswap v0.11.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.0 // indirect
 	github.com/ipfs/go-cidutil v0.1.0 // indirect
-	github.com/ipfs/go-ds-flatfs v0.5.1 // indirect
 	github.com/ipfs/go-fetcher v1.6.1 // indirect
 	github.com/ipfs/go-ipfs-chunker v0.0.5 // indirect
 	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect

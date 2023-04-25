@@ -18287,6 +18287,7 @@ var xxx_messageInfo_RpcObjectImport proto.InternalMessageInfo
 
 type RpcObjectImportRequest struct {
 	// Types that are valid to be assigned to Params:
+	//
 	//	*RpcObjectImportRequestParamsOfNotionParams
 	//	*RpcObjectImportRequestParamsOfBookmarksParams
 	Params                IsRpcObjectImportRequestParams    `protobuf_oneof:"params"`
@@ -28196,6 +28197,7 @@ type RpcBlockListUpdateRequest struct {
 	ContextId string   `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
 	BlockIds  []string `protobuf:"bytes,2,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
 	// Types that are valid to be assigned to Field:
+	//
 	//	*RpcBlockListUpdateRequestFieldOfText
 	//	*RpcBlockListUpdateRequestFieldOfBackgroundColor
 	//	*RpcBlockListUpdateRequestFieldOfAlign
@@ -28347,6 +28349,7 @@ func (*RpcBlockListUpdateRequest) XXX_OneofWrappers() []interface{} {
 
 type RpcBlockListUpdateRequestText struct {
 	// Types that are valid to be assigned to Field:
+	//
 	//	*RpcBlockListUpdateRequestTextFieldOfStyle
 	//	*RpcBlockListUpdateRequestTextFieldOfColor
 	//	*RpcBlockListUpdateRequestTextFieldOfMark
