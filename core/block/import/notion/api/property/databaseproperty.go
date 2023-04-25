@@ -70,12 +70,12 @@ func getFormatGetter(v interface{}) (FormatGetter, error) {
 		case PropertyConfigTypePhoneNumber:
 			p = &DatabaseNumber{}
 		case PropertyConfigTypeFormula:
-			// Database property Formula doesn't have information about it's format in database properties, so we don't add it
+			// Database property Formula doesn't have information about its format in database properties, so we don't add it
 			return nil, nil
 		case PropertyConfigTypeRelation:
 			p = &DatabaseRelation{}
 		case PropertyConfigTypeRollup:
-			// Rollup property Formula doesn't have information about it's format in database properties, so we don't add it
+			// Database property Rollup doesn't have information about its format in database properties, so we don't add it
 			return nil, nil
 		case PropertyConfigCreatedTime:
 			p = &DatabaseCreatedTime{}
