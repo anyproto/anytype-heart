@@ -26,7 +26,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore/mock_rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 var ctx = context.Background()
@@ -41,7 +40,6 @@ func TestFileSync_AddFile(t *testing.T) {
 	require.NoError(t, err)
 	fileId := n.Cid().String()
 	spaceId := "spaceId"
-	fx.fileStoreMock.EXPECT().ListByTarget(gomock.Any()).Return([]*storage.FileInfo{{Hash: fileId}}, nil)
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
 	require.NoError(t, fx.AddFile(spaceId, fileId))
 	fx.waitEmptyQueue(t, time.Second*5)
