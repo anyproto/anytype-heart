@@ -49,7 +49,11 @@ test:
 
 test-integration:
 	@echo 'Running integration tests...'
-	@go test -tags=integration -v -count 1 ./tests
+	@go test -run=TestBasic -tags=integration -v -count 1 ./tests
+
+test-migration:
+	@echo "Running migration tests..."
+	@go test -run=TestMigration -tags=integration -v -count 1 ./tests
 
 test-race:
 	@echo 'Running tests with race-detector...'

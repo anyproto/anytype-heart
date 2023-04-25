@@ -94,6 +94,18 @@ func pageTemplate(children ...*Block) *Block {
 					Drag:   true,
 					DropOn: true,
 				})),
+			Text("",
+				TextStyle(model.BlockContentText_Description),
+				Fields(&types.Struct{
+					Fields: map[string]*types.Value{
+						"_detailsKey": pbtypes.String("description"),
+					},
+				}),
+				Restrictions(model.BlockRestrictions{
+					Remove: true,
+					Drag:   true,
+					DropOn: true,
+				})),
 			FeaturedRelations())),
 	}
 	cs = append(cs, children...)

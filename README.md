@@ -49,19 +49,27 @@ cd jsaddon
 npm run test
 ```
 
-#### Integration tests (WIP)
+#### Integration and migration tests
+
+Migration tests are checking process of migration from the old infrastructure.
 
 First you need to start a docker container via docker-compose:
 ```
 export ANYTYPE_TEST_GRPC_PORT=31088
+export ANYTYPE_OLD_TEST_GRPC_PORT=31188
 docker-compose up -d
 ```
 
-Then 
+Then you can run the basic integration tests:
 ```
-export ANYTYPE_TEST_GRPC_PORT=31088
 make test-integration
 ```
+
+And migration tests:
+```
+make test-migration
+```
+
 
 ### Run local gRPC server to debug
 ⚠️ Make sure to update/install protobuf compiler from [this repo](https://github.com/anytypeio/protobuf) using `make setup-protoc`
