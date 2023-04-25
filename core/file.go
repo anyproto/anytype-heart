@@ -141,7 +141,9 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	// TODO call service
-
-	return response(pb.RpcFileSpaceUsageResponseError_NULL, nil, nil)
+	usage, err := getService[*files.Service](mw).GetSpaceUsage(cctx)
+	if err != nil {
+		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
+	}
+	return response(pb.RpcFileSpaceUsageResponseError_NULL, nil, usage)
 }
