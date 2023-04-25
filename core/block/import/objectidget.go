@@ -2,9 +2,6 @@ package importer
 
 import (
 	"context"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -13,8 +10,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
+	"strings"
 )
 
 type CreateSubObjectRequest struct {
@@ -61,6 +61,13 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 		id, exist := ou.getExisting(sn)
 		if id != "" {
 			return id, exist, nil
+		}
+	}
+
+	if sbType == sb.SmartBlockTypeWorkspace {
+		workspaceID, err := ou.core.GetWorkspaceIdForObject(sn.Id)
+		if err == nil {
+			return workspaceID, true, nil
 		}
 	}
 	cctx := context.Background()
@@ -113,7 +120,7 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 	if len(sn.Snapshot.ObjectTypes) > 0 {
 		ot := sn.Snapshot.ObjectTypes
 		var objects *types.Struct
-		sn.Snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(bson.NewObjectId().Hex())
+		ou.cleanupSubObjectID(sn)
 		req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Details}
 		id, objects, err = ou.service.CreateObject(req, "")
 		if err != nil {
@@ -122,6 +129,13 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 		sn.Snapshot.Details = pbtypes.StructMerge(sn.Snapshot.Details, objects, false)
 	}
 	return id, false, nil
+}
+
+func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
+	subID := sn.Snapshot.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+	subID = strings.TrimPrefix(subID, addr.RelationKeyToIdPrefix)
+	subID = strings.TrimPrefix(subID, addr.ObjectTypeKeyToIdPrefix)
+	sn.Snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subID)
 }
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
