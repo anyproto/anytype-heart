@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/util/crypto"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -19,8 +20,8 @@ var debugCmd = &cobra.Command{
 
 var (
 	debugRepoPath   string
-	debugAccount    string
-	debugThread     string
+	debugMnemonic   string
+	debugTree       string
 	debugOutputFile string
 )
 
@@ -28,16 +29,19 @@ var dumpTree = &cobra.Command{
 	Use:   "dump-tree",
 	Short: "Dumps tree of changes for specific thread",
 	Run: func(c *cobra.Command, args []string) {
-		if debugAccount == "" {
+		if debugMnemonic == "" {
 			console.Fatal("please specify account")
 		}
-		if debugThread == "" {
-			console.Fatal("please specify thread")
+		if debugTree == "" {
+			console.Fatal("please specify tree")
 		}
-		panic("add key for account")
+		acc, err := crypto.Mnemonic(debugMnemonic).DeriveEd25519Key(0)
+		if err != nil {
+			panic(err)
+		}
 		comps := []app.Component{
 			anytype.BootstrapConfig(false, false, true),
-			//anytype.BootstrapWallet(debugRepoPath, debugAccount),
+			anytype.BootstrapWallet(debugRepoPath, acc),
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
 
@@ -50,7 +54,7 @@ var dumpTree = &cobra.Command{
 
 		isAnonymize := false
 		dumpWithSvg := false
-		filename, err := dbg.DumpTree(debugThread, debugOutputFile, isAnonymize, dumpWithSvg)
+		filename, err := dbg.DumpTree(debugTree, debugOutputFile, isAnonymize, dumpWithSvg)
 		if err != nil {
 			console.Fatal("failed to dump tree: %s", err.Error())
 		}
@@ -61,13 +65,16 @@ var dumpLocalstore = &cobra.Command{
 	Use:   "dump-localstore",
 	Short: "Dumps localstore for all objects",
 	Run: func(c *cobra.Command, args []string) {
-		if debugAccount == "" {
+		if debugMnemonic == "" {
 			console.Fatal("please specify account")
 		}
-		panic("add key for account")
+		acc, err := crypto.Mnemonic(debugMnemonic).DeriveEd25519Key(0)
+		if err != nil {
+			panic(err)
+		}
 		comps := []app.Component{
 			anytype.BootstrapConfig(false, false, true),
-			//anytype.BootstrapWallet(debugRepoPath, debugAccount),
+			anytype.BootstrapWallet(debugRepoPath, acc),
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
 
@@ -94,7 +101,7 @@ func init() {
 	debugCmd.AddCommand(dumpLocalstore)
 
 	debugCmd.PersistentFlags().StringVarP(&debugRepoPath, "repo", "r", homeDir+"/.config/anytype2/data", "path to dir with accounts folder")
-	debugCmd.PersistentFlags().StringVarP(&debugAccount, "account", "a", "", "id of account in the repo folder")
-	debugCmd.PersistentFlags().StringVarP(&debugThread, "thread", "t", "", "id of thread to debug")
+	debugCmd.PersistentFlags().StringVarP(&debugMnemonic, "mnemonic", "m", "", "account mnemonic")
+	debugCmd.PersistentFlags().StringVarP(&debugTree, "tree", "t", "", "id of tree to debug")
 	debugCmd.PersistentFlags().StringVarP(&debugOutputFile, "out", "o", "./", "folder to save file")
 }
