@@ -259,7 +259,7 @@ func (i *Import) addWork(res *converter.Response, existedObject map[string]struc
 func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	mode pb.RpcObjectImportRequestMode,
 	allErrors map[string]error,
-	progress *process.Progress) map[string]*types.Struct {
+	progress process.Progress) map[string]*types.Struct {
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {

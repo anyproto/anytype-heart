@@ -100,7 +100,7 @@ func (ds *Service) GetPages(ctx context.Context,
 	return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, converterError
 }
 
-func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress *process.Progress) ([]*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
+func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	relations := make(map[string][]*converter.Relation, 0)
 	ce := converter.NewError()
@@ -154,7 +154,7 @@ func (ds *Service) extractTitleFromPages(pages []Page) map[string]string {
 	return pageNameToID
 }
 
-func (ds *Service) createIDsForPages(pages []Page, progress *process.Progress, notionPagesIdsToAnytype map[string]string) converter.ConvertError {
+func (ds *Service) createIDsForPages(pages []Page, progress process.Progress, notionPagesIdsToAnytype map[string]string) converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
 			ce := converter.NewFromError(p.ID, err)
