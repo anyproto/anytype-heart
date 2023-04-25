@@ -29,7 +29,8 @@ func WalletInitRepo(rootPath string, pk crypto.PrivKey) error {
 	if err != nil {
 		return err
 	}
-	repoPath := filepath.Join(rootPath, pk.GetPublic().Account())
+	address := pk.GetPublic().Account()
+	repoPath := filepath.Join(rootPath, address)
 	_, err = os.Stat(repoPath)
 	if !os.IsNotExist(err) {
 		return ErrRepoExists
