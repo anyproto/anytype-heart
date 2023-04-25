@@ -140,6 +140,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 					succeed++
 				}
 			}); err != nil {
+				e.cleanupFile(wr)
 				succeed = 0
 				return
 			}
@@ -147,6 +148,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 	queue.SetMessage("export files")
 	if err = queue.Finalize(); err != nil {
+		e.cleanupFile(wr)
 		succeed = 0
 		return
 	}
@@ -491,4 +493,9 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget
+}
+
+func (e *export) cleanupFile(wr writer) {
+	wr.Close()
+	os.Remove(wr.Path())
 }
