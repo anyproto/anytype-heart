@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "cafd8e8f11181140ab6d416049b4ef419c70956c9e93fcfd632288b95fc85c78"
+const RelationChecksum = "93f1f075340e0db0a3dfc7f74442023cc52919023eeb8c8af8d9eae7ac0c8863"
 
 type RelationKey string
 
@@ -186,6 +186,7 @@ const (
 	RelationKeyOldAnytypeID              RelationKey = "oldAnytypeID"
 	RelationKeySpaceDashboardId          RelationKey = "spaceDashboardId"
 	RelationKeyIconOption                RelationKey = "iconOption"
+	RelationKeySpaceAccessibility        RelationKey = "spaceAccessibility"
 )
 
 var (
@@ -2077,6 +2078,20 @@ var (
 			MaxCount:         1,
 			Name:             "Source object",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceAccessibility: {
+
+			DataSource:       model.Relation_details,
+			Description:      "There are two options of accessibility of workspace - private (0) or public (1)",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceAccessibility",
+			Key:              "spaceAccessibility",
+			MaxCount:         1,
+			Name:             "Space accessibility",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

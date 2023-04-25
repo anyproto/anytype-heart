@@ -1656,5 +1656,15 @@
     "name": "Icon option",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "There are two options of accessibility of workspace - private (0) or public (1)",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceAccessibility",
+    "maxCount": 1,
+    "name": "Space accessibility",
+    "readonly": false,
+    "source": "details"
   }
 ]

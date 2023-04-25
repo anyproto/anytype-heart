@@ -17,11 +17,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	database2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -65,7 +65,7 @@ type Workspaces struct {
 func NewWorkspace(
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
-	relationService relation2.Service,
+	relationService relation.Service,
 	sourceService source.Service,
 	modifier DetailsModifier,
 	fileBlockService file.BlockService,
@@ -143,6 +143,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 		template.WithDetail(bundle.RelationKeySpaceDashboardId, pbtypes.String(spaceDashboardID)),
+		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeySpace.URL())),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
@@ -333,7 +334,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		return
 	}
 
-	bundledTemplates, _, err := w.objectStore.Query(nil, database2.Query{
+	bundledTemplates, _, err := w.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -348,7 +349,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		},
 	})
 
-	alreadyInstalledTemplates, _, err := w.objectStore.Query(nil, database2.Query{
+	alreadyInstalledTemplates, _, err := w.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -481,7 +482,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 	relIds := pbtypes.GetStringList(obj.Details, bundle.RelationKeyRecommendedRelations.String())
 
 	// find relations that are custom(was not installed from somewhere)
-	records, _, err := w.objectStore.Query(nil, database2.Query{
+	records, _, err := w.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -503,7 +504,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 	}
 
 	// check if this relation is used in some other installed object types
-	records, _, err = w.objectStore.Query(nil, database2.Query{
+	records, _, err = w.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -548,7 +549,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 			log.Errorf("failed to get relation key from id %s: %s", relId, err.Error())
 			continue
 		}
-		records, _, err := w.objectStore.Query(nil, database2.Query{
+		records, _, err := w.objectStore.Query(nil, database.Query{
 			Limit: 1,
 			Filters: []*model.BlockContentDataviewFilter{
 				{

@@ -67,6 +67,7 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeySpaceDashboardId,
 	RelationKeyRecommendedRelations,
 	RelationKeyIconOption,
+	RelationKeySpaceAccessibility,
 }...)
 
 func makeSystemRelationsMap() map[RelationKey]struct{} {
