@@ -15,6 +15,8 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 var ctx = context.Background()
@@ -295,7 +297,7 @@ func newPSFixture(t *testing.T) *psFixture {
 	require.NoError(t, err)
 
 	fx.flatfsDir = t.TempDir()
-	cache, err := newFlatStore(fx.flatfsDir)
+	cache, err := newFlatStore(fx.flatfsDir, func(event *pb.Event) {}, time.Second)
 	require.NoError(t, err)
 
 	fx.proxyStore = &proxyStore{

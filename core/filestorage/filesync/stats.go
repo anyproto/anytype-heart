@@ -32,10 +32,6 @@ func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
 }
 
-func (s FileStat) IsDeleted() bool {
-	return s.UploadedChunksCount == 0
-}
-
 func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error) {
 	info, err := f.rpcStore.SpaceInfo(ctx, spaceId)
 	if err != nil {

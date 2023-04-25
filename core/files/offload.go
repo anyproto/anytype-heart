@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
@@ -44,17 +45,13 @@ func (s *service) isFilePinned(fileID string) (bool, error) {
 }
 
 func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
+	log.With("fileID", hash).Info("offload file")
 	totalSize, cids, err := s.getAllExistingFileBlocksCids(hash)
 	if err != nil {
 		return 0, err
 	}
 
 	for _, c := range cids {
-		c, err := cid.Parse(c)
-		if err != nil {
-			return 0, err
-		}
-
 		err = s.commonFile.DAGService().Remove(context.Background(), c)
 		if err != nil {
 			// no need to check for cid not exists
@@ -97,6 +94,14 @@ func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 	return
 }
 
+func (s *service) isFileDeleted(fileID string) (bool, error) {
+	_, err := s.fileStore.GetByHash(fileID)
+	if err == localstore.ErrNotFound {
+		return true, nil
+	}
+	return false, err
+}
+
 func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 	fileStats, err := s.fileSync.FileListStats(context.Background(), s.spaceService.AccountId(), fileIDs)
 	if err != nil {
@@ -105,7 +110,15 @@ func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 
 	fileIDs = fileIDs[:0]
 	for _, fileStat := range fileStats {
-		if fileStat.IsPinned() || fileStat.IsDeleted() {
+		if fileStat.IsPinned() {
+			fileIDs = append(fileIDs, fileStat.FileId)
+		}
+		isDeleted, err := s.isFileDeleted(fileStat.FileId)
+		if err != nil {
+			log.With("fileID", fileStat.FileId).Errorf("failed to check if file is deleted: %s", err)
+			continue
+		}
+		if isDeleted {
 			fileIDs = append(fileIDs, fileStat.FileId)
 		}
 	}
