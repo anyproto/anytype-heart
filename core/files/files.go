@@ -287,13 +287,13 @@ func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 }
 
 func (s *Service) FileGetInfoForPath(pth string) (*storage.FileInfo, error) {
-	if !strings.HasPrefix(pth, "/dagService/") {
+	if !strings.HasPrefix(pth, "/ipfs/") {
 		return nil, fmt.Errorf("path should starts with '/dagService/...'")
 	}
 
 	pthParts := strings.Split(pth, "/")
 	if len(pthParts) < 4 {
-		return nil, fmt.Errorf("path is too short: it should match '/dagService/:hash/...'")
+		return nil, fmt.Errorf("path is too short: it should match '/ipfs/:hash/...'")
 	}
 
 	keys, err := s.FileGetKeys(pthParts[2])
