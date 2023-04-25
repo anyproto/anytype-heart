@@ -137,8 +137,8 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 	path := "testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb"
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path:                       []string{path},
-			NotCreateObjectsCollection: true,
+			Path:         []string{path},
+			NoCollection: true,
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,

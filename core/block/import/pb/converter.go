@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -54,6 +55,11 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		return nil, errors
 	}
 	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath())
+	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		return nil, allErrors
+	}
+
+	p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
@@ -216,6 +222,26 @@ func (p *Pb) handleFile(importPath string, files map[string]*converter.IOReader)
 	return files, nil
 }
 
+func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors converter.ConvertError, mode pb.RpcObjectImportRequestMode) {
+	newIDToOld := make(map[string]string, len(snapshots))
+	for _, snapshot := range snapshots {
+		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		newIDToOld[id] = snapshot.Id
+	}
+
+	for _, snapshot := range snapshots {
+		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
+		err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, snapshot.Id)
+		if err != nil {
+			allErrors.Add(snapshot.FileName, err)
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return
+			}
+			continue
+		}
+		snapshot.Snapshot.Data.Blocks = st.Blocks()
+	}
+}
 func (p *Pb) GetSnapshot(rd io.ReadCloser, name string) (*pb.SnapshotWithType, error) {
 	defer rd.Close()
 	data, err := ioutil.ReadAll(rd)

@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -10,14 +11,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -27,7 +24,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
+
+const relationsLimit = 10
 
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
@@ -41,15 +41,13 @@ type ObjectCreator struct {
 	core            core.Service
 	objectStore     objectstore.ObjectStore
 	fileStore       filestore.FileStore
-	updater         Updater
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
-	oldIDToNew      map[string]string
+	mu              sync.Mutex
 }
 
 func NewCreator(service *block.Service,
 	objCreator objectCreator,
-	updater Updater,
 	core core.Service,
 	syncFactory *syncer.Factory,
 	relationCreator RelationCreator,
@@ -60,10 +58,8 @@ func NewCreator(service *block.Service,
 		service:         service,
 		objCreator:      objCreator,
 		core:            core,
-		updater:         updater,
 		syncFactory:     syncFactory,
 		relationCreator: relationCreator,
-		oldIDToNew:      map[string]string{},
 		objectStore:     objectStore,
 		fileStore:       fileStore,
 	}
@@ -74,7 +70,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	sn *converter.Snapshot,
 	relations []*converter.Relation,
 	oldIDtoNew map[string]string,
-	updateExisting bool) (*types.Struct, error) {
+	existing bool) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
@@ -108,9 +104,8 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	var oldRelationBlocksToNew map[string]*model.Block
 	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
-		return nil, fmt.Errorf("relation create '%s'", err)
+		return nil, "", fmt.Errorf("relation create '%s'", err)
 	}
-
 	var details []*pb.RpcObjectSetDetailsDetail
 	if snapshot.Details != nil {
 		for key, value := range snapshot.Details.Fields {
@@ -121,7 +116,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		return oc.handleSubObject(ctx, snapshot, newID, workspaceID, details), nil
+		return oc.handleSubObject(ctx, snapshot, newID, workspaceID, details), "", nil
 	}
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
@@ -141,7 +136,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}()
 
-	if err = oc.updateLinksToObjects(st, oldIDtoNew, newID); err != nil {
+	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, newID); err != nil {
 		log.With("object", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
@@ -159,7 +154,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 			log.With(zap.String("object id", newID)).Errorf("failed to set object types %s: %s", newID, err.Error())
 		}
 
-		err = history.ResetToVersion(b, st)
+		err = b.ResetToVersion(st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
 		}
@@ -204,7 +199,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return true
 	})
 
-	return respDetails, nil
+	return respDetails, newID, nil
 }
 
 func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
@@ -261,6 +256,8 @@ func (oc *ObjectCreator) handleSubObject(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	newID, workspaceID string,
 	details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+	defer oc.mu.Unlock()
+	oc.mu.Lock()
 	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
 		if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
 			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID, true)
@@ -318,9 +315,10 @@ func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels 
 }
 
 func (oc *ObjectCreator) handleDataviewBlock(bl simple.Block, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat, dv simpleDataview.Block) bool {
-	for _, rel := range rels {
+	for i, rel := range rels {
 		if relation, exist := createdRelations[rel.Name]; exist {
-			if err := oc.addRelationToView(bl, relation, rel, dv); err != nil {
+			isVisible := i <= relationsLimit
+			if err := oc.addRelationToView(bl, relation, rel, dv, isVisible); err != nil {
 				log.Errorf("can't add relations to view: %s", err.Error())
 			}
 		}
@@ -328,21 +326,23 @@ func (oc *ObjectCreator) handleDataviewBlock(bl simple.Block, rels []*converter.
 	return false
 }
 
-func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsIDToFormat, rel *converter.Relation, dv simpleDataview.Block) error {
+func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsIDToFormat, rel *converter.Relation, dv simpleDataview.Block, visible bool) error {
 	for _, relFormat := range relation {
 		if relFormat.Format == rel.Format {
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
 				return nil
 			}
-			err := dv.AddViewRelation(bl.Model().GetDataview().GetViews()[0].GetId(), &model.BlockContentDataviewRelation{
-				Key:       relFormat.ID,
-				IsVisible: true,
-				Width:     192,
-			})
-			if err != nil {
-				return err
+			for _, view := range bl.Model().GetDataview().GetViews() {
+				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+					Key:       relFormat.ID,
+					IsVisible: visible,
+					Width:     192,
+				})
+				if err != nil {
+					return err
+				}
 			}
-			err = dv.AddRelation(&model.RelationLink{
+			err := dv.AddRelation(&model.RelationLink{
 				Key:    relFormat.ID,
 				Format: relFormat.Format,
 			})
@@ -356,55 +356,20 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
+	var existedObjects []string
+	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
+		existedObjects = pbtypes.GetStringList(s.Store(), sb.CollectionStoreKey)
+		return nil
+	})
+	if err != nil {
+		log.Errorf("failed to get existed objects in collection, %s", err)
+	}
 	objectsInCollections := pbtypes.GetStringList(st.Store(), sb.CollectionStoreKey)
-	newIDs := make([]string, 0)
-	for _, id := range objectsInCollections {
+	for i, id := range objectsInCollections {
 		if newID, ok := oldIDtoNew[id]; ok {
-			newIDs = append(newIDs, newID)
+			objectsInCollections[i] = newID
 		}
 	}
-	st.StoreSlice(sb.CollectionStoreKey, newIDs)
-}
-
-func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
-	return st.Iterate(func(bl simple.Block) (isContinue bool) {
-		switch a := bl.(type) {
-		case link.Block:
-			newTarget := oldIDtoNew[a.Model().GetLink().TargetBlockId]
-			if newTarget == "" {
-				// maybe we should panic here?
-				log.With("object", st.RootId()).Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
-				return true
-			}
-
-			a.Model().GetLink().TargetBlockId = newTarget
-			st.Set(simple.New(a.Model()))
-		case bookmark.Block:
-			newTarget := oldIDtoNew[a.Model().GetBookmark().TargetObjectId]
-			if newTarget == "" {
-				// maybe we should panic here?
-				log.With("object", pageID).Errorf("cant find target id for bookmark: %s", a.Model().GetBookmark().TargetObjectId)
-				return true
-			}
-
-			a.Model().GetBookmark().TargetObjectId = newTarget
-			st.Set(simple.New(a.Model()))
-		case text.Block:
-			marks := a.Model().GetText().GetMarks().GetMarks()
-			for i, mark := range marks {
-				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
-					continue
-				}
-				newTarget := oldIDtoNew[mark.Param]
-				if newTarget == "" {
-					log.With("object", pageID).Errorf("cant find target id for mention: %s", mark.Param)
-					continue
-				}
-
-				marks[i].Param = newTarget
-			}
-			st.Set(simple.New(a.Model()))
-		}
-		return true
-	})
+	result := slice.Union(existedObjects, objectsInCollections)
+	st.StoreSlice(sb.CollectionStoreKey, result)
 }
