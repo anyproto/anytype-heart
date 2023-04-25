@@ -190,7 +190,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		if _, ok := model.SmartBlockType_name[int32(mo.SbType)]; !ok {
 			mo.SbType = model.SmartBlockType_Page
 		}
-		p.fillDetails(name, path, mo, id)
+		p.fillDetails(name, path, mo)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       id,
 			SbType:   smartblock.SmartBlockType(mo.SbType),
@@ -214,15 +214,18 @@ func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id s
 	return id
 }
 
-func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType, id string) {
-	source := converter.GetSourceDetail(name, path)
+func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
 	if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
 		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
+	source := converter.GetSourceDetail(name, path)
+	if len(mo.Snapshot.Data.ObjectTypes) != 0 && mo.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyBookmark.URL() {
+		return
+	}
+	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 }
 
 func (p *Pb) Name() string {
