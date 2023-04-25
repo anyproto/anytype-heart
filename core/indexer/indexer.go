@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/gogo/protobuf/jsonpb"
 	"math"
 	"strings"
 	"sync"
@@ -802,13 +801,6 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	}
 
 	details := info.State.CombinedDetails()
-
-	if sbType == smartblock.SmartBlockTypeWorkspace {
-		j := jsonpb.Marshaler{}
-		s, _ := j.MarshalToString(details)
-		log.Errorf("indexing workspace %s. Details: %v", info.Id, s)
-	}
-
 	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
 	if setCreator == "" {
