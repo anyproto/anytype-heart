@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
-
-	"github.com/anytypeio/any-sync/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -22,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
@@ -52,10 +52,12 @@ func (i *Import) Init(a *app.App) (err error) {
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	objCreator := a.MustComponent(object.CName).(objectCreator)
-	relationCreator := NewRelationCreator(i.s, objCreator, fs, core)
-	ou := NewObjectUpdater(i.s, core, factory, relationCreator)
-	i.objectIDGetter = NewObjectIDGetter(core, i.s)
-	i.oc = NewCreator(i.s, objCreator, ou, core, factory, relationCreator)
+	store := app.MustComponent[objectstore.ObjectStore](a)
+	relationCreator := NewRelationCreator(i.s, objCreator, fs, core, store)
+	ou := NewObjectUpdater(i.s, store, factory, relationCreator)
+	i.objectIDGetter = NewObjectIDGetter(store, core, i.s)
+	fileStore := app.MustComponent[filestore.FileStore](a)
+	i.oc = NewCreator(i.s, objCreator, ou, core, factory, relationCreator, store, fileStore)
 	return nil
 }
 

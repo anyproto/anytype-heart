@@ -15,6 +15,7 @@ import (
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -36,14 +37,16 @@ func (c CreateSubObjectRequest) GetDetails() *types.Struct {
 }
 
 type ObjectIDGetter struct {
-	core    core.Service
-	service *block.Service
+	objectStore objectstore.ObjectStore
+	core        core.Service
+	service     *block.Service
 }
 
-func NewObjectIDGetter(core core.Service, service *block.Service) IDGetter {
+func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDGetter {
 	return &ObjectIDGetter{
-		core:    core,
-		service: service,
+		objectStore: objectStore,
+		service:     service,
+		core:        core,
 	}
 }
 
@@ -89,7 +92,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 
 func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
 	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
-	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -107,7 +110,7 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 
 func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {
 	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -143,7 +146,7 @@ func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
-	records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
+	records, _, err := ou.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -160,7 +163,7 @@ func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
 		}
 	}
 	id := sn.Id
-	records, _, err = ou.core.ObjectStore().Query(nil, database.Query{
+	records, _, err = ou.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
