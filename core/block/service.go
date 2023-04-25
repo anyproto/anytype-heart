@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -23,6 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -48,6 +50,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -87,8 +90,16 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func New(tempDirProvider *core.TempDirService) *Service {
-	return &Service{tempDirProvider: tempDirProvider}
+func New(
+	tempDirProvider *core.TempDirService,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
+	layoutConverter converter.LayoutConverter,
+) *Service {
+	return &Service{
+		tempDirProvider: tempDirProvider,
+		sbtProvider:     sbtProvider,
+		layoutConverter: layoutConverter,
+	}
 }
 
 type objectCreator interface {
@@ -129,8 +140,8 @@ type Service struct {
 	commonAccount   accountservice.Service
 	fileStore       filestore.FileStore
 	tempDirProvider core.TempDirProvider
-
-	spaceDashboardID string
+	sbtProvider     typeprovider.SmartBlockTypeProvider
+	layoutConverter converter.LayoutConverter
 }
 
 func (s *Service) Name() string {
@@ -160,21 +171,6 @@ func (s *Service) Init(a *app.App) (err error) {
 
 func (s *Service) Run(ctx context.Context) (err error) {
 	return
-}
-
-func (s *Service) GetSpaceDashboardID(ctx context.Context) (string, error) {
-	if s.spaceDashboardID == "" {
-		obj, err := s.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *smartblock.InitContext {
-			return &smartblock.InitContext{
-				Ctx: ctx,
-			}
-		})
-		if err != nil {
-			return "", err
-		}
-		s.spaceDashboardID = obj.Id()
-	}
-	return s.spaceDashboardID, nil
 }
 
 func (s *Service) Anytype() core.Service {
@@ -213,15 +209,19 @@ func (s *Service) OpenBlock(
 	}
 	afterShowTime := time.Now()
 	// TODO: [MR] add files to status logic
-	if tp, err := coresb.SmartBlockTypeFromID(id); err == nil && tp == coresb.SmartBlockTypePage {
-		s.status.Watch(id, func() []string {
-			return nil
-		})
+	_, err = s.status.Watch(id, func() []string {
+		return nil
+	})
+	if err == nil {
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
 			s.status.Unwatch(id)
 			return nil
 		}, smartblock.HookOnClose)
 	}
+	if err != nil && err != treestorage.ErrUnknownTreeId {
+		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
+	}
+
 	// if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 	//	var (
 	//		fList = func() []string {
@@ -239,8 +239,12 @@ func (s *Service) OpenBlock(
 	//		}, smartblock.HookOnClose)
 	//	}
 	// }
+
+	sbType, err := s.sbtProvider.Type(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get smartblock type: %w", err)
+	}
 	afterHashesTime := time.Now()
-	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
 		ObjectId:       id,
 		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
@@ -248,7 +252,7 @@ func (s *Service) OpenBlock(
 		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
 		ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
-		SmartblockType: int(tp),
+		SmartblockType: int(sbType),
 	})
 	return obj, nil
 }
@@ -617,7 +621,6 @@ func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId stri
 		}, false); err != nil {
 			return err
 		}
-		s.spaceDashboardID = id
 		return nil
 	})
 	return id, err
@@ -1106,13 +1109,10 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
 
+		fromLayout, _ := orig.Layout()
 		if toLayout, ok := orig.Layout(); ok {
-			commonOperations, ok := b.(basic.CommonOperations)
-			if !ok {
-				return fmt.Errorf("common operations is not allowed for this object")
-			}
-			if err := commonOperations.SetLayoutInState(ts, toLayout); err != nil {
-				return fmt.Errorf("set layout: %w", err)
+			if err := s.layoutConverter.Convert(ts, fromLayout, toLayout); err != nil {
+				return fmt.Errorf("convert layout: %w", err)
 			}
 		}
 

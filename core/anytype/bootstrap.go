@@ -131,9 +131,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	sbtProvider := typeprovider.New(spaceService)
 	objectStore := objectstore.New(sbtProvider)
 	objectCreator := object.NewCreator(sbtProvider)
-	blockService := block.New(tempDirService, sbtProvider)
-	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
+	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
+	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
