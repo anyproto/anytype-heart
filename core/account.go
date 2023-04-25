@@ -237,7 +237,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
 	index := len(mw.foundAccounts)
 	var account wallet.Keypair
 	for {
@@ -434,7 +434,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 
 	comps := []app.Component{
-		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1"),
+		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false),
 		anytype.BootstrapWallet(mw.rootPath, req.Id),
 		mw.EventSender,
 	}

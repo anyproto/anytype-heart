@@ -1,16 +1,18 @@
 package importer
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -19,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
@@ -46,9 +49,13 @@ func (i *Import) Init(a *app.App) (err error) {
 		converter := f(core)
 		i.converters[converter.Name()] = converter
 	}
-	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s))
+	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
+	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
+	objCreator := a.MustComponent(object.CName).(objectCreator)
+	relationCreator := NewRelationCreator(i.s, objCreator, fs, core)
+	ou := NewObjectUpdater(i.s, core, factory, relationCreator)
 	i.objectIDGetter = NewObjectIDGetter(core, i.s)
-	i.oc = NewCreator(i.s, a.MustComponent(object.CName).(objectCreator), core, factory)
+	i.oc = NewCreator(i.s, objCreator, ou, core, factory, relationCreator)
 	return nil
 }
 
@@ -61,13 +68,13 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	}
 	allErrors := converter.NewError()
 	if c, ok := i.converters[req.Type.String()]; ok {
-		progress.SetProgressMessage("import snapshots")
-		res := i.importObjects(c, req)
+		res, err := c.GetSnapshots(req, progress)
 		if res == nil {
-			return fmt.Errorf("empty response from converter")
+			return fmt.Errorf("no files to import")
 		}
-		if res.Error != nil {
-			allErrors.Merge(res.Error)
+
+		if len(err) != 0 {
+			allErrors.Merge(err)
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
 				return allErrors.Error()
 			}
@@ -75,7 +82,8 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		if len(res.Snapshots) == 0 {
 			return fmt.Errorf("no files to import")
 		}
-		progress.SetProgressMessage("create blocks")
+
+		progress.SetProgressMessage("Create objects")
 		i.createObjects(ctx, res, progress, req, allErrors)
 		return allErrors.Error()
 	}
@@ -90,7 +98,6 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			}
 			res := &converter.Response{
 				Snapshots: sn,
-				Error:     nil,
 			}
 			i.createObjects(ctx, res, progress, req, allErrors)
 			return allErrors.Error()
@@ -105,7 +112,8 @@ func (i *Import) Name() string {
 }
 
 // ListImports return all registered import types
-func (i *Import) ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
+func (i *Import) ListImports(_ *session.Context,
+	_ *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
 	res := make([]*pb.RpcObjectImportListImportResponse, len(i.converters))
 	var idx int
 	for _, c := range i.converters {
@@ -115,20 +123,30 @@ func (i *Import) ListImports(ctx *session.Context, req *pb.RpcObjectImportListRe
 	return res, nil
 }
 
+// ValidateNotionToken return all registered import types
+func (i *Import) ValidateNotionToken(ctx context.Context,
+	req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
+	tv := notion.NewTokenValidator()
+	return tv.Validate(ctx, req.GetToken())
+}
+
 func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	allErrors := make(map[string]error, 0)
-	progress.SetProgressMessage("parse url")
+
+	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res := w.GetSnapshots(req)
-	if res.Error != nil {
-		return "", nil, res.Error.Error()
+	res, err := w.GetSnapshots(req, progress)
+
+	if err != nil {
+		return "", nil, err.Error()
 	}
 	if res.Snapshots == nil || len(res.Snapshots) == 0 {
 		return "", nil, fmt.Errorf("snpashots are empty")
 	}
-	progress.SetProgressMessage("create blocks")
+
+	progress.SetProgressMessage("Create objects")
 	details := i.createObjects(ctx, res, progress, req, allErrors)
 	if len(allErrors) != 0 {
 		return "", nil, fmt.Errorf("couldn't create objects")
@@ -167,10 +185,6 @@ func (i *Import) ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportR
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, allErrors)
 	return allErrors.Error()
-}
-
-func (i *Import) importObjects(c converter.Converter, req *pb.RpcObjectImportRequest) *converter.Response {
-	return c.GetSnapshots(req)
 }
 
 func (i *Import) createObjects(ctx *session.Context, res *converter.Response, progress *process.Progress, req *pb.RpcObjectImportRequest, allErrors map[string]error) map[string]*types.Struct {
@@ -212,17 +226,19 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 			log.With(zap.String("object name", getFileName(snapshot))).Error(err)
 		}
 	}
+
 	for _, snapshot := range res.Snapshots {
-		progress.SetTotal(int64(len(res.Snapshots)))
-		select {
-		case <-progress.Canceled():
-			allErrors[getFileName(snapshot)] = errors.New("canceled")
+
+		if err := progress.TryStep(1); err != nil {
+			allErrors[getFileName(snapshot)] = err
 			return nil
-		default:
 		}
-		progress.AddDone(1)
+		var relations []*converter.Relation
+		if res.Relations != nil {
+			relations = res.Relations[snapshot.Id]
+		}
 		_, ok := existedObject[snapshot.Id]
-		detail, err := i.oc.Create(ctx, snapshot, oldIDToNew, ok)
+		detail, err := i.oc.Create(ctx, snapshot, relations, oldIDToNew, ok)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {

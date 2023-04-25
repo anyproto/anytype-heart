@@ -68,14 +68,14 @@ type builtinObjects struct {
 	service    *block.Service
 	relService relation2.Service
 
-	newAccount bool
-	idsMap     map[string]string
+	createBuiltinObjects bool
+	idsMap               map[string]string
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.service = a.MustComponent(block.CName).(*block.Service)
-	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
+	b.createBuiltinObjects = a.MustComponent(config.CName).(*config.Config).CreateBuiltinObjects
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
 	b.cancel = func() {}
 	return
@@ -86,7 +86,7 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) Run(context.Context) (err error) {
-	if !b.newAccount {
+	if !b.createBuiltinObjects {
 		// import only for new accounts
 		return
 	}

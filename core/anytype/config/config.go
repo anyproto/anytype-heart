@@ -65,10 +65,11 @@ type Config struct {
 	DebugAddr       string
 	LocalServerAddr string
 
-	Threads           threads.Config
-	DS                clientds.Config
-	FS                clientds.FSConfig
-	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
+	Threads              threads.Config
+	DS                   clientds.Config
+	FS                   clientds.FSConfig
+	DisableFileConfig    bool `ignored:"true"` // set in order to skip reading/writing config from/to file
+	CreateBuiltinObjects bool
 }
 
 type DebugAPIConfig struct {
@@ -129,6 +130,12 @@ func WithDebugAddr(addr string) func(*Config) {
 func WithLocalServer(addr string) func(*Config) {
 	return func(c *Config) {
 		c.LocalServerAddr = addr
+	}
+}
+
+func WithCreateBuiltinObjects(createBuiltinObjects bool) func(*Config) {
+	return func(c *Config) {
+		c.CreateBuiltinObjects = createBuiltinObjects
 	}
 }
 

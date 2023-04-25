@@ -36,7 +36,7 @@ var dumpTree = &cobra.Command{
 		}
 
 		comps := []app.Component{
-			anytype.BootstrapConfig(false, false),
+			anytype.BootstrapConfig(false, false, true),
 			anytype.BootstrapWallet(debugRepoPath, debugAccount),
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
@@ -66,7 +66,7 @@ var dumpLocalstore = &cobra.Command{
 		}
 
 		comps := []app.Component{
-			anytype.BootstrapConfig(false, false),
+			anytype.BootstrapConfig(false, false, true),
 			anytype.BootstrapWallet(debugRepoPath, debugAccount),
 			event.NewCallbackSender(func(event *pb.Event) {}),
 		}

@@ -85,11 +85,12 @@ func StartAccountRecoverApp(ctx context.Context, eventSender event.Sender, accou
 	return a, nil
 }
 
-func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
+func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects bool) *config.Config {
 	return config.New(
 		config.WithStagingCafe(isStaging),
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
+		config.WithCreateBuiltinObjects(createBuiltinObjects),
 	)
 }
 
