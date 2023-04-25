@@ -14,10 +14,6 @@ const (
 	DefaultWidgetFavorite = "favorite"
 	DefaultWidgetSet      = "set"
 	DefaultWidgetRecent   = "recent"
-
-	LayoutLink = 0
-	LayoutTree = 1
-	LayoutList = 2
 )
 
 type Widget interface {

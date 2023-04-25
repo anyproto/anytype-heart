@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -256,7 +255,7 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 		ContextId:    b.coreService.PredefinedBlocks().Widgets,
 		TargetId:     targetID,
 		Position:     model.Block_Top,
-		WidgetLayout: widget.LayoutLink,
+		WidgetLayout: model.BlockContentWidget_Link,
 		Block: &model.Block{
 			Id:          "",
 			ChildrenIds: nil,

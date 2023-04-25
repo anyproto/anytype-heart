@@ -75,7 +75,7 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 		if _, err := w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
 			TargetId:     "",
 			Position:     model.Block_Bottom,
-			WidgetLayout: widget.LayoutList,
+			WidgetLayout: model.BlockContentWidget_List,
 			Block: &model.Block{
 				Id:          "",
 				ChildrenIds: nil,

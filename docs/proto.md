@@ -21674,6 +21674,7 @@ stored |
 | Link | 0 |  |
 | Tree | 1 |  |
 | List | 2 |  |
+| CompactList | 3 |  |
 
 
 
