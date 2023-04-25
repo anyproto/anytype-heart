@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
@@ -51,14 +52,14 @@ func NewCreator(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context,
-	snapshot *model.SmartBlockSnapshotBase,
-	pageID string,
-	oldIDtoNew map[string]string,
-	existing bool) (*types.Struct, error) {
+func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+	snapshot := sn.Snapshot
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 
-	var err error
+	var (
+		err    error
+		pageID = sn.Id
+	)
 
 	newID := oldIDtoNew[pageID]
 	var found bool

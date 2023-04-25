@@ -76,6 +76,15 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 		}
 	}
 	cctx := context.Background()
+	if predefinedSmartBlockType(sbType) {
+		ctx := context.Background()
+		id, err := ou.service.DeriveObject(ctx, sbType, true)
+		if err != nil {
+			return "", false, err
+		}
+		return id, false, err
+	}
+
 	sb, release, err := ou.service.CreateTreeObject(cctx, sbType, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
 			Ctx: cctx,

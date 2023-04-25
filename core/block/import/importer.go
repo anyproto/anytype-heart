@@ -136,20 +136,31 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportRequest) error {
+func (i *Import) ImportUserProfile(ctx *session.Context, req *pb.RpcUserDataImportRequest) (*pb.Profile, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	progress.SetTotal(2)
 	progress.SetProgressMessage("Getting user data from path")
 	ni := newinfra.NewImporter()
-	res := ni.GetSnapshots(req.Path)
+	profile, err := ni.GetUserProfile(req, progress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read user mnemonic, %v", err)
+	}
+	return profile, nil
+}
+
+func (i *Import) ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportRequest) error {
+	progress := process.NewProgress(pb.ModelProcess_Import)
+	defer progress.Finish()
+	progress.SetProgressMessage("Getting user data from path")
+	ni := newinfra.NewImporter()
+	res := ni.GetSnapshots(req, progress)
 	if len(res.Error) != 0 {
 		return res.Error.Error()
 	}
 	if res.Snapshots == nil || len(res.Snapshots) == 0 {
 		return fmt.Errorf("snapshots are empty")
 	}
-	progress.AddDone(1)
 	allErrors := converter.NewError()
 	i.createObjects(ctx, res, progress, &pb.RpcObjectImportRequest{
 		UpdateExistingObjects: true,
@@ -207,7 +218,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 		}
 		progress.AddDone(1)
 		_, ok := existedObject[snapshot.Id]
-		detail, err := i.oc.Create(ctx, snapshot.Snapshot, snapshot.Id, oldIDToNew, ok)
+		detail, err := i.oc.Create(ctx, snapshot, oldIDToNew, ok)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {

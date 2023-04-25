@@ -5,6 +5,7 @@
 package importer
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	reflect "reflect"
 
 	app "github.com/anytypeio/any-sync/app"
@@ -136,7 +137,7 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, cs *model.SmartBlockSnapshotBase, pageID string, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, cs, pageID, oldIDtoNew, existing)
 	ret0, _ := ret[0].(*types.Struct)
