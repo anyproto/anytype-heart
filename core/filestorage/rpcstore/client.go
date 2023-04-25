@@ -72,18 +72,14 @@ func (c *client) opLoop(ctx context.Context) {
 	}
 }
 
-func (c *client) delete(ctx context.Context, cids ...cid.Cid) (err error) {
+func (c *client) delete(ctx context.Context, fileIds ...string) (err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
-	cidsB := make([][]byte, 0, len(cids))
-	for _, c := range cids {
-		cidsB = append(cidsB, c.Bytes())
-	}
-	if _, err = fileproto.NewDRPCFileClient(p).BlocksDelete(ctx, &fileproto.BlocksDeleteRequest{
+	if _, err = fileproto.NewDRPCFileClient(p).FilesDelete(ctx, &fileproto.FilesDeleteRequest{
 		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
-		Cids:    cidsB,
+		FileIds: fileIds,
 	}); err != nil {
 		return rpcerr.Unwrap(err)
 	}
@@ -99,6 +95,7 @@ func (c *client) put(ctx context.Context, cd cid.Cid, data []byte) (err error) {
 	st := time.Now()
 	if _, err = fileproto.NewDRPCFileClient(p).BlockPush(ctx, &fileproto.BlockPushRequest{
 		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
+		FileId:  fileblockstore.CtxGetFileId(ctx),
 		Cid:     cd.Bytes(),
 		Data:    data,
 	}); err != nil {
@@ -145,6 +142,48 @@ func (c *client) checkBlocksAvailability(ctx context.Context, cids ...cid.Cid) (
 		return nil, err
 	}
 	return resp.BlocksAvailability, nil
+}
+
+func (c *client) bind(ctx context.Context, cids ...cid.Cid) error {
+	p, err := c.s.pool.Get(ctx, c.peerId)
+	if err != nil {
+		return err
+	}
+	var cidsB = make([][]byte, len(cids))
+	for i, c := range cids {
+		cidsB[i] = c.Bytes()
+	}
+	_, err = fileproto.NewDRPCFileClient(p).BlocksBind(ctx, &fileproto.BlocksBindRequest{
+		SpaceId: fileblockstore.CtxGetSpaceId(ctx),
+		FileId:  fileblockstore.CtxGetFileId(ctx),
+		Cids:    cidsB,
+	})
+	return err
+}
+
+func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
+	p, err := c.s.pool.Get(ctx, c.peerId)
+	if err != nil {
+		return
+	}
+	return fileproto.NewDRPCFileClient(p).SpaceInfo(ctx, &fileproto.SpaceInfoRequest{
+		SpaceId: spaceId,
+	})
+}
+
+func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []string) (info []*fileproto.FileInfo, err error) {
+	p, err := c.s.pool.Get(ctx, c.peerId)
+	if err != nil {
+		return
+	}
+	resp, err := fileproto.NewDRPCFileClient(p).FilesInfo(ctx, &fileproto.FilesInfoRequest{
+		SpaceId: spaceId,
+		FileIds: fileIds,
+	})
+	if err != nil {
+		return
+	}
+	return resp.FilesInfo, nil
 }
 
 func (c *client) checkConnectivity(ctx context.Context) (err error) {

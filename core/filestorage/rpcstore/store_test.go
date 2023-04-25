@@ -11,9 +11,10 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/accountdata"
 	"github.com/anytypeio/any-sync/net/rpc/rpctest"
 	"github.com/anytypeio/any-sync/nodeconf"
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"github.com/golang/mock/gomock"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-libipfs/blocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sort"
@@ -38,20 +39,21 @@ func TestStore_Put(t *testing.T) {
 	for _, b := range bs {
 		assert.NotNil(t, fx.serv.data[string(b.Cid().Bytes())])
 	}
-
 }
 
-func TestStore_Delete(t *testing.T) {
+func TestStore_DeleteFiles(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.Finish(t)
 	bs := []blocks.Block{
 		blocks.NewBlock([]byte{'1'}),
 	}
-	err := fx.Add(ctx, bs)
-	require.NoError(t, err)
+	res := fx.AddAsync(ctx, "spaceId", "fileId", bs)
+	for _ = range res {
+	}
 	assert.Len(t, fx.serv.data, 1)
-	require.NoError(t, fx.Delete(ctx, bs[0].Cid()))
-	assert.Len(t, fx.serv.data, 0)
+	assert.Len(t, fx.serv.files, 1)
+	require.NoError(t, fx.DeleteFiles(ctx, "spaceId", "fileId"))
+	assert.Len(t, fx.serv.files, 0)
 }
 
 func TestStore_Get(t *testing.T) {
@@ -119,7 +121,7 @@ func TestStore_AddAsync(t *testing.T) {
 	err := fx.Add(ctx, bs[:1])
 	assert.NoError(t, err)
 
-	successCh := fx.AddAsync(ctx, bs)
+	successCh := fx.AddAsync(ctx, "", "", bs)
 	var successCids []cid.Cid
 	for i := 0; i < len(bs); i++ {
 		select {
@@ -137,7 +139,8 @@ func newFixture(t *testing.T) *fixture {
 		a: new(app.App),
 		s: New().(*service),
 		serv: &testServer{
-			data: make(map[string][]byte),
+			data:  make(map[string][]byte),
+			files: make(map[string][][]byte),
 		},
 	}
 
@@ -156,6 +159,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(mock_accountservice.NewAccountServiceWithAccount(fx.ctrl, &accountdata.AccountData{})).
 		Register(rpctest.NewTestPool().WithServer(rserv)).
 		Register(nodeconf.New()).
+		Register(peerstore.New()).
 		Register(conf)
 	require.NoError(t, fx.a.Start(ctx))
 	fx.store = fx.s.NewStore().(*store)
@@ -177,8 +181,9 @@ func (fx *fixture) Finish(t *testing.T) {
 }
 
 type testServer struct {
-	mu   sync.Mutex
-	data map[string][]byte
+	mu    sync.Mutex
+	data  map[string][]byte
+	files map[string][][]byte
 }
 
 func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
@@ -198,16 +203,9 @@ func (t *testServer) BlockPush(ctx context.Context, req *fileproto.BlockPushRequ
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.data[string(req.Cid)] = req.Data
+	fcids := t.files[req.FileId]
+	t.files[req.FileId] = append(fcids, req.Cid)
 	return &fileproto.BlockPushResponse{}, nil
-}
-
-func (t *testServer) BlocksDelete(ctx context.Context, req *fileproto.BlocksDeleteRequest) (*fileproto.BlocksDeleteResponse, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	for _, c := range req.Cids {
-		delete(t.data, string(c))
-	}
-	return &fileproto.BlocksDeleteResponse{}, nil
 }
 
 func (t *testServer) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheckRequest) (resp *fileproto.BlocksCheckResponse, err error) {
@@ -227,9 +225,48 @@ func (t *testServer) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheck
 	return
 }
 
-func (t *testServer) BlocksBind(ctx context.Context, request *fileproto.BlocksBindRequest) (*fileproto.BlocksBindResponse, error) {
-	//TODO implement me
-	panic("implement me")
+func (t *testServer) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.BlocksBindResponse, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.files[req.FileId] = append(t.files[req.FileId], req.Cids...)
+	return &fileproto.BlocksBindResponse{}, nil
+}
+
+func (t *testServer) FilesDelete(ctx context.Context, req *fileproto.FilesDeleteRequest) (*fileproto.FilesDeleteResponse, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, fileId := range req.FileIds {
+		delete(t.files, fileId)
+	}
+	return &fileproto.FilesDeleteResponse{}, nil
+}
+
+func (t *testServer) FilesInfo(ctx context.Context, req *fileproto.FilesInfoRequest) (*fileproto.FilesInfoResponse, error) {
+	resp := &fileproto.FilesInfoResponse{}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, fileId := range req.FileIds {
+		resp.FilesInfo = append(resp.FilesInfo, &fileproto.FileInfo{
+			FileId:     fileId,
+			UsageBytes: uint64(len(t.files[fileId])),
+			CidsCount:  uint32(len(t.files[fileId])),
+		})
+	}
+	return resp, nil
+}
+
+func (t *testServer) SpaceInfo(ctx context.Context, req *fileproto.SpaceInfoRequest) (*fileproto.SpaceInfoResponse, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	resp := &fileproto.SpaceInfoResponse{
+		LimitBytes: 99999999,
+	}
+	for _, b := range t.data {
+		resp.UsageBytes += uint64(len(b))
+		resp.CidsCount++
+	}
+	resp.FilesCount = uint64(len(t.files))
+	return resp, nil
 }
 
 func (t *testServer) Check(ctx context.Context, req *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
