@@ -7,9 +7,11 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"go.uber.org/zap"
 
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync/filesyncstatus"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
@@ -37,10 +39,11 @@ type RunnableWatcher interface {
 
 type service struct {
 	typeProvider typeprovider.SmartBlockTypeProvider
+	spaceService space.Service
 
 	coreService core.Service
 
-	fileWatcher        Watcher
+	fileWatcher        filesyncstatus.StatusWatcher
 	objectWatcher      RunnableWatcher
 	subObjectsWatcher  SubObjectsWatcher
 	linkedFilesWatcher LinkedFilesWatcher
@@ -52,13 +55,15 @@ type service struct {
 
 func New(
 	typeProvider typeprovider.SmartBlockTypeProvider,
+	spaceService space.Service,
 	coreService core.Service,
-	fileWatcher Watcher,
+	fileWatcher filesyncstatus.StatusWatcher,
 	objectWatcher RunnableWatcher,
 	subObjectsWatcher SubObjectsWatcher,
 	linkedFilesWatcher LinkedFilesWatcher,
 ) Service {
 	return &service{
+		spaceService:       spaceService,
 		typeProvider:       typeProvider,
 		coreService:        coreService,
 		fileWatcher:        fileWatcher,
@@ -111,9 +116,7 @@ func (s *service) watch(id string, filesGetter func() []string) (new bool, err e
 	}
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
-		if err = s.fileWatcher.Watch(id); err != nil {
-			return false, err
-		}
+		s.fileWatcher.Watch(s.spaceService.AccountId(), id)
 		return false, nil
 	case smartblock.SmartBlockTypeSubObject:
 		s.subObjectsWatcher.Watch(id)
@@ -137,7 +140,7 @@ func (s *service) unwatch(id string) {
 	}
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
-		s.fileWatcher.Unwatch(id)
+		s.fileWatcher.Unwatch(s.spaceService.AccountId(), id)
 	case smartblock.SmartBlockTypeSubObject:
 		s.subObjectsWatcher.Unwatch(id)
 	default:

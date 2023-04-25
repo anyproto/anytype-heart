@@ -133,9 +133,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	objectStatusWatcher := status.NewSpaceObjectWatcher(spaceService, statusUpdateReceiver)
 
 	fileSyncStatusWatcher := filesyncstatus.New(fileSyncStatusRegistry, statusUpdateReceiver, fileSyncUpdateInterval)
-	fileStatusWatcher := status.NewFileWatcher(spaceService, fileSyncStatusWatcher)
-
-	statusService := status.New(sbtProvider, coreService, fileStatusWatcher, objectStatusWatcher, subObjectsStatusWatcher, linkedFilesStatusWatcher)
+	statusService := status.New(sbtProvider, spaceService, coreService, fileSyncStatusWatcher, objectStatusWatcher, subObjectsStatusWatcher, linkedFilesStatusWatcher)
 
 	fileService := files.New(fileSyncStatusWatcher, objectStore)
 
