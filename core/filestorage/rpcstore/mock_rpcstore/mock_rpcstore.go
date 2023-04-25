@@ -12,8 +12,8 @@ import (
 	fileproto "github.com/anytypeio/any-sync/commonfile/fileproto"
 	rpcstore "github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	gomock "github.com/golang/mock/gomock"
+	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 )
 
 // MockService is a mock of Service interface.

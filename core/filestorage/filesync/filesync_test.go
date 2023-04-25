@@ -47,6 +47,7 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	defer fx.Finish(t)
 	spaceId := "spaceId"
 	fileId := "fileId"
+	fx.rpcStore.EXPECT().DeleteFiles(gomock.Any(), spaceId, fileId).Return(nil)
 	require.NoError(t, fx.RemoveFile(spaceId, fileId))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
