@@ -54,6 +54,7 @@ func (s *Service) SetBreadcrumbs(ctx *session.Context, req pb.RpcObjectSetBreadc
 
 func (s *Service) CreateBlock(ctx *session.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
 	err = DoState(s, req.ContextId, func(st *state.State, b basic.Creatable) error {
+		st.SetContext(ctx)
 		id, err = b.CreateBlock(st, req)
 		return err
 	})
