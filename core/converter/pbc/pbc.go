@@ -7,10 +7,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var log = logging.Logger("pb-converter")
@@ -41,11 +39,6 @@ func (p *pbc) Convert(sbType model.SmartBlockType, id string) []byte {
 	for _, fk := range p.s.GetAndUnsetFileKeys() {
 		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
-
-	if snapshot.Data.Details == nil || snapshot.Data.Details.Fields == nil {
-		snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 
 	mo := &pb.SnapshotWithType{
 		SbType:   sbType,

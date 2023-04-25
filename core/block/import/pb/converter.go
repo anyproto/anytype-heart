@@ -158,6 +158,9 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 				return nil, nil, nil
 			}
 		}
+		if mo == nil {
+			continue
+		}
 		p.fillDetails(name, path, mo)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       id,
@@ -176,6 +179,9 @@ func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
 		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
+	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
+		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
+	}
 }
 
 func (p *Pb) Name() string {

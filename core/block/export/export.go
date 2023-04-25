@@ -229,13 +229,6 @@ func (e *export) getAllObjects(includeArchived bool, includeDeleted bool) (map[s
 		if !e.objectValid(r.Details) {
 			continue
 		}
-		sbType, sbErr := e.sbtProvider.Type(r.Id)
-		if sbErr != nil {
-			continue
-		}
-		if skipObject(sbType) {
-			continue
-		}
 		docs[r.Id] = r.Details
 	}
 	return docs, nil
@@ -507,17 +500,6 @@ func (e *export) objectValid(r *types.Struct) bool {
 		}
 	}
 	return true
-}
-
-func skipObject(objectType smartblock.SmartBlockType) bool {
-	return objectType == smartblock.SmartBlockTypeBundledObjectType ||
-		objectType == smartblock.SmartBlockTypeBundledTemplate ||
-		objectType == smartblock.SmartBlockTypeBundledRelation ||
-		objectType == smartblock.SmartBlockTypeWorkspaceOld ||
-		objectType == smartblock.SmartBlockTypeArchive ||
-		objectType == smartblock.SmartblockTypeMarketplaceRelation ||
-		objectType == smartblock.SmartblockTypeMarketplaceType ||
-		objectType == smartblock.SmartBlockTypeFile
 }
 
 func newNamer() *namer {
