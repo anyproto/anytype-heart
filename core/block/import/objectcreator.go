@@ -96,7 +96,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(newID, sn, oldIDtoNew)
-		return nil, newID, nil
+		//return nil, newID, nil
 	}
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
