@@ -33,7 +33,7 @@ type localDiscovery struct {
 	closeWait       sync.WaitGroup
 	interfacesAddrs addrs.InterfacesAddrs
 	periodicCheck   periodicsync.PeriodicSync
-	portProvider    clientserver.DRPCServer
+	drpcServer      clientserver.DRPCServer
 
 	ipv4 []string
 	ipv6 []string
@@ -52,12 +52,15 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
-	l.portProvider = a.MustComponent(clientserver.CName).(clientserver.DRPCServer)
+	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.DRPCServer)
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
-	l.port = l.portProvider.Port()
+	if !l.drpcServer.ServerStarted() {
+		return
+	}
+	l.port = l.drpcServer.Port()
 	l.periodicCheck.Run()
 	return
 }
@@ -67,6 +70,9 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
+	if !l.drpcServer.ServerStarted() {
+		return
+	}
 	l.periodicCheck.Close()
 	l.cancel()
 	if l.server != nil {

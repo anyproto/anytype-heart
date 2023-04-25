@@ -37,8 +37,8 @@ type localDiscovery struct {
 	peerId string
 	port   int
 
-	notifier     Notifier
-	portProvider clientserver.DRPCServer
+	notifier   Notifier
+	drpcServer clientserver.DRPCServer
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -76,16 +76,19 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.portProvider = a.MustComponent(clientserver.CName).(clientserver.DRPCServer)
+	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.DRPCServer)
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
+	if !l.drpcServer.ServerStarted() {
+		return
+	}
 	provider := getNotifierProvider()
 	if provider == nil {
 		return
 	}
-	provider.Provide(l, l.portProvider.Port(), l.peerId, serviceName)
+	provider.Provide(l, l.drpcServer.Port(), l.peerId, serviceName)
 	return
 }
 
@@ -94,6 +97,9 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
+	if !l.drpcServer.ServerStarted() {
+		return
+	}
 	provider := getNotifierProvider()
 	if provider == nil {
 		return

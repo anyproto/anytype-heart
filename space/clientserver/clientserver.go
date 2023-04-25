@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	gonet "net"
 	"strconv"
 	"strings"
@@ -35,14 +36,16 @@ type DRPCServer interface {
 	app.ComponentRunnable
 	drpc.Mux
 	Port() int
+	ServerStarted() bool
 }
 
 type drpcServer struct {
-	config    net.Config
-	transport secureservice.SecureService
-	provider  datastore.Datastore
-	port      int
-	storage   *portStorage
+	config        net.Config
+	transport     secureservice.SecureService
+	provider      datastore.Datastore
+	port          int
+	storage       *portStorage
+	serverStarted bool
 	*server.BaseDrpcServer
 }
 
@@ -57,7 +60,20 @@ func (s *drpcServer) Name() (name string) {
 	return CName
 }
 
-func (s *drpcServer) Run(ctx context.Context) (err error) {
+func (s *drpcServer) Run(ctx context.Context) error {
+	if err := s.startServer(ctx); err != nil {
+		log.InfoCtx(ctx, "failed to start drpc server", zap.Error(err))
+	} else {
+		s.serverStarted = true
+	}
+	return nil
+}
+
+func (s *drpcServer) Port() int {
+	return s.port
+}
+
+func (s *drpcServer) startServer(ctx context.Context) (err error) {
 	db, err := s.provider.SpaceStorage()
 	if err != nil {
 		return
@@ -106,10 +122,6 @@ func (s *drpcServer) Run(ctx context.Context) (err error) {
 	return s.storage.setPort(s.port)
 }
 
-func (s *drpcServer) Port() int {
-	return s.port
-}
-
 func (s *drpcServer) parsePort() (int, error) {
 	addrs := s.BaseDrpcServer.ListenAddrs()
 	if len(addrs) == 0 {
@@ -122,6 +134,13 @@ func (s *drpcServer) parsePort() (int, error) {
 	return strconv.Atoi(split[len(split)-1])
 }
 
+func (s *drpcServer) ServerStarted() bool {
+	return s.serverStarted
+}
+
 func (s *drpcServer) Close(ctx context.Context) (err error) {
+	if !s.serverStarted {
+		return nil
+	}
 	return s.BaseDrpcServer.Close(ctx)
 }
