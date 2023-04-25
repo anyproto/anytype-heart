@@ -29,6 +29,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 var ctx = context.Background()
@@ -44,6 +45,9 @@ func TestFileSync_AddFile(t *testing.T) {
 	fileId := n.Cid().String()
 	spaceId := "spaceId"
 
+	fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
+		{}, // We can use just empty struct here, because we don't use any fields
+	}, nil).AnyTimes()
 	// TODO Test when limit is reached
 	fx.rpcStore.EXPECT().CheckAvailability(gomock.Any(), spaceId, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
 		res := lo.Map(cids, func(c cid.Cid, _ int) *fileproto.BlockAvailability {

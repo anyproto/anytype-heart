@@ -91,14 +91,9 @@ type FileStore interface {
 	GetBySource(mill string, source string, opts string) (*storage.FileInfo, error)
 	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
 	AddTarget(hash string, target string) error
-	RemoveTarget(hash string, target string) error
 	ListTargets() ([]string, error)
 	ListByTarget(target string) ([]*storage.FileInfo, error)
-	Count() (int, error)
 	DeleteFile(hash string) error
-	DeleteByTarget(targetHash string) error
-	DeleteFileKeys(hash string) error
-	ListFileKeys() ([]string, error)
 	List() ([]*storage.FileInfo, error)
 	RemoveEmpty() error
 
@@ -270,7 +265,7 @@ func (m *dsFileStore) RemoveEmpty() error {
 		}
 		if len(v) == 0 {
 			removed++
-			err = m.DeleteFileKeys(hash)
+			err = m.deleteFileKeys(hash)
 			if err != nil {
 				log.Errorf("RemoveEmpty failed to delete empty file keys: %s", err)
 			}
@@ -282,22 +277,19 @@ func (m *dsFileStore) RemoveEmpty() error {
 	return nil
 }
 
-func (m *dsFileStore) ListFileKeys() ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (m *dsFileStore) deleteFileKeys(hash string) error {
+	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
-	res, err := localstore.GetKeys(txn, filesKeysBase.String(), 0)
+	fileKeysKey := filesKeysBase.ChildString(hash)
+	err = txn.Delete(fileKeysKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return localstore.ExtractKeysFromResults(res)
-}
-
-func (m *dsFileStore) DeleteFileKeys(hash string) error {
-	return nil
+	return txn.Commit()
 }
 
 func (m *dsFileStore) addSingleFileKeys(txn ds.Txn, hash string, keys map[string]string) error {
@@ -376,38 +368,6 @@ func (m *dsFileStore) AddTarget(hash string, target string) error {
 	if err != nil {
 		return err
 	}
-
-	return m.ds.Put(fileInfoKey, b)
-}
-
-func (m *dsFileStore) RemoveTarget(hash string, target string) error {
-	// lock to protect from race conds
-	m.l.Lock()
-	defer m.l.Unlock()
-
-	file, err := m.GetByHash(hash)
-	if err != nil {
-		return err
-	}
-
-	var filtered []string
-	for _, et := range file.Targets {
-		if et != target {
-			filtered = append(filtered, et)
-		}
-	}
-
-	if len(filtered) == len(file.Targets) {
-		return nil
-	}
-	file.Targets = filtered
-
-	b, err := proto.Marshal(file)
-	if err != nil {
-		return err
-	}
-
-	fileInfoKey := filesInfoBase.ChildString(file.Hash)
 
 	return m.ds.Put(fileInfoKey, b)
 }
@@ -557,15 +517,6 @@ func (m *dsFileStore) listByTarget(target string, txn ds.Txn) ([]*storage.FileIn
 	return files, nil
 }
 
-func (m *dsFileStore) Count() (int, error) {
-	count, err := m.ds.GetSize(filesInfoBase)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
 func (m *dsFileStore) List() ([]*storage.FileInfo, error) {
 	var infos []*storage.FileInfo
 	txn, err := m.ds.NewTransaction(true)
@@ -645,10 +596,6 @@ func (m *dsFileStore) DeleteFile(hash string) error {
 	}
 
 	return txn.Commit()
-}
-
-func (m *dsFileStore) DeleteByTarget(targetHash string) error {
-	return nil
 }
 
 func (m *dsFileStore) deleteFile(txn ds.Txn, file *storage.FileInfo) error {
