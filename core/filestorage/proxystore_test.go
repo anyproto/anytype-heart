@@ -3,7 +3,7 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/client/filestorage/badgerfilestore"
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -240,6 +240,18 @@ func (t *testStore) Delete(ctx context.Context, c cid.Cid) error {
 		return nil
 	}
 	return &format.ErrNotFound{Cid: c}
+}
+
+func (t *testStore) DeleteMany(ctx context.Context, cids ...cid.Cid) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for _, c := range cids {
+		if _, ok := t.store[c.String()]; ok {
+			delete(t.store, c.String())
+		}
+	}
+	return nil
 }
 
 func (t *testStore) Close() (err error) {

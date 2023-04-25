@@ -2,9 +2,11 @@ package filestorage
 
 import (
 	"context"
+	"fmt"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
 	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"sync"
 	"sync/atomic"
@@ -40,7 +42,8 @@ func (s *syncer) sync(ctx context.Context) (doneCount int32) {
 	}
 	defer cids.Release()
 	l := cids.Len()
-	log.Debug("remote file sync, got tasks to sync", zap.Int("count", l))
+	total, _ := s.ps.index.Len()
+	log.Debug("remote file sync, got tasks to sync", zap.Int("count", l), zap.Int("inQueue", total))
 	if l == 0 {
 		return
 	}
@@ -129,12 +132,15 @@ func (s *syncer) delete(ctx context.Context, spaceOps badgerfilestore.SpaceCidOp
 	doneCids := badgerfilestore.NewCids()
 	defer doneCids.Release()
 	ctx = fileblockstore.CtxWithSpaceId(ctx, spaceOps.SpaceId)
-	for _, c := range spaceOps.Delete {
-		if err := s.ps.origin.Delete(ctx, c); err != nil {
-			log.Debug("syncer: can't remove from remote", zap.Error(err))
-			continue
-		}
-		doneCids.Add(spaceOps.SpaceId, badgerfilestore.OpDelete, c)
+	cids := make([]cid.Cid, len(spaceOps.Delete))
+	for i := range spaceOps.Delete {
+		cids[i] = spaceOps.Delete[i]
+		doneCids.Add(spaceOps.SpaceId, badgerfilestore.OpDelete, spaceOps.Delete[i])
+	}
+	log.Debug(fmt.Sprintf("cids: %v", cids))
+	if err := s.ps.origin.DeleteMany(ctx, cids...); err != nil {
+		log.Debug("syncer: can't remove from remote", zap.Error(err))
+		return 0
 	}
 	if err := s.ps.index.Done(doneCids); err != nil {
 		log.Error("syncer: index.Done error", zap.Error(err))

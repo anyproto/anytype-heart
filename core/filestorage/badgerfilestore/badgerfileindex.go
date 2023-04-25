@@ -97,7 +97,6 @@ func (i *FileBadgerIndex) Len() (l int, err error) {
 			Prefix:         []byte(keyIndexPrefix),
 		})
 		defer it.Close()
-		var l int
 		for it.Rewind(); it.Valid(); it.Next() {
 			l++
 		}

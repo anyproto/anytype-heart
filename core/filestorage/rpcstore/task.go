@@ -2,59 +2,47 @@ package rpcstore
 
 import (
 	"context"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"time"
+	"sync"
 )
 
-type taskOp uint
+var taskPool = &sync.Pool{
+	New: func() any {
+		return new(task)
+	},
+}
 
-const (
-	taskOpGet taskOp = iota
-	taskOpPut
-	taskOpDelete
-)
+func getTask() *task {
+	return taskPool.Get().(*task)
+}
 
-func newTask(ctx context.Context, op taskOp, c cid.Cid, readyCh chan *task) *task {
-	t := &task{
-		cid:   c,
-		ctx:   ctx,
-		ready: readyCh,
-		op:    op,
-	}
-	if t.ready == nil {
-		t.ready = make(chan *task)
-	}
-	return t
+type result struct {
+	cid cid.Cid
+	err error
 }
 
 type task struct {
-	op          taskOp
 	ctx         context.Context
-	cid         cid.Cid
-	data        []byte
 	peerId      string
 	spaceId     string
+	cid         cid.Cid
 	denyPeerIds []string
-	ready       chan *task
-	startTime   time.Time
-	err         error
+	write       bool
+	exec        func(c *client) error
+	onFinished  func(t *task, c *client, err error)
+	ready       chan result
 }
 
-func (t *task) Validate() error {
-	if t.err != nil {
-		return t.err
-	}
-	chkc, err := t.cid.Prefix().Sum(t.data)
-	if err != nil {
-		return err
-	}
-	if !chkc.Equals(t.cid) {
-		return blocks.ErrWrongHash
-	}
-	return nil
+func (t *task) execWithClient(c *client) {
+	t.onFinished(t, c, t.exec(c))
 }
 
-func (t *task) Block() (blocks.Block, error) {
-	return blocks.NewBlockWithCid(t.data, t.cid)
+func (t *task) release() {
+	t.ctx = nil
+	t.peerId = ""
+	t.spaceId = ""
+	t.denyPeerIds = t.denyPeerIds[:0]
+	t.write = false
+	t.exec = nil
+	taskPool.Put(t)
 }
