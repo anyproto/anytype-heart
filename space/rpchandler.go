@@ -2,39 +2,13 @@ package space
 
 import (
 	"context"
-	"fmt"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/net/peer"
-	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
-	"go.uber.org/zap"
 )
 
 type rpcHandler struct {
 	s *service
-}
-
-func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceproto.SpaceExchangeRequest) (resp *clientspaceproto.SpaceExchangeResponse, err error) {
-	allIds, err := r.s.spaceStorageProvider.AllSpaceIds()
-	if err != nil {
-		return
-	}
-	if request.LocalServer != nil {
-		peerId, err := peer.CtxPeerId(ctx)
-		if err != nil {
-			return nil, err
-		}
-		var portAddrs []string
-		for _, ip := range request.LocalServer.Ips {
-			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", ip, request.LocalServer.Port))
-		}
-		r.s.dialer.SetPeerAddrs(peerId, portAddrs)
-		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
-		log.Info("updated local peer", zap.Strings("ips", portAddrs), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
-	}
-	log.Debug("returning list with ids", zap.Strings("spaceIds", allIds))
-	resp = &clientspaceproto.SpaceExchangeResponse{SpaceIds: allIds}
-	return
 }
 
 func (r *rpcHandler) SpacePull(ctx context.Context, request *spacesyncproto.SpacePullRequest) (resp *spacesyncproto.SpacePullResponse, err error) {
