@@ -2485,6 +2485,7 @@ Middleware-to-front-end response to an account recover request, that can contain
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) |  |  |
 | rootPath | [string](#string) |  |  |
+| icon | [int64](#int64) |  |  |
 
 
 

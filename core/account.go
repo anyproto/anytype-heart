@@ -743,7 +743,7 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	err = mw.setDetails(profile, err)
+	err = mw.setDetails(profile, req.Icon, err)
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
@@ -780,18 +780,37 @@ func (mw *Middleware) getBootstrapConfig(err error, req *pb.RpcAccountRecoverFro
 	return cfg, nil
 }
 
-func (mw *Middleware) setDetails(profile *pb.Profile, err error) error {
-	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
-	details = append(details, &pb.RpcObjectSetDetailsDetail{
+func (mw *Middleware) setDetails(profile *pb.Profile, icon int64, err error) error {
+	profileDetails := []*pb.RpcObjectSetDetailsDetail{{
+		Key:   bundle.RelationKeyName.String(),
+		Value: pbtypes.String(profile.Name),
+	}, {
 		Key:   bundle.RelationKeyIconImage.String(),
 		Value: pbtypes.String(profile.Avatar),
-	})
+	}}
+	if profile.Avatar == "" {
+		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyIconOption.String(),
+			Value: pbtypes.Int64(icon),
+		})
+	}
+
+	accountDetails := []*pb.RpcObjectSetDetailsDetail{{
+		Key:   bundle.RelationKeyIconOption.String(),
+		Value: pbtypes.Int64(icon),
+	}}
 
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
-		Details:   details,
+		Details:   profileDetails,
+	}); err != nil {
+		return err
+	}
+	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: coreService.PredefinedBlocks().Account,
+		Details:   accountDetails,
 	}); err != nil {
 		return err
 	}
