@@ -49,6 +49,10 @@ func (s *Service) createCache() ocache.OCache {
 			if exists {
 				return putObject, nil
 			}
+			// if it is subObject
+			if sbt, _ := coresb.SmartBlockTypeFromID(id); sbt == coresb.SmartBlockTypeSubObject {
+				return s.initSubObject(ctx, id)
+			}
 			// otherwise general init
 			return s.objectFactory.InitObject(id, &smartblock.InitContext{
 				Ctx: ctx,
@@ -175,4 +179,12 @@ func (s *Service) cacheCreatedObject(ctx context.Context, spaceId string, initFu
 	return v.(smartblock.SmartBlock), func() {
 		s.cache.Release(id)
 	}, nil
+}
+
+func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.Object, err error) {
+	accountId := s.clientService.AccountId()
+	if account, err = s.cache.Get(ctx, accountId); err != nil {
+		return
+	}
+	return account.(SmartblockOpener).Open(id)
 }
