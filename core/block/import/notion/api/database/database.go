@@ -117,7 +117,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase, []*converter.Relation, error) {
 	details := make(map[string]*types.Value, 0)
 	relations := make([]*converter.Relation, 0)
-	details[bundle.RelationKeySource.String()] = pbtypes.String(d.URL)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.URL)
 	if len(d.Title) > 0 {
 		details[bundle.RelationKeyName.String()] = pbtypes.String(d.Title[0].PlainText)
 	}

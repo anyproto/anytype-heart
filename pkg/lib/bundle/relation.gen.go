@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "ee7a19834a5eebfdcbb5280161fc579c6a0492f67df3c4eee6fc2445c3695c47"
+const RelationChecksum = "7dc4afabdc4f98001a0b60e68853f04e5171de2b883859f3022059c5d4a66a87"
 
 type RelationKey string
 
@@ -184,6 +184,7 @@ const (
 	RelationKeySpaceDashboardId          RelationKey = "spaceDashboardId"
 	RelationKeyIconOption                RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        RelationKey = "spaceAccessibility"
+	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
 )
 
 var (
@@ -2023,6 +2024,20 @@ var (
 			Key:              "source",
 			MaxCount:         1,
 			Name:             "Source",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySourceFilePath: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File path or url with original object",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brsourceFilePath",
+			Key:              "sourceFilePath",
+			MaxCount:         1,
+			Name:             "Source file path",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

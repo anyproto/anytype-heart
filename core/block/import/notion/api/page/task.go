@@ -107,7 +107,7 @@ func (pt *Task) provideSnapshot(request *block.MapRequest, notionBlocks []interf
 
 func (pt *Task) prepareDetails(p Page) map[string]*types.Value {
 	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySource.String()] = pbtypes.String(p.URL)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(p.URL)
 	if p.Icon != nil && p.Icon.Emoji != nil {
 		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*p.Icon.Emoji)
 	}

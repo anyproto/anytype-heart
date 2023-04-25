@@ -1601,7 +1601,7 @@
   },
   {
     "format": "longtext",
-    "hidden": false,
+    "hidden": true,
     "key": "oldAnytypeID",
     "maxCount": 1,
     "name": "Old Anytype ID",
@@ -1636,6 +1636,16 @@
     "key": "spaceAccessibility",
     "maxCount": 1,
     "name": "Space accessibility",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "File path or url with original object",
+    "format": "longtext",
+    "hidden": true,
+    "key": "sourceFilePath",
+    "maxCount": 1,
+    "name": "Source file path",
     "readonly": false,
     "source": "details"
   }

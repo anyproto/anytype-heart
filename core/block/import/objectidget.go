@@ -148,12 +148,12 @@ func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
 }
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
-	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
 	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySource.String(),
+				RelationKey: bundle.RelationKeySourceFilePath.String(),
 				Value:       pbtypes.String(source),
 			},
 		},

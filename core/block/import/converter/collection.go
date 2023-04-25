@@ -84,7 +84,7 @@ func (r *RootCollection) addRelations(st *state.State) error {
 
 func (r *RootCollection) getCreateCollectionRequest(collectionName string) *types.Struct {
 	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySource.String()] = pbtypes.String(collectionName)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
 	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))

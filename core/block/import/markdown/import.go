@@ -584,9 +584,9 @@ func (m *Markdown) setDetails(file *FileInfo, name string, details map[string]*t
 	file.Title = title
 	// FIELD-BLOCK
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():      pbtypes.String(title),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String(emoji),
-		bundle.RelationKeySource.String():    pbtypes.String(file.Source),
+		bundle.RelationKeyName.String():           pbtypes.String(title),
+		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
+		bundle.RelationKeySourceFilePath.String(): pbtypes.String(file.Source),
 	}
 	details[name] = &types.Struct{Fields: fields}
 }

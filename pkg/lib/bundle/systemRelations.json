@@ -56,5 +56,6 @@
   "widthInPixels",
   "heightInPixels",
   "fileExt",
-  "sizeInBytes"
+  "sizeInBytes",
+  "sourceFilePath"
 ]

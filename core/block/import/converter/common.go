@@ -40,8 +40,8 @@ func GetDetails(name string) *types.Struct {
 	}
 
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():   pbtypes.String(title),
-		bundle.RelationKeySource.String(): pbtypes.String(name),
+		bundle.RelationKeyName.String():           pbtypes.String(title),
+		bundle.RelationKeySourceFilePath.String(): pbtypes.String(name),
 	}
 	return &types.Struct{Fields: fields}
 }
