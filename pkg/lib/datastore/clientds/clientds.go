@@ -173,6 +173,13 @@ func (r *clientds) Close(ctx context.Context) (err error) {
 		}
 	}
 
+	if r.spaceDS != nil {
+		err2 := r.spaceDS.Close()
+		if err2 != nil {
+			err = multierror.Append(err, err2)
+		}
+	}
+
 	return err
 }
 
