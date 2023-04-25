@@ -3,6 +3,7 @@ package filestorage
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/anytypeio/any-sync/app"
@@ -22,6 +23,7 @@ import (
 )
 
 const CName = fileblockstore.CName
+const FlatfsDirName = "flatfs"
 
 var log = logger.NewNamed(CName)
 
@@ -47,13 +49,39 @@ type fileStorage struct {
 	spaceStorage storage.ClientStorage
 }
 
+type FSConfig struct {
+	IPFSStorageAddr string
+}
+
+type FileConfigGetter interface {
+	FSConfig() (FSConfig, error)
+}
+
 func (f *fileStorage) Init(a *app.App) (err error) {
+	fc := a.Component("config").(FileConfigGetter)
+	if fc == nil {
+		return fmt.Errorf("need config to be inited first")
+	}
+
+	fileCfg, err := fc.FSConfig()
+	if err != nil {
+		return fmt.Errorf("fail to get file config: %s", err)
+	}
+
 	f.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
 	f.spaceService = a.MustComponent(space.CName).(space.Service)
-	f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), "flatfs")
+	if fileCfg.IPFSStorageAddr == "" {
+		f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), FlatfsDirName)
+	} else {
+		if _, err := os.Stat(fileCfg.IPFSStorageAddr); os.IsNotExist(err) {
+			return fmt.Errorf("local storage by address: %s not found", fileCfg.IPFSStorageAddr)
+		}
+		f.flatfsPath = fileCfg.IPFSStorageAddr
+	}
+
 	return fileproto.DRPCRegisterFile(a.MustComponent(server.CName).(server.DRPCServer), f.handler)
 }
 
