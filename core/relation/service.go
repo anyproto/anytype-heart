@@ -170,7 +170,7 @@ func (s *service) MigrateObjectTypes(types []*model.ObjectType) error {
 	return b.Commit()
 }
 
-func (s *service) preloadSubobjects() error {
+func (s *service) preloadSubobjects() {
 	s.existingIds = make(map[string]struct{})
 	ids, err := s.existingSubobjects()
 	if err != nil {
@@ -179,7 +179,6 @@ func (s *service) preloadSubobjects() error {
 	for _, id := range ids {
 		s.existingIds[id] = struct{}{}
 	}
-	return nil
 }
 
 func (s *service) Init(a *app.App) (err error) {
