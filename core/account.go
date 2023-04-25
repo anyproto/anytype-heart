@@ -836,7 +836,6 @@ func (mw *Middleware) getAccountID(profile *pb.Profile) (string, wallet.Keypair,
 			address = foundAccount.GetId()
 			break
 		}
-
 	}
 	account, err := core.WalletAccountAt(mw.mnemonic, index, "")
 	if err != nil {
