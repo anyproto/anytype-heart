@@ -30,7 +30,7 @@ type SpaceStatusPayload struct {
 func newSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) SpaceStatusPayload {
 	return SpaceStatusPayload{
 		Status:       SpaceStatus(payload.Status),
-		DeletionDate: time.Unix(0, payload.DeletionTimestamp),
+		DeletionDate: time.Unix(payload.DeletionTimestamp, 0),
 	}
 }
 

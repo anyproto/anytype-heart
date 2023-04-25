@@ -75,7 +75,7 @@ func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
 		log.Debug("failed to account state config from the store: %s", err.Error())
 	} else {
 		state.Status.Status = pb.AccountStateStatusType(status.Status)
-		state.Status.DeletionDate = status.DeletionTimestamp / int64(time.Second)
+		state.Status.DeletionDate = status.DeletionTimestamp
 	}
 	return state
 }
@@ -179,6 +179,6 @@ func convertToAccountConfigModel(cfg *pb.Config) *model.AccountConfig {
 func convertToAccountStatusModel(status *coordinatorproto.SpaceStatusPayload) *model.AccountStatus {
 	return &model.AccountStatus{
 		StatusType:   model.AccountStatusType(status.Status),
-		DeletionDate: status.DeletionTimestamp / int64(time.Second),
+		DeletionDate: status.DeletionTimestamp,
 	}
 }

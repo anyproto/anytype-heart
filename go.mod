@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.17-0.20230306100827-998f631ee82d
+	github.com/anytypeio/any-sync v0.0.17
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -17,7 +17,6 @@ require (
 	github.com/cheggaaa/mb/v3 v3.0.1
 	github.com/dave/jennifer v1.4.1
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dgraph-io/badger v1.6.2
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dgtony/collections v0.1.6
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
@@ -85,8 +84,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.8.1
-	github.com/textileio/go-ds-badger v0.2.7-0.20211028235339-0e5e9267e2f5
+	github.com/stretchr/testify v1.8.2
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
@@ -143,6 +141,7 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
+	github.com/dgraph-io/badger v1.6.2 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dsoprea/go-iptc v0.0.0-20200609062250-162ae6b44feb // indirect
