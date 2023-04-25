@@ -15,29 +15,21 @@ type SmartBlockType uint64
 const (
 	SmartBlockTypeAccountOld = SmartBlockType(model.SmartBlockType_AccountOld)
 
-	SmartBlockTypePage                = SmartBlockType(model.SmartBlockType_Page)
-	SmartBlockTypeProfilePage         = SmartBlockType(model.SmartBlockType_ProfilePage)
-	SmartBlockTypeHome                = SmartBlockType(model.SmartBlockType_Home)
-	SmartBlockTypeArchive             = SmartBlockType(model.SmartBlockType_Archive)
-	SmartBlockTypeSet                 = SmartBlockType(model.SmartBlockType_Set)
-	SmartBlockTypeObjectType          = SmartBlockType(model.SmartBlockType_STObjectType)
-	SmartBlockTypeFile                = SmartBlockType(model.SmartBlockType_File)
-	SmartblockTypeMarketplaceType     = SmartBlockType(model.SmartBlockType_MarketplaceType)
-	SmartblockTypeMarketplaceRelation = SmartBlockType(model.SmartBlockType_MarketplaceRelation)
-	SmartblockTypeMarketplaceTemplate = SmartBlockType(model.SmartBlockType_MarketplaceTemplate)
-	SmartBlockTypeTemplate            = SmartBlockType(model.SmartBlockType_Template)
-	SmartBlockTypeBundledTemplate     = SmartBlockType(model.SmartBlockType_BundledTemplate)
-	SmartBlockTypeBundledRelation     = SmartBlockType(model.SmartBlockType_BundledRelation)
-	SmartBlockTypeSubObject           = SmartBlockType(model.SmartBlockType_SubObject)
-	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)
-	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
-	SmartBlockTypeDate                = SmartBlockType(model.SmartBlockType_Date)
-	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
-	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
-	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
-	SmartBlockTypeWidget              = SmartBlockType(model.SmartBlockType_Widget)
-	SmartBlockTypeCollection          = SmartBlockType(model.SmartBlockType_Collection)
-	SmartBlockTypeMissingObject       = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypePage              = SmartBlockType(model.SmartBlockType_Page)
+	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
+	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)    // deprecated, used for favorites until we move it to collection
+	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive) // deprecated, used for favorites until we move it to collection
+	SmartBlockTypeObjectType        = SmartBlockType(model.SmartBlockType_STObjectType)
+	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File)
+	SmartBlockTypeTemplate          = SmartBlockType(model.SmartBlockType_Template)
+	SmartBlockTypeBundledTemplate   = SmartBlockType(model.SmartBlockType_BundledTemplate)
+	SmartBlockTypeBundledRelation   = SmartBlockType(model.SmartBlockType_BundledRelation)
+	SmartBlockTypeSubObject         = SmartBlockType(model.SmartBlockType_SubObject)
+	SmartBlockTypeBundledObjectType = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeAnytypeProfile    = SmartBlockType(model.SmartBlockType_AnytypeProfile)
+	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
+	SmartBlockTypeWorkspace         = SmartBlockType(model.SmartBlockType_Workspace)
+	SmartBlockTypeWidget            = SmartBlockType(model.SmartBlockType_Widget)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
@@ -87,8 +79,7 @@ func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
 // Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
 func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {
-	case SmartblockTypeMarketplaceType, SmartblockTypeMarketplaceRelation,
-		SmartblockTypeMarketplaceTemplate, SmartBlockTypeDate, SmartBlockTypeBreadcrumbs, SmartBlockTypeAccountOld, SmartBlockTypeWorkspaceOld:
+	case SmartBlockTypeDate, SmartBlockTypeAccountOld:
 		return false, false
 	case SmartBlockTypeArchive, SmartBlockTypeHome:
 		return false, true

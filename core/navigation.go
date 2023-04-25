@@ -35,7 +35,6 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 		coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeHome,
-		coresb.SmartBlockTypeSet,
 		coresb.SmartBlockTypeObjectType,
 	}
 	if req.Context != pb.RpcNavigation_Navigation {

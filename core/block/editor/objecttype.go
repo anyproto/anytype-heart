@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -25,21 +26,28 @@ import (
 )
 
 type ObjectType struct {
-	*Set
-
-	relationService relation2.Service
+	*SubObject
 }
 
-func NewObjectType(anytype core.Service,
+func NewObjectType(
 	objectStore objectstore.ObjectStore,
+	fileBlockService file.BlockService,
+	anytype core.Service,
 	relationService relation2.Service,
+	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 ) *ObjectType {
 	return &ObjectType{
-		Set: NewSet(anytype, objectStore, relationService, sbtProvider, layoutConverter),
-
-		relationService: relationService,
+		SubObject: NewSubObject(
+			objectStore,
+			fileBlockService,
+			anytype,
+			relationService,
+			tempDirProvider,
+			sbtProvider,
+			layoutConverter,
+		),
 	}
 }
 
@@ -167,10 +175,11 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			r = &relationutils.Relation{Relation: r2}
 		} else {
 			// nolint:errcheck
-			r, _ = t.relationService.FetchKey(rel)
-			if r == nil {
-				continue
-			}
+			// todo: uncomment this
+			//	r, _ = t.SubObject.FetchKey(rel)
+			//	if r == nil {
+			//		continue
+			//	}
 		}
 		// add recommended relation to the dataview
 		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())

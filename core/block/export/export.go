@@ -237,7 +237,7 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 				log.Errorf("failed to get smartblocktype of id %s", link)
 				continue
 			}
-			if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
+			if sbt != smartblock.SmartBlockTypePage {
 				continue
 			}
 			rec, qErr := e.objectStore.QueryById(links)
@@ -541,7 +541,6 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeTemplate ||
 		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
-		sbType == smartblock.SmartBlockTypeSet ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget ||
 		sbType == smartblock.SmartBlockTypeCollection

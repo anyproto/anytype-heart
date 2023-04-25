@@ -30,6 +30,7 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
+	collectionService CollectionService
 
 	dataview.Dataview
 	table.TableEditor
@@ -45,6 +46,7 @@ func NewPage(
 	bookmarkService bookmark.BookmarkService,
 	relationService relation2.Service,
 	tempDirProvider core.TempDirProvider,
+	collectionService CollectionService,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 ) *Page {
@@ -84,9 +86,9 @@ func NewPage(
 			relationService,
 			sbtProvider,
 		),
-		TableEditor: table.NewEditor(sb),
-
-		objectStore: objectStore,
+		TableEditor:       table.NewEditor(sb),
+		collectionService: collectionService,
+		objectStore:       objectStore,
 	}
 }
 
@@ -160,4 +162,23 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 
 func (p *Page) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
+}
+
+type CollectionService interface {
+	RegisterCollection(sb smartblock.SmartBlock)
+}
+
+func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
+	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
+	for _, rel := range rels {
+		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+			continue
+		}
+		var visible bool
+		if rel.Key == bundle.RelationKeyName.String() {
+			visible = true
+		}
+		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
+	}
+	return viewRels
 }

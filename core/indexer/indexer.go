@@ -145,8 +145,7 @@ func (i *indexer) Run(context.Context) (err error) {
 
 func (i *indexer) migrateRemoveNonindexableObjects() {
 	ids, err := i.getIdsForTypes(
-		smartblock.SmartblockTypeMarketplaceType, smartblock.SmartblockTypeMarketplaceRelation,
-		smartblock.SmartblockTypeMarketplaceTemplate, smartblock.SmartBlockTypeDate, smartblock.SmartBlockTypeBreadcrumbs,
+		smartblock.SmartBlockTypeDate,
 	)
 	if err != nil {
 		log.Errorf("migrateRemoveNonindexableObjects: failed to get ids: %s", err.Error())
@@ -386,16 +385,11 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	if flags.threadObjects {
 		ids, err := i.getIdsForTypes(
 			smartblock.SmartBlockTypePage,
-			smartblock.SmartBlockTypeSet,
 			smartblock.SmartBlockTypeObjectType,
 			smartblock.SmartBlockTypeProfilePage,
 			smartblock.SmartBlockTypeTemplate,
-			smartblock.SmartblockTypeMarketplaceType,
-			smartblock.SmartblockTypeMarketplaceTemplate,
-			smartblock.SmartblockTypeMarketplaceRelation,
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
-			smartblock.SmartBlockTypeWorkspaceOld,
 		)
 		if err != nil {
 			return err

@@ -43,10 +43,14 @@ func (r *RootCollection) AddObjects(collectionName string, targetObjects []strin
 }
 
 func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *state.State, detailsStruct *types.Struct) *Snapshot {
+	if detailsStruct.GetFields() == nil {
+		detailsStruct = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	detailsStruct.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_collection))
 	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
-		SbType:   sb.SmartBlockTypeCollection,
+		SbType:   sb.SmartBlockTypePage,
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:        st.Blocks(),

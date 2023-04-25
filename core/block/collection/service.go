@@ -218,7 +218,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	)
 	template.InitTemplate(newState, tmpls...)
 
-	return coresb.SmartBlockTypeCollection, details, newState, nil
+	return coresb.SmartBlockTypePage, details, newState, nil
 }
 
 func (s *Service) ObjectToCollection(id string) (string, error) {

@@ -82,10 +82,6 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 		return NewBundledObjectType(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBundledRelation:
 		return NewBundledRelation(s.anytype, id), nil
-	case smartblock.SmartBlockTypeBreadcrumbs:
-		return NewVirtual(s.anytype, st.ToProto()), nil
-	case smartblock.SmartBlockTypeWorkspaceOld:
-		return nil, fmt.Errorf("threadDB-based workspaces are deprecated")
 	}
 
 	s.mu.Lock()

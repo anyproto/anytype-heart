@@ -31,6 +31,7 @@ func NewTemplate(
 	bookmarkService bookmark.BookmarkService,
 	relationService relation2.Service,
 	tempDirProvider core.TempDirProvider,
+	collectionService CollectionService,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 ) *Template {
@@ -42,6 +43,7 @@ func NewTemplate(
 		bookmarkService,
 		relationService,
 		tempDirProvider,
+		collectionService,
 		sbtProvider,
 		layoutConverter,
 	)}

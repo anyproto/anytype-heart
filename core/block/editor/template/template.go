@@ -451,6 +451,10 @@ var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
 	})
 })
 
+var WithRootBlockEditRestricted = func(s *state.State) {
+	WithBlockEditRestricted(s.RootId())
+}
+
 var WithBlockEditRestricted = func(id string) StateTransformer {
 	return StateTransformer(func(s *state.State) {
 		s.Iterate(func(b simple.Block) (isContinue bool) {
@@ -920,4 +924,37 @@ var WithBookmarkBlocks = func(s *state.State) {
 		log.Errorf("insert relation blocks: %w", err)
 		return
 	}
+}
+
+var WithRelationOptionDataview = func(s *state.State) {
+	relKey := pbtypes.GetString(s.Details(), bundle.RelationKeyRelationKey.String())
+	dataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source: []string{relKey},
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   "1",
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{},
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: relKey,
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       pbtypes.String(s.RootId()),
+					}},
+				},
+			},
+		},
+	}
+
+	WithDefaultFeaturedRelations(s)
+	WithTitle(s)
+	WithDataview(dataview, true)(s)
+	WithAllBlocksEditsRestricted(s)
 }

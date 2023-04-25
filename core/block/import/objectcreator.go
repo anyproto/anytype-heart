@@ -85,7 +85,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	oc.setWorkspaceID(err, newID, snapshot)
 
 	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
+	filesToDelete, oldRelationBlocksToNew, _, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
 		return nil, "", fmt.Errorf("relation create '%s'", err)
 	}
@@ -111,12 +111,13 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		log.With("object", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
-	if sn.SbType == coresb.SmartBlockTypeCollection {
+	// todo: support this case
+	/* if sn.SbType == coresb.SmartBlockTypeCollection {
 		oc.updateLinksInCollections(st, oldIDtoNew)
 		if err = oc.addRelationsToCollectionDataView(st, relations, createdRelations); err != nil {
 			log.With("object", newID).Errorf("failed to add relations to object view: %s", err.Error())
 		}
-	}
+	}*/
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.handleWorkspace(ctx, details, newID, st, oldIDtoNew, sn.Snapshot.Data.Details)

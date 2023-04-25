@@ -58,6 +58,8 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]
 
 func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *state.State, p string) *converter.Snapshot {
 	details = pbtypes.StructMerge(st.CombinedDetails(), details, false)
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
@@ -70,7 +72,7 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *st
 		Id:       uuid.New().String(),
 		FileName: p,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
-		SbType:   smartblock.SmartBlockTypeCollection,
+		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot
 }

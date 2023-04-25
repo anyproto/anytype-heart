@@ -97,6 +97,8 @@ func (b *builtinObjects) Run(context.Context) (err error) {
 		return
 	}
 
+	// todo: return fixed builtin objects with correct sbtype
+	return
 	var ctx context.Context
 	ctx, b.cancel = context.WithCancel(context.Background())
 	start := time.Now()

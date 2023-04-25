@@ -47,6 +47,7 @@ var SystemTypes = append(InternalTypes, []TypeKey{
 	TypeKeyTask,
 	TypeKeyObjectType,
 	TypeKeySet,
+	TypeKeyCollection,
 	TypeKeyProfile,
 	TypeKeyTemplate,
 	TypeKeyBookmark,
@@ -61,7 +62,6 @@ var FormatFilePossibleTargetObjectTypes = []string{
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
 	coresb.SmartBlockTypeProfilePage: TypeKeyPage,
-	coresb.SmartBlockTypeSet:         TypeKeySet,
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
 	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
@@ -70,7 +70,6 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 
 var DefaultSmartblockTypePerObjectType = map[TypeKey]coresb.SmartBlockType{
 	TypeKeyPage:       coresb.SmartBlockTypePage,
-	TypeKeySet:        coresb.SmartBlockTypeSet,
 	TypeKeyObjectType: coresb.SmartBlockTypeObjectType,
 	TypeKeyTemplate:   coresb.SmartBlockTypeTemplate,
 	TypeKeyDashboard:  coresb.SmartBlockTypeHome,
