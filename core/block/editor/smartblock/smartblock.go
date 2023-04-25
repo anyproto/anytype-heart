@@ -748,11 +748,9 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 			// TODO: add relation2.WithWorkspaceId(workspaceId) filter
 			rel, err := sb.RelationService().FetchKey(detail.Key)
-			if err != nil {
-				return fmt.Errorf("fetch relation by key %s: %w", detail.Key, err)
-			}
-			if rel == nil {
-				return fmt.Errorf("relation %s is not found", detail.Key)
+			if err != nil || rel == nil {
+				log.Errorf("failed to get relation: %s", err)
+				continue
 			}
 			s.AddRelationLinks(&model.RelationLink{
 				Format: rel.Format,

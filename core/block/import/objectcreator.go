@@ -122,7 +122,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		err = oc.service.Do(newID, func(b sb.SmartBlock) error {
-			return b.ResetToVersion(st)
+			return b.SetDetails(ctx, details, true)
 		})
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
