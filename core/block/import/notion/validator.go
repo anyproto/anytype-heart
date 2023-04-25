@@ -16,8 +16,10 @@ import (
 )
 
 var (
-	ErrorInternal     = errors.New("internal")
-	ErrorUnauthorized = errors.New("unauthorized")
+	ErrorInternal          = errors.New("internal")
+	ErrorUnauthorized      = errors.New("unauthorized")
+	ErrorForbidden         = errors.New("forbidden")
+	ErrorNotionUnavailable = errors.New("unavailable")
 )
 
 var logger = logging.Logger("notion-ping")
@@ -61,12 +63,23 @@ func (s *Service) Ping(ctx context.Context, apiKey string) error {
 		if res.StatusCode == http.StatusUnauthorized {
 			return ErrorUnauthorized
 		}
+		if res.StatusCode == http.StatusForbidden {
+			return ErrorForbidden
+		}
+		if isNotionUnavailableError(res.StatusCode) {
+			return ErrorNotionUnavailable
+		}
 		err = client.TransformHTTPCodeToError(b)
 		if err != nil {
 			return errors.Wrap(ErrorInternal, err.Error())
 		}
 	}
 	return nil
+}
+
+func isNotionUnavailableError(code int) bool {
+	return code == http.StatusServiceUnavailable ||
+		code == http.StatusGatewayTimeout
 }
 
 type TokenValidator struct {
@@ -89,6 +102,12 @@ func (v TokenValidator) Validate(ctx context.Context,
 	}
 	if errors.Is(err, ErrorUnauthorized) {
 		return pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED
+	}
+	if errors.Is(err, ErrorForbidden) {
+		return pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN
+	}
+	if errors.Is(err, ErrorNotionUnavailable) {
+		return pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE
 	}
 	return pb.RpcObjectImportNotionValidateTokenResponseError_NULL
 }

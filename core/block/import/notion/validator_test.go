@@ -62,3 +62,39 @@ func Test_ValidateTokenInternalError(t *testing.T) {
 	err := tv.Validate(context.TODO(), "123123")
 	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR)
 }
+
+func Test_ValidateTokenNotionUnavailable(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"object":"error","status":503,"code":"service_unavailable","message":"Notion is unavailable. Try again later.}`))
+	}))
+
+	defer s.Close()
+	c := client.NewClient()
+	c.BasePath = s.URL
+
+	p := NewPingService(c)
+	tv := NewTokenValidator()
+	tv.ping = p
+
+	err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE)
+}
+
+func Test_ValidateTokenNotionForbidden(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"object":"error","status":403,"code":"restricted_resource","message":"	Given the bearer token used, the client doesn't have permission to perform this operation.}`))
+	}))
+
+	defer s.Close()
+	c := client.NewClient()
+	c.BasePath = s.URL
+
+	p := NewPingService(c)
+	tv := NewTokenValidator()
+	tv.ping = p
+
+	err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, err, pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN)
+}

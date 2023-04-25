@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
@@ -15,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -399,12 +401,20 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
+	rs := mw.app.MustComponent(relation.CName).(relation.Service)
 
-	records, _, err := at.ObjectStore().Query(nil, database.Query{
+	store := app.MustComponent[objectstore.ObjectStore](mw.app)
+	records, _, err := store.Query(nil, database.Query{
 		Filters:          req.Filters,
 		Limit:            int(req.Limit),
 		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
+
+	if err != nil {
+		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
+	}
+
+	relations, err := rs.ListAll(relation.WithWorkspaceId(at.PredefinedBlocks().Account))
 	if err != nil {
 		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
 	}
@@ -421,7 +431,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	homeId := at.PredefinedBlocks().Home
 	if _, exists := nodeExists[homeId]; !exists {
 		// we don't index home object, but we DO index outgoing links from it
-		links, qErr := at.ObjectStore().GetOutboundLinksById(homeId)
+		links, qErr := store.GetOutboundLinksById(homeId)
 		if qErr != nil {
 			log.Info("failed to query object links, err: ", err)
 		}
@@ -445,10 +455,8 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 			if list := pbtypes.GetStringListValue(v); len(list) == 0 {
 				continue
 			} else {
-
-				rel, err := at.ObjectStore().GetRelationByKey(k)
-				if err != nil {
-					log.Errorf("ObjectGraph failed to get relation %s: %s", k, err.Error())
+				rel := relations.GetByKey(k)
+				if rel == nil {
 					continue
 				}
 
@@ -611,6 +619,57 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectSetSource(cctx context.Context,
+	req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
+		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetSource(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcObjectSetSourceResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
+	ctx := mw.newContext(cctx)
+	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
+		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
+			ObjectId: setId,
+			Error: &pb.RpcObjectWorkspaceSetDashboardResponseError{
+				Code: pb.RpcObjectWorkspaceSetDashboardResponseError_NULL,
+			},
+		}
+		if err != nil {
+			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
+			resp.Error.Description = err.Error()
+		} else {
+			resp.Event = ctx.GetResponseEvent()
+		}
+		return resp
+	}
+	var (
+		setId string
+		err   error
+	)
+	err = mw.doBlockService(func(bs *block.Service) error {
+		if setId, err = bs.SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId); err != nil {
+			return err
+		}
+		return nil
+	})
+	return response(setId, err)
 }
 
 func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
@@ -832,4 +891,32 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 		return response(res, pb.RpcObjectImportListResponseError_INTERNAL_ERROR, err)
 	}
 	return response(res, pb.RpcObjectImportListResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
+	request *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
+	// nolint: lll
+	response := func(code pb.RpcObjectImportNotionValidateTokenResponseErrorCode) *pb.RpcObjectImportNotionValidateTokenResponse {
+		err := &pb.RpcObjectImportNotionValidateTokenResponseError{Code: code}
+		switch code {
+		case pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED:
+			err.Description = "Sorry, token not found. Please check Notion integrations."
+		case pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN:
+			err.Description = "Can't access user information, please fill user capabilities."
+		case pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE:
+			err.Description = "Notion is currently unavailable."
+		case pb.RpcObjectImportNotionValidateTokenResponseError_NULL:
+			err.Description = ""
+		default:
+			err.Description = "Internal error"
+		}
+		return &pb.RpcObjectImportNotionValidateTokenResponse{Error: err}
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
+	errCode := importer.ValidateNotionToken(ctx, request)
+	return response(errCode)
 }

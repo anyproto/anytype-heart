@@ -1880,6 +1880,8 @@ message Rpc {
                                 UNAUTHORIZED = 2;
                                 UNKNOWN_ERROR = 3;
                                 BAD_INPUT = 4;
+                                FORBIDDEN = 5;
+                                SERVICE_UNAVAILABLE = 6;
                             }
                         }
                     }
