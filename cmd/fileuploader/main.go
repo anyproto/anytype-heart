@@ -7,18 +7,15 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -63,31 +60,31 @@ func main() {
 			panic(err.Error())
 		}
 
-		fs := mw.GetApp().MustComponent(pin.CName).(pin.FilePinService)
-		for {
-			r := fs.PinStatus(cids...)
-			var pinned int
-			var failed int
-			var inprog int
-			for k, f := range r {
-				if f.Status == pb2.PinStatus_Done {
-					pinned++
-				}
-				if f.Status == pb2.PinStatus_Failed {
-					failed++
-				}
-				if f.Status == pb2.PinStatus_Queued {
-					fmt.Printf("%s still in progress\n", k)
-					inprog++
-				}
-			}
-			fmt.Printf("%d pinned, %d in-progress, %d failed from %d\n", pinned, inprog, failed, len(r))
-
-			if len(r) == len(cids) {
-				fmt.Println("all pinned")
-				os.Exit(0)
-			}
-			time.Sleep(time.Second * 10)
-		}
+		// fs := mw.GetApp().MustComponent(pin.CName).(pin.FilePinService)
+		// for {
+		// 	r := fs.PinStatus(cids...)
+		// 	var pinned int
+		// 	var failed int
+		// 	var inprog int
+		// 	for k, f := range r {
+		// 		if f.Status == pb2.PinStatus_Done {
+		// 			pinned++
+		// 		}
+		// 		if f.Status == pb2.PinStatus_Failed {
+		// 			failed++
+		// 		}
+		// 		if f.Status == pb2.PinStatus_Queued {
+		// 			fmt.Printf("%s still in progress\n", k)
+		// 			inprog++
+		// 		}
+		// 	}
+		// 	fmt.Printf("%d pinned, %d in-progress, %d failed from %d\n", pinned, inprog, failed, len(r))
+		//
+		// 	if len(r) == len(cids) {
+		// 		fmt.Println("all pinned")
+		// 		os.Exit(0)
+		// 	}
+		// 	time.Sleep(time.Second * 10)
+		// }
 	}
 }
