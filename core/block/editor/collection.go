@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/any-sync/app"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
@@ -14,14 +12,24 @@ import (
 
 type Collection struct {
 	*Set
+
+	collectionService CollectionService
+}
+
+type CollectionService interface {
+	RegisterCollection(sb smartblock.SmartBlock)
 }
 
 func NewCollection(
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
+	collectionService CollectionService,
 ) *Collection {
-	return &Collection{NewSet(anytype, objectStore, relationService)}
+	return &Collection{
+		Set:               NewSet(anytype, objectStore, relationService),
+		collectionService: collectionService,
+	}
 }
 
 func (c *Collection) Init(ctx *smartblock.InitContext) (err error) {
@@ -30,12 +38,7 @@ func (c *Collection) Init(ctx *smartblock.InitContext) (err error) {
 		return err
 	}
 
-	// TODO clean up
-	type collectionService interface {
-		RegisterCollection(sb smartblock.SmartBlock)
-	}
-	colService := app.MustComponent[collectionService](ctx.App)
-	colService.RegisterCollection(c.SmartBlock)
+	c.collectionService.RegisterCollection(c.SmartBlock)
 
 	templates := []template.StateTransformer{
 		template.WithDefaultFeaturedRelations,

@@ -2,8 +2,10 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -26,13 +28,13 @@ type ObjectFactory struct {
 	relationService      relation2.Service
 	sourceService        source.Service
 	sendEvent            func(e *pb.Event)
-	tempDirProvider      core.TempDirProvider
+	collectionService    CollectionService
 
 	app *app.App
 }
 
-func NewObjectFactory(tempDirProvider core.TempDirProvider) *ObjectFactory {
-	return &ObjectFactory{tempDirProvider: tempDirProvider}
+func NewObjectFactory() *ObjectFactory {
+	return &ObjectFactory{}
 }
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
@@ -45,6 +47,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.relationService = app.MustComponent[relation2.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
+	f.collectionService = app.MustComponent[CollectionService](a)
 
 	f.app = a
 	return nil
@@ -104,7 +107,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.relationService,
-			f.tempDirProvider,
 		)
 	case model.SmartBlockType_Archive:
 		return NewArchive(
@@ -128,6 +130,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.anytype,
 			f.objectStore,
 			f.relationService,
+			f.collectionService,
 		)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		return NewProfile(
@@ -137,7 +140,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.sendEvent,
-			f.tempDirProvider,
 		)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
@@ -182,7 +184,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.relationService,
-			f.tempDirProvider,
 		)
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
@@ -192,7 +193,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.relationService,
-			f.tempDirProvider,
 		)
 	case model.SmartBlockType_Breadcrumbs:
 		return NewBreadcrumbs()
@@ -204,7 +204,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.sourceService,
 			f.detailsModifier,
 			f.fileBlockService,
-			f.tempDirProvider,
 		)
 	case model.SmartBlockType_Widget:
 		return NewWidgetObject()
