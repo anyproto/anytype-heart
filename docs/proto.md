@@ -20137,6 +20137,7 @@ Precondition: user A and user B opened the same block
 | address | [string](#string) |  |  |
 | spaceDashboardId | [string](#string) |  |  |
 | profileId | [string](#string) |  |  |
+| analyticsId | [string](#string) |  |  |
 
 
 

@@ -38,6 +38,8 @@ const (
 	DataviewBlockID          = "dataview"
 	DataviewTemplatesBlockID = "templates"
 	FeaturedRelationsID      = "featuredRelations"
+	SettingsStoreKey         = "settings"
+	SettingsAnalyticsId      = "analyticsID"
 )
 
 var (
@@ -1682,6 +1684,32 @@ func (s *State) GetStoreSlice(collectionName string) []string {
 		return nil
 	}
 	return pbtypes.GetStringListValue(v)
+}
+
+func (s *State) GetSetting(name string) *types.Value {
+	// get setting from the store
+	coll := s.Store()
+	if coll == nil {
+		return nil
+	}
+	v, ok := coll.Fields[SettingsStoreKey]
+	if !ok {
+		return nil
+	}
+	vs, ok := v.Kind.(*types.Value_StructValue)
+	if !ok {
+		return nil
+	}
+	vv := vs.StructValue.GetFields()
+	if vv == nil {
+		return nil
+	}
+	return vv[name]
+}
+
+func (s *State) SetSetting(name string, val *types.Value) {
+	// get setting from the store
+	s.SetInStore([]string{SettingsStoreKey, name}, val)
 }
 
 func (s *State) Store() *types.Struct {

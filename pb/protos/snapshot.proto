@@ -16,4 +16,5 @@ message Profile {
   string address = 4;
   string spaceDashboardId = 5;
   string profileId = 6;
+  string analyticsId = 7;
 }

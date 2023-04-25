@@ -48,7 +48,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -73,7 +72,6 @@ import (
 
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects, createBuiltinTemplates bool) *config.Config {
 	return config.New(
-		config.WithStagingCafe(isStaging),
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
 		config.WithCreateBuiltinObjects(createBuiltinObjects),
@@ -145,7 +143,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
-		Register(cafe.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).

@@ -20,10 +20,8 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
-	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
@@ -50,13 +48,11 @@ type unsplashService struct {
 	cache           ocache.OCache
 	client          *unsplash.Unsplash
 	limit           int
-	config          configfetcher.ConfigFetcher
 	tempDirProvider core.TempDirProvider
 }
 
 func (l *unsplashService) Init(app *app.App) (err error) {
 	l.cache = ocache.New(l.search, ocache.WithTTL(cacheTTL), ocache.WithGCPeriod(cacheGCPeriod))
-	l.config = app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	return
 }
 
@@ -141,11 +137,7 @@ func (l *unsplashService) lazyInitClient() {
 	if l.client != nil {
 		return
 	}
-	cfg := l.config.GetAccountState()
 	token := DefaultToken
-	if configToken := pbtypes.GetString(cfg.Config.Extra, "unsplash"); configToken != "" {
-		token = configToken
-	}
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)

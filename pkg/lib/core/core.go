@@ -111,10 +111,6 @@ func (a *Anytype) Name() string {
 }
 
 func (a *Anytype) Run(ctx context.Context) (err error) {
-	if err = a.RunMigrations(); err != nil {
-		return
-	}
-
 	a.start()
 	return nil
 }

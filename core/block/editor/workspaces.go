@@ -10,6 +10,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -19,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -101,7 +103,14 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
 	p.templateCloner = p.app.MustComponent(treemanager.CName).(templateCloner)
-
+	cfg := p.app.MustComponent(config.CName).(*config.Config)
+	if cfg.AnalyticsId != "" {
+		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(cfg.AnalyticsId))
+	} else if ctx.State.GetSetting(state.SettingsAnalyticsId) == nil {
+		// add analytics id for existing users so it will be active from the next start
+		log.Warnf("analyticsID is missing, generating new one")
+		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
+	}
 	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 
 	// init template before sub-object initialization because sub-objects could fire onSubObjectChange callback

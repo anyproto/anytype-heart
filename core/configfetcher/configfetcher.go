@@ -2,9 +2,10 @@ package configfetcher
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
@@ -30,15 +31,6 @@ type WorkspaceGetter interface {
 }
 
 var defaultAccountState = &pb.AccountState{
-	Config: &pb.Config{
-		EnableDataview:             false,
-		EnableDebug:                false,
-		EnableReleaseChannelSwitch: false,
-		EnablePrereleaseChannel:    false,
-		SimultaneousRequests:       20,
-		EnableSpaces:               false,
-		Extra:                      nil,
-	},
 	Status: &pb.AccountStateStatus{
 		Status:       pb.AccountState_Active,
 		DeletionDate: 0,
@@ -61,6 +53,7 @@ type configFetcher struct {
 	client       coordinatorclient.CoordinatorClient
 	spaceService space.Service
 	wallet       wallet.Wallet
+	lastStatus   model.AccountStatusType
 }
 
 func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
@@ -158,13 +151,19 @@ func (c *configFetcher) Close(ctx context.Context) (err error) {
 }
 
 func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayload) {
+	s := convertToAccountStatusModel(status)
+
+	if c.lastStatus == s.StatusType {
+		// do not send event if status has not changed
+		return
+	}
+	c.lastStatus = s.StatusType
 	ev := &pbMiddle.Event{
 		Messages: []*pbMiddle.EventMessage{
 			{
 				Value: &pbMiddle.EventMessageValueOfAccountUpdate{
 					AccountUpdate: &pbMiddle.EventAccountUpdate{
-						Config: convertToAccountConfigModel(defaultAccountState.Config),
-						Status: convertToAccountStatusModel(status),
+						Status: s,
 					},
 				},
 			},
@@ -172,16 +171,6 @@ func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayl
 	}
 	if c.eventSender != nil {
 		c.eventSender(ev)
-	}
-}
-
-func convertToAccountConfigModel(cfg *pb.Config) *model.AccountConfig {
-	return &model.AccountConfig{
-		EnableDataview:          cfg.EnableDataview,
-		EnableDebug:             cfg.EnableDebug,
-		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
-		EnableSpaces:            cfg.EnableSpaces,
-		Extra:                   cfg.Extra,
 	}
 }
 

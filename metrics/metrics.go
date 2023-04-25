@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,6 +22,10 @@ var DefaultAmplitudeKey = ""
 
 type threadsMetrics struct {
 	client Client
+}
+
+func GenerateAnalyticsId() string {
+	return uuid.New().String()
 }
 
 func NewThreadsMetrics() metrics.Metrics {
