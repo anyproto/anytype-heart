@@ -70,7 +70,7 @@ func TestCommonSmart_pasteHtml(t *testing.T) {
 	t.Run("", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
 		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<table><tr><td>\nfoo\n</td></tr></table>\n")
-		checkBlockText(t, sb, []string{"foo"})
+		checkBlockText(t, sb, []string{"|\nfoo\n|"})
 	})
 
 	t.Run("Link in paragraph", func(t *testing.T) {

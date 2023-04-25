@@ -2,11 +2,11 @@ package anymark
 
 import (
 	"bytes"
+	"github.com/JohannesKaufmann/html-to-markdown/plugin"
 	"regexp"
 	"strings"
 
 	htmlconverter "github.com/JohannesKaufmann/html-to-markdown"
-	"github.com/JohannesKaufmann/html-to-markdown/plugin"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -139,7 +139,7 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	}
 
 	simpleText := htmlconverter.Rule{
-		Filter: []string{"pre", "small", "sub", "sup", "caption"},
+		Filter: []string{"small", "sub", "sup", "caption"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
 			return htmlconverter.String(content)
 		},
@@ -160,7 +160,7 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	}
 
 	code := htmlconverter.Rule{
-		Filter: []string{"code", "var"},
+		Filter: []string{"samp", "var"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
 			return htmlconverter.String("`" + content + "`")
 		},
