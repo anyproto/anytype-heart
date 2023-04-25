@@ -157,7 +157,11 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 	if err != nil {
 		return nil, err
 	}
-	flt = filter.AndFilters{flt, obs}
+	if flt == nil {
+		flt = obs
+	} else {
+		flt = filter.AndFilters{obs, flt}
+	}
 
 	var orderFromCollection bool
 	if order == nil {

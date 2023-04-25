@@ -303,10 +303,11 @@ func TestService_Search(t *testing.T) {
 }
 
 type collectionServiceMock struct {
+	updateCh chan []string
 }
 
 func (c *collectionServiceMock) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
-	return nil, nil, nil
+	return nil, c.updateCh, nil
 }
 
 func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
