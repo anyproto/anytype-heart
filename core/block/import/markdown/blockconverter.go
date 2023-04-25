@@ -52,7 +52,15 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 	if s == nil {
 		return nil
 	}
-	readers, err := s.GetFileReaders(importPath, []string{".md", ".png", ".jpeg", ".gif"})
+	supportedExtensions := []string{".md"}
+	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
+	videoFormats := []string{"mp4", "m4v"}
+	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
+
+	supportedExtensions = append(supportedExtensions, videoFormats...)
+	supportedExtensions = append(supportedExtensions, imageFormats...)
+	supportedExtensions = append(supportedExtensions, audioFormats...)
+	readers, err := s.GetFileReaders(importPath, supportedExtensions)
 	if err != nil {
 		allErrors.Add(importPath, err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
