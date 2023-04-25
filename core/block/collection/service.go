@@ -387,9 +387,6 @@ func (s *Service) generateFilters(typesAndRels []string) []*model.BlockContentDa
 	}
 	if len(rels) != 0 {
 		for _, rel := range rels {
-			if !bundle.HasRelation(rel) {
-				continue
-			}
 			filters = append(filters, &model.BlockContentDataviewFilter{
 				RelationKey: rel,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
