@@ -2,10 +2,11 @@ package filestorage
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSyncer_add(t *testing.T) {
@@ -69,9 +70,6 @@ func TestSyncer_delete(t *testing.T) {
 	require.NoError(t, fx.cache.Add(ctx, bs))
 	require.NoError(t, fx.origin.Add(ctx, bs))
 
-	for cid := range fx.cache.(*testStore).store {
-		t.Log("cache", cid)
-	}
 	for cid := range fx.origin.(*testStore).store {
 		t.Log("origin", cid)
 	}

@@ -14,7 +14,7 @@ import (
 )
 
 type proxyStore struct {
-	cache  fileblockstore.BlockStoreLocal
+	cache  *flatStore
 	origin rpcstore.RpcStore
 	index  *FileBadgerIndex
 }
@@ -42,35 +42,21 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 }
 
 func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
-	cachedCids, localErr := c.cache.ExistsCids(ctx, ks)
-	var originCids []cid.Cid
+	fromCache, fromOrigin, localErr := c.cache.PartitionByExistence(ctx, ks)
 	if localErr != nil {
 		log.Error("proxy store hasCIDs error", zap.Error(localErr))
-		originCids = ks
-	} else {
-		if len(cachedCids) != len(ks) {
-			set := cid.NewSet()
-			for _, cCid := range cachedCids {
-				set.Add(cCid)
-			}
-			originCids = ks[:0]
-			for _, k := range ks {
-				if !set.Has(k) {
-					originCids = append(originCids, k)
-				}
-			}
-		}
+		fromOrigin = ks
 	}
-	log.Debug("get many cids", zap.Int("cached", len(cachedCids)), zap.Int("origin", len(originCids)))
-	if len(originCids) == 0 {
-		return c.cache.GetMany(ctx, cachedCids)
+	log.Debug("get many cids", zap.Int("cached", len(fromCache)), zap.Int("origin", len(fromOrigin)))
+	if len(fromOrigin) == 0 {
+		return c.cache.GetMany(ctx, fromCache)
 	}
-	var results = make(chan blocks.Block)
+	results := make(chan blocks.Block)
 
 	go func() {
 		defer close(results)
-		localResults := c.cache.GetMany(ctx, cachedCids)
-		originResults := c.origin.GetMany(ctx, originCids)
+		localResults := c.cache.GetMany(ctx, fromCache)
+		originResults := c.origin.GetMany(ctx, fromOrigin)
 		oOk, cOk := true, true
 		for {
 			var cb, ob blocks.Block
@@ -125,19 +111,18 @@ func (c *proxyStore) Delete(ctx context.Context, k cid.Cid) error {
 	return c.index.Add(indexCids)
 }
 
-func (c *proxyStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
-	return c.cache.ExistsCids(ctx, ks)
+func (c *proxyStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, err error) {
+	exist, _, err = c.cache.PartitionByExistence(ctx, ks)
+	return
 }
 
 func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	return c.cache.NotExistsBlocks(ctx, bs)
 }
 
-func (c *proxyStore) Close() (err error) {
-	if closer, ok := c.cache.(io.Closer); ok {
-		if localErr := closer.Close(); localErr != nil {
-			log.Error("error while closing cache store", zap.Error(localErr))
-		}
+func (c *proxyStore) Close() error {
+	if err := c.cache.Close(); err != nil {
+		log.Error("error while closing cache store", zap.Error(err))
 	}
 	if closer, ok := c.origin.(io.Closer); ok {
 		return closer.Close()

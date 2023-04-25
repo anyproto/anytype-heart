@@ -77,14 +77,16 @@ func (f *flatStore) Delete(ctx context.Context, c cid.Cid) error {
 	return f.ds.Delete(ctx, dskey(c))
 }
 
-func (f *flatStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, err error) {
+func (f *flatStore) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, notExist []cid.Cid, err error) {
 	for _, k := range ks {
 		ok, err := f.ds.Has(ctx, dskey(k))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if ok {
 			exist = append(exist, k)
+		} else {
+			notExist = append(notExist, k)
 		}
 	}
 	return
@@ -119,4 +121,8 @@ func (f *flatStore) BlockAvailability(ctx context.Context, ks []cid.Cid) (availa
 		})
 	}
 	return
+}
+
+func (f *flatStore) Close() error {
+	return f.ds.Close()
 }

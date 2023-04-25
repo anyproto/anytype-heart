@@ -260,8 +260,9 @@ func (t *testStore) Close() (err error) {
 
 type psFixture struct {
 	*proxyStore
-	tmpDir string
-	db     *badger.DB
+	tmpDir    string
+	flatfsDir string
+	db        *badger.DB
 }
 
 func newPSFixture(t *testing.T) *psFixture {
@@ -271,8 +272,13 @@ func newPSFixture(t *testing.T) *psFixture {
 	require.NoError(t, err)
 	fx.db, err = badger.Open(badger.DefaultOptions(fx.tmpDir).WithLoggingLevel(badger.ERROR))
 	require.NoError(t, err)
+
+	fx.flatfsDir = t.TempDir()
+	cache, err := newFlatStore(fx.flatfsDir)
+	require.NoError(t, err)
+
 	fx.proxyStore = &proxyStore{
-		cache:  newTestStore(nil),
+		cache:  cache,
 		origin: newTestStore(nil),
 		index:  NewFileBadgerIndex(fx.db),
 	}
