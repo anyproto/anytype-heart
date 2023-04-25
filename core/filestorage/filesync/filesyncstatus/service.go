@@ -116,6 +116,10 @@ func (s *statusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace)
 	if err != nil {
 		return fmt.Errorf("get file status: %w", err)
 	}
+	// Files are immutable, so we can stop watching status updates after file is synced
+	if status == syncstatus.StatusSynced {
+		s.Unwatch(key.spaceID, key.fileID)
+	}
 	return s.updateReceiver.UpdateTree(context.Background(), key.fileID, status)
 }
 
