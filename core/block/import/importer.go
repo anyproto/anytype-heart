@@ -87,12 +87,7 @@ func (i *Import) Init(a *app.App) (err error) {
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
-	var progress process.Progress
-	if req.GetNoProgress() {
-		progress = process.NewNoOp()
-	} else {
-		progress = process.NewProgress(pb.ModelProcess_Import)
-	}
+	progress := i.setupProgressBar(req)
 	defer progress.Finish()
 	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
@@ -136,6 +131,20 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		return fmt.Errorf("snapshots are empty")
 	}
 	return fmt.Errorf("unknown import type %s", req.Type)
+}
+
+func (i *Import) setupProgressBar(req *pb.RpcObjectImportRequest) process.Progress {
+	progressBarType := pb.ModelProcess_Import
+	if req.IsMigration {
+		progressBarType = pb.ModelProcess_Migration
+	}
+	var progress process.Progress
+	if req.GetNoProgress() {
+		progress = process.NewNoOp()
+	} else {
+		progress = process.NewProgress(progressBarType)
+	}
+	return progress
 }
 
 func (i *Import) Name() string {
