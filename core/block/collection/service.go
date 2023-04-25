@@ -191,9 +191,11 @@ func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID 
 		return
 	}
 
-	ch := col[subscriptionID]
-	close(ch)
-	delete(col, subscriptionID)
+	ch, ok := col[subscriptionID]
+	if ok {
+		close(ch)
+		delete(col, subscriptionID)
+	}
 }
 
 func (s *Service) CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error) {

@@ -73,12 +73,14 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 
 func (c *collectionObserver) close() {
 	close(c.closeCh)
-	go c.collectionService.UnsubscribeFromCollection(c.collectionID, c.subID)
 	// Deplete the channel to avoid deadlock in collections service, because broadcasting to a channel and
 	// unsubscribing are synchronous between each other
-	for range c.objectsCh {
+	go func() {
+		for range c.objectsCh {
 
-	}
+		}
+	}()
+	c.collectionService.UnsubscribeFromCollection(c.collectionID, c.subID)
 }
 
 func (c *collectionObserver) listEntries() []*entry {
