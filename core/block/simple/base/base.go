@@ -3,6 +3,7 @@ package base
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -103,6 +104,23 @@ func (b *Base) Validate() error {
 
 func (b *Base) String() string {
 	return fmt.Sprintf("%s: %T (%d)", b.Id, b.Content, len(b.ChildrenIds))
+}
+
+func (b *Base) Normalize(s *state.State) error {
+	if isBlockEmpty(b) {
+		b.Content = &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		}
+	}
+	return nil
+}
+
+func isBlockEmpty(block *Base) bool {
+	if block.Content == nil {
+		return true
+	}
+	smartBlock := block.Content.(*model.BlockContentOfSmartblock)
+	return smartBlock == nil || smartBlock.Smartblock == nil
 }
 
 func stringSlicesEq(s1, s2 []string) bool {
