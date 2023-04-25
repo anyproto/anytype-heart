@@ -222,6 +222,16 @@ func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, oldIDtoNew map[str
 	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
 		st.SetDetail(bundle.RelationKeySpaceDashboardId.String(), pbtypes.String(id))
 	}
+	d := oc.getDetails(st.CombinedDetails())
+	e := block.Do(oc.service, oc.core.PredefinedBlocks().Account, func(ws basic.CommonOperations) error {
+		if err := ws.SetDetails(nil, d, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	if e != nil {
+		log.Errorf("failed to set spaceDashBoardID, %s", e)
+	}
 }
 
 func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State) *types.Struct {
