@@ -7,6 +7,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -46,14 +48,18 @@ var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encr
 var _ app.Component = (*Service)(nil)
 
 type Service struct {
-	store      filestore.FileStore
-	commonFile fileservice.FileService
-	ipfs       ipld.DAGService
+	store        filestore.FileStore
+	commonFile   fileservice.FileService
+	fileSync     filesync.FileSync
+	ipfs         ipld.DAGService
+	spaceService space.Service
 }
 
 func (s *Service) Init(a *app.App) (err error) {
 	s.store = a.MustComponent("filestore").(filestore.FileStore)
 	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
+	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
+	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.ipfs = s.commonFile.DAGService()
 	return nil
 }
@@ -95,6 +101,10 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	nodeHash := node.Cid().String()
 
 	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
+		return "", nil, err
+	}
+
+	if err = s.fileSync.AddFile(s.spaceService.AccountId(), nodeHash); err != nil {
 		return "", nil, err
 	}
 

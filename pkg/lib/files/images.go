@@ -35,6 +35,10 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 		return "", nil, err
 	}
 
+	if err = s.fileSync.AddFile(s.spaceService.AccountId(), nodeHash); err != nil {
+		return "", nil, err
+	}
+
 	var variantsByWidth = make(map[int]*storage.FileInfo, len(dir.Files))
 	for _, f := range dir.Files {
 		if f.Mill != "/image/resize" {
