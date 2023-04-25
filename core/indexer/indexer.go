@@ -760,13 +760,10 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		log.Errorf("failed to update isArchived and isFavorite details for %s: %s", id, err)
 	}
 
-	d, err := i.getObjectInfo(ctx, id)
-	if err != nil {
-		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
-		return fmt.Errorf("failed to open doc: %s", err.Error())
-	}
-
-	return i.Index(ctx, d)
+	// Touch the object to initiate indexing
+	return block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
+		return sb.Apply(sb.NewState(), smartblock2.NoHistory, smartblock2.NoEvent, smartblock2.NoRestrictions)
+	})
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, ids ...string) (successfullyReindexed int) {

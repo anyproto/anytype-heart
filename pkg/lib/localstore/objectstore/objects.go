@@ -3,6 +3,7 @@ package objectstore
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -1137,6 +1139,19 @@ func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 }
 
 func (m *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+	for {
+		err := m.updatePendingLocalDetails(id, proc)
+		if errors.Is(err, badger.ErrConflict) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func (m *dsObjectStore) updatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
