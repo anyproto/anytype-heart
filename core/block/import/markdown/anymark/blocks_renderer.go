@@ -294,12 +294,15 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 
 	switch {
 	case len(t.Text) >= 3 && t.Text[:3] == "[ ]":
+		r.adjustMarkdownRange(t, 3)
 		t.Text = strings.TrimLeft(t.Text[3:], " ")
 		t.Style = model.BlockContentText_Checkbox
 	case len(t.Text) >= 2 && t.Text[:2] == "[]":
+		r.adjustMarkdownRange(t, 2)
 		t.Text = strings.TrimLeft(t.Text[2:], " ")
 		t.Style = model.BlockContentText_Checkbox
 	case len(t.Text) >= 3 && t.Text[:3] == "[x]":
+		r.adjustMarkdownRange(t, 3)
 		t.Text = strings.TrimLeft(t.Text[3:], " ")
 		t.Style = model.BlockContentText_Checkbox
 		t.Checked = true
@@ -327,6 +330,19 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 
 		r.blocks = append(r.blocks, &(closingBlock.Block))
 
+	}
+}
+
+func (r *blocksRenderer) adjustMarkdownRange(t *model.BlockContentText, adjustNumber int) {
+	removedSpaceCount := len(t.Text[3:]) - len(strings.TrimLeft(t.Text[3:], " "))
+	for _, mark := range t.Marks.Marks {
+		if mark.Range != nil {
+			mark.Range.To -= int32(adjustNumber + removedSpaceCount)
+			mark.Range.From -= int32(adjustNumber + removedSpaceCount)
+			if mark.Range.From < 0 {
+				mark.Range.From = 0
+			}
+		}
 	}
 }
 
