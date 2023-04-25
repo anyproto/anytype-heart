@@ -2,21 +2,20 @@ package filestorage
 
 import (
 	"context"
-	"io"
-
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
-
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
+	"io"
 )
 
 type proxyStore struct {
-	cache  *flatStore
+	cache  fileblockstore.BlockStoreLocal
 	origin rpcstore.RpcStore
-	index  *FileBadgerIndex
+	index  *badgerfilestore.FileBadgerIndex
 }
 
 func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
@@ -42,21 +41,35 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 }
 
 func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
-	fromCache, fromOrigin, localErr := c.cache.PartitionByExistence(ctx, ks)
+	cachedCids, localErr := c.cache.ExistsCids(ctx, ks)
+	var originCids []cid.Cid
 	if localErr != nil {
 		log.Error("proxy store hasCIDs error", zap.Error(localErr))
-		fromOrigin = ks
+		originCids = ks
+	} else {
+		if len(cachedCids) != len(ks) {
+			set := cid.NewSet()
+			for _, cCid := range cachedCids {
+				set.Add(cCid)
+			}
+			originCids = ks[:0]
+			for _, k := range ks {
+				if !set.Has(k) {
+					originCids = append(originCids, k)
+				}
+			}
+		}
 	}
-	log.Debug("get many cids", zap.Int("cached", len(fromCache)), zap.Int("origin", len(fromOrigin)))
-	if len(fromOrigin) == 0 {
-		return c.cache.GetMany(ctx, fromCache)
+	log.Debug("get many cids", zap.Int("cached", len(cachedCids)), zap.Int("origin", len(originCids)))
+	if len(originCids) == 0 {
+		return c.cache.GetMany(ctx, cachedCids)
 	}
-	results := make(chan blocks.Block)
+	var results = make(chan blocks.Block)
 
 	go func() {
 		defer close(results)
-		localResults := c.cache.GetMany(ctx, fromCache)
-		originResults := c.origin.GetMany(ctx, fromOrigin)
+		localResults := c.cache.GetMany(ctx, cachedCids)
+		originResults := c.origin.GetMany(ctx, originCids)
 		oOk, cOk := true, true
 		for {
 			var cb, ob blocks.Block
@@ -93,10 +106,10 @@ func (c *proxyStore) Add(ctx context.Context, bs []blocks.Block) (err error) {
 	if err = c.cache.Add(ctx, bs); err != nil {
 		return
 	}
-	indexCids := NewCids()
+	indexCids := badgerfilestore.NewCids()
 	defer indexCids.Release()
 	for _, b := range bs {
-		indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), OpAdd, b.Cid())
+		indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), badgerfilestore.OpAdd, b.Cid())
 	}
 	return c.index.Add(indexCids)
 }
@@ -105,24 +118,25 @@ func (c *proxyStore) Delete(ctx context.Context, k cid.Cid) error {
 	if err := c.cache.Delete(ctx, k); err != nil {
 		return err
 	}
-	indexCids := NewCids()
+	indexCids := badgerfilestore.NewCids()
 	defer indexCids.Release()
-	indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), OpDelete, k)
+	indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), badgerfilestore.OpDelete, k)
 	return c.index.Add(indexCids)
 }
 
-func (c *proxyStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, err error) {
-	exist, _, err = c.cache.PartitionByExistence(ctx, ks)
-	return
+func (c *proxyStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
+	return c.cache.ExistsCids(ctx, ks)
 }
 
 func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	return c.cache.NotExistsBlocks(ctx, bs)
 }
 
-func (c *proxyStore) Close() error {
-	if err := c.cache.Close(); err != nil {
-		log.Error("error while closing cache store", zap.Error(err))
+func (c *proxyStore) Close() (err error) {
+	if closer, ok := c.cache.(io.Closer); ok {
+		if localErr := closer.Close(); localErr != nil {
+			log.Error("error while closing cache store", zap.Error(localErr))
+		}
 	}
 	if closer, ok := c.origin.(io.Closer); ok {
 		return closer.Close()

@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 	"math/rand"
 	"sync"
 	"time"
@@ -23,7 +20,7 @@ var (
 	clientCreateTimeout = time.Second * 10
 )
 
-func newClientManager(s *service, peerUpdateCh chan struct{}) *clientManager {
+func newClientManager(s *service) *clientManager {
 	cm := &clientManager{
 		mb: mb.New[*task](maxTasks),
 		ocache: ocache.New(
@@ -35,7 +32,7 @@ func newClientManager(s *service, peerUpdateCh chan struct{}) *clientManager {
 			ocache.WithLogger(log.Sugar()),
 			ocache.WithGCPeriod(0),
 		),
-		checkPeersCh: peerUpdateCh,
+		checkPeersCh: make(chan struct{}),
 		s:            s,
 	}
 	cm.ctx, cm.ctxCancel = context.WithCancel(context.Background())
@@ -55,7 +52,7 @@ type clientManager struct {
 	mu sync.RWMutex
 }
 
-func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
+func (m *clientManager) Add(ctx context.Context, ts ...*task) (err error) {
 	m.mu.Lock()
 	if m.ocache.Len() == 0 {
 		if err = m.checkPeers(ctx, true); err != nil {
@@ -65,57 +62,6 @@ func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
 	}
 	m.mu.Unlock()
 	return m.mb.Add(ctx, ts...)
-}
-
-func (m *clientManager) WriteOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
-	return m.addOp(ctx, true, ready, f, c)
-}
-
-func (m *clientManager) ReadOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
-	return m.addOp(ctx, false, ready, f, c)
-}
-
-func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
-	t := getTask()
-	t.ctx = ctx
-	t.cid = c
-	t.exec = f
-	t.spaceId = fileblockstore.CtxGetSpaceId(ctx)
-	t.onFinished = m.onTaskFinished
-	t.ready = ready
-	t.write = write
-	return m.add(ctx, t)
-}
-
-func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
-	var taskClientIds []string
-	m.ocache.ForEach(func(v ocache.Object) (isContinue bool) {
-		cl := v.(*client)
-		if cl.peerId == c.peerId {
-			return true
-		}
-		if slices.Contains(cl.spaceIds, t.spaceId) {
-			taskClientIds = append(taskClientIds, cl.peerId)
-		}
-		return true
-	})
-	if taskErr != nil {
-		for _, peerId := range taskClientIds {
-			log.Debug("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
-			if !slices.Contains(t.denyPeerIds, peerId) {
-				t.denyPeerIds = append(t.denyPeerIds, c.peerId)
-				err := m.add(t.ctx, t)
-				if err != nil {
-					taskErr = err
-					break
-				}
-				return
-			}
-		}
-	}
-	log.Debug("finishing task task", zap.String("cid", t.cid.String()))
-	t.ready <- result{cid: t.cid, err: taskErr}
-	t.release()
 }
 
 func (m *clientManager) checkPeerLoop() {
@@ -138,46 +84,33 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 	// start GC to remove unused clients
 	m.ocache.GC()
 	if m.ocache.Len() >= maxConnections {
-		// reached connection limit, can't add new nodePeerIds
+		// reached connection limit, can't add new peers
 		return
 	}
 	if !needClient && m.mb.Len() == 0 {
-		// has empty queue, no need new nodePeerIds
+		// has empty queue, no need new peers
 		return
 	}
 
-	addPeer := func(peerId string) (added bool) {
-		added = true
+	// try to add new peers
+	peerIds := m.s.filePeers()
+	rand.Shuffle(len(peerIds), func(i, j int) {
+		peerIds[i], peerIds[j] = peerIds[j], peerIds[i]
+	})
+	for _, peerId := range peerIds {
 		if _, cerr := m.ocache.Pick(ctx, peerId); cerr == ocache.ErrNotExists {
 			var cancel context.CancelFunc
-			ctx, cancel := context.WithTimeout(ctx, clientCreateTimeout)
+			ctx, cancel = context.WithTimeout(ctx, clientCreateTimeout)
 			cl, e := newClient(ctx, m.s, peerId, m.mb)
 			if e != nil {
 				log.Info("can't create client", zap.Error(e))
 				cancel()
-				added = false
-				return
+				continue
 			}
 			_ = m.ocache.Add(peerId, cl)
 			cancel()
-			added = true
+			return
 		}
-		return
-	}
-
-	// try to add new nodePeerIds
-	nodePeerIds := m.s.fileNodePeers()
-	rand.Shuffle(len(nodePeerIds), func(i, j int) {
-		nodePeerIds[i], nodePeerIds[j] = nodePeerIds[j], nodePeerIds[i]
-	})
-	for _, peerId := range nodePeerIds {
-		if addPeer(peerId) {
-			break
-		}
-	}
-	localPeerIds := m.s.allLocalPeers()
-	for _, peerId := range localPeerIds {
-		addPeer(peerId)
 	}
 	if m.ocache.Len() == 0 {
 		return fmt.Errorf("no connection to any file client")
