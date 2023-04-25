@@ -36,10 +36,17 @@ func (s *Service) createCache() ocache.OCache {
 			if err != nil {
 				return
 			}
+
 			// creating tree if needed
 			createPayload, exists := ctx.Value(treeCreateKey).(treeCreateCache)
 			if exists {
 				var ot objecttree.ObjectTree
+				if _, err := spc.Storage().TreeStorage(id); err == nil {
+					return s.objectFactory.InitObject(id, &smartblock.InitContext{
+						Ctx: ctx,
+					})
+				}
+				// TODO: [MR] Make put tree return error
 				ot, err = spc.PutTree(ctx, createPayload.treeCreate, nil)
 				if err != nil {
 					return
@@ -47,11 +54,13 @@ func (s *Service) createCache() ocache.OCache {
 				ot.Close()
 				return s.objectFactory.InitObject(id, createPayload.initFunc(id))
 			}
+
 			// putting object through cache
 			putObject, exists := ctx.Value(putObjectKey).(smartblock.SmartBlock)
 			if exists {
 				return putObject, nil
 			}
+
 			// if it is subObject
 			if sbt, _ := coresb.SmartBlockTypeFromID(id); sbt == coresb.SmartBlockTypeSubObject {
 				return s.initSubObject(ctx, id)

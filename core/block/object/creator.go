@@ -163,6 +163,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	if err != nil {
 		return
 	}
+	id = sb.Id()
 	defer release()
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)

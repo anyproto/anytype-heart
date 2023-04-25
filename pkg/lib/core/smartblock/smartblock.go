@@ -1,8 +1,10 @@
 package smartblock
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/textileio/go-threads/core/thread"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -88,6 +90,27 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	}
 
 	return SmartBlockTypePage, ErrNoSuchSmartblock
+}
+
+func PatchSmartBlockType(id string, sbt SmartBlockType) (string, error) {
+	tid, err := thread.Decode(id)
+	if err != nil {
+		return id, err
+	}
+	rawid := []byte(tid.KeyString())
+	ver, n := binary.Uvarint(rawid)
+	variant, n2 := binary.Uvarint(rawid[n:])
+	_, n3 := binary.Uvarint(rawid[n+n2:])
+	finalN := n + n2 + n3
+	buf := make([]byte, 3*binary.MaxVarintLen64+len(rawid)-finalN)
+	n = binary.PutUvarint(buf, ver)
+	n += binary.PutUvarint(buf[n:], variant)
+	n += binary.PutUvarint(buf[n:], uint64(sbt))
+	copy(buf[n:], rawid[finalN:])
+	if tid, err = thread.Cast(buf[:n+len(rawid)-finalN]); err != nil {
+		return id, err
+	}
+	return tid.String(), nil
 }
 
 // Panics in case of incorrect sb type!

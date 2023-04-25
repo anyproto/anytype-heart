@@ -44,16 +44,16 @@ const (
 	// ForceThreadsObjectsReindexCounter reindex thread-based objects
 	ForceThreadsObjectsReindexCounter int32 = 8
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
-	ForceFilesReindexCounter int32 = 7 //
+	ForceFilesReindexCounter int32 = 9 //
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
-	ForceBundledObjectsReindexCounter int32 = 4 // reindex objects like anytypeProfile
+	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 34
+	ForceIdxRebuildCounter int32 = 35
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 4
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
-	ForceFilestoreKeysReindexCounter int32 = 1
+	ForceFilestoreKeysReindexCounter int32 = 2
 )
 
 var log = logging.Logger("anytype-doc-indexer")
@@ -118,13 +118,6 @@ type indexer struct {
 	typeProvider          typeprovider.ObjectTypeProvider
 }
 
-type myHasher struct {
-}
-
-func (m myHasher) Hash() string {
-	return ""
-}
-
 func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
@@ -132,7 +125,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.relationService = a.MustComponent(relation.CName).(relation.Service)
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
-	i.btHash = myHasher{}
+	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.doc = a.MustComponent(doc.CName).(doc.Service)
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
@@ -276,7 +269,7 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
-	// TODO: [MR] check reindexing logic
+	//TODO: [MR] check reindexing logic
 	//if i.threadService == nil {
 	//	return 0, 0, nil
 	//}

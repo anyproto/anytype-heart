@@ -22,7 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -47,7 +46,7 @@ type builtinTemplate struct {
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
-	b.makeGenHash(3)
+	b.makeGenHash(4)
 	return
 }
 
@@ -91,7 +90,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return
 	}
 	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)
-	id, err := threads.PatchSmartBlockType(st.RootId(), smartblock.SmartBlockTypeBundledTemplate)
+	id, err := smartblock.PatchSmartBlockType(st.RootId(), smartblock.SmartBlockTypeBundledTemplate)
 	if err != nil {
 		return
 	}
@@ -120,6 +119,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	if err = b.validate(st.Copy()); err != nil {
 		return
 	}
+	log.With("id", id).Info("registering template")
 	b.source.RegisterStaticSource(id, func() source.Source {
 		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil)
 	})
