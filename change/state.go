@@ -1,6 +1,7 @@
 package change
 
 import (
+	"errors"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
@@ -8,7 +9,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 )
 
-func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.State, err error) {
+var ErrEmpty = errors.New("first change doesn't exist")
+
+func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.State, appliedContent []*pb.ChangeContent, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -50,6 +53,7 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 				return true
 			}
 			ns := s.NewState()
+			appliedContent = append(appliedContent, model.Content...)
 			ns.ApplyChangeIgnoreErr(model.Content...)
 			ns.SetChangeId(change.Id)
 			ns.AddFileKeys(model.FileKeys...)
@@ -60,7 +64,7 @@ func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.Stat
 			return true
 		})
 	if err != nil {
-		return nil, err
+		return
 	}
 	if lastChange != nil {
 		s.SetLastModified(lastChange.Timestamp, lastChange.Identity)

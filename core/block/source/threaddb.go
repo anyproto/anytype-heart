@@ -216,7 +216,7 @@ func (v *threadDB) listenToChanges() (err error) {
 func (v *threadDB) processThreadActions(buffer []threadsDb.Action) {
 	v.m.Lock()
 	defer v.m.Unlock()
-	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
+	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
 		s, ok := d.(*state.State)
 		if !ok {
 			err = fmt.Errorf("doc is not state")
@@ -235,7 +235,7 @@ func (v *threadDB) processThreadActions(buffer []threadsDb.Action) {
 			}
 		}
 		return
-	}, nil)
+	})
 	if err != nil {
 		log.Errorf("failed to append state with new workspace thread: %v", err)
 	}
@@ -275,7 +275,7 @@ func (v *threadDB) processThreadAction(action threadsDb.Action) {
 		With("thread id", action.ID).
 		Debug("processing new thread to link")
 
-	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
+	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, _ []*pb.ChangeContent, err error) {
 		s, ok := d.(*state.State)
 		if !ok {
 			err = fmt.Errorf("doc is not state")
@@ -285,14 +285,14 @@ func (v *threadDB) processThreadAction(action threadsDb.Action) {
 		if action.Type == threadsDb.ActionCreate {
 			val, err := v.threadInfoValue(action.ID)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			s.SetInStore([]string{WorkspaceCollection, action.ID.String()}, val)
 		} else if action.Type == threadsDb.ActionDelete {
 			s.RemoveFromStore([]string{WorkspaceCollection, action.ID.String()})
 		}
 		return
-	}, nil)
+	})
 	if err != nil {
 		log.Errorf("failed to append state with new workspace thread: %v", err)
 	}

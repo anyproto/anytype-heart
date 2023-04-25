@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/proto"
+	"go.uber.org/zap"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -32,7 +32,7 @@ var (
 )
 
 type ChangeReceiver interface {
-	StateAppend(func(d state.Doc) (s *state.State, err error), []*pb.ChangeContent) error
+	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
 	StateRebuild(d state.Doc) (err error)
 	sync.Locker
 }
@@ -114,7 +114,6 @@ type source struct {
 	ss                       status.Service
 	objectTree               objecttree.ObjectTree
 	lastSnapshotId           string
-	logHeads                 map[string]*change.Change
 	receiver                 ChangeReceiver
 	unsubscribe              func()
 	metaOnly                 bool
@@ -123,12 +122,27 @@ type source struct {
 	openedAt                 time.Time
 }
 
-func (s *source) Update(tree objecttree.ObjectTree) {
-
+func (s *source) Update(ot objecttree.ObjectTree) {
+	// here it should work, because we always have the most common snapshot of the changes in tree
+	s.lastSnapshotId = ot.Root().Id
+	err := s.receiver.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+		return change.BuildState(d.(*state.State), ot)
+	})
+	if err != nil {
+		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
+	}
 }
 
-func (s *source) Rebuild(tree objecttree.ObjectTree) {
-
+func (s *source) Rebuild(ot objecttree.ObjectTree) {
+	doc, err := s.buildState()
+	if err != nil {
+		log.With(zap.Error(err)).Debug("failed to build state")
+		return
+	}
+	err = s.receiver.StateRebuild(doc.(*state.State))
+	if err != nil {
+		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
+	}
 }
 
 func (s *source) ReadOnly() bool {
@@ -156,33 +170,26 @@ func (s *source) ReadDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+	s.receiver = receiver
 	spc, err := s.a.SpaceService().AccountSpace(context.Background())
 	if err != nil {
 		return
 	}
 
-	s.objectTree, err = spc.BuildTree(context.Background(), s.id, s)
+	s.objectTree, err = spc.BuildTree(ctx, s.id, s)
 	if err != nil {
 		return
 	}
 
 	return s.buildState()
-	//if allowEmpty && s.objectTree.Heads()[0] == s.objectTree.Id() {
-	//	err = nil
-	//	doc = state.NewDoc(s.id, nil)
-	//	doc.(*state.State).InjectDerivedDetails()
-	//} else if doc, err = s.buildState(); err != nil {
-	//
-	//}
-	//return
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, err := change.BuildState(nil, s.objectTree)
+	st, _, err := change.BuildState(nil, s.objectTree)
 	if err != nil {
 		return
 	}
-	// TODO: check if we need to check this validation
+	// TODO: [MR] check if we need to check this validation
 	err = st.Validate()
 	if err != nil {
 		return
@@ -209,8 +216,7 @@ func (s *source) GetCreationInfo() (creator string, createdDate int64, err error
 	}
 
 	createdDate = s.objectTree.UnmarshalledHeader().Timestamp
-	createdBy := s.objectTree.UnmarshalledHeader().Identity
-
+	// TODO: add creator in profile
 	return
 }
 
@@ -222,160 +228,94 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
-	if events := s.tree.GetDuplicateEvents(); events > 30 {
-		params.DoSnapshot = true
-		log.With("thread", s.id).Errorf("found %d duplicate events: do the snapshot", events)
-		s.tree.ResetDuplicateEvents()
-	}
-	var c = &pb.Change{
-		PreviousIds:     s.tree.Heads(),
-		LastSnapshotId:  s.lastSnapshotId,
-		PreviousMetaIds: s.tree.MetaHeads(),
-		Timestamp:       time.Now().Unix(),
+	// TODO: [MR] duplicate events
+	//if events := s.tree.GetDuplicateEvents(); events > 30 {
+	//	params.DoSnapshot = true
+	//	log.With("thread", s.id).Errorf("found %d duplicate events: do the snapshot", events)
+	//	s.tree.ResetDuplicateEvents()
+	//}
+	c := &pb.Change{
+		Timestamp: time.Now().Unix(),
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.LogHeads(),
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:         params.State.BlocksToSave(),
-				Details:        params.State.Details(),
-				ExtraRelations: nil,
-				ObjectTypes:    params.State.ObjectTypes(),
-				Collections:    params.State.Store(),
-				RelationLinks:  params.State.PickRelationLinks(),
+				Blocks:        params.State.BlocksToSave(),
+				Details:       params.State.Details(),
+				ObjectTypes:   params.State.ObjectTypes(),
+				Collections:   params.State.Store(),
+				RelationLinks: params.State.PickRelationLinks(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}
 	}
 	c.Content = params.Changes
 	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
-
-	if id, err = s.sb.PushRecord(c); err != nil {
+	data, err := c.Marshal()
+	if err != nil {
 		return
 	}
-	ch := &change.Change{Id: id, Change: c}
-	s.tree.Add(ch)
-	s.logHeads[s.logId] = ch
+	// TODO: [MR] Add signing key and identity
+	addResult, err := s.objectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
+		Data:        data,
+		Key:         nil,
+		Identity:    nil,
+		IsSnapshot:  c.Snapshot != nil,
+		IsEncrypted: true,
+	})
+	if err != nil {
+		return
+	}
+	id = addResult.Heads[0]
+
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
 		log.Infof("%s: pushed snapshot", s.id)
 	} else {
-		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
+		log.Debugf("%s: pushed %d changes", s.id, len(c.Content))
 	}
 	return
 }
 
-func (v *source) ListIds() ([]string, error) {
-	ids, err := v.Anytype().ThreadsIds()
+func (s *source) ListIds() (ids []string, err error) {
+	spc, err := s.a.SpaceService().AccountSpace(context.Background())
 	if err != nil {
-		return nil, err
+		return
 	}
-	ids = slice.Filter(ids, func(id string) bool {
-		if v.Anytype().PredefinedBlocks().IsAccount(id) {
+	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
+		if s.Anytype().PredefinedBlocks().IsAccount(id) {
 			return false
 		}
 		t, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
 			return false
 		}
-		return t == v.smartblockType
+		return t == s.smartblockType
 	})
 	// exclude account thread id
 	return ids, nil
 }
 
 func (s *source) needSnapshot() bool {
-	if s.tree.Len() == 0 {
-		// starting tree with snapshot
+	if s.objectTree.Heads()[0] == s.objectTree.Id() {
 		return true
 	}
-	// TODO: think about a more smart way
 	return rand.Intn(500) == 42
-}
-
-func (s *source) changeListener(batch *mb.MB) {
-	defer close(s.closed)
-	var records []core.SmartblockRecordEnvelope
-	for {
-		msgs := batch.Wait()
-		if len(msgs) == 0 {
-			return
-		}
-		records = records[:0]
-		for _, msg := range msgs {
-			records = append(records, msg.(core.SmartblockRecordEnvelope))
-		}
-
-		s.receiver.Lock()
-		if err := s.applyRecords(records); err != nil {
-			log.Errorf("can't handle records: %v; records: %v", err, records)
-		} else if s.ss != nil {
-			// notify about probably updated timeline
-			if tl := s.timeline(); len(tl) > 0 {
-				s.ss.UpdateTimeline(s.tid, tl)
-			}
-		}
-		s.receiver.Unlock()
-
-		// wait 100 millisecond for better batching
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
-	var changes = make([]*change.Change, 0, len(records))
-	for _, record := range records {
-		if record.LogID == s.a.Device() && !s.listenToOwnDeviceChanges {
-			// ignore self logs
-			continue
-		}
-		ch, e := change.NewChangeFromRecord(record)
-		if e != nil {
-			return e
-		}
-		if s.metaOnly && !ch.HasMeta() {
-			continue
-		}
-		changes = append(changes, ch)
-		s.logHeads[record.LogID] = ch
-	}
-	log.With("thread", s.id).Infof("received %d records; changes count: %d", len(records), len(changes))
-	if len(changes) == 0 {
-		return nil
-	}
-
-	metrics.SharedClient.RecordEvent(metrics.ChangesetEvent{
-		Diff: time.Now().Unix() - changes[0].Timestamp,
-	})
-
-	switch s.tree.Add(changes...) {
-	case change.Nothing:
-		// existing or not complete
-		return nil
-	case change.Append:
-		changesContent := make([]*pb.ChangeContent, 0, len(changes))
-		for _, ch := range changes {
-			changesContent = append(changesContent, ch.Content...)
-		}
-		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
-		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
-			return change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
-		}, changesContent)
-	case change.Rebuild:
-		s.lastSnapshotId = s.tree.LastSnapshotId(context.TODO())
-		doc, err := s.buildState()
-
-		if err != nil {
-			return err
-		}
-		return s.receiver.StateRebuild(doc.(*state.State))
-	default:
-		return fmt.Errorf("unsupported tree mode")
-	}
 }
 
 func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return s.getFileHashesForSnapshot(nil)
+}
+
+func (s *source) iterate(startId string, iterFunc objecttree.ChangeIterateFunc) (err error) {
+	unmarshall := func(decrypted []byte) (res any, err error) {
+		ch := &pb.Change{}
+		err = proto.Unmarshal(decrypted, ch)
+		res = ch
+		return
+	}
+	return s.objectTree.IterateFrom(startId, unmarshall, iterFunc)
 }
 
 func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {
@@ -392,15 +332,22 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 			}
 		}
 	}
-	s.tree.Iterate(s.tree.RootId(), func(c *change.Change) (isContinue bool) {
-		if c.Snapshot != nil && len(c.Snapshot.FileKeys) > 0 {
-			processFileKeys(c.Snapshot.FileKeys)
+	err := s.iterate(s.objectTree.Root().Id, func(c *objecttree.Change) (isContinue bool) {
+		model, ok := c.Model.(*pb.Change)
+		if !ok {
+			return false
 		}
-		if len(c.Change.FileKeys) > 0 {
-			processFileKeys(c.Change.FileKeys)
+		if model.Snapshot != nil && len(model.Snapshot.FileKeys) > 0 {
+			processFileKeys(model.Snapshot.FileKeys)
+		}
+		if len(model.FileKeys) > 0 {
+			processFileKeys(model.FileKeys)
 		}
 		return true
 	})
+	if err != nil {
+		log.With(zap.Error(err)).Debug("failed to iterate through file keys")
+	}
 	return fileKeys
 }
 
@@ -421,48 +368,11 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 }
 
 func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
-	if s.tree.RootId() == "" {
-		return nil, change.ErrEmpty
-	}
-	c = s.tree.Get(s.tree.RootId())
-	for c.LastSnapshotId != "" {
-		var rec *core.SmartblockRecordEnvelope
-		if rec, err = s.sb.GetRecord(ctx, c.LastSnapshotId); err != nil {
-			log.With("thread", s.id).With("logid", s.logId).With("recordId", c.LastSnapshotId).Errorf("failed to load first change: %s", err.Error())
-			return
-		}
-		if c, err = change.NewChangeFromRecord(*rec); err != nil {
-			log.With("thread", s.id).
-				With("logid", s.logId).
-				With("change", rec.ID).Errorf("FindFirstChange: failed to unmarshal change: %s; continue", err.Error())
-			err = nil
-		}
-	}
-	return
+	panic("is not implemented")
 }
 
 func (s *source) LogHeads() map[string]string {
-	var hs = make(map[string]string)
-	for id, ch := range s.logHeads {
-		if ch != nil {
-			hs[id] = ch.Id
-		}
-	}
-	return hs
-}
-
-func (s *source) timeline() []status.LogTime {
-	var timeline = make([]status.LogTime, 0, len(s.logHeads))
-	for _, ch := range s.logHeads {
-		if ch != nil && len(ch.Account) > 0 && len(ch.Device) > 0 {
-			timeline = append(timeline, status.LogTime{
-				AccountID: ch.Account,
-				DeviceID:  ch.Device,
-				LastEdit:  ch.Timestamp,
-			})
-		}
-	}
-	return timeline
+	return nil
 }
 
 func (s *source) Close() (err error) {
