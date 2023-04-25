@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const BlockAdditionError = "failed to add widget '%s': %v"
@@ -74,6 +75,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	return smartblock.ObjectApplyTemplate(w, ctx.State,
 		template.WithEmpty,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
+		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 		withDefaultWidgets,
 	)
 }
