@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
@@ -282,5 +283,10 @@ func (f *fileSync) Close(ctx context.Context) (err error) {
 	if f.loopCancel != nil {
 		f.loopCancel()
 	}
-	return
+	if closer, ok := f.rpcStore.(io.Closer); ok {
+		if err = closer.Close(); err != nil {
+			log.Error("can't close rpc store", zap.Error(err))
+		}
+	}
+	return nil
 }

@@ -77,8 +77,14 @@ func (s *StatusWatcher) run() {
 
 	s.checkFiles(ctx)
 	t := time.NewTicker(s.updateInterval)
-	for range t.C {
-		s.checkFiles(ctx)
+	defer t.Stop()
+	for {
+		select {
+		case <-s.closeCh:
+			return
+		case <-t.C:
+			s.checkFiles(ctx)
+		}
 	}
 }
 
@@ -114,7 +120,15 @@ func (s *StatusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace)
 		return fmt.Errorf("get file status: %w", err)
 	}
 	s.files[key] = status
-	return s.statusService.UpdateTree(context.Background(), key.fileID, status.status)
+
+	go func() {
+		updateErr := s.statusService.UpdateTree(context.Background(), key.fileID, status.status)
+		if updateErr != nil {
+			log.Error("send file status", zap.String("fileID", key.fileID), zap.Error(updateErr))
+		}
+	}()
+	return nil
+
 }
 
 func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (fileStatus, error) {
@@ -164,9 +178,7 @@ func (s *StatusWatcher) Watch(spaceID, fileID string) {
 		s.filesToWatch[key] = struct{}{}
 	}
 
-	go func() {
-		s.updateCh <- key
-	}()
+	s.updateCh <- key
 }
 
 func (s *StatusWatcher) Unwatch(spaceID, fileID string) {
