@@ -212,7 +212,7 @@ func (s *Service) CreateDataviewView(
 ) (id string, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		if req.View == nil {
-			req.View = &model.BlockContentDataviewView{}
+			req.View = &model.BlockContentDataviewView{CardSize: model.BlockContentDataviewView_Medium}
 		}
 		view, e := b.CreateView(ctx, req.BlockId, *req.View, req.Source)
 		if e != nil {
