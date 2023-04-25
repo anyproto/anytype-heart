@@ -76,10 +76,14 @@ func (s *Service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 		})
 	}
 
-	for _, fileID := range fileIDs {
-		if checkErr := s.checkIfPinned(fileID, includeNotPinned); checkErr != nil {
-			continue
+	if !includeNotPinned {
+		fileIDs, err = s.keepOnlyPinned(fileIDs)
+		if err != nil {
+			return 0, 0, fmt.Errorf("keep only pinned: %w", err)
 		}
+	}
+
+	for _, fileID := range fileIDs {
 		bytesRemoved, err := s.fileOffload(fileID)
 		if err != nil {
 			log.Errorf("failed to offload file %s: %s", fileID, err.Error())
@@ -91,6 +95,21 @@ func (s *Service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 		}
 	}
 	return
+}
+
+func (s *Service) keepOnlyPinned(fileIDs []string) ([]string, error) {
+	fileStats, err := s.fileSync.FileListStats(context.Background(), s.spaceService.AccountId(), fileIDs)
+	if err != nil {
+		return nil, fmt.Errorf("files stat: %w", err)
+	}
+
+	fileIDs = fileIDs[:0]
+	for _, fileStat := range fileStats {
+		if fileStat.UploadedChunksCount == fileStat.TotalChunksCount {
+			fileIDs = append(fileIDs, fileStat.FileId)
+		}
+	}
+	return fileIDs, nil
 }
 
 func (s *Service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
