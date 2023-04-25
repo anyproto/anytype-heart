@@ -684,10 +684,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if err != nil {
 			return err
 		}
-		if changeId != "" {
-			sb.Doc.(*state.State).SetChangeId(changeId)
-		}
 		return nil
+	}
+	if changeId != "" {
+		sb.Doc.(*state.State).SetChangeId(changeId)
 	}
 	if !act.IsEmpty() {
 		if len(changes) == 0 && !doSnapshot {
@@ -711,6 +711,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	if changeId != "" {
 		// if changeId is empty, it means that we didn't push any changes to the source
+		// in this case we don't need to reindex the state
 		sb.runIndexer(st)
 	}
 	afterPushChangeTime := time.Now()

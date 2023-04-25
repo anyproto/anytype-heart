@@ -68,6 +68,7 @@ type Doc interface {
 	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
+	ChangeId() string // last pushed change id
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {

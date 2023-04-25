@@ -582,6 +582,7 @@ func (i *indexer) saveLatestCounters() error {
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
+	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
 	spc, err := i.spaceService.AccountSpace(context.Background())
 	if err != nil {
 		return
@@ -612,7 +613,9 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 
 		hh := headsHash(heads)
 		if lastHash != hh {
-			log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+			if lastHash != "" {
+				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+			}
 			idsToReindex = append(idsToReindex, tid)
 		}
 	}
@@ -636,9 +639,24 @@ func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 	}
 
 	// Touch the object to initiate indexing
-	return block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
-		return i.Index(ctx, sb.GetDocInfo())
+	err = block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
+		d := sb.GetDocInfo()
+		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
+			// index all the subobjects
+			v.GetAllDocInfoIterator(
+				func(info smartblock2.DocInfo) (contin bool) {
+					err = i.Index(ctx, info)
+					if err != nil {
+						log.Errorf("failed to index subobject %s: %s", info.Id, err)
+					}
+					return true
+				},
+			)
+		}
+
+		return i.Index(ctx, d)
 	})
+	return err
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {

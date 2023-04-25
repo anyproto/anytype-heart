@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -114,6 +113,49 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	c.app = ctx.App
 
 	return c.SmartBlock.Init(ctx)
+}
+
+func (c *SubObjectCollection) ListAllIds() (ids []string) {
+	st := c.NewState()
+	for _, coll := range objectTypeToCollection {
+		data := st.GetSubObjectCollection(coll)
+		for subId := range data.Fields {
+			ids = append(ids, c.getId(coll, subId))
+		}
+	}
+	return
+}
+
+// GetAllDocInfoIterator returns all sub objects in the collection
+func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (contin bool)) {
+	st := c.NewState()
+	workspaceID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
+
+	for _, coll := range objectTypeToCollection {
+		data := st.GetSubObjectCollection(coll)
+		for subId := range data.Fields {
+			fullId := c.getId(coll, subId)
+			sub, err := SubState(st, coll, fullId, workspaceID)
+			if err != nil {
+				log.Errorf("failed to get sub object %s: %v", subId, err)
+				continue
+			}
+			if !f(smartblock.DocInfo{
+				Id:    fullId,
+				State: sub,
+			}) {
+				break
+			}
+		}
+	}
+	return
+}
+
+func (c *SubObjectCollection) getId(collection, key string) string {
+	if collection == c.defaultCollectionName {
+		return key
+	}
+	return collection + addr.SubObjectCollectionIdSeparator + key
 }
 
 func (c *SubObjectCollection) getCollectionAndKeyFromId(id string) (collection, key string) {
@@ -252,17 +294,6 @@ func cleanSubObjectDetails(details *types.Struct) *types.Struct {
 
 func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p source.PushChangeParams) (string, error) {
 	return func(p source.PushChangeParams) (string, error) {
-		var hasDetailsChanges bool
-		// optimization as we already have the changes filled in the params
-		for _, ch := range p.Changes {
-			switch ch.Value.(type) {
-			case *pb.ChangeContentValueOfDetailsSet, *pb.ChangeContentValueOfDetailsUnset:
-				hasDetailsChanges = true
-			}
-		}
-		if !hasDetailsChanges {
-			return "", nil
-		}
 		st := c.NewState()
 
 		coll, exists := c.collections[collection]
@@ -309,7 +340,7 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 			return "", err
 		}
 
-		return c.NewState().ChangeId(), nil
+		return c.SmartBlock.(state.Doc).ChangeId(), nil
 	}
 }
 
@@ -430,4 +461,9 @@ func structToState(id string, data *types.Struct) *state.State {
 func (p *SubObjectCollection) TryClose(objectTTL time.Duration) (res bool, err error) {
 	// never close SubObjectCollection
 	return false, nil
+}
+
+type SubObjectCollectionGetter interface {
+	GetAllDocInfoIterator(func(smartblock.DocInfo) bool)
+	ListAllIds() []string
 }
