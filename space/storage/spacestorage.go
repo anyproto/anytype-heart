@@ -128,6 +128,24 @@ func (s *spaceStorage) SpaceHeader() (header *spacesyncproto.RawSpaceHeaderWithI
 	return s.header, nil
 }
 
+func (s *spaceStorage) WriteSpaceHash(hash string) error {
+	return s.objDb.Update(func(txn *badger.Txn) error {
+		return txn.Set(s.keys.SpaceHash(), []byte(hash))
+	})
+}
+
+func (s *spaceStorage) ReadSpaceHash() (hash string, err error) {
+	err = s.objDb.View(func(txn *badger.Txn) error {
+		res, err := getTxn(txn, s.keys.SpaceHash())
+		if err != nil {
+			return err
+		}
+		hash = string(res)
+		return nil
+	})
+	return
+}
+
 func (s *spaceStorage) StoredIds() (ids []string, err error) {
 	err = s.objDb.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
