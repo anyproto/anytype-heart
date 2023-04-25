@@ -84,7 +84,11 @@ func cleanupAfterOldProcess(exePath string, lockfile string) {
 
 	if isNotCurrentRun && !isMyProcess(exePath, proc) {
 		log.Warnf("Killing the old process.")
-		_ = proc.Kill()
-		time.Sleep(lockReleaseDelay)
+		err = proc.Kill()
+		if err != nil {
+			log.Errorf("Failed to kill the old process: %v", err)
+		} else {
+			time.Sleep(lockReleaseDelay)
+		}
 	}
 }
