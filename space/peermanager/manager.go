@@ -26,27 +26,16 @@ func (n *clientPeerManager) init() {
 
 func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *spacesyncproto.ObjectSyncMessage) (err error) {
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
-	if n.isResponsible(peerId) {
-		return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
-			return n.getStreamResponsiblePeers(ctx, peerId)
-		})
-	}
-	return n.p.streamPool.SendById(ctx, msg, peerId)
-}
-
-func (n *clientPeerManager) SendResponsible(ctx context.Context, msg *spacesyncproto.ObjectSyncMessage) (err error) {
-	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
 	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
-		return n.getStreamResponsiblePeers(ctx, "")
+		return n.getExactPeer(ctx, peerId)
 	})
 }
 
 func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.ObjectSyncMessage) (err error) {
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
-	if e := n.SendResponsible(ctx, msg); e != nil {
-		log.Info("broadcast sendResponsible error", zap.Error(e))
-	}
-	return n.p.streamPool.Broadcast(ctx, msg, n.spaceId)
+	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
+		return n.getStreamResponsiblePeers(ctx)
+	})
 }
 
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
@@ -60,6 +49,7 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 		}
 		clientPeer, err := n.p.commonPool.Get(ctx, peerId)
 		if err != nil {
+			n.peerStore.RemoveLocalPeer(peerId)
 			continue
 		}
 		peers = append(peers, clientPeer)
@@ -70,15 +60,15 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 	return
 }
 
-func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context, exactId string) (peers []peer.Peer, err error) {
-	if exactId != "" {
-		p, err := n.p.pool.Get(ctx, exactId)
-		if err != nil {
-			return
-		}
-		return []peer.Peer{p}, nil
+func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (peers []peer.Peer, err error) {
+	p, err := n.p.pool.Get(ctx, peerId)
+	if err != nil {
+		return nil, err
 	}
+	return []peer.Peer{p}, nil
+}
 
+func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	var peerIds []string
 	// lookup in common pool for existing connection
 	p, nodeErr := n.p.commonPool.GetOneOf(ctx, n.responsiblePeerIds)
@@ -91,6 +81,7 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context, exact
 	for _, peerId := range peerIds {
 		p, err := n.p.pool.Get(ctx, peerId)
 		if err != nil {
+			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get peer from stream pool", zap.String("peerId", peerId), zap.Error(err))
 			continue
 		}
@@ -101,8 +92,4 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context, exact
 		err = fmt.Errorf("failed to get peers for stream")
 	}
 	return
-}
-
-func (n *clientPeerManager) isResponsible(peerId string) bool {
-	return slices.Contains(n.responsiblePeerIds, peerId)
 }

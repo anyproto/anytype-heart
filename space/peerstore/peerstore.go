@@ -3,7 +3,7 @@ package peerstore
 import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/nodeconf"
-	libSlice "github.com/anytypeio/any-sync/util/slice"
+	libslice "github.com/anytypeio/any-sync/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"golang.org/x/exp/slices"
 	"sync"
@@ -18,6 +18,7 @@ type PeerStore interface {
 	LocalPeerIds(spaceId string) []string
 	AllLocalPeers() []string
 	UpdateLocalPeer(peerId string, spaceIds []string)
+	RemoveLocalPeer(peerId string)
 	AddObserver(observer Observer)
 }
 
@@ -104,7 +105,7 @@ func (p *peerStore) updatePeer(peerId string, oldIds, newIds []string) {
 	}
 	for _, spaceId := range removed {
 		peerIds := p.localPeerIdsBySpace[spaceId]
-		peerIds = libSlice.DiscardFromSlice(peerIds, func(s string) bool {
+		peerIds = libslice.DiscardFromSlice(peerIds, func(s string) bool {
 			return s == peerId
 		})
 		p.localPeerIdsBySpace[spaceId] = peerIds
@@ -119,6 +120,31 @@ func (p *peerStore) LocalPeerIds(spaceId string) []string {
 	p.Lock()
 	defer p.Unlock()
 	return p.localPeerIdsBySpace[spaceId]
+}
+
+func (p *peerStore) RemoveLocalPeer(peerId string) {
+	p.Lock()
+	defer p.Unlock()
+	spaceIds, exists := p.spacesByLocalPeerIds[peerId]
+	if !exists {
+		return
+	}
+	// TODO: do we need to notify observer here
+	for _, spaceId := range spaceIds {
+		peerIds := p.localPeerIdsBySpace[spaceId]
+		if len(peerIds) <= 1 {
+			delete(p.localPeerIdsBySpace, spaceId)
+			continue
+		}
+		peerIds = libslice.DiscardFromSlice(peerIds, func(s string) bool {
+			return s == peerId
+		})
+		p.localPeerIdsBySpace[spaceId] = peerIds
+	}
+	delete(p.spacesByLocalPeerIds, peerId)
+	p.localPeerIds = libslice.DiscardFromSlice(p.localPeerIds, func(s string) bool {
+		return s == peerId
+	})
 }
 
 func (p *peerStore) ResponsibleNodeIds(spaceId string) (ids []string) {

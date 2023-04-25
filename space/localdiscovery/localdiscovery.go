@@ -109,6 +109,7 @@ func (l *localDiscovery) startServer() (err error) {
 		[]string{ip},
 		nil,
 		nil,
+		zeroconf.TTL(60),
 	)
 	return
 }

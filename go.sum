@@ -83,16 +83,6 @@ github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYU
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31 h1:fCXBjRAxXq4pKyfH8xmYPfjL/E6v5zTTxYrIKDz8ufw=
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
-github.com/anytypeio/any-sync v0.0.7-0.20230201222102-36307440863f h1:4lHBH7zi2TBrp8WNKoDs6andrpxH9WpQmQWYK6N9TyA=
-github.com/anytypeio/any-sync v0.0.7-0.20230201222102-36307440863f/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
-github.com/anytypeio/any-sync v0.0.7-0.20230203115544-9ba0620cab5c h1:YZengvmCCH1orqBRnwy9xlCveC7gmJMp2OiUK05u3Y0=
-github.com/anytypeio/any-sync v0.0.7-0.20230203115544-9ba0620cab5c/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
-github.com/anytypeio/any-sync v0.0.7-0.20230203134905-2da9f84907fe h1:NewhEh95b3moPGefARnw7DZSN13l2X4THi8BWX9ArAo=
-github.com/anytypeio/any-sync v0.0.7-0.20230203134905-2da9f84907fe/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
-github.com/anytypeio/any-sync v0.0.7-0.20230203135530-fad981daee3a h1:Ae9mAPEiWnZ1O6wo/FnajIXtMb0pUaCP6buaseKklLw=
-github.com/anytypeio/any-sync v0.0.7-0.20230203135530-fad981daee3a/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
-github.com/anytypeio/any-sync v0.0.7 h1:LpPj1ktb8h9vl2nsU/Zd1QYPihEqKU7mZzD3CbrC1ho=
-github.com/anytypeio/any-sync v0.0.7/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
 github.com/anytypeio/go-chash v0.0.2 h1:BSpyMC3HXNkf2eosQrHM4svov0DrvxL9tb4gnHbdmbA=
 github.com/anytypeio/go-chash v0.0.2/go.mod h1:G+R6q7jYgNa52NqcRhnNm28pogfWW+cuHtgBktrc2QA=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
