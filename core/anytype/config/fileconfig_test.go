@@ -1,14 +1,15 @@
-package files
+package config
 
 import (
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testConfigOmitEmpty struct {
 	One string `json:",omitempty"`
-	Two int `json:",omitempty"`
+	Two int    `json:",omitempty"`
 }
 
 type testConfig struct {
@@ -53,5 +54,3 @@ func TestFileConfig_WriteFileConfig(t *testing.T) {
 		require.EqualValues(t, testConfig{Two: 2}, res)
 	})
 }
-
-

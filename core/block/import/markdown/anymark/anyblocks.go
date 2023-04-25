@@ -1,4 +1,4 @@
-package anyblocks
+package anymark
 
 import (
 	"strings"
@@ -6,7 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func PreprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
+func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 
 	blocksOut = []*model.Block{}
 	accum := []*model.Block{}
@@ -16,7 +16,7 @@ func PreprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 			accum = append(accum, b)
 		} else {
 			if len(accum) > 0 {
-				blocksOut = append(blocksOut, CombineCodeBlocks(accum))
+				blocksOut = append(blocksOut, combineCodeBlocks(accum))
 				accum = []*model.Block{}
 			}
 
@@ -26,7 +26,7 @@ func PreprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 	}
 
 	if len(accum) > 0 {
-		blocksOut = append(blocksOut, CombineCodeBlocks(accum))
+		blocksOut = append(blocksOut, combineCodeBlocks(accum))
 	}
 
 	for _, b := range blocks {
@@ -40,7 +40,7 @@ func PreprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 	return blocksOut
 }
 
-func CombineCodeBlocks(accum []*model.Block) (res *model.Block) {
+func combineCodeBlocks(accum []*model.Block) (res *model.Block) {
 	var textArr []string
 
 	for _, b := range accum {

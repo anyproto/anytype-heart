@@ -19,33 +19,29 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
-	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
-
-	"github.com/anytypeio/any-sync/util/crypto"
-	"github.com/libp2p/go-libp2p/core/peer"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
+	"github.com/anytypeio/any-sync/util/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	cp "github.com/otiai10/copy"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/constant"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -77,7 +73,7 @@ func checkInviteCode(cfg *config.Config, code string, account string) (errorCode
 
 	// TODO: here we always using the default cafe address, because we want to check invite code only on our server
 	// this code should be removed with a public release
-	req, err := http.NewRequest("POST", cfg.InviteServerURL+"/alpha-invite", bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("POST", cfg.CafeUrl()+"/alpha-invite", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	checkNetError := func(err error) (netOpError bool, dnsError bool, offline bool) {
@@ -145,7 +141,7 @@ func checkInviteCode(cfg *config.Config, code string, account string) (errorCode
 	if err != nil {
 		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode response json: %s", err.Error())
 	}
-	peerID, err := peer.Decode(cfg.InviteServerPublicKey)
+	peerID, err := peer.Decode(cfg.CafePeerId)
 	if err != nil {
 		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
 	}
@@ -168,50 +164,32 @@ func checkInviteCode(cfg *config.Config, code string, account string) (errorCode
 	return pb.RpcAccountCreateResponseError_NULL, nil
 }
 
-func (mw *Middleware) refreshRemoteAccountState() {
+func (mw *Middleware) getCafeAccount() *cafePb.AccountState {
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+
+	return fetcher.GetAccountState()
+}
+
+func (mw *Middleware) refetch() {
+	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+
 	fetcher.Refetch()
 }
 
-func (mw *Middleware) getAnalyticsId(bs *block.Service, accountId string) (string, error) {
-	conf := mw.app.MustComponent(config.CName).(*config.Config)
-	if conf.AnalyticsId != "" {
-		return conf.AnalyticsId, nil
-	}
-	var analyticsId string
-	sb, err := bs.PickBlock(context.Background(), accountId)
-	if err != nil {
-		return "", err
-	}
-	s := sb.NewState().GetSetting(state.SettingsAnalyticsId)
-	if s == nil {
-		log.Errorf("analytics id not found")
-	} else {
-		analyticsId = s.GetStringValue()
-	}
-
-	return analyticsId, err
-}
-
-func (mw *Middleware) getInfo(bs *block.Service) *model.AccountInfo {
+func (mw *Middleware) getInfo() *model.AccountInfo {
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
 	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
 	deviceKey := wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().Account()
 
-	analyticsId, err := mw.getAnalyticsId(bs, at.PredefinedBlocks().Account)
-	if err != nil {
-		log.Errorf("failed to get analytics id: %s", err.Error())
-	}
-
 	if gwAddr != "" {
 		gwAddr = "http://" + gwAddr
 	}
 
 	cfg := config.ConfigRequired{}
-	err = files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
-	if err != nil || cfg.CustomFileStorePath == "" {
+	config.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
+	if cfg.CustomFileStorePath == "" {
 		cfg.CustomFileStorePath = wallet.RepoPath()
 	}
 
@@ -227,7 +205,6 @@ func (mw *Middleware) getInfo(bs *block.Service) *model.AccountInfo {
 		DeviceId:               deviceId,
 		LocalStoragePath:       cfg.CustomFileStorePath,
 		TimeZone:               cfg.TimeZone,
-		AnalyticsId:            analyticsId,
 	}
 }
 
@@ -238,6 +215,12 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	defer mw.m.Unlock()
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		var clientConfig *pb.RpcAccountConfig
+		if account != nil && err == nil {
+			cafeAccount := mw.getCafeAccount()
+
+			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
+			enrichWithCafeAccount(account, cafeAccount)
+		}
 		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -251,7 +234,6 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	}
 
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true, true)
-
 	derivationResult, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
@@ -271,7 +253,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		if err != nil {
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
-		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
+		if err := config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
 		}
 	}
@@ -319,7 +301,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	}
 
 	newAcc.Name = req.Name
-	newAcc.Info = mw.getInfo(bs)
+	newAcc.Info = mw.getInfo()
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
@@ -372,6 +354,12 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		var clientConfig *pb.RpcAccountConfig
+		if account != nil {
+			cafeAccount := mw.getCafeAccount()
+
+			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
+			enrichWithCafeAccount(account, cafeAccount)
+		}
 		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -392,10 +380,9 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account() {
-		bs := mw.app.MustComponent(treemanager.CName).(*block.Service)
-		bs.CloseBlocks()
+		mw.app.MustComponent(treemanager.CName).(*block.Service).CloseBlocks()
 		acc := &model.Account{Id: req.Id}
-		acc.Info = mw.getInfo(bs)
+		acc.Info = mw.getInfo()
 		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 	}
 
@@ -448,7 +435,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 
 	acc := &model.Account{Id: req.Id}
-	acc.Info = mw.getInfo(mw.app.MustComponent(block.CName).(*block.Service))
+	acc.Info = mw.getInfo()
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
@@ -513,7 +500,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	configPath := conf.GetConfigPath()
 	srcPath := conf.RepoPath
 	fileConf := config.ConfigRequired{}
-	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
+	if err := config.GetFileConfig(configPath, &fileConf); err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
 	}
 	if fileConf.CustomFileStorePath != "" {
@@ -555,7 +542,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 		}
 	}
 
-	err = files.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: destination})
+	err = config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: destination})
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
@@ -598,9 +585,7 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 		return
 	})
 
-	// so we will receive updated account status
-	mw.refreshRemoteAccountState()
-
+	mw.refetch()
 	if err == nil {
 		return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
 	}
@@ -635,7 +620,7 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 	cfg := config.ConfigRequired{}
 	cfg.TimeZone = req.TimeZone
 	cfg.CustomFileStorePath = req.IPFSStorageAddr
-	err := files.WriteJsonConfig(conf.GetConfigPath(), cfg)
+	err := config.WriteJsonConfig(conf.GetConfigPath(), cfg)
 	if err != nil {
 		return response(pb.RpcAccountConfigUpdateResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
@@ -649,7 +634,7 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 
 	configPath := conf.GetConfigPath()
 	fileConf := config.ConfigRequired{}
-	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
+	if err := config.GetFileConfig(configPath, &fileConf); err != nil {
 		return err
 	}
 
@@ -751,12 +736,6 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	if profile.AnalyticsId != "" {
-		cfg.AnalyticsId = profile.AnalyticsId
-	} else {
-		cfg.AnalyticsId = metrics.GenerateAnalyticsId()
-	}
-
 	err = mw.startApp(cfg, res, err)
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
@@ -765,10 +744,6 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 	err = mw.setDetails(profile, req.Icon, err)
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
-	}
-
-	if err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(); err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT, err
 	}
 
 	return address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
@@ -829,16 +804,14 @@ func buildDetails(profile *pb.Profile, icon int64) (
 	profileDetails = []*pb.RpcObjectSetDetailsDetail{{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(profile.Name),
+	}, {
+		Key:   bundle.RelationKeyIconImage.String(),
+		Value: pbtypes.String(profile.Avatar),
 	}}
 	if profile.Avatar == "" {
 		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
 			Key:   bundle.RelationKeyIconOption.String(),
 			Value: pbtypes.Int64(icon),
-		})
-	} else {
-		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyIconImage.String(),
-			Value: pbtypes.String(profile.Avatar),
 		})
 	}
 	accountDetails = []*pb.RpcObjectSetDetailsDetail{{
@@ -872,4 +845,31 @@ func (mw *Middleware) isAccountExistsOnDisk(account string) bool {
 		return true
 	}
 	return false
+}
+
+func convertToRpcAccountConfig(cfg *cafePb.Config) *pb.RpcAccountConfig {
+	return &pb.RpcAccountConfig{
+		EnableDataview:          cfg.EnableDataview,
+		EnableDebug:             cfg.EnableDebug,
+		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
+		Extra:                   cfg.Extra,
+		EnableSpaces:            cfg.EnableSpaces,
+	}
+}
+
+func enrichWithCafeAccount(acc *model.Account, cafeAcc *cafePb.AccountState) {
+	cfg := cafeAcc.Config
+	acc.Config = &model.AccountConfig{
+		EnableDataview:          cfg.EnableDataview,
+		EnableDebug:             cfg.EnableDebug,
+		EnablePrereleaseChannel: cfg.EnablePrereleaseChannel,
+		Extra:                   cfg.Extra,
+		EnableSpaces:            cfg.EnableSpaces,
+	}
+
+	st := cafeAcc.Status
+	acc.Status = &model.AccountStatus{
+		StatusType:   model.AccountStatusType(st.Status),
+		DeletionDate: st.DeletionDate,
+	}
 }

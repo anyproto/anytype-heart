@@ -1,4 +1,4 @@
-package files
+package config
 
 import (
 	"encoding/json"
@@ -37,7 +37,7 @@ func GetFileConfig(configPath string, cfg interface{}) error {
 	return nil
 }
 
-//WriteJsonConfig - overwrites params in file only specified params which passed in cfg
+// WriteJsonConfig - overwrites params in file only specified params which passed in cfg
 // `json:",omitempty"` - is required tag for every field in cfg !!!
 func WriteJsonConfig(configPath string, cfg interface{}) error {
 	oldCfg := make(map[string]interface{})

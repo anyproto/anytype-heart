@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
 )
 
 // TODO Move residual file methods here
@@ -70,7 +69,7 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 		fileName = f.Info().Name
 	}
 
-	path, err := files.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, countReader)
+	path, err := files2.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, countReader)
 	if err != nil {
 		return "", fmt.Errorf("save file: %w", err)
 	}

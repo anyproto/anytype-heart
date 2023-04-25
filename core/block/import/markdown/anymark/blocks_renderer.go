@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 )
 
@@ -133,7 +132,7 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle) {
 }
 
 func (r *blocksRenderer) GetBlocks() []*model.Block {
-	r.blocks = anyblocks.PreprocessBlocks(r.blocks)
+	r.blocks = preprocessBlocks(r.blocks)
 	return r.blocks
 }
 

@@ -2,12 +2,12 @@ package files
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"testing"
-)
 
+	"github.com/stretchr/testify/require"
+)
 
 func TestWriteReaderIntoFileIgnoreSameExistingFile(t *testing.T) {
 	t.Run("expect same path", func(t *testing.T) {
