@@ -13,6 +13,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/rand"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -83,7 +84,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		}
 	}
 
-	progress.SetTotal(int64(len(allSnapshots)) * 2)
+	progress.SetTotal(int64(len(allSnapshots)))
 	if allErrors.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots}, nil
 	}
@@ -181,10 +182,6 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	for name, file := range pbFiles {
 		if name == constant.ProfileFile || name == configFile {
 			continue
-		}
-		if err := progress.TryStep(1); err != nil {
-			ce := converter.NewFromError(name, err)
-			return nil, nil, ce
 		}
 		id := uuid.New().String()
 		rc := file.Reader
