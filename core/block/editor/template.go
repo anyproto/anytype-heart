@@ -55,10 +55,9 @@ func (t *Template) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 	if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypes()) != 2 || fixOt) {
-		s := t.NewState()
-		if targetType := pbtypes.Get(s.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue(); targetType != "" {
-			s.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
-			return t.Apply(s, smartblock.NoHistory, smartblock.NoEvent)
+		if targetType := pbtypes.Get(ctx.State.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue(); targetType != "" {
+			ctx.State.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
+			return t.Apply(ctx.State, smartblock.NoHistory, smartblock.NoEvent)
 		}
 	}
 	return
