@@ -146,11 +146,10 @@ func (b *builtinObjects) InjectMigrationDashboard() (err error) {
 	}
 
 	zf := zr.File[0]
-	id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
 	newId := obj.Id()
-	b.idsMap[id] = newId
+	b.idsMap = map[string]string{strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name)): newId}
 
-	b.handleSpaceDashboard(obj.Id())
+	b.handleSpaceDashboard(newId)
 
 	rd, err := zf.Open()
 	if err != nil {
