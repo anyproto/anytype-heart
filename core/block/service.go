@@ -901,7 +901,7 @@ func (s *Service) PickBlockOffload(ctx context.Context, id string) (sb smartbloc
 	return ob.SmartBlock, func() {
 		stillUsed := s.cache.Release(id)
 		if !stillUsed {
-			s.cache.Remove(id)
+			_, _ = s.cache.Remove(id)
 		}
 	}, nil
 }
