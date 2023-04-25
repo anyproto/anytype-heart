@@ -222,6 +222,7 @@ func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
 	source := converter.GetSourceDetail(name, path)
+	// not change source of bookmarks
 	if len(mo.Snapshot.Data.ObjectTypes) != 0 && mo.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyBookmark.URL() {
 		return
 	}
