@@ -42,6 +42,15 @@ jobs:
           brew tap filosottile/musl-cross
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Set env vars
         env:
           GITHUB_TOKEN: ${{ secrets.GH_KEY }}
@@ -56,15 +65,6 @@ jobs:
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anytypeio >> $GITHUB_ENV
           git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-      - name: Checkout
-        uses: actions/checkout@v2
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Go mod download
         run: |
           go mod download
@@ -195,6 +195,15 @@ jobs:
           tar xzf aarch64-linux-musl-cross.tgz -C $HOME
           tar xzf x86_64-linux-musl-native.tgz -C $HOME
           npm i -g node-gyp
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Set env vars
         env:
           GITHUB_TOKEN: ${{ secrets.GH_KEY }}
@@ -208,15 +217,6 @@ jobs:
           echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-      - name: Checkout
-        uses: actions/checkout@v2
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Go mod download
         run: |
           go mod download
