@@ -113,13 +113,6 @@ func (i *FileBadgerIndex) pingWorkCh() {
 }
 
 func (i *FileBadgerIndex) HasWorkCh() chan struct{} {
-	l, err := i.Len()
-	if err != nil {
-		return i.workCh
-	}
-	if l > 0 {
-		i.pingWorkCh()
-	}
 	return i.workCh
 }
 
