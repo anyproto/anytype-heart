@@ -11,7 +11,7 @@ type rpcHandler struct {
 }
 
 func (r *rpcHandler) SpacePull(ctx context.Context, request *spacesyncproto.SpacePullRequest) (resp *spacesyncproto.SpacePullResponse, err error) {
-	sp, err := r.s.AccountSpace(ctx, request.Id)
+	sp, err := r.s.GetSpace(ctx, request.Id)
 	if err != nil {
 		if err != spacesyncproto.ErrSpaceMissing {
 			err = spacesyncproto.ErrUnexpected
@@ -46,7 +46,7 @@ func (r *rpcHandler) SpacePush(ctx context.Context, req *spacesyncproto.SpacePus
 		SpaceSettingsId:      req.Payload.SpaceSettingsPayloadId,
 	}
 	ctx = context.WithValue(ctx, commonspace.AddSpaceCtxKey, description)
-	_, err = r.s.AccountSpace(ctx, description.SpaceHeader.GetId())
+	_, err = r.s.GetSpace(ctx, description.SpaceHeader.GetId())
 	if err != nil {
 		return
 	}
@@ -55,7 +55,7 @@ func (r *rpcHandler) SpacePush(ctx context.Context, req *spacesyncproto.SpacePus
 }
 
 func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncRequest) (*spacesyncproto.HeadSyncResponse, error) {
-	sp, err := r.s.AccountSpace(ctx, req.SpaceId)
+	sp, err := r.s.GetSpace(ctx, req.SpaceId)
 	if err != nil {
 		return nil, spacesyncproto.ErrSpaceMissing
 	}
@@ -67,7 +67,7 @@ func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_Object
 	if err != nil {
 		return err
 	}
-	sp, err := r.s.AccountSpace(stream.Context(), msg.SpaceId)
+	sp, err := r.s.GetSpace(stream.Context(), msg.SpaceId)
 	if err != nil {
 		return spacesyncproto.ErrSpaceMissing
 	}

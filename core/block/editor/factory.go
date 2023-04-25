@@ -25,7 +25,6 @@ type ObjectFactory struct {
 	objectStore          objectstore.ObjectStore
 	relationService      relation2.Service
 	sourceService        source.Service
-	accountMigrator      AccountMigrator
 	sendEvent            func(e *pb.Event)
 
 	app *app.App
@@ -44,7 +43,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.relationService = app.MustComponent[relation2.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
-	f.accountMigrator = app.MustComponent[AccountMigrator](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
 
 	f.app = a

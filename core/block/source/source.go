@@ -91,7 +91,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	}
 }
 
-func newTreeSource(a core.Service, ss status.Service, id string, listenToOwnChanges bool) (s Source, err error) {
+func newTreeSource(a core.Service, ss status.Service, sbt smartblock.SmartBlockType, id string, listenToOwnChanges bool) (s Source, err error) {
 	return &source{
 		id:                       id,
 		a:                        a,
@@ -99,7 +99,7 @@ func newTreeSource(a core.Service, ss status.Service, id string, listenToOwnChan
 		listenToOwnDeviceChanges: listenToOwnChanges,
 		logId:                    a.Device(),
 		openedAt:                 time.Now(),
-		smartblockType:           smartblock.SmartBlockTypePage,
+		smartblockType:           sbt,
 	}, nil
 }
 

@@ -2,6 +2,7 @@ package source
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
@@ -34,6 +35,7 @@ type Service interface {
 type service struct {
 	anytype       core.Service
 	statusService status.Service
+	typeProvider  typeprovider.ObjectTypeProvider
 
 	staticIds map[string]func() Source
 	mu        sync.Mutex
@@ -43,6 +45,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]func() Source)
 	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.statusService = a.MustComponent(status.CName).(status.Service)
+	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	return
 }
 
@@ -76,7 +79,14 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return newStatic(), nil
 	}
 
-	return newTreeSource(s.anytype, s.statusService, id, listenToOwnChanges)
+	// TODO: [MR] probably we can provide this type as a constructor parameter
+	//  and get this when we call load in cache
+	sbt, err := s.typeProvider.Type(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return newTreeSource(s.anytype, s.statusService, sbt, id, listenToOwnChanges)
 }
 
 func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {

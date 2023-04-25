@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipfs/go-ipns"
+	"github.com/libp2p/go-libp2p"
 	"io"
 	"time"
 

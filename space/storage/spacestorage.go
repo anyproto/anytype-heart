@@ -152,6 +152,22 @@ func (s *spaceStorage) StoredIds() (ids []string, err error) {
 	return
 }
 
+func (s *spaceStorage) TreeRoot(id string) (root *treechangeproto.RawTreeChangeWithId, err error) {
+	keys := newTreeKeys(s.spaceId, id)
+	err = s.objDb.View(func(txn *badger.Txn) error {
+		bytes, err := getTxn(txn, keys.RawChangeKey(id))
+		if err != nil {
+			return err
+		}
+		root = &treechangeproto.RawTreeChangeWithId{
+			RawChange: bytes,
+			Id:        id,
+		}
+		return nil
+	})
+	return
+}
+
 func (s *spaceStorage) SetTreeDeletedStatus(id, status string) (err error) {
 	return s.objDb.Update(func(txn *badger.Txn) error {
 		return txn.Set(s.keys.TreeDeletedKey(id), []byte(status))

@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"os"
 
 	"github.com/anytypeio/any-sync/app"
@@ -111,6 +112,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(storage.New()).
 		Register(commonspace.New()).
 		Register(space.New()).
+		Register(typeprovider.New()).
 		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).

@@ -114,7 +114,7 @@ func (g *gateway) Run(context.Context) error {
 
 // Close stops the gateway
 func (g *gateway) Close(ctx context.Context) (err error) {
-	err := g.stopServer()
+	err = g.stopServer()
 	return err
 }
 

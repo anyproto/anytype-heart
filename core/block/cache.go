@@ -134,7 +134,35 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
-	ctx = context.WithValue(ctx, spaceKey, space.Id())
+	return s.putCreatedObject(ctx, space.Id(), initFunc, create)
+}
+
+func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {
+	space, err := s.clientService.AccountSpace(ctx)
+	if err != nil {
+		return
+	}
+	payload := objecttree.ObjectTreeCreatePayload{
+		SignKey:     s.commonAccount.Account().SignKey,
+		ChangeType:  tp.ToProto().String(),
+		SpaceId:     space.Id(),
+		Identity:    s.commonAccount.Account().Identity,
+		IsEncrypted: true,
+	}
+	create, err := space.DeriveTree(context.Background(), payload)
+	if err != nil {
+		return
+	}
+	return s.putCreatedObject(ctx, space.Id(), initFunc, create)
+}
+
+func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.SmartBlock) (sb smartblock.SmartBlock, release func(), err error) {
+	ctx = context.WithValue(ctx, putObjectKey, obj)
+	return s.GetObject(ctx, id)
+}
+
+func (s *Service) putCreatedObject(ctx context.Context, spaceId string, initFunc InitFunc, create treestorage.TreeStorageCreatePayload) (sb smartblock.SmartBlock, release func(), err error) {
+	ctx = context.WithValue(ctx, spaceKey, spaceId)
 	ctx = context.WithValue(ctx, treeCreateKey, treeCreateCache{
 		treeCreate: create,
 		initFunc:   initFunc,
@@ -147,9 +175,4 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	return v.(smartblock.SmartBlock), func() {
 		s.cache.Release(id)
 	}, nil
-}
-
-func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.SmartBlock) (sb smartblock.SmartBlock, release func(), err error) {
-	ctx = context.WithValue(ctx, putObjectKey, obj)
-	return s.GetObject(ctx, id)
 }

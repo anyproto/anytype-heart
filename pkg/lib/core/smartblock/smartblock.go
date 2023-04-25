@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
-	"github.com/textileio/go-threads/core/thread"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type SmartBlockType uint64
@@ -90,10 +88,6 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	}
 
 	return SmartBlockTypePage, ErrNoSuchSmartblock
-}
-
-func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
-	panic("should not be used")
 }
 
 // Panics in case of incorrect sb type!

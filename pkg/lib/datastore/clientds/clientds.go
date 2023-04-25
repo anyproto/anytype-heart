@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/hashicorp/go-multierror"
 	"os"
 	"path/filepath"
 	"sort"
