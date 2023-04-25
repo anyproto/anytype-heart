@@ -10,7 +10,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const profileFile = "profile"
@@ -104,6 +106,7 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *proc
 			return &converter.Response{Error: importError}
 		}
 
+		mo.Snapshot.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(f.Name)
 		snapshot := &converter.Snapshot{
 			SbType:   sb.SmartBlockType(mo.SbType),
 			FileName: f.Name,

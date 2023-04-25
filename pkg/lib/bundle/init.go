@@ -9,6 +9,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -63,7 +64,7 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeyIsArchived,
 	RelationKeyTemplateIsBundled,
 	RelationKeyTag,
-	RelationKeySpaceDashboardId,
+	RelationKeyOldAnytypeID,
 }...)
 
 // InternalTypes contains the list of types that are not possible
@@ -86,7 +87,6 @@ var SystemTypes = append(InternalTypes, []TypeKey{
 	TypeKeyTask,
 	TypeKeyObjectType,
 	TypeKeySet,
-	TypeKeyCollection,
 	TypeKeyProfile,
 	TypeKeyTemplate,
 	TypeKeyBookmark,
@@ -102,7 +102,6 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
 	coresb.SmartBlockTypeProfilePage: TypeKeyPage,
 	coresb.SmartBlockTypeSet:         TypeKeySet,
-	coresb.SmartBlockTypeCollection:  TypeKeyCollection,
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
 	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
@@ -112,7 +111,6 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 var DefaultSmartblockTypePerObjectType = map[TypeKey]coresb.SmartBlockType{
 	TypeKeyPage:       coresb.SmartBlockTypePage,
 	TypeKeySet:        coresb.SmartBlockTypeSet,
-	TypeKeyCollection: coresb.SmartBlockTypeCollection,
 	TypeKeyObjectType: coresb.SmartBlockTypeObjectType,
 	TypeKeyTemplate:   coresb.SmartBlockTypeTemplate,
 	TypeKeyDashboard:  coresb.SmartBlockTypeHome,

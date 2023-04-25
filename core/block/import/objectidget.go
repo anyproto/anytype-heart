@@ -49,6 +49,10 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
 	getExisting bool) (string, bool, error) {
+	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
+	if id != "" {
+		return id, true, err
+	}
 	if sbType == sb.SmartBlockTypeSubObject {
 		return ou.getSubObjectID(sn, sbType)
 	}
@@ -71,6 +75,24 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	}
 	release()
 	return sb.Id(), false, nil
+}
+
+func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
+	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Details, bundle.RelationKeyOldAnytypeID.String())
+	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
+				Value:       pbtypes.String(oldAnytypeID),
+			},
+		},
+	}, []sb.SmartBlockType{sbType})
+	if err == nil && len(ids) > 0 {
+		return ids[0], nil
+	}
+
+	return "", err
 }
 
 func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {

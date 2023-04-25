@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "27849f86d15afe14d50deac524b679af690c376f30162cb073c4859db7ff60e7"
+const RelationChecksum = "900451df74fd73fbae5d4ce00b9b31cc023008797a1ca4f4cc2b2980be8c953a"
 
 type RelationKey string
 
@@ -183,7 +183,7 @@ const (
 	RelationKeySmartblockTypes           RelationKey = "smartblockTypes"
 	RelationKeySource                    RelationKey = "source"
 	RelationKeySourceObject              RelationKey = "sourceObject"
-	RelationKeySpaceDashboardId          RelationKey = "spaceDashboardId"
+	RelationKeyOldAnytypeID              RelationKey = "oldAnytypeID"
 )
 
 var (
@@ -1512,6 +1512,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyOldAnytypeID: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_broldAnytypeID",
+			Key:              "oldAnytypeID",
+			MaxCount:         1,
+			Name:             "Old Anytype ID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyOwner: {
 
 			DataSource:       model.Relation_details,
@@ -2048,19 +2061,6 @@ var (
 			MaxCount:         1,
 			Name:             "Source object",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySpaceDashboardId: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Space Dashboard object ID",
-			Format:           model.RelationFormat_object,
-			Id:               "_brspaceDashboardId",
-			Key:              "spaceDashboardId",
-			MaxCount:         1,
-			Name:             "Space Dashboard ID",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

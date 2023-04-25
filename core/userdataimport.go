@@ -147,15 +147,10 @@ func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcUs
 	if err != nil {
 		return err
 	}
-	for _, file := range archive.File {
-		path := filepath.Join(mw.rootPath, file.Name)
-		if file.FileInfo().IsDir() && strings.EqualFold(file.FileInfo().Name(), profile.Address) {
-			err = os.MkdirAll(path, file.Mode())
-			if err != nil {
-				return err
-			}
-			break
-		}
+	path := filepath.Join(mw.rootPath, profile.Address)
+	err = os.MkdirAll(path, 0700)
+	if err != nil {
+		return err
 	}
 	for _, file := range archive.File {
 		if strings.EqualFold(file.FileInfo().Name(), profile.Address) && file.FileInfo().IsDir() {

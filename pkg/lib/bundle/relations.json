@@ -1629,13 +1629,12 @@
     "source": "details"
   },
   {
-    "description": "Space Dashboard object ID",
-    "format": "object",
+    "format": "longtext",
     "hidden": false,
-    "key": "spaceDashboardId",
+    "key": "oldAnytypeID",
     "maxCount": 1,
-    "name": "Space Dashboard ID",
-    "readonly": false,
+    "name": "Old Anytype ID",
+    "readonly": true,
     "source": "details"
   }
 ]
