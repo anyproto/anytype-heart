@@ -31,7 +31,7 @@ var (
 
 	objectRestrictionsByLayout = map[model.ObjectTypeLayout]ObjectRestrictions{
 		model.ObjectType_basic:      {},
-		model.ObjectType_profile:    {model.Restrictions_LayoutChange, model.Restrictions_TypeChange, model.Restrictions_Delete},
+		model.ObjectType_profile:    {},
 		model.ObjectType_todo:       {},
 		model.ObjectType_set:        collectionRestrictions,
 		model.ObjectType_collection: collectionRestrictions,
