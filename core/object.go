@@ -428,23 +428,6 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		nodeExists[id] = struct{}{}
 	}
 
-	homeId := at.PredefinedBlocks().Home
-	if _, exists := nodeExists[homeId]; !exists {
-		// we don't index home object, but we DO index outgoing links from it
-		links, qErr := store.GetOutboundLinksById(homeId)
-		if qErr != nil {
-			log.Info("failed to query object links, err: ", err)
-		}
-		records = append(records, database.Record{&types.Struct{
-			Fields: map[string]*types.Value{
-				"id":        pbtypes.String(homeId),
-				"name":      pbtypes.String("Home"),
-				"iconEmoji": pbtypes.String("🏠"),
-				"links":     pbtypes.StringList(links),
-			},
-		}})
-	}
-
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 
