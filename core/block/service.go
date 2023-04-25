@@ -1122,8 +1122,8 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 	})
 }
 
-func (s *Service) ResetToState(pageId string, st *state.State) (err error) {
-	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
+func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
+	return s.Do(pageID, func(sb smartblock.SmartBlock) error {
 		return history.ResetToVersion(sb, st)
 	})
 }

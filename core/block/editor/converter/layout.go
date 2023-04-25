@@ -29,25 +29,28 @@ func ConvertLayout(st *state.State, fromLayout, toLayout model.ObjectTypeLayout)
 		}
 	}
 
-	if fromLayout == model.ObjectType_note {
-		if name, ok := st.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
-			textBlock, err := st.GetFirstTextBlock()
-			if err != nil {
-				return err
-			}
-			if textBlock != nil {
-				st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
-
-				for _, id := range textBlock.Model().ChildrenIds {
-					st.Unlink(id)
-				}
-				err = st.InsertTo(textBlock.Model().Id, model.Block_Bottom, textBlock.Model().ChildrenIds...)
-				if err != nil {
-					return fmt.Errorf("insert children: %w", err)
-				}
-				st.Unlink(textBlock.Model().Id)
-			}
-		}
+	if fromLayout != model.ObjectType_note {
+		return nil
 	}
+	if name, ok := st.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
+		textBlock, err := st.GetFirstTextBlock()
+		if err != nil {
+			return err
+		}
+		if textBlock == nil {
+			return nil
+		}
+		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
+
+		for _, id := range textBlock.Model().ChildrenIds {
+			st.Unlink(id)
+		}
+		err = st.InsertTo(textBlock.Model().Id, model.Block_Bottom, textBlock.Model().ChildrenIds...)
+		if err != nil {
+			return fmt.Errorf("insert children: %w", err)
+		}
+		st.Unlink(textBlock.Model().Id)
+	}
+
 	return nil
 }

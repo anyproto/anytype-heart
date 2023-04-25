@@ -280,7 +280,7 @@ func Test_ListImports(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = pbc.New(nil, nil)
+	i.converters["Notion"] = pbc.New(nil, nil, nil)
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
