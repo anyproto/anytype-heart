@@ -90,10 +90,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return nil, "", fmt.Errorf("relation create '%s'", err)
 	}
 
-	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(newID, sn, oldIDtoNew)
-	}
-
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
 
@@ -123,13 +119,10 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		if err = oc.createObjectsInWorkspace(newID, st); err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
-		}
+		oc.handleWorkspace(ctx, details, newID, st, oldIDtoNew, sn.Snapshot.Data.Details)
 		return nil, newID, nil
 	}
 
-	converter.UpdateObjectType(oldIDtoNew, st)
 	respDetails := oc.resetState(ctx, newID, st, details)
 
 	if isFavorite {
@@ -157,6 +150,24 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	return respDetails, newID, nil
+}
+
+func (oc *ObjectCreator) handleWorkspace(ctx *session.Context,
+	details []*pb.RpcObjectSetDetailsDetail,
+	newID string,
+	st *state.State,
+	oldToNew map[string]string,
+	d *types.Struct) {
+	if err := oc.createRelationsInWorkspace(newID, st); err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
+	}
+	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
+		return b.SetDetails(ctx, details, true)
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to set details %s: %s", newID, err.Error())
+	}
+	oc.setSpaceDashboardID(newID, d, oldToNew)
 }
 
 func (oc *ObjectCreator) getDetails(d *types.Struct) []*pb.RpcObjectSetDetailsDetail {
@@ -219,8 +230,8 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(newID string, sn *converter.Snapshot, oldIDtoNew map[string]string) {
-	spaceDashBoardID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String())
+func (oc *ObjectCreator) setSpaceDashboardID(newID string, details *types.Struct, oldIDtoNew map[string]string) {
+	spaceDashBoardID := pbtypes.GetString(details, bundle.RelationKeySpaceDashboardId.String())
 	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
 		e := block.Do(oc.service, newID, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
@@ -400,8 +411,8 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	st.StoreSlice(template.CollectionStoreKey, result)
 }
 
-// createObjectsInWorkspace compare current workspace store with imported and create objects, which are absent in current workspace
-func (oc *ObjectCreator) createObjectsInWorkspace(newID string, st *state.State) error {
+// createRelationsInWorkspace compare current workspace store with imported and create objects, which are absent in current workspace
+func (oc *ObjectCreator) createRelationsInWorkspace(newID string, st *state.State) error {
 	var ids []string
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
 		bs := b.NewState()
@@ -413,11 +424,9 @@ func (oc *ObjectCreator) createObjectsInWorkspace(newID string, st *state.State)
 	if err != nil {
 		return err
 	}
-	for _, id := range ids {
-		_, _, err = oc.service.AddSubObjectToWorkspace(id, newID)
-		if err != nil {
-			log.Errorf("can't add object to workspace: %s", err.Error())
-		}
+	_, _, err = oc.service.AddSubObjectsToWorkspace(ids, newID)
+	if err != nil {
+		return err
 	}
 	return nil
 }
