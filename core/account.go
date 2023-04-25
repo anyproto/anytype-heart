@@ -781,27 +781,10 @@ func (mw *Middleware) getBootstrapConfig(err error, req *pb.RpcAccountRecoverFro
 }
 
 func (mw *Middleware) setDetails(profile *pb.Profile, icon int64, err error) error {
-	profileDetails := []*pb.RpcObjectSetDetailsDetail{{
-		Key:   bundle.RelationKeyName.String(),
-		Value: pbtypes.String(profile.Name),
-	}, {
-		Key:   bundle.RelationKeyIconImage.String(),
-		Value: pbtypes.String(profile.Avatar),
-	}}
-	if profile.Avatar == "" {
-		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyIconOption.String(),
-			Value: pbtypes.Int64(icon),
-		})
-	}
-
-	accountDetails := []*pb.RpcObjectSetDetailsDetail{{
-		Key:   bundle.RelationKeyIconOption.String(),
-		Value: pbtypes.Int64(icon),
-	}}
-
+	profileDetails, accountDetails := buildDetails(profile, icon)
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
+
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   profileDetails,
@@ -815,6 +798,29 @@ func (mw *Middleware) setDetails(profile *pb.Profile, icon int64, err error) err
 		return err
 	}
 	return nil
+}
+
+func buildDetails(profile *pb.Profile, icon int64) (
+	profileDetails []*pb.RpcObjectSetDetailsDetail, accountDetails []*pb.RpcObjectSetDetailsDetail,
+) {
+	profileDetails = []*pb.RpcObjectSetDetailsDetail{{
+		Key:   bundle.RelationKeyName.String(),
+		Value: pbtypes.String(profile.Name),
+	}, {
+		Key:   bundle.RelationKeyIconImage.String(),
+		Value: pbtypes.String(profile.Avatar),
+	}}
+	if profile.Avatar == "" {
+		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyIconOption.String(),
+			Value: pbtypes.Int64(icon),
+		})
+	}
+	accountDetails = []*pb.RpcObjectSetDetailsDetail{{
+		Key:   bundle.RelationKeyIconOption.String(),
+		Value: pbtypes.Int64(icon),
+	}}
+	return
 }
 
 func extractConfig(archive *zip.ReadCloser) (*config.Config, error) {
