@@ -543,9 +543,11 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
 	return childBlocks, nil
 }
 
-func (m *Markdown) setNewID(files map[string]*FileInfo,
+func (m *Markdown) setNewID(
+	files map[string]*FileInfo,
 	progress process.Progress,
-	details map[string]*types.Struct) converter.ConvertError {
+	details map[string]*types.Struct,
+) converter.ConvertError {
 	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
