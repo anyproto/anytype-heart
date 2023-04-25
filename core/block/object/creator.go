@@ -229,7 +229,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	}
 
 	if len(req.Source) > 0 {
-		req.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.StringList(req.Source)
+		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
 	}
 
 	if blockContent != nil {
