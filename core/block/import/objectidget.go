@@ -55,13 +55,16 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 	}
 
 	if sbType == sb.SmartBlockTypeSubObject {
-		ot := snapshot.ObjectTypes
-		req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
-		id, _, err := ou.service.CreateObject(req, "")
-		if err != nil && err != editor.ErrSubObjectAlreadyExists {
-			return "", true, nil
+		if len(snapshot.ObjectTypes) > 0 {
+			ot := snapshot.ObjectTypes
+			req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
+			id, _, err := ou.service.CreateObject(req, "")
+			if err != nil && err != editor.ErrSubObjectAlreadyExists {
+				return "", true, nil
+			}
+			return id, false, nil
 		}
-		return id, false, nil
+		return "", false, nil
 	}
 
 	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeySource.String()] != nil && updateExisting {

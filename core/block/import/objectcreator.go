@@ -121,16 +121,15 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		err = oc.service.Do(newID, func(b sb.SmartBlock) error {
-			if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
-				if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
-					err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID)
-					if err != nil {
-						log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
-					}
+		if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
+			if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
+				err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID)
+				if err != nil {
+					log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
 				}
 			}
-
+		}
+		err = oc.service.Do(newID, func(b sb.SmartBlock) error {
 			return b.SetDetails(ctx, details, true)
 		})
 		if err != nil {
