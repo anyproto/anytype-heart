@@ -19,6 +19,10 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 		targetPos     int
 	)
 
+	if len(ids) == 0 {
+		return
+	}
+
 	if targetId == "" {
 		reqPos = model.Block_Inner
 		target = s.Get(s.RootId())
