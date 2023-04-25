@@ -38,7 +38,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
+	"github.com/anytypeio/go-anytype-middleware/core/syncstatus"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -123,7 +123,7 @@ type TemplateIDGetter interface {
 
 type Service struct {
 	anytype         core.Service
-	status          status.Service
+	syncStatus      syncstatus.Service
 	sendEvent       func(event *pb.Event)
 	closed          bool
 	linkPreview     linkpreview.LinkPreview
@@ -155,7 +155,7 @@ func (s *Service) Name() string {
 
 func (s *Service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
-	s.status = a.MustComponent(status.CName).(status.Service)
+	s.syncStatus = a.MustComponent(syncstatus.CName).(syncstatus.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
@@ -215,7 +215,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	_, err = s.status.Watch(id, func() []string {
+	_, err = s.syncStatus.Watch(id, func() []string {
 		ob.Lock()
 		defer ob.Unlock()
 		bs := ob.NewState()
@@ -224,7 +224,7 @@ func (s *Service) OpenBlock(
 	})
 	if err == nil {
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
-			s.status.Unwatch(id)
+			s.syncStatus.Unwatch(id)
 			return nil
 		}, smartblock.HookOnClose)
 	}
