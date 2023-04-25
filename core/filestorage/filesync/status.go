@@ -164,7 +164,9 @@ func (s *StatusWatcher) Watch(spaceID, fileID string) {
 		s.filesToWatch[key] = struct{}{}
 	}
 
-	s.updateCh <- key
+	go func() {
+		s.updateCh <- key
+	}()
 }
 
 func (s *StatusWatcher) Unwatch(spaceID, fileID string) {
