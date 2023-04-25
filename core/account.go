@@ -732,22 +732,12 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	var (
-		address    string
-		account    wallet.Keypair
-		newAccount bool
-	)
-	if len(mw.foundAccounts) > 0 {
-		address = mw.foundAccounts[0].GetInfo().GetAccountSpaceId()
-	} else {
-		account, err = core.WalletAccountAt(mw.mnemonic, 0, "")
-		if err != nil {
-			return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
-		}
-		address = account.Address()
-		newAccount = true
+	address, account, newAccount, err := mw.getAccountID(profile)
+	if err != nil {
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
-	if profile.Address != address {
+
+	if address == "" || profile.Address != address {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
 	}
 
@@ -792,6 +782,20 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
+	code, err := mw.setDetails(profile, err)
+	if err != nil {
+		return code, err
+	}
+
+	if newAccount {
+		avatar := &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: profile.Avatar}}}
+		newAcc := &model.Account{Id: address, Name: profile.Name, Avatar: avatar, Info: mw.getInfo()}
+		mw.foundAccounts = append(mw.foundAccounts, newAcc)
+	}
+	return pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
+}
+
+func (mw *Middleware) setDetails(profile *pb.Profile, err error) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
 	details = append(details, &pb.RpcObjectSetDetailsDetail{
 		Key:   "iconImage",
@@ -806,13 +810,32 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	}); err != nil {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
-
-	if newAccount {
-		avatar := &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: profile.Avatar}}}
-		newAcc := &model.Account{Id: address, Name: profile.Name, Avatar: avatar, Info: mw.getInfo()}
-		mw.foundAccounts = append(mw.foundAccounts, newAcc)
-	}
 	return pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
+}
+
+func (mw *Middleware) getAccountID(profile *pb.Profile) (string, wallet.Keypair, bool, error) {
+	var (
+		address    string
+		account    wallet.Keypair
+		err        error
+		newAccount bool
+	)
+	if len(mw.foundAccounts) > 0 {
+		for _, foundAccount := range mw.foundAccounts {
+			if profile.Address == foundAccount.GetId() {
+				address = foundAccount.GetId()
+				break
+			}
+		}
+	} else {
+		account, err = core.WalletAccountAt(mw.mnemonic, 0, "")
+		if err != nil {
+			return "", nil, false, err
+		}
+		address = account.Address()
+		newAccount = true
+	}
+	return address, account, newAccount, err
 }
 
 func extractConfig(archive *zip.ReadCloser) (*config.Config, error) {
