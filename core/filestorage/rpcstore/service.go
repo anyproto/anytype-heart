@@ -1,3 +1,4 @@
+//go:generate mockgen -destination mock_rpcstore/mock_rpcstore.go github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore Service,RpcStore
 package rpcstore
 
 import (

@@ -30,7 +30,7 @@ type FileSync interface {
 	RemoveFile(spaceId, fileId string) (err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
-	SyncStatus(ctx context.Context, spaceId, fileId string) (ss SyncStatus, err error)
+	SyncStatus() (ss SyncStatus, err error)
 	app.ComponentRunnable
 }
 
@@ -50,8 +50,7 @@ type FileStat struct {
 }
 
 type SyncStatus struct {
-	FileIdsInProgress []string
-	FileIdsInQueue    []string
+	QueueLen int
 }
 
 type fileSync struct {
@@ -117,18 +116,40 @@ func (f *fileSync) RemoveFile(spaceId, fileId string) (err error) {
 }
 
 func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error) {
-	//TODO implement me
-	panic("implement me")
+	info, err := f.rpcStore.SpaceInfo(ctx, spaceId)
+	if err != nil {
+		return
+	}
+	return SpaceStat{
+		SpaceId:    spaceId,
+		FileCount:  int(info.FilesCount),
+		CidsCount:  int(info.CidsCount),
+		BytesUsage: int(info.UsageBytes),
+		BytesLimit: int(info.LimitBytes),
+	}, nil
 }
 
 func (f *fileSync) FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error) {
-	//TODO implement me
-	panic("implement me")
+	fi, err := f.rpcStore.FilesInfo(ctx, spaceId, fileId)
+	if err != nil {
+		return
+	}
+	return FileStat{
+		SpaceId:    spaceId,
+		FileId:     fileId,
+		CidCount:   int(fi[0].CidsCount),
+		BytesUsage: int(fi[0].UsageBytes),
+	}, nil
 }
 
-func (f *fileSync) SyncStatus(ctx context.Context, spaceId, fileId string) (ss SyncStatus, err error) {
-	//TODO implement me
-	panic("implement me")
+func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
+	ql, err := f.queue.QueueLen()
+	if err != nil {
+		return
+	}
+	return SyncStatus{
+		QueueLen: ql,
+	}, nil
 }
 
 func (f *fileSync) addLoop() {
@@ -150,6 +171,11 @@ func (f *fileSync) addLoop() {
 			if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
 				log.Warn("upload file error", zap.Error(err))
 				break
+			} else {
+				if err = f.queue.DoneUpload(spaceId, fileId); err != nil {
+					log.Warn("can't mark upload task as done", zap.Error(err))
+					break
+				}
 			}
 		}
 	}
@@ -160,7 +186,7 @@ func (f *fileSync) removeLoop() {
 		select {
 		case <-f.loopCtx.Done():
 			return
-		case <-f.uploadPingCh:
+		case <-f.removePingCh:
 		case <-time.After(loopTimeout):
 		}
 		for {
@@ -174,6 +200,11 @@ func (f *fileSync) removeLoop() {
 			if err = f.removeFile(f.loopCtx, spaceId, fileId); err != nil {
 				log.Warn("remove file error", zap.Error(err))
 				break
+			} else {
+				if err = f.queue.DoneRemove(spaceId, fileId); err != nil {
+					log.Warn("can't mark remove task as done", zap.Error(err))
+					break
+				}
 			}
 		}
 	}
@@ -224,7 +255,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 
 func (f *fileSync) dagWalk(ctx context.Context, node ipld.Node, batcher *mb.MB[blocks.Block]) (err error) {
 	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
-	return walker.Iterate(func(node ipld.NavigableNode) error {
+	err = walker.Iterate(func(node ipld.NavigableNode) error {
 		b, err := blocks.NewBlockWithCid(node.GetIPLDNode().RawData(), node.GetIPLDNode().Cid())
 		if err != nil {
 			return err
@@ -234,6 +265,10 @@ func (f *fileSync) dagWalk(ctx context.Context, node ipld.Node, batcher *mb.MB[b
 		}
 		return nil
 	})
+	if err == ipld.EndOfDag {
+		err = nil
+	}
+	return
 }
 
 func (f *fileSync) removeFile(ctx context.Context, spaceId, fileId string) (err error) {

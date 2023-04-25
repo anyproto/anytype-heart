@@ -24,6 +24,7 @@ func newClient(ctx context.Context, s *service, peerId string, tq *mb.MB[*task])
 	if err := c.checkConnectivity(ctx); err != nil {
 		return nil, err
 	}
+	log.Debug("starting client for peer", zap.String("peer", peerId), zap.Strings("spaces", c.spaceIds))
 	var runCtx context.Context
 	runCtx, c.opLoopCtxCancel = context.WithCancel(context.Background())
 	go c.opLoop(runCtx)
@@ -202,11 +203,11 @@ func (c *client) checkConnectivity(ctx context.Context) (err error) {
 	return
 }
 
-func (c *client) TryClose(objectTTL time.Duration) (bool, error) {
-	if time.Now().Sub(c.stat.lastUsage) < objectTTL {
-		return false, nil
+func (c *client) TryClose(objectTTL time.Duration) (res bool, err error) {
+	if time.Now().After(c.stat.LastUsage().Add(objectTTL)) {
+		return true, c.Close()
 	}
-	return true, c.Close()
+	return false, nil
 }
 
 func (c *client) Close() error {

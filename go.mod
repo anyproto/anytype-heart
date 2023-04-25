@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.17-0.20230319154028-49248b02b38b
+	github.com/anytypeio/any-sync v0.0.25-0.20230319162316-935a95c247f0
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -43,12 +43,11 @@ require (
 	github.com/hsanjuan/ipfs-lite v1.5.0
 	github.com/huandu/skiplist v1.2.0
 	github.com/improbable-eng/grpc-web v0.14.1
-	github.com/ipfs/go-block-format v0.1.1
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger v0.3.1-0.20211203181443-9205b3779632
 	github.com/ipfs/go-ds-flatfs v0.5.1
-	github.com/ipfs/go-ipfs-blockstore v1.2.0
+	github.com/ipfs/go-ipfs-blockstore v1.3.0
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-ipns v0.3.0
@@ -57,7 +56,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-merkledag v0.10.0
 	github.com/ipfs/go-path v0.3.0
-	github.com/ipfs/go-unixfs v0.4.3
+	github.com/ipfs/go-unixfs v0.4.4
 	github.com/ipfs/interface-go-ipfs-core v0.10.0
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -95,9 +94,9 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230129154200-a960b3787bd2
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
-	golang.org/x/net v0.7.0
+	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
-	golang.org/x/text v0.7.0
+	golang.org/x/text v0.8.0
 	google.golang.org/grpc v1.47.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v2 v2.4.0
@@ -181,6 +180,7 @@ require (
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
 	github.com/ipfs/go-bitswap v0.11.0 // indirect
+	github.com/ipfs/go-block-format v0.1.1 // indirect
 	github.com/ipfs/go-blockservice v0.5.0 // indirect
 	github.com/ipfs/go-cidutil v0.1.0 // indirect
 	github.com/ipfs/go-fetcher v1.6.1 // indirect
@@ -273,10 +273,10 @@ require (
 	go.uber.org/dig v1.15.0 // indirect
 	go.uber.org/fx v1.18.2 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/tools v0.3.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220114231437-d2e6a121cae0 // indirect
