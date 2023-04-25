@@ -137,14 +137,13 @@ func (s *service) IDsListerBySmartblockType(blockType smartblock.SmartBlockType)
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
-		} else {
-			return &source{
-				smartblockType: blockType,
-				coreService:    s.coreService,
-				spaceService:   s.spaceService,
-				sbtProvider:    s.sbtProvider,
-			}, nil
 		}
+		return &source{
+			smartblockType: blockType,
+			coreService:    s.coreService,
+			spaceService:   s.spaceService,
+			sbtProvider:    s.sbtProvider,
+		}, nil
 	}
 }
 
