@@ -134,6 +134,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			switch layout {
 			case model.ObjectType_note:
 				templates = append(templates,
+					template.WithNameToFirstBlock,
 					template.WithNoTitle,
 					template.WithNoDescription,
 				)

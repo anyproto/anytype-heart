@@ -230,23 +230,8 @@ func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
 }
 
 func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
-	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
-	if ok && name.GetStringValue() != "" {
-		newBlock := simple.New(&model.Block{
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Text: name.GetStringValue()},
-			},
-		})
-		st.Add(newBlock)
-
-		if err := st.InsertTo(template.HeaderLayoutId, model.Block_Bottom, newBlock.Model().Id); err != nil {
-			return err
-		}
-
-		st.RemoveDetail(bundle.RelationKeyName.String())
-	}
-
 	template.InitTemplate(st,
+		template.WithNameToFirstBlock,
 		template.WithNoTitle,
 		template.WithNoDescription,
 	)

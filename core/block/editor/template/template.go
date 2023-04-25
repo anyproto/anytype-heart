@@ -178,7 +178,7 @@ var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
 	return WithDetail(bundle.RelationKeyIconEmoji, pbtypes.String(iconEmoji))
 }
 
-var WithHeader = StateTransformer(func(s *state.State) {
+var RequireHeader = StateTransformer(func(s *state.State) {
 	WithEmpty(s)
 	if s.Exists(HeaderLayoutId) {
 		parent := s.PickParentOf(HeaderLayoutId)
@@ -213,7 +213,7 @@ var WithHeader = StateTransformer(func(s *state.State) {
 })
 
 var WithTitle = StateTransformer(func(s *state.State) {
-	WithHeader(s)
+	RequireHeader(s)
 
 	var (
 		align model.BlockAlign
@@ -317,7 +317,7 @@ var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.Sta
 })
 
 var WithForcedDescription = func(s *state.State) {
-	WithHeader(s)
+	RequireHeader(s)
 
 	var align model.BlockAlign
 	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
@@ -363,7 +363,7 @@ var WithForcedDescription = func(s *state.State) {
 }
 
 var WithDescription = func(s *state.State) {
-	WithHeader(s)
+	RequireHeader(s)
 
 	WithAddedFeaturedRelation(bundle.RelationKeyDescription)(s)
 	if !s.Exists(DescriptionBlockId) {
@@ -407,8 +407,28 @@ var WithNoDescription = StateTransformer(func(s *state.State) {
 	s.Unlink(DescriptionBlockId)
 })
 
+var WithNameToFirstBlock = StateTransformer(func(s *state.State) {
+	RequireHeader(s)
+
+	name, ok := s.Details().Fields[bundle.RelationKeyName.String()]
+	if ok && name.GetStringValue() != "" {
+		newBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: name.GetStringValue()},
+			},
+		})
+		s.Add(newBlock)
+
+		if err := s.InsertTo(HeaderLayoutId, model.Block_Bottom, newBlock.Model().Id); err != nil {
+			log.Errorf("WithNameToFirstBlock failed to insert: %s", err)
+		} else {
+			s.RemoveDetail(bundle.RelationKeyName.String())
+		}
+	}
+})
+
 var WithFeaturedRelations = StateTransformer(func(s *state.State) {
-	WithHeader(s)
+	RequireHeader(s)
 
 	var align model.BlockAlign
 	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {

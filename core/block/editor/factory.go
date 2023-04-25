@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -115,14 +114,6 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	err = sb.Init(initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
-	}
-
-	basicEditor := basic.NewBasic(sb, f.objectStore, f.relationService, f.layoutConverter)
-	if len(initCtx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
-		err = basicEditor.SetObjectTypesInState(initCtx.State, initCtx.ObjectTypeUrls)
-		if err != nil {
-			return nil, fmt.Errorf("set object types in state: %w", err)
-		}
 	}
 
 	err = migration.RunMigrations(sb, initCtx)
