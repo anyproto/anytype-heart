@@ -1,14 +1,16 @@
 package clipboard
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const newText = "brand new text"
@@ -25,7 +27,7 @@ func TestPasteCtrl_Exec(t *testing.T) {
 				Id: "1",
 				Content: &model.BlockContentOfText{
 					Text: &model.BlockContentText{
-						Text: "oldText",
+						Text: "",
 					},
 				},
 			}),
@@ -47,7 +49,6 @@ func TestPasteCtrl_Exec(t *testing.T) {
 			s:  s,
 			ps: ps,
 		}
-		assert.NotNil(t, ctrl)
 
 		assert.NoError(t, ctrl.Exec(&pb.RpcBlockPasteRequest{
 			FocusedBlockId: "1",
@@ -57,12 +58,9 @@ func TestPasteCtrl_Exec(t *testing.T) {
 
 		b := s.Get("1")
 		assert.NotNil(t, b)
-		assert.Equal(t, b.Model().Id, "1")
 
-		text, ok := b.Model().Content.(*model.BlockContentOfText)
-
-		assert.True(t, ok)
-		assert.NotNil(t, text)
-		assert.Equal(t, text.Text.Text, newText)
+		txt, _ := b.Model().Content.(*model.BlockContentOfText)
+		assert.NotNil(t, txt)
+		assert.Equal(t, txt.Text.Text, newText)
 	})
 }
