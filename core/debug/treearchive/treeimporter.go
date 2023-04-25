@@ -64,7 +64,7 @@ func (t *treeImporter) Import(beforeId string) (err error) {
 }
 
 func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
-	i := 0
+	i := 1
 	err = t.objectTree.IterateRoot(func(decrypted []byte) (any, error) {
 		ch := &pb.Change{}
 		err := proto.Unmarshal(decrypted, ch)
