@@ -116,7 +116,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
 	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
-	indexerService := indexer.New(blockService, spaceService)
 	relationService := relation.New()
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
@@ -139,6 +138,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	statusService := status.New(sbtProvider, coreService, fileStatusWatcher, objectStatusWatcher, subObjectsStatusWatcher, linkedFilesStatusWatcher)
 
 	fileService := files.New(fileSyncStatusWatcher)
+
+	indexerService := indexer.New(blockService, spaceService, fileSyncStatusWatcher)
 
 	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).
@@ -175,9 +176,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coreService).
 		Register(builtintemplate.New()).
 		Register(blockService).
-		Register(indexerService).
 		Register(syncStatusIndexer).
 		Register(fileSyncStatusWatcher).
+		Register(indexerService).
 		Register(linkedFilesStatusWatcher).
 		Register(statusService).
 		Register(history.New()).
