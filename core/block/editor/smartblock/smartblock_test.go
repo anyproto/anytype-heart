@@ -50,7 +50,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 			event = e
 		})
 		fx.source.EXPECT().Heads()
-		fx.source.EXPECT().PushChange(gomock.Any())
+		fx.source.EXPECT().PushChange(gomock.Any()).Return("fake_change_id", nil)
 		fx.indexer.EXPECT().Index(gomock.Any(), gomock.Any())
 		err := fx.Apply(s)
 		require.NoError(t, err)
