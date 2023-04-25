@@ -60,10 +60,17 @@ type Config struct {
 	CafePeerId      string
 	CafeAPIInsecure bool
 
+	DebugAddr string
+
 	Threads           threads.Config
 	DS                clientds.Config
 	FS                clientds.FSConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
+}
+
+type DebugAPIConfig struct {
+	commonnet.Config
+	IsEnabled bool
 }
 
 const (
@@ -106,6 +113,12 @@ func WithStagingCafe(isStaging bool) func(*Config) {
 			c.CafeAddr = "cafe-staging.anytype.io"
 			c.CafePeerId = "12D3KooWPGR6LQyTEtBzFnJ7fGEMe6hKiQKeNof29zLH4bGq2djR"
 		}
+	}
+}
+
+func WithDebugAddr(addr string) func(*Config) {
+	return func(c *Config) {
+		c.DebugAddr = addr
 	}
 }
 
@@ -278,13 +291,16 @@ func (c *Config) GetNet() commonnet.Config {
 	}
 }
 
-func (c *Config) GetDebugNet() commonnet.Config {
-	return commonnet.Config{
-		Server: commonnet.ServerConfig{ListenAddrs: []string{"127.0.0.1:8090"}},
-		Stream: commonnet.StreamConfig{
-			TimeoutMilliseconds: 1000,
-			MaxMsgSizeMb:        256,
+func (c *Config) GetDebugAPIConfig() DebugAPIConfig {
+	return DebugAPIConfig{
+		Config: commonnet.Config{
+			Server: commonnet.ServerConfig{ListenAddrs: []string{c.DebugAddr}},
+			Stream: commonnet.StreamConfig{
+				TimeoutMilliseconds: 1000,
+				MaxMsgSizeMb:        256,
+			},
 		},
+		IsEnabled: len(c.DebugAddr) != 0,
 	}
 }
 
