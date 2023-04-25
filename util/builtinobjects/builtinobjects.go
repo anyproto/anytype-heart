@@ -256,11 +256,15 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	}
 	start := time.Now()
 	err = b.service.Do(newId, func(b sb.SmartBlock) error {
-		return b.Apply(st)
+		return b.ResetToVersion(st)
 	})
 	if err != nil {
 		return err
 	}
+	err = b.service.Do(newId, func(b sb.SmartBlock) error {
+		return nil
+	})
+
 	log.With("timeMs", time.Now().Sub(start).Milliseconds()).Info("creating debug obj")
 
 	if isFavorite {
