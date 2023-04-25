@@ -1790,11 +1790,12 @@ message Rpc {
                     HtmlParams htmlParams = 5;
                     TxtParams txtParams = 6;
                     PbParams pbParams = 7;
+                    CsvParams csvParams = 8;
                 }
-                repeated Snapshot snapshots = 8; // optional, for external developers usage
-                bool updateExistingObjects = 9;
-                Type type = 10;
-                Mode mode = 11;
+                repeated Snapshot snapshots = 9; // optional, for external developers usage
+                bool updateExistingObjects = 10;
+                Type type = 11;
+                Mode mode = 12;
 
                 message NotionParams {
                     string apiKey = 1;
@@ -1825,6 +1826,10 @@ message Rpc {
                     string path = 1;
                 }
 
+                message CsvParams {
+                    repeated string path = 1;
+                }
+
                 enum Mode {
                     ALL_OR_NOTHING = 0;
                     IGNORE_ERRORS = 1;
@@ -1841,6 +1846,7 @@ message Rpc {
                     Migration = 3;
                     Html = 4;
                     Txt = 5;
+                    Csv = 6;
                 };
 
             }

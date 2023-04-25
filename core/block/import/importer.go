@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/csv"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -28,6 +29,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
 var log = logging.Logger("import")
@@ -40,11 +42,16 @@ type Import struct {
 	oc              Creator
 	objectIDGetter  IDGetter
 	tempDirProvider core.TempDirProvider
+	sbtProvider     typeprovider.SmartBlockTypeProvider
 }
 
-func New(tempDirProvider core.TempDirProvider) Importer {
+func New(
+	tempDirProvider core.TempDirProvider,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
+) Importer {
 	return &Import{
 		tempDirProvider: tempDirProvider,
+		sbtProvider:     sbtProvider,
 		converters:      make(map[string]converter.Converter, 0),
 	}
 }
@@ -53,15 +60,15 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.s = a.MustComponent(block.CName).(*block.Service)
 	coreService := a.MustComponent(core.CName).(core.Service)
 	col := app.MustComponent[*collection.Service](a)
-
 	converters := []converter.Converter{
-		markdown.New(i.tempDirProvider, col),
+		markdown.New(i.tempDirProvider),
 		notion.New(col),
-		pbc.New(col),
+		pbc.New(i.sbtProvider),
 		web.NewConverter(),
 		newinfra.New(),
-		html.New(col),
-		txt.New(col),
+		html.New(),
+		txt.New(),
+		csv.New(col),
 	}
 	for _, c := range converters {
 		i.converters[c.Name()] = c
