@@ -292,19 +292,9 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 }
 
 func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string, justCreated bool) (err error) {
-	var subObj SubObjectImpl
 	if len(strings.Split(subId, addr.SubObjectCollectionIdSeparator)) > 1 {
 		// handle invalid cases for our own accounts
 		return fmt.Errorf("invalid id: %s", subId)
-	}
-
-	switch collection {
-	case collectionKeyObjectTypes:
-		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService, c.sbtProvider)
-	case collectionKeyRelations:
-		subObj = NewRelation(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider)
-	case collectionKeyRelationOptions:
-		subObj = NewRelationOption(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider)
 	}
 
 	var fullId string
@@ -315,11 +305,6 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		fullId = collection + addr.SubObjectCollectionIdSeparator + subId
 	}
 
-	workspaceID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
-	if workspaceID == "" {
-		// SubObjectCollection is used only workspaces now so get ID from the workspace object
-		workspaceID = st.RootId()
-	}
 	if v := st.StoreKeysRemoved(); v != nil {
 		if _, exists := v[fullId]; exists {
 			log.Errorf("initSubObject %s: found keyremoved, calling removeObject", fullId)
@@ -336,21 +321,32 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		}
 	}
 
+	workspaceID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
+	if workspaceID == "" {
+		// SubObjectCollection is used only workspaces now so get ID from the workspace object
+		workspaceID = st.RootId()
+	}
 	subState, err := SubState(st, collection, fullId, workspaceID)
 	if err != nil {
 		return
 	}
-
 	if justCreated {
 		det := subState.CombinedDetails()
 		internalflag.PutToDetails(det, []*model.InternalFlag{{Value: model.InternalFlag_editorDeleteEmpty}})
 		subState.SetDetails(det)
 		// inject the internal flag to the state
 	}
+
+	subObj, err := c.newSubObject(collection)
+	if err != nil {
+		return fmt.Errorf("new sub-object: %w", err)
+	}
+
 	if _, exists := c.collections[collection]; !exists {
 		c.collections[collection] = map[string]SubObjectImpl{}
 	}
 	c.collections[collection][subId] = subObj
+
 	if err = subObj.Init(&smartblock.InitContext{
 		Source: c.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, c.onSubObjectChange(collection, subId)),
 		App:    c.app,
@@ -359,6 +355,19 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	}
 
 	return
+}
+
+func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, error) {
+	switch collection {
+	case collectionKeyObjectTypes:
+		return NewObjectType(c.anytype, c.objectStore, c.relationService, c.sbtProvider), nil
+	case collectionKeyRelations:
+		return NewRelation(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider), nil
+	case collectionKeyRelationOptions:
+		return NewRelationOption(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider), nil
+	default:
+		return nil, fmt.Errorf("unknown collection: %s", collection)
+	}
 }
 
 func SubState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
