@@ -399,7 +399,6 @@ func (bs *basic) FeaturedRelationAdd(ctx *session.Context, relations ...string) 
 	}
 	if len(frc) != len(fr) {
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
-		template.WithDescription(s)
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
@@ -421,7 +420,6 @@ func (bs *basic) FeaturedRelationRemove(ctx *session.Context, relations ...strin
 	}
 	if len(frc) != len(fr) {
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
-		template.WithDescription(s)
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
