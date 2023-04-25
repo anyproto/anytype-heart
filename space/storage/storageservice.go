@@ -38,6 +38,10 @@ func (s *storageService) SpaceStorage(id string) (spacestorage.SpaceStorage, err
 	return newSpaceStorage(s.db, id)
 }
 
+func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (spacestorage.SpaceStorage, error) {
+	return newSpaceStorage(s.db, id)
+}
+
 func (s *storageService) SpaceExists(id string) bool {
 	return s.db.View(func(txn *badger.Txn) error {
 		_, err := getTxn(txn, newSpaceKeys(id).HeaderKey())

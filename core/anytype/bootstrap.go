@@ -7,12 +7,14 @@ import (
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/secureservice"
+	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anytypeio/go-anytype-middleware/space/streammanager"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
@@ -119,11 +121,13 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(secureservice.New()).
 		Register(dialer.New()).
 		Register(pool.New()).
+		Register(streampool.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(space.New()).
+		Register(streammanager.New()).
 		Register(typeprovider.New()).
 		Register(relation.New()).
 		Register(ftsearch.New()).

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
+	"github.com/anytypeio/any-sync/net/peer"
 )
 
 type rpcHandler struct {
@@ -59,17 +60,13 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 	if err != nil {
 		return nil, spacesyncproto.ErrSpaceMissing
 	}
-	return sp.SpaceSyncRpc().HeadSync(ctx, req)
+	return sp.HeadSync().HandleRangeRequest(ctx, req)
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
-	msg, err := stream.Recv()
+	peerId, err := peer.CtxPeerId(stream.Context())
 	if err != nil {
 		return err
 	}
-	sp, err := r.s.GetSpace(stream.Context(), msg.SpaceId)
-	if err != nil {
-		return spacesyncproto.ErrSpaceMissing
-	}
-	return sp.SpaceSyncRpc().Stream(stream)
+	return r.s.streamPool.ReadStream(peerId, stream)
 }

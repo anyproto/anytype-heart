@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anytypeio/any-sync/net/streampool"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type Service interface {
 	AccountId() string
 	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
+	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
 }
 
@@ -34,6 +36,7 @@ type service struct {
 	commonSpace          commonspace.SpaceService
 	account              accountservice.Service
 	spaceStorageProvider spacestorage.SpaceStorageProvider
+	streamPool           streampool.StreamPool
 	accountId            string
 }
 
@@ -42,6 +45,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(spacestorage.SpaceStorageProvider)
+	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(&streamHandler{s: s})
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),
@@ -96,6 +100,10 @@ func (s *service) GetSpace(ctx context.Context, id string) (space commonspace.Sp
 	return v.(commonspace.Space), nil
 }
 
+func (s *service) StreamPool() streampool.StreamPool {
+	return s.streamPool
+}
+
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
 	cc, err := s.commonSpace.NewSpace(ctx, id)
 	if err != nil {
@@ -110,6 +118,14 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 		return
 	}
 	return ns, nil
+}
+
+func (s *service) getOpenedSpaceIds() (ids []string) {
+	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
+		ids = append(ids, v.(commonspace.Space).Id())
+		return true
+	})
+	return
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
