@@ -63,15 +63,17 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	return &Result{snapshot: sn, relations: relations, ce: ce}
 }
 
-func (pt *Task) transformPages(ctx context.Context,
+func (pt *Task) transformPages(
+	ctx context.Context,
 	apiKey string,
 	p Page,
 	mode pb.RpcObjectImportRequestMode,
-	request *block.MapRequest) (*model.SmartBlockSnapshotBase, []*converter.Relation, converter.ConvertError) {
-	details := pt.prepareDetails(p)
+	request *block.MapRequest) (*model.SmartBlockSnapshotBase, []*converter.Relation, converter.ConvertError,
+) {
+
 	allErrors := converter.ConvertError{}
-	relations := pt.handlePageProperties(ctx, apiKey, p.ID, p.Properties, details, request)
-	addCoverDetail(p, details)
+	details, relations := pt.handleDetails(ctx, apiKey, p, request)
+
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(ctx, p.ID, apiKey, pageSize, mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
@@ -80,6 +82,19 @@ func (pt *Task) transformPages(ctx context.Context,
 		}
 	}
 
+	snapshot := pt.provideSnapshot(request, notionBlocks, details)
+
+	return snapshot, relations, nil
+}
+
+func (pt *Task) handleDetails(ctx context.Context, apiKey string, p Page, request *block.MapRequest) (map[string]*types.Value, []*converter.Relation) {
+	details := pt.prepareDetails(p)
+	relations := pt.handlePageProperties(ctx, apiKey, p.ID, p.Properties, details, request)
+	addCoverDetail(p, details)
+	return details, relations
+}
+
+func (pt *Task) provideSnapshot(request *block.MapRequest, notionBlocks []interface{}, details map[string]*types.Value) *model.SmartBlockSnapshotBase {
 	request.Blocks = notionBlocks
 	resp := pt.blockService.MapNotionBlocksToAnytype(request)
 	snapshot := &model.SmartBlockSnapshotBase{
@@ -87,8 +102,7 @@ func (pt *Task) transformPages(ctx context.Context,
 		Details:     &types.Struct{Fields: details},
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
-
-	return snapshot, relations, nil
+	return snapshot
 }
 
 func (pt *Task) prepareDetails(p Page) map[string]*types.Value {
@@ -111,7 +125,7 @@ func (pt *Task) handlePageProperties(ctx context.Context,
 	req *block.MapRequest) []*converter.Relation {
 	relations := make([]*converter.Relation, 0)
 	for k, v := range p {
-		relation, err := pt.handleProperty(ctx, apiKey, pageID, k, v, req, d)
+		relation, err := pt.retrieveRelation(ctx, apiKey, pageID, k, v, req, d)
 		if err != nil {
 			logger.With("method", "handlePageProperties").Error(err)
 			continue
@@ -121,25 +135,91 @@ func (pt *Task) handlePageProperties(ctx context.Context,
 	return relations
 }
 
-func (pt *Task) handleProperty(ctx context.Context,
+func (pt *Task) retrieveRelation(ctx context.Context,
 	apiKey, pageID, key string,
 	propObject property.Object, req *block.MapRequest,
 	details map[string]*types.Value) (*converter.Relation, error) {
-	if isPropertyPaginated(propObject) {
-		if err := pt.handlePaginatedProperty(ctx, propObject, apiKey, pageID); err != nil {
-			return nil, fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+
+	if err := pt.handlePagination(ctx, apiKey, pageID, propObject); err != nil {
+		return nil, err
+	} else {
+		pt.handleLinkRelationsIDWithAnytypeID(propObject, req)
+
+		if err := pt.setDetails(propObject, key, details); err != nil {
+			return nil, err
+		} else {
+			return pt.handleRelation(key, propObject), nil
 		}
 	}
-	if r, ok := propObject.(*property.RelationItem); ok {
-		linkRelationsIDWithAnytypeID(r, req.NotionPageIdsToAnytype, req.NotionDatabaseIdsToAnytype)
-	}
-	err := pt.setDetails(propObject, key, details)
-	if err != nil {
-		return nil, err
-	}
+}
 
-	rel := pt.getRelation(key, propObject)
-	return rel, nil
+// linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
+// In property we get id from Notion, so we somehow need to map this ID with anytype for correct Relation.
+// We use two maps notionPagesIdsToAnytype, notionDatabaseIdsToAnytype for this
+func (pt *Task) handleLinkRelationsIDWithAnytypeID(propObject property.Object, req *block.MapRequest) {
+	if r, ok := propObject.(*property.RelationItem); ok {
+		for _, r := range r.Relation {
+			if anytypeID, ok := req.NotionPageIdsToAnytype[r.ID]; ok {
+				r.ID = anytypeID
+			}
+			if anytypeID, ok := req.NotionDatabaseIdsToAnytype[r.ID]; ok {
+				r.ID = anytypeID
+			}
+		}
+	}
+}
+
+func (pt *Task) handlePagination(ctx context.Context, apiKey string, pageID string, propObject property.Object) error {
+	if isPropertyPaginated(propObject) {
+		if properties, err :=
+			pt.propertyService.GetPropertyObject(
+				ctx,
+				pageID,
+				propObject.GetID(),
+				apiKey,
+				propObject.GetPropertyType(),
+			); err != nil {
+			return fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+		} else {
+			pt.handlePaginatedProperties(propObject, properties)
+		}
+	}
+	return nil
+}
+
+func (pt *Task) handlePaginatedProperties(propObject property.Object, properties []interface{}) {
+	switch pr := propObject.(type) {
+	case *property.RelationItem:
+		handleRelationItem(properties, pr)
+	case *property.RichTextItem:
+		handleRichTextItem(properties, pr)
+	case *property.PeopleItem:
+		handlePeopleItem(properties, pr)
+	}
+}
+
+func handlePeopleItem(properties []interface{}, pr *property.PeopleItem) {
+	pList := make([]*api.User, 0, len(properties))
+	for _, o := range properties {
+		pList = append(pList, o.(*api.User))
+	}
+	pr.People = pList
+}
+
+func handleRichTextItem(properties []interface{}, pr *property.RichTextItem) {
+	richText := make([]*api.RichText, 0, len(properties))
+	for _, o := range properties {
+		richText = append(richText, o.(*api.RichText))
+	}
+	pr.RichText = richText
+}
+
+func handleRelationItem(properties []interface{}, pr *property.RelationItem) {
+	relationItems := make([]*property.Relation, 0, len(properties))
+	for _, o := range properties {
+		relationItems = append(relationItems, o.(*property.Relation))
+	}
+	pr.Relation = relationItems
 }
 
 func (pt *Task) setDetails(propObject property.Object, key string, details map[string]*types.Value) error {
@@ -154,7 +234,7 @@ func (pt *Task) setDetails(propObject property.Object, key string, details map[s
 	return nil
 }
 
-func (pt *Task) getRelation(key string, propObject property.Object) *converter.Relation {
+func (pt *Task) handleRelation(key string, propObject property.Object) *converter.Relation {
 	rel := &converter.Relation{
 		Relation: &model.Relation{
 			Name:   key,
@@ -165,49 +245,6 @@ func (pt *Task) getRelation(key string, propObject property.Object) *converter.R
 		setOptionsForListRelation(propObject, rel.Relation)
 	}
 	return rel
-}
-
-func (pt *Task) handlePaginatedProperty(ctx context.Context, v property.Object, pageID, apiKey string) error {
-	properties, err := pt.propertyService.GetPropertyObject(ctx, pageID, v.GetID(), apiKey, v.GetPropertyType())
-	if err != nil {
-		return err
-	}
-	switch pr := v.(type) {
-	case *property.RelationItem:
-		relationItems := make([]*property.Relation, 0, len(properties))
-		for _, o := range properties {
-			relationItems = append(relationItems, o.(*property.Relation))
-		}
-		pr.Relation = relationItems
-	case *property.RichTextItem:
-		richText := make([]*api.RichText, 0, len(properties))
-		for _, o := range properties {
-			richText = append(richText, o.(*api.RichText))
-		}
-		pr.RichText = richText
-	case *property.PeopleItem:
-		pList := make([]*api.User, 0, len(properties))
-		for _, o := range properties {
-			pList = append(pList, o.(*api.User))
-		}
-		pr.People = pList
-	}
-	return nil
-}
-
-// linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
-// In property we get id from Notion, so we somehow need to map this ID with anytype for correct Relation.
-// We use two maps notionPagesIdsToAnytype, notionDatabaseIdsToAnytype for this
-func linkRelationsIDWithAnytypeID(rel *property.RelationItem,
-	notionPagesIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
-	for _, r := range rel.Relation {
-		if anytypeID, ok := notionPagesIdsToAnytype[r.ID]; ok {
-			r.ID = anytypeID
-		}
-		if anytypeID, ok := notionDatabaseIdsToAnytype[r.ID]; ok {
-			r.ID = anytypeID
-		}
-	}
 }
 
 func addCoverDetail(p Page, details map[string]*types.Value) {
@@ -221,9 +258,7 @@ func addCoverDetail(p Page, details map[string]*types.Value) {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(p.Cover.File.URL)
 			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
 		}
-
 	}
-
 }
 
 func isPropertyPaginated(pr property.Object) bool {
@@ -242,29 +277,59 @@ func isPropertyTag(pr property.Object) bool {
 }
 
 func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
+	text, color := getTextColorOptions(pr)
+	appendToSelectDict(text, rel, color)
+}
+
+func getTextColorOptions(pr property.Object) ([]string, []string) {
 	var text, color []string
+
 	switch property := pr.(type) {
 	case *property.StatusItem:
-		text = append(text, property.Status.Name)
-		color = append(color, api.NotionColorToAnytype[property.Status.Color])
+		text, color = statusItemOptions(text, property, color)
 	case *property.SelectItem:
-		text = append(text, property.Select.Name)
-		color = append(color, api.NotionColorToAnytype[property.Select.Color])
+		text, color = selectItemOptions(text, property, color)
 	case *property.MultiSelectItem:
-		for _, so := range property.MultiSelect {
-			text = append(text, so.Name)
-			color = append(color, api.NotionColorToAnytype[so.Color])
-		}
+		text, color = multiselectItemOptions(property, text, color)
 	case *property.PeopleItem:
-		for _, so := range property.People {
-			text = append(text, so.Name)
-			color = append(color, api.DefaultColor)
-		}
+		text, color = peopleItemOptions(property, text, color)
 	}
+	return text, color
+}
+
+func appendToSelectDict(text []string, rel *model.Relation, color []string) {
 	for i := 0; i < len(text); i++ {
 		rel.SelectDict = append(rel.SelectDict, &model.RelationOption{
 			Text:  text[i],
 			Color: color[i],
 		})
 	}
+}
+
+func peopleItemOptions(property *property.PeopleItem, text []string, color []string) ([]string, []string) {
+	for _, so := range property.People {
+		text = append(text, so.Name)
+		color = append(color, api.DefaultColor)
+	}
+	return text, color
+}
+
+func multiselectItemOptions(property *property.MultiSelectItem, text []string, color []string) ([]string, []string) {
+	for _, so := range property.MultiSelect {
+		text = append(text, so.Name)
+		color = append(color, api.NotionColorToAnytype[so.Color])
+	}
+	return text, color
+}
+
+func selectItemOptions(text []string, property *property.SelectItem, color []string) ([]string, []string) {
+	text = append(text, property.Select.Name)
+	color = append(color, api.NotionColorToAnytype[property.Select.Color])
+	return text, color
+}
+
+func statusItemOptions(text []string, property *property.StatusItem, color []string) ([]string, []string) {
+	text = append(text, property.Status.Name)
+	color = append(color, api.NotionColorToAnytype[property.Status.Color])
+	return text, color
 }
