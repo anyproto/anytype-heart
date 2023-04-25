@@ -2,6 +2,9 @@ package importer
 
 import (
 	"context"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -13,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 type ObjectIDGetter struct {
@@ -44,7 +46,10 @@ func (c CreateSubObjectRequest) GetDetails() *types.Struct {
 	return pbtypes.StructMerge(c.details, detailsType, false)
 }
 
-func (ou *ObjectIDGetter) Get(ctx *session.Context, sn *converter.Snapshot, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error) {
+func (ou *ObjectIDGetter) Get(ctx *session.Context,
+	sn *converter.Snapshot,
+	sbType sb.SmartBlockType,
+	updateExisting bool) (string, bool, error) {
 	snapshot := sn.Snapshot
 	if predefinedSmartBlockType(sbType) {
 		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{}, []sb.SmartBlockType{sbType})

@@ -49,7 +49,10 @@ func NewCreator(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+func (oc *ObjectCreator) Create(ctx *session.Context,
+	sn *converter.Snapshot,
+	oldIDtoNew map[string]string,
+	existing bool) (*types.Struct, error) {
 	snapshot := sn.Snapshot
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
@@ -172,7 +175,10 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	return nil, nil
 }
 
-func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, newID string, workspaceID string, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+func (oc *ObjectCreator) handleSubObject(ctx *session.Context,
+	snapshot *model.SmartBlockSnapshotBase,
+	newID, workspaceID string,
+	details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
 	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
 		if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
 			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID)
