@@ -145,3 +145,17 @@ func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID
 	}
 	return objectsIDs
 }
+
+func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
+	objectType := st.ObjectType()
+	typeKey, err := bundle.TypeKeyFromUrl(objectType)
+	if err == nil {
+		if bundle.HasObjectType(typeKey.String()) {
+			return //not update bundled type, because it has the same id
+		}
+	}
+
+	if newType, ok := oldIDtoNew[objectType]; ok {
+		st.SetObjectType(newType)
+	}
+}

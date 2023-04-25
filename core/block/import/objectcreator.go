@@ -123,10 +123,13 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.handleWorkspace(ctx, details, newID, st)
+		if err = oc.createObjectsInWorkspace(newID, st); err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
+		}
 		return nil, newID, nil
 	}
 
+	converter.UpdateObjectType(oldIDtoNew, st)
 	respDetails := oc.resetState(ctx, newID, st, details)
 
 	if isFavorite {
@@ -154,18 +157,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	return respDetails, newID, nil
-}
-
-func (oc *ObjectCreator) handleWorkspace(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, newID string, st *state.State) {
-	if err := oc.createRelationsInWorkspace(newID, st); err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
-	}
-	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
-		return b.SetDetails(ctx, details, true)
-	})
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to set details %s: %s", newID, err.Error())
-	}
 }
 
 func (oc *ObjectCreator) getDetails(d *types.Struct) []*pb.RpcObjectSetDetailsDetail {
@@ -409,8 +400,8 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	st.StoreSlice(template.CollectionStoreKey, result)
 }
 
-// createRelationsInWorkspace compare current workspace store with imported and create objects, which are absent in current workspace
-func (oc *ObjectCreator) createRelationsInWorkspace(newID string, st *state.State) error {
+// createObjectsInWorkspace compare current workspace store with imported and create objects, which are absent in current workspace
+func (oc *ObjectCreator) createObjectsInWorkspace(newID string, st *state.State) error {
 	var ids []string
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
 		bs := b.NewState()
@@ -422,9 +413,11 @@ func (oc *ObjectCreator) createRelationsInWorkspace(newID string, st *state.Stat
 	if err != nil {
 		return err
 	}
-	_, _, err = oc.service.AddSubObjectsToWorkspace(ids, newID)
-	if err != nil {
-		return err
+	for _, id := range ids {
+		_, _, err = oc.service.AddSubObjectToWorkspace(id, newID)
+		if err != nil {
+			log.Errorf("can't add object to workspace: %s", err.Error())
+		}
 	}
 	return nil
 }
