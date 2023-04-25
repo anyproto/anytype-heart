@@ -8,9 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/samber/lo"
-	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/conc"
 )
 
@@ -43,47 +41,13 @@ func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat,
 	if err != nil {
 		return
 	}
-	newStats := SpaceStat{
+	return SpaceStat{
 		SpaceId:    spaceId,
 		FileCount:  int(info.FilesCount),
 		CidsCount:  int(info.CidsCount),
 		BytesUsage: int(info.UsageBytes),
-		// TODO Remove after test
-		BytesLimit: 52_428_800,
-		// BytesLimit: int(info.LimitBytes),
-	}
-	f.spaceStatsLock.Lock()
-	prevStats, ok := f.spaceStats[spaceId]
-	if prevStats != newStats {
-		f.spaceStats[spaceId] = newStats
-		// Do not send event if it is first time we get stats
-		if ok {
-			f.sendSpaceUsageEvent(uint64(newStats.BytesUsage))
-		}
-	}
-	f.spaceStatsLock.Unlock()
-
-	return newStats, nil
-}
-
-func (f *fileSync) updateSpaceUsageInformation(spaceId string) {
-	if _, err := f.SpaceStat(context.Background(), spaceId); err != nil {
-		log.Warn("can't get space usage information", zap.String("spaceId", spaceId), zap.Error(err))
-	}
-}
-
-func (f *fileSync) sendSpaceUsageEvent(bytesUsage uint64) {
-	f.sendEvent(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileSpaceUsage{
-					FileSpaceUsage: &pb.EventFileSpaceUsage{
-						BytesUsage: bytesUsage,
-					},
-				},
-			},
-		},
-	})
+		BytesLimit: int(info.LimitBytes),
+	}, nil
 }
 
 func (f *fileSync) FileListStats(ctx context.Context, spaceID string, fileIDs []string) ([]FileStat, error) {
