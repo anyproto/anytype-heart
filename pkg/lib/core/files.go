@@ -5,23 +5,9 @@ import (
 	"fmt"
 
 	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
-
-func (a *Anytype) FileStoreKeys(fileKeys ...files2.FileKeys) error {
-	var fks []filestore.FileKeys
-
-	for _, fk := range fileKeys {
-		fks = append(fks, filestore.FileKeys{
-			Hash: fk.Hash,
-			Keys: fk.Keys,
-		})
-	}
-
-	return a.fileStore.AddFileKeys(fks...)
-}
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	fileList, err := a.fileStore.ListByTarget(hash)

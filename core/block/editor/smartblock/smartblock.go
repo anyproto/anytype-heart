@@ -81,13 +81,25 @@ const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New(coreService core.Service) SmartBlock {
+func New(
+	coreService core.Service,
+	fileService *files.Service,
+	restrictionService restriction.Service,
+	objectStore objectstore.ObjectStore,
+	relationService relation2.Service,
+	indexer Indexer,
+) SmartBlock {
 	s := &smartBlock{
 		hooks:     map[Hook][]HookCallback{},
 		hooksOnce: map[string]struct{}{},
 		Locker:    &sync.Mutex{},
 
-		coreService: coreService,
+		coreService:        coreService,
+		fileService:        fileService,
+		restrictionService: restrictionService,
+		objectStore:        objectStore,
+		relationService:    relationService,
+		indexer:            indexer,
 	}
 	return s
 }
@@ -182,13 +194,10 @@ type smartBlock struct {
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
 	source              source.Source
-	indexer             Indexer
 	metaData            *core.SmartBlockMeta
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
 	restrictionsUpdater func()
 	restrictions        restriction.Restrictions
-	objectStore         objectstore.ObjectStore
-	relationService     relation2.Service
 	isDeleted           bool
 	disableLayouts      bool
 
@@ -200,7 +209,13 @@ type smartBlock struct {
 	recordsSub      database.Subscription
 	closeRecordsSub func()
 
-	coreService core.Service
+	// Deps
+	coreService        core.Service
+	fileService        *files.Service
+	restrictionService restriction.Service
+	objectStore        objectstore.ObjectStore
+	relationService    relation2.Service
+	indexer            Indexer
 }
 
 type LockerSetter interface {
@@ -273,13 +288,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictionsUpdater = func() {
-		restrictions := ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+		restrictions := sb.restrictionService.RestrictionsByObj(sb)
 		sb.SetRestrictions(restrictions)
 	}
-	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
-	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
-	sb.indexer = app.MustComponent[Indexer](ctx.App)
-	sb.objectStore = ctx.App.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	sb.restrictions = sb.restrictionService.RestrictionsByObj(sb)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
@@ -1127,7 +1139,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			Keys: k.Keys,
 		}
 	}
-	if err := sb.coreService.FileStoreKeys(fileKeys...); err != nil {
+	if err := sb.fileService.StoreFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }

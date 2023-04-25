@@ -67,6 +67,8 @@ type SubObjectCollection struct {
 	tempDirProvider  core.TempDirProvider
 	sbtProvider      typeprovider.SmartBlockTypeProvider
 	layoutConverter  converter.LayoutConverter
+
+	smartblockFactory smartblockFactory
 }
 
 func NewSubObjectCollection(
@@ -80,6 +82,7 @@ func NewSubObjectCollection(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
+	smartblockFactory smartblockFactory,
 ) *SubObjectCollection {
 	return &SubObjectCollection{
 		SmartBlock:    sb,
@@ -106,6 +109,7 @@ func NewSubObjectCollection(
 		layoutConverter:       layoutConverter,
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
+		smartblockFactory:     smartblockFactory,
 	}
 }
 
@@ -400,7 +404,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 }
 
 func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, error) {
-	sb := smartblock.New(c.anytype)
+	sb := c.smartblockFactory.Produce()
 	switch collection {
 	case collectionKeyObjectTypes:
 		return NewObjectType(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil

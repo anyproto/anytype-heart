@@ -12,8 +12,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -31,13 +33,15 @@ type ObjectFactory struct {
 	bookmarkService      bookmark.BookmarkService
 	detailsModifier      DetailsModifier
 	fileBlockService     file.BlockService
+	layoutConverter      converter.LayoutConverter
 	objectStore          objectstore.ObjectStore
 	relationService      relation2.Service
-	sourceService        source.Service
-	sendEvent            func(e *pb.Event)
-	tempDirProvider      core.TempDirProvider
 	sbtProvider          typeprovider.SmartBlockTypeProvider
-	layoutConverter      converter.LayoutConverter
+	sendEvent            func(e *pb.Event)
+	sourceService        source.Service
+	tempDirProvider      core.TempDirProvider
+
+	smartblockFactory smartblockFactory
 
 	app *app.App
 }
@@ -64,6 +68,15 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.relationService = app.MustComponent[relation2.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
+
+	f.smartblockFactory = smartblockFactory{
+		anytype:            f.anytype,
+		fileService:        app.MustComponent[*files.Service](a),
+		indexer:            app.MustComponent[smartblock.Indexer](a),
+		objectStore:        f.objectStore,
+		relationService:    f.relationService,
+		restrictionService: app.MustComponent[restriction.Service](a),
+	}
 
 	f.app = a
 	return nil
@@ -133,7 +146,7 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 }
 
 func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb := smartblock.New(f.anytype)
+	sb := f.smartblockFactory.Produce()
 	switch sbType {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType:
 		return NewPage(
@@ -216,6 +229,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
+			f.smartblockFactory,
 		), nil
 	case model.SmartBlockType_MissingObject:
 		return NewMissingObject(sb), nil

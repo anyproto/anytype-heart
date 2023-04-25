@@ -74,6 +74,7 @@ func NewWorkspace(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
+	smartblockFactory smartblockFactory,
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
@@ -87,6 +88,7 @@ func NewWorkspace(
 			tempDirProvider,
 			sbtProvider,
 			layoutConverter,
+			smartblockFactory,
 		),
 		DetailsModifier: modifier,
 		anytype:         anytype,

@@ -43,7 +43,6 @@ type Service interface {
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files2.AddOption) (File, error)
-	FileStoreKeys(fileKeys ...files2.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files2.AddOption) (Image, error)

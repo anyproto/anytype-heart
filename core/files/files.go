@@ -820,3 +820,16 @@ func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMod
 		return nil, fmt.Errorf("unsupported encryption mode")
 	}
 }
+
+func (s *Service) StoreFileKeys(fileKeys ...FileKeys) error {
+	var fks []filestore.FileKeys
+
+	for _, fk := range fileKeys {
+		fks = append(fks, filestore.FileKeys{
+			Hash: fk.Hash,
+			Keys: fk.Keys,
+		})
+	}
+
+	return s.store.AddFileKeys(fks...)
+}
