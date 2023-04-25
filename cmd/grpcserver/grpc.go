@@ -5,13 +5,18 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
+	//nolint: gosec
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -30,13 +35,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pb/service"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-
-	//nolint: gosec
-	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"
 const defaultWebAddr = "127.0.0.1:31008"
+const defaultUnaryWarningAfter = time.Second * 3
 
 // do not change this, js client relies on this msg to ensure that server is up
 const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
@@ -110,6 +113,28 @@ func main() {
 		}
 		return
 	})
+
+	// todo: we may want to change it to the opposite check with a public release
+	if os.Getenv("ANYTYPE_GRPC_NO_DEBUG_TIMEOUT") != "1" {
+		unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			doneCh := make(chan struct{})
+			start := time.Now()
+			go func() {
+				select {
+				case <-doneCh:
+				case <-time.After(defaultUnaryWarningAfter):
+					trace := base64.RawStdEncoding.EncodeToString(stackAllGoroutines())
+					log.With("method", info.FullMethod).With("in_progress", true).With("goroutines", trace).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
+				}
+			}()
+			resp, err = handler(ctx, req)
+			close(doneCh)
+			if time.Since(start) > defaultUnaryWarningAfter {
+				log.With("method", info.FullMethod).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
+			}
+			return
+		})
+	}
 
 	grpcDebug, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_LOG"))
 	if grpcDebug > 0 {
@@ -235,5 +260,16 @@ func main() {
 		proxy.Close()
 		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
 		return
+	}
+}
+
+func stackAllGoroutines() []byte {
+	buf := make([]byte, 1024)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			return buf[:n]
+		}
+		buf = make([]byte, 2*len(buf))
 	}
 }
