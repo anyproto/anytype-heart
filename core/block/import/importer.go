@@ -3,6 +3,7 @@ package importer
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
+	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
@@ -136,7 +137,7 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) ImportUserProfile(ctx *session.Context, req *pb.RpcUserDataImportRequest) (*pb.Profile, error) {
+func ImportUserProfile(ctx *session.Context, req *pb.RpcUserDataImportRequest) (*pb.Profile, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	progress.SetTotal(2)
@@ -187,14 +188,21 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 	details := make(map[string]*types.Struct, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	existedObject := make(map[string]struct{}, 0)
+	var workspaceID string
 	for _, snapshot := range res.Snapshots {
 		var (
 			err   error
 			id    string
 			exist bool
 		)
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			continue
+		}
 		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot.Snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
+			if snapshot.SbType == sb.SmartBlockTypeWorkspace || snapshot.SbType == sb.SmartBlockTypeWorkspaceOld {
+				workspaceID = id
+			}
 			if exist {
 				existedObject[snapshot.Id] = struct{}{}
 			}
@@ -218,7 +226,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 		}
 		progress.AddDone(1)
 		_, ok := existedObject[snapshot.Id]
-		detail, err := i.oc.Create(ctx, snapshot, oldIDToNew, ok)
+		detail, err := i.oc.Create(ctx, snapshot, oldIDToNew, ok, workspaceID)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
@@ -36,6 +35,22 @@ type ObjectCreator struct {
 	oldIDToNew    map[string]string
 }
 
+type CreateSubObjectRequest struct {
+	subObjectType string
+	details       *types.Struct
+}
+
+func (c CreateSubObjectRequest) GetDetails() *types.Struct {
+	sbt := bundle.TypeKey(c.subObjectType).String()
+	detailsType := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyType.String(): pbtypes.String(sbt),
+		},
+	}
+
+	return pbtypes.StructMerge(c.details, detailsType, false)
+}
+
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
@@ -52,7 +67,7 @@ func NewCreator(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, existing bool, workspaceID string) (*types.Struct, error) {
 	snapshot := sn.Snapshot
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 
@@ -82,9 +97,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
 
-	if err = oc.validate(st); err != nil {
-		return nil, fmt.Errorf("new id not found for '%s'", st.RootId())
-	}
+	//if err = oc.validate(st); err != nil {
+	//	return nil, fmt.Errorf("valdation failed '%s'", err)
+	//}
 
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -103,9 +118,11 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 
 	oc.updateRelationsIDs(st, pageID, oldIDtoNew)
 
-	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
+	if workspaceID == "" {
+		workspaceID, err = oc.core.GetWorkspaceIdForObject(pageID)
+		if err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
+		}
 	}
 
 	if snapshot.Details != nil {
@@ -122,6 +139,24 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 		}
 	}
 
+	if sn.SbType == coresb.SmartBlockTypeSubObject {
+		ot := st.ObjectTypes()
+		req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
+		id, subObjectDetails, err := oc.service.CreateObject(req, "")
+		if err != nil {
+			return nil, err
+		}
+		newID = id
+		if subObjectDetails != nil {
+			for key, value := range subObjectDetails.GetFields() {
+				details = append(details, &pb.RpcObjectSetDetailsDetail{
+					Key:   key,
+					Value: value,
+				})
+			}
+		}
+	}
+
 	err = oc.service.Do(newID, func(b sb.SmartBlock) error {
 		err = b.SetObjectTypes(ctx, snapshot.ObjectTypes)
 		if err != nil {
@@ -135,7 +170,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 		return b.SetDetails(ctx, details, true)
 	})
 	if err != nil {
-		return nil, err
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
 	}
 
 	if isFavorite {

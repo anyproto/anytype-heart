@@ -882,11 +882,6 @@ func (mw *Middleware) UserDataImport(cctx context.Context, req *pb.RpcUserDataIm
 		return m
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
-	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-
 	profile, err := importer.ImportUserProfile(ctx, req)
 	if err != nil {
 		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
@@ -978,6 +973,7 @@ func (mw *Middleware) UserDataImport(cctx context.Context, req *pb.RpcUserDataIm
 
 	mw.foundAccounts = append(mw.foundAccounts, newAcc)
 
+	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
 	err = importer.ImportUserData(ctx, req)
 
 	if err != nil {

@@ -137,9 +137,9 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, oldIDtoNew map[string]string, existing bool, workspaceID string) (*types.Struct, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, cs, pageID, oldIDtoNew, existing)
+	ret := m.ctrl.Call(m, "Create", ctx, oldIDtoNew, existing)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
