@@ -122,21 +122,8 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	return nodeHash, fileInfo, nil
 }
 
-func (s *Service) getChunksCount(ctx context.Context, node ipld.Node) (int, error) {
-	var chunksCount int
-	err := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, s.commonFile.DAGService())).
-		Iterate(func(_ ipld.NavigableNode) error {
-			chunksCount++
-			return nil
-		})
-	if err != nil && err != ipld.EndOfDag {
-		return -1, fmt.Errorf("failed to count cids: %w", err)
-	}
-	return chunksCount, nil
-}
-
 func (s *Service) storeChunksCount(ctx context.Context, node ipld.Node) error {
-	chunksCount, err := s.getChunksCount(ctx, node)
+	chunksCount, err := s.fileSync.FetchChunksCount(ctx, node)
 	if err != nil {
 		return fmt.Errorf("count chunks: %w", err)
 	}

@@ -37,6 +37,7 @@ type FileSync interface {
 	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)
 	SyncStatus() (ss SyncStatus, err error)
 	NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher
+	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
 	app.ComponentRunnable
 }
 

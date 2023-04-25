@@ -124,11 +124,14 @@ func (f *fileSync) fetchChunksCount(ctx context.Context, fileID string) (int, er
 	if err != nil {
 		return -1, err
 	}
+	return f.FetchChunksCount(ctx, node)
+}
 
+func (f *fileSync) FetchChunksCount(ctx context.Context, node ipld.Node) (int, error) {
 	var count int
 	visited := map[string]struct{}{}
 	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
-	err = walker.Iterate(func(node ipld.NavigableNode) error {
+	err := walker.Iterate(func(node ipld.NavigableNode) error {
 		id := node.GetIPLDNode().Cid().String()
 		if _, ok := visited[id]; !ok {
 			visited[id] = struct{}{}

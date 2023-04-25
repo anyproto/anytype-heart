@@ -59,16 +59,18 @@ func (s *StatusWatcher) run() {
 	ctx := context.Background()
 
 	go func() {
-		select {
-		case <-s.closeCh:
-			return
-		case key := <-s.updateCh:
-			if err := s.updateFileStatus(ctx, key); err != nil {
-				log.Error("check file",
-					zap.String("spaceID", key.spaceID),
-					zap.String("fileID", key.fileID),
-					zap.Error(err),
-				)
+		for {
+			select {
+			case <-s.closeCh:
+				return
+			case key := <-s.updateCh:
+				if err := s.updateFileStatus(ctx, key); err != nil {
+					log.Error("check file",
+						zap.String("spaceID", key.spaceID),
+						zap.String("fileID", key.fileID),
+						zap.Error(err),
+					)
+				}
 			}
 		}
 	}()
