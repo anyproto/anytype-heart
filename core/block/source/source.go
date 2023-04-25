@@ -112,7 +112,6 @@ func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
 		a:              deps.anytype,
 		spaceService:   deps.spaceService,
 		ss:             deps.statusService,
-		logId:          deps.anytype.Device(),
 		openedAt:       time.Now(),
 		smartblockType: deps.sbt,
 		acc:            deps.accountService,
@@ -125,7 +124,7 @@ type ObjectTreeProvider interface {
 
 type source struct {
 	objecttree.ObjectTree
-	id, logId            string
+	id                   string
 	tid                  thread.ID
 	smartblockType       smartblock.SmartBlockType
 	a                    core.Service
