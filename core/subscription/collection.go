@@ -7,9 +7,11 @@ import (
 	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type collectionObserver struct {
@@ -44,7 +46,7 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 		for {
 			select {
 			case objectIDs := <-objectsCh:
-				obs.applyChanges(objectIDs)
+				obs.updateIDs(objectIDs)
 			case <-obs.closeCh:
 				return
 			}
@@ -76,7 +78,7 @@ func (c *collectionObserver) listEntries() []*entry {
 	return res
 }
 
-func (c *collectionObserver) applyChanges(ids []string) {
+func (c *collectionObserver) updateIDs(ids []string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.setIDs(ids)
@@ -185,24 +187,28 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 
 func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []string) []*entry {
 	res := make([]*entry, 0, len(ids))
+	var missingIDs []string
 	for _, id := range ids {
 		if e := cache.Get(id); e != nil {
 			res = append(res, e)
 			continue
 		}
-		// TODO query in one batch
-		recs, err := objectStore.QueryById([]string{id})
-		if err != nil {
-			// TODO proper logging
-			fmt.Println("query new entry:", err)
+		missingIDs = append(missingIDs, id)
+	}
+
+	if len(missingIDs) == 0 {
+		return res
+	}
+	recs, err := objectStore.QueryById(missingIDs)
+	if err != nil {
+		log.Error("can't query by ids:", err)
+	}
+	for _, r := range recs {
+		e := &entry{
+			id:   pbtypes.GetString(r.Details, bundle.RelationKeyId.String()),
+			data: r.Details,
 		}
-		if len(recs) > 0 {
-			e := &entry{
-				id:   id,
-				data: recs[0].Details,
-			}
-			res = append(res, e)
-		}
+		res = append(res, e)
 	}
 	return res
 }
