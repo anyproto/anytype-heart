@@ -317,12 +317,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 }
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
-func (sb *smartBlock) updateRestrictions() error {
-	if sb.restrictionsUpdater == nil {
-		return fmt.Errorf("restrictions updater is not set")
+func (sb *smartBlock) updateRestrictions() {
+	if sb.restrictionsUpdater != nil {
+		sb.restrictionsUpdater()
 	}
-	sb.restrictionsUpdater()
-	return nil
 }
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
@@ -737,10 +735,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	})
 
 	// we may have layout changed, so we need to update restrictions
-	err = sb.updateRestrictions()
-	if err != nil {
-		return fmt.Errorf("failed to update sb restrictions: %w", err)
-	}
+	sb.updateRestrictions()
 	return
 }
 
