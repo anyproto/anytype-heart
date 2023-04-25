@@ -39,10 +39,6 @@ func (v *anytypeProfile) Type() model.SmartBlockType {
 	return model.SmartBlockType_AnytypeProfile
 }
 
-func (v *anytypeProfile) Virtual() bool {
-	return true
-}
-
 func (v *anytypeProfile) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():        pbtypes.String("Anytype"),

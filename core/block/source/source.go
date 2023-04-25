@@ -44,7 +44,6 @@ type ChangeReceiver interface {
 type Source interface {
 	Id() string
 	Type() model.SmartBlockType
-	Virtual() bool
 	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
@@ -65,7 +64,6 @@ type SourceIdEndodedDetails interface {
 // TODO Extract implementation from sources impl
 type SourceType interface {
 	ListIds() ([]string, error)
-	Virtual() bool
 }
 
 type SourceWithType interface {
@@ -176,10 +174,6 @@ func (s *source) Id() string {
 
 func (s *source) Type() model.SmartBlockType {
 	return model.SmartBlockType(s.smartblockType)
-}
-
-func (s *source) Virtual() bool {
-	return false
 }
 
 func (s *source) ReadDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {

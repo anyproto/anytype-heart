@@ -37,10 +37,6 @@ func (m *missingObject) Type() model.SmartBlockType {
 	return model.SmartBlockType_MissingObject
 }
 
-func (m *missingObject) Virtual() bool {
-	return true
-}
-
 func (m *missingObject) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyIsDeleted.String():  pbtypes.Bool(true),

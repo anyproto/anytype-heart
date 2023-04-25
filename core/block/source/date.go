@@ -45,10 +45,6 @@ func (v *date) Type() model.SmartBlockType {
 	return model.SmartBlockType_Date
 }
 
-func (v *date) Virtual() bool {
-	return true
-}
-
 func (v *date) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():        pbtypes.String(v.t.Format("Mon Jan  2 2006")),

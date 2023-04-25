@@ -37,10 +37,6 @@ func (v *bundledRelation) Type() model.SmartBlockType {
 	return model.SmartBlockType_BundledRelation
 }
 
-func (v *bundledRelation) Virtual() bool {
-	return true
-}
-
 func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return nil, fmt.Errorf("incorrect relation id: not a bundled relation id")

@@ -34,10 +34,6 @@ func (s *static) Type() model.SmartBlockType {
 	return s.sbType
 }
 
-func (s *static) Virtual() bool {
-	return true
-}
-
 func (s *static) ReadOnly() bool {
 	return s.pushChange == nil
 }

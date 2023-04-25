@@ -47,10 +47,6 @@ func (f *files) Type() model.SmartBlockType {
 	return model.SmartBlockType_File
 }
 
-func (f *files) Virtual() bool {
-	return true
-}
-
 func (f *files) getDetailsForFileOrImage(ctx context.Context, id string) (p *types.Struct, isImage bool, err error) {
 	file, err := f.fileService.FileByHash(ctx, id)
 	if err != nil {
