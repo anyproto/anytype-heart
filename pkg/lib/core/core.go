@@ -16,6 +16,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -28,6 +29,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -195,6 +197,12 @@ func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
+	if strings.HasPrefix(objectId, "_") {
+		return addr.AnytypeMarketplaceWorkspace, nil
+	}
+	if a.predefinedBlockIds.IsAccount(objectId) {
+		return "", ErrObjectDoesNotBelongToWorkspace
+	}
 	return a.predefinedBlockIds.Account, nil
 }
 
@@ -231,13 +239,13 @@ func (a *Anytype) start() error {
 
 func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
 	sbTypes := []coresb.SmartBlockType{
+		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeArchive,
 		coresb.SmartblockTypeMarketplaceType,
 		coresb.SmartblockTypeMarketplaceRelation,
 		coresb.SmartblockTypeMarketplaceTemplate,
 		coresb.SmartBlockTypeWidget,
 		coresb.SmartBlockTypeProfilePage,
-		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeHome,
 	}
 	for _, sbt := range sbTypes {
