@@ -1,7 +1,10 @@
 package csv
 
 import (
+	"bufio"
 	"encoding/csv"
+	"io"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -19,7 +22,10 @@ const (
 	rootCollectionName = "CSV Import"
 )
 
-var log = logging.Logger("csv-import")
+var (
+	log        = logging.Logger("csv-import")
+	separators = []rune{'\t', ',', ';'}
+)
 
 type CSV struct {
 	collectionService *collection.Service
@@ -142,22 +148,6 @@ func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strate
 	return NewTableStrategy(te.NewEditor(nil))
 }
 
-func readCsvFile(filePath string) ([][]string, error) {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	csvReader := csv.NewReader(f)
-	records, err := csvReader.ReadAll()
-	if err != nil {
-		return nil, err
-	}
-
-	return records, nil
-}
-
 func getDetailsFromCSVTable(csvTable [][]string) []*converter.Relation {
 	if len(csvTable) == 0 {
 		return nil
@@ -188,4 +178,95 @@ func mergeRelationsMaps(rel1 map[string][]*converter.Relation, rel2 map[string][
 		return rel2
 	}
 	return map[string][]*converter.Relation{}
+}
+
+func readCsvFile(filePath string) ([][]string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	del, err := detectDelimiter(f)
+	if err != nil {
+		return nil, err
+	}
+	csvReader := csv.NewReader(f)
+	csvReader.Comma = del
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func detectDelimiter(readFile *os.File) (rune, error) {
+	fileScanner := bufio.NewScanner(readFile)
+
+	fileScanner.Split(bufio.ScanLines)
+
+	separatorsCount := make([]int64, len(separators))
+	countSeparatorsInFile(fileScanner, separatorsCount)
+	_, err := readFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0, err
+	}
+	return separators[getDelimiter(separatorsCount)], nil
+}
+
+func countSeparatorsInFile(fileScanner *bufio.Scanner, separatorsCount []int64) {
+	var (
+		quoted    = false
+		firstChar = true
+	)
+	for fileScanner.Scan() {
+		for _, character := range fileScanner.Text() {
+			switch character {
+			case '"':
+				if quoted {
+					quoted = false
+				} else if firstChar {
+					quoted = true
+				}
+			default:
+				if !quoted {
+					index := delimiterIndex(character)
+					if index != -1 {
+						separatorsCount[index]++
+						firstChar = true
+						continue
+					}
+				}
+			}
+			if firstChar {
+				firstChar = false
+			}
+		}
+		firstChar = true
+	}
+}
+
+func getDelimiter(separatorsCount []int64) int {
+	var (
+		max      int64
+		maxIndex int
+	)
+	for i := range separatorsCount {
+		current := int64(math.Max(float64(separatorsCount[i]), float64(max)))
+		if current > max {
+			max = current
+			maxIndex = i
+		}
+	}
+	return maxIndex
+}
+
+func delimiterIndex(delimiter rune) int {
+	for i, separator := range separators {
+		if separator == delimiter {
+			return i
+		}
+	}
+	return -1
 }

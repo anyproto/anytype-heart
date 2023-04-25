@@ -97,3 +97,23 @@ func TestCsv_GetSnapshotsTable(t *testing.T) {
 	}
 	assert.True(t, found)
 }
+
+func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/semicolon.csv"}},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+	assert.Len(t, sn.Snapshots, 10) //8 objects + root collection + semicolon collection
+	assert.Contains(t, sn.Snapshots[0].FileName, "semicolon.csv")
+	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, smartblock.CollectionStoreKey), 8)
+	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
+	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+}
