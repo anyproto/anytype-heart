@@ -82,7 +82,7 @@ const CallerKey key = 0
 var log = logging.Logger("anytype-mw-smartblock")
 
 func New() SmartBlock {
-	s := &smartBlock{hooks: map[Hook][]HookCallback{}}
+	s := &smartBlock{hooks: map[Hook][]HookCallback{}, Locker: &sync.Mutex{}}
 	return s
 }
 
@@ -141,6 +141,7 @@ type InitContext struct {
 	Doc            doc.Service
 	ObjectStore    objectstore.ObjectStore
 	Ctx            context.Context
+	ObjectTree     objecttree.ObjectTree
 	App            *app.App
 }
 
@@ -152,6 +153,7 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
+	sync.Locker
 	depIds              []string // slice must be sorted
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
@@ -165,7 +167,6 @@ type smartBlock struct {
 	relationService     relation2.Service
 	isDeleted           bool
 	disableLayouts      bool
-	mx                  sync.Mutex
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -175,29 +176,20 @@ type smartBlock struct {
 	closeRecordsSub func()
 }
 
+type LockerSetter interface {
+	SetLocker(locker sync.Locker)
+}
+
+func (sb *smartBlock) SetLocker(locker sync.Locker) {
+	sb.Locker = locker
+}
+
 func (sb *smartBlock) Tree() objecttree.ObjectTree {
 	return sb.ObjectTree
 }
 
 func (sb *smartBlock) Inner() SmartBlock {
 	return sb
-}
-
-func (sb *smartBlock) Lock() {
-	// TODO: [MR] fix lock problem
-	if sb.ObjectTree != nil {
-		sb.ObjectTree.Lock()
-	} else {
-		sb.mx.Lock()
-	}
-}
-
-func (sb *smartBlock) Unlock() {
-	if sb.ObjectTree != nil {
-		sb.ObjectTree.Unlock()
-	} else {
-		sb.mx.Unlock()
-	}
 }
 
 func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
@@ -451,6 +443,14 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	return
 }
 
+func (sb *smartBlock) Lock() {
+	sb.Locker.Lock()
+}
+
+func (sb *smartBlock) Unlock() {
+	sb.Locker.Unlock()
+}
+
 func (sb *smartBlock) metaListener(ch chan *types.Struct) {
 	for {
 		rec, ok := <-ch
@@ -577,7 +577,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	if sb.Anytype() != nil {
 		// this one will be reverted in case we don't have any actual change being made
-		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
+		s.SetLastModified(time.Now().Unix(), sb.Anytype().PredefinedBlocks().Profile)
 	}
 	beforeApplyStateTime := time.Now()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)

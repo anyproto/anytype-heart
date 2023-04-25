@@ -2,8 +2,8 @@ package editor
 
 import (
 	"fmt"
-
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -56,15 +56,34 @@ func (f *ObjectFactory) Name() (name string) {
 }
 
 func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := f.sourceService.NewSource(id, false)
+	var ot objecttree.ObjectTree
+	if initCtx != nil {
+		ot = initCtx.ObjectTree
+	}
+
+	defer func() {
+		if err != nil && ot != nil {
+			initCtx.ObjectTree.Close()
+		}
+	}()
+
+	sc, err := f.sourceService.NewSource(id, ot)
 	if err != nil {
 		return
 	}
-	log.With("scType", sc.Type()).Warn("getting source")
 	sb = f.New(sc.Type())
-	// we probably don't need any locks here, because the object is initialized synchronously,
-	// therefore it won't be loaded unless this function exits
-	// also the important part is that we can't have any locks, unless we build the tree
+
+	if ot != nil {
+		setter, ok := sb.Inner().(smartblock.LockerSetter)
+		if !ok {
+			err = fmt.Errorf("should be able to provide lock from the outside")
+			return
+		}
+		// using lock from object tree
+		setter.SetLocker(ot)
+	}
+
+	// we probably don't need any locks here, because the object is initialized synchronously
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
 	}

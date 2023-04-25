@@ -3,6 +3,7 @@ package source
 import (
 	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"sync"
 
@@ -23,7 +24,7 @@ func New() Service {
 }
 
 type Service interface {
-	NewSource(id string, listenToOwnChanges bool) (s Source, err error)
+	NewSource(id string, ot objecttree.ObjectTree) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
@@ -56,7 +57,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, err error) {
+func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source, err error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(s.anytype, id), nil
 	}
@@ -82,18 +83,28 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return newStatic(), nil
 	}
 
-	// TODO: [MR] probably we can provide this type as a constructor parameter
-	//  and get this when we call load in cache
+	if ot == nil {
+		err = fmt.Errorf("for this type we need an object tree to create a source")
+		return
+	}
+
+	// TODO: [MR] get this from objectTree directly
 	sbt, err := s.typeProvider.Type(id)
 	if err != nil {
 		return nil, err
 	}
-	log.With("sbt", sbt).Warn("providing sbt")
-	return newTreeSource(s.anytype, s.statusService, s.account, sbt, id, listenToOwnChanges)
+	deps := sourceDeps{
+		anytype:        s.anytype,
+		statusService:  s.statusService,
+		accountService: s.account,
+		sbt:            sbt,
+		ot:             ot,
+	}
+	return newTreeSource(id, deps)
 }
 
 func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	ss, err := s.NewSource(id, false)
+	ss, err := s.NewSource(id, nil)
 	if err != nil {
 		return nil, err
 	}
