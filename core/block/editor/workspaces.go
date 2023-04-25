@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/any-sync/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -42,6 +42,8 @@ const (
 	collectionKeyObjectTypes     = "ot"
 )
 
+const blockServiceCName = "blockService"
+
 var objectTypeToCollection = map[bundle.TypeKey]string{
 	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
 	bundle.TypeKeyRelation:       collectionKeyRelations,
@@ -51,12 +53,13 @@ var objectTypeToCollection = map[bundle.TypeKey]string{
 type Workspaces struct {
 	*SubObjectCollection
 
-	app             *app.App
-	DetailsModifier DetailsModifier
-	templateCloner  templateCloner
-	sourceService   source.Service
-	anytype         core.Service
-	objectStore     objectstore.ObjectStore
+	app               *app.App
+	DetailsModifier   DetailsModifier
+	templateCloner    templateCloner
+	dashboardIDGetter dashboardIDGetter
+	sourceService     source.Service
+	anytype           core.Service
+	objectStore       objectstore.ObjectStore
 }
 
 func NewWorkspace(
@@ -66,7 +69,6 @@ func NewWorkspace(
 	sourceService source.Service,
 	modifier DetailsModifier,
 	fileBlockService file.BlockService,
-	tempDirProvider core.TempDirProvider,
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
@@ -76,7 +78,6 @@ func NewWorkspace(
 			relationService,
 			sourceService,
 			fileBlockService,
-			tempDirProvider,
 		),
 		DetailsModifier: modifier,
 		anytype:         anytype,
@@ -95,6 +96,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
 	p.templateCloner = p.app.MustComponent(treegetter.CName).(templateCloner)
+	//TODO: Maybe we should move dashboard id fetching logic to other service
+	p.dashboardIDGetter = p.app.MustComponent(blockServiceCName).(dashboardIDGetter)
 
 	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 
@@ -124,6 +127,11 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
+	spaceDashboardID, err := p.dashboardIDGetter.GetSpaceDashboardID()
+	if err != nil {
+		log.Errorf("failed to get Space Dashboard ID: %v", err)
+	}
+
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithEmpty,
@@ -133,6 +141,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
 		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
 			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
+		template.WithCondition(p.anytype.PredefinedBlocks().IsAccount(p.Id()),
+			template.WithDetail(bundle.RelationKeySpaceDashboardId, pbtypes.String(spaceDashboardID))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 	)
@@ -140,6 +150,10 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 type templateCloner interface {
 	TemplateClone(id string) (templateID string, err error)
+}
+
+type dashboardIDGetter interface {
+	GetSpaceDashboardID() (string, error)
 }
 
 type WorkspaceParameters struct {
