@@ -98,23 +98,23 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
-	layout, ok := ctx.State.Layout()
-	if !ok {
-		// nolint:errcheck
-		otypes, _ := objectstore.GetObjectTypes(p.objectStore, ctx.ObjectTypeUrls)
-		for _, ot := range otypes {
-			layout = ot.Layout
-		}
-	}
-
-	tmpls := []template.StateTransformer{
-		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls, layout),
-		bookmarksvc.WithFixedBookmarks(p.Bookmark),
-	}
-
 	return migration.Migration{
 		Version: 2,
 		Proc: func(s *state.State) {
+			layout, ok := ctx.State.Layout()
+			if !ok {
+				// nolint:errcheck
+				otypes, _ := objectstore.GetObjectTypes(p.objectStore, ctx.ObjectTypeUrls)
+				for _, ot := range otypes {
+					layout = ot.Layout
+				}
+			}
+
+			tmpls := []template.StateTransformer{
+				template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls, layout),
+				bookmarksvc.WithFixedBookmarks(p.Bookmark),
+			}
+
 			trans := template.ByLayout(
 				layout,
 				tmpls...,

@@ -46,6 +46,18 @@ func MakeMigrations(migrations []Migration) Migrations {
 	return res
 }
 
+// Compose returns a migration that runs the parent migration and then the child migration.
+// The final version of migration is picked from child migration.
+func Compose(parent, child Migration) Migration {
+	return Migration{
+		Version: child.Version,
+		Proc: func(s *state.State) {
+			parent.Proc(s)
+			child.Proc(s)
+		},
+	}
+}
+
 func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) error {
 	migrator, ok := sb.(Migrator)
 	if !ok {

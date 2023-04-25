@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -47,20 +48,30 @@ func (t *Template) Init(ctx *smartblock.InitContext) (err error) {
 	if err = t.Page.Init(ctx); err != nil {
 		return
 	}
-	var fixOt bool
-	for _, ot := range t.ObjectTypes() {
-		if strings.HasPrefix(ot, "&") {
-			fixOt = true
-			break
-		}
-	}
-	if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypes()) != 2 || fixOt) {
-		if targetType := pbtypes.Get(ctx.State.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue(); targetType != "" {
-			ctx.State.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
-			return t.Apply(ctx.State, smartblock.NoHistory, smartblock.NoEvent)
-		}
-	}
+
 	return
+}
+
+func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	parent := t.Page.CreationStateMigration(ctx)
+
+	return migration.Compose(parent, migration.Migration{
+		Version: 1,
+		Proc: func(s *state.State) {
+			var fixOt bool
+			for _, ot := range t.ObjectTypes() {
+				if strings.HasPrefix(ot, "&") {
+					fixOt = true
+					break
+				}
+			}
+			if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypes()) != 2 || fixOt) {
+				if targetType := pbtypes.Get(s.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue(); targetType != "" {
+					s.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
+				}
+			}
+		},
+	})
 }
 
 // GetNewPageState returns state that can be safely used to create the new document
