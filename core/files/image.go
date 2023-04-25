@@ -3,7 +3,6 @@ package files
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math"
 	"path/filepath"
 	"regexp"
@@ -21,10 +20,7 @@ import (
 
 const (
 	imageObjectHiddenWidth = 256
-	maxFaviconPixelSize    = 64
 )
-
-var ErrFileNotIndexable = fmt.Errorf("file is too small to add to index")
 
 type Image interface {
 	Exif() (*mill.ImageExifSchema, error)
