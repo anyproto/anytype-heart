@@ -51,10 +51,14 @@ npm run test
 
 #### Integration and migration tests
 
+You need a [Github Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#personal-access-tokens-classic) in order to access out private repos while building the docker image.
+
 Migration tests are checking process of migration from the old infrastructure.
 
 First you need to start a docker container via docker-compose:
 ```
+export GITHUB_LOGIN=<your github login>
+export GITHUB_TOKEN=<your github token>
 export ANYTYPE_TEST_GRPC_PORT=31088
 export ANYTYPE_OLD_TEST_GRPC_PORT=31188
 docker-compose up -d

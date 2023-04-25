@@ -10,7 +10,6 @@ WORKDIR /anytype
 COPY go.mod go.sum /
 ARG GITHUB_LOGIN
 ARG GITHUB_TOKEN
-RUN echo "machine github.com login $GITHUB_LOGIN password $GITHUB_TOKEN"
 RUN echo "machine github.com login $GITHUB_LOGIN password $GITHUB_TOKEN" >> ~/.netrc
 
 RUN go mod download
