@@ -51,16 +51,6 @@ func (z *zipTreeWriteStorage) Heads() ([]string, error) {
 
 func (z *zipTreeWriteStorage) SetHeads(heads []string) (err error) {
 	z.heads = heads
-	chw, err := z.zw.CreateHeader(&zip.FileHeader{
-		Name:   strings.Join([]string{z.id, "data.json"}, "/"),
-		Method: zip.Deflate,
-	})
-	enc := json.NewEncoder(chw)
-	enc.SetIndent("", "\t")
-	err = enc.Encode(HeadsJsonEntry{
-		Heads:  heads,
-		RootId: z.id,
-	})
 	return
 }
 
@@ -93,4 +83,18 @@ func (z *zipTreeWriteStorage) HasChange(ctx context.Context, id string) (ok bool
 
 func (z *zipTreeWriteStorage) Delete() error {
 	panic("should not be called")
+}
+
+func (z *zipTreeWriteStorage) FlushStorage() (err error) {
+	chw, err := z.zw.CreateHeader(&zip.FileHeader{
+		Name:   strings.Join([]string{z.id, "data.json"}, "/"),
+		Method: zip.Deflate,
+	})
+	enc := json.NewEncoder(chw)
+	enc.SetIndent("", "\t")
+	err = enc.Encode(HeadsJsonEntry{
+		Heads:  z.heads,
+		RootId: z.id,
+	})
+	return
 }

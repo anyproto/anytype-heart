@@ -24,9 +24,9 @@ func NewZipTreeReadStorage(id string, zr *zip.ReadCloser) (st treestorage.TreeSt
 		files: map[string]*zip.File{},
 		zr:    zr,
 	}
-	for _, f := range zr.File {
+	for _, f := range zr.Reader.File {
 		if len(f.Name) > len(id) && strings.Contains(f.Name, id) {
-			split := strings.SplitAfter(id, "/")
+			split := strings.Split(f.Name, "/")
 			last := split[len(split)-1]
 			zrs.files[last] = f
 		}

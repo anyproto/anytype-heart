@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive/zipaclstorage"
 	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive/ziptreestorage"
-	"github.com/hashicorp/go-multierror"
 	"io/fs"
 	"os"
 )
@@ -20,10 +19,15 @@ type ExportedObjectsJson struct {
 }
 
 type Exporter struct {
-	zw     *zip.Writer
-	zf     fs.File
-	treeId string
-	aclId  string
+	zw       *zip.Writer
+	zf       fs.File
+	treeId   string
+	aclId    string
+	storages []zipStorage
+}
+
+type zipStorage interface {
+	FlushStorage() error
 }
 
 func NewExporter(path string) (*Exporter, error) {
@@ -44,37 +48,50 @@ func (e *Exporter) Writer() *zip.Writer {
 
 func (e *Exporter) TreeStorage(root *treechangeproto.RawTreeChangeWithId) (treestorage.TreeStorage, error) {
 	e.treeId = root.Id
-	return ziptreestorage.NewZipTreeWriteStorage(root, e.zw)
+	st, err := ziptreestorage.NewZipTreeWriteStorage(root, e.zw)
+	if err != nil {
+		return nil, err
+	}
+	e.storages = append(e.storages, st.(zipStorage))
+	return st, nil
 }
 
 func (e *Exporter) ListStorage(root *aclrecordproto.RawAclRecordWithId) (liststorage.ListStorage, error) {
 	e.aclId = root.Id
-	return zipaclstorage.NewAclWriteStorage(root, e.zw)
+	st, err := zipaclstorage.NewAclWriteStorage(root, e.zw)
+	if err != nil {
+		return nil, err
+	}
+	e.storages = append(e.storages, st.(zipStorage))
+	return st, nil
 }
 
-func (e *Exporter) Close() error {
+func (e *Exporter) Close() (err error) {
+	for _, st := range e.storages {
+		err = st.FlushStorage()
+		if err != nil {
+			return
+		}
+	}
 	exportedHeader, err := e.zw.CreateHeader(&zip.FileHeader{
 		Name:   "exported.json",
 		Method: zip.Deflate,
 	})
+	if err != nil {
+		return
+	}
 	enc := json.NewEncoder(exportedHeader)
 	enc.SetIndent("", "\t")
 	err = enc.Encode(ExportedObjectsJson{
 		TreeId: e.treeId,
 		AclId:  e.aclId,
 	})
-
-	var mErr multierror.Error
 	if err != nil {
-		mErr.Errors = append(mErr.Errors, err)
+		return
 	}
 	err = e.zw.Close()
 	if err != nil {
-		mErr.Errors = append(mErr.Errors, err)
+		return
 	}
-	err = e.zf.Close()
-	if err != nil {
-		mErr.Errors = append(mErr.Errors, err)
-	}
-	return &mErr
+	return e.zf.Close()
 }
