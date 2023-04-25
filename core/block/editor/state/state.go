@@ -717,8 +717,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 		prev = curr
 		filtered = append(filtered, e)
 	}
-	msgs = filtered
-	return
+	return filtered
 }
 
 func (s *State) Blocks() []*model.Block {
