@@ -48,79 +48,18 @@ func (c CreateSubObjectRequest) GetDetails() *types.Struct {
 func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
-	updateExisting bool) (string, bool, error) {
-	if predefinedSmartBlockType(sbType) {
-		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{}, []sb.SmartBlockType{sbType})
-		if err != nil {
-			return "", false, err
-		}
-		if len(ids) > 0 {
-			return ids[0], true, err
-		}
-	}
-
+	getExisting bool) (string, bool, error) {
 	if sbType == sb.SmartBlockTypeSubObject {
-		id := sn.Id
-		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeyId.String(),
-					Value:       pbtypes.String(id),
-				},
-			},
-		}, []sb.SmartBlockType{sbType})
-		if err == nil && len(ids) > 0 {
-			id = ids[0]
-		}
-		return id, false, nil
+		return ou.getSubObjectID(sn, sbType)
 	}
 
-	if updateExisting {
-		source := sn.Snapshot.Details.Fields[bundle.RelationKeySource.String()].GetStringValue()
-		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeySource.String(),
-					Value:       pbtypes.String(source),
-				},
-			},
-			Limit: 1,
-		})
+	if getExisting {
+		id, exist, err := ou.getExisting(sn)
 		if err == nil {
-			if len(records) > 0 {
-				id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-				return id, true, nil
-			}
-		}
-		id := sn.Id
-		records, _, err = ou.core.ObjectStore().Query(nil, database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeyId.String(),
-					Value:       pbtypes.String(id),
-				},
-			},
-			Limit: 1,
-		})
-		if err == nil {
-			if len(records) > 0 {
-				id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-				return id, true, nil
-			}
+			return id, exist, nil
 		}
 	}
 	cctx := context.Background()
-	if predefinedSmartBlockType(sbType) {
-		ctx := context.Background()
-		id, err := ou.service.DeriveObject(ctx, sbType, true)
-		if err != nil {
-			return "", false, err
-		}
-		return id, false, err
-	}
 
 	sb, release, err := ou.service.CreateTreeObject(cctx, sbType, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
@@ -134,23 +73,57 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	return sb.Id(), false, nil
 }
 
-func predefinedSmartBlockType(sbType sb.SmartBlockType) bool {
-	sbTypes := []sb.SmartBlockType{
-		sb.SmartBlockTypeWorkspace,
-		sb.SmartBlockTypeProfilePage,
-		sb.SmartBlockTypeArchive,
-		sb.SmartblockTypeMarketplaceType,
-		sb.SmartblockTypeMarketplaceRelation,
-		sb.SmartblockTypeMarketplaceTemplate,
-		sb.SmartBlockTypeWidget,
-		sb.SmartBlockTypeHome,
+func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {
+	id := sn.Id
+	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyId.String(),
+				Value:       pbtypes.String(id),
+			},
+		},
+	}, []sb.SmartBlockType{sbType})
+	if err == nil && len(ids) > 0 {
+		id = ids[0]
 	}
+	return id, false, nil
+}
 
-	for _, blockType := range sbTypes {
-		if blockType == sbType {
-			return true
+func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool, error) {
+	source := pbtypes.GetString(sn.Snapshot.Details, bundle.RelationKeySource.String())
+	records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySource.String(),
+				Value:       pbtypes.String(source),
+			},
+		},
+		Limit: 1,
+	})
+	if err == nil {
+		if len(records) > 0 {
+			id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+			return id, true, nil
 		}
 	}
-
-	return false
+	id := sn.Id
+	records, _, err = ou.core.ObjectStore().Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyId.String(),
+				Value:       pbtypes.String(id),
+			},
+		},
+		Limit: 1,
+	})
+	if err == nil {
+		if len(records) > 0 {
+			id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+			return id, true, nil
+		}
+	}
+	return "", false, err
 }
