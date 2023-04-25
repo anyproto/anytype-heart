@@ -2,11 +2,12 @@ package storage
 
 import (
 	"context"
+	"testing"
+
 	"github.com/anytypeio/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func testList(t *testing.T, store liststorage.ListStorage, root *aclrecordproto.RawAclRecordWithId, head string) {

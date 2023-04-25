@@ -2,14 +2,16 @@ package localdiscovery
 
 import (
 	"context"
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/net/addrs"
-	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
-	"go.uber.org/zap"
 	gonet "net"
 	"strings"
 	"sync"
+
+	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/app"
+	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/net/addrs"
+	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 )
 
 var notifierProvider NotifierProvider

@@ -157,6 +157,14 @@ type testStore struct {
 	mu    sync.Mutex
 }
 
+func (t *testStore) CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error) {
+	return nil, nil
+}
+
+func (t *testStore) BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error) {
+	return nil
+}
+
 func (t *testStore) AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error) {
 	panic("not implemented")
 }

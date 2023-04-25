@@ -2,18 +2,20 @@ package clientdebugrpc
 
 import (
 	"context"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/secureservice"
+	"storj.io/drpc"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc/clientdebugrpcproto"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	"storj.io/drpc"
 )
 
 const CName = "common.debug.clientdebugrpc"

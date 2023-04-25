@@ -2,13 +2,14 @@ package space
 
 import (
 	"errors"
+	"sync/atomic"
+	"time"
+
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/net/peer"
 	"golang.org/x/net/context"
 	"storj.io/drpc"
-	"sync/atomic"
-	"time"
 )
 
 var (

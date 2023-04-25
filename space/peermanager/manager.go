@@ -3,15 +3,15 @@ package peermanager
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/net/peer"
-	"github.com/anytypeio/any-sync/net/streampool"
-	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
-	"storj.io/drpc"
-	"sync"
+
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 )
 
 type clientPeerManager struct {
@@ -28,13 +28,7 @@ func (n *clientPeerManager) init() {
 
 func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *spacesyncproto.ObjectSyncMessage) (err error) {
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
-	var drpcMsg drpc.Message
-	drpcMsg = msg
-	if msg.ReplyId != "" || msg.RequestId != "" {
-		// prioritize messages with the request or reply by sending it to a separate queue
-		drpcMsg = streampool.WithQueueId(msg, "replyQueue")
-	}
-	return n.p.streamPool.Send(ctx, drpcMsg, func(ctx context.Context) (peers []peer.Peer, err error) {
+	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
 		return n.getExactPeer(ctx, peerId)
 	})
 }

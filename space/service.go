@@ -3,15 +3,13 @@ package space
 import (
 	"context"
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/gogo/protobuf/proto"
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
-	//nolint: misspell
+	// nolint: misspell
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/peermanager"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
@@ -23,9 +21,11 @@ import (
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/streampool"
+	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
@@ -51,6 +51,8 @@ type PoolManager interface {
 	StreamPeerPool() pool.Pool
 }
 
+//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anytypeio/go-anytype-middleware/space Service
+//go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anytypeio/any-sync/commonspace Space
 type Service interface {
 	AccountSpace(ctx context.Context) (commonspace.Space, error)
 	AccountId() string

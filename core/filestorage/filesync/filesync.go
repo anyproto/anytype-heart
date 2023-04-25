@@ -34,6 +34,7 @@ func New() FileSync {
 	return new(fileSync)
 }
 
+//go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync FileSync
 type FileSync interface {
 	AddFile(spaceId, fileId string) (err error)
 	RemoveFile(spaceId, fileId string) (err error)
@@ -41,8 +42,9 @@ type FileSync interface {
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)
 	SyncStatus() (ss SyncStatus, err error)
-	NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher
 	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
+	HasUpload(spaceId, fileId string) (ok bool, err error)
+
 	app.ComponentRunnable
 }
 
@@ -85,6 +87,13 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.addLoop()
 	go f.removeLoop()
+	return
+}
+
+func (f *fileSync) Close(ctx context.Context) (err error) {
+	if f.loopCancel != nil {
+		f.loopCancel()
+	}
 	return
 }
 
@@ -347,9 +356,6 @@ func (f *fileSync) removeFile(ctx context.Context, spaceId, fileId string) (err 
 	return f.rpcStore.DeleteFiles(ctx, spaceId, fileId)
 }
 
-func (f *fileSync) Close(ctx context.Context) (err error) {
-	if f.loopCancel != nil {
-		f.loopCancel()
-	}
-	return
+func (f *fileSync) HasUpload(spaceId, fileId string) (ok bool, err error) {
+	return f.queue.HasUpload(spaceId, fileId)
 }

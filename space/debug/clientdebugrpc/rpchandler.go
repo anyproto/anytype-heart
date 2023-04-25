@@ -2,18 +2,20 @@ package clientdebugrpc
 
 import (
 	"context"
+	"io"
+	"os"
+
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/ipfs/go-cid"
+	"go.uber.org/zap"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc/clientdebugrpcproto"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	"github.com/ipfs/go-cid"
-	"go.uber.org/zap"
-	"io"
-	"os"
 )
 
 type rpcHandler struct {
@@ -176,6 +178,6 @@ func (r *rpcHandler) GetFile(ctx context.Context, request *clientdebugrpcproto.G
 }
 
 func (r *rpcHandler) DeleteFile(ctx context.Context, request *clientdebugrpcproto.DeleteFileRequest) (*clientdebugrpcproto.DeleteFileResponse, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }

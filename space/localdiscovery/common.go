@@ -2,10 +2,11 @@ package localdiscovery
 
 import (
 	"fmt"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
 	"strconv"
 	"strings"
+
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/app/logger"
 )
 
 const (

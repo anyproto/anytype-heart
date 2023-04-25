@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -40,6 +40,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+
+	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -187,7 +189,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			sbt = smartblock.SmartBlockTypePage
 			log.Errorf("failed to get smartblock type for %s: %s; fallback to page", id, err.Error())
 			// todo: this this TEMP! we shouldn't get incorrect ids here, need to fix zip file
-			//return fmt.Errorf("invalid smartblock type: %v %v", sbt, err)
+			// return fmt.Errorf("invalid smartblock type: %v %v", sbt, err)
 		}
 		if sbt == smartblock.SmartBlockTypeSubObject {
 			// todo: probably subobjects are broken here

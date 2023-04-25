@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+
 	"github.com/anytypeio/any-sync/commonspace"
 )
 

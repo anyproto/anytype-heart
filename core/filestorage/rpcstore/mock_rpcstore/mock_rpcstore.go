@@ -132,6 +132,35 @@ func (mr *MockRpcStoreMockRecorder) AddToFile(arg0, arg1, arg2, arg3 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddToFile", reflect.TypeOf((*MockRpcStore)(nil).AddToFile), arg0, arg1, arg2, arg3)
 }
 
+// BindCids mocks base method.
+func (m *MockRpcStore) BindCids(arg0 context.Context, arg1, arg2 string, arg3 []cid.Cid) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BindCids", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BindCids indicates an expected call of BindCids.
+func (mr *MockRpcStoreMockRecorder) BindCids(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindCids", reflect.TypeOf((*MockRpcStore)(nil).BindCids), arg0, arg1, arg2, arg3)
+}
+
+// CheckAvailability mocks base method.
+func (m *MockRpcStore) CheckAvailability(arg0 context.Context, arg1 string, arg2 []cid.Cid) ([]*fileproto.BlockAvailability, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckAvailability", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*fileproto.BlockAvailability)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckAvailability indicates an expected call of CheckAvailability.
+func (mr *MockRpcStoreMockRecorder) CheckAvailability(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckAvailability", reflect.TypeOf((*MockRpcStore)(nil).CheckAvailability), arg0, arg1, arg2)
+}
+
 // Delete mocks base method.
 func (m *MockRpcStore) Delete(arg0 context.Context, arg1 cid.Cid) error {
 	m.ctrl.T.Helper()

@@ -2,12 +2,13 @@ package storage
 
 import (
 	"context"
+	"os"
+	"testing"
+
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 func treeTestPayload() treestorage.TreeStorageCreatePayload {

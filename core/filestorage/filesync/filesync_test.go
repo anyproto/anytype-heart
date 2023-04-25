@@ -14,12 +14,14 @@ import (
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
+	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
@@ -40,6 +42,19 @@ func TestFileSync_AddFile(t *testing.T) {
 	require.NoError(t, err)
 	fileId := n.Cid().String()
 	spaceId := "spaceId"
+
+	// TODO Test when limit is reached
+	fx.rpcStore.EXPECT().CheckAvailability(gomock.Any(), spaceId, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
+		res := lo.Map(cids, func(c cid.Cid, _ int) *fileproto.BlockAvailability {
+			return &fileproto.BlockAvailability{
+				Cid:    c.Bytes(),
+				Status: fileproto.AvailabilityStatus_NotExists,
+			}
+		})
+		return res, nil
+	})
+	fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
+	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), spaceId).Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil)
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
 	require.NoError(t, fx.AddFile(spaceId, fileId))
 	fx.waitEmptyQueue(t, time.Second*5)

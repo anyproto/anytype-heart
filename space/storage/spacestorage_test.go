@@ -1,14 +1,15 @@
 package storage
 
 import (
+	"sort"
+	"strconv"
+	"testing"
+
 	"github.com/anytypeio/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	spacestorage "github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/stretchr/testify/require"
-	"sort"
-	"strconv"
-	"testing"
 )
 
 func spaceTestPayload() spacestorage.SpaceStorageCreatePayload {

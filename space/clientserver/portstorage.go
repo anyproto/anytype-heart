@@ -2,6 +2,7 @@ package clientserver
 
 import (
 	"encoding/binary"
+
 	"github.com/dgraph-io/badger/v3"
 )
 

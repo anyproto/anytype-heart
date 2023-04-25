@@ -3,21 +3,20 @@ package anytype
 import (
 	"context"
 	"os"
-
-	"github.com/anytypeio/any-sync/coordinator/nodeconfsource"
-	"github.com/anytypeio/any-sync/nodeconf/nodeconfstore"
-
-	"github.com/anytypeio/any-sync/util/crypto"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
+	"github.com/anytypeio/any-sync/coordinator/nodeconfsource"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/secureservice"
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
+	"github.com/anytypeio/any-sync/nodeconf/nodeconfstore"
+	"github.com/anytypeio/any-sync/util/crypto"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -35,8 +34,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync/filesyncstatus"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -48,9 +50,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
@@ -72,6 +74,7 @@ import (
 
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects, createBuiltinTemplates bool) *config.Config {
 	return config.New(
+		config.WithStagingCafe(isStaging),
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
 		config.WithCreateBuiltinObjects(createBuiltinObjects),
@@ -102,6 +105,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 	walletService := a.Component(wallet.CName).(wallet.Wallet)
+	eventService := a.Component(event.CName).(event.Sender)
+	cfg := a.Component(config.CName).(*config.Config)
+
 	tempDirService := core.NewTempDirService(walletService)
 	spaceService := space.New()
 	sbtProvider := typeprovider.New(spaceService)
@@ -114,6 +120,20 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	relationService := relation.New()
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
+	fileSyncService := filesync.New()
+
+	fileSyncUpdateInterval := 5 * time.Second
+	fileSyncStatusRegistry := filesyncstatus.NewRegistry(fileSyncService, fileSyncUpdateInterval)
+
+	linkedFilesStatusWatcher := status.NewLinkedFilesWatcher(spaceService, fileSyncStatusRegistry)
+	subObjectsStatusWatcher := status.NewSubObjectsWatcher()
+	statusUpdateReceiver := status.NewUpdateReceiver(coreService, linkedFilesStatusWatcher, subObjectsStatusWatcher, cfg, eventService.Send)
+	objectStatusWatcher := status.NewSpaceObjectWatcher(spaceService, statusUpdateReceiver)
+
+	fileSyncStatusWatcher := filesyncstatus.New(fileSyncStatusRegistry, statusUpdateReceiver, fileSyncUpdateInterval)
+	fileStatusWatcher := status.NewFileWatcher(spaceService, fileSyncStatusWatcher)
+
+	statusService := status.New(sbtProvider, coreService, fileStatusWatcher, objectStatusWatcher, subObjectsStatusWatcher, linkedFilesStatusWatcher)
 
 	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).
@@ -130,9 +150,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
+		Register(filestore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
-		Register(filesync.New()).
+		Register(fileSyncService).
 		Register(localdiscovery.New()).
 		Register(spaceService).
 		Register(peermanager.New()).
@@ -140,9 +161,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(relationService).
 		Register(ftsearch.New()).
 		Register(objectStore).
-		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
+		Register(cafe.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
@@ -150,13 +171,15 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(builtintemplate.New()).
 		Register(blockService).
 		Register(indexerService).
-		Register(status.New()).
+		Register(fileSyncStatusWatcher).
+		Register(linkedFilesStatusWatcher).
+		Register(statusService).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New(sbtProvider)).
 		Register(linkpreview.New()).
 		Register(unsplash.New(tempDirService)).
-		Register(restriction.New(sbtProvider, objectStore)).
+		Register(restriction.New(sbtProvider)).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
 		Register(collectionService).
