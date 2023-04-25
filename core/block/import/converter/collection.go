@@ -43,20 +43,20 @@ func (r *RootCollection) AddObjects(collectionName string, targetObjects []strin
 }
 
 func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *state.State, detailsStruct *types.Struct) *Snapshot {
-	rootCol := &Snapshot{
+	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
 		SbType:   sb.SmartBlockTypeCollection,
-		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-			Blocks:        st.Blocks(),
-			Details:       detailsStruct,
-			ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
-			RelationLinks: st.GetRelationLinks(),
-			Collections:   st.Store(),
-		},
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks:        st.Blocks(),
+				Details:       detailsStruct,
+				ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
+				RelationLinks: st.GetRelationLinks(),
+				Collections:   st.Store(),
+			},
 		},
 	}
-	return rootCol
 }
 
 func (r *RootCollection) addRelations(st *state.State) error {
