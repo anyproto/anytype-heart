@@ -69,17 +69,19 @@ func TestUnion(t *testing.T) {
 }
 
 func TestChangeElement(t *testing.T) {
-	result := ChangeElement([]testStruct{{id: "a", val: 1}, {id: "b", val: 2}}, testStruct{id: "b", val: 3}, func(s, s2 testStruct) bool {
-		return s.id == s2.id
+	ts := testStruct{id: "b", val: 3}
+	result := ReplaceFirstBy([]testStruct{{id: "a", val: 1}, {id: "b", val: 2}}, ts, func(s testStruct) bool {
+		return s.id == ts.id
 	})
 	assert.Equal(t, []testStruct{{id: "a", val: 1}, {id: "b", val: 3}}, result)
 
-	resultPtr := ChangeElement([]*testStruct{{id: "a", val: 1}, {id: "b", val: 2}}, &testStruct{id: "a", val: 3}, func(s, s2 *testStruct) bool {
-		return s.id == s2.id
+	tsPtr := &testStruct{id: "a", val: 3}
+	resultPtr := ReplaceFirstBy([]*testStruct{{id: "a", val: 1}, {id: "b", val: 2}}, tsPtr, func(s *testStruct) bool {
+		return s.id == tsPtr.id
 	})
 	assert.Equal(t, []*testStruct{{id: "a", val: 3}, {id: "b", val: 2}}, resultPtr)
 
-	resultFood := ChangeElement([]string{"apple", "carrot", "bacon"}, "banana", func(_, f string) bool {
+	resultFood := ReplaceFirstBy([]string{"apple", "carrot", "bacon"}, "banana", func(f string) bool {
 		return f == "bacon"
 	})
 	assert.Equal(t, []string{"apple", "carrot", "banana"}, resultFood)

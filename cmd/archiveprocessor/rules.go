@@ -98,8 +98,8 @@ func doRelationLinkRule(s *pb.ChangeSnapshot, r *rule) {
 	case add:
 		s.Data.RelationLinks = append(s.Data.RelationLinks, r.RelationLink)
 	case change:
-		s.Data.RelationLinks = slice.ChangeElement(s.Data.RelationLinks, r.RelationLink, func(r, r2 *model.RelationLink) bool {
-			return r.Key == r2.Key
+		s.Data.RelationLinks = slice.ReplaceFirstBy(s.Data.RelationLinks, r.RelationLink, func(rl *model.RelationLink) bool {
+			return rl.Key == r.RelationLink.Key
 		})
 	default:
 		fmt.Printf(errInvalidAction, r.Action)
