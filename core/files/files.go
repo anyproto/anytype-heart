@@ -51,7 +51,7 @@ type Service struct {
 	store        filestore.FileStore
 	commonFile   fileservice.FileService
 	fileSync     filesync.FileSync
-	ipfs         ipld.DAGService
+	dagService   ipld.DAGService
 	spaceService space.Service
 }
 
@@ -60,7 +60,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
 	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.ipfs = s.commonFile.DAGService()
+	s.dagService = s.commonFile.DAGService()
 	return nil
 }
 
@@ -149,14 +149,14 @@ func (s *Service) storeChunksCount(ctx context.Context, node ipld.Node) error {
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
 func (s *Service) FileRestoreKeys(ctx context.Context, hash string) (map[string]string, error) {
-	links, err := helpers.LinksAtCid(ctx, s.ipfs, hash)
+	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
 	}
 
 	var fileKeys = make(map[string]string)
 	for _, index := range links {
-		node, err := helpers.NodeAtLink(ctx, s.ipfs, index)
+		node, err := helpers.NodeAtLink(ctx, s.dagService, index)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +171,7 @@ func (s *Service) FileRestoreKeys(ctx context.Context, hash string) (map[string]
 			}
 		} else {
 			for _, link := range node.Links() {
-				innerLinks, err := helpers.LinksAtCid(ctx, s.ipfs, link.Cid.String())
+				innerLinks, err := helpers.LinksAtCid(ctx, s.dagService, link.Cid.String())
 				if err != nil {
 					return nil, err
 				}
@@ -206,11 +206,11 @@ func (s *Service) FileRestoreKeys(ctx context.Context, hash string) (map[string]
 
 func (s *Service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
-	outer := uio.NewDirectory(s.ipfs)
+	outer := uio.NewDirectory(s.dagService)
 	outer.SetCidBuilder(cidBuilder)
 
 	for i, dir := range dirs.Items {
-		inner := uio.NewDirectory(s.ipfs)
+		inner := uio.NewDirectory(s.dagService)
 		inner.SetCidBuilder(cidBuilder)
 		olink := strconv.Itoa(i)
 
@@ -228,13 +228,13 @@ func (s *Service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.Directo
 			return nil, nil, err
 		}
 		// todo: pin?
-		err = s.ipfs.Add(ctx, node)
+		err = s.dagService.Add(ctx, node)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		id := node.Cid().String()
-		err = helpers.AddLinkToDirectory(ctx, s.ipfs, outer, olink, id)
+		err = helpers.AddLinkToDirectory(ctx, s.dagService, outer, olink, id)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -245,7 +245,7 @@ func (s *Service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.Directo
 		return nil, nil, err
 	}
 	// todo: pin?
-	err = s.ipfs.Add(ctx, node)
+	err = s.dagService.Add(ctx, node)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -254,7 +254,7 @@ func (s *Service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.Directo
 
 func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
-	outer := uio.NewDirectory(s.ipfs)
+	outer := uio.NewDirectory(s.dagService)
 	outer.SetCidBuilder(cidBuilder)
 
 	var err error
@@ -272,7 +272,7 @@ func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 		return nil, nil, err
 	}
 
-	err = s.ipfs.Add(ctx, node)
+	err = s.dagService.Add(ctx, node)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -285,13 +285,13 @@ func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 }
 
 func (s *Service) FileGetInfoForPath(pth string) (*storage.FileInfo, error) {
-	if !strings.HasPrefix(pth, "/ipfs/") {
-		return nil, fmt.Errorf("path should starts with '/ipfs/...'")
+	if !strings.HasPrefix(pth, "/dagService/") {
+		return nil, fmt.Errorf("path should starts with '/dagService/...'")
 	}
 
 	pthParts := strings.Split(pth, "/")
 	if len(pthParts) < 4 {
-		return nil, fmt.Errorf("path is too short: it should match '/ipfs/:hash/...'")
+		return nil, fmt.Errorf("path is too short: it should match '/dagService/:hash/...'")
 	}
 
 	keys, err := s.FileGetKeys(pthParts[2])
@@ -337,7 +337,7 @@ func (s *Service) FileGetKeys(hash string) (*FileKeys, error) {
 // fileIndexData walks a file data node, indexing file links
 func (s *Service) fileIndexData(ctx context.Context, inode ipld.Node, data string) error {
 	for _, link := range inode.Links() {
-		nd, err := helpers.NodeAtLink(ctx, s.ipfs, link)
+		nd, err := helpers.NodeAtLink(ctx, s.dagService, link)
 		if err != nil {
 			return err
 		}
@@ -359,7 +359,7 @@ func (s *Service) fileIndexNode(ctx context.Context, inode ipld.Node, data strin
 	}
 
 	for _, link := range links {
-		n, err := helpers.NodeAtLink(ctx, s.ipfs, link)
+		n, err := helpers.NodeAtLink(ctx, s.dagService, link)
 		if err != nil {
 			return err
 		}
@@ -621,15 +621,15 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 		return err
 	}
 
-	pair := uio.NewDirectory(s.ipfs)
+	pair := uio.NewDirectory(s.dagService)
 	pair.SetCidBuilder(cidBuilder)
 
 	if file.MetaHash == "" {
 		return fmt.Errorf("metaHash is empty")
 	}
 
-	err = helpers.AddLinkToDirectory(ctx, s.ipfs, pair, MetaLinkName, file.MetaHash)
-	err = helpers.AddLinkToDirectory(ctx, s.ipfs, pair, ContentLinkName, file.Hash)
+	err = helpers.AddLinkToDirectory(ctx, s.dagService, pair, MetaLinkName, file.MetaHash)
+	err = helpers.AddLinkToDirectory(ctx, s.dagService, pair, ContentLinkName, file.Hash)
 	if err != nil {
 		return err
 	}
@@ -638,12 +638,12 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 	if err != nil {
 		return err
 	}
-	err = s.ipfs.Add(ctx, node)
+	err = s.dagService.Add(ctx, node)
 	if err != nil {
 		return err
 	}
 
-	return helpers.AddLinkToDirectory(ctx, s.ipfs, dir, link, node.Cid().String())
+	return helpers.AddLinkToDirectory(ctx, s.dagService, dir, link, node.Cid().String())
 }
 
 func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
@@ -735,7 +735,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 }
 
 func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
-	links, err := helpers.LinksAtCid(ctx, s.ipfs, hash)
+	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -748,7 +748,7 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists
 
 	var files []*storage.FileInfo
 	for _, index := range links {
-		node, err := helpers.NodeAtLink(ctx, s.ipfs, index)
+		node, err := helpers.NodeAtLink(ctx, s.dagService, index)
 		if err != nil {
 			return nil, err
 		}

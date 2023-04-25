@@ -48,8 +48,8 @@ func (s *Service) NormalizeOptions(ctx context.Context, opts *AddOptions) error 
 		opts.Reader, file, err = s.fileContent(ctx, hash)
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
-				// just cat the data from ipfs
-				b, err := ipfsutil.DataAtCid(s.ipfs, ref.String())
+				// just cat the data from dagService
+				b, err := ipfsutil.DataAtCid(s.dagService, ref.String())
 				if err != nil {
 					return nil, err
 				}
