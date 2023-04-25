@@ -2,8 +2,6 @@ package importer
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -76,5 +74,5 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 		return "", false, err
 	}
 	release()
-	return sb.Id(), false, fmt.Errorf("no source or id details")
+	return sb.Id(), false, nil
 }
