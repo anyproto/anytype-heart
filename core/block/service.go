@@ -5,20 +5,18 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/hashicorp/go-multierror"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
 
+	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -48,6 +46,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -162,9 +161,6 @@ func (s *Service) Run(ctx context.Context) (err error) {
 }
 
 func (s *Service) GetSpaceDashboardID(ctx context.Context) (string, error) {
-	if !s.app.MustComponent(config.CName).(*config.Config).NewAccount {
-		return s.Anytype().PredefinedBlocks().Home, nil
-	}
 	if s.spaceDashboardID == "" {
 		obj, release, err := s.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *smartblock.InitContext {
 			return &smartblock.InitContext{
