@@ -142,7 +142,6 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithTitle,
 		template.WithFeaturedRelations,
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		template.WithDetail(bundle.RelationKeyName, pbtypes.String("Personal space")),
 		template.WithDetail(bundle.RelationKeySpaceDashboardId, pbtypes.String(spaceDashboardID)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeySpace.URL())),
