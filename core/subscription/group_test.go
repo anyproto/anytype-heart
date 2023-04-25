@@ -119,11 +119,7 @@ func TestGroupTag(t *testing.T) {
 		require.NoError(t, sub.init(entries))
 
 		ctx := &opCtx{c: sub.cache}
-		ctx.entries = append(ctx.entries, &entry{
-			id: "tag_4", data: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():          pbtypes.String("tag_4"),
-				bundle.RelationKeyRelationKey.String(): pbtypes.String(kanbanKey),
-			}}})
+		ctx.entries = append(ctx.entries, makeTag("tag_4"),)
 		sub.onChange(ctx)
 
 		assertCtxGroup(t, ctx, 1, 0)
