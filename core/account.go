@@ -671,7 +671,7 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	if err != nil {
 		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
 	}
-	code, err := mw.createAccountFromLegacyExport(profile, req)
+	code, err := mw.createAccountFromExport(profile, req)
 	if err != nil {
 		return response("", code, err)
 	}
@@ -705,7 +705,7 @@ func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profi
 	return &profile, nil
 }
 
-func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
+func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
 	mw.m.Lock()
 	defer mw.m.Unlock()
 	err := mw.stop()
@@ -718,10 +718,9 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 	address := res.Identity.GetPublic().Account()
-	if address == "" || profile.Address != address {
+	if profile.Address != res.OldAccountKey.GetPublic().Account() && profile.Address != address {
 		return pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
 	}
-
 	mw.rootPath = req.RootPath
 	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
