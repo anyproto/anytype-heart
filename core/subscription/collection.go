@@ -16,9 +16,9 @@ import (
 )
 
 type collectionObserver struct {
-	lock     *sync.RWMutex
-	ids      []string
-	idsIndex map[string]int
+	lock   *sync.RWMutex
+	ids    []string
+	idsSet map[string]struct{}
 
 	closeCh chan struct{}
 
@@ -40,8 +40,13 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 		cache:       s.cache,
 		objectStore: s.objectStore,
 		recBatch:    s.recBatch,
+
+		idsSet: map[string]struct{}{},
 	}
-	obs.setIDs(initialObjectIDs)
+	obs.ids = initialObjectIDs
+	for _, id := range initialObjectIDs {
+		obs.idsSet[id] = struct{}{}
+	}
 
 	go func() {
 		for {
@@ -55,15 +60,6 @@ func (s *service) newCollectionObserver(collectionID string, subID string) (*col
 	}()
 
 	return obs, nil
-}
-
-func (c *collectionObserver) setIDs(ids []string) {
-	c.ids = ids
-	c.idsIndex = map[string]int{}
-
-	for i, id := range ids {
-		c.idsIndex[id] = i
-	}
 }
 
 func (c *collectionObserver) close() {
@@ -84,9 +80,13 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	defer c.lock.Unlock()
 
 	removed, added := slice.DifferenceRemovedAdded(c.ids, ids)
-
-	// TODO update idsIndex map atomically
-	c.setIDs(ids)
+	for _, id := range removed {
+		delete(c.idsSet, id)
+	}
+	for _, id := range added {
+		c.idsSet[id] = struct{}{}
+	}
+	c.ids = ids
 
 	entries := fetchEntries(c.cache, c.objectStore, append(removed, added...))
 	for _, e := range entries {
@@ -99,7 +99,7 @@ func (c *collectionObserver) updateIDs(ids []string) {
 func (c *collectionObserver) FilterObject(g filter.Getter) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	_, ok := c.idsIndex[g.(*entry).id]
+	_, ok := c.idsSet[g.(*entry).id]
 	return ok
 }
 
