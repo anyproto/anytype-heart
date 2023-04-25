@@ -24,6 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/constant"
@@ -183,6 +184,9 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		}
 		if mo == nil {
 			continue
+		}
+		if mo.SbType == model.SmartBlockType_SubObject {
+			id = p.getIDForSubObject(mo, id)
 		}
 		if mo.SbType == model.SmartBlockType_ProfilePage {
 			id = p.getIDForUserProfile(mo, profileID, id)
@@ -415,4 +419,16 @@ func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[strin
 	if len(objectsInCollections) != 0 {
 		st.UpdateStoreSlice(template.CollectionStoreKey, objectsInCollections)
 	}
+}
+
+// getIDForSubObject preserve id for bundled relations and object types
+func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
+	so := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceObject.String())
+	if strings.HasPrefix(so, addr.BundledObjectTypeURLPrefix) ||
+		strings.HasPrefix(so, addr.BundledRelationURLPrefix) {
+		if objectID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String()); objectID != "" {
+			return objectID
+		}
+	}
+	return id
 }
