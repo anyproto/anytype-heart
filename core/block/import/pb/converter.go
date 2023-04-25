@@ -43,6 +43,7 @@ type Pb struct {
 	service     *collection.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
 	core        core.Service
+	iconOption  int64
 }
 
 func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypeProvider, core core.Service) converter.Converter {
@@ -167,7 +168,10 @@ func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot
 
 		iconOption := pbtypes.GetInt64(workspace.Snapshot.Data.Details, bundle.RelationKeyIconOption.String())
 		if iconOption == 0 {
-			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(int64(rand.Intn(16) + 1))
+			if p.iconOption == 0 {
+				p.iconOption = int64(rand.Intn(16) + 1)
+			}
+			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.iconOption)
 		}
 	}
 
@@ -202,6 +206,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		}
 		if mo.SbType == model.SmartBlockType_ProfilePage {
 			id = p.getIDForUserProfile(mo, profileID, id)
+			p.setProfileIconOption(mo, profileID)
 		}
 		if _, ok := model.SmartBlockType_name[int32(mo.SbType)]; !ok {
 			mo.SbType = model.SmartBlockType_Page
@@ -228,6 +233,17 @@ func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id s
 		return p.core.ProfileID()
 	}
 	return id
+}
+
+func (p *Pb) setProfileIconOption(mo *pb.SnapshotWithType, profileID string) {
+	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	if objectID != profileID {
+		return
+	}
+	if p.iconOption == 0 {
+		p.iconOption = int64(rand.Intn(16) + 1)
+	}
+	mo.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.iconOption)
 }
 
 func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
