@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func (i *indexer) ForceFTIndex() {
@@ -70,42 +69,19 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 		return
 	}
 
-	if len(info.FileHashes) > 0 {
-		// todo: move file indexing to the main indexer as we have  the full state there now
-		existingIDs, err := i.store.HasIDs(info.FileHashes...)
-		if err != nil {
-			log.Errorf("failed to get existing file ids : %s", err.Error())
-		}
-		newIds := slice.Difference(info.FileHashes, existingIDs)
-		for _, hash := range newIds {
-			// file's hash is id
-			err = i.reindexDoc(ctx, hash, false)
-			if err != nil {
-				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
-			}
-
-			err = i.store.AddToIndexQueue(hash)
-			if err != nil {
-				log.With("id", hash).Error(err.Error())
-			}
-		}
+	title := pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String())
+	if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
+		title = info.State.Snippet()
 	}
-
-	if fts := i.store.FTSearch(); fts != nil {
-		title := pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String())
-		if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
-			title = info.State.Snippet()
-		}
-		ftDoc := ftsearch.SearchDoc{
-			Id:    id,
-			Title: title,
-			Text:  info.State.SearchText(),
-		}
-		if err := fts.Index(ftDoc); err != nil {
-			log.Errorf("can't ft index doc: %v", err)
-		}
-		log.Debugf("ft search indexed with title: '%s'", ftDoc.Title)
+	ftDoc := ftsearch.SearchDoc{
+		Id:    id,
+		Title: title,
+		Text:  info.State.SearchText(),
 	}
+	if err := i.ftsearch.Index(ftDoc); err != nil {
+		log.Errorf("can't ft index doc: %v", err)
+	}
+	log.Debugf("ft search indexed with title: '%s'", ftDoc.Title)
 
 	log.With("thread", id).Infof("ft index updated for a %v", time.Since(st))
 	return
