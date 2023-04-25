@@ -146,7 +146,7 @@ type Service struct {
 	layoutConverter converter.LayoutConverter
 
 	fileSync    filesync.FileSync
-	fileService *files.Service
+	fileService files.IService
 }
 
 func (s *Service) Name() string {
@@ -170,7 +170,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
-	s.fileService = app.MustComponent[*files.Service](a)
+	s.fileService = app.MustComponent[files.IService](a)
 	s.cache = s.createCache()
 	s.app = a
 	return

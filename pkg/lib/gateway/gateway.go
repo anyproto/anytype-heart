@@ -38,7 +38,7 @@ type Gateway interface {
 }
 
 type gateway struct {
-	fileService     *files.Service
+	fileService     files.IService
 	server          *http.Server
 	listener        net.Listener
 	handler         *http.ServeMux
@@ -77,7 +77,7 @@ func GatewayAddr() string {
 }
 
 func (g *gateway) Init(a *app.App) (err error) {
-	g.fileService = app.MustComponent[*files.Service](a)
+	g.fileService = app.MustComponent[files.IService](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil

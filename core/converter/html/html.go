@@ -61,14 +61,14 @@ const (
 		</html>`
 )
 
-func NewHTMLConverter(fileService *files.Service, s *state.State) *HTML {
+func NewHTMLConverter(fileService files.IService, s *state.State) *HTML {
 	return &HTML{fileService: fileService, s: s}
 }
 
 type HTML struct {
 	s           *state.State
 	buf         *bytes.Buffer
-	fileService *files.Service
+	fileService files.IService
 }
 
 func (h *HTML) Convert() (result string) {

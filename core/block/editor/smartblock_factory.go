@@ -11,7 +11,7 @@ import (
 
 type smartblockFactory struct {
 	anytype            core.Service
-	fileService        *files.Service
+	fileService        files.IService
 	indexer            smartblock.Indexer
 	objectStore        objectstore.ObjectStore
 	relationService    relation2.Service

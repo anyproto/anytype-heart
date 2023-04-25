@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
-func (s *Service) FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error) {
+func (s *service) FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error) {
 	if err := s.checkIfPinned(fileID, includeNotPinned); err != nil {
 		return 0, err
 	}
@@ -19,7 +19,7 @@ func (s *Service) FileOffload(fileID string, includeNotPinned bool) (totalSize u
 	return s.fileOffload(fileID)
 }
 
-func (s *Service) checkIfPinned(fileID string, includeNotPinned bool) error {
+func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
 	if includeNotPinned {
 		return nil
 	}
@@ -34,7 +34,7 @@ func (s *Service) checkIfPinned(fileID string, includeNotPinned bool) error {
 	return nil
 }
 
-func (s *Service) isFilePinned(fileID string) (bool, error) {
+func (s *service) isFilePinned(fileID string) (bool, error) {
 	stat, err := s.fileSync.FileStat(context.Background(), s.spaceService.AccountId(), fileID)
 	if err != nil {
 		return false, fmt.Errorf("file stat %s: %w", fileID, err)
@@ -43,7 +43,7 @@ func (s *Service) isFilePinned(fileID string) (bool, error) {
 	return stat.UploadedChunksCount == stat.TotalChunksCount, nil
 }
 
-func (s *Service) fileOffload(hash string) (totalSize uint64, err error) {
+func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
 	totalSize, cids, err := s.getAllExistingFileBlocksCids(hash)
 	if err != nil {
 		return 0, err
@@ -65,7 +65,7 @@ func (s *Service) fileOffload(hash string) (totalSize uint64, err error) {
 	return totalSize, nil
 }
 
-func (s *Service) FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
+func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
 	if len(fileIDs) == 0 {
 		allFiles, err := s.fileStore.List()
 		if err != nil {
@@ -97,7 +97,7 @@ func (s *Service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 	return
 }
 
-func (s *Service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
+func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 	fileStats, err := s.fileSync.FileListStats(context.Background(), s.spaceService.AccountId(), fileIDs)
 	if err != nil {
 		return nil, fmt.Errorf("files stat: %w", err)
@@ -112,7 +112,7 @@ func (s *Service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 	return fileIDs, nil
 }
 
-func (s *Service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
+func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
 	var getCidsLinksRecursively func(c cid.Cid) (err error)
 
 	var visitedMap = make(map[string]struct{})

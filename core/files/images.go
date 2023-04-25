@@ -11,7 +11,7 @@ import (
 
 var ErrImageNotFound = fmt.Errorf("image not found")
 
-func (s *Service) ImageByHash(ctx context.Context, hash string) (Image, error) {
+func (s *service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	files, err := s.fileStore.ListByTarget(hash)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (s *Service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 }
 
 // TODO: Touch the file to fire indexing
-func (s *Service) ImageAdd(ctx context.Context, options ...AddOption) (Image, error) {
+func (s *service) ImageAdd(ctx context.Context, options ...AddOption) (Image, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
@@ -70,7 +70,7 @@ func (s *Service) ImageAdd(ctx context.Context, options ...AddOption) (Image, er
 	return img, nil
 }
 
-func (s *Service) imageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
+func (s *service) imageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
 	dir, err := s.fileBuildDirectory(ctx, opts.Reader, opts.Name, opts.Plaintext, anytype.ImageNode())
 	if err != nil {
 		return "", nil, err

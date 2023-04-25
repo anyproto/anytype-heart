@@ -6,7 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (s *Service) GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error) {
+func (s *service) GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error) {
 	stat, err := s.fileSync.SpaceStat(ctx, s.spaceService.AccountId())
 	if err != nil {
 		return nil, err

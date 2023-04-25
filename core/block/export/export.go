@@ -56,7 +56,7 @@ type export struct {
 	objectStore objectstore.ObjectStore
 	a           core.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
-	fileService *files.Service
+	fileService files.IService
 }
 
 func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
@@ -69,7 +69,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	e.fileService = app.MustComponent[*files.Service](a)
+	e.fileService = app.MustComponent[files.IService](a)
 	return
 }
 

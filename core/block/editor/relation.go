@@ -32,7 +32,7 @@ func NewRelation(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService *files.Service,
+	fileService files.IService,
 ) *Relation {
 	return &Relation{
 		SubObject: NewSubObject(

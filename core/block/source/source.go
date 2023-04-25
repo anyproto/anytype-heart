@@ -81,7 +81,7 @@ type sourceDeps struct {
 	accountService accountservice.Service
 	spaceService   space.Service
 	sbtProvider    typeprovider.SmartBlockTypeProvider
-	fileService    *files.Service
+	fileService    files.IService
 }
 
 func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
@@ -118,7 +118,7 @@ type source struct {
 
 	coreService    core.Service
 	statusService  status.Service
-	fileService    *files.Service
+	fileService    files.IService
 	accountService accountservice.Service
 	spaceService   space.Service
 	sbtProvider    typeprovider.SmartBlockTypeProvider

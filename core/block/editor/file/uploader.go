@@ -40,7 +40,7 @@ func init() {
 
 func NewUploader(
 	s BlockService,
-	fileService *files.Service,
+	fileService files.IService,
 	provider core.TempDirProvider,
 ) Uploader {
 	return &uploader{
@@ -110,7 +110,7 @@ type uploader struct {
 	groupId      string
 
 	tempDirProvider core.TempDirProvider
-	fileService     *files.Service
+	fileService     files.IService
 }
 
 type bufioSeekClose struct {

@@ -38,7 +38,7 @@ type Image interface {
 type image struct {
 	hash            string // directory hash
 	variantsByWidth map[int]*storage.FileInfo
-	service         *Service
+	service         *service
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {

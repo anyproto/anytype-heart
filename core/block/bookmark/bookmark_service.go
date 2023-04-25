@@ -62,7 +62,7 @@ type service struct {
 	store          objectstore.ObjectStore
 	linkPreview    linkpreview.LinkPreview
 	tempDirService *core.TempDirService
-	fileService    *files.Service
+	fileService    files.IService
 }
 
 func New(tempDirService *core.TempDirService) Service {
@@ -74,7 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	s.fileService = app.MustComponent[*files.Service](a)
+	s.fileService = app.MustComponent[files.IService](a)
 	return nil
 }
 
@@ -292,7 +292,7 @@ func (s *service) fetcher(id string, params bookmark.FetchParams) error {
 	return nil
 }
 
-func loadImage(fileService *files.Service, tempDir string, title, url string) (hash string, err error) {
+func loadImage(fileService files.IService, tempDir string, title, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 

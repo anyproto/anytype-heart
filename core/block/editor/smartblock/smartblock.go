@@ -83,7 +83,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 func New(
 	coreService core.Service,
-	fileService *files.Service,
+	fileService files.IService,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
@@ -209,7 +209,7 @@ type smartBlock struct {
 
 	// Deps
 	coreService        core.Service
-	fileService        *files.Service
+	fileService        files.IService
 	restrictionService restriction.Service
 	objectStore        objectstore.ObjectStore
 	relationService    relation2.Service

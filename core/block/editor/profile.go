@@ -46,7 +46,7 @@ func NewProfile(
 	sendEvent func(e *pb.Event),
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService *files.Service,
+	fileService files.IService,
 ) *Profile {
 	f := file.NewFile(
 		sb,

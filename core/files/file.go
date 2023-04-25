@@ -27,7 +27,7 @@ type File interface {
 type file struct {
 	hash string
 	info *storage.FileInfo
-	node *Service
+	node *service
 }
 
 type FileMeta struct {

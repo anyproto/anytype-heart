@@ -35,7 +35,7 @@ func WithName(name string) AddOption {
 	}
 }
 
-func (s *Service) normalizeOptions(ctx context.Context, opts *AddOptions) error {
+func (s *service) normalizeOptions(ctx context.Context, opts *AddOptions) error {
 	if opts.Use != "" {
 		ref, err := ipfspath.ParsePath(opts.Use)
 		if err != nil {

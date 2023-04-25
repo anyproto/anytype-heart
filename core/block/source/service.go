@@ -47,7 +47,7 @@ type service struct {
 	account       accountservice.Service
 	fileStore     filestore.FileStore
 	spaceService  space.Service
-	fileService   *files.Service
+	fileService   files.IService
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -61,7 +61,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.fileService = app.MustComponent[*files.Service](a)
+	s.fileService = app.MustComponent[files.IService](a)
 	return
 }
 

@@ -47,7 +47,7 @@ const (
 var log = logging.Logger("anytype-files")
 var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
 
-var _ app.Component = (*Service)(nil)
+var _ IService = (*service)(nil)
 
 type IService interface {
 	FileAdd(ctx context.Context, options ...AddOption) (File, error)
@@ -59,9 +59,11 @@ type IService interface {
 	ImageAdd(ctx context.Context, options ...AddOption) (Image, error)
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
+
+	app.Component
 }
 
-type Service struct {
+type service struct {
 	fileStore    filestore.FileStore
 	commonFile   fileservice.FileService
 	fileSync     filesync.FileSync
@@ -70,7 +72,7 @@ type Service struct {
 	fileStorage  filestorage.FileStorage
 }
 
-func (s *Service) Init(a *app.App) (err error) {
+func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = a.MustComponent("filestore").(filestore.FileStore)
 	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
 	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
@@ -80,7 +82,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *Service) Name() (name string) {
+func (s *service) Name() (name string) {
 	return CName
 }
 
@@ -89,8 +91,8 @@ type FileKeys struct {
 	Keys map[string]string
 }
 
-func New() *Service {
-	return &Service{}
+func New() IService {
+	return &service{}
 }
 
 var ErrMissingContentLink = fmt.Errorf("content link not in node")
@@ -103,7 +105,7 @@ var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
-func (s *Service) fileAdd(ctx context.Context, opts AddOptions) (string, *storage.FileInfo, error) {
+func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storage.FileInfo, error) {
 	fileInfo, err := s.fileAddWithConfig(ctx, &m.Blob{}, opts)
 	if err != nil {
 		return "", nil, err
@@ -136,7 +138,7 @@ func (s *Service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	return nodeHash, fileInfo, nil
 }
 
-func (s *Service) getChunksCount(ctx context.Context, node ipld.Node) (int, error) {
+func (s *service) getChunksCount(ctx context.Context, node ipld.Node) (int, error) {
 	var chunksCount int
 	err := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, s.commonFile.DAGService())).
 		Iterate(func(_ ipld.NavigableNode) error {
@@ -149,7 +151,7 @@ func (s *Service) getChunksCount(ctx context.Context, node ipld.Node) (int, erro
 	return chunksCount, nil
 }
 
-func (s *Service) storeChunksCount(ctx context.Context, node ipld.Node) error {
+func (s *service) storeChunksCount(ctx context.Context, node ipld.Node) error {
 	chunksCount, err := s.getChunksCount(ctx, node)
 	if err != nil {
 		return fmt.Errorf("count chunks: %w", err)
@@ -164,7 +166,7 @@ func (s *Service) storeChunksCount(ctx context.Context, node ipld.Node) error {
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
-func (s *Service) fileRestoreKeys(ctx context.Context, hash string) (map[string]string, error) {
+func (s *service) fileRestoreKeys(ctx context.Context, hash string) (map[string]string, error) {
 	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
@@ -220,7 +222,7 @@ func (s *Service) fileRestoreKeys(ctx context.Context, hash string) (map[string]
 	return fileKeys, nil
 }
 
-func (s *Service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
+func (s *service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(s.dagService)
 	outer.SetCidBuilder(cidBuilder)
@@ -268,7 +270,7 @@ func (s *Service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.Directo
 	return node, keys, nil
 }
 
-func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
+func (s *service) fileAddNodeFromFiles(ctx context.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(s.dagService)
 	outer.SetCidBuilder(cidBuilder)
@@ -300,7 +302,7 @@ func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 	return node, keys, nil
 }
 
-func (s *Service) fileGetInfoForPath(pth string) (*storage.FileInfo, error) {
+func (s *service) fileGetInfoForPath(pth string) (*storage.FileInfo, error) {
 	if !strings.HasPrefix(pth, "/ipfs/") {
 		return nil, fmt.Errorf("path should starts with '/dagService/...'")
 	}
@@ -322,7 +324,7 @@ func (s *Service) fileGetInfoForPath(pth string) (*storage.FileInfo, error) {
 	return nil, fmt.Errorf("key not found")
 }
 
-func (s *Service) FileGetKeys(hash string) (*FileKeys, error) {
+func (s *service) FileGetKeys(hash string) (*FileKeys, error) {
 	m, err := s.fileStore.GetFileKeys(hash)
 	if err != nil {
 		if err != localstore.ErrNotFound {
@@ -351,7 +353,7 @@ func (s *Service) FileGetKeys(hash string) (*FileKeys, error) {
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *Service) fileIndexData(ctx context.Context, inode ipld.Node, data string) error {
+func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, data string) error {
 	for _, link := range inode.Links() {
 		nd, err := helpers.NodeAtLink(ctx, s.dagService, link)
 		if err != nil {
@@ -367,7 +369,7 @@ func (s *Service) fileIndexData(ctx context.Context, inode ipld.Node, data strin
 }
 
 // fileIndexNode walks a file node, indexing file links
-func (s *Service) fileIndexNode(ctx context.Context, inode ipld.Node, data string) error {
+func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, data string) error {
 	links := inode.Links()
 
 	if looksLikeFileNode(inode) {
@@ -390,7 +392,7 @@ func (s *Service) fileIndexNode(ctx context.Context, inode ipld.Node, data strin
 }
 
 // fileIndexLink indexes a file link
-func (s *Service) fileIndexLink(ctx context.Context, inode ipld.Node, data string) error {
+func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, data string) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
@@ -399,7 +401,7 @@ func (s *Service) fileIndexLink(ctx context.Context, inode ipld.Node, data strin
 	return s.fileStore.AddTarget(dlink.Cid.String(), data)
 }
 
-func (s *Service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
+func (s *service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
 	cid, r, err := helpers.DataAtPath(context.TODO(), s.commonFile, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
@@ -467,7 +469,7 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 	return &file, nil
 }
 
-func (s *Service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, *storage.FileInfo, error) {
+func (s *service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, *storage.FileInfo, error) {
 	var err error
 	var file *storage.FileInfo
 	var reader io.ReadSeeker
@@ -479,7 +481,7 @@ func (s *Service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, 
 	return reader, file, err
 }
 
-func (s *Service) getContentReader(ctx context.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
+func (s *service) getContentReader(ctx context.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
 		return nil, err
@@ -505,7 +507,7 @@ func (s *Service) getContentReader(ctx context.Context, file *storage.FileInfo) 
 	return dec.DecryptReader(fd)
 }
 
-func (s *Service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+func (s *service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -631,7 +633,7 @@ func (s *Service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	return fileInfo, nil
 }
 
-func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
+func (s *service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
 	file, err := s.fileStore.GetByHash(file.Hash)
 	if err != nil {
 		return err
@@ -662,7 +664,7 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 	return helpers.AddLinkToDirectory(ctx, s.dagService, dir, link, node.Cid().String())
 }
 
-func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -750,7 +752,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 	return dir, nil
 }
 
-func (s *Service) fileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
+func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
 	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
@@ -848,7 +850,7 @@ func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMod
 	}
 }
 
-func (s *Service) StoreFileKeys(fileKeys ...FileKeys) error {
+func (s *service) StoreFileKeys(fileKeys ...FileKeys) error {
 	var fks []filestore.FileKeys
 
 	for _, fk := range fileKeys {
@@ -863,7 +865,7 @@ func (s *Service) StoreFileKeys(fileKeys ...FileKeys) error {
 
 var ErrFileNotFound = fmt.Errorf("file not found")
 
-func (s *Service) FileByHash(ctx context.Context, hash string) (File, error) {
+func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 	fileList, err := s.fileStore.ListByTarget(hash)
 	if err != nil {
 		return nil, err
@@ -887,7 +889,7 @@ func (s *Service) FileByHash(ctx context.Context, hash string) (File, error) {
 }
 
 // TODO: Touch the file to fire indexing
-func (s *Service) FileAdd(ctx context.Context, options ...AddOption) (File, error) {
+func (s *service) FileAdd(ctx context.Context, options ...AddOption) (File, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)

@@ -35,7 +35,7 @@ func NewTemplate(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	fileService *files.Service,
+	fileService files.IService,
 ) *Template {
 	return &Template{Page: NewPage(
 		sb,
