@@ -123,7 +123,7 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 			SpaceId:     header.Id,
 			SpaceHeader: header.RawHeader,
 			OldAccount:  c.wallet.GetOldAccountKey(),
-			Identity:    c.wallet.GetDevicePrivkey(),
+			Identity:    c.wallet.GetAccountPrivkey(),
 		}
 		// registering space inside coordinator
 		_, err = c.client.SpaceSign(ctx, payload)

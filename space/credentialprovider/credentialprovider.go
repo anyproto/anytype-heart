@@ -34,7 +34,7 @@ func (c *credentialProvider) GetCredential(ctx context.Context, spaceHeader *spa
 		SpaceId:     spaceHeader.Id,
 		SpaceHeader: spaceHeader.RawHeader,
 		OldAccount:  c.wallet.GetOldAccountKey(),
-		Identity:    c.wallet.GetDevicePrivkey(),
+		Identity:    c.wallet.GetAccountPrivkey(),
 	}
 	receipt, err := c.client.SpaceSign(ctx, payload)
 	if err != nil {
