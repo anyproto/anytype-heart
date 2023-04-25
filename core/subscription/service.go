@@ -136,6 +136,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 
 	filterDepIds := s.depIdsFromFilter(req.Filters)
 	if exists, ok := s.subscriptions[req.SubId]; ok {
+		delete(s.subscriptions, req.SubId)
 		exists.close()
 	}
 	if req.Offset < 0 {
