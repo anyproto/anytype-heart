@@ -59,7 +59,7 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 	s := &converter.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: url,
-		Snapshot: snapshots,
+		Snapshot: &pb.ChangeSnapshot{Data: snapshots},
 	}
 	res := &converter.Response{
 		Snapshots: []*converter.Snapshot{s},

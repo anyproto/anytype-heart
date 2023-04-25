@@ -40,7 +40,7 @@ func addLinkBlockToDatabase(snapshots *converter.Snapshot, targetID string) {
 				TargetBlockId: targetID,
 			},
 		}}
-	snapshots.Snapshot.Blocks = append(snapshots.Snapshot.Blocks, link)
+	snapshots.Snapshot.Data.Blocks = append(snapshots.Snapshot.Data.Blocks, link)
 }
 
 func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*converter.Snapshot {

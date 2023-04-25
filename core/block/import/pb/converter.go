@@ -91,7 +91,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 			Id:       id,
 			SbType:   sbt,
 			FileName: name,
-			Snapshot: snapshot,
+			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		})
 	}
 

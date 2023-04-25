@@ -65,7 +65,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	relations []*converter.Relation,
 	oldIDtoNew map[string]string,
 	updateExisting bool) (*types.Struct, error) {
-	snapshot := sn.Snapshot
+	snapshot := sn.Snapshot.Data
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
 
@@ -115,7 +115,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return oc.handleSubObject(ctx, snapshot, newID, workspaceID, details), nil
 	}
 
-	st := state.NewDocFromSnapshot(newID, &pb.ChangeSnapshot{Data: snapshot}).(*state.State)
+	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
 
 	defer func() {

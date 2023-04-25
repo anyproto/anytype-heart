@@ -93,7 +93,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			for i, s := range req.Snapshots {
 				sn[i] = &converter.Snapshot{
 					Id:       s.GetId(),
-					Snapshot: s.Snapshot,
+					Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
 				}
 			}
 			res := &converter.Response{

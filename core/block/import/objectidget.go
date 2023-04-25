@@ -85,7 +85,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 }
 
 func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
-	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Details, bundle.RelationKeyOldAnytypeID.String())
+	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
 	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -103,7 +103,7 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 }
 
 func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {
-	id := pbtypes.GetString(sn.Snapshot.Details, bundle.RelationKeyId.String())
+	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -117,29 +117,29 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 		id = ids[0]
 		return id, true, nil
 	}
-	if len(sn.Snapshot.ObjectTypes) > 0 {
-		ot := sn.Snapshot.ObjectTypes
+	if len(sn.Snapshot.Data.ObjectTypes) > 0 {
+		ot := sn.Snapshot.Data.ObjectTypes
 		var objects *types.Struct
 		ou.cleanupSubObjectID(sn)
-		req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Details}
+		req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Data.Details}
 		id, objects, err = ou.service.CreateObject(req, "")
 		if err != nil {
 			id = sn.Id
 		}
-		sn.Snapshot.Details = pbtypes.StructMerge(sn.Snapshot.Details, objects, false)
+		sn.Snapshot.Data.Details = pbtypes.StructMerge(sn.Snapshot.Data.Details, objects, false)
 	}
 	return id, false, nil
 }
 
 func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
-	subID := sn.Snapshot.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+	subID := sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	subID = strings.TrimPrefix(subID, addr.RelationKeyToIdPrefix)
 	subID = strings.TrimPrefix(subID, addr.ObjectTypeKeyToIdPrefix)
-	sn.Snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subID)
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subID)
 }
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
-	source := pbtypes.GetString(sn.Snapshot.Details, bundle.RelationKeySource.String())
+	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
 	records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{

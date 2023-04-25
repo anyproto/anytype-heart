@@ -128,7 +128,7 @@ func (ds *Service) GetPages(ctx context.Context,
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       pageID,
 			FileName: p.URL,
-			Snapshot: snapshot,
+			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 			SbType:   sb.SmartBlockTypePage,
 		})
 		relationsToPageID[pageID] = relations

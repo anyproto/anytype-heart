@@ -75,7 +75,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       id,
 			FileName: d.URL,
-			Snapshot: snapshot,
+			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 			SbType:   sb.SmartBlockTypePage,
 		})
 		notionIdsToAnytype[d.ID] = id

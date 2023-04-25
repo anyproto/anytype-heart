@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -47,7 +48,7 @@ type Snapshot struct {
 	Id       string
 	SbType   coresb.SmartBlockType
 	FileName string
-	Snapshot *model.SmartBlockSnapshotBase
+	Snapshot *pb.ChangeSnapshot
 }
 
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors

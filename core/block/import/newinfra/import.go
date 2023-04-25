@@ -106,7 +106,7 @@ func (i *NewInfra) GetSnapshots(req *pb.RpcUserDataImportRequest, progress *proc
 			return &converter.Response{Error: importError}
 		}
 
-		mo.Snapshot.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(f.Name)
+		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(f.Name)
 		snapshot := &converter.Snapshot{
 			SbType:   sb.SmartBlockType(mo.SbType),
 			FileName: f.Name,
