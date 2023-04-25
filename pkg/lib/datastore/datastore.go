@@ -2,7 +2,7 @@ package datastore
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	"github.com/dgraph-io/badger/v3"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/db/keytransform"

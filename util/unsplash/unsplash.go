@@ -3,19 +3,18 @@ package unsplash
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
-	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/hbagdi/go-unsplash/unsplash"
 	"golang.org/x/oauth2"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -111,8 +110,8 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 		fUrl := v.Urls.Regular.String()
 		// hack to have full hd instead of 1080w,
 		// in case unsplash will change the URL format it will not break things
-		u, err := uri.ParseURI(fUrl)
-		if err == nil {
+		u, _ := url.Parse(fUrl)
+		if u != nil {
 			if q := u.Query(); q.Get("w") != "" {
 				q.Set("w", "1920")
 				u.RawQuery = q.Encode()

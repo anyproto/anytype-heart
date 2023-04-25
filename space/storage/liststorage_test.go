@@ -2,8 +2,8 @@ package storage
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/acl/aclrecordproto"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/acl/liststorage"
+	"github.com/anytypeio/any-sync/commonspace/object/acl/aclrecordproto"
+	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/require"
 	"testing"

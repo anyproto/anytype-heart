@@ -211,7 +211,7 @@ build-cli:
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
 	@go build -v -o dist/cli -ldflags "$(FLAGS)" ./cmd/cli
 
-build-server: protos-server
+build-server:
 	@echo 'Building middleware server...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
 	@go build -v -o dist/server -ldflags "$(FLAGS)" --tags "nographviz nosigar nowatchdog" ./cmd/grpcserver/grpc.go

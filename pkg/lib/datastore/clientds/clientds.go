@@ -13,7 +13,6 @@ import (
 
 	dgraphbadgerv1 "github.com/dgraph-io/badger"
 	dgraphbadgerv1pb "github.com/dgraph-io/badger/pb"
-	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	dsbadgerv1 "github.com/ipfs/go-ds-badger"
@@ -21,7 +20,7 @@ import (
 	dsbadgerv3 "github.com/textileio/go-ds-badger3"
 	"github.com/textileio/go-threads/db/keytransform"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"

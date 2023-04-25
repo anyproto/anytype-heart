@@ -7,7 +7,7 @@ package importer
 import (
 	reflect "reflect"
 
-	app "github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	app "github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	session "github.com/anytypeio/go-anytype-middleware/core/session"
 	pb "github.com/anytypeio/go-anytype-middleware/pb"

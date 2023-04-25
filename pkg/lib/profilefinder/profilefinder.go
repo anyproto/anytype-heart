@@ -12,7 +12,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 )
 
 const CName = "process"

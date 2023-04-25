@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treestorage"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 )
 
 type aclKeys struct {

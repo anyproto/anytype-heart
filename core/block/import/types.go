@@ -1,7 +1,7 @@
 package importer
 
 import (
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	"github.com/anytypeio/go-anytype-middleware/core/session"

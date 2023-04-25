@@ -2,11 +2,11 @@ package session
 
 import (
 	"fmt"
+	"github.com/golang-jwt/jwt"
 	"math/rand"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/anytypeio/any-sync/app"
 )
 
 const CName = "session"

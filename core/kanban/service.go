@@ -8,7 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
-import "github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+import "github.com/anytypeio/any-sync/app"
 
 const (
 	CName = "kanban"

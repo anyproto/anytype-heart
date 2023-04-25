@@ -2,10 +2,10 @@ package linkpreview
 
 import (
 	"context"
+	"github.com/golang/groupcache/lru"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -23,7 +23,7 @@ type cache struct {
 
 func (c *cache) Init(_ *app.App) (err error) {
 	c.lp = New()
-	c.cache, _ = lru.New(maxCacheEntries)
+	c.cache = lru.New(maxCacheEntries)
 	return
 }
 

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	pbMiddle "github.com/anytypeio/go-anytype-middleware/pb"
 	cafeClient "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"

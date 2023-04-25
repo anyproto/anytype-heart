@@ -2,7 +2,7 @@ package wallet
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"

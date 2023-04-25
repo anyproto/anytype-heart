@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/cheggaaa/mb"
 )

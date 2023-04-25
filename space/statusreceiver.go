@@ -2,7 +2,7 @@ package space
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/syncstatus"
+	"github.com/anytypeio/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 )
 

@@ -12,9 +12,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-ipns"
 	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dualdht "github.com/libp2p/go-libp2p-kad-dht/dual"
 	record "github.com/libp2p/go-libp2p-record"
@@ -33,7 +31,7 @@ import (
 	madns "github.com/multiformats/go-multiaddr-dns"
 	"github.com/textileio/go-threads/util"
 
-	app "github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	app "github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"

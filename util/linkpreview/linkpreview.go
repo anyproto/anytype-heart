@@ -1,17 +1,17 @@
 package linkpreview
 
 import (
-	"bytes"
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
-	"github.com/go-shiori/go-readability"
+	"github.com/mauidude/go-readability"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -87,7 +87,7 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) 
 	}
 
 	if len(og.Image) != 0 {
-		url, err := uri.NormalizeURI(og.Image[0].URL)
+		url, err := uri.ProcessURI(og.Image[0].URL)
 		if err == nil {
 			i.ImageUrl = url
 		}
@@ -102,12 +102,11 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 			// ignore possible panic while html parsing
 		}
 	}()
-
-	article, err := readability.FromReader(bytes.NewReader(data), nil)
+	doc, err := readability.NewDocument(string(data))
 	if err != nil {
 		return
 	}
-	content = article.TextContent
+	content = doc.Content()
 	content = strings.TrimSpace(l.bmPolicy.Sanitize(content))
 	content = strings.Join(strings.Fields(content), " ") // removes repetitive whitespaces
 	if text.UTF16RuneCountString(content) > maxDescriptionSize {
@@ -128,11 +127,11 @@ func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model
 	} else {
 		i.Type = model.LinkPreview_Unknown
 	}
-	pURL, e := uri.ParseURI(fetchUrl)
+	pUrl, e := url.Parse(fetchUrl)
 	if e == nil {
-		pURL.Path = "favicon.ico"
-		pURL.RawQuery = ""
-		i.FaviconUrl = pURL.String()
+		pUrl.Path = "favicon.ico"
+		pUrl.RawQuery = ""
+		i.FaviconUrl = pUrl.String()
 	}
 	return
 }

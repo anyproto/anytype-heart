@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
+	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"

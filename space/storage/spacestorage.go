@@ -1,11 +1,11 @@
 package storage
 
 import (
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/acl/liststorage"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treechangeproto"
-	storage "github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treestorage"
-	spacestorage "github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/spacestorage"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/spacesyncproto"
+	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
+	storage "github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
+	spacestorage "github.com/anytypeio/any-sync/commonspace/spacestorage"
+	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/dgraph-io/badger/v3"
 )
 
