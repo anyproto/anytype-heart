@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type collectionObserver struct {
@@ -81,9 +82,12 @@ func (c *collectionObserver) listEntries() []*entry {
 func (c *collectionObserver) updateIDs(ids []string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	updatedIDs := slice.Union(ids, c.ids)
+
 	c.setIDs(ids)
 
-	entries := fetchEntries(c.cache, c.objectStore, c.ids)
+	entries := fetchEntries(c.cache, c.objectStore, updatedIDs)
 	for _, e := range entries {
 		c.recBatch.Add(database.Record{
 			Details: e.data,

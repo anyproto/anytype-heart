@@ -301,7 +301,7 @@ func (c *Creator) CreateCollection(details *types.Struct, flags []*model.Interna
 	}
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeSet, details, newState)
+	return c.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeCollection, details, newState)
 }
 
 // TODO: it must be in another component
