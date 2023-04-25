@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"strings"
 	"time"
 
@@ -649,12 +650,12 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) {
+func (s *Service) OnDelete(id string, workspaceRemove func() error) error {
 	var (
 		isFavorite bool
 	)
 
-	err = s.Do(id, func(b smartblock.SmartBlock) error {
+	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose()
 		st := b.NewState()
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
@@ -667,14 +668,14 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 		}
 		return nil
 	})
-	if err != nil && err != ErrBlockNotFound {
-		return err
+	if err != nil {
+		log.Error("failed to perform delete operation on object", zap.Error(err))
 	}
 	if err := s.objectStore.DeleteObject(id); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)
 	}
 
-	return
+	return nil
 }
 
 func (s *Service) sendOnRemoveEvent(ids ...string) {

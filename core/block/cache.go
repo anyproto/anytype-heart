@@ -138,10 +138,7 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 	if err != nil {
 		return
 	}
-	err = s.OnDelete(obj.Id(), nil)
-	if err != nil {
-		log.With(zap.Error(err)).Error("failed to execute on delete for tree")
-	}
+	s.MarkTreeDeleted(ctx, spaceId, treeId)
 	// this should be done not inside lock
 	// TODO: looks very complicated, I know
 	err = obj.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
@@ -152,6 +149,14 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 	s.sendOnRemoveEvent(treeId)
 	_, err = s.cache.Remove(ctx, treeId)
 	return
+}
+
+func (s *Service) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
+	err := s.OnDelete(treeId, nil)
+	if err != nil {
+		log.Error("failed to execute on delete for tree", zap.Error(err))
+	}
+	return err
 }
 
 func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {

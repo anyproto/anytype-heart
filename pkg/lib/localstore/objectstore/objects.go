@@ -1463,7 +1463,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
-		return fmt.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
 	} else if indexdetails, _ := t.Indexable(); !indexdetails {
 		log.Errorf("updateDetails: trying to index non-indexable sb %s(%d): %s", id, t, string(debug.Stack()))
 		return fmt.Errorf("updateDetails: trying to index non-indexable sb %s(%d)", id, t)
