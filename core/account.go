@@ -306,7 +306,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		},
 		{
 			Key:   bundle.RelationKeyIconOption.String(),
-			Value: pbtypes.Int64(int64(req.Icon)),
+			Value: pbtypes.Int64(req.Icon),
 		},
 	}
 	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)

@@ -256,22 +256,9 @@ message Rpc {
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
                 }
                 string storePath = 3; // Path to local storage
-                IconOption icon = 4; // Option of pre-installed icon
+                int64 icon = 4; // Option of pre-installed icon
 
                 string alphaInviteCode = 20;
-
-                enum IconOption {
-                    ICON_OPTION_0 = 0;
-                    ICON_OPTION_1 = 1;
-                    ICON_OPTION_2 = 2;
-                    ICON_OPTION_3 = 3;
-                    ICON_OPTION_4 = 4;
-                    ICON_OPTION_5 = 5;
-                    ICON_OPTION_6 = 6;
-                    ICON_OPTION_7 = 7;
-                    ICON_OPTION_8 = 8;
-                    ICON_OPTION_9 = 9;
-                }
             }
 
             /**

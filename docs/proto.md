@@ -863,7 +863,6 @@
   
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
-    - [Rpc.Account.Create.Request.IconOption](#anytype-Rpc-Account-Create-Request-IconOption)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -2121,7 +2120,7 @@ Front end to middleware request-to-create-an account
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
-| icon | [Rpc.Account.Create.Request.IconOption](#anytype-Rpc-Account-Create-Request-IconOption) |  | Option of pre-installed icon |
+| icon | [int64](#int64) |  | Option of pre-installed icon |
 | alphaInviteCode | [string](#string) |  |  |
 
 
@@ -14031,26 +14030,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BET | 25 |  |
 | BRT | 26 |  |
 | CAT | 27 |  |
-
-
-
-<a name="anytype-Rpc-Account-Create-Request-IconOption"></a>
-
-### Rpc.Account.Create.Request.IconOption
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| ICON_OPTION_0 | 0 |  |
-| ICON_OPTION_1 | 1 |  |
-| ICON_OPTION_2 | 2 |  |
-| ICON_OPTION_3 | 3 |  |
-| ICON_OPTION_4 | 4 |  |
-| ICON_OPTION_5 | 5 |  |
-| ICON_OPTION_6 | 6 |  |
-| ICON_OPTION_7 | 7 |  |
-| ICON_OPTION_8 | 8 |  |
-| ICON_OPTION_9 | 9 |  |
 
 
 
