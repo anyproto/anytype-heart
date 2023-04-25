@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/nodeconf"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"sync"
 )
@@ -83,9 +84,10 @@ func (s *service) allLocalPeers() []string {
 func (s *service) AddLocalPeer(peerId string, spaceIds []string) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	if !slices.Contains(s.allPeerIds, peerId) {
+	if slices.Contains(s.allPeerIds, peerId) {
 		return
 	}
+	log.Debug("adding peer to local peers", zap.String("peer", peerId), zap.Strings("spaces", spaceIds))
 	s.allPeerIds = append(s.allPeerIds, peerId)
 	for _, id := range spaceIds {
 		spacePeerIds := s.localPeerIdsBySpace[id]

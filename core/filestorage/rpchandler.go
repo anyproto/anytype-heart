@@ -7,13 +7,15 @@ import (
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
+	"github.com/anytypeio/go-anytype-middleware/space/storage"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 )
 
 type rpcHandler struct {
-	store badgerfilestore.FileStore
+	store        badgerfilestore.FileStore
+	spaceStorage storage.ClientStorage
 }
 
 func (r *rpcHandler) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
@@ -84,12 +86,11 @@ func (r *rpcHandler) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRe
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (r *rpcHandler) Check(ctx context.Context, request *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
-	resp := &fileproto.CheckResponse{
+func (r *rpcHandler) Check(ctx context.Context, request *fileproto.CheckRequest) (resp *fileproto.CheckResponse, err error) {
+	resp = &fileproto.CheckResponse{
 		AllowWrite: true,
 	}
-	if withSpaceIds, ok := r.store.(fileblockstore.BlockStoreSpaceIds); ok {
-		resp.SpaceIds = withSpaceIds.SpaceIds()
-	}
-	return resp, nil
+	log.Debug("spaceIds requested")
+	resp.SpaceIds, err = r.spaceStorage.AllSpaceIds()
+	return
 }

@@ -191,12 +191,14 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
 	if err != nil {
 		return
 	}
+	log.Debug("sending info about spaces to peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", allIds))
 	resp, err := clientspaceproto.NewDRPCClientSpaceClient(unaryPeer).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
 		SpaceIds: allIds,
 	})
 	if err != nil {
 		return
 	}
+	log.Debug("got peer ids from peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", resp.SpaceIds))
 	is := slice.Intersection(allIds, resp.SpaceIds)
 	if len(is) == 0 {
 		return
@@ -210,5 +212,6 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
 	if err != nil {
 		return
 	}
+	log.Debug("opened stream with peer", zap.String("peer", peer.PeerId))
 	s.streamPool.AddStream(peer.PeerId, stream, is...)
 }

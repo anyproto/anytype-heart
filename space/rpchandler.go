@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"github.com/anytypeio/any-sync/net/peer"
 	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
+	"go.uber.org/zap"
 )
 
 type rpcHandler struct {
@@ -17,6 +18,7 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 	if err != nil {
 		return
 	}
+	log.Debug("returning list with ids", zap.Strings("spaceIds", allIds))
 	resp = &clientspaceproto.SpaceExchangeResponse{SpaceIds: allIds}
 	return
 }

@@ -24,6 +24,7 @@ func newClient(ctx context.Context, s *service, peerId string, tq *mb.MB[*task])
 	if err := c.checkConnectivity(ctx); err != nil {
 		return nil, err
 	}
+	log.Debug("starting client for peer", zap.String("peer", peerId), zap.Strings("spaces", c.spaceIds))
 	var runCtx context.Context
 	runCtx, c.opLoopCtxCancel = context.WithCancel(context.Background())
 	go c.opLoop(runCtx)

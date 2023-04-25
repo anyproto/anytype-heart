@@ -6,10 +6,12 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
+	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/space/storage"
 )
 
 const CName = fileblockstore.CName
@@ -32,12 +34,14 @@ type fileStorage struct {
 	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
 	handler      *rpcHandler
+	spaceStorage storage.ClientStorage
 }
 
 func (f *fileStorage) Init(a *app.App) (err error) {
 	f.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
-	f.handler = &rpcHandler{}
+	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
 	return fileproto.DRPCRegisterFile(a.MustComponent(server.CName).(server.DRPCServer), f.handler)
 }
 
