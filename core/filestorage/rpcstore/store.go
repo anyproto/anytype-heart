@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 )
 
 var closedBlockChan chan blocks.Block
@@ -121,7 +120,11 @@ func (s *store) Add(ctx context.Context, bs []blocks.Block) error {
 	return ErrUnsupported
 }
 
-func (s *store) add(ctx context.Context, spaceID string, fileID string, bs []blocks.Block) error {
+func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs []blocks.Block) error {
+	if len(bs) == 0 {
+		return nil
+	}
+
 	var (
 		ready = make(chan result, len(bs))
 	)
@@ -150,51 +153,6 @@ func (s *store) add(ctx context.Context, spaceID string, fileID string, bs []blo
 		return multierr.Combine(errs...)
 	}
 	return nil
-}
-
-func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs []blocks.Block) (err error) {
-	var cids = make([]cid.Cid, 0, len(bs))
-
-	for _, b := range bs {
-		cids = append(cids, b.Cid())
-	}
-
-	// check blocks for existing
-	checkResult, err := s.CheckAvailability(ctx, spaceID, cids)
-	if err != nil {
-		return err
-	}
-
-	// exclude existing ids
-	var excludeCids []cid.Cid
-	for _, check := range checkResult {
-		if check.Status == fileproto.AvailabilityStatus_Exists || check.Status == fileproto.AvailabilityStatus_ExistsInSpace {
-			if c, e := cid.Cast(check.Cid); e == nil {
-				excludeCids = append(excludeCids, c)
-			}
-		}
-	}
-
-	if len(excludeCids) > 0 {
-		// bind existing ids
-		if err = s.BindCids(ctx, spaceID, fileID, excludeCids); err != nil {
-			return err
-		}
-
-		// filter existing blocks
-		fileteredBs := bs[:0]
-		for _, b := range bs {
-			if !slices.Contains(excludeCids, b.Cid()) {
-				fileteredBs = append(fileteredBs, b)
-			}
-		}
-		bs = fileteredBs
-	}
-
-	if len(bs) == 0 {
-		return nil
-	}
-	return s.add(ctx, spaceID, fileID, bs)
 }
 
 func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error) {

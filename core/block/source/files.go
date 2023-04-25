@@ -17,7 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-var getFileTimeout = time.Second * 5
+var getFileTimeout = 60 * time.Second
 
 func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.Service, id string) (s Source) {
 	return &file{

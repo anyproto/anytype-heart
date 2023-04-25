@@ -229,7 +229,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 		return fmt.Errorf("collect file blocks: %w", err)
 	}
 
-	bytesToUpload, blocksToUpload, err := f.selectBlocksToUpload(ctx, spaceId, fileId, fileBlocks)
+	bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceId, fileId, fileBlocks)
 	if err != nil {
 		return fmt.Errorf("select blocks to upload: %w", err)
 	}
@@ -276,7 +276,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 	return <-dagErr
 }
 
-func (f *fileSync) selectBlocksToUpload(ctx context.Context, spaceId string, fileId string, fileBlocks []blocks.Block) (int, []blocks.Block, error) {
+func (f *fileSync) selectBlocksToUploadAndBindExisting(ctx context.Context, spaceId string, fileId string, fileBlocks []blocks.Block) (int, []blocks.Block, error) {
 	fileCids := lo.Map(fileBlocks, func(b blocks.Block, _ int) cid.Cid {
 		return b.Cid()
 	})
