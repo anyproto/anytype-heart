@@ -3,6 +3,7 @@ package filestorage
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
@@ -17,8 +18,13 @@ type flatStore struct {
 	ds *flatfs.Datastore
 }
 
-func newFlatStore() (*flatStore, error) {
-	ds, err := flatfs.CreateOrOpen("tmp/blocks/", flatfs.NextToLast(2), false)
+func newFlatStore(path string) (*flatStore, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, fmt.Errorf("mkdir: %w", err)
+		}
+	}
+	ds, err := flatfs.CreateOrOpen(path, flatfs.IPFS_DEF_SHARD, false)
 	if err != nil {
 		return nil, err
 	}

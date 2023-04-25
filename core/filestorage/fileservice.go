@@ -3,6 +3,7 @@ package filestorage
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
@@ -14,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
@@ -36,6 +38,7 @@ type fileStorage struct {
 	// TODO use cache proxy directly
 	fileblockstore.BlockStoreLocal
 
+	flatfsPath   string
 	syncer       *syncer
 	syncerCancel context.CancelFunc
 	provider     datastore.Datastore
@@ -51,6 +54,7 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
 	f.spaceService = a.MustComponent(space.CName).(space.Service)
+	f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), "flatfs")
 	return fileproto.DRPCRegisterFile(a.MustComponent(server.CName).(server.DRPCServer), f.handler)
 }
 
@@ -67,7 +71,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	bs, err := newFlatStore()
+	bs, err := newFlatStore(f.flatfsPath)
 	if err != nil {
 		return fmt.Errorf("flatstore: %w", err)
 	}
