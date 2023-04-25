@@ -167,6 +167,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	zipName := getZipName(req.Path)
 	err = os.Rename(wr.Path(), zipName)
 	if err != nil {
+		os.Remove(wr.Path())
 		return
 	}
 	return zipName, succeed, failed, nil
