@@ -125,6 +125,5 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(
-		[]migration.Migration{})
+	return migration.MakeMigrations(nil)
 }
