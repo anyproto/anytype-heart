@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -16,8 +17,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -122,14 +125,18 @@ func (f *reindexFlags) String() string {
 	return fmt.Sprintf("%#v", f)
 }
 
+type subObjectCreator interface {
+	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+}
+
 type indexer struct {
-	store     objectstore.ObjectStore
-	fileStore filestore.FileStore
-	// todo: move logstore to separate component?
-	anytype  core.Service
-	source   source.Service
-	picker   block.Picker
-	ftsearch ftsearch.FTSearch
+	store            objectstore.ObjectStore
+	fileStore        filestore.FileStore
+	anytype          core.Service
+	source           source.Service
+	picker           block.Picker
+	ftsearch         ftsearch.FTSearch
+	subObjectCreator subObjectCreator
 
 	quit        chan struct{}
 	mu          sync.Mutex
@@ -154,6 +161,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.spaceService = app.MustComponent[space.Service](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
+	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
@@ -397,6 +405,11 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		return err
 	}
 
+	err = i.ensurePreinstalledObjects()
+	if err != nil {
+		return fmt.Errorf("ensure preinstalled objects: %w", err)
+	}
+
 	// TODO If we use the single mechanism for indexing using only Index method, we need to always index isArchived and isFavorite
 	if flags.any() {
 		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)
@@ -539,20 +552,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		} else {
 			log.Info(msg)
 		}
-
-		var ots = make([]string, 0, len(bundle.SystemTypes))
-		for _, ot := range bundle.SystemTypes {
-			ots = append(ots, ot.BundledURL())
-		}
-
-		for _, ot := range bundle.InternalTypes {
-			ots = append(ots, ot.BundledURL())
-		}
-
-		var rels = make([]*model.Relation, 0, len(bundle.RequiredInternalRelations))
-		for _, rel := range bundle.SystemRelations {
-			rels = append(rels, bundle.MustGetRelation(rel))
-		}
 	}
 	if flags.bundledObjects {
 		// hardcoded for now
@@ -627,6 +626,33 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	return i.saveLatestChecksums()
+}
+
+func (i *indexer) ensurePreinstalledObjects() error {
+	var objects []*types.Struct
+
+	for _, ot := range bundle.SystemTypes {
+		t, err := bundle.GetTypeByUrl(ot.BundledURL())
+		if err != nil {
+			continue
+		}
+		objects = append(objects, (&relationutils.ObjectType{ObjectType: t}).ToStruct())
+	}
+
+	for _, rk := range bundle.SystemRelations {
+		rel := bundle.MustGetRelation(rk)
+		for _, opt := range rel.SelectDict {
+			opt.RelationKey = rel.Key
+			objects = append(objects, (&relationutils.Option{RelationOption: opt}).ToStruct())
+		}
+		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
+	}
+
+	_, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(objects)
+	if errors.Is(err, editor.ErrSubObjectAlreadyExists) {
+		return nil
+	}
+	return err
 }
 
 func (i *indexer) saveLatestChecksums() error {
