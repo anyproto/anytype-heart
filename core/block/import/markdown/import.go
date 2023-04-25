@@ -63,7 +63,7 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*converter.Response, converter.ConvertError) {
+func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	path := m.GetParams(req)
 
 	files, allErrors := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
@@ -296,7 +296,7 @@ func (m *Markdown) getIdFromPath(path string) (id string) {
 	return b[:len(b)-3]
 }
 
-func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.IProgress) converter.ConvertError {
+func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.Progress) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			cancellError := converter.NewFromError(name, err)
@@ -322,7 +322,7 @@ func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.
 }
 
 func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
-	progress process.IProgress,
+	progress process.Progress,
 	details map[string]*types.Struct) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
@@ -361,7 +361,7 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
 
 	return nil
 }
-func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.IProgress) converter.ConvertError {
+func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Progress) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			cancellError := converter.NewFromError(name, err)
@@ -392,7 +392,7 @@ func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.IP
 }
 
 func (m *Markdown) createSnapshots(files map[string]*FileInfo,
-	progress process.IProgress,
+	progress process.Progress,
 	details map[string]*types.Struct) ([]*converter.Snapshot, converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 
@@ -423,7 +423,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 }
 
 func (m *Markdown) addChildBlocks(files map[string]*FileInfo,
-	progress process.IProgress,
+	progress process.Progress,
 	childBlocks []string) converter.ConvertError {
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
@@ -454,7 +454,7 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo,
 }
 
 func (m *Markdown) createMarkdownForLink(files map[string]*FileInfo,
-	progress process.IProgress,
+	progress process.Progress,
 	allErrors converter.ConvertError,
 	mode pb.RpcObjectImportRequestMode) converter.ConvertError {
 	for name, file := range files {
@@ -510,7 +510,7 @@ func (m *Markdown) createMarkdownForLink(files map[string]*FileInfo,
 }
 
 func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
-	progress process.IProgress) ([]string, converter.ConvertError) {
+	progress process.Progress) ([]string, converter.ConvertError) {
 	// process file blocks
 	childBlocks := make([]string, 0)
 	for name, file := range files {
@@ -536,7 +536,7 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
 }
 
 func (m *Markdown) createThreadObject(files map[string]*FileInfo,
-	progress process.IProgress,
+	progress process.Progress,
 	details map[string]*types.Struct,
 	allErrors converter.ConvertError,
 	mode pb.RpcObjectImportRequestMode) converter.ConvertError {

@@ -10,7 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-type IProgress interface {
+type Progress interface {
 	Process
 	SetTotal(total int64)
 	SetDone(done int64)
@@ -21,8 +21,8 @@ type IProgress interface {
 	TryStep(delta int64) error
 }
 
-func NewProgress(pType pb.ModelProcessType) IProgress {
-	return &Progress{
+func NewProgress(pType pb.ModelProcessType) Progress {
+	return &progress{
 		id:     bson.NewObjectId().Hex(),
 		done:   make(chan struct{}),
 		cancel: make(chan struct{}),
@@ -30,7 +30,7 @@ func NewProgress(pType pb.ModelProcessType) IProgress {
 	}
 }
 
-type Progress struct {
+type progress struct {
 	id                    string
 	done, cancel          chan struct{}
 	totalCount, doneCount int64
@@ -43,29 +43,29 @@ type Progress struct {
 	isDone      bool
 }
 
-func (p *Progress) SetTotal(total int64) {
+func (p *progress) SetTotal(total int64) {
 	atomic.StoreInt64(&p.totalCount, total)
 }
 
-func (p *Progress) SetDone(done int64) {
+func (p *progress) SetDone(done int64) {
 	atomic.StoreInt64(&p.doneCount, done)
 }
 
-func (p *Progress) AddDone(delta int64) {
+func (p *progress) AddDone(delta int64) {
 	atomic.AddInt64(&p.doneCount, delta)
 }
 
-func (p *Progress) SetProgressMessage(msg string) {
+func (p *progress) SetProgressMessage(msg string) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.pMessage = msg
 }
 
-func (p *Progress) Canceled() chan struct{} {
+func (p *progress) Canceled() chan struct{} {
 	return p.cancel
 }
 
-func (p *Progress) Finish() {
+func (p *progress) Finish() {
 	p.m.Lock()
 	defer p.m.Unlock()
 	if p.isDone {
@@ -75,11 +75,12 @@ func (p *Progress) Finish() {
 	p.isDone = true
 }
 
-func (p *Progress) Id() string {
+// nolint:revive
+func (p *progress) Id() string {
 	return p.id
 }
 
-func (p *Progress) Cancel() (err error) {
+func (p *progress) Cancel() (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	if p.isCancelled {
@@ -90,7 +91,7 @@ func (p *Progress) Cancel() (err error) {
 	return
 }
 
-func (p *Progress) Info() pb.ModelProcess {
+func (p *progress) Info() pb.ModelProcess {
 	state := pb.ModelProcess_Running
 	select {
 	case <-p.done:
@@ -116,11 +117,11 @@ func (p *Progress) Info() pb.ModelProcess {
 	}
 }
 
-func (p *Progress) Done() chan struct{} {
+func (p *progress) Done() chan struct{} {
 	return p.done
 }
 
-func (p *Progress) TryStep(delta int64) error {
+func (p *progress) TryStep(delta int64) error {
 	select {
 	case <-p.Canceled():
 		return fmt.Errorf("cancelled import")

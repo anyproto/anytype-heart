@@ -45,7 +45,7 @@ func New(_ core.Service, c *collection.Service) converter.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*converter.Response, converter.ConvertError) {
+func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	ce := converter.NewError()
 	apiKey := n.getParams(req)
 	if apiKey == "" {

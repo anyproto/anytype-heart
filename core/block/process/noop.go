@@ -4,48 +4,48 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-type NoOp struct{}
+type noOp struct{}
 
-func NewNoOp() IProgress {
-	return &NoOp{}
+func NewNoOp() Progress {
+	return &noOp{}
 }
 
 // nolint:revive
-func (n *NoOp) Id() string {
+func (n *noOp) Id() string {
 	return ""
 }
 
-func (n *NoOp) Cancel() (err error) {
+func (n *noOp) Cancel() (err error) {
 	return err
 }
 
-func (n *NoOp) Info() pb.ModelProcess {
+func (n *noOp) Info() pb.ModelProcess {
 	return pb.ModelProcess{}
 }
 
-func (n *NoOp) Done() chan struct{} {
+func (n *noOp) Done() chan struct{} {
 	return nil
 }
 
-func (n *NoOp) SetTotal(total int64) {
+func (n *noOp) SetTotal(total int64) {
 }
 
-func (n *NoOp) SetDone(done int64) {
+func (n *noOp) SetDone(done int64) {
 }
 
-func (n *NoOp) AddDone(delta int64) {
+func (n *noOp) AddDone(delta int64) {
 }
 
-func (n *NoOp) SetProgressMessage(msg string) {
+func (n *noOp) SetProgressMessage(msg string) {
 }
 
-func (n *NoOp) Canceled() chan struct{} {
+func (n *noOp) Canceled() chan struct{} {
 	return nil
 }
 
-func (n *NoOp) Finish() {
+func (n *noOp) Finish() {
 }
 
-func (n *NoOp) TryStep(delta int64) error {
+func (n *noOp) TryStep(delta int64) error {
 	return nil
 }

@@ -68,7 +68,7 @@ func (ds *Service) GetPages(ctx context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
 	request *block.MapRequest,
-	progress process.IProgress) (*converter.Response, map[string]string, converter.ConvertError) {
+	progress process.Progress) (*converter.Response, map[string]string, converter.ConvertError) {
 	var (
 		allSnapshots            = make([]*converter.Snapshot, 0)
 		convereterError         converter.ConvertError

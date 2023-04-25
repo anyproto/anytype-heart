@@ -85,7 +85,7 @@ func (i *Import) Init(a *app.App) (err error) {
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
-	var progress process.IProgress
+	var progress process.Progress
 	if req.GetShowProgress() {
 		progress = process.NewProgress(pb.ModelProcess_Import)
 	} else {
@@ -186,7 +186,7 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 
 func (i *Import) createObjects(ctx *session.Context,
 	res *converter.Response,
-	progress process.IProgress,
+	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
 	allErrors map[string]error) map[string]*types.Struct {
 	getFileName := func(object *converter.Snapshot) string {
