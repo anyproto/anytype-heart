@@ -3,16 +3,13 @@ package relation
 import (
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
-	"net/url"
 	"strings"
-	"sync"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -21,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
 const CName = "relation"
@@ -29,7 +27,6 @@ const blockServiceCName = treegetter.CName
 
 var (
 	ErrNotFound = errors.New("relation not found")
-	ErrExists   = errors.New("relation with given key already exists")
 	log         = logging.Logger("anytype-relations")
 )
 
@@ -40,129 +37,20 @@ func New() Service {
 type Service interface {
 	FetchKeys(keys ...string) (relations relationutils.Relations, err error)
 	FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
+	ListAll(opts ...FetchOption) (relations relationutils.Relations, err error)
+
 	FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
-	CreateBulkMigration() BulkMigration
-	MigrateRelations(relations []*model.Relation) error
-	MigrateObjectTypes(relations []*model.ObjectType) error
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
 }
-
-type BulkMigration interface {
-	AddRelations(relations []*model.Relation)
-	AddObjectTypes(objectType []*model.ObjectType)
-	Commit() error
-}
-
 type subObjectCreator interface {
 	CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error)
 	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
 
-var errSubobjectAlreadyExists = fmt.Errorf("subobject already exists in the collection")
-
-type bulkMigration struct {
-	cache     map[string]struct{}
-	s         subObjectCreator
-	relations []*types.Struct
-	options   []*types.Struct
-	types     []*types.Struct
-	mu        sync.Mutex
-}
-
-func (b *bulkMigration) AddRelations(relations []*model.Relation) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	for _, rel := range relations {
-		for _, opt := range rel.SelectDict {
-			if _, exists := b.cache["opt"+opt.Id]; exists {
-				continue
-			}
-			// hack for missing relation name on snippet
-			if rel.Key == bundle.RelationKeySnippet.String() {
-				rel.Name = "Snippet"
-			}
-			opt.RelationKey = rel.Key
-			b.options = append(b.options, (&relationutils.Option{RelationOption: opt}).ToStruct())
-			b.cache["opt"+opt.Id] = struct{}{}
-		}
-		if _, exists := b.cache["rel"+rel.Key]; exists {
-			continue
-		}
-		b.relations = append(b.relations, (&relationutils.Relation{Relation: rel}).ToStruct())
-		b.cache["rel"+rel.Key] = struct{}{}
-	}
-}
-
-func (b *bulkMigration) AddObjectTypes(objectTypes []*model.ObjectType) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	for _, ot := range objectTypes {
-		if _, exists := b.cache["type"+ot.Url]; exists {
-			continue
-		}
-		b.types = append(b.types, (&relationutils.ObjectType{ObjectType: ot}).ToStruct())
-		b.cache["type"+ot.Url] = struct{}{}
-	}
-}
-
-func (b *bulkMigration) Commit() error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if len(b.relations) > 0 {
-		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.relations)
-		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
-			log.Errorf("relations migration done %d/%d: %v", len(ids), len(b.relations), err1)
-		}
-
-		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
-			return err1
-		}
-	}
-	if len(b.options) > 0 {
-		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.options)
-		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
-			log.Errorf("options migration done %d/%d: %v", len(ids), len(b.relations), err1)
-		}
-
-		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
-			return err1
-		}
-	}
-	if len(b.types) > 0 {
-		ids, _, err1 := b.s.CreateSubObjectsInWorkspace(b.types)
-		if len(ids) == 0 && (err1 == nil || err1.Error() != errSubobjectAlreadyExists.Error()) {
-			log.Errorf("types migration done %d/%d: %v", len(ids), len(b.relations), err1)
-		}
-		if err1 != nil && err1.Error() != errSubobjectAlreadyExists.Error() {
-			return err1
-		}
-	}
-	b.options = nil
-	b.relations = nil
-	b.types = nil
-
-	return nil
-}
-
 type service struct {
 	objectStore     objectstore.ObjectStore
 	relationCreator subObjectCreator
-
-	mu sync.RWMutex
-}
-
-func (s *service) MigrateRelations(relations []*model.Relation) error {
-	b := s.CreateBulkMigration()
-	b.AddRelations(relations)
-	return b.Commit()
-}
-
-func (s *service) MigrateObjectTypes(types []*model.ObjectType) error {
-	b := s.CreateBulkMigration()
-	b.AddObjectTypes(types)
-	return b.Commit()
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -170,10 +58,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.relationCreator = a.MustComponent("objectCreator").(subObjectCreator)
 
 	return
-}
-
-func (s *service) CreateBulkMigration() BulkMigration {
-	return &bulkMigration{cache: map[string]struct{}{}, s: s.relationCreator}
 }
 
 func (s *service) Name() (name string) {
@@ -189,8 +73,6 @@ func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations relationuti
 }
 
 func (s *service) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.fetchKeys(keys...)
 }
 
@@ -213,6 +95,43 @@ func (s *service) fetchKeys(keys ...string) (relations []*relationutils.Relation
 	return
 }
 
+func (s *service) ListAll(opts ...FetchOption) (relations relationutils.Relations, err error) {
+	return s.listAll(opts...)
+}
+
+func (s *service) listAll(opts ...FetchOption) (relations relationutils.Relations, err error) {
+	filters := []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
+		},
+	}
+	o := &fetchOptions{}
+	for _, apply := range opts {
+		apply(o)
+	}
+	if o.workspaceId != nil {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyWorkspaceId.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(*o.workspaceId),
+		})
+	}
+
+	relations2, _, err := s.objectStore.Query(nil, database.Query{
+		Filters: filters,
+	})
+	if err != nil {
+		return
+	}
+
+	for _, rec := range relations2 {
+		relations = append(relations, relationutils.RelationFromStruct(rec.Details))
+	}
+	return
+}
+
 type fetchOptions struct {
 	workspaceId *string
 }
@@ -226,8 +145,6 @@ func WithWorkspaceId(id string) FetchOption {
 }
 
 func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.fetchKey(key, opts...)
 }
 
@@ -257,35 +174,7 @@ func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationu
 			Value:       pbtypes.String(*o.workspaceId),
 		})
 	}
-	f, err := database.NewFilters(q, nil, nil)
-	if err != nil {
-		return
-	}
-	records, err := s.objectStore.QueryRaw(query.Query{
-		Filters: []query.Filter{f},
-	})
-	for _, rec := range records {
-		return relationutils.RelationFromStruct(rec.Details), nil
-	}
-	return nil, ErrNotFound
-}
-
-func (s *service) fetchOptionsByKey(key string) (relation *relationutils.Relation, err error) {
-	q := database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Value:       pbtypes.String(key),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.String()),
-			},
-		},
-	}
-	f, err := database.NewFilters(q, nil, nil)
+	f, err := database.NewFilters(q, nil, s.objectStore, nil)
 	if err != nil {
 		return
 	}
@@ -380,9 +269,12 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
-		_, err := url.Parse(strings.TrimSpace(v.GetStringValue()))
-		if err != nil {
-			return fmt.Errorf("failed to parse URL: %s", err.Error())
+		s := strings.TrimSpace(v.GetStringValue())
+		if s != "" {
+			err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
+			if err != nil {
+				return fmt.Errorf("failed to parse URL: %s", err.Error())
+			}
 		}
 		// todo: should we allow schemas other than http/https?
 		// if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
@@ -425,8 +317,4 @@ func (s *service) ValidateFormat(key string, v *types.Value) error {
 func (s *service) validateOptions(rel *relationutils.Relation, v []string) error {
 	// TODO:
 	return nil
-}
-
-func generateRelationKey() string {
-	return bson.NewObjectId().Hex()
 }

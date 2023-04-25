@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -128,10 +127,9 @@ type indexer struct {
 	store     objectstore.ObjectStore
 	fileStore filestore.FileStore
 	// todo: move logstore to separate component?
-	anytype         core.Service
-	source          source.Service
-	relationService relation.Service
-	picker          block.Picker
+	anytype core.Service
+	source  source.Service
+	picker  block.Picker
 
 	quit        chan struct{}
 	mu          sync.Mutex
@@ -141,17 +139,14 @@ type indexer struct {
 	newAccount  bool
 	forceFt     chan struct{}
 
-	relationBulkMigration relation.BulkMigration
-	relationMigratorMu    sync.Mutex
-	typeProvider          typeprovider.ObjectTypeProvider
-	spaceService          space.Service
+	typeProvider typeprovider.ObjectTypeProvider
+	spaceService space.Service
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.relationService = a.MustComponent(relation.CName).(relation.Service)
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
@@ -228,14 +223,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 	}
 
 	indexDetails, indexLinks := sbType.Indexable()
-	if sbType != smartblock.SmartBlockTypeSubObject && sbType != smartblock.SmartBlockTypeWorkspace && sbType != smartblock.SmartBlockTypeBreadcrumbs {
-		// avoid recursions
-		log.With("migratedtype", sbType).Warn("migrating types")
-		if pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeyCreator.String()) != addr.AnytypeProfileId {
-			i.migrateRelations(extractOldRelationsFromState(info.State))
-			i.migrateObjectTypes(info.State.ObjectTypesToMigrate())
-		}
-	}
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
 		return nil
@@ -363,22 +350,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
 			}
 		}
-
-		defer func() {
-			i.relationMigratorMu.Lock()
-			defer i.relationMigratorMu.Unlock()
-			if i.relationBulkMigration == nil {
-				return
-			}
-			err2 := i.relationBulkMigration.Commit()
-			i.relationBulkMigration = nil
-			if err2 != nil {
-				log.Errorf("reindex relation migration error: %s", err2.Error())
-			}
-		}()
-		i.relationMigratorMu.Lock()
-		i.relationBulkMigration = i.relationService.CreateBulkMigration()
-		i.relationMigratorMu.Unlock()
 	}
 	var indexesWereRemoved bool
 	if flags.eraseIndexes {
@@ -555,8 +526,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		for _, rel := range bundle.SystemRelations {
 			rels = append(rels, bundle.MustGetRelation(rel))
 		}
-		i.migrateObjectTypes(ots)
-		i.migrateRelations(rels)
 	}
 	if flags.bundledObjects {
 		// hardcoded for now
@@ -817,55 +786,6 @@ func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock
 		return nil
 	})
 	return
-}
-
-func (i *indexer) migrateRelations(rels []*model.Relation) {
-	if len(rels) == 0 {
-		return
-	}
-	i.relationMigratorMu.Lock()
-	defer i.relationMigratorMu.Unlock()
-
-	if i.relationBulkMigration != nil {
-		i.relationBulkMigration.AddRelations(rels)
-	} else {
-		err := i.relationService.MigrateRelations(rels)
-		if err != nil {
-			log.Errorf("migrateRelations got error: %s", err.Error())
-		}
-	}
-}
-
-func (i *indexer) migrateObjectTypes(ots []string) {
-	if len(ots) == 0 {
-		return
-	}
-
-	var typesModels []*model.ObjectType // do not make
-	for _, ot := range ots {
-		t, err := bundle.GetTypeByUrl(ot)
-		if err != nil {
-			continue
-		}
-
-		typesModels = append(typesModels, t)
-	}
-
-	if len(typesModels) == 0 {
-		return
-	}
-
-	i.relationMigratorMu.Lock()
-	defer i.relationMigratorMu.Unlock()
-
-	if i.relationBulkMigration != nil {
-		i.relationBulkMigration.AddObjectTypes(typesModels)
-	} else {
-		err := i.relationService.MigrateObjectTypes(typesModels)
-		if err != nil {
-			log.Errorf("migrateObjectTypes got error: %s", err.Error())
-		}
-	}
 }
 
 func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, error) {
