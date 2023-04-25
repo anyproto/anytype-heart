@@ -47,7 +47,7 @@ func (s *testSuite) SetupSuite() {
 		s.FailNow("you must specify ANYTYPE_TEST_GRPC_PORT env variable")
 	}
 
-	s.testSession = newTestSession(s.T(), port)
+	s.testSession = newTestSession(s.T(), port, "mnemonic", "account_id")
 }
 
 type testSession struct {
@@ -62,15 +62,15 @@ func (s *testSession) EventReceiver() *eventReceiver {
 	return s.eventReceiver
 }
 
-func newTestSession(t *testing.T, port string) *testSession {
+// TODO Pass cache path
+func newTestSession(t *testing.T, port string, mnemonicKey string, accountIDKey string) *testSession {
 	var s testSession
 
 	c, err := newClient(port)
-
 	require.NoError(t, err)
 	s.ClientCommandsClient = c
 
-	mnemonic, _, err := cachedString("mnemonic", false, func() (string, error) {
+	mnemonic, _, err := cachedString(mnemonicKey, false, func() (string, error) {
 		t.Log("creating new test account")
 		return s.accountCreate(t), nil
 	})
@@ -85,7 +85,7 @@ func newTestSession(t *testing.T, port string) *testSession {
 
 	cctx, s.eventReceiver = s.openClientSession(t, mnemonic)
 
-	accountID, _, err := cachedString("account_id", false, func() (string, error) {
+	accountID, _, err := cachedString(accountIDKey, false, func() (string, error) {
 		return s.recoverAccount(t), nil
 	})
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func newTestSession(t *testing.T, port string) *testSession {
 	})
 	if err != nil {
 		t.Log("can't select account, recovering...")
-		accountID, _, err = cachedString("account_id", true, func() (string, error) {
+		accountID, _, err = cachedString(accountIDKey, true, func() (string, error) {
 			return s.recoverAccount(t), nil
 		})
 		require.NoError(t, err)
@@ -126,7 +126,7 @@ func (s *testSuite) TearDownSuite() {
 func (s *testSession) stopAccount(t *testing.T) {
 	cctx := s.newCallCtx(t)
 	call(cctx, s.AccountStop, &pb.RpcAccountStopRequest{
-		RemoveData: true,
+		RemoveData: false,
 	})
 
 	call(cctx, s.WalletCloseSession, &pb.RpcWalletCloseSessionRequest{
@@ -168,8 +168,10 @@ func (s *testSession) accountCreate(t *testing.T) string {
 	require.NotNil(t, acc.Account.Info)
 	assert.NotEmpty(t, acc.Account.Id)
 
+	time.Sleep(1 * time.Minute)
+
 	call(cctx, s.AccountStop, &pb.RpcAccountStopRequest{
-		RemoveData: true,
+		RemoveData: false,
 	})
 	call(cctx, s.WalletCloseSession, &pb.RpcWalletCloseSessionRequest{
 		Token: events.token,

@@ -17,9 +17,9 @@ func (f *Factory) FileSyncer() *FileSyncer {
 }
 
 func (f *Factory) GetSyncer(b simple.Block) Syncer {
-	if bm := b.Model().GetBookmark(); bm != nil {
-		return f.bs
-	}
+	// if bm := b.Model().GetBookmark(); bm != nil {
+	// 	return f.bs
+	// }
 	if file := b.Model().GetFile(); file != nil {
 		return f.fs
 	}

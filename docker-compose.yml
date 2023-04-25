@@ -1,13 +1,31 @@
 version: "3.9"
 
 services:
+  old_application:
+    image: middleware-old
+#    image: ghcr.io/anytypeio/go-anytype-middleware:v0.25.1
+    ports:
+      - "${ANYTYPE_OLD_TEST_GRPC_PORT:?}:31007"
+      - "31018:31008"
+    volumes:
+      - type: bind
+        source: ./tests/.cache/anytype_old
+        target: /var/anytype_old
   test:
     environment:
       - ANYTYPE_OFFLINE=true
-    build: .
+    build:
+      context: .
+      args:
+        - GITHUB_LOGIN=${GITHUB_LOGIN:?}
+        - GITHUB_TOKEN=${GITHUB_TOKEN:?}
     volumes:
       - type: bind
         source: ./tests/.cache/anytype
         target: /var/anytype
+      - type: bind
+        source: ./tests/.cache/anytype_old
+        target: /var/anytype_old
     ports:
       - "${ANYTYPE_TEST_GRPC_PORT:?}:31007"
+      - "31008:31008"

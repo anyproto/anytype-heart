@@ -214,8 +214,58 @@ func dropBlockIDs(b *Block) {
 		b.block.ChildrenIds[i] = ""
 	}
 
+	if b.block.Restrictions == nil {
+		b.block.Restrictions = &model.BlockRestrictions{}
+	}
+
 	for _, c := range b.children {
 		dropBlockIDs(c)
+	}
+}
+
+func isMarkContainsLink(m *model.BlockContentTextMark) bool {
+	return m.Type == model.BlockContentTextMark_Mention ||
+		m.Type == model.BlockContentTextMark_Object
+}
+
+func remapLinksInDataview(b *model.BlockContentDataview, newIDtoOldID map[string]string) {
+	b.TargetObjectId = newIDtoOldID[b.TargetObjectId]
+
+	for _, view := range b.Views {
+		for _, filter := range view.Filters {
+			newID := filter.Value.GetStringValue()
+			if newID != "" {
+				oldID := newIDtoOldID[newID]
+				if oldID != "" {
+					filter.Value = pbtypes.String(oldID)
+				}
+			}
+		}
+	}
+}
+
+func remapLinks(root *Block, idsMap map[string]string) {
+	if b := root.block.GetLink(); b != nil {
+		b.TargetBlockId = idsMap[b.TargetBlockId]
+	}
+	if b := root.block.GetText(); b != nil {
+		for _, m := range b.Marks.Marks {
+			if isMarkContainsLink(m) {
+				m.Param = idsMap[m.Param]
+			}
+		}
+	}
+	if b := root.block.GetBookmark(); b != nil {
+		if b.Type == model.LinkPreview_Page {
+			b.TargetObjectId = idsMap[b.TargetObjectId]
+		}
+	}
+	if b := root.block.GetDataview(); b != nil {
+		remapLinksInDataview(b, idsMap)
+	}
+
+	for _, c := range root.children {
+		remapLinks(c, idsMap)
 	}
 }
 
@@ -225,6 +275,18 @@ func AssertPagesEqual(t *testing.T, want, got []*model.Block) bool {
 
 	dropBlockIDs(wantTree)
 	dropBlockIDs(gotTree)
+
+	return assert.Equal(t, wantTree, gotTree)
+}
+
+func AssertPagesEqualWithLinks(t *testing.T, want, got []*model.Block, idsMap map[string]string) bool {
+	wantTree := BuildAST(want)
+	gotTree := BuildAST(got)
+
+	dropBlockIDs(wantTree)
+	dropBlockIDs(gotTree)
+
+	remapLinks(gotTree, idsMap)
 
 	return assert.Equal(t, wantTree, gotTree)
 }

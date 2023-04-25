@@ -1,4 +1,4 @@
-FROM golang:1.18 AS builder
+FROM golang:1.19 AS builder
 MAINTAINER Anytype <dev@anytype.io>
 
 # This is (in large part) copied (with love) from
@@ -8,6 +8,11 @@ WORKDIR /anytype
 
 # Download packages first so they can be cached.
 COPY go.mod go.sum /
+ARG GITHUB_LOGIN
+ARG GITHUB_TOKEN
+RUN echo "machine github.com login $GITHUB_LOGIN password $GITHUB_TOKEN"
+RUN echo "machine github.com login $GITHUB_LOGIN password $GITHUB_TOKEN" >> ~/.netrc
+
 RUN go mod download
 
 COPY . .

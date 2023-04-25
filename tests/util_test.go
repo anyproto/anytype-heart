@@ -17,17 +17,23 @@ import (
 
 const cacheDir = ".cache"
 
-func cachedString(key string, rewriteCache bool, proc func() (string, error)) (string, bool, error) {
-	filename := filepath.Join(cacheDir, key)
-	raw, err := os.ReadFile(filename)
-	result := string(raw)
+func cacheFilename(key string) string {
+	return filepath.Join(cacheDir, key)
+}
 
+func readStringFromCache(key string) (string, error) {
+	raw, err := os.ReadFile(cacheFilename(key))
+	return string(raw), err
+}
+
+func cachedString(key string, rewriteCache bool, proc func() (string, error)) (string, bool, error) {
+	result, err := readStringFromCache(key)
 	if rewriteCache || os.IsNotExist(err) || result == "" {
 		res, err := proc()
 		if err != nil {
 			return "", false, fmt.Errorf("running proc for caching %s: %w", key, err)
 		}
-		err = os.WriteFile(filename, []byte(res), 0600)
+		err = os.WriteFile(cacheFilename(key), []byte(res), 0600)
 		if err != nil {
 			return "", false, fmt.Errorf("writing cache for %s: %w", key, err)
 		}
