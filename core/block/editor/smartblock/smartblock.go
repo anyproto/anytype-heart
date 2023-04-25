@@ -642,6 +642,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	st := sb.Doc.(*state.State)
 
 	changes := st.GetChanges()
+
+	sb.runIndexer(st)
+	
 	if skipIfNoChanges && len(changes) == 0 {
 		return nil
 	}
