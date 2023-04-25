@@ -160,10 +160,8 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 
-	createdTime := converter.ConvertStringToTime(d.CreatedTime.String())
-	lastEditedTime := converter.ConvertStringToTime(d.LastEditedTime.String())
-	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastEditedTime))
-	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(createdTime))
+	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(d.LastEditedTime.Unix()))
+	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(d.CreatedTime.Unix()))
 
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
