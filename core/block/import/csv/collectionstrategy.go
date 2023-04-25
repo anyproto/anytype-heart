@@ -29,8 +29,15 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) (
-	[]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
+func (c *CollectionStrategy) CreateObjects(
+	path string,
+	csvTable [][]string,
+) (
+	[]string,
+	[]*converter.Snapshot,
+	map[string][]*converter.Relation,
+	error,
+) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	details := converter.GetDetails(path)

@@ -49,8 +49,9 @@ func (c *CSV) GetMode(req *pb.RpcObjectImportRequest) pb.RpcObjectImportRequestC
 	return pb.RpcObjectImportRequestCsvParams_COLLECTION
 }
 
-func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
-	progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (c *CSV) GetSnapshots(
+	req *pb.RpcObjectImportRequest, progress *process.Progress,
+) (*converter.Response, converter.ConvertError) {
 	path := c.GetParams(req)
 	if len(path) == 0 {
 		return nil, nil
@@ -86,9 +87,16 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 	}, cErr
 }
 
-func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
+func (c *CSV) CreateObjectsFromCSVFiles(
+	req *pb.RpcObjectImportRequest,
 	progress *process.Progress,
-	path []string) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
+	path []string,
+) (
+	[]string,
+	[]*converter.Snapshot,
+	map[string][]*converter.Relation,
+	converter.ConvertError,
+) {
 	csvMode := c.GetMode(req)
 	str := c.chooseStrategy(csvMode)
 	allSnapshots := make([]*converter.Snapshot, 0)
