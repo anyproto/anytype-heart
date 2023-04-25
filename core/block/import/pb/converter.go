@@ -245,7 +245,9 @@ func (p *Pb) getSnapshotForPbFile(name, profileID, path string,
 		id = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
 		p.setProfileIconOption(snapshot, profileID)
 	}
-	p.cleanupEmptyBlock(snapshot)
+	if snapshot.SbType == model.SmartBlockType_Page {
+		p.cleanupEmptyBlock(snapshot)
+	}
 	p.fillDetails(name, path, snapshot)
 	return &converter.Snapshot{
 		Id:       id,
@@ -423,19 +425,11 @@ func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
 // cleanupEmptyBlockMigration is fixing existing pages, imported from Notion
 func (p *Pb) cleanupEmptyBlock(snapshot *pb.SnapshotWithType) {
 	for _, block := range snapshot.Snapshot.Data.Blocks {
-		if isBlockEmpty(block) {
+		if block.Content == nil {
 			block.Content = &model.BlockContentOfSmartblock{
 				Smartblock: &model.BlockContentSmartblock{},
 			}
 			break
 		}
 	}
-}
-
-func isBlockEmpty(block *model.Block) bool {
-	if block.Content == nil {
-		return true
-	}
-	smartBlock := block.Content.(*model.BlockContentOfSmartblock)
-	return smartBlock == nil || smartBlock.Smartblock == nil
 }

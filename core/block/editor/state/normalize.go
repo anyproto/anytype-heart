@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -40,6 +41,14 @@ func (s *State) normalize(withLayouts bool) (err error) {
 			if err := n.Normalize(s); err != nil {
 				return fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
 			}
+		}
+		if b.Model().Id == s.RootId() {
+			if n, ok := b.(base.Normalizable); ok {
+				if err := n.Normalize(); err != nil {
+					return fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
+				}
+			}
+
 		}
 	}
 

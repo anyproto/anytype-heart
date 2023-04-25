@@ -3,7 +3,6 @@ package base
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -29,6 +28,10 @@ func NewBase(block *model.Block) simple.Block {
 
 type Base struct {
 	*model.Block
+}
+
+type Normalizable interface {
+	Normalize() error
 }
 
 func (s *Base) Model() *model.Block {
@@ -106,7 +109,7 @@ func (b *Base) String() string {
 	return fmt.Sprintf("%s: %T (%d)", b.Id, b.Content, len(b.ChildrenIds))
 }
 
-func (b *Base) Normalize(s *state.State) error {
+func (b *Base) Normalize() error {
 	if isBlockEmpty(b) {
 		b.Content = &model.BlockContentOfSmartblock{
 			Smartblock: &model.BlockContentSmartblock{},
