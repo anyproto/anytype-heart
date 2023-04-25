@@ -153,6 +153,13 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 				})
 			}
 		}
+		err = oc.service.Do(newID, func(b sb.SmartBlock) error {
+			return b.SetDetails(ctx, details, true)
+		})
+		if err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
+		}
+		return nil, nil
 	}
 
 	err = oc.service.Do(newID, func(b sb.SmartBlock) error {
