@@ -86,7 +86,10 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		State: 0,
 	}, 4)
 	queue.SetMessage("prepare")
-	err = queue.Start()
+
+	if err = queue.Start(); err != nil {
+		return
+	}
 	defer queue.Stop(err)
 
 	start := time.Now()
@@ -141,6 +144,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		}
 		log.Errorf("export %d docs", len(docs))
 		tasks := make([]process.Task, 0, len(docs))
+		time.Sleep(time.Second * 10)
 
 		for docId := range docs {
 			var did = docId
@@ -160,8 +164,11 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	if failed > 0 || succeed == 0 {
 		log.With("spent", time.Since(start).Milliseconds()).Errorf("export finished with problems: %d docs succeed, %d docs failed", succeed, failed)
 	}
-
-	queue.Finalize()
+	if err = queue.Finalize(); err != nil {
+		e.cleanupFile(wr)
+		succeed = 0
+		return
+	}
 	wr.Close()
 	zipName := getZipName(req.Path)
 	err = os.Rename(wr.Path(), zipName)
@@ -550,4 +557,9 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeObjectType ||
 		sbType == smartblock.SmartBlockTypeSet ||
 		sbType == smartblock.SmartBlockTypeWorkspace
+}
+
+func (e *export) cleanupFile(wr writer) {
+	wr.Close()
+	os.Remove(wr.Path())
 }
