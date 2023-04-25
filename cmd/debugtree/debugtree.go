@@ -3,11 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -15,8 +10,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/proto"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+
 	"github.com/goccy/go-graphviz"
+
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var (

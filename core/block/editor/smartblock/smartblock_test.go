@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockIndexer"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
 
@@ -63,41 +63,40 @@ func TestBasic_SetAlign(t *testing.T) {
 	t.Run("with ids", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.source.EXPECT().ReadOnly().Return(false)
-		fx.source.EXPECT().PushChange(gomock.Any())
 		fx.init([]*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
 			{Id: "title"},
 			{Id: "2"},
 		})
-		require.NoError(t, fx.SetAlign(nil, model.Block_AlignRight, "2", "3"))
-		assert.Equal(t, model.Block_AlignRight, fx.NewState().Get("2").Model().Align)
+
+		st := fx.NewState()
+		require.NoError(t, st.SetAlign(model.Block_AlignRight, "2", "3"))
+		assert.Equal(t, model.Block_AlignRight, st.NewState().Get("2").Model().Align)
 	})
 
 	t.Run("without ids", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.source.EXPECT().ReadOnly().Return(false)
-		fx.source.EXPECT().PushChange(gomock.Any())
 		fx.init([]*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
 			{Id: "title"},
 			{Id: "2"},
 		})
-		require.NoError(t, fx.SetAlign(nil, model.Block_AlignRight))
-		assert.Equal(t, model.Block_AlignRight, fx.NewState().Get("title").Model().Align)
+		st := fx.NewState()
+		require.NoError(t, st.SetAlign(model.Block_AlignRight))
+
+		assert.Equal(t, model.Block_AlignRight, st.NewState().Get("title").Model().Align)
 		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(fx.NewState().Details(), bundle.RelationKeyLayoutAlign.String()))
 	})
 
 }
 
 type fixture struct {
-	t        *testing.T
-	ctrl     *gomock.Controller
-	app      *app.App
-	source   *mockSource.MockSource
-	snapshot *testMock.MockSmartBlockSnapshot
-	store    *testMock.MockObjectStore
+	t      *testing.T
+	ctrl   *gomock.Controller
+	app    *app.App
+	source *mockSource.MockSource
+	store  *testMock.MockObjectStore
 	SmartBlock
 }
 
@@ -114,9 +113,15 @@ func newFixture(t *testing.T) *fixture {
 	source.EXPECT().Virtual().AnyTimes().Return(false)
 	store := testMock.NewMockObjectStore(ctrl)
 	store.EXPECT().Name().Return(objectstore.CName).AnyTimes()
+
+	indexer := mockIndexer.NewMockIndexer(ctrl)
+	indexer.EXPECT().Name().Return("indexer").AnyTimes()
+
 	a := testapp.New()
 	a.Register(store).
-		Register(restriction.New())
+		Register(restriction.New(nil)).
+		Register(indexer)
+
 	mockRelation.RegisterMockRelation(ctrl, a)
 
 	return &fixture{
@@ -142,15 +147,7 @@ func (fx *fixture) init(blocks []*model.Block) {
 	doc := state.NewDoc(id, bm)
 	fx.source.EXPECT().ReadDoc(context.Background(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
-	fx.source.EXPECT().LogHeads().Return(nil).AnyTimes()
-	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
-		Details: &types.Struct{Fields: map[string]*types.Value{}},
-	}, nil)
 
-	fx.store.EXPECT().GetPendingLocalDetails(id).Return(&model.ObjectDetails{
-		Details: &types.Struct{Fields: map[string]*types.Value{}},
-	}, nil)
-	fx.store.EXPECT().UpdatePendingLocalDetails(id, nil).Return(nil)
 	err := fx.Init(&InitContext{Source: fx.source, App: fx.app})
 	require.NoError(fx.t, err)
 }

@@ -10,23 +10,23 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 )
 
 type testPicker struct {
 	sb smartblock.SmartBlock
 }
 
-func (t *testPicker) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
-	return t.sb, func() {}, nil
+func (t *testPicker) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+	return t.sb, nil
 }
 
 func TestBroadcast(t *testing.T) {
 	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
-	picker := &testPicker{sb: sb}
-	s := New(picker)
 
-	s.RegisterCollection(sb)
+	picker := &testPicker{sb: sb}
+	s := New(picker, nil, nil, nil)
 
 	_, subCh1, err := s.SubscribeForCollection(collectionID, "sub1")
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestBroadcast(t *testing.T) {
 
 	changeCollection := func(ids []string) {
 		st := sb.NewState()
-		st.StoreSlice(StoreKey, ids)
+		st.StoreSlice(template.CollectionStoreKey, ids)
 		err := sb.Apply(st)
 
 		require.NoError(t, err)

@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	file2 "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -14,9 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockFile"
-	"github.com/golang/mock/gomock"
-	"github.com/magiconair/properties/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUploader_Upload(t *testing.T) {
@@ -37,6 +38,7 @@ func TestUploader_Upload(t *testing.T) {
 		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		b := newBlock(model.BlockContentFile_Image)
+		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.Hash, "123")
@@ -47,6 +49,7 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		im := fx.newImage("123")
+		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetFile("./testdata/unnamed.jpg").Upload(ctx)
@@ -62,6 +65,7 @@ func TestUploader_Upload(t *testing.T) {
 			Added: time.Now(),
 		}
 		//fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(nil, image.ErrFormat)
+		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", meta), nil)
 		b := newBlock(model.BlockContentFile_Image)
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/test.txt").Upload(ctx)
@@ -81,8 +85,8 @@ func TestUploader_Upload(t *testing.T) {
 
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.anytype.EXPECT().TempDir().AnyTimes()
 		im := fx.newImage("123")
+		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
@@ -104,8 +108,8 @@ func TestUploader_Upload(t *testing.T) {
 
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.anytype.EXPECT().TempDir().AnyTimes()
 		im := fx.newImage("123")
+		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
@@ -126,8 +130,8 @@ func TestUploader_Upload(t *testing.T) {
 
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.anytype.EXPECT().TempDir().AnyTimes()
 		im := fx.newImage("123")
+		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
@@ -141,6 +145,7 @@ func TestUploader_Upload(t *testing.T) {
 	t.Run("bytes", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
+		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", &core.FileMeta{}), nil)
 		res := fx.Uploader.SetBytes([]byte("my bytes")).SetName("filename").Upload(ctx)
 		require.NoError(t, res.Err)
@@ -155,8 +160,8 @@ func newFixture(t *testing.T) *uplFixture {
 	}
 	fx.anytype = testMock.NewMockService(fx.ctrl)
 	fx.fileService = mockFile.NewMockBlockService(fx.ctrl)
-	fx.fileService.EXPECT().Anytype().Return(fx.anytype).AnyTimes()
-	fx.Uploader = file.NewUploader(fx.fileService)
+
+	fx.Uploader = file.NewUploader(fx.fileService, fx.anytype, core.NewTempDirService(nil))
 	return fx
 }
 

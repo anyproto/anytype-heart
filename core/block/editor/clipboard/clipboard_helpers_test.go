@@ -43,7 +43,7 @@ func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
 }
 
 func rangePaste(sb *smarttest.SmartTest, t *testing.T, focusId string, focusRange *model.Range, copyRange *model.Range, blocks ...*model.Block) {
-	cb := NewClipboard(sb, nil, nil)
+	cb := NewClipboard(sb, nil, nil, nil, nil)
 	req := &pb.RpcBlockPasteRequest{
 		ContextId:         sb.Id(),
 		FocusedBlockId:    focusId,
@@ -177,12 +177,22 @@ func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest) {
 	return sb
 }
 
+func getChildrenText(sb *smarttest.SmartTest, cIds []string) []string {
+	var s []string
+	for _, c := range cIds {
+		if sb.Pick(c).Model().GetText() != nil {
+			s = append(s, sb.Pick(c).Model().GetText().GetText())
+		} else if len(sb.Pick(c).Model().ChildrenIds) > 0 {
+			s = append(s, getChildrenText(sb, sb.Pick(c).Model().ChildrenIds)...)
+		}
+	}
+	return s
+}
+
 func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	cIds := sb.Pick("test").Model().ChildrenIds
-	textArr2 := make([]string, len(cIds))
-	for i, c := range cIds {
-		textArr2[i] = sb.Pick(c).Model().GetText().Text
-	}
+	textArr2 := getChildrenText(sb, cIds)
+
 	assert.Equal(t, textArr, textArr2)
 }
 
@@ -232,7 +242,7 @@ func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*m
 }
 
 func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
-	cb := NewClipboard(sb, nil, nil)
+	cb := NewClipboard(sb, nil, nil, nil, nil)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
@@ -248,7 +258,7 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 }
 
 func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
-	cb := NewClipboard(sb, nil, nil)
+	cb := NewClipboard(sb, nil, nil, nil, nil)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
@@ -264,7 +274,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 }
 
 func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
-	cb := NewClipboard(sb, nil, nil)
+	cb := NewClipboard(sb, nil, nil, nil, nil)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id

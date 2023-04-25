@@ -3,48 +3,50 @@ package objectstore
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/globalsign/mgo/bson"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-threads/core/thread"
+
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 	app := testapp.New()
-	defer app.Close()
+	defer app.Close(context.Background())
 
-	ds := New()
+	tp := typeprovider.New(nil)
+	tp.Init(nil)
+	ds := New(tp)
+	id := bson.NewObjectId()
+	tp.RegisterStaticType(id.String(), smartblock.SmartBlockTypePage)
 
-	id, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	require.NoError(t, err)
-
-	err = app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err = ds.CreateObject(id.String(), &types.Struct{
@@ -86,9 +88,9 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	app := testapp.New()
-	defer app.Close()
+	defer app.Close(context.Background())
 
-	ds := New()
+	ds := New(nil)
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
@@ -143,9 +145,10 @@ func TestDsObjectStore_Query(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	app := testapp.New()
-	defer app.Close()
-
-	ds := New()
+	defer app.Close(context.Background())
+	tp := typeprovider.New(nil)
+	tp.Init(nil)
+	ds := New(tp)
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	fts := app.MustComponent(ftsearch.CName).(ftsearch.FTSearch)
@@ -157,12 +160,14 @@ func TestDsObjectStore_Query(t *testing.T) {
 			},
 		}
 	}
-	tid1, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	tid2, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	tid3, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	id1 := tid1.String()
-	id2 := tid2.String()
-	id3 := tid3.String()
+
+	id1 := bson.NewObjectId().String()
+	id2 := bson.NewObjectId().String()
+	id3 := bson.NewObjectId().String()
+	tp.RegisterStaticType(id1, smartblock.SmartBlockTypePage)
+	tp.RegisterStaticType(id2, smartblock.SmartBlockTypePage)
+	tp.RegisterStaticType(id3, smartblock.SmartBlockTypePage)
+
 	require.NoError(t, ds.CreateObject(id1, newDet("one"), nil, "s1"))
 	require.NoError(t, ds.CreateObject(id2, newDet("two"), nil, "s2"))
 	require.NoError(t, ds.CreateObject(id3, newDet("three"), nil, "s3"))
@@ -232,14 +237,7 @@ func TestDsObjectStore_Query(t *testing.T) {
 	assert.Equal(t, 1, tot)
 	assert.Len(t, rec, 1)
 }
-func getId() string {
-	thrdId, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	if err != nil {
-		panic(err)
-	}
 
-	return thrdId.String()
-}
 func TestDsObjectStore_PrefixQuery(t *testing.T) {
 	bds := sync.MutexWrap(ds.NewMapDatastore())
 	err := bds.Put(context.Background(), ds.NewKey("/p1/abc/def/1"), []byte{})
@@ -260,10 +258,9 @@ func Test_removeByPrefix(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
-	logging.ApplyLevelsFromEnv()
 	app := testapp.New()
-	defer app.Close()
-	ds := New()
+	defer app.Close(context.Background())
+	ds := New(nil)
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 

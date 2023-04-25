@@ -319,7 +319,7 @@ func newFixture(t *testing.T) *fixture {
 	testMock.RegisterMockObjectStore(ctrl, a)
 	testMock.RegisterMockKanban(ctrl, a)
 	fx := &fixture{
-		Service: New(&collectionServiceMock{}),
+		Service: New(&collectionServiceMock{}, nil),
 		a:       a,
 		ctrl:    ctrl,
 		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),

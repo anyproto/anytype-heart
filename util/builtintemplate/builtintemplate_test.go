@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_registerBuiltin(t *testing.T) {
@@ -22,5 +23,5 @@ func Test_registerBuiltin(t *testing.T) {
 
 	a := testapp.New().With(s).With(New())
 	require.NoError(t, a.Start(context.Background()))
-	defer a.Close()
+	defer a.Close(context.Background())
 }

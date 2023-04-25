@@ -3,6 +3,10 @@ package rpcstore
 import (
 	"context"
 	"fmt"
+	"sort"
+	"sync"
+	"testing"
+
 	"github.com/anytypeio/any-sync/accountservice/mock_accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
@@ -11,15 +15,13 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/object/accountdata"
 	"github.com/anytypeio/any-sync/net/rpc/rpctest"
 	"github.com/anytypeio/any-sync/nodeconf"
-	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sort"
-	"sync"
-	"testing"
+
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 )
 
 var ctx = context.Background()
@@ -33,7 +35,7 @@ func TestStore_Put(t *testing.T) {
 		blocks.NewBlock([]byte{'2'}),
 		blocks.NewBlock([]byte{'3'}),
 	}
-	err := fx.add(ctx, bs)
+	err := fx.add(ctx, "", "", bs)
 	assert.NoError(t, err)
 	for _, b := range bs {
 		assert.NotNil(t, fx.serv.data[string(b.Cid().Bytes())])
@@ -60,7 +62,7 @@ func TestStore_Get(t *testing.T) {
 		bs := []blocks.Block{
 			blocks.NewBlock([]byte{'1'}),
 		}
-		err := fx.add(ctx, bs)
+		err := fx.add(ctx, "", "", bs)
 		require.NoError(t, err)
 		b, err := fx.Get(ctx, bs[0].Cid())
 		require.NoError(t, err)
@@ -87,7 +89,7 @@ func TestStore_GetMany(t *testing.T) {
 		blocks.NewBlock([]byte{'2'}),
 		blocks.NewBlock([]byte{'3'}),
 	}
-	err := fx.add(ctx, bs)
+	err := fx.add(ctx, "", "", bs)
 	assert.NoError(t, err)
 
 	res := fx.GetMany(ctx, []cid.Cid{
@@ -115,7 +117,7 @@ func TestStore_AddAsync(t *testing.T) {
 		blocks.NewBlock([]byte{'2'}),
 		blocks.NewBlock([]byte{'3'}),
 	}
-	err := fx.add(ctx, bs[:1])
+	err := fx.add(ctx, "", "", bs[:1])
 	assert.NoError(t, err)
 
 	require.NoError(t, fx.AddToFile(ctx, "", "", bs))

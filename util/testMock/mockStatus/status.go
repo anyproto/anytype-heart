@@ -3,9 +3,11 @@ package mockStatus
 
 import (
 	"context"
+
+	"github.com/golang/mock/gomock"
+
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
-	"github.com/golang/mock/gomock"
 )
 
 func RegisterMockStatus(ctrl *gomock.Controller, ta *testapp.TestApp) *MockService {
@@ -13,7 +15,7 @@ func RegisterMockStatus(ctrl *gomock.Controller, ta *testapp.TestApp) *MockServi
 	ms.EXPECT().Name().AnyTimes().Return(status.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
 	ms.EXPECT().Run(context.Background()).AnyTimes()
-	ms.EXPECT().Close().AnyTimes()
+	ms.EXPECT().Close(context.Background()).AnyTimes()
 	ta.Register(ms)
 	return ms
 }

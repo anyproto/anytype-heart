@@ -29,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockBuiltinTemplate"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockRelation"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockStatus"
 )
 
@@ -37,7 +36,7 @@ func TestNewIndexer(t *testing.T) {
 	t.Run("open/close", func(t *testing.T) {
 		fx := newFixture(t)
 		// should add all bundled relations to full text index
-		defer fx.Close()
+		defer fx.Close(context.Background())
 		defer fx.tearDown()
 
 	})
@@ -71,12 +70,10 @@ func newFixture(t *testing.T) *fixture {
 	fx.anytype.EXPECT().ProfileID().AnyTimes()
 	fx.objectStore.EXPECT().GetDetails("_anytype_profile")
 	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
-	fx.anytype.EXPECT().ThreadsIds().AnyTimes()
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
 	fx.objectStore.EXPECT().UpdateObjectLinks(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{
 		BundledObjectTypes:               bundle.TypeChecksum,
 		BundledRelations:                 bundle.RelationChecksum,
@@ -100,13 +97,10 @@ func newFixture(t *testing.T) *fixture {
 		With(ftsearch.New()).
 		With(fx.rb).
 		With(fx.Indexer).
-		With(fx.docService).
 		With(source.New())
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
-	rs := mockRelation.RegisterMockRelation(fx.ctrl, ta)
-	rs.EXPECT().MigrateObjectTypes(gomock.Any()).Times(1)
-	rs.EXPECT().MigrateRelations(gomock.Any()).Times(1)
+	//rs := mockRelation.RegisterMockRelation(fx.ctrl, ta)
 
 	require.NoError(t, ta.Start(context.Background()))
 	return fx
@@ -124,7 +118,7 @@ type fixture struct {
 
 func (fx *fixture) tearDown() {
 	fx.rb.(io.Closer).Close()
-	fx.ta.Close()
+	fx.ta.Close(context.Background())
 	fx.ctrl.Finish()
 }
 

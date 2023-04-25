@@ -86,7 +86,7 @@ func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 				},
 			},
 		}}))
-		return NewDataview(sb, nil, nil, nil), sb
+		return NewDataview(sb, nil, nil, nil, nil), sb
 	}
 	assertViewPositions := func(viewId string, pos uint32, exp []string) {
 		dv, sb := newTestDv()

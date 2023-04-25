@@ -2,6 +2,13 @@ package kanban
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
+	"testing"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -10,14 +17,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"os"
-	"testing"
 )
 
 func getId() string {
@@ -35,10 +36,9 @@ func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
-	logging.ApplyLevelsFromEnv()
 	app := testapp.New()
 	defer app.Close(context.Background())
-	ds := objectstore.New()
+	ds := objectstore.New(nil)
 	kanbanSrv := New()
 	err := app.With(&config.DefaultConfig).
 		With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).

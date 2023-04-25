@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -182,7 +183,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb).ExtractBlocksToObjects(ctx, ts, req)
+			linkIds, err := NewBasic(sb, nil, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string

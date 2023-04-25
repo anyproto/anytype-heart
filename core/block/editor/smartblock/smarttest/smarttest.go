@@ -25,9 +25,10 @@ import (
 
 func New(id string) *SmartTest {
 	return &SmartTest{
-		id:   id,
-		Doc:  state.NewDoc(id, nil),
-		hist: undo.NewHistory(0),
+		id:        id,
+		Doc:       state.NewDoc(id, nil),
+		hist:      undo.NewHistory(0),
+		hooksOnce: map[string]struct{}{},
 	}
 }
 
@@ -45,7 +46,8 @@ type SmartTest struct {
 	os        *testMock.MockObjectStore
 
 	// Rudimentary hooks
-	hooks []smartblock.HookCallback
+	hooks     []smartblock.HookCallback
+	hooksOnce map[string]struct{}
 }
 
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
@@ -109,6 +111,13 @@ func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
 func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hook) {
 	st.hooks = append(st.hooks, f)
 	return
+}
+
+func (sb *SmartTest) AddHookOnce(id string, f smartblock.HookCallback, events ...smartblock.Hook) {
+	if _, ok := sb.hooksOnce[id]; !ok {
+		sb.AddHook(f, events...)
+		sb.hooksOnce[id] = struct{}{}
+	}
 }
 
 func (st *SmartTest) HasRelation(s *state.State, key string) bool {
