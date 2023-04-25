@@ -1,12 +1,15 @@
 package filter
 
 import (
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	time_util "github.com/anytypeio/go-anytype-middleware/util/time"
-	"github.com/gogo/protobuf/types"
-	"strings"
 )
 
 var log = logging.Logger("anytype-order")
@@ -53,16 +56,21 @@ func (ko *KeyOrder) Compare(a, b Getter) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 
-	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
-		av = time_util.CutValueToDay(av)
-		bv = time_util.CutValueToDay(bv)
-	}
+	av, bv = ko.handleNoteLayout(a, b, av, bv)
+	av, bv = ko.handleDateWithTime(av, bv)
+	av, bv = ko.handleTag(av, bv)
 
-	if ko.RelationFormat == model.RelationFormat_tag {
-		av = ko.GetOptionValue(av)
-		bv = ko.GetOptionValue(bv)
+	comp := ko.tryCompareStrings(av, bv)
+	if comp == 0 {
+		comp = av.Compare(bv)
 	}
+	if ko.Type == model.BlockContentDataviewSort_Desc {
+		comp = -comp
+	}
+	return comp
+}
 
+func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 	comp := 0
 	_, aString := av.GetKind().(*types.Value_StringValue)
 	_, bString := bv.GetKind().(*types.Value_StringValue)
@@ -76,13 +84,44 @@ func (ko *KeyOrder) Compare(a, b Getter) int {
 	if aString && bString && comp == 0 {
 		comp = strings.Compare(strings.ToLower(av.GetStringValue()), strings.ToLower(bv.GetStringValue()))
 	}
-	if comp == 0 {
-		comp = av.Compare(bv)
-	}
-	if ko.Type == model.BlockContentDataviewSort_Desc {
-		comp = -comp
-	}
 	return comp
+}
+
+func (ko *KeyOrder) handleTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+	if ko.RelationFormat == model.RelationFormat_tag {
+		av = ko.GetOptionValue(av)
+		bv = ko.GetOptionValue(bv)
+	}
+	return av, bv
+}
+
+func (ko *KeyOrder) handleDateWithTime(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
+		av = time_util.CutValueToDay(av)
+		bv = time_util.CutValueToDay(bv)
+	}
+	return av, bv
+}
+
+func (ko *KeyOrder) handleNoteLayout(a Getter, b Getter, av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+	av = ko.trySubstituteSnippet(a, av)
+	bv = ko.trySubstituteSnippet(b, bv)
+	return av, bv
+}
+
+func (ko *KeyOrder) trySubstituteSnippet(getter Getter, value *types.Value) *types.Value {
+	if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
+		value = getter.Get(bundle.RelationKeyName.String())
+		if value == nil {
+			value = getter.Get(bundle.RelationKeySnippet.String())
+		}
+	}
+	return value
+}
+
+func getLayout(getter Getter) model.ObjectTypeLayout {
+	rawLayout := getter.Get(bundle.RelationKeyLayout.String()).GetNumberValue()
+	return model.ObjectTypeLayout(int32(rawLayout))
 }
 
 func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
