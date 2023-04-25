@@ -72,6 +72,8 @@ func (s *Service) Name() string {
 	return "collection"
 }
 
+const StoreKey = "objects"
+
 func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		toAdd := slice.Difference(req.ObjectIds, col)
@@ -113,9 +115,9 @@ func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequ
 
 func (s *Service) updateCollection(ctx *session.Context, contextID string, modifier func(src []string) []string) error {
 	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
-		lst := pbtypes.GetStringList(s.Store(), smartblock.CollectionStoreKey)
+		lst := pbtypes.GetStringList(s.Store(), StoreKey)
 		lst = modifier(lst)
-		s.StoreSlice(smartblock.CollectionStoreKey, lst)
+		s.StoreSlice(StoreKey, lst)
 		return nil
 	})
 }
@@ -131,8 +133,8 @@ func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
 
 	sb.AddHook(func(info smartblock.ApplyInfo) (err error) {
 		for _, ch := range info.Changes {
-			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == smartblock.CollectionStoreKey {
-				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), smartblock.CollectionStoreKey))
+			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == StoreKey {
+				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), StoreKey))
 				return nil
 			}
 		}
@@ -166,7 +168,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 	var initialObjectIDs []string
 	// Waking up of collection smart block will automatically add hook used in RegisterCollection
 	err := block.DoState(s.picker, collectionID, func(s *state.State, sb smartblock.SmartBlock) error {
-		initialObjectIDs = pbtypes.GetStringList(s.Store(), smartblock.CollectionStoreKey)
+		initialObjectIDs = pbtypes.GetStringList(s.Store(), StoreKey)
 		return nil
 	})
 	if err != nil {
@@ -241,7 +243,6 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 	blockContent := &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			IsCollection:  true,
 			RelationLinks: relations,
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -315,13 +316,13 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 	}
 
 	if dvBlock != nil {
+
 		err = block.DoState(s.picker, newID, func(st *state.State, sb smartblock.SmartBlock) error {
 			dvBlock.Id = template.DataviewBlockId
-			dvBlock.GetDataview().IsCollection = true
 			b := simple.New(dvBlock)
 			st.Set(b)
 
-			recs, _, err := s.objectStore.Query(nil, database.Query{
+			recs, _, qErr := s.objectStore.Query(nil, database.Query{
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						RelationKey: bundle.RelationKeyType.String(),
@@ -330,14 +331,14 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 					},
 				},
 			})
-			if err != nil {
+			if qErr != nil {
 				return fmt.Errorf("can't get records for collection: %w", err)
 			}
 			ids := make([]string, 0, len(recs))
 			for _, r := range recs {
 				ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
 			}
-			st.StoreSlice(smartblock.CollectionStoreKey, ids)
+			st.StoreSlice(StoreKey, ids)
 			return nil
 		})
 		if err != nil {

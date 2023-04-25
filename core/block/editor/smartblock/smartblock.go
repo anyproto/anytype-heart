@@ -10,8 +10,6 @@ import (
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonspace"
-	// nolint:misspell
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
@@ -142,9 +140,8 @@ type InitContext struct {
 	Restriction    restriction.Service
 	Doc            doc.Service
 	ObjectStore    objectstore.ObjectStore
-	SpaceID        string
-	BuildTreeOpts  commonspace.BuildTreeOpts
 	Ctx            context.Context
+	ObjectTree     objecttree.ObjectTree
 	App            *app.App
 }
 
@@ -158,6 +155,10 @@ type Locker interface {
 	sync.Locker
 }
 
+type Indexer interface {
+	Index(ctx context.Context, info doc.DocInfo) error
+}
+
 type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
@@ -166,7 +167,7 @@ type smartBlock struct {
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
 	source              source.Source
-	doc                 doc.Service
+	indexer             Indexer
 	metaData            *core.SmartBlockMeta
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
 	restrictions        restriction.Restrictions
@@ -263,7 +264,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
-	sb.doc = ctx.App.MustComponent(doc.CName).(doc.Service)
+	sb.indexer = app.MustComponent[Indexer](ctx.App)
 	sb.objectStore = ctx.App.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
@@ -304,7 +305,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-
 	return
 }
 
@@ -810,8 +810,12 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 			// TODO: add relation2.WithWorkspaceId(workspaceId) filter
 			rel, err := sb.RelationService().FetchKey(detail.Key)
-			if err != nil || rel == nil {
-				log.Errorf("failed to get relation: %s", err)
+			if err != nil {
+				log.Errorf("fetch relation by key %s: %w", detail.Key, err)
+				continue
+			}
+			if rel == nil {
+				log.Errorf("relation %s is not found", detail.Key)
 				continue
 			}
 			s.AddRelationLinks(&model.RelationLink{
@@ -821,7 +825,7 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 			err = sb.RelationService().ValidateFormat(detail.Key, detail.Value)
 			if err != nil {
-				log.Errorf("failed to validate relation: %s", err)
+				log.Errorf("relation %s validation failed: %s", detail.Key, err.Error())
 				continue
 			}
 
@@ -1170,10 +1174,6 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	return nil
 }
 
-func (sb *smartBlock) DocService() doc.Service {
-	return sb.doc
-}
-
 func (sb *smartBlock) ObjectClose() {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
 	sb.SetEventFunc(nil)
@@ -1348,11 +1348,10 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 }
 
 func (sb *smartBlock) reportChange(s *state.State) {
-	if sb.doc == nil {
-		return
-	}
 	docInfo := sb.getDocInfo(s)
-	sb.doc.ReportChange(context.TODO(), docInfo)
+	if err := sb.indexer.Index(context.TODO(), docInfo); err != nil {
+		log.Errorf("index object %s error: %s", sb.Id(), err)
+	}
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
@@ -1402,7 +1401,9 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 
 func hasStoreChanges(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if ch.GetStoreKeySet() != nil || ch.GetStoreKeyUnset() != nil {
+		if ch.GetStoreKeySet() != nil ||
+			ch.GetStoreKeyUnset() != nil ||
+			ch.GetStoreSliceUpdate() != nil {
 			return true
 		}
 	}

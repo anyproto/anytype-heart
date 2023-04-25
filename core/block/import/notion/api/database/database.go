@@ -7,8 +7,11 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/property"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -19,30 +22,34 @@ import (
 
 const ObjectType = "database"
 
-type Service struct{}
+type Service struct {
+	collectionService *collection.Service
+}
 
 // New is a constructor for Service
-func New() *Service {
-	return &Service{}
+func New(c *collection.Service) *Service {
+	return &Service{
+		collectionService: c,
+	}
 }
 
 // Database represent Database object from Notion https://developers.notion.com/reference/database
 type Database struct {
-	Object         string          `json:"object"`
-	ID             string          `json:"id"`
-	CreatedTime    time.Time       `json:"created_time"`
-	LastEditedTime time.Time       `json:"last_edited_time"`
-	CreatedBy      api.User        `json:"created_by,omitempty"`
-	LastEditedBy   api.User        `json:"last_edited_by,omitempty"`
-	Title          []api.RichText  `json:"title"`
-	Parent         api.Parent      `json:"parent"`
-	URL            string          `json:"url"`
-	Properties     interface{}     `json:"properties"` // can't support it for databases yet
-	Description    []*api.RichText `json:"description"`
-	IsInline       bool            `json:"is_inline"`
-	Archived       bool            `json:"archived"`
-	Icon           *api.Icon       `json:"icon,omitempty"`
-	Cover          *api.FileObject `json:"cover,omitempty"`
+	Object         string                      `json:"object"`
+	ID             string                      `json:"id"`
+	CreatedTime    time.Time                   `json:"created_time"`
+	LastEditedTime time.Time                   `json:"last_edited_time"`
+	CreatedBy      api.User                    `json:"created_by,omitempty"`
+	LastEditedBy   api.User                    `json:"last_edited_by,omitempty"`
+	Title          []api.RichText              `json:"title"`
+	Parent         api.Parent                  `json:"parent"`
+	URL            string                      `json:"url"`
+	Properties     property.DatabaseProperties `json:"properties"`
+	Description    []*api.RichText             `json:"description"`
+	IsInline       bool                        `json:"is_inline"`
+	Archived       bool                        `json:"archived"`
+	Icon           *api.Icon                   `json:"icon,omitempty"`
+	Cover          *api.FileObject             `json:"cover,omitempty"`
 }
 
 func (p *Database) GetObjectType() string {
@@ -58,7 +65,8 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		allSnapshots       = make([]*converter.Snapshot, 0)
 		notionIdsToAnytype = make(map[string]string, 0)
 		databaseNameToID   = make(map[string]string, 0)
-		convereterError    = converter.ConvertError{}
+		convertError       = converter.ConvertError{}
+		relations          = make(map[string][]*converter.Relation, 0)
 	)
 
 	progress.SetProgressMessage("Start creating pages from notion databases")
@@ -70,25 +78,41 @@ func (ds *Service) GetDatabase(ctx context.Context,
 
 		id := uuid.New().String()
 
-		snapshot := ds.transformDatabase(d)
+		snapshot, err := ds.transformDatabase(d)
+		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, nil, nil, converter.NewFromError(d.ID, err)
+		}
+
+		if err != nil {
+			continue
+		}
 
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       id,
 			FileName: d.URL,
-			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
-			SbType:   sb.SmartBlockTypePage,
+			Snapshot: snapshot,
+			SbType:   sb.SmartBlockTypeCollection,
 		})
 		notionIdsToAnytype[d.ID] = id
 		databaseNameToID[d.ID] = pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())
+		rel := make([]*converter.Relation, 0, len(d.Properties))
+		for key := range d.Properties {
+			rel = append(rel, &converter.Relation{
+				Relation: &model.Relation{
+					Name: key,
+				},
+			})
+		}
+		relations[id] = rel
 	}
-	if convereterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, notionIdsToAnytype, databaseNameToID, nil
+	if convertError.IsEmpty() {
+		return &converter.Response{Snapshots: allSnapshots, Relations: relations}, notionIdsToAnytype, databaseNameToID, nil
 	}
 
-	return &converter.Response{Snapshots: allSnapshots}, notionIdsToAnytype, databaseNameToID, convereterError
+	return &converter.Response{Snapshots: allSnapshots, Relations: relations}, notionIdsToAnytype, databaseNameToID, convertError
 }
 
-func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {
+func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase, error) {
 	details := make(map[string]*types.Value, 0)
 	relations := make([]*converter.Relation, 0)
 	details[bundle.RelationKeySource.String()] = pbtypes.String(d.URL)
@@ -133,13 +157,85 @@ func (ds *Service) transformDatabase(d Database) *model.SmartBlockSnapshotBase {
 	details[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(d.LastEditedBy.Name)
 	details[bundle.RelationKeyDescription.String()] = pbtypes.String(api.RichTextToDescription(d.Description))
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 
+	detailsStruct := &types.Struct{Fields: details}
+	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
+	if err != nil {
+		return nil, err
+	}
+	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshot := &model.SmartBlockSnapshotBase{
-		Blocks:      []*model.Block{},
-		Details:     &types.Struct{Fields: details},
-		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
-		Collections: nil,
+		Blocks:        st.Blocks(),
+		Details:       detailsStruct,
+		ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
+		Collections:   st.GetCollection(collection.StoreKey),
+		RelationLinks: st.GetRelationLinks(),
 	}
 
-	return snapshot
+	return snapshot, nil
+}
+
+func (ds *Service) AddPagesToCollections(databaseSnapshots *converter.Response,
+	pages []page.Page,
+	databases []Database,
+	notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
+	snapshots := makeSnapshotMapFromArray(databaseSnapshots.Snapshots)
+
+	databaseToObjects := make(map[string][]string, 0)
+	for _, p := range pages {
+		if p.Parent.DatabaseID != "" {
+			if parentID, ok := notionDatabaseIdsToAnytype[p.Parent.DatabaseID]; ok {
+				databaseToObjects[parentID] = append(databaseToObjects[parentID], notionPageIdsToAnytype[p.ID])
+			}
+		}
+	}
+	for _, d := range databases {
+		if d.Parent.DatabaseID != "" {
+			if parentID, ok := notionDatabaseIdsToAnytype[d.Parent.DatabaseID]; ok {
+				databaseToObjects[parentID] = append(databaseToObjects[parentID], notionDatabaseIdsToAnytype[d.ID])
+			}
+		}
+	}
+	for db, objects := range databaseToObjects {
+		ds.addObjectToCollection(snapshots[db], objects)
+	}
+}
+
+func (ds *Service) addObjectToCollection(snapshots *converter.Snapshot, targetID []string) {
+	snapshots.Snapshot.Collections = &types.Struct{
+		Fields: map[string]*types.Value{collection.StoreKey: pbtypes.StringList(targetID)},
+	}
+}
+
+// MapProperties add properties from pages to related database, because if notion pages have the same properties
+// as their database, need this method because database properties doesn't contain information about rollup and formula property format
+// so we use pages relations, because they have this information
+func (ds *Service) MapProperties(databaseSnapshots *converter.Response,
+	relations map[string][]*converter.Relation,
+	pages []page.Page,
+	databases []Database,
+	notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
+	for _, d := range databases {
+		for _, p := range pages {
+			if p.Parent.DatabaseID == d.ID {
+				if parentID, ok := notionDatabaseIdsToAnytype[d.ID]; ok {
+					anytypeID := notionPageIdsToAnytype[p.ID]
+					if databaseSnapshots.Relations == nil {
+						databaseSnapshots.Relations = make(map[string][]*converter.Relation, 0)
+					}
+					databaseSnapshots.Relations[parentID] = relations[anytypeID]
+					break
+				}
+			}
+		}
+	}
+}
+
+func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*converter.Snapshot {
+	snapshotsMap := make(map[string]*converter.Snapshot, len(snapshots))
+	for _, s := range snapshots {
+		snapshotsMap[s.Id] = s
+	}
+	return snapshotsMap
 }

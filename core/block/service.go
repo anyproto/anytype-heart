@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -19,6 +18,7 @@ import (
 	"github.com/ipfs/go-datastore/query"
 
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -43,12 +43,10 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -88,10 +86,8 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) *Service {
-	return &Service{
-		sbtProvider: sbtProvider,
-	}
+func New() *Service {
+	return &Service{}
 }
 
 type objectCreator interface {
@@ -118,6 +114,7 @@ type Service struct {
 	closed          bool
 	linkPreview     linkpreview.LinkPreview
 	process         process.Service
+	doc             doc.Service
 	app             *app.App
 	source          source.Service
 	objectStore     objectstore.ObjectStore
@@ -126,13 +123,10 @@ type Service struct {
 	relationService relation.Service
 	cache           ocache.OCache
 
-	objectCreator   objectCreator
-	objectFactory   *editor.ObjectFactory
-	clientService   space.Service
-	commonAccount   accountservice.Service
-	fileStore       filestore.FileStore
-	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
+	objectCreator objectCreator
+	objectFactory *editor.ObjectFactory
+	clientService space.Service
+	commonAccount accountservice.Service
 
 	spaceDashboardID string
 }
@@ -148,6 +142,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
+	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
@@ -156,7 +151,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.clientService = a.MustComponent(space.CName).(space.Service)
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.cache = s.createCache()
 	s.app = a
 	return
@@ -218,19 +212,15 @@ func (s *Service) OpenBlock(
 	}
 	afterShowTime := time.Now()
 	// TODO: [MR] add files to status logic
-	_, err = s.status.Watch(id, func() []string {
-		return nil
-	})
-	if err == nil {
+	if tp, err := coresb.SmartBlockTypeFromID(id); err == nil && tp == coresb.SmartBlockTypePage {
+		s.status.Watch(id, func() []string {
+			return nil
+		})
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
 			s.status.Unwatch(id)
 			return nil
 		}, smartblock.HookOnClose)
 	}
-	if err != nil && err != treestorage.ErrUnknownTreeId {
-		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
-	}
-
 	// if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 	//	var (
 	//		fList = func() []string {
@@ -248,12 +238,8 @@ func (s *Service) OpenBlock(
 	//		}, smartblock.HookOnClose)
 	//	}
 	// }
-
-	sbType, err := s.sbtProvider.Type(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get smartblock type: %w", err)
-	}
 	afterHashesTime := time.Now()
+	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
 		ObjectId:       id,
 		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
@@ -261,7 +247,7 @@ func (s *Service) OpenBlock(
 		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
 		ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
-		SmartblockType: int(sbType),
+		SmartblockType: int(tp),
 	})
 	return obj, nil
 }
@@ -413,11 +399,11 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	workspaceId, err := s.objectStore.GetCurrentWorkspaceId()
+	workspaceID, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
 	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
 		return "", nil
 	}
-	return workspaceId, err
+	return workspaceID, err
 }
 
 func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
@@ -737,16 +723,16 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 	}
 
 	for _, fileHash := range fileHashes {
-		inboundLinks, err := s.objectStore.GetOutboundLinksById(fileHash)
+		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
 		if err != nil {
 			log.Errorf("failed to get inbound links for file %s: %s", fileHash, err.Error())
 			continue
 		}
 		if len(inboundLinks) == 0 {
-			if err = s.objectStore.DeleteObject(fileHash); err != nil {
+			if err = s.Anytype().ObjectStore().DeleteObject(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from objectstore: %s", err.Error())
 			}
-			if err = s.fileStore.DeleteByHash(fileHash); err != nil {
+			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
 			}
 			// space will be reclaimed on the next GC cycle
@@ -754,7 +740,7 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
 				continue
 			}
-			if err = s.fileStore.DeleteFileKeys(fileHash); err != nil {
+			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
 			}
 		}
@@ -830,17 +816,14 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 	return nil
 }
 
-// TODO: remove proxy
 func (s *Service) Process() process.Service {
 	return s.process
 }
 
-// TODO: remove proxy
 func (s *Service) ProcessAdd(p process.Process) (err error) {
 	return s.process.Add(p)
 }
 
-// TODO: remove proxy
 func (s *Service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
 }

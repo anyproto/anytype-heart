@@ -1,13 +1,11 @@
 package source
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
@@ -16,9 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
@@ -29,8 +25,8 @@ func New() Service {
 }
 
 type Service interface {
-	NewSource(id string, spaceID string, buildOptions commonspace.BuildTreeOpts) (source Source, err error)
-	RegisterStaticSource(id string, s Source)
+	NewSource(id string, ot objecttree.ObjectTree) (s Source, err error)
+	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
@@ -42,22 +38,19 @@ type Service interface {
 type service struct {
 	anytype       core.Service
 	statusService status.Service
-	sbtProvider   typeprovider.SmartBlockTypeProvider
+	typeProvider  typeprovider.ObjectTypeProvider
 	account       accountservice.Service
-	fileStore     filestore.FileStore
-	spaceService  space.Service
-	staticIds     map[string]Source
-	mu            sync.Mutex
+
+	staticIds map[string]func() Source
+	mu        sync.Mutex
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.staticIds = make(map[string]Source)
+	s.staticIds = make(map[string]func() Source)
 	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.statusService = a.MustComponent(status.CName).(status.Service)
-	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
+	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 
@@ -65,14 +58,14 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.BuildTreeOpts) (source Source, err error) {
+func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source, err error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(s.anytype, id), nil
 	}
-	st, err := s.sbtProvider.Type(id)
+	st, err := smartblock.SmartBlockTypeFromID(id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFiles(s.anytype, s.fileStore, id), nil
+		return NewFiles(s.anytype, id), nil
 	case smartblock.SmartBlockTypeDate:
 		return NewDate(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBundledObjectType:
@@ -87,23 +80,17 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if src := s.staticIds[id]; src != nil {
-		return src, nil
+	if newStatic := s.staticIds[id]; newStatic != nil {
+		return newStatic(), nil
 	}
 
-	ctx := context.Background()
-	spc, err := s.spaceService.GetSpace(ctx, spaceID)
-	if err != nil {
-		return
-	}
-	var ot objecttree.ObjectTree
-	ot, err = spc.BuildTree(ctx, id, buildOptions)
-	if err != nil {
+	if ot == nil {
+		err = fmt.Errorf("for this type we need an object tree to create a source")
 		return
 	}
 
 	// TODO: [MR] get this from objectTree directly
-	sbt, err := s.sbtProvider.Type(id)
+	sbt, err := s.typeProvider.Type(id)
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +100,12 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 		accountService: s.account,
 		sbt:            sbt,
 		ot:             ot,
-		spaceService:   s.spaceService,
-		sbtProvider:    s.sbtProvider,
 	}
 	return newTreeSource(id, deps)
 }
 
 func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	ss, err := s.NewSource(id, "", commonspace.BuildTreeOpts{})
+	ss, err := s.NewSource(id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -132,11 +117,10 @@ func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) 
 	return nil, fmt.Errorf("id unsupported")
 }
 
-func (s *service) RegisterStaticSource(id string, src Source) {
+func (s *service) RegisterStaticSource(id string, new func() Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.staticIds[id] = src
-	s.sbtProvider.RegisterStaticType(id, smartblock.SmartBlockType(src.Type()))
+	s.staticIds[id] = new
 }
 
 func (s *service) RemoveStaticSource(id string) {

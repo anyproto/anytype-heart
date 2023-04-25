@@ -9,11 +9,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
-	pbc "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -21,11 +19,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
 var log = logging.Logger("import")
@@ -33,49 +28,33 @@ var log = logging.Logger("import")
 const CName = "importer"
 
 type Import struct {
-	converters      map[string]converter.Converter
-	s               *block.Service
-	oc              Creator
-	objectIDGetter  IDGetter
-	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
+	converters     map[string]converter.Converter
+	s              *block.Service
+	oc             Creator
+	objectIDGetter IDGetter
 }
 
-func New(
-	tempDirProvider core.TempDirProvider,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) Importer {
+func New() Importer {
 	return &Import{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		converters:      make(map[string]converter.Converter, 0),
+		converters: make(map[string]converter.Converter, 0),
 	}
 }
 
 func (i *Import) Init(a *app.App) (err error) {
 	i.s = a.MustComponent(block.CName).(*block.Service)
-	coreService := a.MustComponent(core.CName).(core.Service)
-
-	converters := []converter.Converter{
-		markdown.New(i.tempDirProvider),
-		notion.New(),
-		pbc.New(i.sbtProvider),
-		web.NewConverter(),
-		newinfra.New(),
+	core := a.MustComponent(core.CName).(core.Service)
+	col := app.MustComponent[*collection.Service](a)
+	for _, f := range converter.GetConverters() {
+		converter := f(core, col)
+		i.converters[converter.Name()] = converter
 	}
-	for _, c := range converters {
-		i.converters[c.Name()] = c
-	}
-
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	objCreator := a.MustComponent(object.CName).(objectCreator)
-	store := app.MustComponent[objectstore.ObjectStore](a)
-	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
-	ou := NewObjectUpdater(i.s, store, factory, relationCreator)
-	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
-	fileStore := app.MustComponent[filestore.FileStore](a)
-	i.oc = NewCreator(i.s, objCreator, ou, coreService, factory, relationCreator, store, fileStore)
+	relationCreator := NewRelationCreator(i.s, objCreator, fs, core)
+	ou := NewObjectUpdater(i.s, core, factory, relationCreator)
+	i.objectIDGetter = NewObjectIDGetter(core, i.s)
+	i.oc = NewCreator(i.s, objCreator, ou, core, factory, relationCreator)
 	return nil
 }
 
@@ -113,7 +92,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			for i, s := range req.Snapshots {
 				sn[i] = &converter.Snapshot{
 					Id:       s.GetId(),
-					Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+					Snapshot: s.Snapshot,
 				}
 			}
 			res := &converter.Response{
@@ -175,17 +154,6 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func ImportUserProfile(ctx *session.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
-	defer progress.Finish()
-	progress.SetProgressMessage("Getting user data from path")
-	profile, err := newinfra.GetUserProfile(req, progress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read user mnemonic, %v", err)
-	}
-	return profile, nil
-}
-
 func (i *Import) createObjects(ctx *session.Context, res *converter.Response, progress *process.Progress, req *pb.RpcObjectImportRequest, allErrors map[string]error) map[string]*types.Struct {
 	getFileName := func(object *converter.Snapshot) string {
 		if object.FileName != "" {
@@ -206,12 +174,8 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 			id    string
 			exist bool
 		)
-
-		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
+		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot.Snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
-			if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
-				oldIDToNew[snapshot.Id] = snapshot.Id
-			}
 			if exist {
 				existedObject[snapshot.Id] = struct{}{}
 			}
@@ -227,6 +191,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 	}
 
 	for _, snapshot := range res.Snapshots {
+
 		if err := progress.TryStep(1); err != nil {
 			allErrors[getFileName(snapshot)] = err
 			return nil
@@ -236,7 +201,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 			relations = res.Relations[snapshot.Id]
 		}
 		_, ok := existedObject[snapshot.Id]
-		detail, err := i.oc.Create(ctx, snapshot, relations, oldIDToNew, ok)
+		detail, err := i.oc.Create(ctx, snapshot, relations, snapshot.Id, oldIDToNew, ok)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {

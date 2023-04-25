@@ -316,8 +316,9 @@ func (c *Creator) CreateObject(req block.DetailsGetter, forcedType bundle.TypeKe
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 		})
 	case bundle.TypeKeyCollection.URL():
+		var st *state.State
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-		sbType, details, st, err := c.collectionService.CreateCollection(details, internalFlags)
+		sbType, details, st, err = c.collectionService.CreateCollection(details, internalFlags)
 		if err != nil {
 			return "", nil, err
 		}

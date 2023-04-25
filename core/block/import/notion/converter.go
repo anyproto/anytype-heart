@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
@@ -13,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/search"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 const (
@@ -24,17 +26,21 @@ const (
 	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
 )
 
+func init() {
+	converter.RegisterFunc(New)
+}
+
 type Notion struct {
 	search    *search.Service
 	dbService *database.Service
 	pgService *page.Service
 }
 
-func New() converter.Converter {
+func New(_ core.Service, c *collection.Service) converter.Converter {
 	cl := client.NewClient()
 	return &Notion{
 		search:    search.New(cl),
-		dbService: database.New(),
+		dbService: database.New(c),
 		pgService: page.New(cl),
 	}
 }
@@ -72,26 +78,14 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest,
 		return nil, ce
 	}
 
-	var (
-		pgs    []*converter.Snapshot
-		dbs    []*converter.Snapshot
-		pgRels map[string][]*converter.Relation
-	)
-	if pgSnapshots != nil {
-		pgs = pgSnapshots.Snapshots
-		pgRels = pgSnapshots.Relations
-	}
+	n.dbService.AddPagesToCollections(dbSnapshots, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
 
-	if dbSnapshots != nil {
-		dbs = dbSnapshots.Snapshots
-	}
+	n.dbService.MapProperties(dbSnapshots, pgSnapshots.Relations, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
 
-	page.SetPageLinksInDatabase(dbSnapshots, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
-
-	allSnaphots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
-	allSnaphots = append(allSnaphots, pgs...)
-	allSnaphots = append(allSnaphots, dbs...)
-	relations := mergeMaps(dbSnapshots.Relations, pgRels)
+	allSnapshots := make([]*converter.Snapshot, 0, len(pgSnapshots.Snapshots)+len(dbSnapshots.Snapshots))
+	allSnapshots = append(allSnapshots, pgSnapshots.Snapshots...)
+	allSnapshots = append(allSnapshots, dbSnapshots.Snapshots...)
+	relations := mergeMaps(dbSnapshots.Relations, pgSnapshots.Relations)
 
 	if pgErr != nil {
 		ce.Merge(pgErr)
@@ -101,10 +95,10 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest,
 		ce.Merge(dbErr)
 	}
 	if !ce.IsEmpty() {
-		return &converter.Response{Snapshots: allSnaphots, Relations: relations}, ce
+		return &converter.Response{Snapshots: allSnapshots, Relations: relations}, ce
 	}
 
-	return &converter.Response{Snapshots: allSnaphots, Relations: relations}, nil
+	return &converter.Response{Snapshots: allSnapshots, Relations: relations}, nil
 }
 
 func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {

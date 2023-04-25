@@ -3,9 +3,17 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"go.uber.org/zap"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -23,14 +31,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"go.uber.org/zap"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
 )
 
 var log = logging.Logger("anytype-core")
@@ -49,7 +49,7 @@ type Service interface {
 	IsStarted() bool
 	SpaceService() space.Service
 
-	EnsurePredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
+	EnsurePredefinedBlocks(ctx context.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
 	// FileOffload removes file blocks recursively, but leave details
@@ -57,15 +57,11 @@ type Service interface {
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
-	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
-	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
 	FileGetKeys(hash string) (*files.FileKeys, error)
 	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
-	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
-	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
@@ -75,7 +71,6 @@ type Service interface {
 	ThreadsIds() ([]string, error)        // deprecated
 
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
-	ObjectList() ([]*model.ObjectInfo, error)
 
 	ProfileInfo
 
@@ -94,7 +89,6 @@ type ObjectsDeriver interface {
 type Anytype struct {
 	files        *files.Service
 	cafe         cafe.Client
-	mdns         mdns.Service
 	objectStore  objectstore.ObjectStore
 	fileStore    filestore.FileStore
 	fetcher      configfetcher.ConfigFetcher
@@ -105,9 +99,6 @@ type Anytype struct {
 	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
-	logLevels          map[string]string
-
-	opts ServiceOptions
 
 	replicationWG    sync.WaitGroup
 	migrationOnce    sync.Once
@@ -181,10 +172,6 @@ func (a *Anytype) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	err = a.EnsurePredefinedBlocks(ctx, a.config.NewAccount)
-	if err != nil {
-		return
-	}
 	a.start()
 	return nil
 }
@@ -231,20 +218,17 @@ func (a *Anytype) start() {
 	a.isStarted = true
 }
 
-func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
+func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 	sbTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeArchive,
-		coresb.SmartblockTypeMarketplaceType,
-		coresb.SmartblockTypeMarketplaceRelation,
-		coresb.SmartblockTypeMarketplaceTemplate,
 		coresb.SmartBlockTypeWidget,
 		coresb.SmartBlockTypeHome,
 	}
 	for _, sbt := range sbTypes {
 		var id string
-		id, err = a.deriver.DeriveObject(ctx, sbt, newAccount)
+		id, err = a.deriver.DeriveObject(ctx, sbt, a.config.NewAccount)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return

@@ -28,10 +28,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 )
@@ -40,28 +38,23 @@ const CName = "export"
 
 var log = logging.Logger("anytype-mw-export")
 
+func New() Export {
+	return new(export)
+}
+
 type Export interface {
 	Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
 	app.Component
 }
 
 type export struct {
-	bs          *block.Service
-	objectStore objectstore.ObjectStore
-	a           core.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-}
-
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
-	return &export{
-		sbtProvider: sbtProvider,
-	}
+	bs *block.Service
+	a  core.Service
 }
 
 func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
-	e.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 
@@ -106,14 +99,14 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		if req.Format == pb.RpcObjectListExport_SVG {
 			format = dot.ExportFormatSVG
 		}
-		mc := dot.NewMultiConverter(format, e.sbtProvider)
+		mc := dot.NewMultiConverter(format)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
-		mc := graphjson.NewMultiConverter(e.sbtProvider)
+		mc := graphjson.NewMultiConverter()
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
@@ -147,7 +140,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 	docs = make(map[string]*types.Struct)
 	if len(reqIds) == 0 {
 		var res []*model.ObjectInfo
-		res, _, err = e.objectStore.QueryObjectInfo(database.Query{
+		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
@@ -177,22 +170,25 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 
 	var getNested func(id string)
 	getNested = func(id string) {
-		links, err := e.objectStore.GetOutboundLinksById(id)
-		if err != nil {
+		links, gErr := e.a.ObjectStore().GetOutboundLinksById(id)
+		if gErr != nil {
 			log.Errorf("export failed to get outbound links for id: %s", err.Error())
 			return
 		}
 		for _, link := range links {
 			if _, exists := docs[link]; !exists {
-				sbt, err2 := e.sbtProvider.Type(link)
+				sbt, err2 := smartblock.SmartBlockTypeFromID(link)
 				if err2 != nil {
 					log.Errorf("failed to get smartblocktype of id %s", link)
 					continue
 				}
-				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet && sbt != smartblock.SmartBlockTypeCollection {
+				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
 					continue
 				}
-				rec, _ := e.objectStore.QueryById(links)
+				rec, qErr := e.a.ObjectStore().QueryById(links)
+				if qErr != nil {
+					log.Error("failed to query object by id, err: ", err)
+				}
 				if len(rec) > 0 {
 					docs[link] = rec[0].Details
 					getNested(link)
@@ -202,7 +198,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 	}
 	if len(reqIds) > 0 {
 		var res []*model.ObjectInfo
-		res, _, err = e.objectStore.QueryObjectInfo(database.Query{
+		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyId.String(),

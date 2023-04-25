@@ -10,25 +10,28 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const Name = "PB"
 
-type Pb struct {
-	sbtProvider typeprovider.SmartBlockTypeProvider
+type Pb struct{}
+
+func init() {
+	converter.RegisterFunc(New)
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) converter.Converter {
-	return &Pb{
-		sbtProvider: sbtProvider,
-	}
+func New(core.Service, *collection.Service) converter.Converter {
+	return new(Pb)
 }
 
 func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
@@ -71,13 +74,16 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 				continue
 			}
 		}
-		sbt, err := p.sbtProvider.Type(id)
+		sbt, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
-			allErrors.Add(path, e)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, allErrors
-			} else {
-				continue
+			sbt, err = builtinobjects.SmartBlockTypeFromThreadID(id)
+			if err != nil {
+				allErrors.Add(path, e)
+				if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+					return nil, allErrors
+				} else {
+					continue
+				}
 			}
 		}
 		source := converter.GetSourceDetail(name, path)
@@ -86,7 +92,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 			Id:       id,
 			SbType:   sbt,
 			FileName: name,
-			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
+			Snapshot: snapshot,
 		})
 	}
 

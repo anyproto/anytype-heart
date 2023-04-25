@@ -8,7 +8,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -30,13 +29,13 @@ type Importer interface {
 // Creator incapsulate logic with creation of given smartblocks
 type Creator interface {
 	//nolint:lll
-	Create(ctx *session.Context, snapshot *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, existing bool) (*types.Struct, error)
+	Create(ctx *session.Context, sn *converter.Snapshot, relations []*converter.Relation, pageID string, oldIDtoNew map[string]string, existing bool) (*types.Struct, error)
 }
 
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error)
+	Get(ctx *session.Context, cs *model.SmartBlockSnapshotBase, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error)
 }
 
 // Updater is interface for updating existing objects
@@ -45,10 +44,10 @@ type Updater interface {
 	Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, relations []*converter.Relation, pageID string) (*types.Struct, []string, error)
 }
 
-// RelationCreator incapsulates logic for creation of relations
+// RelationCreator incapsulates logic for creation of RelationsIDToFormat
 type RelationCreator interface {
 	//nolint: lll
 	ReplaceRelationBlock(ctx *session.Context, oldRelationBlocksToNew map[string]*model.Block, pageID string)
 	//nolint: lll
-	CreateRelations(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, relations []*converter.Relation) ([]string, map[string]*model.Block, error)
+	CreateRelations(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, relations []*converter.Relation) ([]string, map[string]*model.Block, map[string]RelationsIDToFormat, error)
 }

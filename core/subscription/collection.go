@@ -90,9 +90,12 @@ func (c *collectionObserver) updateIDs(ids []string) {
 
 	entries := fetchEntries(c.cache, c.objectStore, append(removed, added...))
 	for _, e := range entries {
-		c.recBatch.Add(database.Record{
+		err := c.recBatch.Add(database.Record{
 			Details: e.data,
 		})
+		if err != nil {
+			log.Info("failed to add entities to mb: ", err)
+		}
 	}
 }
 
@@ -178,7 +181,7 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 
 func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []string) []*entry {
 	res := make([]*entry, 0, len(ids))
-	var missingIDs []string
+	missingIDs := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if e := cache.Get(id); e != nil {
 			res = append(res, e)

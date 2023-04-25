@@ -22,18 +22,18 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-type relationIDFormat struct {
+type RelationIDFormat struct {
 	ID     string
 	Format model.RelationFormat
 }
 
-type relations []relationIDFormat
+type RelationsIDToFormat []RelationIDFormat
 
 type RelationService struct {
 	core             core.Service
 	service          *block.Service
 	objCreator       objectCreator
-	createdRelations map[string]relations // need this field to avoid creation of the same relations
+	createdRelations map[string]RelationsIDToFormat // need this field to avoid creation of the same RelationsIDToFormat
 	store            filestore.FileStore
 	objectStore      objectstore.ObjectStore
 }
@@ -49,7 +49,7 @@ func NewRelationCreator(service *block.Service,
 		service:          service,
 		objCreator:       objCreator,
 		core:             core,
-		createdRelations: make(map[string]relations, 0),
+		createdRelations: make(map[string]RelationsIDToFormat, 0),
 		store:            store,
 		objectStore:      objectStore,
 	}
@@ -58,7 +58,7 @@ func NewRelationCreator(service *block.Service,
 func (rc *RelationService) CreateRelations(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	pageID string,
-	relations []*converter.Relation) ([]string, map[string]*model.Block, error) {
+	relations []*converter.Relation) ([]string, map[string]*model.Block, map[string]RelationsIDToFormat, error) {
 	notExistedRelations := make([]*converter.Relation, 0)
 	existedRelations := make(map[string]*converter.Relation, 0)
 	for _, r := range relations {
@@ -99,12 +99,12 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 
 	filesToDelete, oldRelationBlockToNewUpdate, failedRelations, err := rc.update(ctx, snapshot, existedRelations, pageID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	notExistedRelations = append(notExistedRelations, failedRelations...)
 	createfilesToDelete, oldRelationBlockToNewCreate, err := rc.create(ctx, snapshot, notExistedRelations, pageID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	filesToDelete = append(filesToDelete, createfilesToDelete...)
 	totalNumberOfRelationBlocks := len(oldRelationBlockToNewCreate) + len(oldRelationBlockToNewUpdate)
@@ -119,7 +119,7 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 			oldRelationBlockToNewTotal[k] = b
 		}
 	}
-	return filesToDelete, oldRelationBlockToNewTotal, nil
+	return filesToDelete, oldRelationBlockToNewTotal, rc.getTotalRelations(existedRelations), nil
 }
 
 // Create read relations link from snaphot and create according relations in anytype,
@@ -157,7 +157,7 @@ func (rc *RelationService) create(ctx *session.Context,
 		name := pbtypes.GetString(s, bundle.RelationKeyName.String())
 		id := pbtypes.GetString(s, bundle.RelationKeyRelationKey.String())
 		format := model.RelationFormat(pbtypes.GetFloat64(s, bundle.RelationKeyRelationFormat.String()))
-		rc.createdRelations[name] = append(rc.createdRelations[name], relationIDFormat{
+		rc.createdRelations[name] = append(rc.createdRelations[name], RelationIDFormat{
 			ID:     id,
 			Format: format,
 		})
@@ -428,4 +428,20 @@ func (rc *RelationService) linkRelationsBlocks(snapshot *model.SmartBlockSnapsho
 		}
 	}
 	return nil, nil
+}
+
+func (rc *RelationService) getTotalRelations(existedRelations map[string]*converter.Relation) map[string]RelationsIDToFormat {
+	totalRelations := make(map[string]RelationsIDToFormat, 0)
+	for name, rel := range rc.createdRelations {
+		totalRelations[name] = rel
+	}
+
+	for id, relation := range existedRelations {
+		totalRelations[relation.Name] = append(totalRelations[relation.Name], RelationIDFormat{
+			ID:     id,
+			Format: relation.Format,
+		})
+	}
+
+	return totalRelations
 }

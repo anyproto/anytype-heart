@@ -11,6 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -42,7 +43,7 @@ type Markdown struct {
 
 const Name = "Markdown"
 
-func New(s core.Service) converter.Converter {
+func New(s core.Service, _ *collection.Service) converter.Converter {
 	return &Markdown{blockConverter: newMDConverter(s)}
 }
 

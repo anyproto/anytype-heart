@@ -82,14 +82,14 @@ func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObject
 		return resp
 	}
 	var (
-		setId string
+		setID string
 		err   error
 	)
 	err = mw.doCollectionService(func(cs *collection.Service) (err error) {
-		if setId, err = cs.ObjectToCollection(req.ContextId); err != nil {
+		if setID, err = cs.ObjectToCollection(req.ContextId); err != nil {
 			return err
 		}
 		return nil
 	})
-	return response(setId, err)
+	return response(setID, err)
 }
