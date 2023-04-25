@@ -13,10 +13,12 @@ import (
 	"github.com/blevesearch/bleve/v2/search/query"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch/analyzers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 const (
@@ -228,7 +230,7 @@ func getStandardMapping() *mapping.FieldMapping {
 }
 
 func getAllWordsFromQueryConsequently(terms []string, field string) query.Query {
-	terms = Map(terms, func(item string) string { return strings.ReplaceAll(item, "*", `\*`) })
+	terms = slice.Map(terms, func(item string) string { return strings.ReplaceAll(item, "*", `\*`) })
 	qry := strings.Join(terms, ".*")
 	regexpQuery := bleve.NewRegexpQuery(".*" + qry + ".*")
 	regexpQuery.SetField(field)
@@ -250,12 +252,4 @@ func getIDMatchQuery(qry string) *query.DocIDQuery {
 	docIDQuery := bleve.NewDocIDQuery([]string{qry})
 	docIDQuery.SetBoost(30)
 	return docIDQuery
-}
-
-func Map[T, V any](ts []T, fn func(T) V) []V {
-	result := make([]V, len(ts))
-	for i, t := range ts {
-		result[i] = fn(t)
-	}
-	return result
 }

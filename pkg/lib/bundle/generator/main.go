@@ -3,13 +3,18 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/util/strutil"
 
 	. "github.com/dave/jennifer/jen"
 )
@@ -18,7 +23,15 @@ const (
 	relPbPkg = "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	addrPkg  = "github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
-	typePrefix = "_ot"
+	pkgPrefix = "pkg/lib/bundle/"
+	jsonExt   = ".json"
+
+	typePrefix            = "_ot"
+	systemRelationsName   = "systemRelations"
+	internalRelationsName = "internalRelations"
+	relationsName         = "relations"
+
+	relationAssertionError = "relations validation has failed"
 )
 
 type Relation struct {
@@ -52,38 +65,69 @@ type Layout struct {
 
 func main() {
 	err := generateRelations()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+	exitOnError(err)
 
 	err = generateTypes()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+	exitOnError(err)
 
 	err = generateLayouts()
+	exitOnError(err)
+
+	err = generateRelationsLists(
+		internalRelationsName,
+		writeInternalRelations,
+		addInternalRelationsComment,
+		returnKeys(),
+	)
+	exitOnError(err)
+
+	err = generateRelationsLists(
+		systemRelationsName,
+		appendInternalToSystemRelations,
+		addSystemRelationsComment,
+		excludeInternalRelations,
+	)
+	exitOnError(err)
+}
+
+func returnKeys() func(keys []bundle.RelationKey) []bundle.RelationKey {
+	return func(keys []bundle.RelationKey) []bundle.RelationKey { return keys }
+}
+
+func excludeInternalRelations(allSystemKeys []bundle.RelationKey) []bundle.RelationKey {
+	var sourceName = pkgPrefix + internalRelationsName + jsonExt
+	internalRelationKeys, _, err := readRelations(sourceName, returnKeys())
+	exitOnError(err)
+
+	assertRelationsIncluded(
+		internalRelationKeys,
+		allSystemKeys,
+	)
+
+	return slice.Subtract(allSystemKeys, internalRelationKeys)
+}
+
+func exitOnError(err error) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }
 
 func relConst(key string) string {
-	return "RelationKey" + strings.ToUpper(key[0:1]) + key[1:]
+	return "RelationKey" + strutil.CapitalizeFirstLetter(key)
 }
 
 func typeConst(key string) string {
-	return "TypeKey" + strings.ToUpper(key[0:1]) + key[1:]
+	return "TypeKey" + strutil.CapitalizeFirstLetter(key)
 }
 
 func sbTypeConst(key string) string {
-	return "SmartBlockType_" + strings.ToUpper(key[0:1]) + key[1:]
+	return "SmartBlockType_" + strutil.CapitalizeFirstLetter(key)
 }
 
 func generateRelations() error {
-	b, err := ioutil.ReadFile("pkg/lib/bundle/relations.json")
+	b, err := os.ReadFile("pkg/lib/bundle/relations.json")
 	if err != nil {
 		return err
 	}
@@ -147,19 +191,19 @@ func generateRelations() error {
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)
 		}
-		g.Id("relations").Op("=").Map(Id("RelationKey")).Op("*").Qual(relPbPkg, "Relation").Values(Dict(dict))
+		g.Id(relationsName).Op("=").Map(Id("RelationKey")).Op("*").Qual(relPbPkg, "Relation").Values(Dict(dict))
 	})
 
 	file, err := os.OpenFile("pkg/lib/bundle/relation.gen.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(file, "%#v", f)
+	_, _ = fmt.Fprintf(file, "%#v", f)
 	return nil
 }
 
 func generateTypes() error {
-	b, err := ioutil.ReadFile("pkg/lib/bundle/types.json")
+	b, err := os.ReadFile("pkg/lib/bundle/types.json")
 	if err != nil {
 		return err
 	}
@@ -255,12 +299,12 @@ func generateTypes() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(file, "%#v", f)
+	_, _ = fmt.Fprintf(file, "%#v", f)
 	return nil
 }
 
 func generateLayouts() error {
-	b, err := ioutil.ReadFile("pkg/lib/bundle/layouts.json")
+	b, err := os.ReadFile("pkg/lib/bundle/layouts.json")
 	if err != nil {
 		return err
 	}
@@ -288,7 +332,7 @@ func generateLayouts() error {
 			if len(lt.RequiredRelations) > 0 {
 				var t []Code
 				for _, rel := range lt.RequiredRelations {
-					t = append(t, Id("relations").Index(Id(relConst(rel))))
+					t = append(t, Id(relationsName).Index(Id(relConst(rel))))
 				}
 				map[Code]Code(dictS)[Id("RequiredRelations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
 			}
@@ -301,6 +345,179 @@ func generateLayouts() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(file, "%#v", f)
+	_, _ = fmt.Fprintf(file, "%#v", f)
 	return nil
+}
+
+func generateRelationsLists(
+	name string,
+	writeRelations func(genFile *File, list []Code),
+	comment func(genFile *File),
+	filter func([]bundle.RelationKey) []bundle.RelationKey,
+) error {
+	var sourceName = pkgPrefix + name + jsonExt
+
+	relationKeys, checkSum, err := readRelations(sourceName, filter)
+	if err != nil {
+		return err
+	}
+
+	genFile := NewFile("bundle")
+	addHeader(genFile, name, sourceName, checkSum, comment)
+
+	relations := generateRelationsList(relationKeys)
+	writeRelations(genFile, relations)
+
+	return writeGeneratedCodeToFile(name, genFile)
+}
+
+func writeGeneratedCodeToFile(name string, genFile *File) error {
+	outPutFile, err := os.OpenFile(pkgPrefix+name+".gen.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(outPutFile, "%#v", genFile)
+	return nil
+}
+
+func readRelations(
+	sourceName string,
+	filter func([]bundle.RelationKey) []bundle.RelationKey,
+) ([]bundle.RelationKey, [32]byte, error) {
+	bytes, err := os.ReadFile(sourceName)
+	if err != nil {
+		return nil, [32]byte{}, err
+	}
+
+	checkSum := sha256.Sum256(bytes)
+
+	relationKeys, err := parseRelations(bytes, filter)
+	if err != nil {
+		return nil, [32]byte{}, err
+	}
+
+	return relationKeys, checkSum, err
+}
+
+func parseRelations(bytes []byte, filter func([]bundle.RelationKey) []bundle.RelationKey) ([]bundle.RelationKey, error) {
+	var relationKeys []bundle.RelationKey
+	err := json.Unmarshal(bytes, &relationKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	allRelationKeys, err := readAllRelationKeys()
+	if err != nil {
+		return nil, err
+	}
+	assertRelationsIncluded(relationKeys, allRelationKeys)
+	relationKeys = filter(relationKeys)
+	return relationKeys, nil
+}
+
+func assertRelationsIncluded(
+	whatIncluded []bundle.RelationKey,
+	whereIncluded []bundle.RelationKey,
+) {
+
+	err := validateRelationsIncluded(
+		slice.Map(whatIncluded, bundle.RelationKey.String),
+		slice.Map(whereIncluded, bundle.RelationKey.String),
+	)
+	if err != nil {
+		exitOnError(fmt.Errorf(relationAssertionError))
+	}
+}
+
+func addHeader(genFile *File, name string, sourceName string, checkSum [32]byte, comment func(genFile *File)) {
+	genFile.PackageComment(
+		"Code generated by pkg/lib/bundle/generator. DO NOT EDIT.\n" +
+			"source: " + sourceName,
+	)
+	genFile.ImportName(relPbPkg, "model")
+	writeCheckSum(genFile, name, checkSum)
+	comment(genFile)
+}
+
+func writeCheckSum(genFile *File, name string, checkSum [32]byte) *Statement {
+	return genFile.Const().
+		Id(strutil.CapitalizeFirstLetter(name) + "Checksum").
+		Op("=").
+		Lit(fmt.Sprintf("%x", checkSum))
+}
+
+func generateRelationsList(relationKeys []bundle.RelationKey) []Code {
+	var list = make([]Code, len(relationKeys))
+	for _, relationKey := range relationKeys {
+		list = append(list, Line().Id(relConst(relationKey.String())))
+	}
+	list = append(list, Line())
+	return list
+}
+
+func appendInternalToSystemRelations(genFile *File, list []Code) {
+	genFile.
+		Var().
+		Id("SystemRelations").
+		Op("=").
+		Append(
+			Id("RequiredInternalRelations").
+				Op(",").
+				Index().
+				Qual("", "RelationKey").
+				Values(list...).
+				Op("..."),
+		)
+}
+
+func writeInternalRelations(genFile *File, list []Code) {
+	genFile.
+		Var().
+		Id("RequiredInternalRelations").
+		Op("=").
+		Index().
+		Qual("", "RelationKey").
+		Values(list...)
+}
+
+func addInternalRelationsComment(genFile *File) {
+	genFile.Comment("RequiredInternalRelations contains internal relations that will be added to EVERY new or existing object")
+	genFile.Comment("if this relation only needs SPECIFIC objects(e.g. of some type) add it to the SystemRelations")
+}
+
+func addSystemRelationsComment(genFile *File) {
+	genFile.Comment("SystemRelations contains relations that have some special biz logic depends on them in some objects")
+	genFile.Comment("in case EVERY object depend on the relation please add it to RequiredInternalRelations")
+}
+
+func validateRelationsIncluded(
+	relationsKeysSubSet []string,
+	allRelationsKeys []string,
+) error {
+	for _, subKey := range relationsKeysSubSet {
+		if !slices.Contains(allRelationsKeys, subKey) {
+			return errors.New(subKey + " is absent in relations list!")
+		}
+	}
+	return nil
+}
+
+func readAllRelationKeys() ([]bundle.RelationKey, error) {
+	bytes, err := os.ReadFile(pkgPrefix + relationsName + jsonExt)
+	if err != nil {
+		return []bundle.RelationKey{}, err
+	}
+
+	var allRelations []Relation
+	err = json.Unmarshal(bytes, &allRelations)
+	if err != nil {
+		return []bundle.RelationKey{}, err
+	}
+	var allRelationsKeys = slice.Map(
+		allRelations,
+		func(t Relation) bundle.RelationKey {
+			return bundle.RelationKey(t.Key)
+		},
+	)
+	return allRelationsKeys, nil
 }

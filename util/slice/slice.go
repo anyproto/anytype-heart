@@ -43,30 +43,18 @@ func DifferenceRemovedAdded(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func Intersection(a, b []string) (res []string) {
-	sort.Strings(a)
-	sort.Strings(b)
-	aIdx := 0
-	bIdx := 0
-	for aIdx < len(a) && bIdx < len(b) {
-		cmp := strings.Compare(a[aIdx], b[bIdx])
-		switch cmp {
-		case 0:
-			res = append(res, a[aIdx])
-			aIdx++
-			bIdx++
-		case -1:
-			aIdx++
-		case 1:
-			bIdx++
-		}
-	}
-	return
-}
-
-func FindPos(s []string, v string) int {
+func FindPos[T comparable](s []T, v T) int {
 	for i, sv := range s {
 		if sv == v {
+			return i
+		}
+	}
+	return -1
+}
+
+func Find[T comparable](s []T, cond func(T) bool) int {
+	for i, sv := range s {
+		if cond(sv) {
 			return i
 		}
 	}
@@ -84,7 +72,7 @@ func Difference(a, b []string) []string {
 	return diff
 }
 
-func Insert(s []string, pos int, v ...string) []string {
+func Insert[T any](s []T, pos int, v ...T) []T {
 	if len(s) <= pos {
 		return append(s, v...)
 	}
@@ -95,7 +83,7 @@ func Insert(s []string, pos int, v ...string) []string {
 }
 
 // Remove reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
-func Remove(s []string, v string) []string {
+func Remove[T comparable](s []T, v T) []T {
 	var n int
 	for _, x := range s {
 		if x != v {
@@ -106,8 +94,30 @@ func Remove(s []string, v string) []string {
 	return s[:n]
 }
 
-func Filter(vals []string, cond func(string) bool) []string {
-	var result = make([]string, 0, len(vals))
+// RemoveIndex reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
+func RemoveIndex[T any](s []T, idx int) []T {
+	var n int
+	for i, x := range s {
+		if i != idx {
+			s[n] = x
+			n++
+		}
+	}
+	return s[:n]
+}
+
+func Filter[T any](vals []T, cond func(T) bool) []T {
+	var result = make([]T, 0, len(vals))
+	for i := range vals {
+		if cond(vals[i]) {
+			result = append(result, vals[i])
+		}
+	}
+	return result
+}
+
+func FilterMut[T any](vals []T, cond func(T) bool) []T {
+	result := vals[:0]
 	for i := range vals {
 		if cond(vals[i]) {
 			result = append(result, vals[i])
@@ -170,4 +180,47 @@ func Copy(s []string) []string {
 	res := make([]string, len(s))
 	copy(res, s)
 	return res
+}
+
+func Intersection(a, b []string) (res []string) {
+	sort.Strings(a)
+	sort.Strings(b)
+	aIdx := 0
+	bIdx := 0
+	for aIdx < len(a) && bIdx < len(b) {
+		cmp := strings.Compare(a[aIdx], b[bIdx])
+		switch cmp {
+		case 0:
+			res = append(res, a[aIdx])
+			aIdx++
+			bIdx++
+		case -1:
+			aIdx++
+		case 1:
+			bIdx++
+		}
+	}
+	return
+}
+
+func Map[T, V any](ts []T, fn func(T) V) []V {
+	result := make([]V, len(ts))
+	for i, t := range ts {
+		result[i] = fn(t)
+	}
+	return result
+}
+
+func Subtract[T comparable](a, b []T) []T {
+	mb := make(map[T]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []T
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
 }

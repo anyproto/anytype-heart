@@ -94,6 +94,10 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+      - name: Add system relations
+        run: |
+          mkdir -p relations/
+          cp pkg/lib/bundle/systemRelations.json ./relations
       - name: Upload protobuf artifact for linux build
         uses: actions/upload-artifact@v2
         with:
@@ -109,7 +113,7 @@ jobs:
           do
           OSARCH=${i%.*}
           cp ./${i}* ./grpc-server.exe
-          zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf
+          zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf relations
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
       - name: Pack server unix
@@ -132,11 +136,15 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+      - name: Add system relations
+        run: |
+          mkdir -p relations/
+          cp pkg/lib/bundle/systemRelations.json ./relations
       - name: Compile ios lib
         run: |
           gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
-          gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf
+          gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf relations
           mv ios_framework_${VERSION}.tar.gz .release/
       - name: Make java protos
         run: |
@@ -147,11 +155,15 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+      - name: Add system relations
+        run: |
+          mkdir -p relations/
+          cp pkg/lib/bundle/systemRelations.json ./relations
       - name: Compile android lib
         run: |
           gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
-          gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
+          gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf relations
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven
         run: |
@@ -262,6 +274,10 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+      - name: Add system relations
+        run: |
+          mkdir -p relations/
+          cp pkg/lib/bundle/systemRelations.json ./relations
       - name: Upload protobuf artifact for linux build
         uses: actions/upload-artifact@v2
         with:
@@ -277,7 +293,7 @@ jobs:
           do
           OSARCH=${i%.*}
           cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf
+          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf relations
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Release

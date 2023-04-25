@@ -12,64 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-// RequiredInternalRelations contains internal relations that will be added to EVERY new or existing object
-// if this relation only needs SPECIFIC objects(e.g. of some type) add it to the SystemRelations
-var RequiredInternalRelations = []RelationKey{
-	RelationKeyId,
-	RelationKeyName,
-	RelationKeyDescription,
-	RelationKeySnippet,
-	RelationKeyIconEmoji,
-	RelationKeyIconImage,
-	RelationKeyType,
-	RelationKeyLayout,
-	RelationKeyLayoutAlign,
-	RelationKeyCoverId,
-	RelationKeyCoverScale,
-	RelationKeyCoverType,
-	RelationKeyCoverX,
-	RelationKeyCoverY,
-	RelationKeyCreatedDate,
-	RelationKeyCreator,
-	RelationKeyLastModifiedDate,
-	RelationKeyLastModifiedBy,
-	RelationKeyLastOpenedDate,
-	RelationKeyFeaturedRelations,
-	RelationKeyIsFavorite,
-	RelationKeyWorkspaceId,
-	RelationKeyLinks,
-	RelationKeyInternalFlags,
-	RelationKeyRestrictions,
-}
-
-// SystemRelations contains relations that have some special biz logic depends on them in some objects
-// in case EVERY object depend on the relation please add it to RequiredInternalRelations
-var SystemRelations = append(RequiredInternalRelations, []RelationKey{
-	RelationKeyAddedDate,
-	RelationKeySource,
-	RelationKeySourceObject,
-	RelationKeySetOf,
-	RelationKeyRelationFormat,
-	RelationKeyRelationKey,
-	RelationKeyRelationReadonlyValue,
-	RelationKeyRelationDefaultValue,
-	RelationKeyRelationMaxCount,
-	RelationKeyRelationOptionColor,
-	RelationKeyRelationFormatObjectTypes,
-	RelationKeyIsReadonly,
-	RelationKeyIsDeleted,
-	RelationKeyIsHidden,
-	RelationKeyDone,
-	RelationKeyIsArchived,
-	RelationKeyTemplateIsBundled,
-	RelationKeyTag,
-	RelationKeyOldAnytypeID,
-	RelationKeySpaceDashboardId,
-	RelationKeyRecommendedRelations,
-	RelationKeyIconOption,
-	RelationKeySpaceAccessibility,
-}...)
-
 func makeSystemRelationsMap() map[RelationKey]struct{} {
 	res := make(map[RelationKey]struct{}, len(SystemRelations))
 	for _, k := range SystemRelations {
