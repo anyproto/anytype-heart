@@ -377,8 +377,10 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	}
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
-	sb.depIds = sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
-	sort.Strings(sb.depIds)
+
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	sb.setDependentIDs(depIDs)
+
 	var records []database.Record
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
 		// datastore unavailable, cancel the subscription
@@ -441,46 +443,48 @@ func (sb *smartBlock) metaListener(ch chan *types.Struct) {
 }
 
 func (sb *smartBlock) onMetaChange(details *types.Struct) {
-	if sb.sendEvent != nil {
-		id := pbtypes.GetString(details, bundle.RelationKeyId.String())
-		msgs := []*pb.EventMessage{}
-		if details != nil {
-			if v, exists := sb.lastDepDetails[id]; exists {
-				diff := pbtypes.StructDiff(v.Details, details)
-				if id == sb.Id() {
-					// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
-					diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
-					if len(diff.GetFields()) > 0 {
-						log.With("thread", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
-					}
-				}
-
-				msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
-			} else {
-				msgs = append(msgs, &pb.EventMessage{
-					Value: &pb.EventMessageValueOfObjectDetailsSet{
-						ObjectDetailsSet: &pb.EventObjectDetailsSet{
-							Id:      id,
-							Details: details,
-						},
-					},
-				})
-			}
-			sb.lastDepDetails[id] = &pb.EventObjectDetailsSet{
-				Id:      id,
-				Details: details,
+	if sb.sendEvent == nil {
+		return
+	}
+	if details == nil {
+		return
+	}
+	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	msgs := []*pb.EventMessage{}
+	if v, exists := sb.lastDepDetails[id]; exists {
+		diff := pbtypes.StructDiff(v.Details, details)
+		if id == sb.Id() {
+			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
+			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
+			if len(diff.GetFields()) > 0 {
+				log.With("thread", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
 			}
 		}
 
-		if len(msgs) == 0 {
-			return
-		}
-
-		sb.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: sb.Id(),
+		msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
+	} else {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id:      id,
+					Details: details,
+				},
+			},
 		})
 	}
+	sb.lastDepDetails[id] = &pb.EventObjectDetailsSet{
+		Id:      id,
+		Details: details,
+	}
+
+	if len(msgs) == 0 {
+		return
+	}
+
+	sb.sendEvent(&pb.Event{
+		Messages:  msgs,
+		ContextId: sb.Id(),
+	})
 }
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
@@ -736,23 +740,35 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIds := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
-	sort.Strings(depIds)
-	if !slice.SortedEquals(sb.depIds, depIds) {
-		sb.depIds = depIds
-		if sb.recordsSub != nil {
-			newIds := sb.recordsSub.Subscribe(sb.depIds)
-			records, err := sb.objectStore.QueryById(newIds)
-			if err != nil {
-				log.Errorf("queryById error: %v", err)
-			}
-			for _, rec := range records {
-				sb.onMetaChange(rec.Details)
-			}
-		}
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	changed = sb.setDependentIDs(depIDs)
+
+	if sb.recordsSub == nil {
 		return true
 	}
-	return false
+	newIDs := sb.recordsSub.Subscribe(sb.depIds)
+	records, err := sb.objectStore.QueryById(newIDs)
+	if err != nil {
+		log.Errorf("queryById error: %v", err)
+	}
+	for _, rec := range records {
+		sb.onMetaChange(rec.Details)
+	}
+	return true
+}
+
+func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
+	sort.Strings(depIDs)
+	if slice.SortedEquals(sb.depIds, depIDs) {
+		return false
+	}
+	// TODO Use algo for sorted strings
+	removed, _ := slice.DifferenceRemovedAdded(sb.depIds, depIDs)
+	for _, id := range removed {
+		delete(sb.lastDepDetails, id)
+	}
+	sb.depIds = depIDs
+	return true
 }
 
 func (sb *smartBlock) NewState() *state.State {

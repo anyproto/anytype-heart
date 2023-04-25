@@ -2,11 +2,11 @@ package database
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
 	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 )
 
 type subscription struct {
