@@ -55,6 +55,19 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 	}
 
 	if sbType == sb.SmartBlockTypeSubObject {
+		name := snapshot.Details.Fields[bundle.RelationKeyName.String()]
+		object, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					RelationKey: bundle.RelationKeyName.String(),
+					Value:       name,
+				},
+			},
+		}, []sb.SmartBlockType{sbType})
+		if err == nil && len(object) > 0 {
+			return object[0], false, nil
+		}
 		if len(snapshot.ObjectTypes) > 0 {
 			ot := snapshot.ObjectTypes
 			req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
