@@ -408,3 +408,8 @@ func structToState(id string, data *types.Struct) *state.State {
 	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
 	return subState
 }
+
+func (p *SubObjectCollection) TryClose(objectTTL time.Duration) (res bool, err error) {
+	// never close SubObjectCollection
+	return false, nil
+}
