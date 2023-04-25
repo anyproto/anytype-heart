@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/net/addrs"
 	"github.com/libp2p/zeroconf/v2"
 	"go.uber.org/zap"
 	"strconv"
@@ -25,7 +26,7 @@ const (
 var log = logger.NewNamed(CName)
 
 type DiscoveredPeer struct {
-	Addr   string
+	Addrs  []string
 	PeerId string
 }
 
@@ -42,6 +43,7 @@ type localDiscovery struct {
 	server *zeroconf.Server
 	peerId string
 	addrs  []string
+	port   int
 
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -60,12 +62,13 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.addrs = a.MustComponent(config.CName).(net.ConfigGetter).GetNet().Server.ListenAddrs
+	addrs := a.MustComponent(config.CName).(net.ConfigGetter).GetNet().Server.ListenAddrs
+	l.port, err = getPort(addrs)
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
-	if len(l.addrs) == 0 {
+	if l.port == 0 {
 		return
 	}
 	l.ctx, l.cancel = context.WithCancel(ctx)
@@ -93,20 +96,24 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 }
 
 func (l *localDiscovery) startServer() (err error) {
-	// for now assuming that we have just one address
-	split := strings.Split(l.addrs[0], ":")
-	ip, portString := split[0], split[1]
-	port, err := strconv.Atoi(portString)
+	interfaceAddrs, err := addrs.InterfaceAddrs()
 	if err != nil {
 		return
 	}
+	var ips []string
+	for _, addr := range interfaceAddrs {
+		ip := strings.Split(addr.String(), "/")[0]
+		ips = append(ips, ip)
+	}
+
+	// for now assuming that we have just one address
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
 		serviceName,
 		mdnsDomain,
-		port,
+		l.port,
 		l.peerId,
-		[]string{ip},
+		ips,
 		nil,
 		nil,
 		zeroconf.TTL(60),
@@ -128,11 +135,15 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 		if entry.Instance == l.peerId {
 			continue
 		}
+		var portAddrs []string
+		for _, a := range entry.AddrIPv4 {
+			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", a.String(), entry.Port))
+		}
 		peer := DiscoveredPeer{
-			Addr:   fmt.Sprintf("%s:%d", entry.AddrIPv4, entry.Port),
+			Addrs:  portAddrs,
 			PeerId: entry.Instance,
 		}
-		log.Debug("discovered peer", zap.String("addr", peer.Addr), zap.String("peerId", peer.PeerId))
+		log.Debug("discovered peer", zap.Strings("addrs", peer.Addrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
 			l.notifier.PeerDiscovered(peer)
 		}
@@ -144,4 +155,14 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch); err != nil {
 		log.Debug("browsing failed", zap.Error(err))
 	}
+}
+
+func getPort(addrs []string) (port int, err error) {
+	if len(addrs) == 0 {
+		err = fmt.Errorf("addresses are empty")
+		return
+	}
+	split := strings.Split(addrs[0], ":")
+	_, portString := split[0], split[1]
+	return strconv.Atoi(portString)
 }

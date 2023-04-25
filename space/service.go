@@ -180,7 +180,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
-	s.dialer.SetPeerAddrs(peer.PeerId, []string{peer.Addr})
+	s.dialer.SetPeerAddrs(peer.PeerId, peer.Addrs)
 	ctx := context.Background()
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
 	if err != nil {
