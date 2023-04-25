@@ -23,6 +23,11 @@ var (
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 	}
+	collectionRestrictions = ObjectRestrictions{
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_Template,
+	}
 
 	objectRestrictionsByPbType = map[model.SmartBlockType]ObjectRestrictions{
 		model.SmartBlockType_Breadcrumbs:    objRestrictAll,
@@ -52,8 +57,8 @@ var (
 		model.SmartBlockType_MarketplaceTemplate: objRestrictAll,
 		model.SmartBlockType_MarketplaceType:     objRestrictAll,
 		model.SmartBlockType_Archive:             objRestrictAll,
-		model.SmartBlockType_Set:                 objRestrictEdit,
-		model.SmartBlockType_Collection:          objRestrictEdit,
+		model.SmartBlockType_Set:                 collectionRestrictions,
+		model.SmartBlockType_Collection:          collectionRestrictions,
 		model.SmartBlockType_BundledRelation:     objRestrictAll,
 		model.SmartBlockType_SubObject: {
 			model.Restrictions_Blocks,
@@ -65,7 +70,6 @@ var (
 		model.SmartBlockType_STObjectType:      objRestrictEdit,
 		model.SmartBlockType_BundledTemplate:   objRestrictAll,
 		model.SmartBlockType_Template:          {},
-		// TODO: Check with Razor
 		model.SmartBlockType_Widget: {
 			model.Restrictions_Relations,
 			model.Restrictions_Details,
