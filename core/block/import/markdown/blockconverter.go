@@ -140,7 +140,7 @@ func (m *mdConverter) processDirectory(importPath, mode string, allErrors ce.Con
 		},
 	)
 	for name, file := range files {
-		m.processBlocks(name, files[name], files)
+		m.processBlocks(name, file, files)
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, files)
 		}
