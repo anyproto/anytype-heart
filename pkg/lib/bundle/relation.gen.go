@@ -5,11 +5,11 @@ source: pkg/lib/bundle/relations.json
 package bundle
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	addr "github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "076e0450f34681ba0ea3f21585c3cf3cd83c2915210d39b6a10da94d13f54db7"
+const RelationChecksum = "4a90e6d43e04243d30f1cb5b912349ebf11ae7bcaf8d2524b6a7de33d2822105"
 
 type RelationKey string
 
@@ -160,6 +160,7 @@ const (
 	RelationKeySpaceDashboardId          RelationKey = "spaceDashboardId"
 	RelationKeyIconOption                RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        RelationKey = "spaceAccessibility"
+	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
 )
 
 var (
@@ -900,7 +901,7 @@ var (
 		},
 		RelationKeyInternalFlags: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "Set of internal flags",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
@@ -1237,6 +1238,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
 			Id:               "_broldAnytypeID",
 			Key:              "oldAnytypeID",
 			MaxCount:         1,
@@ -1667,6 +1669,20 @@ var (
 			Key:              "source",
 			MaxCount:         1,
 			Name:             "Source",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySourceFilePath: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File path or url with original object",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brsourceFilePath",
+			Key:              "sourceFilePath",
+			MaxCount:         1,
+			Name:             "Source file path",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

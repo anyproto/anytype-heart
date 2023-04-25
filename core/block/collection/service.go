@@ -199,7 +199,7 @@ func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID 
 func (s *Service) CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error) {
 	details = internalflag.PutToDetails(details, flags)
 
-	newState := state.NewDoc("", nil).NewState()
+	newState := state.NewDoc("", nil).NewState().SetDetails(details)
 
 	tmpls := []template.StateTransformer{
 		template.WithRequiredRelations(),
@@ -211,7 +211,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	)
 	template.InitTemplate(newState, tmpls...)
 
-	return coresb.SmartBlockTypePage, details, newState, nil
+	return coresb.SmartBlockTypePage, newState.CombinedDetails(), newState, nil
 }
 
 func (s *Service) ObjectToCollection(id string) error {

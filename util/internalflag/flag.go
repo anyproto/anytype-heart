@@ -1,11 +1,12 @@
 package internalflag
 
 import (
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 const relationKey = bundle.RelationKeyInternalFlags
@@ -15,7 +16,7 @@ type Set struct {
 }
 
 func NewFromState(st *state.State) Set {
-	flags := pbtypes.GetIntList(st.LocalDetails(), relationKey.String())
+	flags := pbtypes.GetIntList(st.CombinedDetails(), relationKey.String())
 
 	return Set{
 		flags: flags,
@@ -50,7 +51,7 @@ func (s *Set) Remove(flag model.InternalFlagValue) {
 
 func (s Set) AddToState(st *state.State) {
 	if len(s.flags) == 0 {
-		st.RemoveLocalDetail(relationKey.String())
+		st.RemoveDetail(relationKey.String())
 		return
 	}
 	st.SetDetailAndBundledRelation(relationKey, pbtypes.IntList(s.flags...))

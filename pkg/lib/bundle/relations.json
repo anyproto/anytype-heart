@@ -984,7 +984,7 @@
     "maxCount": 0,
     "name": "Internal flags",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "url",
