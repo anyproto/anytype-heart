@@ -64,7 +64,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	converters := []converter.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(col, i.sbtProvider),
+		pbc.New(col, i.sbtProvider, coreService),
 		web.NewConverter(),
 		html.New(col),
 		txt.New(col),
