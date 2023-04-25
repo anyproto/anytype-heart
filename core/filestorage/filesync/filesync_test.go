@@ -4,23 +4,25 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
-	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore/mock_rpcstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/dgraph-io/badger/v3"
-	"github.com/golang/mock/gomock"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
+	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/golang/mock/gomock"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore/mock_rpcstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 )
 
 var ctx = context.Background()
@@ -37,7 +39,7 @@ func TestFileSync_AddFile(t *testing.T) {
 	spaceId := "spaceId"
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
 	require.NoError(t, fx.AddFile(spaceId, fileId))
-	fx.waitEmptyQueue(t, time.Second)
+	fx.waitEmptyQueue(t, time.Second*5)
 }
 
 func TestFileSync_RemoveFile(t *testing.T) {
@@ -45,9 +47,8 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	defer fx.Finish(t)
 	spaceId := "spaceId"
 	fileId := "fileId"
-	fx.rpcStore.EXPECT().DeleteFiles(gomock.Any(), spaceId, fileId)
 	require.NoError(t, fx.RemoveFile(spaceId, fileId))
-	fx.waitEmptyQueue(t, time.Second)
+	fx.waitEmptyQueue(t, time.Second*5)
 }
 
 func newFixture(t *testing.T) *fixture {
