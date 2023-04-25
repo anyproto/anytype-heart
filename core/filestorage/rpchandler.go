@@ -88,7 +88,7 @@ func (r *rpcHandler) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRe
 
 func (r *rpcHandler) Check(ctx context.Context, request *fileproto.CheckRequest) (resp *fileproto.CheckResponse, err error) {
 	resp = &fileproto.CheckResponse{
-		AllowWrite: true,
+		AllowWrite: false,
 	}
 	log.Debug("spaceIds requested")
 	resp.SpaceIds, err = r.spaceStorage.AllSpaceIds()
