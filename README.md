@@ -106,7 +106,8 @@ In order to log mw gRPC requests/responses use `ANYTYPE_GRPC_LOG` env var:
 
 #### Debug tree
 1. You can use `cmd/debugtree.go` to perform different operations with tree exported in zip archive (`rpc DebugTree`)
-2. The usage looks like this `go run debugtree.go -j -t -f [path to zip archive]` where `-t` tells the cmd to generate tree graph view and `-j` - to generate json representation of the tree (i.e. data in each individual block).
+2. The usage looks like this `go run debugtree.go -j -t -f [path to zip archive]` where `-t` tells the cmd to generate tree graph view and `-j` - to generate json representation of the tree (i.e. data in each individual block)
+3. You can use flag `-r` to build the tree from its root, that way you will see all the changes in the tree, and not only those from the common snapshot
 3. For more info please check the command usage in `debugtree.go`
 
 **GUI**
