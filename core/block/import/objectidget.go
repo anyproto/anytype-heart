@@ -6,6 +6,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -16,18 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
-
-type ObjectIDGetter struct {
-	core    core.Service
-	service *block.Service
-}
-
-func NewObjectIDGetter(core core.Service, service *block.Service) IDGetter {
-	return &ObjectIDGetter{
-		core:    core,
-		service: service,
-	}
-}
 
 type CreateSubObjectRequest struct {
 	subObjectType string
@@ -43,6 +32,18 @@ func (c CreateSubObjectRequest) GetDetails() *types.Struct {
 	}
 
 	return pbtypes.StructMerge(c.details, detailsType, false)
+}
+
+type ObjectIDGetter struct {
+	core    core.Service
+	service *block.Service
+}
+
+func NewObjectIDGetter(core core.Service, service *block.Service) IDGetter {
+	return &ObjectIDGetter{
+		core:    core,
+		service: service,
+	}
 }
 
 func (ou *ObjectIDGetter) Get(ctx *session.Context,
@@ -75,6 +76,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 
 func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {
 	id := sn.Id
+	var exist bool
 	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -86,8 +88,15 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 	}, []sb.SmartBlockType{sbType})
 	if err == nil && len(ids) > 0 {
 		id = ids[0]
+		exist = true
 	}
-	return id, false, nil
+	ot := sn.Snapshot.ObjectTypes
+	req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Details}
+	id, _, err = ou.service.CreateObject(req, "")
+	if err != nil && err != editor.ErrSubObjectAlreadyExists {
+		id = sn.Id
+	}
+	return id, exist, nil
 }
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
