@@ -301,11 +301,7 @@ func (d *sdataview) CreateView(ctx *session.Context, id string,
 
 	if len(view.Sorts) == 0 {
 		// todo: set depends on the view type
-		view.Sorts = []*model.BlockContentDataviewSort{{
-			Id:          bson.NewObjectId().Hex(),
-			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-			Type:        model.BlockContentDataviewSort_Desc,
-		}}
+		view.Sorts = defaultLastModifiedDateSort()
 	}
 
 	sbType, err := d.sbtProvider.Type(d.Id())
@@ -325,6 +321,16 @@ func (d *sdataview) CreateView(ctx *session.Context, id string,
 	}
 	tb.AddView(view)
 	return &view, d.Apply(s)
+}
+
+func defaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
+	return []*model.BlockContentDataviewSort{
+		{
+			Id:          bson.NewObjectId().Hex(),
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
+		},
+	}
 }
 
 func (d *sdataview) UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
@@ -630,15 +636,10 @@ func DataviewBlockBySource(sbtProvider typeprovider.SmartBlockTypeProvider, stor
 			RelationLinks: relations,
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:   bson.NewObjectId().Hex(),
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
+					Id:        bson.NewObjectId().Hex(),
+					Type:      model.BlockContentDataviewView_Table,
+					Name:      "All",
+					Sorts:     defaultLastModifiedDateSort(),
 					Filters:   nil,
 					Relations: viewRelations,
 				},
