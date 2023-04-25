@@ -174,6 +174,8 @@ func (s *service) newCollectionSubscription(id string, collectionID string, keys
 	flt = filter.AndFilters{flt, obs}
 
 	ssub := s.newSortedSub(id, keys, flt, obs, limit, offset)
+	// TODO set to true only if it's no user orders
+	ssub.batchUpdate = true
 	sub := &collectionSubscription{
 		sortedSub:   ssub,
 		cache:       s.cache,
