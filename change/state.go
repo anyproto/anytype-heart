@@ -1,93 +1,69 @@
 package change
 
 import (
-	"time"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 )
 
-func NewStateCache() *stateCache {
-	return &stateCache{
-		states: make(map[string]struct {
-			refs  int
-			state *state.State
-		}),
-	}
-}
-
-type stateCache struct {
-	states map[string]struct {
-		refs  int
-		state *state.State
-	}
-}
-
-func (sc *stateCache) Set(id string, s *state.State, refs int) {
-	sc.states[id] = struct {
-		refs  int
-		state *state.State
-	}{refs: refs, state: s}
-}
-
-func (sc *stateCache) Get(id string) *state.State {
-	item := sc.states[id]
-	item.refs--
-	if item.refs == 0 {
-		delete(sc.states, id)
-	} else {
-		sc.states[id] = item
-	}
-	return item.state
-}
-
-// Simple implementation hopes for CRDT and ignores errors. No merge
-func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, changesApplied int, err error) {
+func BuildState(initState *state.State, ot objecttree.ObjectTree) (s *state.State, err error) {
 	var (
 		startId    string
-		applyRoot  bool
-		st         = time.Now()
-		lastChange *Change
+		lastChange *objecttree.Change
+		count      int
 	)
-	if startId = root.ChangeId(); startId == "" {
-		startId = t.RootId()
-		applyRoot = true
+	// if the state has no first change
+	if initState == nil {
+		startId = ot.Root().Id
+	} else {
+		s = initState
+		startId = s.ChangeId()
 	}
 
-	t.Iterate(startId, func(c *Change) (isContinue bool) {
-		changesApplied++
-		lastChange = c
-		if startId == c.Id {
-			s = root.NewState()
-			if applyRoot {
-				s.ApplyChangeIgnoreErr(c.Change.Content...)
-				s.SetChangeId(c.Id)
-				s.AddFileKeys(c.FileKeys...)
+	err = ot.IterateFrom(startId,
+		func(decrypted []byte) (any, error) {
+			ch := &pb.Change{}
+			err = proto.Unmarshal(decrypted, ch)
+			if err != nil {
+				return nil, err
+			}
+			return ch, nil
+		}, func(change *objecttree.Change) bool {
+			count++
+			lastChange = change
+			// that means that we are starting from tree root
+			if change.Id == ot.Id() {
+				s = state.NewDoc(ot.Id(), nil).(*state.State)
+				s.SetChangeId(change.Id)
+				return true
+			}
+
+			model := change.Model.(*pb.Change)
+			if startId == change.Id {
+				if s == nil {
+					s = state.NewDocFromSnapshot(change.Id, model.Snapshot, nil).(*state.State)
+					s.SetChangeId(startId)
+					return true
+				}
+				return true
+			}
+			ns := s.NewState()
+			ns.ApplyChangeIgnoreErr(model.Content...)
+			ns.SetChangeId(change.Id)
+			ns.AddFileKeys(model.FileKeys...)
+			_, _, err = state.ApplyStateFastOne(ns)
+			if err != nil {
+				return false
 			}
 			return true
-		}
-		ns := s.NewState()
-		ns.ApplyChangeIgnoreErr(c.Change.Content...)
-		ns.SetChangeId(c.Id)
-		ns.AddFileKeys(c.FileKeys...)
-		_, _, err = state.ApplyStateFastOne(ns)
-		if err != nil {
-			return false
-		}
-		return true
-	})
+		})
 	if err != nil {
-		return nil, changesApplied, err
+		return nil, err
 	}
-	select {
-	case <-t.ctx.Done():
-		return nil, changesApplied, t.ctx.Err()
-	default:
-	}
-
 	if lastChange != nil {
-		s.SetLastModified(lastChange.Timestamp, lastChange.Account)
+		s.SetLastModified(lastChange.Timestamp, lastChange.Identity)
 	}
-
-	log.Infof("build state (crdt): changes: %d; dur: %v;", changesApplied, time.Since(st))
-	return s, changesApplied, err
+	return
 }
