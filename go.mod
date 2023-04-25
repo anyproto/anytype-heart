@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.25-0.20230319162316-935a95c247f0
+	github.com/anytypeio/any-sync v0.0.25
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -43,7 +43,7 @@ require (
 	github.com/hsanjuan/ipfs-lite v1.5.0
 	github.com/huandu/skiplist v1.2.0
 	github.com/improbable-eng/grpc-web v0.14.1
-	github.com/ipfs/go-cid v0.3.2
+	github.com/ipfs/go-cid v0.4.0
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger v0.3.1-0.20211203181443-9205b3779632
 	github.com/ipfs/go-ds-flatfs v0.5.1
@@ -74,7 +74,7 @@ require (
 	github.com/multiformats/go-base32 v0.1.0
 	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/multiformats/go-multiaddr-dns v0.3.1
-	github.com/multiformats/go-multibase v0.1.1
+	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/otiai10/copy v1.9.0
