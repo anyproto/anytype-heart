@@ -104,6 +104,10 @@ In order to log mw gRPC requests/responses use `ANYTYPE_GRPC_LOG` env var:
 - `ANYTYPE_GRPC_TRACE=2` - log method names  + payloads for commands&events
 3. Open Jaeger UI at http://localhost:16686
 
+#### Debug tree
+1. You can use `cmd/debugtree.go` to perform different operations with tree exported in zip archive (`rpc DebugTree`)
+2. The usage looks like this `go run debugtree.go -j -t -f [path to zip archive]` where `-t` tells the cmd to generate tree graph view and `-j` - to generate json representation of the tree (i.e. data in each individual block).
+3. For more info please check the command usage in `debugtree.go`
 
 **GUI**
 
