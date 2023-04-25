@@ -14,13 +14,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -59,11 +56,8 @@ type ObjectsDeriver interface {
 }
 
 type Anytype struct {
-	files            *files2.Service
-	objectStore      objectstore.ObjectStore
-	fileStore        filestore.FileStore
-	fileBlockStorage filestorage.FileStorage
-	deriver          ObjectsDeriver
+	objectStore objectstore.ObjectStore
+	deriver     ObjectsDeriver
 
 	predefinedBlockIds threads.DerivedSmartblockIds
 
@@ -90,11 +84,8 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.wallet = ap.MustComponent(wallet.CName).(wallet.Wallet)
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
-	a.files = ap.MustComponent(files2.CName).(*files2.Service)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
 	a.deriver = ap.MustComponent(treemanager.CName).(ObjectsDeriver)
-	a.fileBlockStorage = app.MustComponent[filestorage.FileStorage](ap)
 	return
 }
 

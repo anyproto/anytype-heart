@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -81,7 +81,7 @@ type sourceDeps struct {
 	accountService accountservice.Service
 	spaceService   space.Service
 	sbtProvider    typeprovider.SmartBlockTypeProvider
-	fileService    *files2.Service
+	fileService    *files.Service
 }
 
 func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
@@ -118,7 +118,7 @@ type source struct {
 
 	coreService    core.Service
 	statusService  status.Service
-	fileService    *files2.Service
+	fileService    *files.Service
 	accountService accountservice.Service
 	spaceService   space.Service
 	sbtProvider    typeprovider.SmartBlockTypeProvider

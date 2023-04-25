@@ -9,7 +9,7 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
-	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -69,7 +69,7 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 		fileName = f.Info().Name
 	}
 
-	path, err := files2.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, countReader)
+	path, err := files.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, countReader)
 	if err != nil {
 		return "", fmt.Errorf("save file: %w", err)
 	}
@@ -78,7 +78,7 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 	return path, nil
 }
 
-func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files2.File, error) {
+func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files.File, error) {
 	image, err := s.fileService.ImageByHash(ctx, hash)
 	if err != nil {
 		return s.fileService.FileByHash(ctx, hash)

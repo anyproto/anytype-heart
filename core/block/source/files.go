@@ -8,7 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -19,8 +19,8 @@ import (
 
 var getFileTimeout = time.Second * 5
 
-func NewFiles(a core.Service, fileStore filestore.FileStore, fileService *files2.Service, id string) (s Source) {
-	return &files{
+func NewFile(a core.Service, fileStore filestore.FileStore, fileService *files.Service, id string) (s Source) {
+	return &file{
 		id:          id,
 		a:           a,
 		fileStore:   fileStore,
@@ -28,26 +28,26 @@ func NewFiles(a core.Service, fileStore filestore.FileStore, fileService *files2
 	}
 }
 
-type files struct {
+type file struct {
 	id          string
 	a           core.Service
 	fileStore   filestore.FileStore
-	fileService *files2.Service
+	fileService *files.Service
 }
 
-func (f *files) ReadOnly() bool {
+func (f *file) ReadOnly() bool {
 	return true
 }
 
-func (f *files) Id() string {
+func (f *file) Id() string {
 	return f.id
 }
 
-func (f *files) Type() model.SmartBlockType {
+func (f *file) Type() model.SmartBlockType {
 	return model.SmartBlockType_File
 }
 
-func (f *files) getDetailsForFileOrImage(ctx context.Context, id string) (p *types.Struct, isImage bool, err error) {
+func (f *file) getDetailsForFileOrImage(ctx context.Context, id string) (p *types.Struct, isImage bool, err error) {
 	file, err := f.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, false, err
@@ -73,7 +73,7 @@ func (f *files) getDetailsForFileOrImage(ctx context.Context, id string) (p *typ
 	return d, false, nil
 }
 
-func (f *files) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(f.id, nil).(*state.State)
 
 	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
@@ -81,7 +81,7 @@ func (f *files) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 
 	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)
 	if err != nil {
-		if err == files2.ErrFileNotIndexable {
+		if err == files.ErrFileNotIndexable {
 			return s, nil
 		}
 		return nil, err
@@ -93,7 +93,7 @@ func (f *files) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	return s, nil
 }
 
-func (f *files) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
+func (f *file) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
 	s := &state.State{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
@@ -101,7 +101,7 @@ func (f *files) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, 
 
 	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)
 	if err != nil {
-		if err == files2.ErrFileNotIndexable {
+		if err == files.ErrFileNotIndexable {
 			return s, nil
 		}
 		return nil, err
@@ -113,22 +113,22 @@ func (f *files) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, 
 	return s, nil
 }
 
-func (f *files) PushChange(params PushChangeParams) (id string, err error) {
+func (f *file) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }
 
-func (f *files) ListIds() ([]string, error) {
+func (f *file) ListIds() ([]string, error) {
 	return f.fileStore.ListTargets()
 }
 
-func (f *files) Close() (err error) {
+func (f *file) Close() (err error) {
 	return
 }
 
-func (f *files) Heads() []string {
+func (f *file) Heads() []string {
 	return nil
 }
 
-func (f *files) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
+func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }

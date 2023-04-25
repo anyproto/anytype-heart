@@ -12,7 +12,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -47,7 +47,7 @@ type service struct {
 	account       accountservice.Service
 	fileStore     filestore.FileStore
 	spaceService  space.Service
-	fileService   *files2.Service
+	fileService   *files.Service
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -61,7 +61,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.fileService = app.MustComponent[*files2.Service](a)
+	s.fileService = app.MustComponent[*files.Service](a)
 	return
 }
 
@@ -79,7 +79,7 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 	st, err := s.sbtProvider.Type(id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFiles(s.coreService, s.fileStore, s.fileService, id), nil
+		return NewFile(s.coreService, s.fileStore, s.fileService, id), nil
 	case smartblock.SmartBlockTypeDate:
 		return NewDate(id, s.coreService), nil
 	case smartblock.SmartBlockTypeBundledObjectType:
@@ -131,7 +131,7 @@ func (s *service) IDsListerBySmartblockType(blockType smartblock.SmartBlockType)
 	case smartblock.SmartBlockTypeMissingObject:
 		return &missingObject{}, nil
 	case smartblock.SmartBlockTypeFile:
-		return &files{a: s.coreService, fileStore: s.fileStore}, nil
+		return &file{a: s.coreService, fileStore: s.fileStore}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{}, nil
 	case smartblock.SmartBlockTypeBundledRelation:
