@@ -139,7 +139,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 		}
 	}
 
-	if sn.SbType == coresb.SmartBlockTypeSubObject {
+	if sn.SbType == coresb.SmartBlockTypeSubObject && !existing {
 		ot := st.ObjectTypes()
 		req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
 		id, subObjectDetails, err := oc.service.CreateObject(req, "")
