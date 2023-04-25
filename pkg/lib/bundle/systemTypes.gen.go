@@ -4,7 +4,7 @@ source: pkg/lib/bundle/systemTypes.json
 */
 package bundle
 
-const SystemTypesChecksum = "30640d58789142cb9390541ea467bc706dad8ca23a2c03a3a402f6fb512d3f49"
+const SystemTypesChecksum = "1db8347b19281b4f7831f6d7ffe89dab23f37b09ad143208b7e0e34eb4402ac1"
 
 // SystemTypes contains types that have some special biz logic depends on them in some objects
 // they shouldn't be removed or edited in any way
@@ -13,6 +13,7 @@ var SystemTypes = append(InternalTypes, []TypeKey{
 	TypeKeyNote,
 	TypeKeyTask,
 	TypeKeyCollection,
+	TypeKeySet,
 	TypeKeyProfile,
 	TypeKeyBookmark,
 }...)
