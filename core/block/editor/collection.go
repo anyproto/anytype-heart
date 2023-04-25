@@ -14,6 +14,7 @@ type Collection struct {
 	*Set
 
 	collectionService CollectionService
+	objectStore       objectstore.ObjectStore
 }
 
 type CollectionService interface {
@@ -29,6 +30,7 @@ func NewCollection(
 	return &Collection{
 		Set:               NewSet(anytype, objectStore, relationService),
 		collectionService: collectionService,
+		objectStore:       objectStore,
 	}
 }
 

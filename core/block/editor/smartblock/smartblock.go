@@ -46,6 +46,8 @@ var (
 	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
+const CollectionStoreKey = "objects"
+
 const (
 	NoHistory ApplyFlag = iota
 	NoEvent
@@ -506,7 +508,9 @@ func (sb *smartBlock) navigationalLinks() []string {
 
 	s := sb.Doc.(*state.State)
 
-	var ids []string
+	// Objects from collection
+	ids := pbtypes.GetStringList(s.Store(), CollectionStoreKey)
+
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
 			if f.Hash != "" {

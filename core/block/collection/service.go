@@ -72,8 +72,6 @@ func (s *Service) Name() string {
 	return "collection"
 }
 
-const storeKey = "objects"
-
 func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		toAdd := slice.Difference(req.ObjectIds, col)
@@ -115,9 +113,9 @@ func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequ
 
 func (s *Service) updateCollection(ctx *session.Context, contextID string, modifier func(src []string) []string) error {
 	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
-		lst := pbtypes.GetStringList(s.Store(), storeKey)
+		lst := pbtypes.GetStringList(s.Store(), smartblock.CollectionStoreKey)
 		lst = modifier(lst)
-		s.StoreSlice(storeKey, lst)
+		s.StoreSlice(smartblock.CollectionStoreKey, lst)
 		return nil
 	})
 }
@@ -133,8 +131,8 @@ func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
 
 	sb.AddHook(func(info smartblock.ApplyInfo) (err error) {
 		for _, ch := range info.Changes {
-			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == storeKey {
-				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), storeKey))
+			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == smartblock.CollectionStoreKey {
+				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), smartblock.CollectionStoreKey))
 				return nil
 			}
 		}
@@ -168,7 +166,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 	var initialObjectIDs []string
 	// Waking up of collection smart block will automatically add hook used in RegisterCollection
 	err := block.DoState(s.picker, collectionID, func(s *state.State, sb smartblock.SmartBlock) error {
-		initialObjectIDs = pbtypes.GetStringList(s.Store(), storeKey)
+		initialObjectIDs = pbtypes.GetStringList(s.Store(), smartblock.CollectionStoreKey)
 		return nil
 	})
 	if err != nil {
@@ -338,7 +336,7 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 			for _, r := range recs {
 				ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
 			}
-			st.StoreSlice(storeKey, ids)
+			st.StoreSlice(smartblock.CollectionStoreKey, ids)
 			return nil
 		})
 		if err != nil {
