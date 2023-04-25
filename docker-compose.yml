@@ -5,5 +5,9 @@ services:
     environment:
       - ANYTYPE_OFFLINE=true
     build: .
+    volumes:
+      - type: bind
+        source: ./tests/.cache/anytype
+        target: /var/anytype
     ports:
       - "${ANYTYPE_TEST_GRPC_PORT:?}:31007"

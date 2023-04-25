@@ -95,41 +95,46 @@ func pageTemplate(children ...*Block) *Block {
 	return Root(Children(cs...))
 }
 
-func (s *testSuite) TestSimpleEditor() {
+func (s *testSuite) testOnNewObject(objectType bundle.TypeKey, fn func(objectID string), wantPage *Block) {
 	resp := call(s, s.ObjectCreate, &pb.RpcObjectCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyPage.BundledURL()),
+				bundle.RelationKeyType.String(): pbtypes.String(objectType.BundledURL()),
 			},
 		},
 	})
-
 	s.NotEmpty(resp.ObjectId)
 
-	bresp := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
-		ContextId: resp.ObjectId,
-		Block:     Text("Level 1", Color("red")).block,
-		TargetId:  "",
-		Position:  model.Block_Inner,
-	})
-	s.NotEmpty(bresp.BlockId)
-
-	bresp2 := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
-		ContextId: resp.ObjectId,
-		Block:     Text("Level 2").block,
-		TargetId:  bresp.BlockId,
-		Position:  model.Block_Inner,
-	})
-	s.NotEmpty(bresp2.BlockId)
+	fn(resp.ObjectId)
 
 	sresp := call(s, s.ObjectShow, &pb.RpcObjectShowRequest{
 		ObjectId: resp.ObjectId,
 	})
 
+	AssertPagesEqual(s.T(), wantPage.Build(), sresp.ObjectView.Blocks)
+}
+
+func (s *testSuite) TestEditor_CreateBlocks() {
 	want := pageTemplate(
 		Text("Level 1", Color("red"), Children(
 			Text("Level 2")),
 		))
 
-	AssertPagesEqual(s.T(), want.Build(), sresp.ObjectView.Blocks)
+	s.testOnNewObject(bundle.TypeKeyPage, func(objectID string) {
+		bresp := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
+			ContextId: objectID,
+			Block:     Text("Level 1", Color("red")).block,
+			TargetId:  "",
+			Position:  model.Block_Inner,
+		})
+		s.NotEmpty(bresp.BlockId)
+
+		bresp2 := call(s, s.BlockCreate, &pb.RpcBlockCreateRequest{
+			ContextId: objectID,
+			Block:     Text("Level 2").block,
+			TargetId:  bresp.BlockId,
+			Position:  model.Block_Inner,
+		})
+		s.NotEmpty(bresp2.BlockId)
+	}, want)
 }

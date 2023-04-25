@@ -45,12 +45,12 @@ func (s *testSuite) Context() context.Context {
 	return s.ctx
 }
 
-func cachedString(key string, proc func() (string, error)) (string, bool, error) {
+func cachedString(key string, rewriteCache bool, proc func() (string, error)) (string, bool, error) {
 	filename := filepath.Join(cacheDir, key)
 	raw, err := os.ReadFile(filename)
 	result := string(raw)
 
-	if os.IsNotExist(err) || result == "" {
+	if rewriteCache || os.IsNotExist(err) || result == "" {
 		res, err := proc()
 		if err != nil {
 			return "", false, fmt.Errorf("running proc for caching %s: %w", key, err)
@@ -65,6 +65,15 @@ func cachedString(key string, proc func() (string, error)) (string, bool, error)
 	return result, true, nil
 }
 
+func (s *testSuite) recoverAccount() (accountID string) {
+	s.T().Log("recovering the account")
+	call(s, s.AccountRecover, &pb.RpcAccountRecoverRequest{})
+	waitEvent(s, func(a *pb.EventMessageValueOfAccountShow) {
+		accountID = a.AccountShow.Account.Id
+	})
+	return accountID
+}
+
 func (s *testSuite) SetupSuite() {
 	s.ctx = context.Background()
 
@@ -72,37 +81,45 @@ func (s *testSuite) SetupSuite() {
 	s.Require().NoError(err)
 	s.ClientCommandsClient = c
 
-	mnemonic, _, err := cachedString("mnemonic", func() (string, error) {
+	mnemonic, _, err := cachedString("mnemonic", false, func() (string, error) {
 		s.T().Log("creating new test account")
 		return s.accountCreate(), nil
 	})
 	s.Require().NoError(err)
 	s.T().Log("your mnemonic:", mnemonic)
 
-	_ = call(s, c.WalletRecover, &pb.RpcWalletRecoverRequest{
+	_ = call(s, s.WalletRecover, &pb.RpcWalletRecoverRequest{
 		Mnemonic: mnemonic,
 		RootPath: rootPath,
 	})
 
 	s.events = s.setSessionCtx(mnemonic)
 
-	accountID, _, err := cachedString("account_id", func() (string, error) {
-		s.T().Log("recovering the account")
-		call(s, c.AccountRecover, &pb.RpcAccountRecoverRequest{})
-		var res string
-		waitEvent(s, func(a *pb.EventMessageValueOfAccountShow) {
-			res = a.AccountShow.Account.Id
-		})
-		return res, nil
+	accountID, _, err := cachedString("account_id", false, func() (string, error) {
+		return s.recoverAccount(), nil
 	})
 	s.Require().NoError(err)
 	s.T().Log("your account ID:", accountID)
 
-	acc := call(s, c.AccountSelect, &pb.RpcAccountSelectRequest{
-		Id: accountID,
-	}).Account
+	resp, err := callReturnError(s, s.AccountSelect, &pb.RpcAccountSelectRequest{
+		Id:       accountID,
+		RootPath: rootPath,
+	})
+	if err != nil {
+		s.T().Log("can't select account, recovering...")
+		accountID, _, err = cachedString("account_id", true, func() (string, error) {
+			return s.recoverAccount(), nil
+		})
+		s.Require().NoError(err)
+		s.T().Log("freshly recovered account ID:", accountID)
+		resp, err = callReturnError(s, s.AccountSelect, &pb.RpcAccountSelectRequest{
+			Id:       accountID,
+			RootPath: rootPath,
+		})
+		s.Require().NoError(err)
+	}
 
-	s.acc = acc
+	s.acc = resp.Account
 }
 
 func (s *testSuite) TearDownSuite() {
@@ -164,7 +181,7 @@ func (s *testSuite) accountCreate() string {
 
 const cacheDir = ".cache"
 
-func getError(i interface{}) (int, string) {
+func getError(i interface{}) error {
 	v := reflect.ValueOf(i).Elem()
 
 	for i := 0; i < v.NumField(); i++ {
@@ -179,10 +196,13 @@ func getError(i interface{}) (int, string) {
 		if strings.Contains(el.Type().Name(), "ResponseError") {
 			code := el.FieldByName("Code").Int()
 			desc := el.FieldByName("Description").String()
-			return int(code), desc
+			if code > 0 {
+				return fmt.Errorf("error code %d: %s", code, desc)
+			}
+			return nil
 		}
 	}
-	return 0, ""
+	return nil
 }
 
 type callCtx interface {
@@ -195,18 +215,36 @@ func call[reqT, respT any](
 	method func(context.Context, reqT, ...grpc.CallOption) (respT, error),
 	req reqT,
 ) respT {
+	t := cctx.T()
+	resp, err := callReturnError(cctx, method, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	return resp
+}
+
+func callReturnError[reqT any, respT any](
+	cctx callCtx,
+	method func(context.Context, reqT, ...grpc.CallOption) (respT, error),
+	req reqT,
+) (respT, error) {
 	name := runtime.FuncForPC(reflect.ValueOf(method).Pointer()).Name()
 	name = name[strings.LastIndex(name, ".")+1:]
 	name = name[:strings.LastIndex(name, "-")]
 	t := cctx.T()
 	t.Logf("calling %s", name)
 
+	var nilResp respT
+
 	resp, err := method(cctx.Context(), req)
-	require.NoError(t, err)
-	code, desc := getError(resp)
-	require.Zero(t, code, desc)
+	if err != nil {
+		return nilResp, err
+	}
+	err = getError(resp)
+	if err != nil {
+		return nilResp, err
+	}
 	require.NotNil(t, resp)
-	return resp
+	return resp, nil
 }
 
 func newClient() (service.ClientCommandsClient, error) {
