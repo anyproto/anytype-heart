@@ -1100,6 +1100,10 @@ func (s *State) CheckRestrictions() (err error) {
 	for id, b := range s.blocks {
 		// get the restrictions from the parent state
 		bParent := s.parent.Get(id)
+		if bParent == nil {
+			// if we don't have this block in the parent state, it means we have no block-scope restrictions for it
+			continue
+		}
 		rest := bParent.Model().Restrictions
 		if rest == nil {
 			continue
