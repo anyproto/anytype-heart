@@ -86,17 +86,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		oc.addRootBlock(snapshot, newID)
 	}
 
-	var workspaceID string
-	if updateExisting {
-		workspaceID, err = oc.core.GetWorkspaceIdForObject(newID)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
-		}
-	}
-
-	if workspaceID == "" {
-		// todo: pass it explicitly
-		workspaceID = oc.core.PredefinedBlocks().Account
+	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
 	}
 
 	if snapshot.Details != nil && snapshot.Details.Fields != nil {
@@ -113,11 +105,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		}
 	}
 
-	details = append(details, &pb.RpcObjectSetDetailsDetail{
-		Key:   bundle.RelationKeyWorkspaceId.String(),
-		Value: pbtypes.String(workspaceID),
-	})
-
 	var oldRelationBlocksToNew map[string]*model.Block
 	filesToDelete, oldRelationBlocksToNew, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
@@ -130,9 +117,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	st := state.NewDocFromSnapshot(newID, &pb.ChangeSnapshot{Data: snapshot}).(*state.State)
 	st.SetRootId(newID)
-
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
-	st.InjectDerivedDetails()
 
 	defer func() {
 		// delete file in ipfs if there is error after creation
