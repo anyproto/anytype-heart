@@ -234,6 +234,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_KEY }}
           GITHUB_USER: ${{ secrets.GH_USER }}
+          AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
+          UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
         run: |
           echo COMMIT=${GITHUB_SHA::7} >> $GITHUB_ENV
           echo GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
@@ -245,8 +247,8 @@ jobs:
           -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} \
           -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} \
           -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} \
-          -X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${secrets.AMPLITUDE_KEY} \
-          -X github.com/anytypeio/go-anytype-middleware/unsplash.DefaultToken=${secrets.UNSPLASH_KEY} \
+          -X github.com/anytypeio/go-anytype-middleware/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} \
+          -X github.com/anytypeio/go-anytype-middleware/unsplash.DefaultToken=${UNSPLASH_KEY} \
           -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
