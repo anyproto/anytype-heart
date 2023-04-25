@@ -66,7 +66,9 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
 	converter := htmlconverter.NewConverter("", true, &htmlconverter.Options{
-		EmDelimiter: "*",
+		DisableEscaping:  true,
+		AllowHeaderBreak: true,
+		EmDelimiter:      "*",
 	})
 	converter.Use(plugin.GitHubFlavored())
 	converter.AddRules(getCustomHTMLRules()...)
@@ -127,6 +129,7 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	anohref := htmlconverter.Rule{
 		Filter: []string{"a"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+			content = strings.ReplaceAll(content, `\`, ``)
 			if _, exists := selec.Attr("href"); exists {
 				return nil
 			}

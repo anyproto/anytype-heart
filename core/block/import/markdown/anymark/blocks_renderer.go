@@ -349,3 +349,7 @@ func (r *blocksRenderer) ProcessMarkdownArtifacts() {
 		}
 	}
 }
+
+func (r *blocksRenderer) AddQuote() {
+	r.blocks[len(r.blocks)-1].GetText().Style = model.BlockContentText_Quote
+}
