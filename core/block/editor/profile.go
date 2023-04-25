@@ -6,9 +6,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -77,14 +79,26 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return smartblock.ObjectApplyTemplate(p, ctx.State,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}, model.ObjectType_profile),
-		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
-		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		template.WithTitle,
-		template.WithFeaturedRelations,
-		template.WithRequiredRelations(),
-	)
+	return nil
+}
+
+func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	return migration.Migration{
+		Version: 1,
+		Proc: func(st *state.State) {
+			template.InitTemplate(st,
+				template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}, model.ObjectType_profile),
+				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+				template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+				template.WithTitle,
+				template.WithFeaturedRelations,
+				template.WithRequiredRelations())
+		},
+	}
+}
+
+func (p *Profile) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations(nil)
 }
 
 func (p *Profile) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
