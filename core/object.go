@@ -4,25 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -31,8 +24,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -406,20 +397,12 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
-	rs := mw.app.MustComponent(relation.CName).(relation.Service)
 
-	store := app.MustComponent[objectstore.ObjectStore](mw.app)
-	records, _, err := store.Query(nil, database.Query{
+	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:          req.Filters,
 		Limit:            int(req.Limit),
 		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
-
-	if err != nil {
-		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
-	}
-
-	relations, err := rs.ListAll(relation.WithWorkspaceId(at.PredefinedBlocks().Account))
 	if err != nil {
 		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
 	}
@@ -436,7 +419,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 	homeId := at.PredefinedBlocks().Home
 	if _, exists := nodeExists[homeId]; !exists {
 		// we don't index home object, but we DO index outgoing links from it
-		links, _ := store.GetOutboundLinksById(homeId)
+		links, _ := at.ObjectStore().GetOutboundLinksById(homeId)
 		records = append(records, database.Record{&types.Struct{
 			Fields: map[string]*types.Value{
 				"id":        pbtypes.String(homeId),
@@ -457,8 +440,10 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 			if list := pbtypes.GetStringListValue(v); len(list) == 0 {
 				continue
 			} else {
-				rel := relations.GetByKey(k)
-				if rel == nil {
+
+				rel, err := at.ObjectStore().GetRelationByKey(k)
+				if err != nil {
+					log.Errorf("ObjectGraph failed to get relation %s: %s", k, err.Error())
 					continue
 				}
 
@@ -619,57 +604,6 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectSetSource(cctx context.Context,
-	req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetSourceResponseErrorCode, err error) *pb.RpcObjectSetSourceResponse {
-		m := &pb.RpcObjectSetSourceResponse{Error: &pb.RpcObjectSetSourceResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetSource(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetSourceResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
-	ctx := mw.newContext(cctx)
-	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
-		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
-			ObjectId: setId,
-			Error: &pb.RpcObjectWorkspaceSetDashboardResponseError{
-				Code: pb.RpcObjectWorkspaceSetDashboardResponseError_NULL,
-			},
-		}
-		if err != nil {
-			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
-			resp.Error.Description = err.Error()
-		} else {
-			resp.Event = ctx.GetResponseEvent()
-		}
-		return resp
-	}
-	var (
-		setId string
-		err   error
-	)
-	err = mw.doBlockService(func(bs *block.Service) error {
-		if setId, err = bs.SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId); err != nil {
-			return err
-		}
-		return nil
-	})
-	return response(setId, err)
 }
 
 func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
@@ -891,153 +825,4 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 		return response(res, pb.RpcObjectImportListResponseError_INTERNAL_ERROR, err)
 	}
 	return response(res, pb.RpcObjectImportListResponseError_NULL, nil)
-}
-
-func (mw *Middleware) UserDataImport(cctx context.Context,
-	req *pb.RpcUserDataImportRequest) *pb.RpcUserDataImportResponse {
-	ctx := mw.newContext(cctx)
-
-	response := func(code pb.RpcUserDataImportResponseErrorCode, err error) *pb.RpcUserDataImportResponse {
-		m := &pb.RpcUserDataImportResponse{Error: &pb.RpcUserDataImportResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
-	profile, err := importer.ImportUserProfile(ctx, req)
-	if err != nil {
-		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
-	}
-	err = mw.createAccount(profile, req)
-	if err != nil {
-		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
-	}
-
-	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-	err = importer.ImportUserData(ctx, req)
-
-	if err != nil {
-		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcUserDataImportResponseError_NULL, nil)
-}
-
-func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImportRequest) error {
-	err := mw.setMnemonic(profile.Mnemonic)
-	if err != nil {
-		return err
-	}
-	mw.rootPath = req.RootPath
-	mw.accountSearchCancel()
-	mw.m.Lock()
-
-	defer mw.m.Unlock()
-
-	if err = mw.stop(); err != nil {
-		return err
-	}
-
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
-	index := len(mw.foundAccounts)
-	var account wallet.Keypair
-	for {
-		account, err = core.WalletAccountAt(mw.mnemonic, index, "")
-		if err != nil {
-			return err
-		}
-		path := filepath.Join(mw.rootPath, account.Address())
-		// additional check if we found the repo already exists on local disk
-		if _, err = os.Stat(path); os.IsNotExist(err) {
-			break
-		}
-
-		log.Warnf("Account already exists locally, but doesn't exist in the foundAccounts list")
-		index++
-		continue
-	}
-
-	seedRaw, err := account.Raw()
-	if err != nil {
-		return err
-	}
-
-	if err = core.WalletInitRepo(mw.rootPath, seedRaw); err != nil {
-		return err
-	}
-
-	if req.StorePath != "" && req.StorePath != mw.rootPath {
-		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
-
-		storePath := filepath.Join(req.StorePath, account.Address())
-
-		err = os.MkdirAll(storePath, 0700)
-		if err != nil {
-			return err
-		}
-
-		if err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
-			return err
-		}
-	}
-
-	newAcc := &model.Account{Id: account.Address()}
-
-	comps := []app.Component{
-		cfg,
-		anytype.BootstrapWallet(mw.rootPath, account.Address()),
-		mw.EventSender,
-	}
-
-	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
-	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
-		return err
-	}
-
-	newAcc.Name = profile.Name
-	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
-	newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{
-		Image: &model.BlockContentFile{Hash: profile.Avatar},
-	}}
-	details = append(details, &pb.RpcObjectSetDetailsDetail{
-		Key:   "iconImage",
-		Value: pbtypes.String(profile.Avatar),
-	})
-
-	newAcc.Info = mw.getInfo()
-	bs := mw.app.MustComponent(block.CName).(*block.Service)
-	coreService := mw.app.MustComponent(core.CName).(core.Service)
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.PredefinedBlocks().Profile,
-		Details:   details,
-	}); err != nil {
-		return err
-	}
-
-	mw.foundAccounts = append(mw.foundAccounts, newAcc)
-	return nil
-}
-
-func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
-	request *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
-	// nolint: lll
-	response := func(code pb.RpcObjectImportNotionValidateTokenResponseErrorCode) *pb.RpcObjectImportNotionValidateTokenResponse {
-		err := &pb.RpcObjectImportNotionValidateTokenResponseError{Code: code}
-		switch code {
-		case pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED:
-			err.Description = "Sorry, token not found. Please check Notion integrations."
-		case pb.RpcObjectImportNotionValidateTokenResponseError_NULL:
-			err.Description = ""
-		default:
-			err.Description = "Internal error"
-		}
-		return &pb.RpcObjectImportNotionValidateTokenResponse{Error: err}
-	}
-
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
-	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-	errCode := importer.ValidateNotionToken(ctx, request)
-	return response(errCode)
 }
