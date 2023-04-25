@@ -50,19 +50,25 @@ func (mw *Middleware) UserDataImport(cctx context.Context,
 }
 
 func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImportRequest) error {
-	err := mw.setMnemonic(profile.Mnemonic)
-	if err != nil {
-		return err
-	}
-	mw.rootPath = req.RootPath
-	mw.accountSearchCancel()
 	mw.m.Lock()
 
 	defer mw.m.Unlock()
-
-	if err = mw.stop(); err != nil {
+	if err := mw.stop(); err != nil {
 		return err
 	}
+
+	mw.rootPath = req.RootPath
+	mw.foundAccounts = nil
+
+	err := os.MkdirAll(mw.rootPath, 0700)
+	if err != nil {
+		return err
+	}
+	err = mw.setMnemonic(profile.Mnemonic)
+	if err != nil {
+		return err
+	}
+	mw.accountSearchCancel()
 
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
 	index := len(mw.foundAccounts)
