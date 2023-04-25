@@ -234,7 +234,8 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
 }
 
-func (s *Service) DeriveTreeObject(
+// DeriveTreeCreatePayload creates payload for the tree of derived object
+func (s *Service) DeriveTreeCreatePayload(
 	ctx context.Context, tp coresb.SmartBlockType,
 ) (*treestorage.TreeStorageCreatePayload, error) {
 	space, err := s.clientService.AccountSpace(ctx)
@@ -252,10 +253,12 @@ func (s *Service) DeriveTreeObject(
 	return &create, err
 }
 
+// DeriveObject derives the object with id specified in the payload and triggers cache.Get
+// DeriveTreeCreatePayload should be called first to prepare the payload and derive the tree
 func (s *Service) DeriveObject(
 	ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
 ) (err error) {
-	_, release, err := s.GetDerivedObject(ctx, payload, newAccount, func(id string) *smartblock.InitContext {
+	_, release, err := s.getDerivedObject(ctx, payload, newAccount, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 	})
 	if err != nil {
@@ -266,7 +269,7 @@ func (s *Service) DeriveObject(
 	return nil
 }
 
-func (s *Service) GetDerivedObject(
+func (s *Service) getDerivedObject(
 	ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
 ) (sb smartblock.SmartBlock, release func(), err error) {
 	space, err := s.clientService.AccountSpace(ctx)

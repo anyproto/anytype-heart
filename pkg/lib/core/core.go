@@ -84,7 +84,7 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
+	DeriveTreeCreatePayload(ctx context.Context, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
 	DeriveObject(ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
 }
 
@@ -230,7 +230,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 	}
 	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
 	for i, sbt := range sbTypes {
-		payloads[i], err = a.deriver.DeriveTreeObject(ctx, sbt)
+		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, sbt)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived tree object with error")
 			return
