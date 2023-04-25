@@ -148,7 +148,7 @@ func (s *StatusWatcher) countChunks(ctx context.Context, fileID string) (int, er
 		return chunksCount, nil
 	}
 
-	chunksCount, err = s.countChunksInIPFS(ctx, fileID)
+	chunksCount, err = s.fetchChunksCount(ctx, fileID)
 	if err != nil {
 		return -1, fmt.Errorf("count chunks in IPFS: %w", err)
 	}
@@ -158,7 +158,7 @@ func (s *StatusWatcher) countChunks(ctx context.Context, fileID string) (int, er
 	return chunksCount, err
 }
 
-func (s *StatusWatcher) countChunksInIPFS(ctx context.Context, fileID string) (int, error) {
+func (s *StatusWatcher) fetchChunksCount(ctx context.Context, fileID string) (int, error) {
 	fileCid, err := cid.Parse(fileID)
 	if err != nil {
 		return -1, err
