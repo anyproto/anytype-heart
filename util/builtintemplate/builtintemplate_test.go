@@ -2,14 +2,14 @@ package builtintemplate
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/stretchr/testify/assert"
 	"testing"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
+	"github.com/golang/mock/gomock"
 )
 
 func Test_registerBuiltin(t *testing.T) {
@@ -21,7 +21,12 @@ func Test_registerBuiltin(t *testing.T) {
 	s.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any(), nil).AnyTimes()
 	s.EXPECT().RegisterStaticSource(gomock.Any(), gomock.Any()).AnyTimes()
 
-	a := testapp.New().With(s).With(New())
-	require.NoError(t, a.Start(context.Background()))
+	builtInTemplates := New()
+	a := testapp.New().With(s).With(builtInTemplates).With(config.New()).App
+	err := builtInTemplates.Init(a)
+	assert.Nil(t, err)
+	err = builtInTemplates.Run(context.Background())
+	assert.Nil(t, err)
+
 	defer a.Close(context.Background())
 }
