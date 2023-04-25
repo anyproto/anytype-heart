@@ -168,8 +168,3 @@ func (mw *Middleware) OnPanic(v interface{}) {
 	os.Stderr.Write(stack)
 	log.With("stack", stack).Errorf("panic recovered: %v", v)
 }
-
-func init() {
-	// let leave it here so it will work in all types of distribution and tests
-	logging.SetVersion(app.GitSummary)
-}
