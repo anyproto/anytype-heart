@@ -29,55 +29,8 @@ func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDeta
 	}
 
 	for _, detail := range details {
-		if detail.Value != nil {
-			if err := pbtypes.ValidateValue(detail.Value); err != nil {
-				return fmt.Errorf("detail %s validation error: %s", detail.Key, err.Error())
-			}
-			if detail.Key == bundle.RelationKeyType.String() {
-				// special case when client sets the type's detail directly instead of using setObjectType command
-				err = bs.SetObjectTypes(ctx, pbtypes.GetStringListValue(detail.Value))
-				if err != nil {
-					log.Errorf("failed to set object's type via detail: %s", err.Error())
-				} else {
-					continue
-				}
-			}
-			if detail.Key == bundle.RelationKeyLayout.String() {
-				// special case when client sets the layout detail directly instead of using SetLayoutInState command
-				err = bs.SetLayout(ctx, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
-				if err != nil {
-					log.Errorf("failed to set object's layout via detail: %s", err.Error())
-				}
-				continue
-			}
-
-			// TODO: add relation2.WithWorkspaceId(workspaceId) filter
-			rel, err := bs.relationService.FetchKey(detail.Key)
-			if err != nil || rel == nil {
-				log.Errorf("failed to get relation: %s", err)
-				continue
-			}
-			s.AddRelationLinks(&model.RelationLink{
-				Format: rel.Format,
-				Key:    rel.Key,
-			})
-
-			err = bs.relationService.ValidateFormat(detail.Key, detail.Value)
-			if err != nil {
-				log.Errorf("failed to validate relation: %s", err)
-				continue
-			}
-
-			// special case for type relation that we are storing in a separate object's field
-			if detail.Key == bundle.RelationKeyType.String() {
-				ot := pbtypes.GetStringListValue(detail.Value)
-				if len(ot) > 0 {
-					s.SetObjectType(ot[0])
-				}
-			}
-			detCopy.Fields[detail.Key] = detail.Value
-		} else {
-			delete(detCopy.Fields, detail.Key)
+		if err := bs.setDetail(ctx, s, detCopy, detail); err != nil {
+			log.Errorf("can't set detail %s: %s", detail.Key, err)
 		}
 	}
 	if detCopy.Equal(s.CombinedDetails()) {
@@ -85,11 +38,61 @@ func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDeta
 	}
 
 	s.SetDetails(detCopy)
-	if err = bs.Apply(s); err != nil {
+	if err = bs.Apply(s, smartblock.NoRestrictions); err != nil {
 		return
 	}
 
-	// filter-out setDetails event
+	bs.discardOwnSetDetailsEvent(ctx, showEvent)
+	return nil
+}
+
+func (bs *basic) setDetail(ctx *session.Context, st *state.State, detCopy *types.Struct, detail *pb.RpcObjectSetDetailsDetail) error {
+	if detail.Value != nil {
+		if err := pbtypes.ValidateValue(detail.Value); err != nil {
+			return fmt.Errorf("detail %s validation error: %s", detail.Key, err.Error())
+		}
+		if err := bs.setDetailSpecialCases(st, detail); err != nil {
+			return fmt.Errorf("special case: %w", err)
+		}
+		if err := bs.addRelationLink(detail.Key, st); err != nil {
+			return err
+		}
+		if err := bs.relationService.ValidateFormat(detail.Key, detail.Value); err != nil {
+			return fmt.Errorf("failed to validate relation: %w", err)
+		}
+		detCopy.Fields[detail.Key] = detail.Value
+	} else {
+		delete(detCopy.Fields, detail.Key)
+	}
+	return nil
+}
+
+func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetDetailsDetail) error {
+	if detail.Key == bundle.RelationKeyType.String() {
+		// special case when client sets the type's detail directly instead of using setObjectType command
+		return bs.SetObjectTypesInState(st, pbtypes.GetStringListValue(detail.Value))
+	}
+	if detail.Key == bundle.RelationKeyLayout.String() {
+		// special case when client sets the layout detail directly instead of using SetLayoutInState command
+		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
+	}
+	return nil
+}
+
+func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
+	// TODO: add relation2.WithWorkspaceId(workspaceId) filter
+	rel, err := bs.relationService.FetchKey(relationKey)
+	if err != nil || rel == nil {
+		return fmt.Errorf("failed to get relation: %w", err)
+	}
+	st.AddRelationLinks(&model.RelationLink{
+		Format: rel.Format,
+		Key:    rel.Key,
+	})
+	return nil
+}
+
+func (bs *basic) discardOwnSetDetailsEvent(ctx *session.Context, showEvent bool) {
 	if !showEvent && ctx != nil {
 		var filtered []*pb.EventMessage
 		msgs := ctx.GetMessages()
@@ -104,9 +107,7 @@ func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDeta
 		if isFiltered {
 			ctx.SetMessages(bs.Id(), filtered)
 		}
-
 	}
-	return nil
 }
 
 func (bs *basic) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error) {

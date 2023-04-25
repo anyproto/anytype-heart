@@ -194,7 +194,8 @@ func (c *LayoutConverter) fromAnyToCollection(st *state.State) error {
 }
 
 func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
-	if name, ok := st.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
+	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
+	if !ok || name.GetStringValue() == "" {
 		textBlock, err := getFirstTextBlock(st)
 		if err != nil {
 			return err
@@ -217,7 +218,8 @@ func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
 }
 
 func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
-	if name, ok := st.Details().Fields[bundle.RelationKeyName.String()]; ok && name.GetStringValue() != "" {
+	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
+	if ok && name.GetStringValue() != "" {
 		newBlock := simple.New(&model.Block{
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{Text: name.GetStringValue()},
@@ -232,11 +234,10 @@ func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
 		st.RemoveDetail(bundle.RelationKeyName.String())
 	}
 
-	st.Unlink(template.TitleBlockId)
-	st.Unlink(template.DescriptionBlockId)
-
-	// TODO Do we need to run WithFirstTextBlockContent?
-
+	template.InitTemplate(st,
+		template.WithNoTitle,
+		template.WithNoDescription,
+	)
 	return nil
 }
 
