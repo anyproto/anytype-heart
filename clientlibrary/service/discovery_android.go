@@ -80,6 +80,6 @@ func (d *discoveryObserver) ObserveChange(result ObservationResult) {
 		PeerId: result.PeerId(),
 	}
 	if d.notifier != nil {
-		d.notifier.PeerDiscovered(peer)
+		d.notifier.PeerDiscovered(peer, localdiscovery.OwnAddresses{})
 	}
 }

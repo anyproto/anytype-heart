@@ -22,8 +22,13 @@ type DiscoveredPeer struct {
 	PeerId string
 }
 
+type OwnAddresses struct {
+	Addrs []string
+	Port  int
+}
+
 type Notifier interface {
-	PeerDiscovered(peer DiscoveredPeer)
+	PeerDiscovered(peer DiscoveredPeer, own OwnAddresses)
 }
 
 type LocalDiscovery interface {

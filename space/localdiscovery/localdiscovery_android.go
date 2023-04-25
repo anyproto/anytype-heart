@@ -6,7 +6,10 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/net/addrs"
 	"go.uber.org/zap"
+	gonet "net"
+	"strings"
 	"sync"
 )
 
@@ -38,13 +41,28 @@ type localDiscovery struct {
 	notifier Notifier
 }
 
-func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer) {
+func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 	log.Debug("discovered peer", zap.String("peerId", peer.PeerId), zap.Strings("addrs", peer.Addrs))
 	if peer.PeerId == l.peerId {
 		return
 	}
+	// TODO: move this to android side
+	newAddrs, err := addrs.GetInterfacesAddrs()
+	if err != nil {
+		return
+	}
+	var ips []string
+	for _, addr := range newAddrs.Addrs {
+		ip := strings.Split(addr.String(), "/")[0]
+		if gonet.ParseIP(ip).To4() != nil {
+			ips = append(ips, ip)
+		}
+	}
 	if l.notifier != nil {
-		l.notifier.PeerDiscovered(peer)
+		l.notifier.PeerDiscovered(peer, OwnAddresses{
+			Addrs: ips,
+			Port:  l.port,
+		})
 	}
 }
 

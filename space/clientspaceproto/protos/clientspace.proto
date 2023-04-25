@@ -9,8 +9,14 @@ service ClientSpace {
 
 message SpaceExchangeRequest {
     repeated string spaceIds = 1;
+    LocalServer localServer = 2;
 }
 
 message SpaceExchangeResponse {
     repeated string spaceIds = 1;
+}
+
+message LocalServer {
+    repeated string Ips = 1;
+    int32 port = 2;
 }
