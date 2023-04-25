@@ -13,12 +13,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
@@ -121,45 +119,12 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				layout,
 				tmpls...,
 			)
-			for _, t := range trans {
-				t(s)
-			}
+			template.InitTemplate(s, trans...)
 		},
 	}
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(
-		[]migration.Migration{
-			{
-				Version: 2,
-				Proc: func(s *state.State) {
-					b := simple.New(&model.Block{
-						Content: &model.BlockContentOfText{
-							Text: &model.BlockContentText{
-								Text: "VER 2 " + p.Id(),
-							},
-						},
-					})
-
-					s.Add(b)
-					s.InsertTo("", model.Block_Inner, b.Model().Id)
-				},
-			},
-			{
-				Version: 3,
-				Proc: func(s *state.State) {
-					b := simple.New(&model.Block{
-						Content: &model.BlockContentOfText{
-							Text: &model.BlockContentText{
-								Text: "VER 3 " + p.Id(),
-							},
-						},
-					})
-
-					s.Add(b)
-					s.InsertTo("", model.Block_Inner, b.Model().Id)
-				},
-			},
-		})
+		[]migration.Migration{})
 }

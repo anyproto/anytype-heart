@@ -1063,9 +1063,7 @@ func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (
 		}
 	}
 
-	if err = template.InitTemplate(s, template.ByLayout(layout)...); err != nil {
-		return fmt.Errorf("init template: %w", err)
-	}
+	template.InitTemplate(s, template.ByLayout(layout)...)
 	if err = converter.ConvertLayout(s, fromLayout, layout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
@@ -1399,9 +1397,8 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	if s == nil {
 		s = sb.NewState()
 	}
-	if err = template.InitTemplate(s, templates...); err != nil {
-		return
-	}
+	template.InitTemplate(s, templates...)
+
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 

@@ -218,10 +218,8 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	tmpls = append(tmpls,
 		template.WithDataview(*blockContent, false),
 	)
+	template.InitTemplate(newState, tmpls...)
 
-	if err := template.InitTemplate(newState, tmpls...); err != nil {
-		return coresb.SmartBlockTypeCollection, nil, nil, err
-	}
 	return coresb.SmartBlockTypeCollection, details, newState, nil
 }
 

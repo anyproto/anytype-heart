@@ -796,12 +796,10 @@ func WithBlockField(blockId, fieldName string, value *types.Value) StateTransfor
 	}
 }
 
-func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
+func InitTemplate(s *state.State, templates ...StateTransformer) {
 	for _, template := range templates {
 		template(s)
 	}
-
-	return
 }
 
 var WithLinkFieldsMigration = func(s *state.State) {

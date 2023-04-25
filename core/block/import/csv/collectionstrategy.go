@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -104,11 +103,7 @@ func getEmptyObjects(csvTable [][]string, relations []*converter.Relation) ([]*c
 		}
 
 		st.SetDetails(details)
-		err := template.InitTemplate(st, template.WithTitle)
-		if err != nil {
-			log.With(zap.String("method", "CollectionStrategy.getEmptyObjects")).Error(err)
-			continue
-		}
+		template.InitTemplate(st, template.WithTitle)
 
 		sn := &converter.Snapshot{
 			Id:     uuid.New().String(),
