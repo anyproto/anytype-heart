@@ -298,10 +298,20 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	coreService := mw.app.MustComponent(core.CName).(core.Service)
-	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
-	details := []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyName.String(), Value: pbtypes.String(req.Name)}}
+	commonDetails := []*pb.RpcObjectSetDetailsDetail{
+		{
+			Key:   bundle.RelationKeyName.String(),
+			Value: pbtypes.String(req.Name),
+		},
+		{
+			Key:   bundle.RelationKeyIconOption.String(),
+			Value: pbtypes.Int64(int64(req.Icon)),
+		},
+	}
+	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
+	profileDetails = append(profileDetails, commonDetails...)
+
 	if req.GetAvatarLocalPath() != "" {
 		hash, err := bs.UploadFile(pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
@@ -311,27 +321,27 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 			log.Warnf("can't add avatar: %v", err)
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-			details = append(details, &pb.RpcObjectSetDetailsDetail{
+			profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
 				Key:   "iconImage",
 				Value: pbtypes.String(hash),
 			})
 		}
 	}
+
+	newAcc.Name = req.Name
 	newAcc.Info = mw.getInfo()
 
+	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
-		Details:   details,
+		Details:   profileDetails,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Account,
-		Details: []*pb.RpcObjectSetDetailsDetail{{
-			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(req.Name),
-		}},
+		Details:   commonDetails,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
