@@ -301,12 +301,10 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	switch collection {
 	case collectionKeyObjectTypes:
 		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService, c.sbtProvider)
-	default:
-		ot, ok := collectionKeyToObjectType(collection)
-		if !ok {
-			return fmt.Errorf("unknown collection '%s'", collection)
-		}
-		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService, ot, c.tempDirProvider, c.sbtProvider)
+	case collectionKeyRelations:
+		subObj = NewRelation(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider)
+	case collectionKeyRelationOptions:
+		subObj = NewRelationOption(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider)
 	}
 
 	var fullId string
