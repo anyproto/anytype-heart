@@ -37,8 +37,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	zipPath := wr.Path()
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path:                    []string{zipPath},
-			CreateObjectsCollection: true,
+			Path: []string{zipPath},
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -59,8 +58,7 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 
 	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path:                    []string{"not exist"},
-			CreateObjectsCollection: true,
+			Path: []string{"not exist"},
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -87,8 +85,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 
 	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path:                    []string{wr.Path()},
-			CreateObjectsCollection: true,
+			Path: []string{wr.Path()},
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -106,8 +103,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	// ALL_OR_NOTHING mode
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path:                    paths,
-			CreateObjectsCollection: true,
+			Path: paths,
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -121,8 +117,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	// IGNORE_ERRORS mode
 	res, ce = p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path:                    paths,
-			CreateObjectsCollection: true,
+			Path: paths,
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -142,8 +137,8 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 	path := "testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb"
 	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
-			Path:                    []string{path},
-			CreateObjectsCollection: false,
+			Path:                       []string{path},
+			NotCreateObjectsCollection: true,
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
