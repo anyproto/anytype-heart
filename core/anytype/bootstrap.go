@@ -2,8 +2,6 @@ package anytype
 
 import (
 	"context"
-	"github.com/anytypeio/any-sync/commonspace/credentialprovider"
-	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
 	"os"
 
 	"github.com/anytypeio/any-sync/app"
@@ -123,14 +121,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
-	spaceService := space.New()
-	sbtProvider := typeprovider.New(spaceService)
-	objectStore := objectstore.New(sbtProvider)
-	objectCreator := object.NewCreator(sbtProvider)
-	blockService := block.New(sbtProvider)
-	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
+	objectStore := objectstore.New()
+	objectCreator := object.NewCreator()
 	walletService := a.Component(wallet.CName).(wallet.Wallet)
 	tempDirService := core.NewTempDirService(walletService)
+	blockService := block.New(tempDirService)
+	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
@@ -141,16 +137,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pool.New()).
 		Register(streampool.New()).
 		Register(clientserver.New()).
-		Register(coordinatorclient.New()).
-		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(localdiscovery.New()).
-		Register(spaceService).
+		Register(space.New()).
 		Register(peermanager.New()).
-		Register(sbtProvider).
+		Register(typeprovider.New()).
 		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectStore).
@@ -169,21 +163,21 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).
-		Register(export.New(sbtProvider)).
+		Register(export.New()).
 		Register(linkpreview.New()).
 		Register(unsplash.New(tempDirService)).
-		Register(restriction.New(sbtProvider)).
+		Register(restriction.New()).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
 		Register(collectionService).
-		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New(sbtProvider)).
+		Register(subscription.New(collectionService)).
+		Register(builtinobjects.New()).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
-		Register(importer.New(tempDirService, sbtProvider)).
+		Register(importer.New(tempDirService)).
 		Register(decorator.New()).
 		Register(objectCreator).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService, sbtProvider))
+		Register(editor.NewObjectFactory(tempDirService))
 	return
 }

@@ -86,8 +86,8 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func New() *Service {
-	return &Service{}
+func New(tempDirProvider *core.TempDirService) *Service {
+	return &Service{tempDirProvider: tempDirProvider}
 }
 
 type objectCreator interface {

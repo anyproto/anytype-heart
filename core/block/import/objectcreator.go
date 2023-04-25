@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -14,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
-	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -22,6 +22,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -36,6 +38,8 @@ type ObjectCreator struct {
 	service         *block.Service
 	objCreator      objectCreator
 	core            core.Service
+	objectStore     objectstore.ObjectStore
+	fileStore       filestore.FileStore
 	updater         Updater
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
@@ -47,7 +51,10 @@ func NewCreator(service *block.Service,
 	updater Updater,
 	core core.Service,
 	syncFactory *syncer.Factory,
-	relationCreator RelationCreator) Creator {
+	relationCreator RelationCreator,
+	objectStore objectstore.ObjectStore,
+	fileStore filestore.FileStore,
+) Creator {
 	return &ObjectCreator{
 		service:         service,
 		objCreator:      objCreator,
@@ -56,6 +63,8 @@ func NewCreator(service *block.Service,
 		syncFactory:     syncFactory,
 		relationCreator: relationCreator,
 		oldIDToNew:      map[string]string{},
+		objectStore:     objectStore,
+		fileStore:       fileStore,
 	}
 }
 
@@ -63,13 +72,16 @@ func NewCreator(service *block.Service,
 func (oc *ObjectCreator) Create(ctx *session.Context,
 	sn *converter.Snapshot,
 	relations []*converter.Relation,
-	pageID string,
 	oldIDtoNew map[string]string,
 	updateExisting bool) (*types.Struct, error) {
-	snapshot := sn.Snapshot
+	snapshot := sn.Snapshot.Data
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
+	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
 
-	var err error
+	var (
+		err    error
+		pageID = sn.Id
+	)
 
 	newID := oldIDtoNew[pageID]
 	var found bool
@@ -79,35 +91,26 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 			break
 		}
 	}
-	if !found && !updateExisting {
+	if !found {
 		oc.addRootBlock(snapshot, newID)
 	}
 
-	var workspaceID string
-	if updateExisting {
-		workspaceID, err = oc.core.GetWorkspaceIdForObject(newID)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
-		}
-	}
-
-	if workspaceID == "" {
-		// todo: pass it explicitly
-		workspaceID = oc.core.PredefinedBlocks().Account
+	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
 	}
 
 	if snapshot.Details != nil && snapshot.Details.Fields != nil {
 		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
 	}
 
-	var details []*pb.RpcObjectSetDetailsDetail
-
 	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
+	filesToDelete, oldRelationBlocksToNew, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
 		return nil, fmt.Errorf("relation create '%s'", err)
 	}
 
+	var details []*pb.RpcObjectSetDetailsDetail
 	if snapshot.Details != nil {
 		for key, value := range snapshot.Details.Fields {
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
@@ -116,12 +119,12 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 			})
 		}
 	}
+	if sn.SbType == coresb.SmartBlockTypeSubObject {
+		return oc.handleSubObject(ctx, snapshot, newID, workspaceID, details), nil
+	}
 
-	st := state.NewDocFromSnapshot(newID, &pb.ChangeSnapshot{Data: snapshot}).(*state.State)
+	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
-
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
-	st.InjectDerivedDetails()
 
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -139,13 +142,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if err = oc.updateLinksToObjects(st, oldIDtoNew, newID); err != nil {
 		log.With("object", newID).Errorf("failed to update objects ids: %s", err.Error())
-	}
-
-	if sn.SbType == coresb.SmartBlockTypeCollection {
-		oc.updateLinksInCollections(st, oldIDtoNew)
-		if err = oc.addRelationsToCollectionDataView(st, relations, createdRelations); err != nil {
-			log.With("object", newID).Errorf("failed to add relations to object view: %s", err.Error())
-		}
 	}
 
 	var respDetails *types.Struct
@@ -168,13 +164,22 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return nil
 	})
 	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to reset state: %s", err.Error())
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err.Error())
 	}
 
 	if isFavorite {
 		err = oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object %s: %s", pageID, err.Error())
+			err = nil
+		}
+	}
+
+	if isArchive {
+		err = oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
+		if err != nil {
+			log.With(zap.String("object id", newID)).
+				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
 			err = nil
 		}
 	}
@@ -200,8 +205,14 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 		err         error
 	)
 	for i, b := range snapshot.Blocks {
-		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
-			snapshot.Blocks[i].Id = pageID
+		_, err = thread.Decode(b.Id)
+		if err == nil {
+			childrenIds = append(childrenIds, b.ChildrenIds...)
+			snapshot.Blocks[i] = &model.Block{
+				Id:          pageID,
+				Content:     &model.BlockContentOfSmartblock{},
+				ChildrenIds: childrenIds,
+			}
 			break
 		}
 	}
@@ -226,25 +237,46 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 }
 
 func (oc *ObjectCreator) deleteFile(hash string) {
-	inboundLinks, err := oc.core.ObjectStore().GetOutboundLinksById(hash)
+	inboundLinks, err := oc.objectStore.GetOutboundLinksById(hash)
 	if err != nil {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err.Error())
 		return
 	}
 	if len(inboundLinks) == 0 {
-		if err = oc.core.ObjectStore().DeleteObject(hash); err != nil {
+		if err = oc.objectStore.DeleteObject(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteByHash(hash); err != nil {
+		if err = oc.fileStore.DeleteByHash(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
 		}
 		if _, err = oc.core.FileOffload(hash); err != nil {
 			log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
 		}
-		if err = oc.core.FileStore().DeleteFileKeys(hash); err != nil {
+		if err = oc.fileStore.DeleteFileKeys(hash); err != nil {
 			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
 		}
 	}
+}
+
+func (oc *ObjectCreator) handleSubObject(ctx *session.Context,
+	snapshot *model.SmartBlockSnapshotBase,
+	newID, workspaceID string,
+	details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
+		if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
+			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID, true)
+			if err != nil {
+				log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
+			}
+		}
+	}
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+		return b.SetDetails(ctx, details, true)
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
+	}
+	return nil
 }
 
 func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]string) {
@@ -254,7 +286,9 @@ func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldI
 			log.With("object", pageID).Errorf("failed to find relation %s: %s", k, err.Error())
 			continue
 		}
-		if rel.Format != model.RelationFormat_object {
+		if rel.Format != model.RelationFormat_object &&
+			rel.Format != model.RelationFormat_tag &&
+			rel.Format != model.RelationFormat_status {
 			continue
 		}
 
@@ -273,64 +307,6 @@ func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldI
 		}
 		st.SetDetail(k, pbtypes.StringList(vals))
 	}
-}
-
-func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat) error {
-	return st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if dv, ok := bl.(simpleDataview.Block); ok {
-			return oc.handleDataviewBlock(bl, rels, createdRelations, dv)
-		}
-		return true
-	})
-}
-
-func (oc *ObjectCreator) handleDataviewBlock(bl simple.Block, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat, dv simpleDataview.Block) bool {
-	for _, rel := range rels {
-		if relation, exist := createdRelations[rel.Name]; exist {
-			if err := oc.addRelationToView(bl, relation, rel, dv); err != nil {
-				log.Errorf("can't add relations to view: %s", err.Error())
-			}
-		}
-	}
-	return false
-}
-
-func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsIDToFormat, rel *converter.Relation, dv simpleDataview.Block) error {
-	for _, relFormat := range relation {
-		if relFormat.Format == rel.Format {
-			if len(bl.Model().GetDataview().GetViews()) == 0 {
-				return nil
-			}
-			err := dv.AddViewRelation(bl.Model().GetDataview().GetViews()[0].GetId(), &model.BlockContentDataviewRelation{
-				Key:       relFormat.ID,
-				IsVisible: true,
-				Width:     192,
-			})
-			if err != nil {
-				return err
-			}
-			err = dv.AddRelation(&model.RelationLink{
-				Key:    relFormat.ID,
-				Format: relFormat.Format,
-			})
-			if err != nil {
-				return err
-			}
-			break
-		}
-	}
-	return nil
-}
-
-func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
-	objectsInCollections := pbtypes.GetStringList(st.Store(), sb.CollectionStoreKey)
-	newIDs := make([]string, 0)
-	for _, id := range objectsInCollections {
-		if newID, ok := oldIDtoNew[id]; ok {
-			newIDs = append(newIDs, newID)
-		}
-	}
-	st.StoreSlice(sb.CollectionStoreKey, newIDs)
 }
 
 func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
@@ -357,7 +333,8 @@ func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[st
 			a.Model().GetBookmark().TargetObjectId = newTarget
 			st.Set(simple.New(a.Model()))
 		case text.Block:
-			for i, mark := range a.Model().GetText().GetMarks().GetMarks() {
+			marks := a.Model().GetText().GetMarks().GetMarks()
+			for i, mark := range marks {
 				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 					continue
 				}
@@ -367,7 +344,7 @@ func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[st
 					continue
 				}
 
-				a.Model().GetText().GetMarks().GetMarks()[i].Param = newTarget
+				marks[i].Param = newTarget
 			}
 			st.Set(simple.New(a.Model()))
 		}

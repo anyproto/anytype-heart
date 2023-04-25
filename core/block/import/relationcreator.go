@@ -86,6 +86,11 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 					Value:       pbtypes.String(r.Name),
 					Format:      r.Format,
 				},
+				{
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					RelationKey: bundle.RelationKeyType.String(),
+					Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
+				},
 			},
 			Limit: 1,
 		})
