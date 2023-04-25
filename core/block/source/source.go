@@ -77,6 +77,8 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeMissingObject:
+		return &missingObject{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeFile:
 		return &files{a: s.anytype, fileStore: s.fileStore}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:

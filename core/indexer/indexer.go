@@ -453,7 +453,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 	if flags.bundledObjects {
 		// hardcoded for now
-		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
+		ids := []string{addr.AnytypeProfileId}
 		err = i.reindexIDs(ctx, metrics.ReindexTypeBundledObjects, false, ids)
 		if err != nil {
 			return err

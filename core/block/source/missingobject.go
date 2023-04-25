@@ -17,7 +17,7 @@ type missingObject struct {
 }
 
 func NewMissingObject(a core.Service) (s Source) {
-	return &anytypeProfile{a: a}
+	return &missingObject{a: a}
 }
 
 func (m *missingObject) ListIds() ([]string, error) {
@@ -46,7 +46,10 @@ func (m *missingObject) Virtual() bool {
 
 func (m *missingObject) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true),
+		bundle.RelationKeyIsDeleted.String():  pbtypes.Bool(true),
+		bundle.RelationKeyId.String():         pbtypes.String(addr.MissingObject),
+		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
+		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(true),
 	}}
 }
 
