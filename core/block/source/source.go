@@ -497,7 +497,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 	if err != nil {
 		return
 	}
-	if lastChange != nil {
+	if lastChange != nil && !st.IsTheHeaderChange() {
 		st.SetLastModified(lastChange.Timestamp, profileId)
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
