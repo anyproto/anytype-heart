@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -43,7 +44,8 @@ func (c CreateSubObjectRequest) GetDetails() *types.Struct {
 	return pbtypes.StructMerge(c.details, detailsType, false)
 }
 
-func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error) {
+func (ou *ObjectIDGetter) Get(ctx *session.Context, sn *converter.Snapshot, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error) {
+	snapshot := sn.Snapshot
 	if predefinedSmartBlockType(sbType) {
 		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{}, []sb.SmartBlockType{sbType})
 		if err != nil {
@@ -55,18 +57,18 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 	}
 
 	if sbType == sb.SmartBlockTypeSubObject {
-		name := snapshot.Details.Fields[bundle.RelationKeyName.String()]
-		object, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
+		id := sn.Id
+		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeyName.String(),
-					Value:       name,
+					RelationKey: bundle.RelationKeyId.String(),
+					Value:       pbtypes.String(id),
 				},
 			},
 		}, []sb.SmartBlockType{sbType})
-		if err == nil && len(object) > 0 {
-			return object[0], false, nil
+		if err == nil && len(ids) > 0 {
+			return ids[0], false, nil
 		}
 		if len(snapshot.ObjectTypes) > 0 {
 			ot := snapshot.ObjectTypes

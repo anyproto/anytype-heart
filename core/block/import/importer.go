@@ -196,7 +196,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 			exist bool
 		)
 
-		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot.Snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
+		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
 			if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 				oldIDToNew[snapshot.Id] = snapshot.Id

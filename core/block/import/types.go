@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -31,5 +30,5 @@ type Creator interface {
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx *session.Context, cs *model.SmartBlockSnapshotBase, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error)
+	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error)
 }
