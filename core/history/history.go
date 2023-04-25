@@ -207,7 +207,7 @@ func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht obje
 		return
 	}
 
-	sbt = smartblock.SmartBlockType(payload.ObjectType)
+	sbt = smartblock.SmartBlockType(payload.SmartBlockType)
 	return
 }
 

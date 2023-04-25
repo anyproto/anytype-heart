@@ -3,14 +3,21 @@ package typeprovider
 import (
 	"context"
 	"errors"
+	"strings"
+	"sync"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/proto"
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/gogo/protobuf/proto"
-	"sync"
 )
 
 const CName = "space.typeprovider"
@@ -21,50 +28,105 @@ var (
 	ErrUnknownChangeType = errors.New("error unknown change type")
 )
 
-type ObjectTypeProvider interface {
+type SmartBlockTypeProvider interface {
 	app.Component
 	Type(id string) (smartblock.SmartBlockType, error)
+	RegisterStaticType(id string, tp smartblock.SmartBlockType)
 }
 
-func New() ObjectTypeProvider {
-	return &objectTypeProvider{}
-}
-
-type objectTypeProvider struct {
+type provider struct {
 	sync.Mutex
 	spaceService space.Service
-	cache        map[string]*model.ObjectChangePayload
+	cache        map[string]smartblock.SmartBlockType
 }
 
-func (o *objectTypeProvider) Init(a *app.App) (err error) {
-	o.spaceService = a.MustComponent(space.CName).(space.Service)
-	o.cache = map[string]*model.ObjectChangePayload{}
+func New(spaceService space.Service) SmartBlockTypeProvider {
+	return &provider{
+		spaceService: spaceService,
+	}
+}
+
+func (p *provider) Init(a *app.App) (err error) {
+	p.cache = map[string]smartblock.SmartBlockType{}
 	return
 }
 
-func (o *objectTypeProvider) Name() (name string) {
+func (p *provider) Name() (name string) {
 	return CName
 }
 
-func (o *objectTypeProvider) Type(id string) (tp smartblock.SmartBlockType, err error) {
-	tp, err = smartblock.SmartBlockTypeFromID(id)
-	if err != nil || tp != smartblock.SmartBlockTypePage {
+func (p *provider) Type(id string) (tp smartblock.SmartBlockType, err error) {
+	tp, err = smartBlockTypeFromID(id)
+	if err == nil && tp != smartblock.SmartBlockTypePage {
 		return
 	}
-	return o.objectTypeFromSpace(id)
+	return p.objectTypeFromSpace(id)
 }
 
-func (o *objectTypeProvider) objectTypeFromSpace(id string) (tp smartblock.SmartBlockType, err error) {
-	o.Lock()
-	payload, exists := o.cache[id]
+func (p *provider) RegisterStaticType(id string, tp smartblock.SmartBlockType) {
+	p.Lock()
+	defer p.Unlock()
+	p.cache[id] = tp
+}
+
+func smartBlockTypeFromID(id string) (smartblock.SmartBlockType, error) {
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		return smartblock.SmartBlockTypeBundledRelation, nil
+	}
+
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return smartblock.SmartBlockTypeBundledObjectType, nil
+	}
+
+	if len(strings.Split(id, addr.SubObjectCollectionIdSeparator)) == 2 {
+		return smartblock.SmartBlockTypeSubObject, nil
+	}
+
+	// workaround for options that have no prefix
+	// todo: remove this after migration to the new records format
+	if bson.IsObjectIdHex(id) {
+		return smartblock.SmartBlockTypeSubObject, nil
+	}
+
+	if strings.HasPrefix(id, addr.AnytypeProfileId) {
+		return smartblock.SmartBlockTypeProfilePage, nil
+	}
+	if strings.HasPrefix(id, addr.VirtualPrefix) {
+		sbt, err := addr.ExtractVirtualSourceType(id)
+		if err != nil {
+			return 0, err
+		}
+		return smartblock.SmartBlockType(sbt), nil
+	}
+	if strings.HasPrefix(id, addr.DatePrefix) {
+		return smartblock.SmartBlockTypeDate, nil
+	}
+
+	c, err := cid.Decode(id)
+	if err != nil {
+		return smartblock.SmartBlockTypePage, err
+	}
+	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
+	if c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256 {
+		return smartblock.SmartBlockTypeFile, nil
+	}
+	if c.Prefix().Codec == cid.DagCBOR {
+		return smartblock.SmartBlockTypePage, nil
+	}
+
+	return smartblock.SmartBlockTypePage, smartblock.ErrNoSuchSmartblock
+}
+
+func (p *provider) objectTypeFromSpace(id string) (tp smartblock.SmartBlockType, err error) {
+	p.Lock()
+	tp, exists := p.cache[id]
 	if exists {
-		o.Unlock()
-		tp = smartblock.SmartBlockType(payload.ObjectType)
+		p.Unlock()
 		return
 	}
-	o.Unlock()
+	p.Unlock()
 
-	sp, err := o.spaceService.AccountSpace(context.Background())
+	sp, err := p.spaceService.AccountSpace(context.Background())
 	if err != nil {
 		return
 	}
@@ -73,7 +135,7 @@ func (o *objectTypeProvider) objectTypeFromSpace(id string) (tp smartblock.Smart
 	if err != nil {
 		return
 	}
-	root, err := o.unmarshallRoot(rawRoot)
+	root, err := p.unmarshallRoot(rawRoot)
 	if err != nil {
 		return
 	}
@@ -81,24 +143,18 @@ func (o *objectTypeProvider) objectTypeFromSpace(id string) (tp smartblock.Smart
 		err = ErrUnknownChangeType
 		return
 	}
-	payload, err = o.objectType(root.ChangePayload)
+	payload, err := p.objectType(root.ChangePayload)
 	if err != nil {
 		return
 	}
-	o.Lock()
-	defer o.Unlock()
-	o.cache[id] = payload
-	tp = smartblock.SmartBlockType(payload.ObjectType)
+	p.Lock()
+	defer p.Unlock()
+	tp = smartblock.SmartBlockType(payload.SmartBlockType)
+	p.cache[id] = tp
 	return
 }
 
-func (o *objectTypeProvider) objectType(changePayload []byte) (payload *model.ObjectChangePayload, err error) {
-	payload = &model.ObjectChangePayload{}
-	err = proto.Unmarshal(changePayload, payload)
-	return
-}
-
-func (o *objectTypeProvider) unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {
+func (p *provider) unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {
 	raw := &treechangeproto.RawTreeChange{}
 	err = proto.Unmarshal(rawRoot.GetRawChange(), raw)
 	if err != nil {
@@ -110,5 +166,11 @@ func (o *objectTypeProvider) unmarshallRoot(rawRoot *treechangeproto.RawTreeChan
 	if err != nil {
 		return
 	}
+	return
+}
+
+func (p *provider) objectType(changePayload []byte) (payload *model.ObjectChangePayload, err error) {
+	payload = &model.ObjectChangePayload{}
+	err = proto.Unmarshal(changePayload, payload)
 	return
 }

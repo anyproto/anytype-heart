@@ -343,6 +343,6 @@ func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts)
 }
 
 func createChangePayload(sbType coresb.SmartBlockType) (data []byte, err error) {
-	payload := &model.ObjectChangePayload{ObjectType: model.SmartBlockType(sbType)}
+	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType)}
 	return payload.Marshal()
 }

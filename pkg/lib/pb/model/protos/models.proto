@@ -653,7 +653,7 @@ message ThreadCreateQueueEntry {
 
 message Object {
     message ChangePayload {
-        SmartBlockType objectType = 1;
+        SmartBlockType smartBlockType = 1;
     }
 }
 

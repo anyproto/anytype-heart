@@ -20937,7 +20937,7 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
+| smartBlockType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 
 
 
