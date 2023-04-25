@@ -6,6 +6,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -20,7 +21,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -202,10 +202,14 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 	}); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err.Error())
 	}
+	b.createSpaceDashboardWidget(id)
+}
 
+func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
 	if err != nil || len(w.Blocks()) < 2 {
 		log.Errorf("Failed to get first block of Widget object: %s", err.Error())
+		return
 	}
 
 	if _, err := b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
