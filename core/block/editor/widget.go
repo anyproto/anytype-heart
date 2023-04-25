@@ -41,13 +41,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = w.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-
-	if err = smartblock.ObjectApplyTemplate(w, ctx.State,
-		template.WithEmpty,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
-	); err != nil {
-		return fmt.Errorf("failed to apply template: %w", err)
-	}
+	template.WithEmpty(ctx.State)
 
 	defaultWidgetBlocks := []string{
 		widget.DefaultWidgetFavorite,
@@ -79,7 +73,9 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}
 	}
-	return w.Apply(ctx.State)
+	return smartblock.ObjectApplyTemplate(w, ctx.State,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
+	)
 }
 
 func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
