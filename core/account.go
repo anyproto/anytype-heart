@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/any-sync/util/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -28,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -47,6 +47,7 @@ import (
 
 // we cannot check the constant error from badger because they hardcoded it there
 const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
+const profileFile = "profile"
 
 type AlphaInviteRequest struct {
 	Code    string `json:"code"`
@@ -321,7 +322,6 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
-	mw.foundAccounts = append(mw.foundAccounts, newAcc)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -347,7 +347,7 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 		return response(pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST, nil)
 	}
 
-	account, err := mw.getDerivedAccountForMnemonic()
+	account, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_BAD_INPUT, err)
 	}
@@ -663,8 +663,6 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 
 func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
-	ctx := mw.newContext(cctx)
-
 	response := func(address string, code pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, err error) *pb.RpcAccountRecoverFromLegacyExportResponse {
 		m := &pb.RpcAccountRecoverFromLegacyExportResponse{AccountId: address, Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{Code: code}}
 		if err != nil {
@@ -672,60 +670,91 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 		}
 		return m
 	}
-	profile, err := importer.ImportUserProfile(ctx, req)
+	profile, err := getUserProfile(req)
 	if err != nil {
 		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
 	}
-	err = mw.createAccountFromLegacyExport(profile, req)
+	code, err := mw.createAccountFromLegacyExport(profile, req)
 	if err != nil {
-		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
+		return response("", code, err)
 	}
 
 	return response(profile.Address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil)
 }
 
-func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) error {
-	mw.m.Lock()
-
-	defer mw.m.Unlock()
-	if err := mw.stop(); err != nil {
-		return err
-	}
-
-	mw.rootPath = req.RootPath
-	mw.foundAccounts = nil
-
-	err := os.MkdirAll(mw.rootPath, 0700)
-	if err != nil {
-		return err
-	}
-	err = mw.setMnemonic(profile.Mnemonic)
-	if err != nil {
-		return err
-	}
-	mw.accountSearchCancel()
-
+func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
 	archive, err := zip.OpenReader(req.Path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	oldCfg, err := extractConfig(archive)
+	defer archive.Close()
+
+	f, err := archive.Open(profileFile)
 	if err != nil {
-		return fmt.Errorf("failed to extract config: %w", err)
+		return nil, err
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
-	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	var profile pb.Profile
+
+	err = profile.Unmarshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return &profile, nil
+}
+
+func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, error) {
+	mw.m.Lock()
+	defer mw.m.Unlock()
+	err := mw.stop()
+	if err != nil {
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+	}
 
 	account, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
-		return err
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 	address := account.GetPublic().Account()
+	if address == "" || profile.Address != address {
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
+	}
 
-	// todo: parse config.json from legacy export
+	mw.rootPath = req.RootPath
+	err = os.MkdirAll(mw.rootPath, 0700)
+	if err != nil {
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+	}
+	mw.accountSearchCancel()
+	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) && account != nil {
+		if walletErr := core.WalletInitRepo(mw.rootPath, account); walletErr != nil {
+			return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr
+		}
+	}
+	cfg, err := mw.getBootstrapConfig(err, req)
+	if err != nil {
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+	}
 
-	newAcc := &model.Account{Id: address}
+	err = mw.startApp(cfg, account, err)
+	if err != nil {
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+	}
+
+	err = mw.setDetails(profile, err)
+	if err != nil {
+		return pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+	}
+
+	return pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
+}
+
+func (mw *Middleware) startApp(cfg *config.Config, account crypto.PrivKey, err error) error {
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(mw.rootPath, account),
@@ -736,18 +765,31 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
 		return err
 	}
+	return nil
+}
 
-	newAcc.Name = profile.Name
+func (mw *Middleware) getBootstrapConfig(err error, req *pb.RpcAccountRecoverFromLegacyExportRequest) (*config.Config, error) {
+	archive, err := zip.OpenReader(req.Path)
+	if err != nil {
+		return nil, err
+	}
+	oldCfg, err := extractConfig(archive)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract config: %w", err)
+	}
+
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
+	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
+	return cfg, nil
+}
+
+func (mw *Middleware) setDetails(profile *pb.Profile, err error) error {
 	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(profile.Name)}}
-	newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{
-		Image: &model.BlockContentFile{Hash: profile.Avatar},
-	}}
 	details = append(details, &pb.RpcObjectSetDetailsDetail{
 		Key:   "iconImage",
 		Value: pbtypes.String(profile.Avatar),
 	})
 
-	newAcc.Info = mw.getInfo()
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
@@ -756,8 +798,6 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 	}); err != nil {
 		return err
 	}
-
-	mw.foundAccounts = append(mw.foundAccounts, newAcc)
 	return nil
 }
 
@@ -778,10 +818,6 @@ func extractConfig(archive *zip.ReadCloser) (*config.Config, error) {
 		}
 	}
 	return nil, fmt.Errorf("config.json not found in archive")
-}
-
-func (mw *Middleware) getDerivedAccountForMnemonic() (crypto.PrivKey, error) {
-	return crypto.Mnemonic(mw.mnemonic).DeriveEd25519Key(0)
 }
 
 func (mw *Middleware) isAccountExistsOnDisk(account string) bool {

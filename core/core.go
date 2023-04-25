@@ -3,12 +3,12 @@ package core
 import (
 	"context"
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"os"
 	"runtime/debug"
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -17,7 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
 var log = logging.Logger("anytype-mw-api")
@@ -33,10 +33,7 @@ type Middleware struct {
 	// memoized private key derived from mnemonic
 	privateKey          []byte
 	accountSearchCancel context.CancelFunc
-
-	foundAccounts []*model.Account // found local&remote account for the current mnemonic
-
-	EventSender event.Sender
+	EventSender         event.Sender
 
 	sessions session.Service
 	app      *app.App
@@ -167,4 +164,9 @@ func (mw *Middleware) OnPanic(v interface{}) {
 	stack := debug.Stack()
 	os.Stderr.Write(stack)
 	log.With("stack", stack).Errorf("panic recovered: %v", v)
+}
+
+func init() {
+	// let leave it here so it will work in all types of distribution and tests
+	logging.SetVersion(app.GitSummary)
 }

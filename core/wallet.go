@@ -28,7 +28,6 @@ func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreate
 	defer mw.m.Unlock()
 
 	mw.rootPath = req.RootPath
-	mw.foundAccounts = nil
 
 	err := os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
@@ -97,8 +96,6 @@ func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecov
 		return response(pb.RpcWalletRecoverResponseError_UNKNOWN_ERROR, err)
 	}
 	mw.rootPath = req.RootPath
-	mw.foundAccounts = nil
-
 	return response(pb.RpcWalletRecoverResponseError_NULL, nil)
 }
 
