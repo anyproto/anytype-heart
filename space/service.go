@@ -25,6 +25,7 @@ import (
 	"github.com/anytypeio/any-sync/net/streampool"
 	"go.uber.org/zap"
 
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
@@ -74,10 +75,13 @@ type service struct {
 	poolManager          PoolManager
 	streamHandler        *streamHandler
 	accountId            string
+	newAccount           bool
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.conf = a.MustComponent("config").(commonspace.ConfigGetter).GetSpace()
+	conf := a.MustComponent(config.CName).(*config.Config)
+	s.conf = conf.GetSpace()
+	s.newAccount = conf.NewAccount
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
@@ -117,13 +121,27 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	s.accountId, err = s.commonSpace.DeriveSpace(context.Background(), commonspace.SpaceDerivePayload{
+	payload := commonspace.SpaceDerivePayload{
 		SigningKey:    s.account.Account().SignKey,
 		EncryptionKey: s.account.Account().EncKey,
 		SpaceType:     SpaceType,
-	})
-	if err != nil {
-		return
+	}
+	if s.newAccount {
+		// creating storage
+		s.accountId, err = s.commonSpace.DeriveSpace(ctx, payload)
+		if err != nil {
+			return
+		}
+	} else {
+		s.accountId, err = s.commonSpace.DeriveId(ctx, payload)
+		if err != nil {
+			return
+		}
+		// pulling space from remote
+		_, err = s.GetSpace(ctx, s.accountId)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
