@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/constant"
 	"io"
 	"io/ioutil"
 	"net"
@@ -41,6 +40,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/util/constant"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/constant"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -35,6 +34,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/constant"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 )
@@ -478,7 +478,7 @@ func (e *export) createProfileFile(wr writer) error {
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("account predefined block not found")
+	return nil
 }
 
 func (e *export) objectValid(id string, r *model.ObjectInfo) bool {

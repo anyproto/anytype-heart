@@ -54,14 +54,6 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
 	getExisting bool) (string, bool, error) {
-	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
-	if id != "" {
-		return id, true, err
-	}
-	if sbType == sb.SmartBlockTypeSubObject {
-		return ou.getSubObjectID(sn, sbType)
-	}
-
 	if sbType == sb.SmartBlockTypeWorkspace {
 		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(sn.Id)
 		if wErr == nil {
@@ -70,7 +62,15 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	}
 	if sbType == sb.SmartBlockTypeWidget {
 		widgetID := ou.core.PredefinedBlocks().Widgets
-		return widgetID, false, err
+		return widgetID, false, nil
+	}
+
+	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
+	if id != "" {
+		return id, true, err
+	}
+	if sbType == sb.SmartBlockTypeSubObject {
+		return ou.getSubObjectID(sn, sbType)
 	}
 
 	if getExisting {

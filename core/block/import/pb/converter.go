@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/constant"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
