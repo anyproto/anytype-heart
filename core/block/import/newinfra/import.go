@@ -8,10 +8,12 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -20,9 +22,13 @@ const profileFile = "profile"
 
 const Name = "Migration"
 
+func init() {
+	converter.RegisterFunc(New)
+}
+
 type NewInfra struct{}
 
-func New() converter.Converter {
+func New(core.Service, *collection.Service) converter.Converter {
 	return &NewInfra{}
 }
 

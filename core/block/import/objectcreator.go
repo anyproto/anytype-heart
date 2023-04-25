@@ -8,7 +8,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
@@ -324,14 +323,14 @@ func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsID
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
-	objectsInCollections := pbtypes.GetStringList(st.Store(), collection.StoreKey)
+	objectsInCollections := pbtypes.GetStringList(st.Store(), sb.CollectionStoreKey)
 	newIDs := make([]string, 0)
 	for _, id := range objectsInCollections {
 		if newID, ok := oldIDtoNew[id]; ok {
 			newIDs = append(newIDs, newID)
 		}
 	}
-	st.StoreSlice(collection.StoreKey, newIDs)
+	st.StoreSlice(sb.CollectionStoreKey, newIDs)
 }
 
 func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {

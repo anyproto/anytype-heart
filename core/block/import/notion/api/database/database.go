@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
@@ -169,7 +170,7 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
 		ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
-		Collections:   st.GetCollection(collection.StoreKey),
+		Collections:   st.GetCollection(smartblock.CollectionStoreKey),
 		RelationLinks: st.GetRelationLinks(),
 	}
 
@@ -203,8 +204,8 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots *converter.Response,
 }
 
 func (ds *Service) addObjectToCollection(snapshots *converter.Snapshot, targetID []string) {
-	snapshots.Snapshot.Collections = &types.Struct{
-		Fields: map[string]*types.Value{collection.StoreKey: pbtypes.StringList(targetID)},
+	snapshots.Snapshot.Data.Collections = &types.Struct{
+		Fields: map[string]*types.Value{smartblock.CollectionStoreKey: pbtypes.StringList(targetID)},
 	}
 }
 
