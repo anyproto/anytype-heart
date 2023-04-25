@@ -8,10 +8,9 @@ import (
 	"fmt"
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/util/periodicsync"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/net/addrs"
+	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 	"github.com/libp2p/zeroconf/v2"
 	"go.uber.org/zap"
 	gonet "net"
@@ -29,6 +28,7 @@ type localDiscovery struct {
 	closeWait       sync.WaitGroup
 	interfacesAddrs addrs.InterfacesAddrs
 	periodicCheck   periodicsync.PeriodicSync
+	portProvider    clientserver.DRPCServer
 
 	ipv4 []string
 	ipv6 []string
@@ -46,16 +46,13 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	addrs := a.MustComponent(config.CName).(net.ConfigGetter).GetNet().Server.ListenAddrs
-	l.port, err = getPort(addrs)
 	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
+	l.portProvider = a.MustComponent(clientserver.CName).(clientserver.DRPCServer)
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
-	if l.port == 0 {
-		return
-	}
+	l.port = l.portProvider.Port()
 	l.periodicCheck.Run()
 	return
 }
@@ -65,9 +62,6 @@ func (l *localDiscovery) Name() (name string) {
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
-	if l.port == 0 {
-		return
-	}
 	l.periodicCheck.Close()
 	l.cancel()
 	if l.server != nil {

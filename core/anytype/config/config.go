@@ -7,7 +7,6 @@ import (
 	commonnet "github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/nodeconf"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
-	"github.com/anytypeio/go-anytype-middleware/util/netutil"
 	"gopkg.in/yaml.v2"
 	"net"
 	"path/filepath"
@@ -84,7 +83,7 @@ var DefaultConfig = Config{
 	Offline:              false,
 	SwarmLowWater:        10,
 	SwarmHighWater:       50,
-	LocalServerAddr:      "0.0.0.0:9091",
+	LocalServerAddr:      ":0",
 	PrivateNetworkSecret: ipfs.IpfsPrivateNetworkKey,
 	BootstrapNodes: []string{
 		"/ip4/54.93.109.23/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",           // fra1
@@ -140,9 +139,6 @@ func DisableFileConfig(disable bool) func(*Config) {
 
 func New(options ...func(*Config)) *Config {
 	cfg := DefaultConfig
-	if randomPort, err := netutil.GetRandomPort(); err == nil {
-		cfg.LocalServerAddr = fmt.Sprintf("0.0.0.0:%d", randomPort)
-	}
 	for _, opt := range options {
 		opt(&cfg)
 	}

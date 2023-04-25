@@ -4,9 +4,8 @@ import (
 	"context"
 	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/net"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/net/addrs"
+	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 	"go.uber.org/zap"
 	gonet "net"
 	"strings"
@@ -38,7 +37,8 @@ type localDiscovery struct {
 	peerId string
 	port   int
 
-	notifier Notifier
+	notifier     Notifier
+	portProvider clientserver.DRPCServer
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -76,20 +76,16 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	addrs := a.MustComponent(config.CName).(net.ConfigGetter).GetNet().Server.ListenAddrs
-	l.port, err = getPort(addrs)
+	l.portProvider = a.MustComponent(clientserver.CName).(clientserver.DRPCServer)
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
-	if l.port == 0 {
-		return
-	}
 	provider := getNotifierProvider()
 	if provider == nil {
 		return
 	}
-	provider.Provide(l, l.port, l.peerId, serviceName)
+	provider.Provide(l, l.portProvider.Port(), l.peerId, serviceName)
 	return
 }
 

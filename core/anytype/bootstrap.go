@@ -5,10 +5,8 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/metric"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
-	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/secureservice"
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
@@ -51,6 +49,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
 	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
@@ -126,8 +125,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(dialer.New()).
 		Register(pool.New()).
 		Register(streampool.New()).
-		Register(metric.New()).
-		Register(server.New()).
+		Register(clientserver.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).

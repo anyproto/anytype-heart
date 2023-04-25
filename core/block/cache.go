@@ -260,7 +260,7 @@ func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType
 		id     = create.RootRawChange.Id
 	)
 	// timing out when getting objects from remote
-	ctx, cancel = context.WithTimeout(ctx, time.Second*20)
+	ctx, cancel = context.WithTimeout(ctx, time.Second*40)
 	ctx = context.WithValue(ctx,
 		optsKey,
 		cacheOpts{
