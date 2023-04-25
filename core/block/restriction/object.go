@@ -39,7 +39,10 @@ var (
 			model.Restrictions_Duplicate,
 		},
 		model.SmartBlockType_Workspace: {
+			model.Restrictions_Blocks,
+			model.Restrictions_Relations,
 			model.Restrictions_Delete,
+			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
