@@ -3,6 +3,7 @@ package pb
 import (
 	"archive/zip"
 	"bufio"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -42,7 +43,11 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
-	assert.Len(t, res.Snapshots, 1)
+	assert.Len(t, res.Snapshots, 2)
+
+	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
+	assert.NotEmpty(t, res.Snapshots[1].Snapshot.Data.ObjectTypes)
+	assert.Equal(t, res.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
 }
 
 func Test_GetSnapshotsFailedReadZip(t *testing.T) {

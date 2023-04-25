@@ -52,7 +52,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetProgressMessage("Start creating snapshots from files")
 	progress.SetTotal(int64(len(pbFiles) * 2))
 
-	targetObject := make([]string, 0, len(path))
+	targetObjects := make([]string, 0, len(path))
 	for name, file := range pbFiles {
 		if err := progress.TryStep(1); err != nil {
 			ce := converter.NewFromError(name, err)
@@ -95,11 +95,12 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 			FileName: name,
 			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		})
-		targetObject = append(targetObject, id)
+		targetObjects = append(targetObjects, id)
 	}
 
-	rootCol, colErr := converter.AddObjectsToRootCollection(p.service, rootCollectionName, targetObject)
-	if err != nil {
+	rootCollection := converter.NewRootCollection(p.service)
+	rootCol, colErr := rootCollection.AddObjects(rootCollectionName, targetObjects)
+	if colErr != nil {
 		allErrors.Add(path, colErr)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, allErrors

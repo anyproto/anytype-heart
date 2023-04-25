@@ -23,7 +23,7 @@ import (
 
 const ObjectType = "database"
 
-const rootCollection = "Notion Import"
+const rootCollectionName = "Notion Import"
 
 type Service struct {
 	collectionService *collection.Service
@@ -216,7 +216,8 @@ func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots *converter.Res
 		allObjects = append(allObjects, snapshot.Id)
 	}
 
-	rootCol, err := converter.AddObjectsToRootCollection(ds.collectionService, rootCollection, allObjects)
+	rootCollection := converter.NewRootCollection(ds.collectionService)
+	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjects)
 	if err != nil {
 		return err
 	}

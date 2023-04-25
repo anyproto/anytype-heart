@@ -146,7 +146,8 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	targetObjects := m.getObjectIDs(snapshots)
 
-	rootCol, err := converter.AddObjectsToRootCollection(m.service, rootCollectionName, targetObjects)
+	rootCollection := converter.NewRootCollection(m.service)
+	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
 	if err != nil {
 		allErrors.Add(path, err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

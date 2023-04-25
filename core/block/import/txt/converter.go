@@ -52,7 +52,7 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetProgressMessage("Start creating snapshots from files")
 	snapshots := make([]*converter.Snapshot, 0)
 	cErr := converter.NewError()
-	targetObject := make([]string, 0, len(path))
+	targetObjects := make([]string, 0, len(path))
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
 			cancelError := converter.NewFromError(p, err)
@@ -92,10 +92,11 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
 			SbType:   smartblock.SmartBlockTypePage,
 		}
 		snapshots = append(snapshots, snapshot)
-		targetObject = append(targetObject, snapshot.Id)
+		targetObjects = append(targetObjects, snapshot.Id)
 	}
 
-	rootCol, err := converter.AddObjectsToRootCollection(t.service, rootCollectionName, targetObject)
+	rootCollection := converter.NewRootCollection(t.service)
+	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
 	if err != nil {
 		cErr.Add(rootCollectionName, err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
