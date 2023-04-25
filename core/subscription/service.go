@@ -144,12 +144,12 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		req.Limit = 0
 	}
 
-	// if req.SubId == "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a-dataview" {
-	// 	req.CollectionId = "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a"
-	// }
+	if req.SubId == "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a-dataview" {
+		req.CollectionId = "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a"
+	}
 
 	if req.CollectionId != "" {
-		return s.makeNewCollectionSubscription(req, f, filterDepIds)
+		return s.makeCollectionSubscription(req, f, filterDepIds)
 	}
 
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
@@ -191,7 +191,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	return
 }
 
-func (s *service) makeNewCollectionSubscription(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
+func (s *service) makeCollectionSubscription(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	sub, err := s.newCollectionSubscription(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if err != nil {
 		return nil, err
@@ -220,50 +220,6 @@ func (s *service) makeNewCollectionSubscription(req pb.RpcObjectSearchSubscribeR
 		SubId:        sub.sortedSub.id,
 		Counters: &pb.EventObjectSubscriptionCounters{
 			Total:     int64(sub.sortedSub.skl.Len()),
-			NextCount: int64(prev),
-			PrevCount: int64(next),
-		},
-	}, nil
-}
-
-func (s *service) makeCollectionSubscription(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, records []database.Record) (*pb.RpcObjectSearchSubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
-	if err != nil {
-		return nil, err
-	}
-	// TODO
-	// if req.NoDepSubscription {
-	// 	sub.sortedSub.disableDep = true
-	// } else {
-	// 	sub.sortedSub.forceSubIds = filterDepIds
-	// }
-	entries := make([]*entry, 0, len(records))
-	for _, r := range records {
-		entries = append(entries, &entry{
-			id:   pbtypes.GetString(r.Details, "id"),
-			data: r.Details,
-		})
-	}
-	if err = sub.init(entries); err != nil {
-		return nil, fmt.Errorf("subscription init error: %v", err)
-	}
-	s.subscriptions[sub.id] = sub
-	prev, next := sub.counters()
-
-	var depRecords, subRecords []*types.Struct
-	subRecords = sub.getActiveRecords()
-
-	// TODO
-	// if sub.depSub != nil {
-	// 	depRecords = sub.depSub.getActiveRecords()
-	// }
-
-	return &pb.RpcObjectSearchSubscribeResponse{
-		Records:      subRecords,
-		Dependencies: depRecords,
-		SubId:        sub.id,
-		Counters: &pb.EventObjectSubscriptionCounters{
-			Total:     int64(len(sub.activeEntries)),
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},

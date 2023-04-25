@@ -18,6 +18,8 @@ type collectionObserver struct {
 	ids    []string
 	idsMap map[string]struct{}
 
+	closeCh chan struct{}
+
 	cache       *cache
 	objectStore objectstore.ObjectStore
 	recBatch    *mb.MB
@@ -35,9 +37,10 @@ func (s *service) newCollectionObserver(collectionID string) (*collectionObserve
 	}
 
 	obs := &collectionObserver{
-		lock:   &sync.RWMutex{},
-		ids:    initialObjectIDs,
-		idsMap: idsMap,
+		lock:    &sync.RWMutex{},
+		ids:     initialObjectIDs,
+		idsMap:  idsMap,
+		closeCh: make(chan struct{}),
 
 		cache:       s.cache,
 		objectStore: s.objectStore,
@@ -45,12 +48,21 @@ func (s *service) newCollectionObserver(collectionID string) (*collectionObserve
 	}
 
 	go func() {
-		for chs := range changesCh {
-			obs.applyChanges(chs)
+		for {
+			select {
+			case chs := <-changesCh:
+				obs.applyChanges(chs)
+			case <-obs.closeCh:
+				return
+			}
 		}
 	}()
 
 	return obs, nil
+}
+
+func (c *collectionObserver) close() {
+	close(c.closeCh)
 }
 
 func (c *collectionObserver) listEntries() []*entry {
@@ -106,7 +118,6 @@ func (c *collectionObserver) applyChanges(changes []slice.Change[string]) {
 			Details: e.data,
 		})
 	}
-
 }
 
 func (c *collectionObserver) Compare(a, b filter.Getter) int {
@@ -135,51 +146,57 @@ func (c *collectionObserver) String() string {
 	return "collectionObserver"
 }
 
-type collectionSubscription struct {
-	sortedSub   *sortedSub
-	cache       *cache
-	objectStore objectstore.ObjectStore
+type collectionSub struct {
+	sortedSub *sortedSub
+	observer  *collectionObserver
 }
 
-func (c *collectionSubscription) init(entries []*entry) (err error) {
+func (c *collectionSub) init(entries []*entry) (err error) {
 	return nil
 }
 
-func (c *collectionSubscription) counters() (prev, next int) {
+func (c *collectionSub) counters() (prev, next int) {
 	return c.sortedSub.counters()
 }
 
-func (c *collectionSubscription) onChange(ctx *opCtx) {
+func (c *collectionSub) onChange(ctx *opCtx) {
 	c.sortedSub.onChange(ctx)
 }
 
-func (c *collectionSubscription) getActiveRecords() (res []*types.Struct) {
+func (c *collectionSub) getActiveRecords() (res []*types.Struct) {
 	return c.sortedSub.getActiveRecords()
 }
 
-func (c *collectionSubscription) hasDep() bool {
+func (c *collectionSub) hasDep() bool {
 	return c.sortedSub.hasDep()
 }
 
-func (c *collectionSubscription) close() {
-	// TODO close observer
+func (c *collectionSub) close() {
+	c.observer.close()
 	c.sortedSub.close()
 }
 
-func (s *service) newCollectionSubscription(id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSubscription, error) {
+func (s *service) newCollectionSubscription(id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(collectionID)
 	if err != nil {
 		return nil, err
 	}
 	flt = filter.AndFilters{flt, obs}
 
-	ssub := s.newSortedSub(id, keys, flt, obs, limit, offset)
-	// TODO set to true only if it's no user orders
-	ssub.batchUpdate = true
-	sub := &collectionSubscription{
-		sortedSub:   ssub,
-		cache:       s.cache,
-		objectStore: s.objectStore,
+	var orderFromCollection bool
+	if order == nil {
+		// Take an order from collection
+		order = obs
+		orderFromCollection = true
+	}
+	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)
+	if orderFromCollection {
+		ssub.batchUpdate = true
+	}
+
+	sub := &collectionSub{
+		sortedSub: ssub,
+		observer:  obs,
 	}
 
 	if err := ssub.init(obs.listEntries()); err != nil {

@@ -121,6 +121,8 @@ func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
 	}, smartblock.HookAfterApply)
 }
 
+// TODO Broadcast
+// TODO Check consistency
 func (s *Service) SubscribeForCollection(contextID string) ([]string, <-chan []slice.Change[string], error) {
 	var initialObjectIDs []string
 	// Waking up of collection smart block will automatically add hook used in RegisterCollection
