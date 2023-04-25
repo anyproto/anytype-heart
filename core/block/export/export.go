@@ -254,23 +254,16 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 }
 
 func (e *export) getExistedObjects() (map[string]*types.Struct, error) {
-	res, err := e.objectStore.ListIds()
+	res, err := e.objectStore.List()
 	if err != nil {
 		return nil, err
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
-	for _, id := range res {
-		details, storeErr := e.objectStore.GetWithLinksInfoByID(id)
-		if storeErr != nil {
+	for _, info := range res {
+		if !e.objectValid(info.Id, info) {
 			continue
 		}
-		if details == nil {
-			continue
-		}
-		if !e.objectValid(id, details.Info) {
-			continue
-		}
-		objectDetails[id] = details.Info.Details
+		objectDetails[info.Id] = info.Details
 
 	}
 	if err != nil {
