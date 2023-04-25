@@ -461,7 +461,7 @@ func (e *export) createProfileFile(wr writer) error {
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("account predefined block not found")
+	return nil
 }
 
 func (e *export) writeConfig(wr writer) error {
