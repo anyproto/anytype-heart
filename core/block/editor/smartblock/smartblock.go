@@ -902,8 +902,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
-	createdDate = sb.getCreatedDate(s, createdDate)
-
 	if creator != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
 	}
@@ -914,15 +912,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
 	}
 	return nil
-}
-
-func (sb *smartBlock) getCreatedDate(s *state.State, createdDate int64) int64 {
-	combinedDetails := s.CombinedDetails()
-	originalCreatedDate := pbtypes.GetFloat64(combinedDetails, bundle.RelationKeyOriginalCreatedDate.String())
-	if originalCreatedDate != 0 {
-		createdDate = int64(originalCreatedDate)
-	}
-	return createdDate
 }
 
 func (sb *smartBlock) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) (err error) {

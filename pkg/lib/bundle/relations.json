@@ -1,14 +1,5 @@
 [
   {
-    "format": "checkbox",
-    "hidden": false,
-    "key": "meditation",
-    "maxCount": 1,
-    "name": "Meditation",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "format": "tag",
     "hidden": false,
     "key": "tag",
@@ -34,15 +25,6 @@
     "key": "heightInPixels",
     "maxCount": 1,
     "name": "Height",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "location",
-    "maxCount": 1,
-    "name": "Location",
     "readonly": false,
     "source": "details"
   },
@@ -134,15 +116,6 @@
     "name": "Bundled Template",
     "readonly": true,
     "source": "derived"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "shipTo",
-    "maxCount": 1,
-    "name": "Ship to",
-    "readonly": false,
-    "source": "details"
   },
   {
     "format": "date",
@@ -243,33 +216,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "gratefulFor",
-    "maxCount": 1,
-    "name": "Grateful for",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "founders",
-    "maxCount": 0,
-    "name": "Founders",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": false,
-    "key": "website",
-    "maxCount": 1,
-    "name": "Website",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Type of the underlying value",
     "format": "number",
     "hidden": true,
@@ -308,24 +254,6 @@
     "key": "ingredients",
     "maxCount": 1,
     "name": "Ingredients",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "total",
-    "maxCount": 1,
-    "name": "Total",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "responsible",
-    "maxCount": 0,
-    "name": "Responsible",
     "readonly": false,
     "source": "details"
   },
@@ -379,15 +307,6 @@
   {
     "format": "longtext",
     "hidden": false,
-    "key": "resources",
-    "maxCount": 1,
-    "name": "Resources",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
     "key": "userStories",
     "maxCount": 1,
     "name": "User stories",
@@ -419,15 +338,6 @@
     "key": "audioAlbum",
     "maxCount": 1,
     "name": "Album",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "participants",
-    "maxCount": 0,
-    "name": "Participants",
     "readonly": false,
     "source": "details"
   },
@@ -488,33 +398,6 @@
     "source": "details"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "candidate",
-    "maxCount": 0,
-    "name": "Candidate",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "happenings",
-    "maxCount": 1,
-    "name": "Happenings",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "billToAddress",
-    "maxCount": 1,
-    "name": "Bill to address",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "format": "longtext",
     "hidden": false,
     "key": "logic",
@@ -557,16 +440,6 @@
     "key": "isHidden",
     "maxCount": 1,
     "name": "Hidden",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "A subsidiary, subsidiary company or daughter company is a company owned or controlled by another company, which is called the parent company or holding company",
-    "format": "object",
-    "hidden": false,
-    "key": "subsidiaries",
-    "maxCount": 0,
-    "name": "Subsidiaries",
     "readonly": false,
     "source": "details"
   },
@@ -752,15 +625,6 @@
     "source": "details"
   },
   {
-    "format": "object",
-    "hidden": false,
-    "key": "ceo",
-    "maxCount": 0,
-    "name": "CEO",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "format": "longtext",
     "hidden": false,
     "key": "records",
@@ -790,31 +654,12 @@
     "source": "details"
   },
   {
-    "description": "A ticker symbol or stock symbol is an abbreviation used to uniquely identify publicly traded shares of a particular stock on a particular stock market",
-    "format": "longtext",
-    "hidden": false,
-    "key": "tickerSymbol",
-    "maxCount": 1,
-    "name": "Ticker Symbol",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Image y offset of the provided image",
     "format": "number",
     "hidden": true,
     "key": "coverY",
     "maxCount": 1,
     "name": "Cover y offset",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "story",
-    "maxCount": 1,
-    "name": "Story",
     "readonly": false,
     "source": "details"
   },
@@ -856,15 +701,6 @@
     "key": "events",
     "maxCount": 0,
     "name": "Events",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": false,
-    "key": "owner",
-    "maxCount": 0,
-    "name": "Owner",
     "readonly": false,
     "source": "details"
   },
@@ -971,39 +807,12 @@
     "source": "local"
   },
   {
-    "format": "checkbox",
-    "hidden": false,
-    "key": "journaling",
-    "maxCount": 1,
-    "name": "Journaling",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "billTo",
-    "maxCount": 1,
-    "name": "Bill to",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Audio record's genre name",
     "format": "shorttext",
     "hidden": false,
     "key": "audioGenre",
     "maxCount": 1,
     "name": "Genre",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "intentions",
-    "maxCount": 1,
-    "name": "Intention",
     "readonly": false,
     "source": "details"
   },
@@ -1047,24 +856,6 @@
     "key": "mood",
     "maxCount": 0,
     "name": "Mood",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "agenda",
-    "maxCount": 1,
-    "name": "Agenda",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "number",
-    "maxCount": 1,
-    "name": "Number",
     "readonly": false,
     "source": "details"
   },
@@ -1148,15 +939,6 @@
     "source": "derived"
   },
   {
-    "format": "number",
-    "hidden": false,
-    "key": "numberOfEmployees",
-    "maxCount": 1,
-    "name": "Number of employees",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Anytype layout ID(from pb enum)",
     "format": "number",
     "hidden": true,
@@ -1202,7 +984,7 @@
     "maxCount": 0,
     "name": "Internal flags",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "url",
@@ -1219,15 +1001,6 @@
     "key": "occupation",
     "maxCount": 1,
     "name": "Occupation",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "checkbox",
-    "hidden": false,
-    "key": "7hourssleep",
-    "maxCount": 1,
-    "name": "7+ hours sleep",
     "readonly": false,
     "source": "details"
   },
@@ -1260,15 +1033,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "address",
-    "maxCount": 1,
-    "name": "Address",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "An image is an artifact that depicts visual perception, such as a photograph or other two-dimensional picture",
     "format": "file",
     "hidden": true,
@@ -1290,15 +1054,6 @@
     "name": "Anytype ID",
     "readonly": false,
     "source": "derived"
-  },
-  {
-    "format": "number",
-    "hidden": false,
-    "key": "stockprice",
-    "maxCount": 1,
-    "name": "Stock Price",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Web address, a reference to a web resource that specifies its location on a computer network and a mechanism for retrieving it",
@@ -1325,15 +1080,6 @@
     "key": "cameraIso",
     "maxCount": 1,
     "name": "ISO",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "checkbox",
-    "hidden": false,
-    "key": "healthyEating",
-    "maxCount": 1,
-    "name": "Healthy eating",
     "readonly": false,
     "source": "details"
   },
@@ -1372,24 +1118,6 @@
     "key": "category",
     "maxCount": 0,
     "name": "Category",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "shipToAddress",
-    "maxCount": 1,
-    "name": "Ship to address",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "date",
-    "hidden": false,
-    "key": "founded",
-    "maxCount": 1,
-    "name": "Founded",
     "readonly": false,
     "source": "details"
   },
@@ -1436,39 +1164,12 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "worriedAbout",
-    "maxCount": 1,
-    "name": "Worried about",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "headquarters",
-    "maxCount": 1,
-    "name": "Headquarters",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Width of image/video in pixels",
     "format": "number",
     "hidden": false,
     "key": "widthInPixels",
     "maxCount": 1,
     "name": "Width",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "checkbox",
-    "hidden": false,
-    "key": "running",
-    "maxCount": 1,
-    "name": "Running",
     "readonly": false,
     "source": "details"
   },
@@ -1601,7 +1302,7 @@
   },
   {
     "format": "longtext",
-    "hidden": false,
+    "hidden": true,
     "key": "oldAnytypeID",
     "maxCount": 1,
     "name": "Old Anytype ID",
@@ -1640,13 +1341,13 @@
     "source": "details"
   },
   {
-    "description": "Original date of imported object from some source",
-    "format": "date",
+    "description": "File path or url with original object",
+    "format": "longtext",
     "hidden": true,
-    "key": "originalCreatedDate",
+    "key": "sourceFilePath",
     "maxCount": 1,
-    "name": "Original creation date",
-    "readonly": true,
+    "name": "Source file path",
+    "readonly": false,
     "source": "details"
   }
 ]

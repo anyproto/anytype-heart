@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "56af698804e29f21c84ae369caf9dc2a85486c13cbe62f1c06728d91738d7e99"
+const RelationChecksum = "4a90e6d43e04243d30f1cb5b912349ebf11ae7bcaf8d2524b6a7de33d2822105"
 
 type RelationKey string
 
@@ -160,7 +160,6 @@ const (
 	RelationKeySpaceDashboardId          RelationKey = "spaceDashboardId"
 	RelationKeyIconOption                RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        RelationKey = "spaceAccessibility"
-	RelationKeyOriginalCreatedDate       RelationKey = "originalCreatedDate"
 	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
 )
 
@@ -1244,20 +1243,6 @@ var (
 			Key:              "oldAnytypeID",
 			MaxCount:         1,
 			Name:             "Old Anytype ID",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyOriginalCreatedDate: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Original date of imported object from some source",
-			Format:           model.RelationFormat_date,
-			Hidden:           true,
-			Id:               "_broriginalCreatedDate",
-			Key:              "originalCreatedDate",
-			MaxCount:         1,
-			Name:             "Original creation date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

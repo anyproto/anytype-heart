@@ -152,7 +152,7 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 
 		relations = append(relations, relation)
 	}
-	details[bundle.RelationKeyOriginalCreatedDate.String()] = pbtypes.Float64(float64(d.CreatedTime.Unix()))
+	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(d.CreatedTime.Unix()))
 	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.String(d.LastEditedTime.String())
