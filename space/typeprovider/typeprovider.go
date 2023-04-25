@@ -30,6 +30,7 @@ var ErrUnknownSmartBlockType = errors.New("error unknown smartblock type")
 type SmartBlockTypeProvider interface {
 	app.Component
 	Type(id string) (smartblock.SmartBlockType, error)
+	RegisterStaticType(id string, tp smartblock.SmartBlockType)
 }
 
 type provider struct {
@@ -55,10 +56,16 @@ func (p *provider) Name() (name string) {
 
 func (p *provider) Type(id string) (tp smartblock.SmartBlockType, err error) {
 	tp, err = smartBlockTypeFromID(id)
-	if err != nil || tp != smartblock.SmartBlockTypePage {
+	if err == nil && tp != smartblock.SmartBlockTypePage {
 		return
 	}
 	return p.objectTypeFromSpace(id)
+}
+
+func (p *provider) RegisterStaticType(id string, tp smartblock.SmartBlockType) {
+	p.Lock()
+	defer p.Unlock()
+	p.cache[id] = tp
 }
 
 func smartBlockTypeFromID(id string) (smartblock.SmartBlockType, error) {

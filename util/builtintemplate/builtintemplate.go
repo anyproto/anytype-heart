@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -92,11 +91,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return
 	}
 	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)
-	id, err := smartblock.PatchSmartBlockType(st.RootId(), smartblock.SmartBlockTypeBundledTemplate)
-	if err != nil {
-		return
-	}
-	st.SetRootId(id)
+	id := st.RootId()
 	st = st.Copy()
 	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())

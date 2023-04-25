@@ -136,6 +136,7 @@ func (s *service) RegisterStaticSource(id string, src Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[id] = src
+	s.sbtProvider.RegisterStaticType(id, smartblock.SmartBlockType(src.Type()))
 }
 
 func (s *service) RemoveStaticSource(id string) {
