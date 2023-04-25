@@ -55,6 +55,7 @@ func GetInterfacesAddrs() (addrs InterfacesAddrs, err error) {
 		lock.Unlock()
 		return InterfacesAddrs{}, fmt.Errorf("interface getter not set for Android")
 	}
+	lock.Unlock()
 	for _, iface := range interfaceGetter.Interfaces() {
 		addrs.Interfaces = append(addrs.Interfaces, iface.Interface)
 		unmaskedAddrs := iface.Addrs
