@@ -87,10 +87,10 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, pageI
 }
 
 func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
-	targetBlockId := block.Model().GetLink().TargetBlockId
-	newTarget := oldIDtoNew[targetBlockId]
+	targetBlockID := block.Model().GetLink().TargetBlockId
+	newTarget := oldIDtoNew[targetBlockID]
 	if newTarget == "" {
-		if isBundledObjects(targetBlockId) {
+		if isBundledObjects(targetBlockID) {
 			return
 		}
 		newTarget = addr.MissingObject
@@ -100,12 +100,13 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	st.Set(simple.New(block.Model()))
 }
 
-func isBundledObjects(targetBlockId string) bool {
-	ot, err := bundle.TypeKeyFromUrl(targetBlockId)
+func isBundledObjects(targetBlockID string) bool {
+	ot, err := bundle.TypeKeyFromUrl(targetBlockID)
 	if err == nil && bundle.HasObjectType(ot.String()) {
 		return true
 	}
-	if bundle.HasRelation(targetBlockId) {
+	rel, err := pbtypes.RelationIdToKey(targetBlockID)
+	if err == nil && bundle.HasRelation(rel) {
 		return true
 	}
 	return false
