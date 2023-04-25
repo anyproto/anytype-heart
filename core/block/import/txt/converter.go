@@ -44,13 +44,13 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 }
 
 func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
-	path := t.GetParams(req)
-	if len(path) == 0 {
+	paths := t.GetParams(req)
+	if len(paths) == 0 {
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	snapshots, targetObjects, cancelError := t.getSnapshotsForImport(req, progress, path, cErr)
+	snapshots, targetObjects, cancelError := t.getSnapshotsForImport(req, progress, paths, cErr)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -79,11 +79,11 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 
 func (t *TXT) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
-	path []string,
+	paths []string,
 	cErr converter.ConvertError) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
-	for _, p := range path {
+	for _, p := range paths {
 		if err := progress.TryStep(1); err != nil {
 			cancelError := converter.NewFromError(p, err)
 			return nil, nil, cancelError
