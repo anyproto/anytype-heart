@@ -74,8 +74,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 }
 
 func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {
-	id := sn.Id
-	var exist bool
+	id := pbtypes.GetString(sn.Snapshot.Details, bundle.RelationKeyId.String())
 	ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -87,7 +86,7 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 	}, []sb.SmartBlockType{sbType})
 	if err == nil && len(ids) > 0 {
 		id = ids[0]
-		exist = true
+		return id, true, nil
 	}
 	if len(sn.Snapshot.ObjectTypes) > 0 {
 		ot := sn.Snapshot.ObjectTypes
@@ -99,7 +98,7 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 		}
 		sn.Snapshot.Details = pbtypes.StructMerge(sn.Snapshot.Details, objects, false)
 	}
-	return id, exist, nil
+	return id, false, nil
 }
 
 func (ou *ObjectIDGetter) getExisting(sn *converter.Snapshot) (string, bool) {
