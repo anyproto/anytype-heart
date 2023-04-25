@@ -98,9 +98,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	if sn.SbType == coresb.SmartBlockTypeProfilePage && newID == oc.core.ProfileID() {
-		st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
-	}
 	converter.UpdateRelationsIDs(st, newID, oldIDtoNew)
 	details := oc.getDetails(st.Details())
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
