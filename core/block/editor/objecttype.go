@@ -137,14 +137,8 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}*/
 
-	recommendedLayout := pbtypes.GetString(t.Details(), bundle.RelationKeyRecommendedLayout.String())
-	if recommendedLayout == "" {
-		recommendedLayout = model.ObjectType_basic.String()
-	} else if _, ok := model.ObjectTypeLayout_value[recommendedLayout]; !ok {
-		recommendedLayout = model.ObjectType_basic.String()
-	}
-
-	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(model.ObjectTypeLayout_value[recommendedLayout]))
+	recommendedLayout := pbtypes.GetInt64(t.Details(), bundle.RelationKeyRecommendedLayout.String())
+	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(recommendedLayout))
 	for _, rel := range recommendedLayoutObj.RequiredRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.Key) == -1 {
 			recommendedRelationsKeys = append(recommendedRelationsKeys, rel.Key)
@@ -256,6 +250,7 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	return smartblock.ObjectApplyTemplate(t, ctx.State,
 		template.WithForcedObjectTypes([]string{objectType}),
+		template.WithDetail(bundle.RelationKeyRecommendedLayout, pbtypes.Int64(recommendedLayout)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType))),
 		template.WithEmpty,
 		template.WithTitle,
