@@ -6,7 +6,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -90,11 +89,13 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 		id = ids[0]
 		exist = true
 	}
-	ot := sn.Snapshot.ObjectTypes
-	req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Details}
-	id, _, err = ou.service.CreateObject(req, "")
-	if err != nil && err != editor.ErrSubObjectAlreadyExists {
-		id = sn.Id
+	if len(sn.Snapshot.ObjectTypes) > 0 {
+		ot := sn.Snapshot.ObjectTypes
+		req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Details}
+		id, _, err = ou.service.CreateObject(req, "")
+		if err != nil {
+			id = sn.Id
+		}
 	}
 	return id, exist, nil
 }
