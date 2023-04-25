@@ -7,16 +7,16 @@ import (
 	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type collectionObserver struct {
-	lock   *sync.RWMutex
-	ids    []string
-	idsMap map[string]struct{}
+	lock     *sync.RWMutex
+	ids      []string
+	idsIndex map[string]int
 
 	closeCh chan struct{}
 
@@ -25,33 +25,27 @@ type collectionObserver struct {
 	recBatch    *mb.MB
 }
 
-func (s *service) newCollectionObserver(collectionID string) (*collectionObserver, error) {
-	initialObjectIDs, changesCh, err := s.collections.SubscribeForCollection(collectionID)
+func (s *service) newCollectionObserver(collectionID string, subID string) (*collectionObserver, error) {
+	initialObjectIDs, objectsCh, err := s.collections.SubscribeForCollection(collectionID, subID)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe for collection: %w", err)
 	}
 
-	idsMap := map[string]struct{}{}
-	for _, id := range initialObjectIDs {
-		idsMap[id] = struct{}{}
-	}
-
 	obs := &collectionObserver{
 		lock:    &sync.RWMutex{},
-		ids:     initialObjectIDs,
-		idsMap:  idsMap,
 		closeCh: make(chan struct{}),
 
 		cache:       s.cache,
 		objectStore: s.objectStore,
 		recBatch:    s.recBatch,
 	}
+	obs.setIDs(initialObjectIDs)
 
 	go func() {
 		for {
 			select {
-			case chs := <-changesCh:
-				obs.applyChanges(chs)
+			case objectIDs := <-objectsCh:
+				obs.applyChanges(objectIDs)
 			case <-obs.closeCh:
 				return
 			}
@@ -59,6 +53,15 @@ func (s *service) newCollectionObserver(collectionID string) (*collectionObserve
 	}()
 
 	return obs, nil
+}
+
+func (c *collectionObserver) setIDs(ids []string) {
+	c.ids = ids
+	c.idsIndex = map[string]int{}
+
+	for i, id := range ids {
+		c.idsIndex[id] = i
+	}
 }
 
 func (c *collectionObserver) close() {
@@ -74,45 +77,12 @@ func (c *collectionObserver) listEntries() []*entry {
 	return res
 }
 
-func (c *collectionObserver) applyChanges(changes []slice.Change[string]) {
+func (c *collectionObserver) applyChanges(ids []string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.ids = slice.ApplyChanges(c.ids, changes, slice.StringIdentity[string])
+	c.setIDs(ids)
 
-	changedIDs := map[string]struct{}{}
-
-	var isMoved bool
-	for _, ch := range changes {
-		if add := ch.Add(); add != nil {
-			for _, id := range add.Items {
-				c.idsMap[id] = struct{}{}
-				changedIDs[id] = struct{}{}
-			}
-		}
-
-		if rm := ch.Remove(); rm != nil {
-			for _, id := range rm.IDs {
-				delete(c.idsMap, id)
-				changedIDs[id] = struct{}{}
-			}
-		}
-
-		if mv := ch.Move(); mv != nil {
-			isMoved = true
-		}
-	}
-
-	var reqIDs []string
-	if isMoved {
-		reqIDs = c.ids
-	} else {
-		reqIDs = make([]string, 0, len(changedIDs))
-		for id := range changedIDs {
-			reqIDs = append(reqIDs, id)
-		}
-	}
-
-	entries := fetchEntries(c.cache, c.objectStore, reqIDs)
+	entries := fetchEntries(c.cache, c.objectStore, c.ids)
 	for _, e := range entries {
 		c.recBatch.Add(database.Record{
 			Details: e.data,
@@ -125,7 +95,7 @@ func (c *collectionObserver) Compare(a, b filter.Getter) int {
 	defer c.lock.RUnlock()
 
 	ae, be := a.(*entry), b.(*entry)
-	ap, bp := slice.FindPos(c.ids, ae.id), slice.FindPos(c.ids, be.id)
+	ap, bp := c.idsIndex[ae.id], c.idsIndex[be.id]
 	if ap == bp {
 		return 0
 	}
@@ -138,7 +108,7 @@ func (c *collectionObserver) Compare(a, b filter.Getter) int {
 func (c *collectionObserver) FilterObject(g filter.Getter) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	_, ok := c.idsMap[g.(*entry).id]
+	_, ok := c.idsIndex[g.(*entry).id]
 	return ok
 }
 
@@ -147,8 +117,12 @@ func (c *collectionObserver) String() string {
 }
 
 type collectionSub struct {
-	sortedSub *sortedSub
-	observer  *collectionObserver
+	id           string
+	collectionID string
+
+	sortedSub         *sortedSub
+	observer          *collectionObserver
+	collectionService *collection.Service
 }
 
 func (c *collectionSub) init(entries []*entry) (err error) {
@@ -174,10 +148,11 @@ func (c *collectionSub) hasDep() bool {
 func (c *collectionSub) close() {
 	c.observer.close()
 	c.sortedSub.close()
+	c.collectionService.UnsubscribeFromCollection(c.collectionID, c.sortedSub.id)
 }
 
 func (s *service) newCollectionSubscription(id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
-	obs, err := s.newCollectionObserver(collectionID)
+	obs, err := s.newCollectionObserver(collectionID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +170,12 @@ func (s *service) newCollectionSubscription(id string, collectionID string, keys
 	}
 
 	sub := &collectionSub{
-		sortedSub: ssub,
-		observer:  obs,
+		id:           id,
+		collectionID: collectionID,
+
+		sortedSub:         ssub,
+		observer:          obs,
+		collectionService: s.collections,
 	}
 
 	if err := ssub.init(obs.listEntries()); err != nil {

@@ -19,13 +19,13 @@ type Service struct {
 	picker block.Picker
 
 	lock        *sync.RWMutex
-	collections map[string]chan []slice.Change[string]
+	collections map[string]map[string]chan []string
 }
 
 func New() *Service {
 	return &Service{
 		lock:        &sync.RWMutex{},
-		collections: map[string]chan []slice.Change[string]{},
+		collections: map[string]map[string]chan []string{},
 	}
 }
 
@@ -90,54 +90,80 @@ func (s *Service) updateCollection(ctx *session.Context, contextID string, modif
 
 func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
 	s.lock.Lock()
-	changesCh, ok := s.collections[sb.Id()]
+	col, ok := s.collections[sb.Id()]
 	if !ok {
-		changesCh = make(chan []slice.Change[string])
-		s.collections[sb.Id()] = changesCh
+		col = map[string]chan []string{}
+		s.collections[sb.Id()] = col
 	}
 	s.lock.Unlock()
 
 	sb.AddHook(func(info smartblock.ApplyInfo) (err error) {
-		// TODO: I don't like that changes converted to marshalling format and then back again
-		var changes []slice.Change[string]
-		for _, ch := range info.Changes {
-			upd := ch.GetStoreSliceUpdate()
-			if upd == nil {
-				continue
-			}
-			if v := upd.GetAdd(); v != nil {
-				changes = append(changes, slice.MakeChangeAdd(v.Ids, v.AfterId))
-			} else if v := upd.GetRemove(); v != nil {
-				changes = append(changes, slice.MakeChangeRemove[string](v.Ids))
-			} else if v := upd.GetMove(); v != nil {
-				changes = append(changes, slice.MakeChangeMove[string](v.Ids, v.AfterId))
-			}
-		}
-
 		go func() {
-			changesCh <- changes
+			s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), storeKey))
 		}()
 		return nil
 	}, smartblock.HookAfterApply)
 }
 
-// TODO Broadcast
-// TODO Check consistency
-func (s *Service) SubscribeForCollection(contextID string) ([]string, <-chan []slice.Change[string], error) {
+func (s *Service) broadcast(collectionID string, objectIDs []string) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for _, ch := range s.collections[collectionID] {
+		ch <- objectIDs
+	}
+}
+
+type Subscription struct {
+	objectsCh chan []string
+	closeCh   chan struct{}
+}
+
+func (s *Subscription) Chan() <-chan []string {
+	return s.objectsCh
+}
+
+func (s *Subscription) Close() {
+	close(s.closeCh)
+}
+
+func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	var initialObjectIDs []string
 	// Waking up of collection smart block will automatically add hook used in RegisterCollection
-	err := block.DoState(s.picker, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoState(s.picker, collectionID, func(s *state.State, sb smartblock.SmartBlock) error {
 		initialObjectIDs = pbtypes.GetStringList(s.Store(), storeKey)
 		return nil
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-	s.lock.RLock()
-	ch, ok := s.collections[contextID]
-	s.lock.RUnlock()
+
+	s.lock.Lock()
+	col, ok := s.collections[collectionID]
 	if !ok {
 		return nil, nil, fmt.Errorf("collection is not registered")
 	}
+
+	ch, ok := col[subscriptionID]
+	if !ok {
+		ch = make(chan []string)
+		col[subscriptionID] = ch
+	}
+	s.lock.Unlock()
+
 	return initialObjectIDs, ch, err
+}
+
+func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	col, ok := s.collections[collectionID]
+	if !ok {
+		return
+	}
+
+	ch := col[subscriptionID]
+	close(ch)
+	delete(col, subscriptionID)
 }
