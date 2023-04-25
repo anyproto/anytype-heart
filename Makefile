@@ -98,6 +98,9 @@ build-ios: setup-go
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/util\/vcs/g'))
 	gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
+	@mkdir -p dist/ios/json/
+	@cp pkg/lib/bundle/system*.json dist/ios/json/
+	@cp pkg/lib/bundle/internal*.json dist/ios/json/
 	@go mod tidy
 
 build-android: setup-go
