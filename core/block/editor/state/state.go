@@ -1400,11 +1400,7 @@ func (s *State) ParentState() *State {
 // IsTheHeaderChange return true if the state is the initial header change
 // header change is the empty change without any blocks or details except protocol data
 func (s *State) IsTheHeaderChange() bool {
-	b := s.changeId == s.rootId || s.changeId == "" && s.parent == nil
-	if b {
-		return true
-	}
-	return false
+	return s.changeId == s.rootId || s.changeId == "" && s.parent == nil
 }
 
 func (s *State) RemoveDetail(keys ...string) (ok bool) {
