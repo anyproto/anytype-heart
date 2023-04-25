@@ -72,6 +72,26 @@ func (mw *Middleware) BlockDataviewObjectOrderUpdate(cctx context.Context, req *
 	return response(pb.RpcBlockDataviewObjectOrderUpdateResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockDataviewObjectOrderMove(cctx context.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) *pb.RpcBlockDataviewObjectOrderMoveResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockDataviewObjectOrderMoveResponseErrorCode, err error) *pb.RpcBlockDataviewObjectOrderMoveResponse {
+		m := &pb.RpcBlockDataviewObjectOrderMoveResponse{Error: &pb.RpcBlockDataviewObjectOrderMoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.DataviewMoveObjectsInView(ctx, req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockDataviewObjectOrderMoveResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockDataviewObjectOrderMoveResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context,
 	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
 	ctx := mw.newContext(cctx)

@@ -16,6 +16,7 @@ import (
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -65,6 +66,7 @@ type Dataview interface {
 	UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
 	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
+	DataviewMoveObjectsInView(ctx *session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error
 
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
@@ -357,6 +359,20 @@ func (d *sdataview) UpdateViewObjectOrder(ctx *session.Context, blockId string, 
 	}
 
 	dvBlock.SetViewObjectOrder(orders)
+
+	return d.Apply(st)
+}
+
+func (d *sdataview) DataviewMoveObjectsInView(ctx *session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error {
+	st := d.NewStateCtx(ctx)
+	dvBlock, err := getDataviewBlock(st, req.BlockId)
+	if err != nil {
+		return err
+	}
+
+	if err = dvBlock.MoveObjectsInView(req); err != nil {
+		return err
+	}
 
 	return d.Apply(st)
 }

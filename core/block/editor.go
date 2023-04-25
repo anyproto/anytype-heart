@@ -191,6 +191,14 @@ func (s *Service) UpdateDataviewObjectOrder(
 	})
 }
 
+func (s *Service) DataviewMoveObjectsInView(
+	ctx *session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest,
+) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.DataviewMoveObjectsInView(ctx, req)
+	})
+}
+
 func (s *Service) DeleteDataviewView(ctx *session.Context, req pb.RpcBlockDataviewViewDeleteRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.DeleteView(ctx, req.BlockId, req.ViewId, true)

@@ -4567,6 +4567,33 @@ message Rpc {
                     }
                 }
             }
+
+            message Move {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    string viewId = 3;
+                    string groupId = 4;
+                    string afterId = 5;
+                    repeated string objectIds = 6;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
         }
 
         message CreateFromExistingObject {

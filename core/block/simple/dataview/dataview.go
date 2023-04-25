@@ -48,6 +48,7 @@ type Block interface {
 	SetViewOrder(ids []string)
 	SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder)
 	SetViewObjectOrder(order []*model.BlockContentDataviewObjectOrder)
+	MoveObjectsInView(req *pb.RpcBlockDataviewObjectOrderMoveRequest) error
 
 	AddRelation(relation *model.RelationLink) error
 	DeleteRelation(relationKey string) error
@@ -370,8 +371,27 @@ func (d *Dataview) SetViewObjectOrder(orders []*model.BlockContentDataviewObject
 	}
 }
 
+func (d *Dataview) MoveObjectsInView(req *pb.RpcBlockDataviewObjectOrderMoveRequest) error {
+	var found bool
+	for _, order := range d.content.ObjectOrders {
+		if order.ViewId == req.ViewId && order.GroupId == req.GroupId {
+			order.ObjectIds = slice.Difference(order.ObjectIds, req.ObjectIds)
+
+			pos := slice.FindPos(order.ObjectIds, req.AfterId)
+			order.ObjectIds = slice.Insert(order.ObjectIds, pos+1, req.ObjectIds...)
+
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("object order is not found")
+	}
+	return nil
+}
+
 func (d *Dataview) resetObjectOrderForView(viewId string) {
-	orders := d.Model().GetDataview().ObjectOrders
+	orders := d.content.ObjectOrders
 	for _, order := range orders {
 		if order.ViewId == viewId {
 			order.ObjectIds = nil
