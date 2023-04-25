@@ -224,6 +224,7 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 		return "", err
 	}
 	// cleanup details
+	delete(details.Fields, bundle.RelationKeyFeaturedRelations.String())
 	delete(details.Fields, bundle.RelationKeyLayout.String())
 	delete(details.Fields, bundle.RelationKeyType.String())
 

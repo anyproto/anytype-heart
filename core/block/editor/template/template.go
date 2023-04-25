@@ -274,18 +274,21 @@ var WithTitle = StateTransformer(func(s *state.State) {
 })
 
 // WithDefaultFeaturedRelations **MUST** be called before WithDescription
-var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
+var WithDefaultFeaturedRelations = func(s *state.State) {
 	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
 		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String()}
 		layout, _ := s.Layout()
-		if layout == model.ObjectType_basic || layout == model.ObjectType_note {
+		switch layout {
+		case model.ObjectType_basic, model.ObjectType_note:
 			fr = []string{bundle.RelationKeyType.String()}
-		} else if layout == model.ObjectType_set {
+		case model.ObjectType_set:
 			fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()}
+		case model.ObjectType_collection:
+			fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String()}
 		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
-})
+}
 
 var WithAddedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {

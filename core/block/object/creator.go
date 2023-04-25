@@ -289,12 +289,9 @@ func (c *Creator) CreateCollection(details *types.Struct, flags []*model.Interna
 			},
 		},
 	}
-
-	if blockContent != nil {
-		tmpls = append(tmpls,
-			template.WithDataview(*blockContent, false),
-		)
-	}
+	tmpls = append(tmpls,
+		template.WithDataview(*blockContent, false),
+	)
 
 	if err = template.InitTemplate(newState, tmpls...); err != nil {
 		return "", nil, err
