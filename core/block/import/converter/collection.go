@@ -27,7 +27,7 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 func (r *RootCollection) AddObjects(collectionName string, targetObjects []string) (*Snapshot, error) {
 	detailsStruct := r.getCreateCollectionRequest(collectionName)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
-		Value: model.InternalFlag_collectionDontIndex,
+		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
 	if err != nil {
 		return nil, err

@@ -21719,7 +21719,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | editorDeleteEmpty | 0 |  |
 | editorSelectType | 1 |  |
 | editorSelectTemplate | 2 |  |
-| collectionDontIndex | 3 |  |
+| collectionDontIndexLinks | 3 |  |
 
 
 

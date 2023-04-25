@@ -507,7 +507,7 @@ func (sb *smartBlock) navigationalLinks() []string {
 
 	var ids []string
 
-	if !internalflag.NewFromState(s).Has(model.InternalFlag_collectionDontIndex) {
+	if !internalflag.NewFromState(s).Has(model.InternalFlag_collectionDontIndexLinks) {
 		// flag used when importing a large set of objects
 		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
 	}
