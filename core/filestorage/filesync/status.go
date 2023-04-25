@@ -93,7 +93,7 @@ func (s *StatusWatcher) checkFiles(ctx context.Context) {
 	defer s.filesToWatchLock.Unlock()
 
 	for key := range s.filesToWatch {
-		s.updateCh <- key
+		s.requestUpdate(key)
 	}
 }
 
@@ -169,6 +169,14 @@ func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (f
 	return status, nil
 }
 
+func (s *StatusWatcher) requestUpdate(key fileWithSpace) {
+	select {
+	case <-s.closeCh:
+		return
+	case s.updateCh <- key:
+	}
+}
+
 func (s *StatusWatcher) Watch(spaceID, fileID string) {
 	s.filesToWatchLock.Lock()
 	defer s.filesToWatchLock.Unlock()
@@ -178,7 +186,7 @@ func (s *StatusWatcher) Watch(spaceID, fileID string) {
 		s.filesToWatch[key] = struct{}{}
 	}
 
-	s.updateCh <- key
+	s.requestUpdate(key)
 }
 
 func (s *StatusWatcher) Unwatch(spaceID, fileID string) {
