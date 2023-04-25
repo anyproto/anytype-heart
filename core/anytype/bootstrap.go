@@ -2,8 +2,14 @@ package anytype
 
 import (
 	"context"
+	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/net/rpc/server"
+	"github.com/anytypeio/any-sync/net/dialer"
+	"github.com/anytypeio/any-sync/net/pool"
+	"github.com/anytypeio/any-sync/net/secureservice"
+	"github.com/anytypeio/any-sync/nodeconf"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
@@ -108,9 +114,15 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 	a.Register(clientds.New()).
-		Register(server.New()).
+		Register(nodeconf.New()).
 		Register(storage.New()).
+		Register(secureservice.New()).
+		Register(dialer.New()).
+		Register(pool.New()).
 		Register(commonspace.New()).
+		Register(rpcstore.New()).
+		Register(fileservice.New()).
+		Register(filestorage.New()).
 		Register(space.New()).
 		Register(typeprovider.New()).
 		Register(relation.New()).

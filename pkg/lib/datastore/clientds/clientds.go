@@ -462,6 +462,7 @@ func (r *clientds) LogstoreDS() (datastore.DSTxnBatching, error) {
 }
 
 func (r *clientds) Badger() (*badger.DB, error) {
+	// TODO: [MR] Change after testing
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
