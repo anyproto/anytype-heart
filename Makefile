@@ -262,16 +262,16 @@ install-linter:
 
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m --skip-files ".*_test.go"
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m --skip-files ".*_test.go"
+	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --timeout 15m --fix --skip-files ".*_test.go"
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --timeout 15m --fix --skip-files ".*_test.go"
+	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
 endif
 
 version = latest

@@ -191,22 +191,7 @@ func main() {
 		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer, streamOptions...))
 	}
 
-	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		defer func() {
-			if r := recover(); r != nil {
-				mw.OnPanic(r)
-				resp = &pb.RpcGenericErrorResponse{
-					Error: &pb.RpcGenericErrorResponseError{
-						Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,
-						Description: "panic recovered",
-					},
-				}
-			}
-		}()
-
-		resp, err = handler(ctx, req)
-		return resp, err
-	})
+	unaryInterceptors = appendInterceptor(unaryInterceptors, mw)
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
@@ -262,6 +247,52 @@ func main() {
 		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
 		return
 	}
+}
+
+func appendInterceptor(
+	unaryInterceptors []grpc.UnaryServerInterceptor,
+	mw *core.Middleware,
+) []grpc.UnaryServerInterceptor {
+	return append(unaryInterceptors, func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (resp interface{}, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				if rerr, ok := r.(error); ok && rerr == core.ErrNotLoggedIn {
+					resp = onNotLoggedInError(resp, rerr)
+				} else {
+					resp = onDefaultError(mw, r, resp)
+				}
+			}
+		}()
+
+		resp, err = handler(ctx, req)
+		return resp, err
+	})
+}
+
+func onDefaultError(mw *core.Middleware, r any, resp interface{}) interface{} {
+	mw.OnPanic(r)
+	resp = &pb.RpcGenericErrorResponse{
+		Error: &pb.RpcGenericErrorResponseError{
+			Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,
+			Description: "panic recovered",
+		},
+	}
+	return resp
+}
+
+func onNotLoggedInError(resp interface{}, rerr error) interface{} {
+	resp = &pb.RpcGenericErrorResponse{
+		Error: &pb.RpcGenericErrorResponseError{
+			Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,
+			Description: rerr.Error(),
+		},
+	}
+	return resp
 }
 
 func stackAllGoroutines() []byte {

@@ -20,7 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/txt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/workerpool"
-	"github.com/anytypeio/go-anytype-middleware/core/block/object"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object/creator"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -81,7 +81,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileSyncService := app.MustComponent[filesync.FileSync](a)
 	factory := syncer.New(syncer.NewFileSyncer(i.s, fileSyncService, spaceService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
-	objCreator := a.MustComponent(object.CName).(objectCreator)
+	objCreator := a.MustComponent(creator.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)

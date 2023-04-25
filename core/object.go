@@ -8,25 +8,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object/graph"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -382,120 +378,49 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 	return response(nil)
 }
 
-// TODO Move logic to block service
 func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
-	response := func(code pb.RpcObjectGraphResponseErrorCode, nodes []*types.Struct, edges []*pb.RpcObjectGraphEdge, err error) *pb.RpcObjectGraphResponse {
-		m := &pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: code}, Nodes: nodes, Edges: edges}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 
 	if mw.app == nil {
-		return response(pb.RpcObjectGraphResponseError_BAD_INPUT, nil, nil, fmt.Errorf("account must be started"))
+		return objectResponse(
+			pb.RpcObjectGraphResponseError_BAD_INPUT,
+			nil,
+			nil,
+			fmt.Errorf("account must be started"),
+		)
 	}
 
-	at := mw.app.MustComponent(core.CName).(core.Service)
-	rs := mw.app.MustComponent(relation.CName).(relation.Service)
+	nodes, edges, err := getService[graph.Service](mw).ObjectGraph(req)
+	if err != nil {
+		return unknownError(err)
+	}
+	return objectResponse(pb.RpcObjectGraphResponseError_NULL, nodes, edges, nil)
+}
 
-	store := app.MustComponent[objectstore.ObjectStore](mw.app)
-	records, _, err := store.Query(nil, database.Query{
-		Filters:          req.Filters,
-		Limit:            int(req.Limit),
-		ObjectTypeFilter: req.ObjectTypeFilter,
-	})
+func unknownError(err error) *pb.RpcObjectGraphResponse {
+	return objectResponse(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
+}
+
+func objectResponse(
+	code pb.RpcObjectGraphResponseErrorCode,
+	nodes []*types.Struct,
+	edges []*pb.RpcObjectGraphEdge,
+	err error,
+) *pb.RpcObjectGraphResponse {
+	response := &pb.RpcObjectGraphResponse{
+		Error: &pb.RpcObjectGraphResponseError{
+			Code: code,
+		},
+		Nodes: nodes,
+		Edges: edges,
+	}
 
 	if err != nil {
-		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
+		response.Error.Description = err.Error()
 	}
 
-	relations, err := rs.ListAll(relation.WithWorkspaceId(at.PredefinedBlocks().Account))
-	if err != nil {
-		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
-	}
-
-	var nodes = make([]*types.Struct, 0, len(records))
-	var edges = make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
-	var nodeExists = make(map[string]struct{}, len(records))
-
-	for _, rec := range records {
-		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		nodeExists[id] = struct{}{}
-	}
-
-	for _, rec := range records {
-		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-
-		nodes = append(nodes, pbtypes.Map(rec.Details, req.Keys...))
-
-		var outgoingRelationLink = make(map[string]struct{}, 10)
-		for k, v := range rec.Details.GetFields() {
-			if list := pbtypes.GetStringListValue(v); len(list) == 0 {
-				continue
-			} else {
-				rel := relations.GetByKey(k)
-				if rel == nil {
-					continue
-				}
-
-				if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
-					continue
-				}
-
-				for _, l := range list {
-					if _, exists := nodeExists[l]; !exists {
-						continue
-					}
-
-					if rel.Hidden ||
-						rel.Key == bundle.RelationKeyId.String() ||
-						rel.Key == bundle.RelationKeyCreator.String() ||
-						rel.Key == bundle.RelationKeyWorkspaceId.String() ||
-						rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-						continue
-					}
-
-					edges = append(edges, &pb.RpcObjectGraphEdge{
-						Source:      id,
-						Target:      l,
-						Name:        rel.Name,
-						Type:        pb.RpcObjectGraphEdge_Relation,
-						Description: rel.Description,
-						Hidden:      rel.Hidden,
-					})
-					outgoingRelationLink[l] = struct{}{}
-				}
-			}
-		}
-
-		sbtProvider := app.MustComponent[typeprovider.SmartBlockTypeProvider](mw.app)
-		links := pbtypes.GetStringList(rec.Details, bundle.RelationKeyLinks.String())
-		for _, link := range links {
-			sbType, _ := sbtProvider.Type(link)
-			// ignore files because we index all file blocks as outgoing links
-			if sbType == smartblock.SmartBlockTypeFile {
-				continue
-			}
-			if _, exists := outgoingRelationLink[link]; !exists {
-				if _, exists := nodeExists[link]; !exists {
-					continue
-				}
-				edges = append(edges, &pb.RpcObjectGraphEdge{
-					Source: id,
-					Target: link,
-					Name:   "",
-					Type:   pb.RpcObjectGraphEdge_Link,
-				})
-			}
-		}
-	}
-
-	return response(pb.RpcObjectGraphResponseError_NULL, nodes, edges, nil)
+	return response
 }
 
 func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {

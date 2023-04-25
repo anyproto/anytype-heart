@@ -1,4 +1,4 @@
-package object
+package creator
 
 import (
 	"context"
@@ -56,6 +56,7 @@ type Creator struct {
 	objectFactory     *editor.ObjectFactory
 	app               *app.App
 	sbtProvider       typeprovider.SmartBlockTypeProvider
+	creator           Service //nolint:unused
 
 	// TODO: remove it?
 	anytype core.Service
@@ -77,8 +78,10 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
+	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.collectionService = app.MustComponent[CollectionService](a)
+	c.anytype = a.MustComponent(core.CName).(core.Service)
 	c.app = a
 	return nil
 }

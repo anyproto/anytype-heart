@@ -115,6 +115,24 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 	return f(app.MustComponent[*collection.Service](a))
 }
 
+type DoActionable[T interface{}] interface {
+	doLoggedService(action func(T) error) error
+}
+
+func getService[T any](mw *Middleware) T {
+	mw.m.RLock()
+	a := mw.app
+	mw.m.RUnlock()
+	requireApp(a)
+	return app.MustComponent[T](a)
+}
+
+func requireApp(a *app.App) {
+	if a == nil {
+		panic(ErrNotLoggedIn)
+	}
+}
+
 func (mw *Middleware) doRelationService(f func(rs relation.Service) error) (err error) {
 	rs, err := mw.getRelationService()
 	if err != nil {

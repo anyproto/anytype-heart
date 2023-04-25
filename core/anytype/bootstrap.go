@@ -4,18 +4,20 @@ import (
 	"context"
 	"os"
 
+	"github.com/anytypeio/any-sync/coordinator/nodeconfsource"
+	"github.com/anytypeio/any-sync/nodeconf/nodeconfstore"
+
+	"github.com/anytypeio/any-sync/util/crypto"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
-	"github.com/anytypeio/any-sync/coordinator/nodeconfsource"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/secureservice"
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
-	"github.com/anytypeio/any-sync/nodeconf/nodeconfstore"
-	"github.com/anytypeio/any-sync/util/crypto"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -26,13 +28,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
-	"github.com/anytypeio/go-anytype-middleware/core/block/object"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object/creator"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object/graph"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
-	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
@@ -49,6 +51,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
@@ -104,11 +107,13 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	spaceService := space.New()
 	sbtProvider := typeprovider.New(spaceService)
 	objectStore := objectstore.New(sbtProvider)
-	objectCreator := object.NewCreator(sbtProvider)
+	objectCreator := creator.NewCreator(sbtProvider)
 	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
 	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 	indexerService := indexer.New(blockService, spaceService)
+	graphRenderer := graph.NewGraphRender(sbtProvider)
+
 	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
@@ -124,7 +129,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
-		Register(filestore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
@@ -135,6 +139,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectStore).
+		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
 		Register(cafe.New()).
@@ -163,6 +168,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(decorator.New()).
 		Register(objectCreator).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter))
+		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
+		Register(graphRenderer)
 	return
 }
