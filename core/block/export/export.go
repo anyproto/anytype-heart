@@ -469,7 +469,14 @@ func (e *export) createProfileFile(wr writer) error {
 	if err != nil {
 		return err
 	}
-	profile := &pb.Profile{SpaceDashboardId: spaceDashBoardID, Address: pr.AccountAddr, Name: pr.Name, Avatar: pr.IconImage}
+	profileID := e.a.ProfileID()
+	profile := &pb.Profile{
+		SpaceDashboardId: spaceDashBoardID,
+		Address:          pr.AccountAddr,
+		Name:             pr.Name,
+		Avatar:           pr.IconImage,
+		ProfileId:        profileID,
+	}
 	data, err := profile.Marshal()
 	if err != nil {
 		return err
