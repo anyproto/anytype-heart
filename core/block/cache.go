@@ -333,7 +333,7 @@ func (s *Service) getDerivedObject(
 		id     = payload.RootRawChange.Id
 	)
 	// timing out when getting objects from remote
-	ctx, cancel = context.WithTimeout(ctx, time.Second*40)
+	ctx, cancel = context.WithTimeout(ctx, time.Minute)
 	ctx = context.WithValue(ctx,
 		optsKey,
 		cacheOpts{
