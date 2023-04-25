@@ -857,8 +857,6 @@ var oldBookmarkRelationBlocks = []string{
 	bundle.RelationKeyUrl.String(),
 	bundle.RelationKeyPicture.String(),
 	bundle.RelationKeyCreatedDate.String(),
-	bundle.RelationKeyNotes.String(),
-	bundle.RelationKeyQuote.String(),
 }
 
 var oldBookmarkRelations = []string{

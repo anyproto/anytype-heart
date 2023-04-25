@@ -506,16 +506,6 @@
     "source": "details"
   },
   {
-    "description": "Duration of audio/video file in seconds",
-    "format": "number",
-    "hidden": false,
-    "key": "durationInSeconds",
-    "maxCount": 1,
-    "name": "Duration",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "format": "longtext",
     "hidden": false,
     "key": "billToAddress",
@@ -669,15 +659,6 @@
     "key": "measureOfSuccess",
     "maxCount": 1,
     "name": "Measure of success",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": false,
-    "key": "notes",
-    "maxCount": 1,
-    "name": "Notes",
     "readonly": false,
     "source": "details"
   },
@@ -973,16 +954,6 @@
     "key": "stars",
     "maxCount": 0,
     "name": "Stars",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "Repeat words that someone else has said or written",
-    "format": "longtext",
-    "hidden": false,
-    "key": "quote",
-    "maxCount": 1,
-    "name": "Quote",
     "readonly": false,
     "source": "details"
   },
@@ -1300,7 +1271,7 @@
   {
     "description": "An image is an artifact that depicts visual perception, such as a photograph or other two-dimensional picture",
     "format": "file",
-    "hidden": false,
+    "hidden": true,
     "key": "picture",
     "maxCount": 1,
     "name": "Picture",

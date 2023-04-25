@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "548c38f3ef3bb21d84d5659420a0286cd101ab327f85b06849dc61294373e1fe"
+const RelationChecksum = "ee7a19834a5eebfdcbb5280161fc579c6a0492f67df3c4eee6fc2445c3695c47"
 
 type RelationKey string
 
@@ -67,7 +67,6 @@ const (
 	RelationKeyStatus                    RelationKey = "status"
 	RelationKeyCandidate                 RelationKey = "candidate"
 	RelationKeyHappenings                RelationKey = "happenings"
-	RelationKeyDurationInSeconds         RelationKey = "durationInSeconds"
 	RelationKeyBillToAddress             RelationKey = "billToAddress"
 	RelationKeyLogic                     RelationKey = "logic"
 	RelationKeyAlternative               RelationKey = "alternative"
@@ -85,7 +84,6 @@ const (
 	RelationKeyLastModifiedDate          RelationKey = "lastModifiedDate"
 	RelationKeyStakeholders              RelationKey = "stakeholders"
 	RelationKeyMeasureOfSuccess          RelationKey = "measureOfSuccess"
-	RelationKeyNotes                     RelationKey = "notes"
 	RelationKeyRecommendedRelations      RelationKey = "recommendedRelations"
 	RelationKeyCreator                   RelationKey = "creator"
 	RelationKeyRecommendedLayout         RelationKey = "recommendedLayout"
@@ -116,7 +114,6 @@ const (
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
-	RelationKeyQuote                     RelationKey = "quote"
 	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -732,19 +729,6 @@ var (
 			Key:              "dueDate",
 			MaxCount:         1,
 			Name:             "Due date",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyDurationInSeconds: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Duration of audio/video file in seconds",
-			Format:           model.RelationFormat_number,
-			Id:               "_brdurationInSeconds",
-			Key:              "durationInSeconds",
-			MaxCount:         1,
-			Name:             "Duration",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1464,19 +1448,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyNotes: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brnotes",
-			Key:              "notes",
-			MaxCount:         1,
-			Name:             "Notes",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyNumber: {
 
 			DataSource:       model.Relation_details,
@@ -1584,6 +1555,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "An image is an artifact that depicts visual perception, such as a photograph or other two-dimensional picture",
 			Format:           model.RelationFormat_file,
+			Hidden:           true,
 			Id:               "_brpicture",
 			Key:              "picture",
 			MaxCount:         1,
@@ -1654,19 +1626,6 @@ var (
 			Key:              "questions",
 			MaxCount:         1,
 			Name:             "Questions",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyQuote: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Repeat words that someone else has said or written",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brquote",
-			Key:              "quote",
-			MaxCount:         1,
-			Name:             "Quote",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

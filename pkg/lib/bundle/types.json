@@ -111,9 +111,7 @@
     "relations": [
       "tag",
       "source",
-      "picture",
-      "notes",
-      "quote"
+      "picture"
     ],
     "description": "URL that is stored as Object and may be categorised and linked with objects"
   },
@@ -128,7 +126,6 @@
     "layout": "todo",
     "relations": [
       "tag",
-      "notes",
       "events",
       "tasks"
     ],
@@ -256,7 +253,6 @@
     "hidden": false,
     "layout": "file",
     "relations": [
-      "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
       "camera",
@@ -321,7 +317,6 @@
     "layout": "todo",
     "relations": [
       "tag",
-      "notes",
       "tasks",
       "events"
     ],
@@ -612,7 +607,6 @@
       "releasedYear",
       "thumbnailImage",
       "composer",
-      "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
       "addedDate",

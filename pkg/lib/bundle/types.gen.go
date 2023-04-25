@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "35e457c4f843b6e1b26f6d2bd362c2606ce554528174db47d15b82e5652dbcf3"
+const TypeChecksum = "40b8e36d6b798d74f4cf5c25a0ffc7918bd248bb545104e78f938ce4d8ce0b5b"
 
 type TypeKey string
 
@@ -100,7 +100,7 @@ var (
 			Layout:        model.ObjectType_file,
 			Name:          "Audio",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyComposer), MustGetRelationLink(RelationKeyDurationInSeconds), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyAudioArtist), MustGetRelationLink(RelationKeyAudioLyrics)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyComposer), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyAudioArtist), MustGetRelationLink(RelationKeyAudioLyrics)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_File},
 			Url:           TypePrefix + "audio",
 		},
@@ -122,7 +122,7 @@ var (
 			Layout:        model.ObjectType_bookmark,
 			Name:          "Bookmark",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyQuote)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
 		},
@@ -188,7 +188,7 @@ var (
 			Layout:        model.ObjectType_todo,
 			Name:          "Daily Plan",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyEvents)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyEvents)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "dailyPlan",
 		},
@@ -498,7 +498,7 @@ var (
 			Layout:        model.ObjectType_file,
 			Name:          "Video",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyDurationInSeconds), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_File},
 			Url:           TypePrefix + "video",
 		},
@@ -509,7 +509,7 @@ var (
 			Layout:        model.ObjectType_todo,
 			Name:          "Weekly Plan",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyEvents), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyEvents), MustGetRelationLink(RelationKeyTasks)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "weeklyPlan",
 		},
