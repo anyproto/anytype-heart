@@ -48,7 +48,7 @@ func NewCreator(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, existing bool, workspaceID string) (*types.Struct, error) {
+func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
 	snapshot := sn.Snapshot
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
@@ -68,6 +68,15 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	}
 	if !found && !existing {
 		oc.addRootBlock(snapshot, newID)
+	}
+
+	workspaceID, err := oc.core.GetWorkspaceIdForObject(pageID)
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
+	}
+
+	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
+		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
 	}
 
 	st := state.NewDocFromSnapshot(newID, &pb.ChangeSnapshot{Data: snapshot}).(*state.State)
@@ -99,13 +108,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	}
 
 	oc.updateRelationsIDs(st, pageID, oldIDtoNew)
-
-	if workspaceID == "" {
-		workspaceID, err = oc.core.GetWorkspaceIdForObject(pageID)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
-		}
-	}
 
 	var details []*pb.RpcObjectSetDetailsDetail
 	if snapshot.Details != nil {

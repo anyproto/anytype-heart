@@ -759,7 +759,8 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 			err = sb.RelationService().ValidateFormat(detail.Key, detail.Value)
 			if err != nil {
-				return fmt.Errorf("relation %s validation failed: %s", detail.Key, err.Error())
+				log.Errorf("failed to validate relation: %s", err)
+				continue
 			}
 
 			// special case for type relation that we are storing in a separate object's field

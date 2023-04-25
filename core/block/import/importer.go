@@ -188,7 +188,6 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 	details := make(map[string]*types.Struct, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	existedObject := make(map[string]struct{}, 0)
-	var workspaceID string
 	for _, snapshot := range res.Snapshots {
 		var (
 			err   error
@@ -200,9 +199,6 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 			oldIDToNew[snapshot.Id] = id
 			if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 				oldIDToNew[snapshot.Id] = snapshot.Id
-			}
-			if snapshot.SbType == sb.SmartBlockTypeWorkspace || snapshot.SbType == sb.SmartBlockTypeWorkspaceOld {
-				workspaceID = id
 			}
 			if exist {
 				existedObject[snapshot.Id] = struct{}{}
@@ -227,7 +223,7 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 		}
 		progress.AddDone(1)
 		_, ok := existedObject[snapshot.Id]
-		detail, err := i.oc.Create(ctx, snapshot, oldIDToNew, ok, workspaceID)
+		detail, err := i.oc.Create(ctx, snapshot, oldIDToNew, ok)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
