@@ -12,12 +12,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -38,7 +40,9 @@ func Test_GrouperTags(t *testing.T) {
 
 	app := testapp.New()
 	defer app.Close(context.Background())
-	ds := objectstore.New(nil)
+	tp := typeprovider.New(nil)
+	tp.Init(nil)
+	ds := objectstore.New(tp)
 	kanbanSrv := New()
 	err := app.With(&config.DefaultConfig).
 		With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).
@@ -62,6 +66,10 @@ func Test_GrouperTags(t *testing.T) {
 	id1 := getId()
 	id2 := getId()
 	id3 := getId()
+	tp.RegisterStaticType(id1, smartblock2.SmartBlockTypePage)
+	tp.RegisterStaticType(id2, smartblock2.SmartBlockTypePage)
+	tp.RegisterStaticType(id3, smartblock2.SmartBlockTypePage)
+
 	require.NoError(t, ds.CreateObject(id1, &types.Struct{
 		Fields: map[string]*types.Value{
 			"name": pbtypes.String("one"),

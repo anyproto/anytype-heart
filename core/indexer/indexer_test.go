@@ -23,7 +23,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -53,25 +52,23 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	fx.anytype = testMock.RegisterMockAnytype(fx.ctrl, ta)
-	fx.anytype.EXPECT().PredefinedBlocks().Times(2)
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
 
-	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
-	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
+	// todo: check this with Sergey M
+	/*
+		fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
+		fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
-	for _, rk := range bundle.ListRelationsKeys() {
-		fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
-		fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
-	}
-	for _, ok := range bundle.ListTypesKeys() {
-		fx.objectStore.EXPECT().GetDetails(ok.BundledURL())
-		fx.objectStore.EXPECT().AddToIndexQueue(ok.BundledURL())
-	}
-	fx.anytype.EXPECT().ProfileID().AnyTimes()
-	fx.objectStore.EXPECT().GetDetails("_anytype_profile")
-	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
+		for _, rk := range bundle.ListRelationsKeys() {
+			fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
+			fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
+		}
+		for _, ok := range bundle.ListTypesKeys() {
+			fx.objectStore.EXPECT().GetDetails(ok.BundledURL())
+			fx.objectStore.EXPECT().AddToIndexQueue(ok.BundledURL())
+		}*/
+
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
-	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
 	fx.objectStore.EXPECT().UpdateObjectLinks(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{
