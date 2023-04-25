@@ -140,8 +140,9 @@ func (m *MockCreator) Create(ctx *session.Context, sn *converter.Snapshot, relat
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, sn, relations, oldIDtoNew, existing)
 	ret0, _ := ret[0].(*types.Struct)
-	ret1, _ := ret[1].(error)
-	return ret0, "", ret1
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Create indicates an expected call of Create.

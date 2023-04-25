@@ -19,7 +19,9 @@ import (
 func Test_handlePagePropertiesSelect(t *testing.T) {
 	details := make(map[string]*types.Value, 0)
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	p := property.SelectItem{
 		Object: "",
@@ -39,7 +41,9 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 
 func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -61,7 +65,9 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 
 	c := client.NewClient()
 	c.BasePath = s.URL
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -75,7 +81,9 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 
 func Test_handlePagePropertiesStatus(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -96,7 +104,9 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 
 func Test_handlePagePropertiesNumber(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -114,7 +124,9 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 
 func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -137,7 +149,9 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 
 func Test_handlePagePropertiesCheckbox(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -154,7 +168,9 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 
 func Test_handlePagePropertiesEmail(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -177,7 +193,9 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 
 	c := client.NewClient()
 	c.BasePath = s.URL
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -199,7 +217,9 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 	}))
 	c := client.NewClient()
 	c.BasePath = s.URL
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -220,7 +240,9 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 
 func Test_handlePagePropertiesFormula(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -237,7 +259,9 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 
 func Test_handlePagePropertiesTitle(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -255,7 +279,9 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 
 func Test_handleRollupProperties(t *testing.T) {
 	c := client.NewClient()
-	ps := New(c)
+	ps := Task{
+		propertyService: property.New(c),
+	}
 
 	details := make(map[string]*types.Value, 0)
 
