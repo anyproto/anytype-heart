@@ -8,21 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
-
-// Functions to create in-tree and plugin converters
-var converterCreators []Creator
-
-// Function to register converter
-type Creator = func(s core.Service) Converter
-
-// RegisterFunc add converter creation function to converterCreators
-func RegisterFunc(c Creator) {
-	converterCreators = append(converterCreators, c)
-}
 
 type ObjectTreeCreator interface {
 	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
