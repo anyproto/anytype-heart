@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -714,8 +715,19 @@ func (s *Service) MoveBlocksToNewPage(
 	return linkID, err
 }
 
+type Movable interface {
+	basic.Movable
+	basic.Restrictionable
+}
+
 func (s *Service) MoveBlocks(ctx *session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
-	return DoState2(s, req.ContextId, req.TargetContextId, func(srcState, destState *state.State, sb, tb basic.Movable) error {
+	return DoState2(s, req.ContextId, req.TargetContextId, func(srcState, destState *state.State, sb, tb Movable) error {
+		if err := sb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+			return restriction.ErrRestricted
+		}
+		if err := tb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+			return restriction.ErrRestricted
+		}
 		return sb.Move(srcState, destState, req.DropTargetId, req.Position, req.BlockIds)
 	})
 }
