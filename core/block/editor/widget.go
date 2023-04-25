@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 
@@ -14,7 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const BlockAdditionError = "failed to add widget '%s': %w"
+const BlockAdditionError = "failed to add widget '%s': %v"
 
 type WidgetObject struct {
 	smartblock.SmartBlock
@@ -41,40 +40,42 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = w.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	template.WithEmpty(ctx.State)
 
-	defaultWidgetBlocks := []string{
-		widget.DefaultWidgetFavorite,
-		widget.DefaultWidgetSet,
-		widget.DefaultWidgetRecent,
-	}
-
-	for _, id := range defaultWidgetBlocks {
-		if !w.isLinkBlockIncluded(ctx.State, id) {
-			if _, err = w.CreateBlock(ctx.State, &pb.RpcBlockCreateWidgetRequest{
-				TargetId:     "",
-				Position:     model.Block_Bottom,
-				WidgetLayout: widget.LayoutList,
-				Block: &model.Block{
-					Id:          "",
-					ChildrenIds: nil,
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							TargetBlockId: id,
-							Style:         model.BlockContentLink_Page,
-							IconSize:      model.BlockContentLink_SizeNone,
-							CardStyle:     model.BlockContentLink_Text,
-							Description:   model.BlockContentLink_None,
+	withDefaultWidgets := func(s *state.State) {
+		for _, id := range []string{
+			widget.DefaultWidgetFavorite,
+			widget.DefaultWidgetSet,
+			widget.DefaultWidgetRecent,
+		} {
+			if !w.isLinkBlockIncluded(ctx.State, id) {
+				if _, err = w.CreateBlock(ctx.State, &pb.RpcBlockCreateWidgetRequest{
+					TargetId:     "",
+					Position:     model.Block_Bottom,
+					WidgetLayout: widget.LayoutList,
+					Block: &model.Block{
+						Id:          "",
+						ChildrenIds: nil,
+						Content: &model.BlockContentOfLink{
+							Link: &model.BlockContentLink{
+								TargetBlockId: id,
+								Style:         model.BlockContentLink_Page,
+								IconSize:      model.BlockContentLink_SizeNone,
+								CardStyle:     model.BlockContentLink_Text,
+								Description:   model.BlockContentLink_None,
+							},
 						},
 					},
-				},
-			}); err != nil {
-				return fmt.Errorf(BlockAdditionError, widget.DefaultWidgetFavorite, err)
+				}); err != nil {
+					log.Errorf(BlockAdditionError, widget.DefaultWidgetFavorite, err)
+				}
 			}
 		}
 	}
+
 	return smartblock.ObjectApplyTemplate(w, ctx.State,
+		template.WithEmpty,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_basic),
+		withDefaultWidgets,
 	)
 }
 
