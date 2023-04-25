@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -39,16 +38,6 @@ func (s *Service) MarkArchived(id string, archived bool) (err error) {
 				Value: pbtypes.Bool(archived),
 			},
 		}, true)
-	})
-}
-
-func (s *Service) SetBreadcrumbs(ctx *session.Context, req pb.RpcObjectSetBreadcrumbsRequest) (err error) {
-	return s.Do(req.BreadcrumbsId, func(b smartblock.SmartBlock) error {
-		if breadcrumbs, ok := b.(*editor.Breadcrumbs); ok {
-			return breadcrumbs.SetCrumbs(req.Ids)
-		} else {
-			return ErrUnexpectedBlockType
-		}
 	})
 }
 

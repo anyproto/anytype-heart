@@ -35,13 +35,11 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 		coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeHome,
-		coresb.SmartBlockTypeObjectType,
 	}
 	if req.Context != pb.RpcNavigation_Navigation {
 		objectTypes = []coresb.SmartBlockType{
 			coresb.SmartBlockTypePage,
 			coresb.SmartBlockTypeProfilePage,
-			coresb.SmartBlockTypeObjectType,
 		}
 	}
 
@@ -77,7 +75,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
 		var filtered []*model.ObjectInfo
 		for _, page := range Objects {
-			if page.ObjectType == model.SmartBlockType_Set || page.ObjectType == model.SmartBlockType_Archive || page.ObjectType == model.SmartBlockType_File {
+			if page.ObjectType == model.SmartBlockType_Archive || page.ObjectType == model.SmartBlockType_File {
 				continue
 			}
 

@@ -13,12 +13,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -120,16 +118,8 @@ func (s *Service) updateCollection(ctx *session.Context, contextID string, modif
 	})
 }
 
-func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
-	s.lock.Lock()
-	col, ok := s.collections[sb.Id()]
-	if !ok {
-		col = map[string]chan []string{}
-		s.collections[sb.Id()] = col
-	}
-	s.lock.Unlock()
-
-	sb.AddHook(func(info smartblock.ApplyInfo) (err error) {
+func (s *Service) collectionAddHookOnce(sb smartblock.SmartBlock) {
+	sb.AddHookOnce("collection", func(info smartblock.ApplyInfo) (err error) {
 		for _, ch := range info.Changes {
 			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == template.CollectionStoreKey {
 				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), template.CollectionStoreKey))
@@ -164,20 +154,23 @@ func (s *Subscription) Close() {
 
 func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	var initialObjectIDs []string
-	// Waking up of collection smart block will automatically add hook used in RegisterCollection
-	err := block.DoState(s.picker, collectionID, func(s *state.State, sb smartblock.SmartBlock) error {
-		initialObjectIDs = pbtypes.GetStringList(s.Store(), template.CollectionStoreKey)
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	col, ok := s.collections[collectionID]
+	if !ok {
+		col = map[string]chan []string{}
+		s.collections[collectionID] = col
+	}
+	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
+		s.collectionAddHookOnce(sb)
+
+		initialObjectIDs = pbtypes.GetStringList(st.Store(), template.CollectionStoreKey)
 		return nil
 	})
 	if err != nil {
 		return nil, nil, err
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	col, ok := s.collections[collectionID]
-	if !ok {
-		return nil, nil, fmt.Errorf("collection is not registered")
 	}
 
 	ch, ok := col[subscriptionID]
@@ -222,87 +215,20 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 }
 
 func (s *Service) ObjectToCollection(id string) (string, error) {
-	// TODO To be rewritten to layout change
-
-	var (
-		details             *types.Struct
-		dvBlock             *model.Block
-		typesAndRelsFromSet []string
-	)
-	if err := block.Do(s.picker, id, func(sb smartblock.SmartBlock) error {
-		details = pbtypes.CopyStruct(sb.Details())
-
-		st := sb.NewState()
-
-		b := st.Pick(template.DataviewBlockId)
-		if b != nil {
-			typesAndRelsFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
-			delete(details.Fields, bundle.RelationKeySetOf.String())
-			pbtypes.UpdateStringList(details, bundle.RelationKeyFeaturedRelations.String(), func(fr []string) []string {
-				return slice.Remove(fr, bundle.RelationKeySetOf.String())
-			})
-			dvBlock = b.Model()
+	if err := block.Do(s.picker, id, func(b smartblock.SmartBlock) error {
+		commonOperations, ok := b.(basic.CommonOperations)
+		if !ok {
+			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
 		}
-		return nil
+		st := b.NewState()
+		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
+		st.SetObjectType(bundle.TypeKeyCollection.URL())
+		return b.Apply(st)
 	}); err != nil {
 		return "", err
 	}
-	// cleanup details
-	delete(details.Fields, bundle.RelationKeyLayout.String())
-	delete(details.Fields, bundle.RelationKeyType.String())
 
-	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateRequest{
-		Details: details,
-	}, bundle.TypeKeyCollection)
-	if err != nil {
-		return "", err
-	}
-
-	if dvBlock != nil {
-		filters := s.generateFilters(typesAndRelsFromSet)
-		err = block.DoState(s.picker, newID, func(st *state.State, sb smartblock.SmartBlock) error {
-			dvBlock.Id = template.DataviewBlockId
-			dvBlock.GetDataview().IsCollection = true
-			b := simple.New(dvBlock)
-			st.Set(b)
-
-			recs, _, qErr := s.objectStore.Query(nil, database.Query{
-				Filters: filters,
-			})
-			if qErr != nil {
-				return fmt.Errorf("can't get records for collection: %w", err)
-			}
-			ids := make([]string, 0, len(recs))
-			for _, r := range recs {
-				ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
-			}
-			st.StoreSlice(template.CollectionStoreKey, ids)
-			return nil
-		})
-		if err != nil {
-			return newID, fmt.Errorf("can't update dataview block: %w", err)
-		}
-	}
-
-	res, err := s.objectStore.GetWithLinksInfoByID(id)
-	if err != nil {
-		return "", err
-	}
-	for _, il := range res.Links.Inbound {
-		err = block.Do(s.picker, il.Id, func(b basic.CommonOperations) error {
-			return b.ReplaceLink(id, newID)
-		})
-		if err != nil {
-			return "", fmt.Errorf("replace link in %s: %w", il.Id, err)
-		}
-	}
-	err = s.objectDeleter.DeleteObject(id)
-	if err != nil {
-		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
-	}
-
-	return newID, nil
+	return id, nil
 }
 
 func (s *Service) generateFilters(typesAndRels []string) []*model.BlockContentDataviewFilter {

@@ -24,10 +24,7 @@ var (
 	}
 
 	dataviewRestrictionsByPb = map[model.SmartBlockType]DataviewRestrictions{
-		model.SmartBlockType_MarketplaceRelation: dvRestrictMarketplace,
-		model.SmartBlockType_MarketplaceTemplate: dvRestrictMarketplace,
-		model.SmartBlockType_MarketplaceType:     dvRestrictMarketplace,
-		model.SmartBlockType_Set:                 dvRestrictNo,
+		model.SmartBlockType_Page: dvRestrictNo,
 	}
 )
 

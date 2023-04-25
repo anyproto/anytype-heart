@@ -77,8 +77,6 @@ service ClientCommands {
     rpc ObjectToCollection (anytype.Rpc.Object.ToCollection.Request) returns (anytype.Rpc.Object.ToCollection.Response);
     rpc ObjectAddWithObjectId (anytype.Rpc.Object.AddWithObjectId.Request) returns (anytype.Rpc.Object.AddWithObjectId.Response);
     rpc ObjectShareByLink (anytype.Rpc.Object.ShareByLink.Request) returns (anytype.Rpc.Object.ShareByLink.Response);
-    rpc ObjectOpenBreadcrumbs (anytype.Rpc.Object.OpenBreadcrumbs.Request) returns (anytype.Rpc.Object.OpenBreadcrumbs.Response);
-    rpc ObjectSetBreadcrumbs (anytype.Rpc.Object.SetBreadcrumbs.Request) returns (anytype.Rpc.Object.SetBreadcrumbs.Response);
     rpc ObjectUndo (anytype.Rpc.Object.Undo.Request) returns (anytype.Rpc.Object.Undo.Response);
     rpc ObjectRedo (anytype.Rpc.Object.Redo.Request) returns (anytype.Rpc.Object.Redo.Response);
     rpc ObjectListExport (anytype.Rpc.Object.ListExport.Request) returns (anytype.Rpc.Object.ListExport.Response);

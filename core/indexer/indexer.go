@@ -385,7 +385,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	if flags.threadObjects {
 		ids, err := i.getIdsForTypes(
 			smartblock.SmartBlockTypePage,
-			smartblock.SmartBlockTypeObjectType,
 			smartblock.SmartBlockTypeProfilePage,
 			smartblock.SmartBlockTypeTemplate,
 			smartblock.SmartBlockTypeArchive,

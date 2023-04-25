@@ -18,9 +18,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
+
+var log = logging.Logger("anytype-mw-editor")
 
 type ObjectFactory struct {
 	anytype              core.Service
@@ -33,7 +36,6 @@ type ObjectFactory struct {
 	sourceService        source.Service
 	sendEvent            func(e *pb.Event)
 	tempDirProvider      core.TempDirProvider
-	collectionService    CollectionService
 	sbtProvider          typeprovider.SmartBlockTypeProvider
 	layoutConverter      converter.LayoutConverter
 
@@ -62,7 +64,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.relationService = app.MustComponent[relation2.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
-	f.collectionService = app.MustComponent[CollectionService](a)
 
 	f.app = a
 	return nil
@@ -90,7 +91,10 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 		}
 	}()
 
-	sb = f.New(sc.Type())
+	sb, err = f.New(sc.Type())
+	if err != nil {
+		return nil, fmt.Errorf("new smartblock: %w", err)
+	}
 
 	if ot != nil {
 		setter, ok := sb.Inner().(smartblock.LockerSetter)
@@ -128,12 +132,10 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	return
 }
 
-func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
+func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
 	switch sbType {
-	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType, model.SmartBlockType_Set:
-		if sbType == model.SmartBlockType_Set {
-			log.Errorf("FIXME: set is deprecated")
-		}
+	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType:
+
 		return NewPage(
 			f.objectStore,
 			f.anytype,
@@ -142,15 +144,14 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkService,
 			f.relationService,
 			f.tempDirProvider,
-			f.collectionService,
 			f.sbtProvider,
 			f.layoutConverter,
-		)
+		), nil
 	case model.SmartBlockType_Archive:
 		return NewArchive(
 			f.detailsModifier,
 			f.objectStore,
-		)
+		), nil
 	case model.SmartBlockType_Home:
 		return NewDashboard(
 			f.detailsModifier,
@@ -158,7 +159,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.relationService,
 			f.anytype,
 			f.layoutConverter,
-		)
+		), nil
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		return NewProfile(
 			f.objectStore,
@@ -170,11 +171,9 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.sendEvent,
 			f.tempDirProvider,
 			f.layoutConverter,
-		)
-	case model.SmartBlockType_SubObject:
-		panic("subobject not supported via factory")
+		), nil
 	case model.SmartBlockType_File:
-		return NewFiles()
+		return NewFiles(), nil
 	case model.SmartBlockType_Template:
 		return NewTemplate(
 			f.objectStore,
@@ -184,10 +183,9 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkService,
 			f.relationService,
 			f.tempDirProvider,
-			f.collectionService,
 			f.sbtProvider,
 			f.layoutConverter,
-		)
+		), nil
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
 			f.objectStore,
@@ -197,12 +195,9 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.bookmarkService,
 			f.relationService,
 			f.tempDirProvider,
-			f.collectionService,
 			f.sbtProvider,
 			f.layoutConverter,
-		)
-	case model.SmartBlockType_Breadcrumbs:
-		return NewBreadcrumbs()
+		), nil
 	case model.SmartBlockType_Workspace:
 		return NewWorkspace(
 			f.objectStore,
@@ -214,10 +209,12 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
-		)
+		), nil
 	case model.SmartBlockType_Widget:
-		return NewWidgetObject(f.objectStore, f.relationService, f.layoutConverter)
+		return NewWidgetObject(f.objectStore, f.relationService, f.layoutConverter), nil
+	case model.SmartBlockType_SubObject:
+		return nil, fmt.Errorf("subobject not supported via factory")
 	default:
-		panic(fmt.Errorf("unexpected smartblock type: %v", sbType))
+		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}
 }

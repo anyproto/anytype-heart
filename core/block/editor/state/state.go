@@ -61,6 +61,7 @@ type Doc interface {
 
 	ObjectTypes() []string
 	ObjectType() string
+	Layout() (model.ObjectTypeLayout, bool)
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)

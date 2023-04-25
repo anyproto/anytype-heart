@@ -82,7 +82,7 @@ const CallerKey key = 0
 var log = logging.Logger("anytype-mw-smartblock")
 
 func New() SmartBlock {
-	s := &smartBlock{hooks: map[Hook][]HookCallback{}, Locker: &sync.Mutex{}}
+	s := &smartBlock{hooks: map[Hook][]HookCallback{}, hooksOnce: map[string]struct{}{}, Locker: &sync.Mutex{}}
 	return s
 }
 
@@ -115,6 +115,7 @@ type SmartBlock interface {
 	DisableLayouts()
 	EnabledRelationAsDependentObjects()
 	AddHook(f HookCallback, events ...Hook)
+	AddHookOnce(id string, f HookCallback, events ...Hook)
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() DocInfo
 	Restrictions() restriction.Restrictions
@@ -177,6 +178,7 @@ type smartBlock struct {
 	indexer             Indexer
 	metaData            *core.SmartBlockMeta
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
+	restrictionsUpdater func()
 	restrictions        restriction.Restrictions
 	restrictionsChanged bool
 	objectStore         objectstore.ObjectStore
@@ -186,7 +188,8 @@ type smartBlock struct {
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
-	hooks map[Hook][]HookCallback
+	hooks     map[Hook][]HookCallback
+	hooksOnce map[string]struct{}
 
 	recordsSub      database.Subscription
 	closeRecordsSub func()
@@ -269,6 +272,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
+	sb.restrictionsUpdater = func() {
+		restrictions := ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+		sb.SetRestrictions(restrictions)
+	}
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
 	sb.indexer = app.MustComponent[Indexer](ctx.App)
@@ -307,6 +314,15 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	return
+}
+
+// updateRestrictions refetch restrictions from restriction service and update them in the smartblock
+func (sb *smartBlock) updateRestrictions() error {
+	if sb.restrictionsUpdater == nil {
+		return fmt.Errorf("restrictions updater is not set")
+	}
+	sb.restrictionsUpdater()
+	return nil
 }
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
@@ -490,16 +506,11 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
-	if sb.Type() == model.SmartBlockType_Breadcrumbs {
-		// little optimisation for breadcrumbs: we don't need any dependencies except simple blocks
-		return sb.Doc.(*state.State).DepSmartIds(true, false, false, false, false)
-	}
-
 	return sb.Doc.(*state.State).DepSmartIds(true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) navigationalLinks() []string {
-	includeDetails := sb.Type() != model.SmartBlockType_Breadcrumbs
+	includeDetails := true
 	includeRelations := sb.includeRelationObjectsAsDependents
 
 	s := sb.Doc.(*state.State)
@@ -725,6 +736,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		ObjectId:       sb.Id(),
 	})
 
+	// we may have layout changed, so we need to update restrictions
+	err = sb.updateRestrictions()
+	if err != nil {
+		return fmt.Errorf("failed to update sb restrictions: %w", err)
+	}
 	return
 }
 
@@ -775,13 +791,13 @@ func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
 }
 
 func (sb *smartBlock) NewState() *state.State {
-	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
+	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == model.SmartBlockType_Archive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
 
 func (sb *smartBlock) NewStateCtx(ctx *session.Context) *state.State {
-	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
+	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
@@ -1107,6 +1123,15 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 func (sb *smartBlock) AddHook(f HookCallback, events ...Hook) {
 	for _, e := range events {
 		sb.hooks[e] = append(sb.hooks[e], f)
+	}
+}
+
+// AddHookOnce adds hook only if it wasn't added before via this method with the same id
+// it doesn't compare the list of events or the callback function
+func (sb *smartBlock) AddHookOnce(id string, f HookCallback, events ...Hook) {
+	if _, ok := sb.hooksOnce[id]; !ok {
+		sb.AddHook(f, events...)
+		sb.hooksOnce[id] = struct{}{}
 	}
 }
 

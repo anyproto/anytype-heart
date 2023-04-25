@@ -19,7 +19,6 @@ const (
 	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
 	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)    // deprecated, used for favorites until we move it to collection
 	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive) // deprecated, used for favorites until we move it to collection
-	SmartBlockTypeObjectType        = SmartBlockType(model.SmartBlockType_STObjectType)
 	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File)
 	SmartBlockTypeTemplate          = SmartBlockType(model.SmartBlockType_Template)
 	SmartBlockTypeBundledTemplate   = SmartBlockType(model.SmartBlockType_BundledTemplate)

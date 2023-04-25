@@ -98,7 +98,6 @@ func (b *builtinObjects) Run(context.Context) (err error) {
 	}
 
 	// todo: return fixed builtin objects with correct sbtype
-	return
 	var ctx context.Context
 	ctx, b.cancel = context.WithCancel(context.Background())
 	start := time.Now()
@@ -129,8 +128,15 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		if err != nil {
 			sbt, err = SmartBlockTypeFromThreadID(id)
 			if err != nil {
+
 				return err
 			}
+		}
+		if err := sbt.Valid(); err != nil {
+			sbt = smartblock.SmartBlockTypePage
+			log.Errorf("failed to get smartblock type for %s: %s", id, err.Error())
+			// todo: this this TEMP! we shouldn't get incorrect ids here, need to fix zip file
+			//return fmt.Errorf("invalid smartblock type: %v %v", sbt, err)
 		}
 		if sbt == smartblock.SmartBlockTypeSubObject {
 			// todo: probably subobjects are broken here

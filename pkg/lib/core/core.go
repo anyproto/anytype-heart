@@ -167,6 +167,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeArchive,
 		coresb.SmartBlockTypeWidget,
+		coresb.SmartBlockTypeHome,
 	}
 	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
 	for i, sbt := range sbTypes {

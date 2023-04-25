@@ -274,29 +274,6 @@ func (s *Service) ShowBlock(
 	return
 }
 
-func (s *Service) OpenBreadcrumbsBlock(ctx *session.Context) (obj *model.ObjectView, blockId string, err error) {
-	bs := editor.NewBreadcrumbs()
-	if err = bs.Init(&smartblock.InitContext{
-		App:    s.app,
-		Source: source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
-	}); err != nil {
-		return
-	}
-	_, err = s.PutObject(context.Background(), bs.Id(), bs)
-	if err != nil {
-		return
-	}
-
-	bs.Lock()
-	defer bs.Unlock()
-	bs.SetEventFunc(s.sendEvent)
-	obj, err = bs.Show(ctx)
-	if err != nil {
-		return
-	}
-	return obj, bs.Id(), nil
-}
-
 func (s *Service) CloseBlock(id string) error {
 	var isDraft bool
 	err := s.Do(id, func(b smartblock.SmartBlock) error {

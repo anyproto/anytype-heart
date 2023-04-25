@@ -18,6 +18,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
+const DefaultSetSource = bundle.TypeKeyPage
+
 type LayoutConverter struct {
 	objectStore objectstore.ObjectStore
 	sbtProvider typeprovider.SmartBlockTypeProvider
@@ -107,8 +109,14 @@ func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
-	if err := c.fromAnyToSet(st); err != nil {
-		return err
+
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithDescription,
+	)
+	err2 := c.fromAnyToSet(st)
+	if err2 != nil {
+		return err2
 	}
 	return nil
 }
@@ -116,7 +124,7 @@ func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
 func (c *LayoutConverter) fromAnyToSet(st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
 	if len(source) == 0 {
-		return fmt.Errorf("source detail is not set")
+		source = []string{DefaultSetSource.URL()}
 	}
 
 	addFeaturedRelationSetOf(st)
@@ -182,6 +190,11 @@ func (c *LayoutConverter) fromNoteToCollection(st *state.State) error {
 		return err
 	}
 
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithDescription,
+	)
+
 	return c.fromAnyToCollection(st)
 }
 
@@ -193,6 +206,7 @@ func (c *LayoutConverter) fromAnyToCollection(st *state.State) error {
 
 func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
 	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
+
 	if !ok || name.GetStringValue() == "" {
 		textBlock, err := getFirstTextBlock(st)
 		if err != nil {

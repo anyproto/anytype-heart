@@ -379,7 +379,7 @@
     "id": "objectType",
     "name": "Type",
     "types": [
-      "STObjectType",
+      "SubObject",
       "BundledObjectType"
     ],
     "emoji": "🥚",
@@ -455,7 +455,7 @@
     "id": "set",
     "name": "Set",
     "types": [
-      "Set"
+      "Page"
     ],
     "emoji": "🔎",
     "hidden": false,
@@ -470,7 +470,7 @@
     "id": "collection",
     "name": "Collection",
     "types": [
-      "Collection"
+      "Page"
     ],
     "emoji": "🗂️",
     "hidden": false,

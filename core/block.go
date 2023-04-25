@@ -115,52 +115,6 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 	return response(pb.RpcObjectShowResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectOpenBreadcrumbs(cctx context.Context, req *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse {
-	ctx := mw.newContext(cctx, session.WithTraceId(req.TraceId))
-	response := func(code pb.RpcObjectOpenBreadcrumbsResponseErrorCode, obj *model.ObjectView, id string, err error) *pb.RpcObjectOpenBreadcrumbsResponse {
-		m := &pb.RpcObjectOpenBreadcrumbsResponse{Error: &pb.RpcObjectOpenBreadcrumbsResponseError{Code: code}, ObjectId: id}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.ObjectView = obj
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	var id string
-	var obj *model.ObjectView
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, id, err = bs.OpenBreadcrumbsBlock(ctx)
-		return
-	})
-	if err != nil {
-		return response(pb.RpcObjectOpenBreadcrumbsResponseError_UNKNOWN_ERROR, nil, "", err)
-	}
-
-	return response(pb.RpcObjectOpenBreadcrumbsResponseError_NULL, obj, id, nil)
-}
-
-func (mw *Middleware) ObjectSetBreadcrumbs(cctx context.Context, req *pb.RpcObjectSetBreadcrumbsRequest) *pb.RpcObjectSetBreadcrumbsResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetBreadcrumbsResponseErrorCode, err error) *pb.RpcObjectSetBreadcrumbsResponse {
-		m := &pb.RpcObjectSetBreadcrumbsResponse{Error: &pb.RpcObjectSetBreadcrumbsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetBreadcrumbs(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectSetBreadcrumbsResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectSetBreadcrumbsResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {
 	response := func(code pb.RpcObjectCloseResponseErrorCode, err error) *pb.RpcObjectCloseResponse {
 		m := &pb.RpcObjectCloseResponse{Error: &pb.RpcObjectCloseResponseError{Code: code}}

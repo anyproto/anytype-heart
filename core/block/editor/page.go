@@ -30,7 +30,6 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
-	collectionService CollectionService
 
 	dataview.Dataview
 	table.TableEditor
@@ -46,7 +45,6 @@ func NewPage(
 	bookmarkService bookmark.BookmarkService,
 	relationService relation2.Service,
 	tempDirProvider core.TempDirProvider,
-	collectionService CollectionService,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 ) *Page {
@@ -86,9 +84,8 @@ func NewPage(
 			relationService,
 			sbtProvider,
 		),
-		TableEditor:       table.NewEditor(sb),
-		collectionService: collectionService,
-		objectStore:       objectStore,
+		TableEditor: table.NewEditor(sb),
+		objectStore: objectStore,
 	}
 }
 
@@ -162,10 +159,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 
 func (p *Page) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
-}
-
-type CollectionService interface {
-	RegisterCollection(sb smartblock.SmartBlock)
 }
 
 func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {

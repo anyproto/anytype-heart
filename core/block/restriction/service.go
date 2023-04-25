@@ -78,8 +78,9 @@ func (s *service) RestrictionsById(id string) (r Restrictions, err error) {
 }
 
 type simpleObject struct {
-	id string
-	tp model.SmartBlockType
+	id     string
+	tp     model.SmartBlockType
+	layout model.ObjectTypeLayout
 }
 
 func newSimpleObject(id string, sbType smartblock.SmartBlockType) (Object, error) {
@@ -97,9 +98,14 @@ func (s *simpleObject) Type() model.SmartBlockType {
 	return s.tp
 }
 
+func (s *simpleObject) Layout() (model.ObjectTypeLayout, bool) {
+	return 0, false
+}
+
 type Object interface {
 	Id() string
 	Type() model.SmartBlockType
+	Layout() (model.ObjectTypeLayout, bool)
 }
 
 type Restrictions struct {

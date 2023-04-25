@@ -373,7 +373,8 @@ func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []
 			return nil, err
 		}
 
-		if sbt == smartblock2.SmartBlockTypeObjectType || sbt == smartblock2.SmartBlockTypeBundledObjectType {
+		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
+		if sbt == smartblock2.SmartBlockTypeBundledObjectType {
 			if hasRelations {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
@@ -407,6 +408,7 @@ func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []
 	}
 
 	if hasRelations {
+		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
 		ids, _, err := store.QueryObjectIds(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -417,7 +419,6 @@ func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []
 			},
 		}, []smartblock2.SmartBlockType{
 			smartblock2.SmartBlockTypeBundledObjectType,
-			smartblock2.SmartBlockTypeObjectType,
 		})
 		if err != nil {
 			return nil, err

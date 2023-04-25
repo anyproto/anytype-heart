@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -202,7 +203,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
 	if len(source) == 0 {
-		source = []string{bundle.TypeKeyPage.URL()}
+		source = []string{converter.DefaultSetSource.URL()}
 	}
 	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.sbtProvider, c.objectStore, source); err != nil {
 		return

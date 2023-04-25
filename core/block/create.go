@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -151,51 +150,21 @@ func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBloc
 }
 
 func (s *Service) ObjectToSet(id string, source []string) (string, error) {
-
-	// TODO To convert an object to set we need to set SetOf detail
-
-	var details *types.Struct
 	if err := s.Do(id, func(b smartblock.SmartBlock) error {
-		details = pbtypes.CopyStruct(b.Details())
-		return nil
+		commonOperations, ok := b.(basic.CommonOperations)
+		if !ok {
+			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
+		}
+		st := b.NewState()
+		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		commonOperations.SetLayoutInState(st, model.ObjectType_set)
+		st.SetObjectType(bundle.TypeKeySet.URL())
+		return b.Apply(st)
 	}); err != nil {
 		return "", err
 	}
-	// pass layout in case it was provided by client in the RPC
-	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
-	pbtypes.UpdateStringList(details, bundle.RelationKeyFeaturedRelations.String(), func(fr []string) []string {
-		if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
-			fr = append(fr, bundle.RelationKeySetOf.String())
-		}
-		return fr
-	})
-	// cleanup details
-	delete(details.Fields, bundle.RelationKeyLayout.String())
-	delete(details.Fields, bundle.RelationKeyType.String())
 
-	newID, _, err := s.objectCreator.CreateObject(&pb.RpcObjectCreateRequest{
-		Details: details,
-	}, bundle.TypeKeySet)
-	if err != nil {
-		return "", err
-	}
-
-	res, err := s.objectStore.GetWithLinksInfoByID(id)
-	if err != nil {
-		return "", err
-	}
-	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, newID); err != nil {
-			return "", err
-		}
-	}
-	err = s.DeleteObject(id)
-	if err != nil {
-		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
-	}
-
-	return newID, nil
+	return id, nil
 }
 
 func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
