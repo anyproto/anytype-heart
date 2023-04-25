@@ -382,8 +382,8 @@ func (s *Service) AddSubObjectsToWorkspace(
 }
 
 func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string, orphansGC bool) (err error) {
-	for _, objectId := range objectIds {
-		if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); err != nil {
+	for _, objectID := range objectIds {
+		if err = s.restriction.CheckRestrictions(objectID, model.Restrictions_Delete); err != nil {
 			return err
 		}
 	}
