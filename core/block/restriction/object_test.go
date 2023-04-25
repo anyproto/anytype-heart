@@ -10,7 +10,7 @@ import (
 )
 
 func TestService_ObjectRestrictionsById(t *testing.T) {
-	rest := New(nil)
+	rest := New(nil, nil)
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id: "",
 		tp: model.SmartBlockType_AnytypeProfile,
@@ -50,7 +50,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	), ErrRestricted)
 
 	assert.NoError(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeyIconOption.String(),
+		id:     bundle.RelationKeyImdbRating.String(),
 		tp:     model.SmartBlockType_SubObject,
 		layout: model.ObjectType_relation,
 	}).Object.Check(

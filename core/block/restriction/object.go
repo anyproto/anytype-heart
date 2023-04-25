@@ -193,7 +193,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 func (s *service) getObjectRestrictionsForObjectType(id string) (r ObjectRestrictions) {
 	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
-		return
+		return objRestrictAll
 	}
 	if !lo.Contains(bundle.SystemTypes, bundle.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))) {
 		return
