@@ -19,8 +19,6 @@ type spaceStorage struct {
 	header          *spacesyncproto.RawSpaceHeaderWithId
 }
 
-var spaceValidationFunc = spacestorage.ValidateSpaceStorageCreatePayload
-
 func newSpaceStorage(objDb *badger.DB, spaceId string) (store spacestorage.SpaceStorage, err error) {
 	keys := newSpaceKeys(spaceId)
 	err = objDb.View(func(txn *badger.Txn) error {
@@ -61,10 +59,6 @@ func createSpaceStorage(db *badger.DB, payload spacestorage.SpaceStorageCreatePa
 	keys := newSpaceKeys(payload.SpaceHeaderWithId.Id)
 	if hasDB(db, keys.HeaderKey()) {
 		err = spacestorage.ErrSpaceStorageExists
-		return
-	}
-	err = spaceValidationFunc(payload)
-	if err != nil {
 		return
 	}
 

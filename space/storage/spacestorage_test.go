@@ -12,10 +12,6 @@ import (
 )
 
 func spaceTestPayload() spacestorage.SpaceStorageCreatePayload {
-	// TODO: delete this and also validation from space upon updating to anysync v0.0.36
-	spaceValidationFunc = func(payload spacestorage.SpaceStorageCreatePayload) (err error) {
-		return nil
-	}
 	header := &spacesyncproto.RawSpaceHeaderWithId{
 		RawHeader: []byte("header"),
 		Id:        "headerId",
