@@ -984,6 +984,11 @@ message Event {
             string spaceId = 1;
             string fileId = 2;
         }
+
+        message SpaceUsage {
+            uint64 bytesUsage = 1;
+            uint64 localBytesUsage = 2;
+        }
     }
 }
 

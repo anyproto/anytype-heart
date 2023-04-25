@@ -1,11 +1,13 @@
 package filesync
 
 import (
+	"os"
+	"testing"
+	"time"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 func TestFileSyncStore_QueueUpload(t *testing.T) {
@@ -65,6 +67,28 @@ func TestFileSyncStore_GetUpload(t *testing.T) {
 	require.NoError(t, fx.DoneUpload(spaceId, fileId))
 	_, _, err = fx.GetUpload()
 	assert.EqualError(t, err, errQueueIsEmpty.Error())
+}
+
+func TestFileSyncStore_PushBackToQueue(t *testing.T) {
+	fx := newStoreFixture(t)
+	defer fx.Finish()
+
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1"))
+	time.Sleep(2 * time.Millisecond)
+	require.NoError(t, fx.QueueUpload("spaceId2", "fileId2"))
+
+	spaceId, fileId, err := fx.GetUpload()
+	require.NoError(t, err)
+	assert.Equal(t, "spaceId1", spaceId)
+	assert.Equal(t, "fileId1", fileId)
+
+	time.Sleep(2 * time.Millisecond)
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1"))
+
+	spaceId, fileId, err = fx.GetUpload()
+	require.NoError(t, err)
+	assert.Equal(t, "spaceId2", spaceId)
+	assert.Equal(t, "fileId2", fileId)
 }
 
 func TestFileSyncStore_IsDone(t *testing.T) {

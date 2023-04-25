@@ -26,6 +26,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore/mock_rpcstore"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 )
@@ -74,7 +75,9 @@ func TestFileSync_RemoveFile(t *testing.T) {
 
 func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
-		FileSync:    New(),
+		FileSync: New(func(event *pb.Event) {
+			fmt.Println(event)
+		}),
 		fileService: fileservice.New(),
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),

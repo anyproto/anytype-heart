@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
@@ -18,8 +19,9 @@ var (
 
 	sepByte = []byte("/")[0]
 
-	uploadKeyPrefix = []byte(keyPrefix + "queue/upload/")
-	removeKeyPrefix = []byte(keyPrefix + "queue/remove/")
+	uploadKeyPrefix    = []byte(keyPrefix + "queue/upload/")
+	removeKeyPrefix    = []byte(keyPrefix + "queue/remove/")
+	discardedKeyPrefix = []byte(keyPrefix + "queue/discarded/")
 )
 
 type fileSyncStore struct {
@@ -32,6 +34,15 @@ func (s *fileSyncStore) QueueUpload(spaceId, fileId string) (err error) {
 	})
 }
 
+func (s *fileSyncStore) QueueDiscarded(spaceId, fileId string) (err error) {
+	return s.db.Update(func(txn *badger.Txn) error {
+		if err = txn.Delete(uploadKey(spaceId, fileId)); err != nil {
+			return err
+		}
+		return txn.Set(discardedKey(spaceId, fileId), binTime())
+	})
+}
+
 func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
 		return txn.Set(removeKey(spaceId, fileId), binTime())
@@ -41,6 +52,18 @@ func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
 func (s *fileSyncStore) DoneUpload(spaceId, fileId string) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
 		if err = txn.Delete(uploadKey(spaceId, fileId)); err != nil {
+			return err
+		}
+		if err = txn.Delete(discardedKey(spaceId, fileId)); err != nil {
+			return err
+		}
+		return txn.Set(doneKey(spaceId, fileId), binTime())
+	})
+}
+
+func (s *fileSyncStore) DoneDiscarded(spaceId, fileId string) (err error) {
+	return s.db.Update(func(txn *badger.Txn) error {
+		if err = txn.Delete(discardedKey(spaceId, fileId)); err != nil {
 			return err
 		}
 		return txn.Set(doneKey(spaceId, fileId), binTime())
@@ -58,6 +81,10 @@ func (s *fileSyncStore) DoneRemove(spaceId, fileId string) (err error) {
 
 func (s *fileSyncStore) GetUpload() (spaceId, fileId string, err error) {
 	return s.getOne(uploadKeyPrefix)
+}
+
+func (s *fileSyncStore) GetDiscardedUpload() (spaceId, fileId string, err error) {
+	return s.getOne(discardedKeyPrefix)
 }
 
 func (s *fileSyncStore) HasUpload(spaceId, fileId string) (ok bool, err error) {
@@ -82,15 +109,27 @@ func (s *fileSyncStore) GetRemove() (spaceId, fileId string, err error) {
 func (s *fileSyncStore) getOne(prefix []byte) (spaceId, fileId string, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
-			PrefetchSize:   1,
-			PrefetchValues: false,
+			PrefetchSize:   100,
+			PrefetchValues: true,
 			Prefix:         prefix,
 		})
 		defer it.Close()
 
-		it.Rewind()
-		if it.Valid() {
-			fileId, spaceId = extractFileAndSpaceID(it)
+		var earliest uint64
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			timestamp, err := getTimestamp(item)
+			{
+				fid, sid := extractFileAndSpaceID(item)
+				fmt.Printf("fileId: %s, spaceId: %s, timestamp: %d\n", fid, sid, timestamp)
+			}
+			if err != nil {
+				return fmt.Errorf("get timestamp: %w", err)
+			}
+			if earliest == 0 || timestamp < earliest {
+				earliest = timestamp
+				fileId, spaceId = extractFileAndSpaceID(item)
+			}
 		}
 		return nil
 	})
@@ -103,8 +142,8 @@ func (s *fileSyncStore) getOne(prefix []byte) (spaceId, fileId string, err error
 	return
 }
 
-func extractFileAndSpaceID(it *badger.Iterator) (string, string) {
-	k := it.Item().Key()
+func extractFileAndSpaceID(item *badger.Item) (string, string) {
+	k := item.Key()
 	idx := bytes.LastIndexByte(k, sepByte)
 	fileId := string(k[idx+1:])
 	k = k[:idx]
@@ -149,6 +188,10 @@ func uploadKey(spaceId, fileId string) (key []byte) {
 	return []byte(keyPrefix + "queue/upload/" + spaceId + "/" + fileId)
 }
 
+func discardedKey(spaceId, fileId string) (key []byte) {
+	return []byte(keyPrefix + "queue/discarded/" + spaceId + "/" + fileId)
+}
+
 func removeKey(spaceId, fileId string) (key []byte) {
 	return []byte(keyPrefix + "queue/remove/" + spaceId + "/" + fileId)
 }
@@ -158,5 +201,14 @@ func doneKey(spaceId, fileId string) (key []byte) {
 }
 
 func binTime() []byte {
-	return binary.LittleEndian.AppendUint64(nil, uint64(time.Now().Unix()))
+	return binary.LittleEndian.AppendUint64(nil, uint64(time.Now().UnixMilli()))
+}
+
+func getTimestamp(item *badger.Item) (uint64, error) {
+	var ts uint64
+	err := item.Value(func(raw []byte) error {
+		ts = binary.LittleEndian.Uint64(raw)
+		return nil
+	})
+	return ts, err
 }

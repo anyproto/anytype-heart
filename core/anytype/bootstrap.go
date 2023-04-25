@@ -119,7 +119,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	relationService := relation.New()
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
-	fileSyncService := filesync.New()
+	fileSyncService := filesync.New(eventService.Send)
 	fileStore := filestore.New()
 
 	syncStatusIndexer := filesyncstatus.NewSyncStatusIndexer(blockService)

@@ -16,7 +16,6 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -32,8 +31,10 @@ var loopTimeout = time.Minute
 
 var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
-func New() FileSync {
-	return new(fileSync)
+func New(sendEvent func(event *pb.Event)) FileSync {
+	return &fileSync{
+		sendEvent: sendEvent,
+	}
 }
 
 //go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync FileSync
@@ -74,7 +75,6 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
-	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	return
 }
 
@@ -164,12 +164,32 @@ func (f *fileSync) addOperation() {
 	}
 }
 
+func (f *fileSync) getUpload() (spaceId string, fileId string, wasDiscarded bool, err error) {
+	spaceId, fileId, err = f.queue.GetUpload()
+	if err == errQueueIsEmpty {
+		spaceId, fileId, err = f.queue.GetDiscardedUpload()
+		return spaceId, fileId, true, err
+	}
+	return spaceId, fileId, false, err
+}
+
 func (f *fileSync) tryToUpload() (string, error) {
-	spaceId, fileId, err := f.queue.GetUpload()
+	spaceId, fileId, wasDiscarded, err := f.getUpload()
 	if err != nil {
 		return fileId, err
 	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
+		if err == errReachedLimit {
+			if !wasDiscarded {
+				f.sendLimitReachedEvent(spaceId, fileId)
+			}
+			log.Info("reached limit, push to discarded queue", zap.String("fileId", fileId))
+			if qerr := f.queue.QueueDiscarded(spaceId, fileId); qerr != nil {
+				log.Warn("can't push upload task to discarded queue", zap.String("fileId", fileId), zap.Error(qerr))
+			}
+			return fileId, err
+		}
+
 		ok, storeErr := f.hasFileInStore(fileId)
 		if storeErr != nil {
 			return fileId, storeErr
@@ -186,6 +206,21 @@ func (f *fileSync) tryToUpload() (string, error) {
 	}
 	log.Info("done upload", zap.String("fileID", fileId))
 	return fileId, f.queue.DoneUpload(spaceId, fileId)
+}
+
+func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {
+	f.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfFileLimitReached{
+					FileLimitReached: &pb.EventFileLimitReached{
+						SpaceId: spaceID,
+						FileId:  fileID,
+					},
+				},
+			},
+		},
+	})
 }
 
 func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
@@ -254,18 +289,6 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 
 	bytesLeft := stat.BytesLimit - stat.BytesUsage
 	if bytesToUpload > bytesLeft {
-		f.sendEvent(&pb.Event{
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfFileLimitReached{
-						FileLimitReached: &pb.EventFileLimitReached{
-							SpaceId: spaceId,
-							FileId:  fileId,
-						},
-					},
-				},
-			},
-		})
 		return errReachedLimit
 	}
 
