@@ -62,7 +62,6 @@ type configFetcher struct {
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
 	spaceService space.Service
-	accountId    string
 }
 
 func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
@@ -96,7 +95,6 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.periodicSync = periodicsync.NewPeriodicSync(300, time.Second*10, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	c.spaceService = a.MustComponent(space.CName).(space.Service)
-	c.accountId = c.spaceService.AccountId()
 	c.fetched = make(chan struct{})
 	return nil
 }
@@ -111,9 +109,9 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 			close(c.fetched)
 		})
 	}()
-	res, err := c.client.StatusCheck(ctx, c.accountId)
+	res, err := c.client.StatusCheck(ctx, c.spaceService.AccountId())
 	if err == coordinatorproto.ErrSpaceNotExists {
-		sp, err := c.spaceService.GetSpace(ctx, c.accountId)
+		sp, err := c.spaceService.GetSpace(ctx, c.spaceService.AccountId())
 		if err != nil {
 			return err
 		}

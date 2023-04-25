@@ -3,7 +3,6 @@ package space
 import (
 	"errors"
 	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
-	"github.com/anytypeio/any-sync/net/rpc/rpcerr"
 	"time"
 )
 
@@ -36,7 +35,6 @@ func newSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) SpaceStatusPay
 }
 
 func coordError(err error) error {
-	err = rpcerr.Unwrap(err)
 	switch err {
 	case coordinatorproto.ErrSpaceDeletionPending:
 		return ErrSpaceDeletionPending
