@@ -656,6 +656,10 @@
     - [Rpc.Object.SetBreadcrumbs.Request](#anytype-Rpc-Object-SetBreadcrumbs-Request)
     - [Rpc.Object.SetBreadcrumbs.Response](#anytype-Rpc-Object-SetBreadcrumbs-Response)
     - [Rpc.Object.SetBreadcrumbs.Response.Error](#anytype-Rpc-Object-SetBreadcrumbs-Response-Error)
+    - [Rpc.Object.SetDashboard](#anytype-Rpc-Object-SetDashboard)
+    - [Rpc.Object.SetDashboard.Request](#anytype-Rpc-Object-SetDashboard-Request)
+    - [Rpc.Object.SetDashboard.Response](#anytype-Rpc-Object-SetDashboard-Response)
+    - [Rpc.Object.SetDashboard.Response.Error](#anytype-Rpc-Object-SetDashboard-Response-Error)
     - [Rpc.Object.SetDetails](#anytype-Rpc-Object-SetDetails)
     - [Rpc.Object.SetDetails.Detail](#anytype-Rpc-Object-SetDetails-Detail)
     - [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request)
@@ -1001,6 +1005,7 @@
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.SetBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-SetBreadcrumbs-Response-Error-Code)
+    - [Rpc.Object.SetDashboard.Response.Error.Code](#anytype-Rpc-Object-SetDashboard-Response-Error-Code)
     - [Rpc.Object.SetDetails.Response.Error.Code](#anytype-Rpc-Object-SetDetails-Response-Error-Code)
     - [Rpc.Object.SetInternalFlags.Response.Error.Code](#anytype-Rpc-Object-SetInternalFlags-Response-Error-Code)
     - [Rpc.Object.SetIsArchived.Response.Error.Code](#anytype-Rpc-Object-SetIsArchived-Response-Error-Code)
@@ -1400,6 +1405,7 @@
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype-Rpc-Object-SetIsFavorite-Request) | [Rpc.Object.SetIsFavorite.Response](#anytype-Rpc-Object-SetIsFavorite-Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype-Rpc-Object-SetIsArchived-Request) | [Rpc.Object.SetIsArchived.Response](#anytype-Rpc-Object-SetIsArchived-Response) |  |
 | ObjectSetSource | [Rpc.Object.SetSource.Request](#anytype-Rpc-Object-SetSource-Request) | [Rpc.Object.SetSource.Response](#anytype-Rpc-Object-SetSource-Response) |  |
+| ObjectSetDashboard | [Rpc.Object.SetDashboard.Request](#anytype-Rpc-Object-SetDashboard-Request) | [Rpc.Object.SetDashboard.Response](#anytype-Rpc-Object-SetDashboard-Response) |  |
 | ObjectListDuplicate | [Rpc.Object.ListDuplicate.Request](#anytype-Rpc-Object-ListDuplicate-Request) | [Rpc.Object.ListDuplicate.Response](#anytype-Rpc-Object-ListDuplicate-Response) |  |
 | ObjectListDelete | [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request) | [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response) |  |
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
@@ -11062,6 +11068,64 @@ deprecated, to be removed |
 
 
 
+<a name="anytype-Rpc-Object-SetDashboard"></a>
+
+### Rpc.Object.SetDashboard
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetDashboard-Request"></a>
+
+### Rpc.Object.SetDashboard.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| newDashboardId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetDashboard-Response"></a>
+
+### Rpc.Object.SetDashboard.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SetDashboard.Response.Error](#anytype-Rpc-Object-SetDashboard-Response-Error) |  |  |
+| newDashboardId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetDashboard-Response-Error"></a>
+
+### Rpc.Object.SetDashboard.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SetDashboard.Response.Error.Code](#anytype-Rpc-Object-SetDashboard-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-SetDetails"></a>
 
 ### Rpc.Object.SetDetails
@@ -15844,6 +15908,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-SetDashboard-Response-Error-Code"></a>
+
+### Rpc.Object.SetDashboard.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

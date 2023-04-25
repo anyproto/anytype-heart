@@ -603,6 +603,11 @@ func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceReque
 	})
 }
 
+func (s Service) SetDashboardId(ctx *session.Context, id string) (setId string, err error) {
+	s.spaceDashboardID = id
+	return id, nil
+}
+
 func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil

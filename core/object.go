@@ -635,6 +635,34 @@ func (mw *Middleware) ObjectSetSource(cctx context.Context,
 	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
 }
 
+func (mw *Middleware) ObjectSetDashboard(cctx context.Context, req *pb.RpcObjectSetDashboardRequest) *pb.RpcObjectSetDashboardResponse {
+	ctx := mw.newContext(cctx)
+	response := func(setId string, err error) *pb.RpcObjectSetDashboardResponse {
+		resp := &pb.RpcObjectSetDashboardResponse{
+			NewDashboardId: setId,
+			Error: &pb.RpcObjectSetDashboardResponseError{
+				Code: pb.RpcObjectSetDashboardResponseError_NULL,
+			},
+		}
+		if err != nil {
+			resp.Error.Code = pb.RpcObjectSetDashboardResponseError_UNKNOWN_ERROR
+			resp.Error.Description = err.Error()
+		}
+		return resp
+	}
+	var (
+		setId string
+		err   error
+	)
+	err = mw.doBlockService(func(bs *block.Service) error {
+		if setId, err = bs.SetDashboardId(ctx, req.NewDashboardId); err != nil {
+			return err
+		}
+		return nil
+	})
+	return response(setId, err)
+}
+
 func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
