@@ -115,7 +115,7 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 	exporter := &treeExporter{s: d.store, anonymized: anonymize, id: blockId}
 	zipFilename, err := exporter.Export(path, tree)
 	if err != nil {
-		logger.Fatal("build tree error:", err)
+		logger.Error("build tree error:", err)
 		return "", err
 	}
 
@@ -136,12 +136,7 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 		return
 	}
 
-	file, err := os.Create(svgFilename)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	_, err = file.Write([]byte(debugInfo.Graphviz))
+	err = GraphvizSvg(debugInfo.Graphviz, svgFilename)
 	if err != nil {
 		return
 	}
