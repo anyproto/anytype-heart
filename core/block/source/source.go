@@ -239,7 +239,6 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
-			LogHeads: s.LogHeads(),
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:        params.State.BlocksToSave(),
 				Details:       params.State.Details(),

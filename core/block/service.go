@@ -5,18 +5,19 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-	"github.com/anytypeio/go-anytype-middleware/space/clientcache"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/accountservice"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
+	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app/ocache"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -128,10 +129,12 @@ type Service struct {
 	restriction     restriction.Service
 	bookmark        bookmarksvc.Service
 	relationService relation.Service
-	cache           clientcache.Cache
+	cache           ocache.OCache
 
 	objectCreator objectCreator
 	objectFactory *editor.ObjectFactory
+	clientService space.Service
+	commonAccount accountservice.Service
 }
 
 func (s *Service) Name() string {
@@ -152,7 +155,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.relationService = a.MustComponent(relation.CName).(relation.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
-	s.cache = a.MustComponent(treegetter.CName).(clientcache.Cache)
+	s.cache = s.createCache()
 	s.app = a
 	return
 }
