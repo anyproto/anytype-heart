@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -19,16 +17,21 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+
 	"github.com/gogo/status"
 	cp "github.com/otiai10/copy"
 
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -196,19 +199,16 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 
 	pBlocks := at.PredefinedBlocks()
 	return &model.AccountInfo{
-		HomeObjectId:                pBlocks.Home,
-		ArchiveObjectId:             pBlocks.Archive,
-		ProfileObjectId:             pBlocks.Profile,
-		MarketplaceTypeObjectId:     pBlocks.MarketplaceType,
-		MarketplaceRelationObjectId: pBlocks.MarketplaceRelation,
-		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
-		MarketplaceWorkspaceId:      addr.AnytypeMarketplaceWorkspace,
-		AccountSpaceId:              pBlocks.Account,
-		WidgetsId:                   pBlocks.Widgets,
-		GatewayUrl:                  gwAddr,
-		DeviceId:                    deviceId,
-		LocalStoragePath:            cfg.IPFSStorageAddr,
-		TimeZone:                    cfg.TimeZone,
+		HomeObjectId:           pBlocks.Home,
+		ArchiveObjectId:        pBlocks.Archive,
+		ProfileObjectId:        pBlocks.Profile,
+		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
+		AccountSpaceId:         pBlocks.Account,
+		WidgetsId:              pBlocks.Widgets,
+		GatewayUrl:             gwAddr,
+		DeviceId:               deviceId,
+		LocalStoragePath:       cfg.IPFSStorageAddr,
+		TimeZone:               cfg.TimeZone,
 	}
 }
 
@@ -517,7 +517,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 		return nil
 	}
 
-	dirs := clientds.GetDirsForMoving()
+	dirs := []string{filestorage.FlatfsDirName}
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 
 	configPath := conf.GetConfigPath()

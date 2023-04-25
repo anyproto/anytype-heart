@@ -66,7 +66,7 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
-	db, err := f.provider.Badger()
+	db, err := f.provider.SpaceStorage()
 	if err != nil {
 		return
 	}

@@ -2,10 +2,12 @@ package storage
 
 import (
 	"context"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/dgraph-io/badger/v3"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 )
 
 type storageService struct {
@@ -80,7 +82,7 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 }
 
 func (s *storageService) Run(ctx context.Context) (err error) {
-	s.db, err = s.provider.Badger()
+	s.db, err = s.provider.SpaceStorage()
 	if err != nil {
 		return
 	}

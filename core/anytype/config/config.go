@@ -2,20 +2,24 @@ package config
 
 import (
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/metric"
-	commonnet "github.com/anytypeio/any-sync/net"
-	"github.com/anytypeio/any-sync/nodeconf"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
-	"gopkg.in/yaml.v2"
 	"net"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/metric"
+	commonnet "github.com/anytypeio/any-sync/net"
+	"github.com/anytypeio/any-sync/nodeconf"
+	"gopkg.in/yaml.v2"
+
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
+
 	"github.com/kelseyhightower/envconfig"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
@@ -66,7 +70,7 @@ type Config struct {
 
 	Threads           threads.Config
 	DS                clientds.Config
-	FS                clientds.FSConfig
+	FS                filestorage.FSConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 }
 
@@ -251,14 +255,14 @@ func (c *Config) DSConfig() clientds.Config {
 	return c.DS
 }
 
-func (c *Config) FSConfig() (clientds.FSConfig, error) {
+func (c *Config) FSConfig() (filestorage.FSConfig, error) {
 	res := ConfigRequired{}
 	err := files.GetFileConfig(c.GetConfigPath(), &res)
 	if err != nil {
-		return clientds.FSConfig{}, err
+		return filestorage.FSConfig{}, err
 	}
 
-	return clientds.FSConfig{IPFSStorageAddr: res.IPFSStorageAddr}, nil
+	return filestorage.FSConfig{IPFSStorageAddr: res.IPFSStorageAddr}, nil
 }
 
 func (c *Config) ThreadsConfig() threads.Config {

@@ -4,19 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	gonet "net"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/net"
 	"github.com/anytypeio/any-sync/net/rpc/server"
 	"github.com/anytypeio/any-sync/net/secureservice"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/libp2p/go-libp2p/core/sec"
-	gonet "net"
 	"storj.io/drpc"
-	"strconv"
-	"strings"
-	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 )
 
 const CName = server.CName
@@ -56,7 +58,7 @@ func (s *drpcServer) Name() (name string) {
 }
 
 func (s *drpcServer) Run(ctx context.Context) (err error) {
-	db, err := s.provider.Badger()
+	db, err := s.provider.SpaceStorage()
 	if err != nil {
 		return
 	}

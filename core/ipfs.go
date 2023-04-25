@@ -4,13 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anytypeio/any-sync/app"
-
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 )
 
@@ -37,8 +33,7 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
-	fileStore := app.MustComponent[filestore.FileStore](mw.app)
-	files, err := fileStore.ListTargets()
+	files, err := at.FileStore().ListTargets()
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
@@ -48,7 +43,7 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		totalFilesOffloaded int32
 		totalFilesSkipped   int
 	)
-	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
+
 	for _, fileId := range files {
 		if st, exists := pinStatus[fileId]; (!exists || st.Status != pb2.PinStatus_Done) && !req.IncludeNotPinned {
 			totalFilesSkipped++
@@ -65,18 +60,7 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		}
 	}
 
-	freed, err := ds.RunBlockstoreGC()
-	if err != nil {
-		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
-	}
-
-	log.With("files_offloaded", totalFilesOffloaded).
-		With("files_offloaded_b", totalBytesOffloaded).
-		With("gc_freed_b", freed).
-		With("files_skipped", totalFilesSkipped).
-		Errorf("filelistoffload results")
-
-	return response(totalFilesOffloaded, uint64(freed), pb.RpcFileListOffloadResponseError_NULL, nil)
+	return response(totalFilesOffloaded, uint64(totalBytesOffloaded), pb.RpcFileListOffloadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
@@ -97,7 +81,6 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	pin := mw.app.MustComponent(pin.CName).(pin.FilePinService)
-	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
 
 	if !at.IsStarted() {
 		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
@@ -119,10 +102,5 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 		totalBytesOffloaded += bytesRemoved
 	}
 
-	freed, err := ds.RunBlockstoreGC()
-	if err != nil {
-		return response(0, pb.RpcFileOffloadResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(uint64(freed), pb.RpcFileOffloadResponseError_NULL, nil)
+	return response(uint64(totalBytesOffloaded), pb.RpcFileOffloadResponseError_NULL, nil)
 }
