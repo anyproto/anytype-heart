@@ -101,7 +101,11 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress *process.Prog
 	return allSnapshots, targetObjects, allErrors
 }
 
-func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, progress *process.Progress, pbFiles map[string]*converter.IOReader, allErrors converter.ConvertError, path string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
+	progress *process.Progress,
+	pbFiles map[string]*converter.IOReader,
+	allErrors converter.ConvertError,
+	path string) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
@@ -144,10 +148,6 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, progress *pro
 
 func (p *Pb) Name() string {
 	return Name
-}
-
-func (p *Pb) GetImage() ([]byte, int64, int64, error) {
-	return nil, 0, 0, nil
 }
 
 func (p *Pb) GetParams(params pb.IsRpcObjectImportRequestParams) ([]string, error) {
@@ -224,6 +224,7 @@ func (p *Pb) GetSnapshot(rd io.ReadCloser, name string) (*pb.MigrationObject, er
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %s", uErr)
 		}
+		return snapshot, nil
 	}
 	if err = snapshot.Unmarshal(data); err != nil {
 		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
