@@ -1,3 +1,5 @@
+//go:generate mockgen -package filesync -destination filestore_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore FileStore
+
 package filesync
 
 import (
@@ -23,6 +25,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore/mock_rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 var ctx = context.Background()
@@ -37,6 +41,7 @@ func TestFileSync_AddFile(t *testing.T) {
 	require.NoError(t, err)
 	fileId := n.Cid().String()
 	spaceId := "spaceId"
+	fx.fileStoreMock.EXPECT().ListByTarget(gomock.Any()).Return([]*storage.FileInfo{{Hash: fileId}}, nil)
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
 	require.NoError(t, fx.AddFile(spaceId, fileId))
 	fx.waitEmptyQueue(t, time.Second*5)
@@ -74,22 +79,31 @@ func newFixture(t *testing.T) *fixture {
 	mockRpcStoreService.EXPECT().Init(gomock.Any()).AnyTimes()
 	mockRpcStoreService.EXPECT().NewStore().Return(fx.rpcStore)
 
+	fileStoreMock := NewMockFileStore(fx.ctrl)
+	fileStoreMock.EXPECT().Name().Return(filestore.CName).AnyTimes()
+	fileStoreMock.EXPECT().Init(gomock.Any()).AnyTimes()
+	fileStoreMock.EXPECT().Run(gomock.Any()).AnyTimes()
+	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
+	fx.fileStoreMock = fileStoreMock
+
 	fx.a.Register(fx.fileService).
 		Register(&inMemBlockStore{data: map[string]blocks.Block{}}).
 		Register(bp).
 		Register(mockRpcStoreService).
-		Register(fx.FileSync)
+		Register(fx.FileSync).
+		Register(fileStoreMock)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }
 
 type fixture struct {
 	FileSync
-	fileService fileservice.FileService
-	rpcStore    *mock_rpcstore.MockRpcStore
-	ctrl        *gomock.Controller
-	a           *app.App
-	tmpDir      string
+	fileService   fileservice.FileService
+	rpcStore      *mock_rpcstore.MockRpcStore
+	fileStoreMock *MockFileStore
+	ctrl          *gomock.Controller
+	a             *app.App
+	tmpDir        string
 }
 
 func (f *fixture) waitEmptyQueue(t *testing.T, timeout time.Duration) {
