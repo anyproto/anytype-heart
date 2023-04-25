@@ -101,7 +101,11 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest, progress
 			continue
 		}
 
-		objectsIDs, snapshots, relations, err := str.CreateObjects(p, csvTable, params)
+		if c.needToTranspose(params) {
+			csvTable = transpose(csvTable)
+		}
+
+		objectsIDs, snapshots, relations, err := str.CreateObjects(p, csvTable)
 		if err != nil {
 			cErr.Add(p, err)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -116,11 +120,31 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest, progress
 	return allObjectsIDs, allSnapshots, allRelations, cErr
 }
 
+func (c *CSV) needToTranspose(params *pb.RpcObjectImportRequestCsvParams) bool {
+	return (params.GetTransposeRowsAndColumns() && !params.GetUseFirstColumnForRelations()) ||
+		(params.GetUseFirstColumnForRelations() && !params.GetTransposeRowsAndColumns())
+}
+
 func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strategy {
 	if mode == pb.RpcObjectImportRequestCsvParams_COLLECTION {
 		return NewCollectionStrategy(c.collectionService)
 	}
 	return NewTableStrategy(te.NewEditor(nil))
+}
+
+func transpose(csvTable [][]string) [][]string {
+	x := len(csvTable[0])
+	y := len(csvTable)
+	result := make([][]string, x)
+	for i := range result {
+		result[i] = make([]string, y)
+	}
+	for i := 0; i < x; i++ {
+		for j := 0; j < y; j++ {
+			result[i][j] = csvTable[j][i]
+		}
+	}
+	return result
 }
 
 func readCsvFile(filePath string, delimiter string) ([][]string, error) {
@@ -143,15 +167,12 @@ func readCsvFile(filePath string, delimiter string) ([][]string, error) {
 	return records, nil
 }
 
-func getDetailsFromCSVTable(csvTable [][]string, useRows bool) []*converter.Relation {
+func getDetailsFromCSVTable(csvTable [][]string) []*converter.Relation {
 	if len(csvTable) == 0 {
 		return nil
 	}
 	relations := make([]*converter.Relation, 0, len(csvTable[0]))
 	allRelations := csvTable[0]
-	if useRows {
-		allRelations = getRelationsFromRows(csvTable)
-	}
 	for _, relation := range allRelations {
 		relations = append(relations, &converter.Relation{
 			Relation: &model.Relation{
@@ -161,14 +182,6 @@ func getDetailsFromCSVTable(csvTable [][]string, useRows bool) []*converter.Rela
 		})
 	}
 	return relations
-}
-
-func getRelationsFromRows(table [][]string) []string {
-	allRelations := make([]string, 0, len(table))
-	for _, row := range table {
-		allRelations = append(allRelations, row[0])
-	}
-	return allRelations
 }
 
 func mergeRelationsMaps(rel1 map[string][]*converter.Relation, rel2 map[string][]*converter.Relation) map[string][]*converter.Relation {

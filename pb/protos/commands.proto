@@ -1834,7 +1834,7 @@ message Rpc {
                     Mode mode = 2;
                     bool useFirstColumnForRelations = 3; // use for collection mode
                     string delimiter = 4;
-
+                    bool transposeRowsAndColumns = 5;
                     enum Mode {
                         COLLECTION = 0;
                         TABLE = 1;

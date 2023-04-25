@@ -21,7 +21,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -31,7 +31,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 	}).NewState()
 
 	if len(csvTable) != 0 {
-		err := c.createTable(st, csvTable, params.GetUseFirstColumnForRelations())
+		err := c.createTable(st, csvTable)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -55,7 +55,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 	return []string{snapshot.Id}, []*converter.Snapshot{snapshot}, nil, nil
 }
 
-func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, isHeaderRow bool) error {
+func (c *TableStrategy) createTable(st *state.State, csvTable [][]string) error {
 	tableID, err := c.tableEditor.TableCreate(st, pb.RpcBlockTableCreateRequest{})
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, isHead
 	}
 
 	for i, columns := range csvTable {
-		rowID, err := c.createRow(st, tableID, i, isHeaderRow)
+		rowID, err := c.createRow(st, tableID, i)
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func (c *TableStrategy) createCells(columns []string, st *state.State, rowID str
 	return nil
 }
 
-func (c *TableStrategy) createRow(st *state.State, tableID string, i int, isHeader bool) (string, error) {
+func (c *TableStrategy) createRow(st *state.State, tableID string, i int) (string, error) {
 	rowID, err := c.tableEditor.RowCreate(st, pb.RpcBlockTableRowCreateRequest{
 		Position: model.Block_Inner,
 		TargetId: tableID,
@@ -105,7 +105,7 @@ func (c *TableStrategy) createRow(st *state.State, tableID string, i int, isHead
 		return "", err
 	}
 
-	if i == 0 && isHeader {
+	if i == 0 {
 		err = c.tableEditor.RowSetHeader(st, pb.RpcBlockTableRowSetHeaderRequest{
 			IsHeader: true,
 			TargetId: rowID,
