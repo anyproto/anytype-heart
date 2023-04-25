@@ -5,15 +5,19 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/any-sync/util/crypto"
 	"time"
+
+	"github.com/anytypeio/any-sync/util/crypto"
+
+	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
+
+	spaceservice "github.com/anytypeio/go-anytype-middleware/space"
 
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -22,7 +26,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	spaceservice "github.com/anytypeio/go-anytype-middleware/space"
 )
 
 type ctxKey int
@@ -178,20 +181,6 @@ func (s *Service) DeleteObject(id string) (err error) {
 				return w.DeleteSubObject(id)
 			})
 		})
-	case coresb.SmartBlockTypeFile:
-		err = s.OnDelete(id, func() error {
-			if err = s.fileStore.DeleteByTarget(id); err != nil {
-				return err
-			}
-			if err = s.fileStore.DeleteFileKeys(id); err != nil {
-				return err
-			}
-			_, err = s.fileService.FileOffload(id, true)
-			if err != nil {
-				return err
-			}
-			return s.fileSync.RemoveFile(s.clientService.AccountId(), id)
-		})
 	default:
 		var space commonspace.Space
 		space, err = s.clientService.AccountSpace(context.Background())
@@ -210,20 +199,24 @@ func (s *Service) DeleteObject(id string) (err error) {
 	return
 }
 
-func (s *Service) CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType) (treestorage.TreeStorageCreatePayload, error) {
+func (s *Service) CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
 	space, err := s.clientService.AccountSpace(ctx)
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	return s.CreateTreePayloadWithSpace(ctx, space, tp)
+	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx, space, tp, createdTime)
 }
 
 func (s *Service) CreateTreePayloadWithSpace(ctx context.Context, space commonspace.Space, tp coresb.SmartBlockType) (treestorage.TreeStorageCreatePayload, error) {
+	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx, space, tp, time.Now())
+}
+
+func (s *Service) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Context, space commonspace.Space, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
 	changePayload, err := createChangePayload(tp)
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	treePayload, err := createPayload(space.Id(), s.commonAccount.Account().SignKey, changePayload, time.Now().Unix())
+	treePayload, err := createPayload(space.Id(), s.commonAccount.Account().SignKey, changePayload, createdTime.Unix())
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}

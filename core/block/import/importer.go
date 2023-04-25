@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
@@ -26,6 +27,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
@@ -33,6 +35,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -226,8 +229,14 @@ func (i *Import) createObjects(ctx *session.Context,
 			payload treestorage.TreeStorageCreatePayload
 			exist   bool
 		)
-
-		if id, exist, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
+		var createdTime time.Time
+		createdTimeTS := pbtypes.GetInt64(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyCreatedDate.String())
+		if createdTimeTS > 0 {
+			createdTime = time.Unix(createdTimeTS, 0)
+		} else {
+			createdTime = time.Now()
+		}
+		if id, exist, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, createdTime, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
 			if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 				oldIDToNew[snapshot.Id] = snapshot.Id

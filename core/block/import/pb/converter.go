@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anytypeio/any-sync/util/slice"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -368,15 +369,17 @@ func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
 }
 
 func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
-	localRelationsToAdd := make([]string, 0, len(bundle.LocalRelationsKeys))
-	for _, key := range bundle.LocalRelationsKeys {
-		if key == bundle.RelationKeyIsFavorite.String() || key == bundle.RelationKeyIsArchived.String() {
-			continue
-		}
-		localRelationsToAdd = append(localRelationsToAdd, key)
-	}
+	removeKeys := make([]string, 0, len(bundle.LocalRelationsKeys)+len(bundle.DerivedRelationsKeys))
+	removeKeys = slice.Filter(removeKeys, func(key string) bool {
+		// preserve some keys we have special cases for
+		return key != bundle.RelationKeyIsFavorite.String() &&
+			key != bundle.RelationKeyIsArchived.String() &&
+			key != bundle.RelationKeyCreatedDate.String() &&
+			key != bundle.RelationKeyLastModifiedDate.String()
+	})
+
 	for _, snapshot := range snapshots {
-		details := pbtypes.StructCutKeys(snapshot.Snapshot.Data.Details, append(bundle.DerivedRelationsKeys, localRelationsToAdd...))
+		details := pbtypes.StructCutKeys(snapshot.Snapshot.Data.Details, removeKeys)
 		snapshot.Snapshot.Data.Details = details
 	}
 }

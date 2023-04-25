@@ -3,6 +3,7 @@ package importer
 
 import (
 	"context"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
@@ -37,7 +38,7 @@ type Creator interface {
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, updateExisting bool) (string, bool, treestorage.TreeStorageCreatePayload, error)
+	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool) (string, bool, treestorage.TreeStorageCreatePayload, error)
 }
 
 // Updater is interface for updating existing objects

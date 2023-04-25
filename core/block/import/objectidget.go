@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
@@ -54,6 +55,7 @@ func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, s
 func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
+	createdTime time.Time,
 	getExisting bool) (string, bool, treestorage.TreeStorageCreatePayload, error) {
 	if sbType == sb.SmartBlockTypeWorkspace {
 		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(sn.Id)
@@ -84,7 +86,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 
 	cctx := context.Background()
 
-	payload, err := ou.service.CreateTreePayload(cctx, sbType)
+	payload, err := ou.service.CreateTreePayload(cctx, sbType, createdTime)
 	if err != nil {
 		return "", false, treestorage.TreeStorageCreatePayload{}, err
 	}
