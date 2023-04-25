@@ -71,14 +71,14 @@ func (d *dirWriter) Close() (err error) {
 	return nil
 }
 
-func newZipWriter(path string) (writer, error) {
-	filename := filepath.Join(path, uniqName()+".zip")
-	f, err := os.Create(filename)
+func newZipWriter(path, name string) (writer, error) {
+	fileName := filepath.Join(path, name)
+	f, err := os.Create(fileName)
 	if err != nil {
 		return nil, err
 	}
 	return &zipWriter{
-		path: filename,
+		path: fileName,
 		zw:   zip.NewWriter(f),
 		f:    f,
 	}, nil
@@ -121,4 +121,8 @@ func (d *zipWriter) Close() (err error) {
 		return
 	}
 	return d.f.Close()
+}
+
+func getZipName(path string) string {
+	return filepath.Join(path, uniqName()+".zip")
 }
