@@ -40,6 +40,7 @@ const (
 	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
 	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget              = SmartBlockType(model.SmartBlockType_Widget)
+	SmartBlockTypeCollection          = SmartBlockType(model.SmartBlockType_Collection)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")

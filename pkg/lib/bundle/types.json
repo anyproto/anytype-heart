@@ -472,6 +472,20 @@
     "description": "Collection of objects with equal types and relations. Database experience based on all objects in Anytype"
   },
   {
+    "id": "collection",
+    "name": "Collection",
+    "types": [
+      "Collection"
+    ],
+    "emoji": "📚",
+    "hidden": false,
+    "layout": "collection",
+    "relations": [
+      "tag"
+    ],
+    "description": "TODO TODO TODO"
+  },
+  {
     "id": "classNote",
     "name": "Class Note",
     "types": [

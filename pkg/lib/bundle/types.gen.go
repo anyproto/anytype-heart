@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "de53240e6875b46532feb5ee9e9b0996db1e832050d55519fce6041b175114c2"
+const TypeChecksum = "d5d95049213bc1ebe98186daa410f0ed5e5e2b098940663edc70b6144bd1797a"
 
 type TypeKey string
 
@@ -53,6 +53,7 @@ const (
 	TypeKeyTemplate        TypeKey = "template"
 	TypeKeyHabitTrack      TypeKey = "habitTrack"
 	TypeKeySet             TypeKey = "set"
+	TypeKeyCollection      TypeKey = "collection"
 	TypeKeyClassNote       TypeKey = "classNote"
 	TypeKeyDiaryEntry      TypeKey = "diaryEntry"
 	TypeKeyPage            TypeKey = "page"
@@ -146,6 +147,17 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyClass), MustGetRelationLink(RelationKeyClassType), MustGetRelationLink(RelationKeyRecords), MustGetRelationLink(RelationKeyQuestions), MustGetRelationLink(RelationKeyMaterials), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyReflection)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "classNote",
+		},
+		TypeKeyCollection: {
+
+			Description:   "TODO TODO TODO",
+			IconEmoji:     "📚",
+			Layout:        model.ObjectType_collection,
+			Name:          "Collection",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Collection},
+			Url:           TypePrefix + "collection",
 		},
 		TypeKeyCompany: {
 

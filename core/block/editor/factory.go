@@ -123,6 +123,12 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) smartblock.SmartBlock {
 			f.objectStore,
 			f.relationService,
 		)
+	case model.SmartBlockType_Collection:
+		return NewCollection(
+			f.anytype,
+			f.objectStore,
+			f.relationService,
+		)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		return NewProfile(
 			f.objectStore,

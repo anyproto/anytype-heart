@@ -79,5 +79,12 @@
       "name",
       "relationOptionColor"
     ]
+  },
+  {
+    "id": "collection",
+    "name": "Collection",
+    "requiredRelations": [
+      "name"
+    ]
   }
 ]
