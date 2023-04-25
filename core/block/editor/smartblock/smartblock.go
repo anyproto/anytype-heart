@@ -314,7 +314,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	// TODO FIX FIRST
-	if sb.Id() == "bafybanjhjpw3dmpumc44e2aiynd6p4pcs3v3rrq64far3kslt3aix6ut" {
+	if sb.Id() == "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a" {
 		type collectionService interface {
 			RegisterCollection(sb SmartBlock)
 		}

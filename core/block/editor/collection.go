@@ -1,7 +1,8 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"

@@ -163,7 +163,6 @@ func (c *collectionSub) fetchEntries(ids []string) []*entry {
 				id:   id,
 				data: recs[0].Details,
 			}
-			c.cache.Set(e)
 			res = append(res, e)
 		}
 	}
@@ -176,12 +175,15 @@ func (c *collectionSub) onCollectionUpdate(changes []slice.Change[string]) {
 	newEntries := c.fetchEntries(c.activeIDs)
 	for _, e := range newEntries {
 		// TODO Filter
-		e.SetSub(c.id, true)
+		e.SetSub(c.id, false)
 	}
 	ctx := &opCtx{
 		entries: newEntries,
 		c:       c.cache,
 	}
+
+	// TODO refactor after implementing of pagination because change events needed only in the current window
+	var toChange []string
 
 	for _, ch := range changes {
 		if add := ch.Add(); add != nil {
@@ -194,6 +196,7 @@ func (c *collectionSub) onCollectionUpdate(changes []slice.Change[string]) {
 					keys:    c.keys,
 					isAdd:   true,
 				})
+				toChange = append(toChange, id)
 				// Update afterID to save correspondence between subscription changes and generic atomic changes
 				// The difference is that generic atomic changes contains a slice, so we need to update insertion position
 				afterID = id
@@ -230,6 +233,14 @@ func (c *collectionSub) onCollectionUpdate(changes []slice.Change[string]) {
 			}
 			continue
 		}
+	}
+
+	for _, id := range toChange {
+		ctx.change = append(ctx.change, opChange{
+			id:    id,
+			subId: c.id,
+			keys:  c.keys,
+		})
 	}
 
 	ev := ctx.apply()

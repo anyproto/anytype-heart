@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
@@ -144,9 +144,9 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		req.Limit = 0
 	}
 
-	if req.SubId == "bafyecciobreco4u7pixvnzzkg4ktheglgiexzcv2qhqo2upzsznho7xz-dataview" {
-		req.CollectionId = "bafybanjhjpw3dmpumc44e2aiynd6p4pcs3v3rrq64far3kslt3aix6ut"
-	}
+	// if req.SubId == "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a-dataview" {
+	// 	req.CollectionId = "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a"
+	// }
 
 	if req.CollectionId != "" {
 		return s.makeCollectionSubscription(req, f, records)

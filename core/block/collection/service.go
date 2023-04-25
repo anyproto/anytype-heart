@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
