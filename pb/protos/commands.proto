@@ -523,8 +523,8 @@ message Rpc {
         }
 
         message RecoverFromLegacyExport {
-            option (no_auth) = true;
             message Request {
+                option (no_auth) = true;
                 string path = 1;
                 string rootPath = 2;
             }
