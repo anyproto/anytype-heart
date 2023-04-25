@@ -1,12 +1,13 @@
-package badgerfilestore
+package filestorage
 
 import (
 	"bytes"
 	"errors"
-	"github.com/dgraph-io/badger/v3"
-	"github.com/ipfs/go-cid"
 	"sync"
 	"time"
+
+	"github.com/dgraph-io/badger/v3"
+	"github.com/ipfs/go-cid"
 )
 
 const keyIndexPrefix = "files/indexes/"

@@ -3,18 +3,19 @@ package filestorage
 import (
 	"context"
 	"fmt"
+
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
-	"github.com/anytypeio/go-anytype-middleware/space/storage"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/space/storage"
 )
 
 type rpcHandler struct {
-	store        badgerfilestore.FileStore
+	store        *flatStore
 	spaceStorage storage.ClientStorage
 }
 

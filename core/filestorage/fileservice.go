@@ -2,19 +2,21 @@ package filestorage
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/net/rpc/server"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
 )
 
 const CName = fileblockstore.CName
@@ -31,7 +33,9 @@ type FileStorage interface {
 }
 
 type fileStorage struct {
+	// TODO use cache proxy directly
 	fileblockstore.BlockStoreLocal
+
 	syncer       *syncer
 	syncerCancel context.CancelFunc
 	provider     datastore.Datastore
@@ -63,12 +67,15 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	bs := badgerfilestore.NewBadgerStorage(db)
+	bs, err := newFlatStore()
+	if err != nil {
+		return fmt.Errorf("flatstore: %w", err)
+	}
 	f.handler.store = bs
 	ps := &proxyStore{
 		cache:  bs,
 		origin: f.rpcStore.NewStore(),
-		index:  badgerfilestore.NewFileBadgerIndex(db),
+		index:  NewFileBadgerIndex(db),
 	}
 	f.BlockStoreLocal = ps
 	f.syncer = &syncer{ps: ps, done: make(chan struct{})}

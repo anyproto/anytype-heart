@@ -3,17 +3,17 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
+	"os"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"sync"
-	"testing"
-	"time"
 )
 
 var ctx = context.Background()
@@ -274,7 +274,7 @@ func newPSFixture(t *testing.T) *psFixture {
 	fx.proxyStore = &proxyStore{
 		cache:  newTestStore(nil),
 		origin: newTestStore(nil),
-		index:  badgerfilestore.NewFileBadgerIndex(fx.db),
+		index:  NewFileBadgerIndex(fx.db),
 	}
 	return fx
 }

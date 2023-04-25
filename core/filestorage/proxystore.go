@@ -2,20 +2,21 @@ package filestorage
 
 import (
 	"context"
+	"io"
+
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
-	"io"
+
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 )
 
 type proxyStore struct {
 	cache  fileblockstore.BlockStoreLocal
 	origin rpcstore.RpcStore
-	index  *badgerfilestore.FileBadgerIndex
+	index  *FileBadgerIndex
 }
 
 func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
@@ -106,10 +107,10 @@ func (c *proxyStore) Add(ctx context.Context, bs []blocks.Block) (err error) {
 	if err = c.cache.Add(ctx, bs); err != nil {
 		return
 	}
-	indexCids := badgerfilestore.NewCids()
+	indexCids := NewCids()
 	defer indexCids.Release()
 	for _, b := range bs {
-		indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), badgerfilestore.OpAdd, b.Cid())
+		indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), OpAdd, b.Cid())
 	}
 	return c.index.Add(indexCids)
 }
@@ -118,9 +119,9 @@ func (c *proxyStore) Delete(ctx context.Context, k cid.Cid) error {
 	if err := c.cache.Delete(ctx, k); err != nil {
 		return err
 	}
-	indexCids := badgerfilestore.NewCids()
+	indexCids := NewCids()
 	defer indexCids.Release()
-	indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), badgerfilestore.OpDelete, k)
+	indexCids.Add(fileblockstore.CtxGetSpaceId(ctx), OpDelete, k)
 	return c.index.Add(indexCids)
 }
 

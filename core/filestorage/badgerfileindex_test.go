@@ -1,15 +1,16 @@
-package badgerfilestore
+package filestorage
 
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 func TestFileBadgerIndex_Add(t *testing.T) {
