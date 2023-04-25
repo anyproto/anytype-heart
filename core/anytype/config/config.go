@@ -196,10 +196,29 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	c.RepoPath = repoPath
 
 	if !c.DisableFileConfig {
-		err := files.GetFileConfig(c.GetConfigPath(), &c.ConfigRequired)
+		var confRequired ConfigRequired
+		err := files.GetFileConfig(c.GetConfigPath(), &confRequired)
 		if err != nil {
 			return fmt.Errorf("failed to get config from file: %s", err.Error())
 		}
+
+		writeConfig := func() error {
+			err = files.WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
+			if err != nil {
+				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
+			}
+			return nil
+		}
+
+		// Do not overwrite the legacy file store path from file if it's already set in memory
+		if confRequired.LegacyFileStorePath == "" && c.LegacyFileStorePath != "" {
+			confRequired.LegacyFileStorePath = c.LegacyFileStorePath
+			c.ConfigRequired = confRequired
+			if err := writeConfig(); err != nil {
+				return err
+			}
+		}
+		c.ConfigRequired = confRequired
 
 		saveRandomHostAddr := func() error {
 			port, err := getRandomPort()
@@ -209,12 +228,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 			}
 
 			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
-
-			err = files.WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
-			if err != nil {
-				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
-			}
-			return nil
+			return writeConfig()
 		}
 
 		if c.HostAddr == "" {
