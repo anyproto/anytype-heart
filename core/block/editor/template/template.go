@@ -313,7 +313,7 @@ var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.Sta
 	}
 })
 
-var WithDescription = StateTransformer(func(s *state.State) {
+var WithForcedDescription = StateTransformer(func(s *state.State) {
 	WithHeader(s)
 
 	var align model.BlockAlign
@@ -325,14 +325,6 @@ var WithDescription = StateTransformer(func(s *state.State) {
 	}
 
 	blockExists := s.Exists(DescriptionBlockId)
-	blockShouldExists := slice.FindPos(pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String()), DescriptionBlockId) > -1
-	if !blockShouldExists {
-		if blockExists {
-			s.Unlink(DescriptionBlockId)
-		}
-		return
-	}
-
 	if blockExists && (s.Get(DescriptionBlockId).Model().Align == align) {
 		return
 	}
@@ -364,6 +356,20 @@ var WithDescription = StateTransformer(func(s *state.State) {
 			}
 		}
 	}
+})
+
+var WithDescription = StateTransformer(func(s *state.State) {
+	WithHeader(s)
+
+	blockShouldExists := slice.FindPos(pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String()), DescriptionBlockId) > -1
+	if !blockShouldExists {
+		if s.Exists(DescriptionBlockId) {
+			s.Unlink(DescriptionBlockId)
+		}
+		return
+	}
+
+	WithForcedDescription(s)
 })
 
 var WithNoTitle = StateTransformer(func(s *state.State) {

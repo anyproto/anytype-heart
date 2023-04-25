@@ -225,6 +225,11 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 		if b != nil {
 			typesFromSet = pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
 			delete(details.Fields, bundle.RelationKeySetOf.String())
+			fr := pbtypes.GetStringList(details, bundle.RelationKeyFeaturedRelations.String())
+			if len(fr) > 0 {
+				fr = slice.Remove(fr, bundle.RelationKeySetOf.String())
+				details.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList(fr)
+			}
 			dvBlock = b.Model()
 		}
 		return nil
@@ -232,7 +237,6 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 		return "", err
 	}
 	// cleanup details
-	delete(details.Fields, bundle.RelationKeyFeaturedRelations.String())
 	delete(details.Fields, bundle.RelationKeyLayout.String())
 	delete(details.Fields, bundle.RelationKeyType.String())
 

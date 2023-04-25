@@ -42,7 +42,7 @@ func (c *Collection) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyCollection.URL()}, model.ObjectType_collection),
 		template.WithBlockEditRestricted(c.Id()),
 		template.WithTitle,
-		template.WithDescription,
+		template.WithForcedDescription,
 	}
 
 	return smartblock.ObjectApplyTemplate(c, ctx.State, templates...)

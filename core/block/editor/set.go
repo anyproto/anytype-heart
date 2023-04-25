@@ -56,8 +56,8 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDataviewRelationMigrationRelation(template.DataviewBlockId, bundle.TypeKeyBookmark.URL(), bundle.RelationKeyUrl, bundle.RelationKeySource),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}, model.ObjectType_set),
 		template.WithRelations([]bundle.RelationKey{bundle.RelationKeySetOf}),
-		template.WithDescription,
 		template.WithDefaultFeaturedRelations,
+		template.WithForcedDescription,
 		template.WithBlockEditRestricted(p.Id()),
 	}
 	if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {

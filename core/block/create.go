@@ -173,7 +173,6 @@ func (s *Service) ObjectToSet(id string, source []string) (string, error) {
 	// pass layout in case it was provided by client in the RPC
 	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
 	// cleanup details
-	delete(details.Fields, bundle.RelationKeyFeaturedRelations.String())
 	delete(details.Fields, bundle.RelationKeyLayout.String())
 	delete(details.Fields, bundle.RelationKeyType.String())
 
