@@ -29,7 +29,7 @@ func (mw *Middleware) AppGetVersion(cctx context.Context, req *pb.RpcAppGetVersi
 	}
 
 	if modified {
-		desc += " (unclean)"
+		desc += " (dirty)"
 	}
 
 	return response(revision, desc, pb.RpcAppGetVersionResponseError_NULL, nil)

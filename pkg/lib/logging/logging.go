@@ -7,6 +7,8 @@ import (
 
 	"github.com/anytypeio/any-sync/app/logger"
 	"go.uber.org/zap"
+
+	"github.com/anytypeio/go-anytype-middleware/util/vcs"
 )
 
 var defaultCfg = logger.Config{
@@ -59,6 +61,12 @@ func LevelsFromStr(s string) map[string]string {
 
 func init() {
 	cfg := defaultCfg
+	_, revision, modified, _ := vcs.GetVCSInfo()
+	if modified {
+		revision += "-dirty"
+	}
+	SetVersion(revision)
+	
 	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" {
 		cfg.Format = logger.ColorizedOutput
 	} else {
