@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
@@ -12,9 +13,11 @@ import (
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/net/rpc/server"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-libipfs/blocks"
 
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -39,6 +42,7 @@ type FileStorage interface {
 type fileStorage struct {
 	fileblockstore.BlockStoreLocal
 
+	cfg          *config.Config
 	flatfsPath   string
 	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
@@ -47,21 +51,10 @@ type fileStorage struct {
 	spaceStorage storage.ClientStorage
 }
 
-type FSConfig struct {
-	IPFSStorageAddr string
-}
-
-type FileConfigGetter interface {
-	FSConfig() (FSConfig, error)
-}
-
 func (f *fileStorage) Init(a *app.App) (err error) {
-	fc := a.Component("config").(FileConfigGetter)
-	if fc == nil {
-		return fmt.Errorf("need config to be inited first")
-	}
-
-	fileCfg, err := fc.FSConfig()
+	cfg := app.MustComponent[*config.Config](a)
+	f.cfg = cfg
+	fileCfg, err := cfg.FSConfig()
 	if err != nil {
 		return fmt.Errorf("fail to get file config: %s", err)
 	}
@@ -90,15 +83,27 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 	return fileblockstore.CtxWithSpaceId(ctx, f.spaceService.AccountId())
 }
 
+const errDirectoryIsLocked = "Cannot acquire directory lock"
+
 func (f *fileStorage) Run(ctx context.Context) (err error) {
 	bs, err := newFlatStore(f.flatfsPath)
 	if err != nil {
 		return fmt.Errorf("flatstore: %w", err)
 	}
 	f.handler.store = bs
+
+	var oldStore *badger.DB
+	if f.cfg.LegacyFileStorePath != "" {
+		oldStore, err = badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
+		if err != nil && !strings.Contains(err.Error(), errDirectoryIsLocked) {
+			return fmt.Errorf("open old file store: %w", err)
+		}
+		err = nil
+	}
 	ps := &proxyStore{
-		cache:  bs,
-		origin: f.rpcStore.NewStore(),
+		cache:    bs,
+		origin:   f.rpcStore.NewStore(),
+		oldStore: oldStore,
 	}
 	f.BlockStoreLocal = ps
 	return
