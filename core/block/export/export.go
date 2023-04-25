@@ -3,6 +3,7 @@ package export
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -35,6 +36,8 @@ import (
 )
 
 const CName = "export"
+
+const profileFile = "profile"
 
 var log = logging.Logger("anytype-mw-export")
 
@@ -92,6 +95,12 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 
 	defer wr.Close()
+
+	if len(req.ObjectIds) == 0 {
+		if err = e.createProfileFile(e.a.PredefinedBlocks().Account, wr, docs); err != nil {
+			log.Errorf("failed to create profile file: %s", err.Error())
+		}
+	}
 
 	queue.SetMessage("export docs")
 	if req.Format == pb.RpcObjectListExport_DOT || req.Format == pb.RpcObjectListExport_SVG {
@@ -372,6 +381,22 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 		return
 	}
 	return wr.WriteFile(filename, rd)
+}
+
+func (e *export) createProfileFile(account string, wr writer, docs map[string]*types.Struct) error {
+	if r, ok := docs[account]; ok {
+		spaceDashBoardID := pbtypes.GetString(r, bundle.RelationKeySpaceDashboardId.String())
+		profile := &pb.Profile{SpaceDashboardId: spaceDashBoardID}
+		data, err := profile.Marshal()
+		if err != nil {
+			return err
+		}
+		err = wr.WriteFile(profileFile, bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+	}
+	return fmt.Errorf("account predefined block not found")
 }
 
 func newNamer() *namer {

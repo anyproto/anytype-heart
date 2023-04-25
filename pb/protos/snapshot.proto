@@ -15,4 +15,5 @@ message Profile {
   string name = 2;
   string avatar = 3;
   string address = 4;
+  string spaceDashboardId = 5;
 }
