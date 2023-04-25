@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
-	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
@@ -19,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/txt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/workerpool"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -232,31 +232,52 @@ func (i *Import) createObjects(ctx *session.Context,
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	wg := &sync.WaitGroup{}
-	pool := NewPool(numWorkers, len(res.Snapshots))
+	do := NewDataObject(oldIDToNew, progress, ctx)
+	pool := workerpool.NewPool(numWorkers)
+	go i.addWork(res, existedObject, pool)
+	go pool.Start(do)
+	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
+	return details
+}
+
+func (i *Import) addWork(res *converter.Response, existedObject map[string]struct{}, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
-		if err := progress.TryStep(1); err != nil {
-			allErrors[getFileName(snapshot)] = err
-			return nil
-		}
 		var relations []*converter.Relation
 		if res.Relations != nil {
 			relations = res.Relations[snapshot.Id]
 		}
 		_, ok := existedObject[snapshot.Id]
-		t := &Task{
-			sn:        snapshot,
-			relations: relations,
-			existing:  ok,
-			oc:        i.oc,
-			wg:        wg,
+		t := NewTask(snapshot, relations, ok, i.oc)
+		stop := pool.AddWork(t)
+		if stop {
+			break
 		}
-		pool.AddWork(t)
-		wg.Add(1)
 	}
-	pool.Start(ctx, oldIDToNew, req.Mode, progress)
-	wg.Wait()
-	return pool.Details()
+	pool.CloseTask()
+}
+
+func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
+	mode pb.RpcObjectImportRequestMode,
+	allErrors map[string]error,
+	progress *process.Progress) map[string]*types.Struct {
+	details := make(map[string]*types.Struct, 0)
+	for r := range pool.Results() {
+		if err := progress.TryStep(1); err != nil {
+			allErrors["cancel error"] = err
+			pool.Stop()
+			return nil
+		}
+		res := r.(*Result)
+		if res.err != nil {
+			allErrors[res.newID] = res.err
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				pool.Stop()
+				return nil
+			}
+		}
+		details[res.newID] = res.details
+	}
+	return details
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

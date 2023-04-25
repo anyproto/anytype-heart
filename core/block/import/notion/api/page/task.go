@@ -2,7 +2,6 @@ package page
 
 import (
 	"context"
-	"sync"
 
 	"github.com/gogo/protobuf/types"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/property"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -17,37 +17,51 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
+type DataObject struct {
+	apiKey   string
+	mode     pb.RpcObjectImportRequestMode
+	request  *block.MapRequest
+	progress *process.Progress
+	ctx      context.Context
+}
+
+func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, request *block.MapRequest, progress *process.Progress) *DataObject {
+	return &DataObject{apiKey: apiKey, mode: mode, request: request, progress: progress, ctx: ctx}
+}
+
+type Result struct {
+	snapshot  *converter.Snapshot
+	relations []*converter.Relation
+	ce        converter.ConvertError
+}
+
 type Task struct {
 	propertyService *property.Service
 	blockService    *block.Service
 	p               Page
-	wg              *sync.WaitGroup
 }
 
 func (pt *Task) ID() string {
 	return pt.p.ID
 }
 
-func (pt *Task) Execute(ctx context.Context,
-	apiKey string,
-	mode pb.RpcObjectImportRequestMode,
-	request *block.MapRequest) ([]*converter.Snapshot, []*converter.Relation, converter.ConvertError) {
-	defer pt.wg.Done()
-	var allSnapshots []*converter.Snapshot
-	snapshot, relations, ce := pt.transformPages(ctx, apiKey, pt.p, mode, request)
+func (pt *Task) Execute(data interface{}) interface{} {
+	do := data.(*DataObject)
+
+	snapshot, relations, ce := pt.transformPages(do.ctx, do.apiKey, pt.p, do.mode, do.request)
 	if ce != nil {
-		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, ce
+		if do.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return &Result{ce: ce}
 		}
 	}
-	pageID := request.NotionPageIdsToAnytype[pt.p.ID]
-	allSnapshots = append(allSnapshots, &converter.Snapshot{
+	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
+	sn := &converter.Snapshot{
 		Id:       pageID,
 		FileName: pt.p.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		SbType:   smartblock.SmartBlockTypePage,
-	})
-	return allSnapshots, relations, nil
+	}
+	return &Result{snapshot: sn, relations: relations, ce: ce}
 }
 
 func (pt *Task) transformPages(ctx context.Context,

@@ -3,13 +3,13 @@ package page
 import (
 	"context"
 	"github.com/google/uuid"
-	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/property"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/workerpool"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -83,16 +83,14 @@ func (ds *Service) GetPages(ctx context.Context,
 	if len(pages) < workerPoolSize {
 		numWorkers = 1
 	}
-	pool := NewPool(numWorkers, len(pages))
+	pool := workerpool.NewPool(numWorkers)
 
-	wg := &sync.WaitGroup{}
-	ds.addWorkToPool(pages, pool, wg)
-	pool.Start(ctx, apiKey, mode, request, progress)
-	wg.Wait()
+	go ds.addWorkToPool(pages, pool)
 
-	converterError := pool.ConvertError()
-	allSnapshots := pool.AllSnapshots()
-	relationsToPageID := pool.RelationsToPageID()
+	do := NewDataObject(ctx, apiKey, mode, request, progress)
+	go pool.Start(do)
+
+	allSnapshots, relationsToPageID, converterError := ds.readResultFromPool(pool, mode, progress)
 	if converterError.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots, Relations: relationsToPageID}, notionPagesIdsToAnytype, nil
 	}
@@ -100,16 +98,43 @@ func (ds *Service) GetPages(ctx context.Context,
 	return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, converterError
 }
 
-func (ds *Service) addWorkToPool(pages []Page, pool *WorkerPool, wg *sync.WaitGroup) {
+func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress *process.Progress) ([]*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
+	allSnapshots := make([]*converter.Snapshot, 0)
+	relations := make(map[string][]*converter.Relation, 0)
+	ce := converter.NewError()
+
+	for r := range pool.Results() {
+		if err := progress.TryStep(1); err != nil {
+			ce = converter.NewFromError("cancel error", err)
+			pool.Stop()
+			return nil, nil, ce
+		}
+		res := r.(*Result)
+		if res.ce != nil {
+			ce.Merge(res.ce)
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				pool.Stop()
+				return nil, nil, ce
+			}
+		}
+		allSnapshots = append(allSnapshots, res.snapshot)
+		relations[res.snapshot.Id] = res.relations
+	}
+	return allSnapshots, relations, ce
+}
+
+func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {
 	for _, p := range pages {
-		pool.AddWork(&Task{
+		stop := pool.AddWork(&Task{
 			propertyService: ds.propertyService,
 			blockService:    ds.blockService,
 			p:               p,
-			wg:              wg,
 		})
-		wg.Add(1)
+		if stop {
+			break
+		}
 	}
+	pool.CloseTask()
 }
 
 func (ds *Service) extractTitleFromPages(pages []Page) map[string]string {

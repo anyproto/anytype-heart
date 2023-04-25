@@ -69,7 +69,11 @@ func NewCreator(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, existing bool) (*types.Struct, string, error) {
+func (oc *ObjectCreator) Create(ctx *session.Context,
+	sn *converter.Snapshot,
+	relations []*converter.Relation,
+	oldIDtoNew map[string]string,
+	existing bool) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
@@ -100,13 +104,11 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, re
 		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
 	}
 
-	oc.mu.Lock()
 	var oldRelationBlocksToNew map[string]*model.Block
 	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
 		return nil, "", fmt.Errorf("relation create '%s'", err)
 	}
-	oc.mu.Unlock()
 	var details []*pb.RpcObjectSetDetailsDetail
 	if snapshot.Details != nil {
 		for key, value := range snapshot.Details.Fields {
@@ -257,6 +259,8 @@ func (oc *ObjectCreator) handleSubObject(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase,
 	newID, workspaceID string,
 	details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
+	defer oc.mu.Unlock()
+	oc.mu.Lock()
 	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
 		if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
 			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, workspaceID, true)

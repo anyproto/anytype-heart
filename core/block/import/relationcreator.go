@@ -2,6 +2,7 @@ package importer
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -36,6 +37,7 @@ type RelationService struct {
 	createdRelations map[string]RelationsIDToFormat // need this field to avoid creation of the same RelationsIDToFormat
 	store            filestore.FileStore
 	objectStore      objectstore.ObjectStore
+	mu               sync.Mutex
 }
 
 // NewRelationCreator constructor for RelationService
@@ -61,6 +63,8 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 	relations []*converter.Relation) ([]string, map[string]*model.Block, map[string]RelationsIDToFormat, error) {
 	notExistedRelations := make([]*converter.Relation, 0)
 	existedRelations := make(map[string]*converter.Relation, 0)
+	defer rc.mu.Unlock()
+	rc.mu.Lock()
 	for _, r := range relations {
 		if strings.EqualFold(r.Name, bundle.RelationKeyName.String()) {
 			continue
