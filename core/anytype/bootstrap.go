@@ -2,13 +2,15 @@ package anytype
 
 import (
 	"context"
-	"github.com/anytypeio/any-sync/util/crypto"
+	"github.com/anytypeio/any-sync/coordinator/nodeconfsource"
+	"github.com/anytypeio/any-sync/nodeconf/nodeconfstore"
 	"os"
+
+	"github.com/anytypeio/any-sync/util/crypto"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
-
 	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
 	"github.com/anytypeio/any-sync/net/dialer"
 	"github.com/anytypeio/any-sync/net/pool"
@@ -22,6 +24,7 @@ import (
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -53,7 +56,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
-	//nolint: misspell
 	"github.com/anytypeio/go-anytype-middleware/space/credentialprovider"
 	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
 	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
@@ -104,10 +106,13 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	sbtProvider := typeprovider.New(spaceService)
 	objectStore := objectstore.New(sbtProvider)
 	objectCreator := object.NewCreator(sbtProvider)
-	blockService := block.New(tempDirService, sbtProvider)
+	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
+	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 	indexerService := indexer.New(blockService, spaceService)
 	a.Register(clientds.New()).
+		Register(nodeconfsource.New()).
+		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
 		Register(storage.New()).
@@ -159,6 +164,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(decorator.New()).
 		Register(objectCreator).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService, sbtProvider))
+		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter))
 	return
 }

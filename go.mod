@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.33
+	github.com/anytypeio/any-sync v0.28.1-0.20230417123359-649e8fe53890
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.6
@@ -50,7 +50,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/ipfs/go-merkledag v0.10.0
-	github.com/ipfs/go-path v0.3.0
+	github.com/ipfs/go-path v0.3.1
 	github.com/ipfs/go-unixfs v0.4.5
 	github.com/ipfs/interface-go-ipfs-core v0.10.0
 	github.com/joho/godotenv v1.5.1
@@ -103,7 +103,7 @@ require (
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 // indirect
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 // indirect
 	github.com/ipfs/go-ipfs-files v0.3.0 // indirect
-	github.com/ipfs/go-libipfs v0.6.0 // indirect
+	github.com/ipfs/go-libipfs v0.7.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 )
 

@@ -148,9 +148,9 @@ func (p *peerStore) RemoveLocalPeer(peerId string) {
 }
 
 func (p *peerStore) ResponsibleNodeIds(spaceId string) (ids []string) {
-	return p.nodeConf.GetLast().NodeIds(spaceId)
+	return p.nodeConf.NodeIds(spaceId)
 }
 
 func (p *peerStore) ResponsibleFilePeers() (ids []string) {
-	return p.nodeConf.GetLast().FilePeers()
+	return p.nodeConf.FilePeers()
 }

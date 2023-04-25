@@ -348,12 +348,13 @@ func (c *Config) GetDebugAPIConfig() DebugAPIConfig {
 	}
 }
 
-func (c *Config) GetNodes() []nodeconf.NodeConfig {
-	var nodes struct {
-		Nodes []nodeconf.NodeConfig `yaml:"nodes"`
-	}
-	if err := yaml.Unmarshal(nodesConfYmlBytes, &nodes); err != nil {
+func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
+	if err := yaml.Unmarshal(nodesConfYmlBytes, &conf); err != nil {
 		panic(fmt.Errorf("unable to parse node config: %v", err))
 	}
-	return nodes.Nodes
+	return
+}
+
+func (c *Config) GetNodeConfStorePath() string {
+	return filepath.Join(c.RepoPath, "nodeconf")
 }

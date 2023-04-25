@@ -3,6 +3,7 @@ package rpcstore
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/any-sync/nodeconf/mock_nodeconf"
 	"sort"
 	"sync"
 	"testing"
@@ -124,6 +125,7 @@ func TestStore_AddAsync(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
+	ctrl := gomock.NewController(t)
 	fx := &fixture{
 		a: new(app.App),
 		s: New().(*service),
@@ -131,25 +133,28 @@ func newFixture(t *testing.T) *fixture {
 			data:  make(map[string][]byte),
 			files: make(map[string][][]byte),
 		},
+		ctrl:     ctrl,
+		nodeConf: mock_nodeconf.NewMockService(ctrl),
 	}
 
-	conf := &config{}
-
+	var filePeers []string
 	for i := 0; i < 11; i++ {
-		conf.Nodes = append(conf.Nodes, nodeconf.NodeConfig{
-			PeerId: fmt.Sprint(i),
-			Types:  []nodeconf.NodeType{nodeconf.NodeTypeFile},
-		})
+		filePeers = append(filePeers, fmt.Sprint(i))
 	}
 	rserv := rpctest.NewTestServer()
 	require.NoError(t, fileproto.DRPCRegisterFile(rserv.Mux, fx.serv))
-	fx.ctrl = gomock.NewController(t)
+
+	fx.nodeConf.EXPECT().Name().Return(nodeconf.CName).AnyTimes()
+	fx.nodeConf.EXPECT().Init(fx.a).AnyTimes()
+	fx.nodeConf.EXPECT().Run(ctx).AnyTimes()
+	fx.nodeConf.EXPECT().Close(ctx).AnyTimes()
+	fx.nodeConf.EXPECT().FilePeers().Return(filePeers).AnyTimes()
+
 	fx.a.Register(fx.s).
 		Register(mock_accountservice.NewAccountServiceWithAccount(fx.ctrl, &accountdata.AccountKeys{})).
 		Register(rpctest.NewTestPool().WithServer(rserv)).
-		Register(nodeconf.New()).
-		Register(peerstore.New()).
-		Register(conf)
+		Register(fx.nodeConf).
+		Register(peerstore.New())
 	require.NoError(t, fx.a.Start(ctx))
 	fx.store = fx.s.NewStore().(*store)
 	return fx
@@ -157,10 +162,11 @@ func newFixture(t *testing.T) *fixture {
 
 type fixture struct {
 	*store
-	s    *service
-	a    *app.App
-	serv *testServer
-	ctrl *gomock.Controller
+	s        *service
+	a        *app.App
+	serv     *testServer
+	ctrl     *gomock.Controller
+	nodeConf *mock_nodeconf.MockService
 }
 
 func (fx *fixture) Finish(t *testing.T) {
@@ -260,18 +266,4 @@ func (t *testServer) SpaceInfo(ctx context.Context, req *fileproto.SpaceInfoRequ
 
 func (t *testServer) Check(ctx context.Context, req *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
 	return &fileproto.CheckResponse{AllowWrite: true}, nil
-}
-
-type config struct {
-	Nodes []nodeconf.NodeConfig
-}
-
-func (c config) Init(a *app.App) (err error) {
-	return
-}
-
-func (c config) Name() string { return "config" }
-
-func (c config) GetNodes() []nodeconf.NodeConfig {
-	return c.Nodes
 }

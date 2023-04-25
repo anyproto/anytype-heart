@@ -4,5 +4,5 @@ package config
 
 import _ "embed"
 
-//go:embed nodes/nodes.local.yml
+//go:embed nodes/local.yml
 var nodesConfYmlBytes []byte
