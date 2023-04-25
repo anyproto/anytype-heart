@@ -122,7 +122,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
-	collectionService := collection.New()
+	blockService := block.New()
+	collectionService := collection.New(blockService)
 
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
@@ -156,7 +157,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(builtintemplate.New()).
 		Register(status.New()).
-		Register(block.New()).
+		Register(blockService).
 		Register(doc.New()).
 		Register(indexer.New()).
 		Register(history.New()).

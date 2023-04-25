@@ -1,11 +1,13 @@
 package smarttest
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -41,6 +43,9 @@ type SmartTest struct {
 	state.Doc
 	isDeleted bool
 	os        *testMock.MockObjectStore
+
+	// Rudimentary hooks
+	hooks []smartblock.HookCallback
 }
 
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
@@ -99,13 +104,14 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
 
-func (st *SmartTest) GetDocInfo() (DocInfo, error) {
-	return DocInfo{
+func (st *SmartTest) GetDocInfo() (doc.DocInfo, error) {
+	return doc.DocInfo{
 		Id: st.Id(),
 	}, nil
 }
 
 func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hook) {
+	st.hooks = append(st.hooks, f)
 	return
 }
 
@@ -208,7 +214,7 @@ func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err error) {
-	var sendEvent, addHistory, checkRestrictions = true, true, true
+	var sendEvent, addHistory, checkRestrictions, hooks = true, true, true, true
 
 	for _, f := range flags {
 		switch f {
@@ -218,6 +224,8 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 			addHistory = false
 		case smartblock.NoRestrictions:
 			checkRestrictions = false
+		case smartblock.NoHooks:
+			hooks = false
 		}
 	}
 
@@ -230,6 +238,14 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 	msgs, act, err := state.ApplyState(s, true)
 	if err != nil {
 		return
+	}
+
+	if hooks {
+		for _, h := range st.hooks {
+			if err = h(smartblock.ApplyInfo{State: s, Changes: s.GetChanges()}); err != nil {
+				return fmt.Errorf("exec hook: %s", err)
+			}
+		}
 	}
 
 	if st.hist != nil && addHistory {
@@ -277,6 +293,10 @@ func (st *SmartTest) Close() (err error) {
 
 func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
 	st.os = os
+}
+
+func (st *SmartTest) Inner() smartblock.SmartBlock {
+	return nil
 }
 
 type Results struct {

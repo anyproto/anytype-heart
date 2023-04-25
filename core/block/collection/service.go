@@ -22,15 +22,15 @@ type Service struct {
 	collections map[string]map[string]chan []string
 }
 
-func New() *Service {
+func New(picker block.Picker) *Service {
 	return &Service{
+		picker:      picker,
 		lock:        &sync.RWMutex{},
 		collections: map[string]map[string]chan []string{},
 	}
 }
 
 func (s *Service) Init(a *app.App) (err error) {
-	s.picker = app.MustComponent[block.Picker](a)
 	return nil
 }
 
@@ -98,9 +98,12 @@ func (s *Service) RegisterCollection(sb smartblock.SmartBlock) {
 	s.lock.Unlock()
 
 	sb.AddHook(func(info smartblock.ApplyInfo) (err error) {
-		go func() {
-			s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), storeKey))
-		}()
+		for _, ch := range info.Changes {
+			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == storeKey {
+				s.broadcast(sb.Id(), pbtypes.GetStringList(info.State.Store(), storeKey))
+				return nil
+			}
+		}
 		return nil
 	}, smartblock.HookAfterApply)
 }
@@ -139,6 +142,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 	}
 
 	s.lock.Lock()
+	defer s.lock.Unlock()
 	col, ok := s.collections[collectionID]
 	if !ok {
 		return nil, nil, fmt.Errorf("collection is not registered")
@@ -149,7 +153,6 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 		ch = make(chan []string)
 		col[subscriptionID] = ch
 	}
-	s.lock.Unlock()
 
 	return initialObjectIDs, ch, err
 }
