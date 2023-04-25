@@ -73,7 +73,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 		return ou.getSubObjectID(sn, sbType)
 	}
 
-	if getExisting {
+	if getExisting || sbType == sb.SmartBlockTypeProfilePage {
 		id, exist := ou.getExisting(sn)
 		if id != "" {
 			return id, exist, nil
