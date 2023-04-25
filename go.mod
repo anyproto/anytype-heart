@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.8.0
-	github.com/anytypeio/any-sync v0.0.1
+	github.com/anytypeio/any-sync v0.0.2-0.20230106184428-d1a406caf9dd
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -87,7 +87,7 @@ require (
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/yuin/goldmark v1.4.13
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
+	golang.org/x/exp v0.0.0-20230105202349-8879d0199aa3
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 	golang.org/x/text v0.5.0
 	google.golang.org/grpc v1.47.0
