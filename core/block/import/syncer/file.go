@@ -20,6 +20,9 @@ func NewFileSyncer(service *block.Service) *FileSyncer {
 }
 
 func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
+	if b.Model().GetFile().GetHash() != "" {
+		return nil
+	}
 	params := pb.RpcBlockUploadRequest{
 		FilePath: b.Model().GetFile().Name,
 		BlockId:  b.Model().Id,
