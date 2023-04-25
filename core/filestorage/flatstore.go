@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	flatfs "github.com/ipfs/go-ds-flatfs"
 	format "github.com/ipfs/go-ipld-format"
+	"go.uber.org/zap"
 )
 
 type flatStore struct {
@@ -50,8 +51,7 @@ func (f *flatStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Blo
 		for _, k := range ks {
 			b, err := f.Get(ctx, k)
 			if err != nil {
-				// TODO proper logging
-				fmt.Println("GetMany: ", k, err)
+				log.Error("flatStore.GetMany", zap.Error(err))
 				continue
 			}
 			ch <- b

@@ -35,7 +35,6 @@ type FileStorage interface {
 }
 
 type fileStorage struct {
-	// TODO use cache proxy directly
 	fileblockstore.BlockStoreLocal
 
 	flatfsPath   string
