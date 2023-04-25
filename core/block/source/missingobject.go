@@ -2,6 +2,9 @@ package source
 
 import (
 	"context"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -9,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 type missingObject struct {
@@ -28,6 +30,7 @@ func (m *missingObject) ReadOnly() bool {
 	return true
 }
 
+// nolint:revive
 func (m *missingObject) Id() string {
 	return addr.MissingObject
 }
