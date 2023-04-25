@@ -123,6 +123,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	}
 	payload := commonspace.SpaceDerivePayload{
 		SigningKey: s.account.Account().SignKey,
+		MasterKey:  s.account.Account().MasterKey,
 		SpaceType:  SpaceType,
 	}
 	if s.newAccount {
