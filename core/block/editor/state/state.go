@@ -910,6 +910,9 @@ func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
+	if s.IsTheHeaderChange() {
+		return
+	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 
 	if ot := s.ObjectType(); ot != "" {
@@ -943,6 +946,9 @@ func ListSmartblockTypes(objectId string) ([]int, error) {
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
+	if s.IsTheHeaderChange() {
+		return
+	}
 	for key, v := range localDetails.GetFields() {
 		if v == nil {
 			continue
