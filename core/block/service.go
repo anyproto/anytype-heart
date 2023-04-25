@@ -383,6 +383,11 @@ func (s *Service) AddSubObjectsToWorkspace(
 }
 
 func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string, orphansGC bool) (err error) {
+	for _, objectId := range objectIds {
+		if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); err != nil {
+			return err
+		}
+	}
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
