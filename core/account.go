@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/any-sync/util/crypto"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"io"
 	"io/ioutil"
 	"net"
@@ -20,6 +18,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/anytypeio/any-sync/util/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
@@ -380,7 +381,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	defer mw.m.Unlock()
 
 	// we already have this account running, lets just stop events
-	if mw.app != nil && req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
+	if mw.app != nil && req.Id == mw.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account() {
 		mw.app.MustComponent(treegetter.CName).(*block.Service).CloseBlocks()
 		acc := &model.Account{Id: req.Id}
 		acc.Info = mw.getInfo()
