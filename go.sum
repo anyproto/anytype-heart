@@ -101,6 +101,16 @@ github.com/anytypeio/any-sync v0.0.5-0.20230116230414-fb4e2b1fc92e h1:jSWRirm7mK
 github.com/anytypeio/any-sync v0.0.5-0.20230116230414-fb4e2b1fc92e/go.mod h1:8mSfz9bJypBb3rmRh4csswCskzYjzr0neHf1Bhz2Ow8=
 github.com/anytypeio/any-sync v0.0.5-0.20230117141604-9c41451986cb h1:JY4LbZdPi3cw6ao5mbQhb/CwGXthNqNxwPlfgte20/I=
 github.com/anytypeio/any-sync v0.0.5-0.20230117141604-9c41451986cb/go.mod h1:8mSfz9bJypBb3rmRh4csswCskzYjzr0neHf1Bhz2Ow8=
+github.com/anytypeio/any-sync v0.0.5-0.20230117220715-41f66edfb93e h1:dAIfgtGmgkoT5KSea+4OH4puJvR7CD6Lgj4+66u4qvg=
+github.com/anytypeio/any-sync v0.0.5-0.20230117220715-41f66edfb93e/go.mod h1:8mSfz9bJypBb3rmRh4csswCskzYjzr0neHf1Bhz2Ow8=
+github.com/anytypeio/any-sync v0.0.5-0.20230118070747-0acc14144aff h1:wU7+Dg0/3Ukedrz6qng8hpHik08BQ0ld97G6dmZCjLE=
+github.com/anytypeio/any-sync v0.0.5-0.20230118070747-0acc14144aff/go.mod h1:8mSfz9bJypBb3rmRh4csswCskzYjzr0neHf1Bhz2Ow8=
+github.com/anytypeio/any-sync v0.0.5-0.20230118072433-d466d40cf0e0 h1:4ezOSD4t15j1N3TDjY/UFCCMN7uZOr19lAA7VTCPKYY=
+github.com/anytypeio/any-sync v0.0.5-0.20230118072433-d466d40cf0e0/go.mod h1:8mSfz9bJypBb3rmRh4csswCskzYjzr0neHf1Bhz2Ow8=
+github.com/anytypeio/any-sync v0.0.5-0.20230118073654-e7ee5dd864af h1:1sZ+mDLsZ4hBNPAibEwHTee4rsgDROJyuKaZucpC37o=
+github.com/anytypeio/any-sync v0.0.5-0.20230118073654-e7ee5dd864af/go.mod h1:8mSfz9bJypBb3rmRh4csswCskzYjzr0neHf1Bhz2Ow8=
+github.com/anytypeio/any-sync v0.0.5-0.20230118081638-9b9c27871808 h1:ldyZw5M1F6pc5xyglM5fIl1t7u+bvbBUK1ukyOSl+o4=
+github.com/anytypeio/any-sync v0.0.5-0.20230118081638-9b9c27871808/go.mod h1:8mSfz9bJypBb3rmRh4csswCskzYjzr0neHf1Bhz2Ow8=
 github.com/anytypeio/go-chash v0.0.2 h1:BSpyMC3HXNkf2eosQrHM4svov0DrvxL9tb4gnHbdmbA=
 github.com/anytypeio/go-chash v0.0.2/go.mod h1:G+R6q7jYgNa52NqcRhnNm28pogfWW+cuHtgBktrc2QA=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
