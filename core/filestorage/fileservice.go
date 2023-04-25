@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
@@ -16,6 +15,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-libipfs/blocks"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
@@ -92,13 +92,9 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	}
 	f.handler.store = bs
 
-	var oldStore *badger.DB
-	if f.cfg.LegacyFileStorePath != "" {
-		oldStore, err = badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
-		if err != nil && !strings.Contains(err.Error(), errDirectoryIsLocked) {
-			return fmt.Errorf("open old file store: %w", err)
-		}
-		err = nil
+	oldStore, storeErr := f.initOldStore()
+	if storeErr != nil {
+		log.Error("can't open legacy file store", zap.Error(storeErr))
 	}
 	ps := &proxyStore{
 		cache:    bs,
@@ -107,6 +103,16 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	}
 	f.BlockStoreLocal = ps
 	return
+}
+
+func (f *fileStorage) initOldStore() (*badger.DB, error) {
+	if f.cfg.LegacyFileStorePath == "" {
+		return nil, nil
+	}
+	if _, err := os.Stat(f.cfg.LegacyFileStorePath); os.IsNotExist(err) {
+		return nil, nil
+	}
+	return badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
 }
 func (f *fileStorage) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
 	return f.BlockStoreLocal.Get(f.patchAccountIdCtx(ctx), k)
