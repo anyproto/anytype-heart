@@ -145,7 +145,7 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, fileproto.DRPCRegisterFile(rserv.Mux, fx.serv))
 	fx.ctrl = gomock.NewController(t)
 	fx.a.Register(fx.s).
-		Register(mock_accountservice.NewAccountServiceWithAccount(fx.ctrl, &accountdata.AccountData{})).
+		Register(mock_accountservice.NewAccountServiceWithAccount(fx.ctrl, &accountdata.AccountKeys{})).
 		Register(rpctest.NewTestPool().WithServer(rserv)).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).

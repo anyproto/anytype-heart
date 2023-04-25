@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +16,6 @@ func init() {
 	// subcommands
 	CliCmd.AddCommand(migrateCmd)
 	CliCmd.AddCommand(cafeCmd)
-	CliCmd.AddCommand(debugCmd)
 
 	// local flags
 }
