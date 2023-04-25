@@ -2,7 +2,6 @@ package collection
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/anytypeio/any-sync/app"
@@ -17,12 +16,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -235,34 +232,4 @@ func (s *Service) ObjectToCollection(id string) error {
 	}
 
 	return nil
-}
-
-func (s *Service) generateFilters(typesAndRels []string) []*model.BlockContentDataviewFilter {
-	var (
-		types, rels []string
-		filters     []*model.BlockContentDataviewFilter
-	)
-	for _, id := range typesAndRels {
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			types = append(types, id)
-		} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			rels = append(rels, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
-		}
-	}
-	if len(types) != 0 {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyType.String(),
-			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList(types),
-		})
-	}
-	if len(rels) != 0 {
-		for _, rel := range rels {
-			filters = append(filters, &model.BlockContentDataviewFilter{
-				RelationKey: rel,
-				Condition:   model.BlockContentDataviewFilter_Exists,
-			})
-		}
-	}
-	return filters
 }

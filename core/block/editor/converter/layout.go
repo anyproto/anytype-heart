@@ -2,6 +2,7 @@ package converter
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/exp/slices"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
@@ -32,7 +34,7 @@ func NewLayoutConverter(objectStore objectstore.ObjectStore, sbtProvider typepro
 	}
 }
 
-func (c LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
 	}
@@ -76,7 +78,7 @@ func (c LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.Obj
 	return c.fromAnyToAny(st)
 }
 
-func (c LayoutConverter) fromAnyToAny(st *state.State) error {
+func (c *LayoutConverter) fromAnyToAny(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
@@ -84,7 +86,7 @@ func (c LayoutConverter) fromAnyToAny(st *state.State) error {
 	return nil
 }
 
-func (c LayoutConverter) fromAnyToBookmark(st *state.State) error {
+func (c *LayoutConverter) fromAnyToBookmark(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
@@ -93,7 +95,7 @@ func (c LayoutConverter) fromAnyToBookmark(st *state.State) error {
 	return nil
 }
 
-func (c LayoutConverter) fromAnyToTodo(st *state.State) error {
+func (c *LayoutConverter) fromAnyToTodo(st *state.State) error {
 	if err := st.SetAlign(model.Block_AlignLeft); err != nil {
 		return err
 	}
@@ -166,21 +168,18 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 }
 
 func (c *LayoutConverter) listIDsFromSet(typesFromSet []string) ([]string, error) {
-	recs, _, qErr := c.objectStore.Query(nil, database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(typesFromSet),
-			},
+	records, _, err := c.objectStore.Query(
+		nil,
+		database.Query{
+			Filters: generateFilters(typesFromSet),
 		},
-	})
-	if qErr != nil {
-		return nil, fmt.Errorf("can't get records for collection: %w", qErr)
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't get records for collection: %w", err)
 	}
-	ids := make([]string, 0, len(recs))
-	for _, r := range recs {
-		ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
+	ids := make([]string, 0, len(records))
+	for _, record := range records {
+		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
 	}
 	return ids, nil
 }
@@ -259,4 +258,46 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+func generateFilters(typesAndRelations []string) []*model.BlockContentDataviewFilter {
+	var filters []*model.BlockContentDataviewFilter
+	types, relations := separate(typesAndRelations)
+	filters = appendTypesFilter(types, filters)
+	filters = appendRelationFilters(relations, filters)
+	return filters
+}
+
+func appendRelationFilters(rels []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+	if len(rels) != 0 {
+		for _, rel := range rels {
+			filters = append(filters, &model.BlockContentDataviewFilter{
+				RelationKey: rel,
+				Condition:   model.BlockContentDataviewFilter_Exists,
+			})
+		}
+	}
+	return filters
+}
+
+func appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+	if len(types) != 0 {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.StringList(types),
+		})
+	}
+	return filters
+}
+
+func separate(typesAndRels []string) (types []string, rels []string) {
+	for _, id := range typesAndRels {
+		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
+			types = append(types, id)
+		} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+			rels = append(rels, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
+		}
+	}
+	return
 }
