@@ -89,6 +89,8 @@ github.com/anytypeio/any-sync v0.0.25-0.20230319162316-935a95c247f0 h1:V7+Kza6yh
 github.com/anytypeio/any-sync v0.0.25-0.20230319162316-935a95c247f0/go.mod h1:75teJNrgh5z1XS1BZ/z7kITZ08tK33lIVIX2NroUsvM=
 github.com/anytypeio/any-sync v0.0.25 h1:rcDXJ99qEgRMR4a1tuk2G7whN+fixoFrH/Nmx7WCJoc=
 github.com/anytypeio/any-sync v0.0.25/go.mod h1:a34AUcUteo1Vc3InnM1TPXvakBWeb5HsHxFvHYqUmPc=
+github.com/anytypeio/any-sync v0.0.26 h1:bgN5pNqPnsChwbwCGfGmx6Yty3UD2tRTJ3Swcu4OVU8=
+github.com/anytypeio/any-sync v0.0.26/go.mod h1:a34AUcUteo1Vc3InnM1TPXvakBWeb5HsHxFvHYqUmPc=
 github.com/anytypeio/go-chash v0.0.2 h1:BSpyMC3HXNkf2eosQrHM4svov0DrvxL9tb4gnHbdmbA=
 github.com/anytypeio/go-chash v0.0.2/go.mod h1:G+R6q7jYgNa52NqcRhnNm28pogfWW+cuHtgBktrc2QA=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
