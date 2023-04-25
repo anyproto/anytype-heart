@@ -1,3 +1,4 @@
+//go:generate mockgen -package importer -destination mock.go github.com/anytypeio/go-anytype-middleware/core/block/import Creator,IDGetter
 package importer
 
 import (
