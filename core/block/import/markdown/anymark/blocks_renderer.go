@@ -294,11 +294,11 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	}
 
 	switch {
-	case len(t.Text) >= 3 && strings.HasPrefix(t.Text[:3], "[ ]"):
+	case len(t.Text) >= 3 && strings.HasPrefix(t.Text, "[ ]"):
 		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, "[ ]")
-	case len(t.Text) >= 2 && strings.HasPrefix(t.Text[:2], "[]"):
+	case len(t.Text) >= 2 && strings.HasPrefix(t.Text, "[]"):
 		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, "[]")
-	case len(t.Text) >= 3 && strings.HasPrefix(t.Text[:3], "[x]"):
+	case len(t.Text) >= 3 && strings.HasPrefix(t.Text, "[x]"):
 		parentBlock = r.normalizeCheckboxBlock(t, parentBlock, "[x]")
 		t.Checked = true
 	}
