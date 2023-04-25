@@ -2,7 +2,6 @@ package mill
 
 import (
 	"bytes"
-	"encoding/json"
 	"image"
 	"io"
 	"path/filepath"
@@ -10,6 +9,8 @@ import (
 	"time"
 
 	"github.com/rwcarlsen/goexif/exif"
+
+	"github.com/anytypeio/go-anytype-middleware/util/jsonutil"
 )
 
 type ImageExifSchema struct {
@@ -140,7 +141,7 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		Description:  description,
 	}
 
-	b, err := json.Marshal(res)
+	b, err := jsonutil.MarshalSafely(res)
 	if err != nil {
 		return nil, err
 	}
