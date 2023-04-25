@@ -635,16 +635,16 @@ func (mw *Middleware) ObjectSetSource(cctx context.Context,
 	return response(pb.RpcObjectSetSourceResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectSetDashboard(cctx context.Context, req *pb.RpcObjectSetDashboardRequest) *pb.RpcObjectSetDashboardResponse {
-	response := func(setId string, err error) *pb.RpcObjectSetDashboardResponse {
-		resp := &pb.RpcObjectSetDashboardResponse{
+func (mw *Middleware) ObjectSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
+	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
+		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
 			ObjectId: setId,
-			Error: &pb.RpcObjectSetDashboardResponseError{
-				Code: pb.RpcObjectSetDashboardResponseError_NULL,
+			Error: &pb.RpcObjectWorkspaceSetDashboardResponseError{
+				Code: pb.RpcObjectWorkspaceSetDashboardResponseError_NULL,
 			},
 		}
 		if err != nil {
-			resp.Error.Code = pb.RpcObjectSetDashboardResponseError_UNKNOWN_ERROR
+			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
 			resp.Error.Description = err.Error()
 		}
 		return resp

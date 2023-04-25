@@ -1465,7 +1465,7 @@ message Rpc {
             }
         }
 
-        message SetDashboard {
+        message WorkspaceSetDashboard {
 
             message Request {
                 string contextId = 1;
