@@ -361,11 +361,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		return err
 	}
 
-	err = i.ensurePreinstalledObjects()
-	if err != nil {
-		return fmt.Errorf("ensure preinstalled objects: %w", err)
-	}
-
 	if flags.any() {
 		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)
 		if err != nil {
@@ -479,6 +474,12 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			return err
 		}
 	}
+
+	err = i.ensurePreinstalledObjects()
+	if err != nil {
+		return fmt.Errorf("ensure preinstalled objects: %w", err)
+	}
+
 	if flags.fulltext {
 		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
