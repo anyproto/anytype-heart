@@ -5,7 +5,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -63,7 +62,7 @@ func (r *RootCollection) AddObjects(collectionName string, targetObject []string
 			Details:       detailsStruct,
 			ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
 			RelationLinks: st.GetRelationLinks(),
-			Collections:   st.GetCollection(smartblock.CollectionStoreKey),
+			Collections:   st.Store(),
 		},
 		},
 	}

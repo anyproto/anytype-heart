@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
@@ -171,7 +170,7 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
 		ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
-		Collections:   st.GetCollection(smartblock.CollectionStoreKey),
+		Collections:   st.Store(),
 		RelationLinks: st.GetRelationLinks(),
 	}
 
