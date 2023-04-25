@@ -45,8 +45,6 @@ const (
 	collectionKeyObjectTypes     = "ot"
 )
 
-const blockServiceCName = "blockService"
-
 var objectTypeToCollection = map[bundle.TypeKey]string{
 	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
 	bundle.TypeKeyRelation:       collectionKeyRelations,
@@ -98,9 +96,9 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	p.app = ctx.App
 	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
-	p.templateCloner = p.app.MustComponent(treegetter.CName).(templateCloner)
-	//TODO: Maybe we should move dashboard id fetching logic to other service
-	p.dashboardIDGetter = p.app.MustComponent(blockServiceCName).(dashboardIDGetter)
+	treeGetter := p.app.MustComponent(treegetter.CName)
+	p.templateCloner = treeGetter.(templateCloner)
+	p.dashboardIDGetter = treeGetter.(dashboardIDGetter)
 
 	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 
