@@ -203,6 +203,9 @@ func (s *service) getObjectRestrictionsForObjectType(id string) (r ObjectRestric
 
 func (s *service) getObjectRestrictionsForRelation(id string) (r ObjectRestrictions) {
 	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		return objRestrictAll
+	}
 	if !lo.Contains(bundle.SystemRelations, bundle.RelationKey(strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))) {
 		return
 	}

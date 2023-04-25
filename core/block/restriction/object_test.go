@@ -49,6 +49,15 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 		model.Restrictions_Delete,
 	), ErrRestricted)
 
+	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
+		id:     bundle.TypeKeyBookmark.BundledURL(),
+		tp:     model.SmartBlockType_SubObject,
+		layout: model.ObjectType_objectType,
+	}).Object.Check(
+		model.Restrictions_Duplicate,
+		model.Restrictions_Relations,
+	), ErrRestricted)
+
 	assert.NoError(t, rest.GetRestrictions(&restrictionHolder{
 		id:     bundle.RelationKeyImdbRating.String(),
 		tp:     model.SmartBlockType_SubObject,
@@ -67,5 +76,13 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 		model.Restrictions_Delete,
 		model.Restrictions_Relations,
 		model.Restrictions_Details,
+	), ErrRestricted)
+
+	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
+		id:     bundle.RelationKeyId.BundledURL(),
+		tp:     model.SmartBlockType_SubObject,
+		layout: model.ObjectType_relation,
+	}).Object.Check(
+		model.Restrictions_Duplicate,
 	), ErrRestricted)
 }

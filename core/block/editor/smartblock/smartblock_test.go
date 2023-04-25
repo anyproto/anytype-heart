@@ -123,7 +123,7 @@ func newFixture(t *testing.T) *fixture {
 
 	a := testapp.New()
 	a.Register(store).
-		Register(restriction.New(nil)).
+		Register(restriction.New(nil, nil)).
 		Register(indexer)
 
 	mockRelation.RegisterMockRelation(ctrl, a)
