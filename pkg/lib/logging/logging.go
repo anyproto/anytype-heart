@@ -70,6 +70,6 @@ func init() {
 	} else {
 		registerGelfSink(&cfg)
 	}
-	cfg.NamedLevels = LevelsFromStr(os.Getenv("ANYTYPE_LOG_LEVEL"))
+	cfg.Levels = logger.LevelsFromStr(os.Getenv("ANYTYPE_LOG_LEVEL"))
 	cfg.ApplyGlobal()
 }
