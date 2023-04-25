@@ -359,14 +359,14 @@ func buildStateFromAST(root *Block) *State {
 
 func TestState_SetParent(t *testing.T) {
 	orig := NewDoc("root", nil).(*State)
-	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}}))
+	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	orig.Add(simple.New(&model.Block{Id: "header"}))
 	orig.SetObjectType("orig")
 	orig.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "one"})
 	st := orig.Copy()
 
 	newState := NewDoc("root", nil).(*State)
-	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}}))
+	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
 	newState.SetObjectTypes([]string{"newOT1", "newOT2"})
 	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newOne"})

@@ -2,6 +2,8 @@ package basic
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
@@ -73,7 +75,7 @@ func assertLinkedObjectHasTextBlocks(t *testing.T, ts testExtractObjects, source
 func TestExtractObjects(t *testing.T) {
 	makeTestObject := func() *smarttest.SmartTest {
 		sb := smarttest.New("test")
-		sb.AddBlock(newTextBlock("test", "", []string{"1", "2", "3"}))
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2", "3"}}))
 		sb.AddBlock(newTextBlock("1", "text 1", []string{"1.1", "1.2"}))
 		sb.AddBlock(newTextBlock("1.1", "text 1.1", []string{"1.1.1"}))
 		sb.AddBlock(newTextBlock("1.1.1", "text 1.1.1", nil))
