@@ -505,8 +505,12 @@ func (sb *smartBlock) navigationalLinks() []string {
 
 	s := sb.Doc.(*state.State)
 
-	// Objects from collection
-	ids := s.GetStoreSlice(template.CollectionStoreKey)
+	var ids []string
+
+	if !internalflag.NewFromState(s).Has(model.InternalFlag_collectionDontIndex) {
+		// flag used when importing a large set of objects
+		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
+	}
 
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
