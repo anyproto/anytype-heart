@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "1fafb9191e2fc434ae8221cdc0051ade4464c907b8c07d1f44d7d5d5641fe18f"
+const TypeChecksum = "95f4f96dbb1537fa332ee00bb4d46061ccd3e3f2e1c1b50693e4f539e2a7406b"
 
 type TypeKey string
 
@@ -27,72 +27,42 @@ const (
 	TypePrefix = "_ot"
 )
 const (
-	TypeKeyDailyReflection TypeKey = "dailyReflection"
-	TypeKeyRecipe          TypeKey = "recipe"
-	TypeKeyNote            TypeKey = "note"
-	TypeKeyResume          TypeKey = "resume"
-	TypeKeyContact         TypeKey = "contact"
-	TypeKeyBookmark        TypeKey = "bookmark"
-	TypeKeyWeeklyPlan      TypeKey = "weeklyPlan"
-	TypeKeyDate            TypeKey = "date"
-	TypeKeyInvoice         TypeKey = "invoice"
-	TypeKeyIdea            TypeKey = "idea"
-	TypeKeyTask            TypeKey = "task"
-	TypeKeyRelation        TypeKey = "relation"
-	TypeKeyBook            TypeKey = "book"
-	TypeKeyVideo           TypeKey = "video"
-	TypeKeyCompany         TypeKey = "company"
-	TypeKeyDashboard       TypeKey = "dashboard"
-	TypeKeyDailyPlan       TypeKey = "dailyPlan"
-	TypeKeyMeetingNote     TypeKey = "meetingNote"
-	TypeKeyMovie           TypeKey = "movie"
-	TypeKeyArticle         TypeKey = "article"
-	TypeKeyObjectType      TypeKey = "objectType"
-	TypeKeyRelationOption  TypeKey = "relationOption"
-	TypeKeySpace           TypeKey = "space"
-	TypeKeyTemplate        TypeKey = "template"
-	TypeKeyHabitTrack      TypeKey = "habitTrack"
-	TypeKeySet             TypeKey = "set"
-	TypeKeyCollection      TypeKey = "collection"
-	TypeKeyClassNote       TypeKey = "classNote"
-	TypeKeyDiaryEntry      TypeKey = "diaryEntry"
-	TypeKeyPage            TypeKey = "page"
-	TypeKeyImage           TypeKey = "image"
-	TypeKeyBug             TypeKey = "bug"
-	TypeKeyProfile         TypeKey = "profile"
-	TypeKeyAudio           TypeKey = "audio"
-	TypeKeyActionPlan      TypeKey = "actionPlan"
-	TypeKeyGoal            TypeKey = "goal"
-	TypeKeyFeature         TypeKey = "feature"
-	TypeKeyDocument        TypeKey = "document"
-	TypeKeyFile            TypeKey = "file"
-	TypeKeyProject         TypeKey = "project"
+	TypeKeyRecipe         TypeKey = "recipe"
+	TypeKeyNote           TypeKey = "note"
+	TypeKeyContact        TypeKey = "contact"
+	TypeKeyBookmark       TypeKey = "bookmark"
+	TypeKeyWeeklyPlan     TypeKey = "weeklyPlan"
+	TypeKeyDate           TypeKey = "date"
+	TypeKeyIdea           TypeKey = "idea"
+	TypeKeyTask           TypeKey = "task"
+	TypeKeyRelation       TypeKey = "relation"
+	TypeKeyBook           TypeKey = "book"
+	TypeKeyVideo          TypeKey = "video"
+	TypeKeyDashboard      TypeKey = "dashboard"
+	TypeKeyDailyPlan      TypeKey = "dailyPlan"
+	TypeKeyMovie          TypeKey = "movie"
+	TypeKeyObjectType     TypeKey = "objectType"
+	TypeKeyRelationOption TypeKey = "relationOption"
+	TypeKeySpace          TypeKey = "space"
+	TypeKeyTemplate       TypeKey = "template"
+	TypeKeySet            TypeKey = "set"
+	TypeKeyCollection     TypeKey = "collection"
+	TypeKeyClassNote      TypeKey = "classNote"
+	TypeKeyDiaryEntry     TypeKey = "diaryEntry"
+	TypeKeyPage           TypeKey = "page"
+	TypeKeyImage          TypeKey = "image"
+	TypeKeyBug            TypeKey = "bug"
+	TypeKeyProfile        TypeKey = "profile"
+	TypeKeyAudio          TypeKey = "audio"
+	TypeKeyGoal           TypeKey = "goal"
+	TypeKeyFeature        TypeKey = "feature"
+	TypeKeyDocument       TypeKey = "document"
+	TypeKeyFile           TypeKey = "file"
+	TypeKeyProject        TypeKey = "project"
 )
 
 var (
 	types = map[TypeKey]*model.ObjectType{
-		TypeKeyActionPlan: {
-
-			Description:   "Is a detailed plan outlining actions needed to reach one or more goals",
-			IconEmoji:     "🤝",
-			Layout:        model.ObjectType_todo,
-			Name:          "Action Plan",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyResources), MustGetRelationLink(RelationKeyResult), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyResponsible)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "actionPlan",
-		},
-		TypeKeyArticle: {
-
-			Description:   "A piece of writing included with others in a newspaper, magazine, or other publication",
-			IconEmoji:     "📰",
-			Layout:        model.ObjectType_basic,
-			Name:          "Article",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "article",
-		},
 		TypeKeyAudio: {
 
 			Description:   "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce",
@@ -100,7 +70,7 @@ var (
 			Layout:        model.ObjectType_file,
 			Name:          "Audio",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyComposer), MustGetRelationLink(RelationKeyDurationInSeconds), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyAudioArtist), MustGetRelationLink(RelationKeyAudioLyrics)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyComposer), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyAudioArtist), MustGetRelationLink(RelationKeyAudioLyrics)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_File},
 			Url:           TypePrefix + "audio",
 		},
@@ -122,7 +92,7 @@ var (
 			Layout:        model.ObjectType_bookmark,
 			Name:          "Bookmark",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyQuote)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
 		},
@@ -159,17 +129,6 @@ var (
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "collection",
 		},
-		TypeKeyCompany: {
-
-			Description:   "A company, abbreviated as co., is a legal entity representing an association of people, whether natural, legal or a mixture of both, with a specific objective",
-			IconEmoji:     "🏢",
-			Layout:        model.ObjectType_profile,
-			Name:          "Company",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyStory), MustGetRelationLink(RelationKeyFounded), MustGetRelationLink(RelationKeyCeo), MustGetRelationLink(RelationKeyFounders), MustGetRelationLink(RelationKeyOwner), MustGetRelationLink(RelationKeyNumberOfEmployees), MustGetRelationLink(RelationKeyHeadquarters), MustGetRelationLink(RelationKeyWebsite), MustGetRelationLink(RelationKeySocialProfile), MustGetRelationLink(RelationKeyStockprice), MustGetRelationLink(RelationKeyTickerSymbol), MustGetRelationLink(RelationKeyAddress), MustGetRelationLink(RelationKeySubsidiaries)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "company",
-		},
 		TypeKeyContact: {
 
 			Description:   "Information to make action of communicating or meeting with Human or Company",
@@ -188,20 +147,9 @@ var (
 			Layout:        model.ObjectType_todo,
 			Name:          "Daily Plan",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyEvents)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyEvents)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "dailyPlan",
-		},
-		TypeKeyDailyReflection: {
-
-			Description:   "Serious thought or consideration",
-			IconEmoji:     "💭",
-			Layout:        model.ObjectType_basic,
-			Name:          "Daily Reflection",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIntentions), MustGetRelationLink(RelationKeyHappenings), MustGetRelationLink(RelationKeyGratefulFor), MustGetRelationLink(RelationKeyMood), MustGetRelationLink(RelationKeyWorriedAbout), MustGetRelationLink(RelationKeyTasks)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "dailyReflection",
 		},
 		TypeKeyDashboard: {
 
@@ -280,17 +228,6 @@ var (
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
 		},
-		TypeKeyHabitTrack: {
-
-			Description:   "A habit track is a simple way to measure whether you did a habit",
-			IconEmoji:     "🥕",
-			Layout:        model.ObjectType_todo,
-			Name:          "Habit Track",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyRunning), MustGetRelationLink(RelationKeyMeditation), MustGetRelationLink(RelationKey7hourssleep), MustGetRelationLink(RelationKeyJournaling), MustGetRelationLink(RelationKeyHealthyEating)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "habitTrack",
-		},
 		TypeKeyIdea: {
 
 			Description:   "A thought or suggestion as to a possible course of action",
@@ -312,28 +249,6 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFocalRatio), MustGetRelationLink(RelationKeyFileExt)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_File},
 			Url:           TypePrefix + "image",
-		},
-		TypeKeyInvoice: {
-
-			Description:   "A list of goods sent or services provided, with a statement of the sum due for these; a bill",
-			IconEmoji:     "🧾",
-			Layout:        model.ObjectType_todo,
-			Name:          "Invoice",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeyAddress), MustGetRelationLink(RelationKeyBillTo), MustGetRelationLink(RelationKeyBillToAddress), MustGetRelationLink(RelationKeyShipTo), MustGetRelationLink(RelationKeyShipToAddress), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyTotal), MustGetRelationLink(RelationKeyNumber)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "invoice",
-		},
-		TypeKeyMeetingNote: {
-
-			Description:   "Quick references to ideas, goals, deadlines, data, and anything else important that's covered in your meeting",
-			IconEmoji:     "✏️",
-			Layout:        model.ObjectType_basic,
-			Name:          "Meeting Note",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyParticipants), MustGetRelationLink(RelationKeyAgenda), MustGetRelationLink(RelationKeyTasks)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "meetingNote",
 		},
 		TypeKeyMovie: {
 
@@ -435,17 +350,6 @@ var (
 			Types:       []model.SmartBlockType{model.SmartBlockType_SubObject},
 			Url:         TypePrefix + "relationOption",
 		},
-		TypeKeyResume: {
-
-			Description:   "A resume is a formal document that a job applicant creates to itemize his or her qualifications for a position",
-			IconEmoji:     "👋",
-			Layout:        model.ObjectType_profile,
-			Name:          "Resume",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyCandidate), MustGetRelationLink(RelationKeyJob), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyLocation), MustGetRelationLink(RelationKeyWebsite), MustGetRelationLink(RelationKeySocialProfile)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
-			Url:           TypePrefix + "resume",
-		},
 		TypeKeySet: {
 
 			Description:   "Query all objects in your space based on types and relations",
@@ -498,7 +402,7 @@ var (
 			Layout:        model.ObjectType_file,
 			Name:          "Video",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyDurationInSeconds), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_File},
 			Url:           TypePrefix + "video",
 		},
@@ -509,7 +413,7 @@ var (
 			Layout:        model.ObjectType_todo,
 			Name:          "Weekly Plan",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyNotes), MustGetRelationLink(RelationKeyEvents), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyEvents), MustGetRelationLink(RelationKeyTasks)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "weeklyPlan",
 		},

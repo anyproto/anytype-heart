@@ -1,25 +1,5 @@
 [
   {
-    "id": "dailyReflection",
-    "name": "Daily Reflection",
-    "types": [
-      "Page"
-    ],
-    "emoji": "💭",
-    "hidden": false,
-    "layout": "basic",
-    "relations": [
-      "tag",
-      "intentions",
-      "happenings",
-      "gratefulFor",
-      "mood",
-      "worriedAbout",
-      "tasks"
-    ],
-    "description": "Serious thought or consideration"
-  },
-  {
     "id": "recipe",
     "name": "Recipe",
     "types": [
@@ -51,27 +31,6 @@
       "tag"
     ],
     "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory"
-  },
-  {
-    "id": "resume",
-    "name": "Resume",
-    "types": [
-      "Page"
-    ],
-    "emoji": "👋",
-    "hidden": false,
-    "layout": "profile",
-    "relations": [
-      "tag",
-      "candidate",
-      "job",
-      "phone",
-      "email",
-      "location",
-      "website",
-      "socialProfile"
-    ],
-    "description": "A resume is a formal document that a job applicant creates to itemize his or her qualifications for a position"
   },
   {
     "id": "contact",
@@ -144,29 +103,6 @@
       "tag"
     ],
     "description": "Gregorian calendar date"
-  },
-  {
-    "id": "invoice",
-    "name": "Invoice",
-    "types": [
-      "Page"
-    ],
-    "emoji": "🧾",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "company",
-      "address",
-      "billTo",
-      "billToAddress",
-      "shipTo",
-      "shipToAddress",
-      "dueDate",
-      "total",
-      "number"
-    ],
-    "description": "A list of goods sent or services provided, with a statement of the sum due for these; a bill"
   },
   {
     "id": "idea",
@@ -268,33 +204,6 @@
     "description": "Auto-generated object from .mpeg-4 files added to Anytype. The recording of moving visual images"
   },
   {
-    "id": "company",
-    "name": "Company",
-    "types": [
-      "Page"
-    ],
-    "emoji": "🏢",
-    "hidden": false,
-    "layout": "profile",
-    "relations": [
-      "tag",
-      "story",
-      "founded",
-      "ceo",
-      "founders",
-      "owner",
-      "numberOfEmployees",
-      "headquarters",
-      "website",
-      "socialProfile",
-      "stockprice",
-      "tickerSymbol",
-      "address",
-      "subsidiaries"
-    ],
-    "description": "A company, abbreviated as co., is a legal entity representing an association of people, whether natural, legal or a mixture of both, with a specific objective"
-  },
-  {
     "id": "dashboard",
     "name": "Dashboard",
     "types": [
@@ -323,23 +232,6 @@
     "description": "A detailed proposal for doing or achieving something for the day\n"
   },
   {
-    "id": "meetingNote",
-    "name": "Meeting Note",
-    "types": [
-      "Page"
-    ],
-    "emoji": "✏️",
-    "hidden": false,
-    "layout": "basic",
-    "relations": [
-      "tag",
-      "participants",
-      "agenda",
-      "tasks"
-    ],
-    "description": "Quick references to ideas, goals, deadlines, data, and anything else important that's covered in your meeting"
-  },
-  {
     "id": "movie",
     "name": "Movie",
     "types": [
@@ -360,20 +252,6 @@
       "status"
     ],
     "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images"
-  },
-  {
-    "id": "article",
-    "name": "Article",
-    "types": [
-      "Page"
-    ],
-    "emoji": "📰",
-    "hidden": false,
-    "layout": "basic",
-    "relations": [
-      "tag"
-    ],
-    "description": "A piece of writing included with others in a newspaper, magazine, or other publication"
   },
   {
     "id": "objectType",
@@ -431,25 +309,6 @@
       "templateIsBundled"
     ],
     "description": "Sample object that has already some details in place and used to create objects from"
-  },
-  {
-    "id": "habitTrack",
-    "name": "Habit Track",
-    "types": [
-      "Page"
-    ],
-    "emoji": "🥕",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "running",
-      "meditation",
-      "7hourssleep",
-      "journaling",
-      "healthyEating"
-    ],
-    "description": "A habit track is a simple way to measure whether you did a habit"
   },
   {
     "id": "set",
@@ -615,25 +474,6 @@
       "audioLyrics"
     ],
     "description": "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce"
-  },
-  {
-    "id": "actionPlan",
-    "name": "Action Plan",
-    "types": [
-      "Page"
-    ],
-    "emoji": "🤝",
-    "hidden": false,
-    "layout": "todo",
-    "relations": [
-      "tag",
-      "tasks",
-      "resources",
-      "result",
-      "dueDate",
-      "responsible"
-    ],
-    "description": "Is a detailed plan outlining actions needed to reach one or more goals"
   },
   {
     "id": "goal",
