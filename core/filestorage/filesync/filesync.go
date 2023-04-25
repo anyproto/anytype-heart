@@ -132,23 +132,47 @@ func (f *fileSync) addLoop() {
 
 func (f *fileSync) addOperation() {
 	for {
-		spaceId, fileId, err := f.queue.GetUpload()
-		if err != nil {
-			if err != errQueueIsEmpty {
-				log.Warn("queue get upload task error", zap.Error(err))
-			}
-			break
+		fileID, err := f.tryToUpload()
+		if err == errQueueIsEmpty {
+			return
 		}
-		if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
-			log.Warn("upload file error", zap.Error(err), zap.String("fileID", fileId))
-			break
-		} else {
-			if err = f.queue.DoneUpload(spaceId, fileId); err != nil {
-				log.Warn("can't mark upload task as done", zap.Error(err))
-				break
-			}
+		if err != nil {
+			log.Warn("can't upload file", zap.String("fileID", fileID), zap.Error(err))
+			return
 		}
 	}
+}
+
+func (f *fileSync) tryToUpload() (string, error) {
+	spaceId, fileId, err := f.queue.GetUpload()
+	if err != nil {
+		return fileId, err
+	}
+
+	ok, err := f.hasFileInStore(fileId)
+	if err != nil {
+		return fileId, err
+	}
+	if ok {
+		if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
+			// Push to the back of the queue
+			if qerr := f.queue.QueueUpload(spaceId, fileId); qerr != nil {
+				log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
+			}
+			return fileId, err
+		}
+	} else {
+		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+	}
+	return fileId, f.queue.DoneUpload(spaceId, fileId)
+}
+
+func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
+	files, err := f.fileStore.ListByTarget(fileID)
+	if err != nil {
+		return false, err
+	}
+	return len(files) > 0, nil
 }
 
 func (f *fileSync) removeLoop() {

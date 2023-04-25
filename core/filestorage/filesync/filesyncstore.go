@@ -87,13 +87,10 @@ func (s *fileSyncStore) getOne(prefix []byte) (spaceId, fileId string, err error
 			Prefix:         prefix,
 		})
 		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			k := it.Item().Key()
-			idx := bytes.LastIndexByte(k, sepByte)
-			fileId = string(k[idx+1:])
-			k = k[:idx]
-			idx = bytes.LastIndexByte(k, sepByte)
-			spaceId = string(k[idx+1:])
+
+		it.Rewind()
+		if it.Valid() {
+			fileId, spaceId = extractFileAndSpaceID(it)
 		}
 		return nil
 	})
@@ -104,6 +101,16 @@ func (s *fileSyncStore) getOne(prefix []byte) (spaceId, fileId string, err error
 		return "", "", errQueueIsEmpty
 	}
 	return
+}
+
+func extractFileAndSpaceID(it *badger.Iterator) (string, string) {
+	k := it.Item().Key()
+	idx := bytes.LastIndexByte(k, sepByte)
+	fileId := string(k[idx+1:])
+	k = k[:idx]
+	idx = bytes.LastIndexByte(k, sepByte)
+	spaceId := string(k[idx+1:])
+	return fileId, spaceId
 }
 
 func (s *fileSyncStore) QueueLen() (l int, err error) {

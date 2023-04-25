@@ -124,6 +124,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
+		Register(filestore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
@@ -134,7 +135,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectStore).
-		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
 		Register(cafe.New()).
