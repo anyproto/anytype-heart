@@ -41,7 +41,7 @@ import (
 
 const CName = "export"
 
-const tempFileName = "temp"
+const tempFileName = "temp_anytype_backup"
 
 var log = logging.Logger("anytype-mw-export")
 
