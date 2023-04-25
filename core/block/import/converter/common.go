@@ -141,18 +141,29 @@ func UpdateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]st
 			relLink.Format != model.RelationFormat_status {
 			continue
 		}
-
-		objectsIDs := pbtypes.GetStringListValue(v)
-		objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID, k)
-		st.SetDetail(k, pbtypes.StringList(objectsIDs))
+		handleObjectRelation(st, pageID, oldIDtoNew, v, k)
 	}
 }
 
-func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID string, k string) []string {
+func handleObjectRelation(st *state.State, pageID string, oldIDtoNew map[string]string, v *types.Value, k string) {
+	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
+		objectsID := v.GetStringValue()
+		newObjectIDs := getNewRelationsID([]string{objectsID}, oldIDtoNew, pageID)
+		if len(newObjectIDs) != 0 {
+			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
+		}
+		return
+	}
+	objectsIDs := pbtypes.GetStringListValue(v)
+	objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID)
+	st.SetDetail(k, pbtypes.StringList(objectsIDs))
+}
+
+func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID string) []string {
 	for i, val := range objectsIDs {
 		newTarget := oldIDtoNew[val]
 		if newTarget == "" {
-			log.With("object", pageID).Errorf("cant find target id for relation %s: %s", k, val)
+			log.With("object", pageID).Errorf("cant find target id for relation: %s", val)
 			continue
 		}
 		objectsIDs[i] = newTarget
