@@ -1,4 +1,5 @@
-- repo: git://github.com/dnephin/pre-commit-golang
-  rev: master
-  hooks:
-    - id: go-fmt
+repos:
+  - repo: https://github.com/zricethezav/gitleaks
+    rev: v8.16.0
+    hooks:
+      - id: gitleaks
