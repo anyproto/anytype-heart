@@ -57,13 +57,13 @@ func New(
 	picker getblock.Picker,
 	cfg *config.Config,
 	sendEvent func(event *pb.Event),
-	updateInterval time.Duration,
+	fileWatcherUpdateInterval time.Duration,
 ) Service {
-	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, updateInterval)
+	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, fileWatcherUpdateInterval)
 	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
 	subObjectsWatcher := newSubObjectsWatcher()
 	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, cfg, sendEvent)
-	fileWatcher := newFileWatcher(fileStatusRegistry, updateReceiver, updateInterval)
+	fileWatcher := newFileWatcher(fileStatusRegistry, updateReceiver, fileWatcherUpdateInterval)
 	objectWatcher := newObjectWatcher(spaceService, updateReceiver)
 	return &service{
 		spaceService:       spaceService,

@@ -83,9 +83,7 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, fil
 		}
 
 		switch status {
-		case syncstatus.StatusUnknown:
-			summary.Pinning++
-		case syncstatus.StatusNotSynced:
+		case syncstatus.StatusUnknown, syncstatus.StatusNotSynced:
 			summary.Pinning++
 		case syncstatus.StatusSynced:
 			summary.Pinned++

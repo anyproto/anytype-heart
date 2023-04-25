@@ -121,8 +121,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	fileSyncService := filesync.New()
 	fileStore := filestore.New()
 
-	fileSyncUpdateInterval := 5 * time.Second
-
+	const fileWatcherUpdateInterval = 5 * time.Second
 	syncStatusService := syncstatus.New(
 		sbtProvider,
 		spaceService,
@@ -132,7 +131,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		blockService,
 		cfg,
 		eventService.Send,
-		fileSyncUpdateInterval,
+		fileWatcherUpdateInterval,
 	)
 
 	fileService := files.New(syncStatusService)
