@@ -26,6 +26,7 @@ const (
 	Name               = "Pb"
 	rootCollectionName = "Protobuf Import"
 	profileFile        = "profile"
+	configFile         = "config.json"
 )
 
 type ProtobufSnapshotGetter struct {
@@ -112,7 +113,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
-		if name == profileFile {
+		if name == profileFile || name == configFile {
 			continue
 		}
 		if err := progress.TryStep(1); err != nil {
