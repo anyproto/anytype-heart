@@ -3,11 +3,12 @@ package core
 import (
 	"archive/zip"
 	"context"
-	"github.com/anytypeio/any-sync/app"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/anytypeio/any-sync/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -149,7 +150,10 @@ func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcUs
 	for _, file := range archive.File {
 		path := filepath.Join(mw.rootPath, file.Name)
 		if file.FileInfo().IsDir() && strings.EqualFold(file.FileInfo().Name(), profile.Address) {
-			os.MkdirAll(path, file.Mode())
+			err = os.MkdirAll(path, file.Mode())
+			if err != nil {
+				return err
+			}
 			break
 		}
 	}
@@ -171,8 +175,8 @@ func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcUs
 func (mw *Middleware) createAccountFile(fName string, file *zip.File) error {
 	path := filepath.Join(mw.rootPath, fName)
 	if file.FileInfo().IsDir() {
-		os.MkdirAll(path, file.Mode())
-		return nil
+		err := os.MkdirAll(path, file.Mode())
+		return err
 	}
 	fileReader, err := file.Open()
 	if err != nil {
