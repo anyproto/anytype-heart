@@ -325,7 +325,8 @@ func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[st
 			a.Model().GetBookmark().TargetObjectId = newTarget
 			st.Set(simple.New(a.Model()))
 		case text.Block:
-			for i, mark := range a.Model().GetText().GetMarks().GetMarks() {
+			marks := a.Model().GetText().GetMarks().GetMarks()
+			for i, mark := range marks {
 				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 					continue
 				}
@@ -335,7 +336,7 @@ func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[st
 					continue
 				}
 
-				a.Model().GetText().GetMarks().GetMarks()[i].Param = newTarget
+				marks[i].Param = newTarget
 			}
 			st.Set(simple.New(a.Model()))
 		}

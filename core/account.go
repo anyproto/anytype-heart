@@ -702,7 +702,7 @@ func (mw *Middleware) AccountRecoverFromLegacyBackup(cctx context.Context,
 	if err != nil {
 		return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
 	}
-	err = mw.createAccount(profile, req)
+	err = mw.createAccountFromLegacyBackup(profile, req)
 	if err != nil {
 		return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
 	}
@@ -710,7 +710,7 @@ func (mw *Middleware) AccountRecoverFromLegacyBackup(cctx context.Context,
 	return response(profile.Address, pb.RpcAccountRecoverFromLegacyBackupResponseError_NULL, nil)
 }
 
-func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyBackupRequest) error {
+func (mw *Middleware) createAccountFromLegacyBackup(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyBackupRequest) error {
 	mw.m.Lock()
 
 	defer mw.m.Unlock()
