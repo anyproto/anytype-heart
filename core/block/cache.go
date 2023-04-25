@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/tree/treestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"go.uber.org/zap"
@@ -84,7 +85,8 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 	if err != nil {
 		return
 	}
-	return v.(objecttree.ObjectTree), nil
+	sb := v.(smartblock.SmartBlock).Inner()
+	return sb.(source.ObjectTreeProvider).Tree(), nil
 }
 
 func (s *Service) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {

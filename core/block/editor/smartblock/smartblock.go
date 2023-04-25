@@ -124,6 +124,7 @@ type SmartBlock interface {
 	SetRestrictions(r restriction.Restrictions)
 	ObjectClose()
 	FileRelationKeys(s *state.State) []string
+	Inner() SmartBlock
 
 	ocache.ObjectLocker
 	state.Doc
@@ -172,6 +173,14 @@ type smartBlock struct {
 
 	recordsSub      database.Subscription
 	closeRecordsSub func()
+}
+
+func (sb *smartBlock) Tree() objecttree.ObjectTree {
+	return sb.ObjectTree
+}
+
+func (sb *smartBlock) Inner() SmartBlock {
+	return sb
 }
 
 func (sb *smartBlock) Lock() {
@@ -248,10 +257,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	sb.source = ctx.Source
-	if _, ok := sb.source.(objecttree.ObjectTree); ok {
+	if provider, ok := sb.source.(source.ObjectTreeProvider); ok {
 		// TODO: [MR] rewrite this so it would be obvious
 		//  we are doing this because we expecting cache to have objectTrees inside for smartblocks
-		sb.ObjectTree = sb.source.(objecttree.ObjectTree)
+		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)

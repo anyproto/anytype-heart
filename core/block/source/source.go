@@ -105,6 +105,10 @@ func newTreeSource(a core.Service, ss status.Service, acc accountservice.Service
 	}, nil
 }
 
+type ObjectTreeProvider interface {
+	Tree() objecttree.ObjectTree
+}
+
 type source struct {
 	objecttree.ObjectTree
 	id, logId                string
@@ -120,6 +124,10 @@ type source struct {
 	closed                   chan struct{}
 	openedAt                 time.Time
 	acc                      accountservice.Service
+}
+
+func (s *source) Tree() objecttree.ObjectTree {
+	return s.ObjectTree
 }
 
 func (s *source) Update(ot objecttree.ObjectTree) {
