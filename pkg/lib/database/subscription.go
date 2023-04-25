@@ -2,19 +2,19 @@ package database
 
 import (
 	"fmt"
+	"golang.org/x/exp/slices"
 	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/slices"
 )
 
 type subscription struct {
-	ids        []string
-	quit       chan struct{}
-	closed     bool
-	closedOnce sync.Once
-	ch         chan *types.Struct
+	ids    []string
+	quit   chan struct{}
+	closed bool
+	ch     chan *types.Struct
+	wg     sync.WaitGroup
 	sync.RWMutex
 }
 
@@ -31,21 +31,22 @@ func (sub *subscription) RecordChan() chan *types.Struct {
 }
 
 func (sub *subscription) Close() {
-	sub.closedOnce.Do(func() {
-		close(sub.quit)
-		sub.Lock()
-		sub.closed = true
-		close(sub.ch)
+	sub.Lock()
+	if sub.closed {
 		sub.Unlock()
-	})
+		return
+	}
+	sub.closed = true
+	sub.Unlock()
+	close(sub.quit)
+
+	sub.wg.Wait()
+	close(sub.ch)
 }
 
 func (sub *subscription) Subscribe(ids []string) (added []string) {
 	sub.Lock()
 	defer sub.Unlock()
-	if sub.closed {
-		return nil
-	}
 loop:
 	for _, id := range ids {
 		for _, idEx := range sub.ids {
@@ -61,14 +62,17 @@ loop:
 
 func (sub *subscription) Publish(id string, msg *types.Struct) bool {
 	sub.RLock()
-	defer sub.RUnlock()
 	if sub.closed {
+		sub.RUnlock()
 		return false
 	}
-
 	if !slices.Contains(sub.ids, id) {
+		sub.RUnlock()
 		return false
 	}
+	sub.wg.Add(1)
+	defer sub.wg.Done()
+	sub.RUnlock()
 
 	log.Debugf("objStore subscription send %s %p", id, sub)
 	var total time.Duration
@@ -84,8 +88,6 @@ func (sub *subscription) Publish(id string, msg *types.Struct) bool {
 			continue
 		}
 	}
-
-	return false
 }
 
 func (sub *subscription) SubscribedForId(id string) bool {
