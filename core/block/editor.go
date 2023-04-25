@@ -634,7 +634,7 @@ func (s *Service) ModifyLocalDetails(
 		// we just need to invoke the smartblock so it reads from pending details
 		// no need to call modify twice
 		if err == nil {
-			return nil
+			return b.Apply(b.NewState())
 		}
 
 		dets, err := modifier(b.CombinedDetails())
