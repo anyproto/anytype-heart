@@ -147,12 +147,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
-		Register(indexer.New()).
 		Register(core.New()).
 		Register(builtintemplate.New()).
 		Register(status.New()).
 		Register(block.New()).
 		Register(doc.New()).
+		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).

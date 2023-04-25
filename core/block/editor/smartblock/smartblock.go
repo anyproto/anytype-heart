@@ -155,6 +155,10 @@ type Locker interface {
 	sync.Locker
 }
 
+type Indexer interface {
+	Index(ctx context.Context, info doc.DocInfo) error
+}
+
 type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
@@ -163,7 +167,7 @@ type smartBlock struct {
 	sendEvent           func(e *pb.Event)
 	undo                undo.History
 	source              source.Source
-	doc                 doc.Service
+	indexer             Indexer
 	metaData            *core.SmartBlockMeta
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
 	restrictions        restriction.Restrictions
@@ -260,7 +264,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	sb.relationService = ctx.App.MustComponent(relation2.CName).(relation2.Service)
-	sb.doc = ctx.App.MustComponent(doc.CName).(doc.Service)
+	sb.indexer = app.MustComponent[Indexer](ctx.App)
 	sb.objectStore = ctx.App.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
@@ -1167,10 +1171,6 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	return nil
 }
 
-func (sb *smartBlock) DocService() doc.Service {
-	return sb.doc
-}
-
 func (sb *smartBlock) ObjectClose() {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
 	sb.SetEventFunc(nil)
@@ -1345,11 +1345,10 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 }
 
 func (sb *smartBlock) reportChange(s *state.State) {
-	if sb.doc == nil {
-		return
-	}
 	docInfo := sb.getDocInfo(s)
-	sb.doc.ReportChange(context.TODO(), docInfo)
+	if err := sb.indexer.Index(context.TODO(), docInfo); err != nil {
+		log.Errorf("index object %s error: %s", sb.Id(), err)
+	}
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {

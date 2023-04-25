@@ -49,7 +49,7 @@ type Service interface {
 	IsStarted() bool
 	SpaceService() space.Service
 
-	EnsurePredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
+	EnsurePredefinedBlocks(ctx context.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
 	// FileOffload removes file blocks recursively, but leave details
@@ -181,10 +181,6 @@ func (a *Anytype) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	err = a.EnsurePredefinedBlocks(ctx, a.config.NewAccount)
-	if err != nil {
-		return
-	}
 	a.start()
 	return nil
 }
@@ -231,7 +227,7 @@ func (a *Anytype) start() {
 	a.isStarted = true
 }
 
-func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
+func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 	sbTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeProfilePage,
@@ -244,7 +240,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (
 	}
 	for _, sbt := range sbTypes {
 		var id string
-		id, err = a.deriver.DeriveObject(ctx, sbt, newAccount)
+		id, err = a.deriver.DeriveObject(ctx, sbt, a.config.NewAccount)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return

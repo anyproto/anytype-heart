@@ -49,7 +49,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 36
+	ForceIdxRebuildCounter int32 = 37
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 4
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -131,7 +131,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
 	i.forceFt = make(chan struct{})
-	i.doc.OnWholeChange(i.index)
 	return
 }
 
@@ -307,7 +306,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 				continue
 			}
 
-			err = i.index(ctx, d)
+			err = i.Index(ctx, d)
 			if err == nil {
 				success++
 			} else {
@@ -387,6 +386,15 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			indexesWereRemoved = true
 		}
 	}
+
+	// We derive or init predefined blocks here in order to ensure consistency of object store.
+	// If we call this method before removing objects from store, we will end up with inconsistent state
+	// because indexing of predefined objects will not run again
+	err = i.anytype.EnsurePredefinedBlocks(ctx)
+	if err != nil {
+		return err
+	}
+
 	if reindex > 0 {
 		d, err := i.doc.GetDocInfo(ctx, i.anytype.PredefinedBlocks().Archive)
 		if err != nil {
@@ -768,7 +776,7 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 	return
 }
 
-func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
+func (i *indexer) Index(ctx context.Context, info doc.DocInfo) error {
 	startTime := time.Now()
 	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
