@@ -749,6 +749,8 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 
 	sb.storeFileKeys(s)
+	sb.injectLocalDetails(s)
+	s.InjectDerivedDetails()
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
