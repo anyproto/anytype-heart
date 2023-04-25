@@ -45,27 +45,30 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 
 func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress *process.Progress) (*converter.Response, converter.ConvertError) {
-	allPaths, e := p.GetParams(req.Params)
-	if e != nil {
+	params, e := p.GetParams(req.Params)
+	if e != nil || params == nil {
 		errors := converter.NewError()
-		errors.Add("", e)
+		errors.Add("", fmt.Errorf("wrong parameters"))
 		return nil, errors
 	}
-	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, allPaths)
+	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath())
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
-	rootCollection := converter.NewRootCollection(p.service)
-	rootCol, colErr := rootCollection.AddObjects(rootCollectionName, targetObjects)
-	if colErr != nil {
-		allErrors.Add(rootCollectionName, colErr)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, allErrors
-		}
-	}
 
-	if rootCol != nil {
-		allSnapshots = append(allSnapshots, rootCol)
+	if params.GetCreateObjectsCollection() {
+		rootCollection := converter.NewRootCollection(p.service)
+		rootCol, colErr := rootCollection.AddObjects(rootCollectionName, targetObjects)
+		if colErr != nil {
+			allErrors.Add(rootCollectionName, colErr)
+			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, allErrors
+			}
+		}
+
+		if rootCol != nil {
+			allSnapshots = append(allSnapshots, rootCol)
+		}
 	}
 
 	progress.SetTotal(int64(len(allSnapshots)) * 2)
@@ -119,7 +122,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 
 		id := uuid.New().String()
 		var (
-			mo    *pb.MigrationObject
+			mo    *pb.SnapshotWithType
 			errGS error
 		)
 		rc := file.Reader
@@ -150,9 +153,9 @@ func (p *Pb) Name() string {
 	return Name
 }
 
-func (p *Pb) GetParams(params pb.IsRpcObjectImportRequestParams) ([]string, error) {
+func (p *Pb) GetParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectImportRequestPbParams, error) {
 	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfPbParams); ok {
-		return p.PbParams.GetPath(), nil
+		return p.PbParams, nil
 	}
 	return nil, errors.New("PB: GetParams wrong parameters format")
 }
@@ -170,7 +173,7 @@ func (p *Pb) readFile(importPath string, mode string) (map[string]*converter.IOR
 func (p *Pb) handleZipArchive(r *zip.ReadCloser, mode string, files map[string]*converter.IOReader) converter.ConvertError {
 	errors := converter.NewError()
 	for _, f := range r.File {
-		if filepath.Ext(f.Name) != ".pb" && filepath.Ext(f.Name) != ".pb.json" {
+		if !(filepath.Ext(f.Name) == ".pb" || filepath.Ext(f.Name) == ".json") {
 			continue
 		}
 		shortPath := filepath.Clean(f.Name)
@@ -201,7 +204,7 @@ func (p *Pb) handleFile(importPath string, files map[string]*converter.IOReader)
 		errors.Add(importPath, fErr)
 		return nil, errors
 	}
-	if filepath.Ext(f.Name()) != ".pb" && filepath.Ext(f.Name()) != ".pb.json" {
+	if !(filepath.Ext(f.Name()) == ".pb" || filepath.Ext(f.Name()) == ".json") {
 		return nil, nil
 	}
 	name := filepath.Clean(f.Name())
@@ -212,14 +215,14 @@ func (p *Pb) handleFile(importPath string, files map[string]*converter.IOReader)
 	return files, nil
 }
 
-func (p *Pb) GetSnapshot(rd io.ReadCloser, name string) (*pb.MigrationObject, error) {
+func (p *Pb) GetSnapshot(rd io.ReadCloser, name string) (*pb.SnapshotWithType, error) {
 	defer rd.Close()
 	data, err := ioutil.ReadAll(rd)
 	if err != nil {
 		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
 	}
-	snapshot := &pb.MigrationObject{}
-	if filepath.Ext(name) == ".pb.json" {
+	snapshot := &pb.SnapshotWithType{}
+	if filepath.Ext(name) == ".json" {
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %s", uErr)

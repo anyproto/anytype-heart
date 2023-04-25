@@ -11,9 +11,8 @@ message SnapshotWithType {
 }
 
 message Profile {
-  string name = 1;
-  string avatar = 2;
+  string mnemonic = 1;
+  string name = 2;
+  string avatar = 3;
   string address = 4;
-  string profileId = 6;
-  string analyticsId = 7;
 }

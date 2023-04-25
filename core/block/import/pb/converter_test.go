@@ -121,6 +121,25 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	assert.NotEmpty(t, ce.Get("testdata/test.pb"))
 }
 
+func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
+	p := &Pb{}
+
+	path := "testdata/bafybb3otqbe6i75sovxnltksacojux24c7hrk2c6cr6pu7ejji2ezvcs.pb"
+	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path:                    []string{path},
+			CreateObjectsCollection: false,
+		}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  0,
+	}, process.NewProgress(pb.ModelProcess_Import))
+
+	assert.Nil(t, ce)
+	assert.NotNil(t, res.Snapshots)
+	assert.Len(t, res.Snapshots, 1)
+}
+
 func newZipWriter(path string) (*zipWriter, error) {
 	filename := filepath.Join(path, "Antype"+strconv.FormatInt(rand.Int63(), 10))
 	f, err := os.Create(filename)
