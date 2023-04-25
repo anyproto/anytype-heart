@@ -3,17 +3,18 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/badgerfilestore"
-	"github.com/dgraph-io/badger/v3"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	format "github.com/ipfs/go-ipld-format"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dgraph-io/badger/v3"
+	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-libipfs/blocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var ctx = context.Background()
@@ -29,10 +30,6 @@ func TestCacheStore_Add(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, gb)
 		}
-		cids, err := cs.index.List(100)
-		require.NoError(t, err)
-		require.Len(t, cids.SpaceOps, 1)
-		assert.Len(t, cids.SpaceOps[0].Add, len(testBlocks))
 	})
 }
 
@@ -160,6 +157,22 @@ type testStore struct {
 	mu    sync.Mutex
 }
 
+func (t *testStore) AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error) {
+	panic("not implemented")
+}
+
+func (t *testStore) DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) (err error) {
+	panic("not implemented")
+}
+
+func (t *testStore) SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
+	panic("not implemented")
+}
+
+func (t *testStore) FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error) {
+	panic("not implemented")
+}
+
 func (t *testStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -260,8 +273,9 @@ func (t *testStore) Close() (err error) {
 
 type psFixture struct {
 	*proxyStore
-	tmpDir string
-	db     *badger.DB
+	tmpDir    string
+	flatfsDir string
+	db        *badger.DB
 }
 
 func newPSFixture(t *testing.T) *psFixture {
@@ -271,10 +285,14 @@ func newPSFixture(t *testing.T) *psFixture {
 	require.NoError(t, err)
 	fx.db, err = badger.Open(badger.DefaultOptions(fx.tmpDir).WithLoggingLevel(badger.ERROR))
 	require.NoError(t, err)
+
+	fx.flatfsDir = t.TempDir()
+	cache, err := newFlatStore(fx.flatfsDir)
+	require.NoError(t, err)
+
 	fx.proxyStore = &proxyStore{
-		cache:  newTestStore(nil),
+		cache:  cache,
 		origin: newTestStore(nil),
-		index:  badgerfilestore.NewFileBadgerIndex(fx.db),
 	}
 	return fx
 }

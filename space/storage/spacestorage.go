@@ -19,6 +19,14 @@ type spaceStorage struct {
 	header          *spacesyncproto.RawSpaceHeaderWithId
 }
 
+func (s *spaceStorage) SetSpaceDeleted() error {
+	return nil
+}
+
+func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
+	return false, nil
+}
+
 var spaceValidationFunc = spacestorage.ValidateSpaceStorageCreatePayload
 
 func newSpaceStorage(objDb *badger.DB, spaceId string) (store spacestorage.SpaceStorage, err error) {

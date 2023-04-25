@@ -12,11 +12,9 @@ import (
 	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/anytypeio/any-sync/commonspace/spacestorage"
 	"github.com/anytypeio/any-sync/net/rpc/server"
-	"github.com/dgraph-io/badger/v3"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-libipfs/blocks"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -34,17 +32,14 @@ func New() FileStorage {
 }
 
 type FileStorage interface {
-	app.ComponentRunnable
 	fileblockstore.BlockStoreLocal
+	app.ComponentRunnable
 }
 
 type fileStorage struct {
 	fileblockstore.BlockStoreLocal
 
-	cfg          *config.Config
 	flatfsPath   string
-	syncer       *syncer
-	syncerCancel context.CancelFunc
 	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
 	spaceService space.Service
@@ -52,15 +47,25 @@ type fileStorage struct {
 	spaceStorage storage.ClientStorage
 }
 
+type FSConfig struct {
+	IPFSStorageAddr string
+}
+
+type FileConfigGetter interface {
+	FSConfig() (FSConfig, error)
+}
+
 func (f *fileStorage) Init(a *app.App) (err error) {
-	cfg := app.MustComponent[*config.Config](a)
-	f.cfg = cfg
-	fileCfg, err := cfg.FSConfig()
+	fc := a.Component("config").(FileConfigGetter)
+	if fc == nil {
+		return fmt.Errorf("need config to be inited first")
+	}
+
+	fileCfg, err := fc.FSConfig()
 	if err != nil {
 		return fmt.Errorf("fail to get file config: %s", err)
 	}
 
-	f.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
@@ -86,44 +91,18 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
-	db, err := f.provider.SpaceStorage()
-	if err != nil {
-		return
-	}
 	bs, err := newFlatStore(f.flatfsPath)
 	if err != nil {
 		return fmt.Errorf("flatstore: %w", err)
 	}
 	f.handler.store = bs
-
-	var oldStore *badger.DB
-	if f.cfg.LegacyFileStorePath != "" {
-		oldStore, err = badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
-		if err != nil {
-			return fmt.Errorf("open old file store: %w", err)
-		}
-	}
 	ps := &proxyStore{
-		cache:    bs,
-		origin:   f.rpcStore.NewStore(),
-		index:    NewFileBadgerIndex(db),
-		oldStore: oldStore,
+		cache:  bs,
+		origin: f.rpcStore.NewStore(),
 	}
 	f.BlockStoreLocal = ps
-	f.syncer = &syncer{ps: ps, done: make(chan struct{})}
-	ctx, f.syncerCancel = context.WithCancel(ctx)
-	go f.syncer.run(ctx)
 	return
 }
-
-func (f *fileStorage) Close(ctx context.Context) (err error) {
-	if f.syncerCancel != nil {
-		f.syncerCancel()
-		<-f.syncer.done
-	}
-	return
-}
-
 func (f *fileStorage) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
 	return f.BlockStoreLocal.Get(f.patchAccountIdCtx(ctx), k)
 }
@@ -146,4 +125,8 @@ func (f *fileStorage) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []ci
 
 func (f *fileStorage) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	return f.BlockStoreLocal.NotExistsBlocks(f.patchAccountIdCtx(ctx), bs)
+}
+
+func (f *fileStorage) Close(ctx context.Context) (err error) {
+	return
 }
