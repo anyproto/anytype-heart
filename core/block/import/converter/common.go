@@ -3,6 +3,7 @@ package converter
 import (
 	"bytes"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -77,6 +78,20 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 	for _, view := range dataview.GetViews() {
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
+		}
+	}
+	for _, group := range dataview.GetGroupOrders() {
+		for _, vg := range group.ViewGroups {
+			groups := replaceChunks(vg.GroupId, oldIDtoNew)
+			sort.Strings(groups)
+			vg.GroupId = strings.Join(groups, "")
+		}
+	}
+	for _, group := range dataview.GetObjectOrders() {
+		for i, id := range group.ObjectIds {
+			if newId, exist := oldIDtoNew[id]; exist {
+				group.ObjectIds[i] = newId
+			}
 		}
 	}
 }
@@ -214,4 +229,42 @@ func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
 	if newType, ok := oldIDtoNew[objectType]; ok {
 		st.SetObjectType(newType)
 	}
+}
+
+func replaceChunks(s string, oldToNew map[string]string) []string {
+	var result []string
+	i := 0
+
+	var buf strings.Builder
+	for i < len(s) {
+		// Assume no match found
+		foundMatch := false
+
+		// Iterate through the oldToNew map keys to find the first match
+		for o, n := range oldToNew {
+			if strings.HasPrefix(s[i:], o) {
+				// Write the new substring to the result
+				if buf.Len() != 0 {
+					// dump the buffer to the result
+					result = append(result, buf.String())
+					buf.Reset()
+				}
+
+				result = append(result, n)
+
+				// Move the index forward by the length of the matched old substring
+				i += len(o)
+				foundMatch = true
+				break
+			}
+		}
+
+		// If no match found, append the current character to the result
+		if !foundMatch {
+			buf.WriteByte(s[i])
+			i++
+		}
+	}
+
+	return result
 }
