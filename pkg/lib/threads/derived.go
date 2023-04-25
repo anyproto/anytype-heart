@@ -2,6 +2,7 @@ package threads
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 )
 
 type threadDerivedIndex uint32
@@ -46,6 +47,25 @@ type DerivedSmartblockIds struct {
 
 func (d DerivedSmartblockIds) IsAccount(id string) bool {
 	return id == d.Account || id == d.AccountOld
+}
+
+func (d *DerivedSmartblockIds) InsertId(sbt smartblock.SmartBlockType, id string) {
+	switch sbt {
+	case smartblock.SmartBlockTypeWorkspace:
+		d.Account = id
+	case smartblock.SmartblockTypeMarketplaceTemplate:
+		d.MarketplaceTemplate = id
+	case smartblock.SmartblockTypeMarketplaceRelation:
+		d.MarketplaceRelation = id
+	case smartblock.SmartBlockTypeWidget:
+		d.Widgets = id
+	case smartblock.SmartblockTypeMarketplaceType:
+		d.MarketplaceType = id
+	case smartblock.SmartBlockTypeHome:
+		d.Home = id
+	case smartblock.SmartBlockTypeArchive:
+		d.Archive = id
+	}
 }
 
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")

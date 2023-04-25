@@ -24,7 +24,7 @@ type treeCreateCache struct {
 	initFunc   InitFunc
 }
 
-type InitFunc func(id string) *smartblock.InitContext
+type InitFunc = func(id string) *smartblock.InitContext
 
 func (s *Service) createCache() ocache.OCache {
 	return ocache.New(
@@ -134,7 +134,7 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
-	return s.putCreatedObject(ctx, space.Id(), initFunc, create)
+	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
 }
 
 func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {
@@ -153,7 +153,7 @@ func (s *Service) DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	if err != nil {
 		return
 	}
-	return s.putCreatedObject(ctx, space.Id(), initFunc, create)
+	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
 }
 
 func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.SmartBlock) (sb smartblock.SmartBlock, release func(), err error) {
@@ -161,7 +161,7 @@ func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.Smart
 	return s.GetObject(ctx, id)
 }
 
-func (s *Service) putCreatedObject(ctx context.Context, spaceId string, initFunc InitFunc, create treestorage.TreeStorageCreatePayload) (sb smartblock.SmartBlock, release func(), err error) {
+func (s *Service) cacheCreatedObject(ctx context.Context, spaceId string, initFunc InitFunc, create treestorage.TreeStorageCreatePayload) (sb smartblock.SmartBlock, release func(), err error) {
 	ctx = context.WithValue(ctx, spaceKey, spaceId)
 	ctx = context.WithValue(ctx, treeCreateKey, treeCreateCache{
 		treeCreate: create,

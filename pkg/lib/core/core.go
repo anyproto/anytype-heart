@@ -6,12 +6,15 @@ import (
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/app"
 	"github.com/anytypeio/go-anytype-infrastructure-experiments/common/commonspace/object/treegetter"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
@@ -24,6 +27,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+	"go.uber.org/zap"
 	"io"
 	"os"
 	"path/filepath"
@@ -85,20 +89,21 @@ var _ app.Component = (*Anytype)(nil)
 
 var _ Service = (*Anytype)(nil)
 
-type CreatorInfoAdder interface {
-	AddCreatorInfoIfNeeded(workspaceId string) error
+type initFunc = func(id string) *smartblock.InitContext
+type ObjectsDeriver interface {
+	DeriveTreeObject(ctx context.Context, tp coresb.SmartBlockType, f initFunc) (sb smartblock.SmartBlock, release func(), err error)
 }
 
 type Anytype struct {
-	files            *files.Service
-	cafe             cafe.Client
-	mdns             mdns.Service
-	objectStore      objectstore.ObjectStore
-	fileStore        filestore.FileStore
-	fetcher          configfetcher.ConfigFetcher
-	sendEvent        func(event *pb.Event)
-	creatorInfoAdder CreatorInfoAdder
-	spaceService     space.Service
+	files        *files.Service
+	cafe         cafe.Client
+	mdns         mdns.Service
+	objectStore  objectstore.ObjectStore
+	fileStore    filestore.FileStore
+	fetcher      configfetcher.ConfigFetcher
+	sendEvent    func(event *pb.Event)
+	deriver      ObjectsDeriver
+	spaceService space.Service
 
 	ds datastore.Datastore
 
@@ -152,7 +157,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.ipfs = ap.MustComponent(ipfs.CName).(ipfs.Node)
 	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
 	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	a.creatorInfoAdder = ap.MustComponent(treegetter.CName).(CreatorInfoAdder)
+	a.deriver = ap.MustComponent(treegetter.CName).(ObjectsDeriver)
 	a.spaceService = ap.MustComponent(space.CName).(space.Service)
 	return
 }
@@ -233,29 +238,32 @@ func (a *Anytype) start() error {
 		return nil
 	}
 
-	var err error
-	// TODO: [MR] derive trees in the new infra
-	a.predefinedBlockIds = threads.DerivedSmartblockIds{}
-	if err != nil {
-		return err
-	}
-
 	a.isStarted = true
 	return nil
 }
 
 func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
-	cctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	go func() {
-		select {
-		case <-cctx.Done():
+	sbTypes := []coresb.SmartBlockType{
+		coresb.SmartBlockTypeArchive,
+		coresb.SmartblockTypeMarketplaceType,
+		coresb.SmartblockTypeMarketplaceRelation,
+		coresb.SmartblockTypeMarketplaceTemplate,
+		coresb.SmartBlockTypeWidget,
+		coresb.SmartBlockTypeProfilePage,
+		coresb.SmartBlockTypeWorkspace,
+		coresb.SmartBlockTypeHome,
+	}
+	for _, sbt := range sbTypes {
+		obj, release, err := a.deriver.DeriveTreeObject(ctx, sbt, func(id string) *smartblock.InitContext {
+			return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
+		})
+		if err != nil {
+			log.With(zap.Error(err)).Debug("derived object with error")
 			return
-		case <-a.shutdownStartsCh:
-			cancel()
 		}
-	}()
+		a.predefinedBlockIds.InsertId(sbt, obj.Id())
+		release()
+	}
 
 	// TODO: [MR] derive trees in the new infra
 	return nil

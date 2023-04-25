@@ -704,10 +704,6 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *Service) AddCreatorInfoIfNeeded(workspaceId string) error {
-	return fmt.Errorf("not implemented")
-}
-
 func (s *Service) OnDelete(b smartblock.SmartBlock) (err error) {
 	var (
 		fileHashes []string
