@@ -908,16 +908,17 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
-	pendingDetails, err := sb.objectStore.GetPendingLocalDetails(sb.Id())
-	if err == nil {
-		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pendingDetails.GetDetails(), false)
-		err = sb.objectStore.SetPendingLocalDetails(sb.Id(), nil)
-		if err != nil {
-			log.With("thread", sb.Id()).
-				With("sbType", sb.Type()).
-				Errorf("failed to update pending details: %v", err)
-		}
+	// Consume pending details
+	err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pending, false)
+		return nil, nil
+	})
+	if err != nil {
+		log.With("thread", sb.Id()).
+			With("sbType", sb.Type()).
+			Errorf("failed to update pending details: %v", err)
 	}
+
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
 	keys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)

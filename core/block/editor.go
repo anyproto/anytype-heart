@@ -6,7 +6,6 @@ import (
 
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -626,19 +625,7 @@ func (s *Service) ModifyLocalDetails(
 	// we do this under lock to prevent races if the object is created in parallel
 	// because in that case we can lose changes
 	err = s.cache.DoLockedIfNotExists(objectId, func() error {
-		objectDetails, err := s.objectStore.GetPendingLocalDetails(objectId)
-		if err != nil && err != ds.ErrNotFound {
-			return err
-		}
-		var details *types.Struct
-		if objectDetails != nil {
-			details = objectDetails.GetDetails()
-		}
-		modifiedDetails, err := modifier(details)
-		if err != nil {
-			return err
-		}
-		return s.objectStore.SetPendingLocalDetails(objectId, modifiedDetails)
+		return s.objectStore.UpdatePendingLocalDetails(objectId, modifier)
 	})
 	if err != nil && err != ocache.ErrExists {
 		return err

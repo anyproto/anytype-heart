@@ -136,10 +136,7 @@ type ObjectStore interface {
 	UpdateObjectDetails(id string, details *types.Struct, discardLocalDetailsChanges bool) error
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
-	// TODO Create true Update function to run it in transaction
-	// UpdatePendingLocalDetails(id string, proc func(details *types.Struct) *types.Struct) error
-	SetPendingLocalDetails(id string, details *types.Struct) error
-	GetPendingLocalDetails(id string) (*model.ObjectDetails, error)
+	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
 	DeleteObject(id string) error
 	DeleteDetails(id string) error
@@ -1139,17 +1136,7 @@ func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) GetPendingLocalDetails(id string) (*model.ObjectDetails, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return m.getPendingLocalDetails(txn, id)
-}
-
-func (m *dsObjectStore) SetPendingLocalDetails(id string, details *types.Struct) error {
+func (m *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -1157,6 +1144,22 @@ func (m *dsObjectStore) SetPendingLocalDetails(id string, details *types.Struct)
 	defer txn.Discard()
 	key := pendingDetailsBase.ChildString(id)
 
+	objDetails, err := m.getPendingLocalDetails(txn, id)
+	if err != nil {
+		return fmt.Errorf("get pending details: %w", err)
+	}
+
+	details := objDetails.Details
+	if details == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	if details.Fields == nil {
+		details.Fields = map[string]*types.Value{}
+	}
+	details, err = proc(details)
+	if err != nil {
+		return fmt.Errorf("run a modifier: %w", err)
+	}
 	if details == nil {
 		err = txn.Delete(key)
 		if err != nil {
@@ -1164,7 +1167,6 @@ func (m *dsObjectStore) SetPendingLocalDetails(id string, details *types.Struct)
 		}
 		return txn.Commit()
 	}
-
 	b, err := proto.Marshal(&model.ObjectDetails{Details: details})
 	if err != nil {
 		return err

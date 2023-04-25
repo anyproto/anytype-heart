@@ -689,11 +689,10 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	_, isArchived := i.archivedMap[id]
 	_, isFavorite := i.favoriteMap[id]
 
-	err := i.store.SetPendingLocalDetails(id, &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyIsArchived.String(): pbtypes.Bool(isArchived),
-			bundle.RelationKeyIsFavorite.String(): pbtypes.Bool(isFavorite),
-		},
+	err := i.store.UpdatePendingLocalDetails(id, func(pending *types.Struct) (*types.Struct, error) {
+		pending.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
+		pending.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
+		return pending, nil
 	})
 	if err != nil {
 		log.Errorf("failed to update isArchived and isFavorite details for %s: %s", id, err)
