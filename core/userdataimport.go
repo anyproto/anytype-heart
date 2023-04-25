@@ -64,7 +64,7 @@ func (mw *Middleware) createAccount(profile *pb.Profile, req *pb.RpcUserDataImpo
 		return err
 	}
 
-	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
 	index := len(mw.foundAccounts)
 	var account wallet.Keypair
 	for {
