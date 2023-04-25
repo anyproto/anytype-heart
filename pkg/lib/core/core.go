@@ -3,26 +3,32 @@ package core
 import (
 	"context"
 	"fmt"
-	"strings"
-	"sync"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"go.uber.org/zap"
-
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+	"go.uber.org/zap"
+	"io"
+	"os"
+	"path/filepath"
+	"sync"
 )
 
 var log = logging.Logger("anytype-core")
@@ -30,16 +36,19 @@ var log = logging.Logger("anytype-core")
 var ErrObjectDoesNotBelongToWorkspace = fmt.Errorf("object does not belong to workspace")
 
 const (
-	CName = "anytype"
+	CName  = "anytype"
+	tmpDir = "tmp"
 )
 
 type Service interface {
 	Account() string // deprecated, use wallet component
 	Device() string  // deprecated, use wallet component
+	Start() error
 	Stop() error
 	IsStarted() bool
+	SpaceService() space.Service
 
-	EnsurePredefinedBlocks(ctx context.Context) error
+	EnsurePredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
 	// FileOffload removes file blocks recursively, but leave details
@@ -47,20 +56,30 @@ type Service interface {
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
+	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
+	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
 	FileGetKeys(hash string) (*files.FileKeys, error)
 	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
+	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
+	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
+	ObjectStore() objectstore.ObjectStore // deprecated
+	FileStore() filestore.FileStore       // deprecated
+	ThreadsIds() ([]string, error)        // deprecated
+
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
+	ObjectList() ([]*model.ObjectInfo, error)
 
 	ProfileInfo
 
 	app.ComponentRunnable
+	TempDir() string
 }
 
 var _ app.Component = (*Anytype)(nil)
@@ -72,24 +91,40 @@ type ObjectsDeriver interface {
 }
 
 type Anytype struct {
-	files       *files.Service
-	objectStore objectstore.ObjectStore
-	fileStore   filestore.FileStore
-	deriver     ObjectsDeriver
+	files        *files.Service
+	cafe         cafe.Client
+	mdns         mdns.Service
+	objectStore  objectstore.ObjectStore
+	fileStore    filestore.FileStore
+	fetcher      configfetcher.ConfigFetcher
+	sendEvent    func(event *pb.Event)
+	deriver      ObjectsDeriver
+	spaceService space.Service
+
+	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
+	logLevels          map[string]string
 
+	opts ServiceOptions
+
+	replicationWG    sync.WaitGroup
 	migrationOnce    sync.Once
 	lock             sync.Mutex
 	isStarted        bool // use under the lock
 	shutdownStartsCh chan struct {
 	} // closed when node shutdown starts
 
-	subscribeOnce sync.Once
-	config        *config.Config
-	wallet        wallet.Wallet
+	subscribeOnce       sync.Once
+	config              *config.Config
+	wallet              wallet.Wallet
+	tmpFolderAutocreate sync.Once
+	tempDir             string
+	commonFiles         fileservice.FileService
+}
 
-	commonFiles fileservice.FileService
+func (a *Anytype) ThreadsIds() ([]string, error) {
+	return nil, nil
 }
 
 func New() *Anytype {
@@ -103,14 +138,23 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
+	a.ds = ap.MustComponent(datastore.CName).(datastore.Datastore)
+	a.cafe = ap.MustComponent(cafe.CName).(cafe.Client)
 	a.files = ap.MustComponent(files.CName).(*files.Service)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
+	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
+	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	a.deriver = ap.MustComponent(treegetter.CName).(ObjectsDeriver)
+	a.spaceService = ap.MustComponent(space.CName).(space.Service)
 	return
 }
 
 func (a *Anytype) Name() string {
 	return CName
+}
+
+func (a *Anytype) SpaceService() space.Service {
+	return a.spaceService
 }
 
 // Deprecated, use wallet component directly
@@ -132,12 +176,11 @@ func (a *Anytype) Device() string {
 }
 
 func (a *Anytype) Run(ctx context.Context) (err error) {
-	if err = a.RunMigrations(); err != nil {
+	if err = a.Start(); err != nil {
 		return
 	}
 
-	a.start()
-	return nil
+	return a.EnsurePredefinedBlocks(ctx, a.config.NewAccount)
 }
 
 func (a *Anytype) IsStarted() bool {
@@ -152,12 +195,6 @@ func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
-	if strings.HasPrefix(objectId, "_") {
-		return addr.AnytypeMarketplaceWorkspace, nil
-	}
-	if a.predefinedBlockIds.IsAccount(objectId) {
-		return "", ErrObjectDoesNotBelongToWorkspace
-	}
 	return a.predefinedBlockIds.Account, nil
 }
 
@@ -171,28 +208,41 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	// TODO: [MR] mdns
 }
 
-func (a *Anytype) start() {
+func (a *Anytype) Start() error {
+	err := a.RunMigrations()
+	if err != nil {
+		return err
+	}
+
+	return a.start()
+}
+
+func (a *Anytype) start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	if a.isStarted {
-		return
+		return nil
 	}
 
 	a.isStarted = true
+	return nil
 }
 
-func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
+func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
 	sbTypes := []coresb.SmartBlockType{
-		coresb.SmartBlockTypeWorkspace,
-		coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeArchive,
+		coresb.SmartblockTypeMarketplaceType,
+		coresb.SmartblockTypeMarketplaceRelation,
+		coresb.SmartblockTypeMarketplaceTemplate,
 		coresb.SmartBlockTypeWidget,
+		coresb.SmartBlockTypeProfilePage,
+		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeHome,
 	}
 	for _, sbt := range sbTypes {
 		var id string
-		id, err = a.deriver.DeriveObject(ctx, sbt, a.config.NewAccount)
+		id, err = a.deriver.DeriveObject(ctx, sbt, newAccount)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return
@@ -219,5 +269,30 @@ func (a *Anytype) Stop() error {
 		close(a.shutdownStartsCh)
 	}
 
+	// fixme useless!
+	a.replicationWG.Wait()
+
 	return nil
+}
+
+func (a *Anytype) TempDir() string {
+	// it shouldn't be a case when it is called before wallet init, but just in case lets add the check here
+	if a.wallet == nil || a.wallet.RootPath() == "" {
+		return os.TempDir()
+	}
+
+	var err error
+	// simultaneous calls to TempDir will wait for the once func to finish, so it will be fine
+	a.tmpFolderAutocreate.Do(func() {
+		path := filepath.Join(a.wallet.RootPath(), tmpDir)
+		err = os.MkdirAll(path, 0700)
+		if err != nil {
+			log.Errorf("failed to make temp dir, use the default system one: %s", err.Error())
+			a.tempDir = os.TempDir()
+		} else {
+			a.tempDir = path
+		}
+	})
+
+	return a.tempDir
 }
