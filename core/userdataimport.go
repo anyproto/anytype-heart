@@ -34,14 +34,18 @@ func (mw *Middleware) UserDataImport(cctx context.Context,
 		}
 		return m
 	}
-
 	profile, err := importer.ImportUserProfile(ctx, req)
-	if err != nil {
-		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
-	}
-	address, err := mw.createAccount(profile, req)
-	if err != nil {
-		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
+	var address string
+	if req.NeedToCreateAccount {
+		if err != nil {
+			return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
+		}
+		address, err = mw.createAccount(profile, req)
+		if err != nil {
+			return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
+		}
+	} else {
+		address = profile.Address
 	}
 
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)

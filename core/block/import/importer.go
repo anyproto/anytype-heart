@@ -228,7 +228,6 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 	}
 
 	for _, snapshot := range res.Snapshots {
-
 		if err := progress.TryStep(1); err != nil {
 			allErrors[getFileName(snapshot)] = err
 			return nil

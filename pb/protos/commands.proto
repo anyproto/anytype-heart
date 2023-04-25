@@ -4765,6 +4765,7 @@ message Rpc {
                 string path = 1;
                 string rootPath = 2;
                 string storePath = 3;
+                bool needToCreateAccount = 4;
             }
 
             message Response {

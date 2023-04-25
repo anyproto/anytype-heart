@@ -82,7 +82,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 			break
 		}
 	}
-	if !found && !updateExisting {
+	if !found {
 		oc.addRootBlock(snapshot, newID)
 	}
 
