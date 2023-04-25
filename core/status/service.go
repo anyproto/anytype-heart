@@ -25,12 +25,6 @@ var log = logging.Logger("anytype-mw-status")
 
 const CName = "status"
 
-type LogTime struct {
-	AccountID string
-	DeviceID  string
-	LastEdit  int64
-}
-
 type Service interface {
 	Watch(id string, fileFunc func() []string) (new bool, err error)
 	Unwatch(id string)
@@ -53,7 +47,7 @@ type service struct {
 	sync.Mutex
 }
 
-func (s *service) UpdateTree(ctx context.Context, treeId string, status syncstatus.SyncStatus) (err error) {
+func (s *service) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) (err error) {
 	var (
 		nodeConnected bool
 		objStatus     pb.EventStatusThreadSyncStatus
@@ -75,12 +69,11 @@ func (s *service) UpdateTree(ctx context.Context, treeId string, status syncstat
 	}
 	generalStatus = objStatus
 
-	s.notify(treeId, objStatus, generalStatus)
-	s.Lock()
-	if treeId != s.coreService.PredefinedBlocks().Account {
-		s.Unlock()
+	s.notify(objId, objStatus, generalStatus)
+	if objId != s.coreService.PredefinedBlocks().Account {
 		return
 	}
+	s.Lock()
 	cp := slice.Copy(s.subObjects)
 	s.Unlock()
 
