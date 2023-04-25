@@ -11,7 +11,7 @@ import (
 func TestPbc_Convert(t *testing.T) {
 	s := state.NewDoc("root", nil).(*state.State)
 	template.InitTemplate(s, template.WithTitle)
-	c := NewConverter(s)
+	c := NewConverter(s, false)
 	result := c.Convert(0)
 	assert.NotEmpty(t, result)
 }

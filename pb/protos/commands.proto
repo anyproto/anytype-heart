@@ -1748,6 +1748,8 @@ message Rpc {
                 bool includeNested = 5;
                 // include all files
                 bool includeFiles = 6;
+                // for protobuf export
+                bool isJson = 7;
             }
 
             message Response {
@@ -1819,7 +1821,8 @@ message Rpc {
 
                 message PbParams {
                     repeated string path = 1;
-                    bool createObjectsCollection = 2;
+                    string accountId = 2;
+                    bool createObjectsCollection = 3;
                 }
 
                 message CsvParams {

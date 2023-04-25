@@ -1,6 +1,7 @@
 package pbc
 
 import (
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -12,12 +13,16 @@ import (
 
 var log = logging.Logger("pb-converter")
 
-func NewConverter(s state.Doc) converter.Converter {
-	return &pbc{s}
+func NewConverter(s state.Doc, isJson bool) converter.Converter {
+	return &pbc{
+		s:      s,
+		isJson: isJson,
+	}
 }
 
 type pbc struct {
-	s state.Doc
+	s      state.Doc
+	isJson bool
 }
 
 func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
@@ -38,6 +43,14 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 	mo := &pb.SnapshotWithType{
 		SbType:   sbType,
 		Snapshot: snapshot,
+	}
+	if p.isJson {
+		m := jsonpb.Marshaler{Indent: " "}
+		result, err := m.MarshalToString(mo)
+		if err != nil {
+			log.Errorf("failed to convert object to json: %s", err.Error())
+		}
+		return []byte(result)
 	}
 	result, err := mo.Marshal()
 	if err != nil {

@@ -126,7 +126,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 			did := docId
 			if err = queue.Wait(func() {
 				log.With("threadId", did).Debugf("write doc")
-				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles); werr != nil {
+				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
 					log.With("threadId", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
@@ -166,6 +166,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 			smartblock.SmartBlockTypeHome,
 			smartblock.SmartBlockTypeProfilePage,
 			smartblock.SmartBlockTypePage,
+			smartblock.SmartBlockTypeWidget,
 		})
 		if err != nil {
 			return
@@ -290,7 +291,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	return
 }
 
-func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
+func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool, isJson bool) (err error) {
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
 			return nil
@@ -303,7 +304,7 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 		case pb.RpcObjectListExport_Markdown:
 			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
 		case pb.RpcObjectListExport_Protobuf:
-			conv = pbc.NewConverter(b)
+			conv = pbc.NewConverter(b, isJson)
 		case pb.RpcObjectListExport_JSON:
 			conv = pbjson.NewConverter(b)
 		}
