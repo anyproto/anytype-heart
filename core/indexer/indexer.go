@@ -348,7 +348,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		if err != nil {
 			log.Errorf("reindex failed to erase indexes: %v", err.Error())
 		} else {
-			log.Infof("all store indexes succesfully erased")
+			log.Infof("all store indexes successfully erased")
 			indexesWereRemoved = true
 		}
 	}

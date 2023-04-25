@@ -2,34 +2,44 @@ package ftsearch
 
 import (
 	"context"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/blevesearch/bleve/v2"
-	"github.com/blevesearch/bleve/v2/analysis/analyzer/custom"
-	"github.com/blevesearch/bleve/v2/analysis/lang/en"
-	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
-	"github.com/blevesearch/bleve/v2/analysis/tokenizer/single"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
+	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search/query"
+
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch/analyzers"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 const (
 	CName  = "fts"
 	ftsDir = "fts"
 	ftsVer = "1"
+
+	fieldTitle        = "Title"
+	fieldText         = "Text"
+	fieldTitleNoTerms = "TitleNoTerms"
+	fieldTextNoTerms  = "TextNoTerms"
+	fieldID           = "Id"
 )
 
+var log = logging.Logger("ftsearch")
+
 type SearchDoc struct {
+	//nolint:all
 	Id           string
 	Title        string
 	TitleNoTerms string
 	Text         string
+	TextNoTerms  string
 }
 
 func New() FTSearch {
@@ -56,8 +66,8 @@ func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
-	f.enStopWordsMap, _ = en.TokenMapConstructor(nil, nil)
-	return nil
+	f.enStopWordsMap, err = en.TokenMapConstructor(nil, nil)
+	return err
 }
 
 func (f *ftSearch) Name() (name string) {
@@ -67,134 +77,83 @@ func (f *ftSearch) Name() (name string) {
 func (f *ftSearch) Run(context.Context) (err error) {
 	f.index, err = bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
-		if f.index, err = bleve.New(f.ftsPath, f.makeMapping()); err != nil {
+		if f.index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
 			return
 		}
-		// cleanup old indexes
-		if strings.HasSuffix(f.rootPath, ftsDir) {
-			de, e := os.ReadDir(f.rootPath)
-			if e == nil {
-				// cleanup old index versions
-				for _, d := range de {
-					if d.Name() != ftsVer {
-						os.RemoveAll(filepath.Join(f.rootPath, d.Name()))
-					}
-				}
-			}
-		}
+		f.cleanUpOldIndexes()
 	} else if err != nil {
 		return
 	}
 	return nil
 }
 
-func (f *ftSearch) makeMapping() mapping.IndexMapping {
-	mapping := bleve.NewIndexMapping()
-
-	keywordMapping := bleve.NewTextFieldMapping()
-	keywordMapping.Analyzer = "noTerms"
-
-	mapping.DefaultMapping.AddFieldMappingsAt("TitleNoTerms", keywordMapping)
-	mapping.DefaultMapping.AddFieldMappingsAt("Id", keywordMapping)
-
-	standardMapping := bleve.NewTextFieldMapping()
-	standardMapping.Analyzer = standard.Name
-	mapping.DefaultMapping.AddFieldMappingsAt("Title", standardMapping)
-	mapping.DefaultMapping.AddFieldMappingsAt("Text", standardMapping)
-
-	mapping.AddCustomAnalyzer("noTerms",
-		map[string]interface{}{
-			"type":      custom.Name,
-			"tokenizer": single.Name,
-			"token_filters": []string{
-				lowercase.Name,
-			},
-		})
-	return mapping
+func (f *ftSearch) cleanUpOldIndexes() {
+	if strings.HasSuffix(f.rootPath, ftsDir) {
+		dirs, err := os.ReadDir(f.rootPath)
+		if err == nil {
+			// cleanup old index versions
+			for _, dir := range dirs {
+				if dir.Name() != ftsVer {
+					_ = os.RemoveAll(filepath.Join(f.rootPath, dir.Name()))
+				}
+			}
+		}
+	}
 }
 
-func (f *ftSearch) Index(d SearchDoc) (err error) {
+func (f *ftSearch) Index(doc SearchDoc) (err error) {
 	metrics.ObjectFTUpdatedCounter.Inc()
-	d.TitleNoTerms = d.Title
-	return f.index.Index(d.Id, d)
+	doc.TitleNoTerms = doc.Title
+	doc.TextNoTerms = doc.Text
+	return f.index.Index(doc.Id, doc)
 }
 
-func (f *ftSearch) Search(text string) (results []string, err error) {
-	text = strings.ToLower(strings.TrimSpace(text))
-	terms := append([]string{text}, strings.Split(text, " ")...)
+func (f *ftSearch) Search(qry string) (results []string, err error) {
+	var queries = make([]query.Query, 0, 4)
+	qry = strings.TrimSpace(qry)
+	terms := f.getTerms(qry)
+
+	queries = append(
+		getFullQueries(qry),
+		bleve.NewQueryStringQuery(qry),
+	)
+
+	if len(terms) > 0 {
+		queries = append(
+			queries,
+			getAllWordsFromQueryConsequently(terms, fieldTitleNoTerms),
+			getAllWordsFromQueryConsequently(terms, fieldTextNoTerms),
+		)
+	}
+
+	return f.doSearch(queries)
+}
+
+func (f *ftSearch) getTerms(qry string) []string {
+	terms := strings.Split(qry, " ")
 	termsFiltered := terms[:0]
 
-	for _, t := range terms {
-		t = strings.TrimSpace(t)
-		if t != "" && !f.enStopWordsMap[t] {
-			termsFiltered = append(termsFiltered, t)
+	for _, term := range terms {
+		term = strings.TrimSpace(term)
+		if term != "" {
+			termsFiltered = append(termsFiltered, term)
 		}
 	}
 	terms = termsFiltered
+	return terms
+}
 
-	var exactQueries = make([]query.Query, 0, 4)
-	// id match
-	if len(text) > 5 {
-		im := bleve.NewDocIDQuery([]string{text})
-		im.SetBoost(30)
-		exactQueries = append(exactQueries, im)
-	}
-	// title prefix
-	tp := bleve.NewPrefixQuery(text)
-	tp.SetField("TitleNoTerms")
-	tp.SetBoost(40)
-	exactQueries = append(exactQueries, tp)
+func (f *ftSearch) doSearch(queries []query.Query) (results []string, err error) {
+	searchRequest := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(queries...))
+	searchRequest.Size = 100
+	searchRequest.Explain = true
+	searchResult, err := f.index.Search(searchRequest)
 
-	// title substr
-	tss := bleve.NewWildcardQuery("*" + strings.ReplaceAll(text, "*", `\*`) + "*")
-	tss.SetField("TitleNoTerms")
-	tss.SetBoost(8)
-	exactQueries = append(exactQueries, tss)
-
-	var notExactQueriesGroup = make([]query.Query, 0, 5)
-	for i, t := range terms {
-		// fulltext queries
-		var notExactQueries = make([]query.Query, 0, 3)
-		tp = bleve.NewPrefixQuery(t)
-		tp.SetField("Title")
-		if i == 0 {
-			tp.SetBoost(8)
-		}
-		notExactQueries = append(notExactQueries, tp)
-
-		// title match
-		tm := bleve.NewMatchQuery(t)
-		tm.SetFuzziness(1)
-		tm.SetField("Title")
-		if i == 0 {
-			tm.SetBoost(7)
-		}
-		notExactQueries = append(notExactQueries, tm)
-
-		// text match
-		txtm := bleve.NewMatchQuery(t)
-		txtm.SetFuzziness(0)
-		txtm.SetField("Text")
-		if i == 0 {
-			txtm.SetBoost(2)
-		}
-		notExactQueries = append(notExactQueries, txtm)
-		notExactQueriesGroup = append(notExactQueriesGroup, bleve.NewDisjunctionQuery(notExactQueries...))
-	}
-
-	//exactQueries = []query.Query{bleve.NewDisjunctionQuery(notExactQueriesGroup...)}
-	exactQueries = append(exactQueries, bleve.NewConjunctionQuery(notExactQueriesGroup...))
-
-	sr := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(exactQueries...))
-	sr.Size = 100
-	sr.Explain = true
-	res, err := f.index.Search(sr)
-	//fmt.Println(res.String())
 	if err != nil {
 		return
 	}
-	for _, r := range res.Hits {
-		results = append(results, r.ID)
+	for _, result := range searchResult.Hits {
+		results = append(results, result.ID)
 	}
 	return
 }
@@ -217,7 +176,86 @@ func (f *ftSearch) DocCount() (uint64, error) {
 
 func (f *ftSearch) Close(ctx context.Context) error {
 	if f.index != nil {
-		f.index.Close()
+		return f.index.Close()
 	}
 	return nil
+}
+
+func makeMapping() mapping.IndexMapping {
+	indexMapping := bleve.NewIndexMapping()
+
+	addNoTermsMapping(indexMapping)
+	addDefaultMapping(indexMapping)
+
+	return indexMapping
+}
+
+func addDefaultMapping(indexMapping *mapping.IndexMappingImpl) {
+	fields := []string{
+		fieldTitle,
+		fieldText,
+	}
+
+	addMappings(indexMapping, fields, getStandardMapping())
+}
+
+func addNoTermsMapping(indexMapping *mapping.IndexMappingImpl) {
+	err := analyzers.AddNoTermsAnalyzer(indexMapping)
+	if err != nil {
+		log.Warnf("Failed to add no terms analyzer")
+	}
+
+	keywordMapping := analyzers.GetNoTermsFieldMapping()
+
+	fields := []string{
+		fieldTitleNoTerms,
+		fieldTextNoTerms,
+		fieldID,
+	}
+	addMappings(indexMapping, fields, keywordMapping)
+}
+
+func addMappings(indexMapping *mapping.IndexMappingImpl, fields []string, mappings ...*mapping.FieldMapping) {
+	for _, m := range fields {
+		indexMapping.DefaultMapping.AddFieldMappingsAt(m, mappings...)
+	}
+}
+
+func getStandardMapping() *mapping.FieldMapping {
+	standardMapping := bleve.NewTextFieldMapping()
+	standardMapping.Analyzer = standard.Name
+	return standardMapping
+}
+
+func getAllWordsFromQueryConsequently(terms []string, field string) query.Query {
+	terms = Map(terms, func(item string) string { return strings.ReplaceAll(item, "*", `\*`) })
+	qry := strings.Join(terms, ".*")
+	regexpQuery := bleve.NewRegexpQuery(".*" + qry + ".*")
+	regexpQuery.SetField(field)
+	return regexpQuery
+}
+
+func getFullQueries(qry string) []query.Query {
+	var fullQueries = make([]query.Query, 0, 2)
+
+	if len(qry) > 5 {
+		fullQueries = append(fullQueries, getIDMatchQuery(qry))
+	}
+	fullQueries = append(fullQueries, bleve.NewPrefixQuery(qry))
+
+	return fullQueries
+}
+
+func getIDMatchQuery(qry string) *query.DocIDQuery {
+	docIDQuery := bleve.NewDocIDQuery([]string{qry})
+	docIDQuery.SetBoost(30)
+	return docIDQuery
+}
+
+func Map[T, V any](ts []T, fn func(T) V) []V {
+	result := make([]V, len(ts))
+	for i, t := range ts {
+		result[i] = fn(t)
+	}
+	return result
 }

@@ -1,14 +1,14 @@
 ## Anytype Middleware Library
 
 ### Build from Source
-1. Install Golang 1.18.* [from here](http://golang.org/dl/) or using preferred package manager
+1. Install Golang 1.19+ [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
 #### Build and install for the [desktop client](https://github.com/anytypeio/js-anytype)
 1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../js-anytype`
 
 #### Build for iOS
-Instructions to setup environment for ios [here](https://github.com/anytypeio/ios-anytype/blob/develop/docs/Setup_For_Middleware.md)
+Instructions to set up environment for ios [here](https://github.com/anytypeio/ios-anytype/blob/develop/docs/Setup_For_Middleware.md)
 1. `make build-ios` to build the framework into `dist/ios` folder
 2. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
 

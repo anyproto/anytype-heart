@@ -70,7 +70,7 @@ func assertChineseFound(t *testing.T, tmpDir string) {
 		validateSearch(t, ft, qry, 1)
 	}
 
-	_ = ft.Close()
+	_ = ft.Close(nil)
 }
 
 func assertThaiSubstrFound(t *testing.T, tmpDir string) {
@@ -85,7 +85,7 @@ func assertThaiSubstrFound(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "ระเ", 1)
 	validateSearch(t, ft, "ระเ ma", 1)
 
-	_ = ft.Close()
+	_ = ft.Close(nil)
 }
 
 func assertSearch(t *testing.T, tmpDir string) {
@@ -100,7 +100,7 @@ func assertSearch(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "one", 1)
 	validateSearch(t, ft, "two", 1)
 
-	_ = ft.Close()
+	_ = ft.Close(nil)
 }
 
 func assertFoundPartsOfTheWords(t *testing.T, tmpDir string) {
@@ -122,7 +122,7 @@ func assertFoundPartsOfTheWords(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "is", 2)
 	validateSearch(t, ft, "i t", 2)
 
-	_ = ft.Close()
+	_ = ft.Close(nil)
 }
 
 func validateSearch(t *testing.T, ft FTSearch, qry string, times int) {
