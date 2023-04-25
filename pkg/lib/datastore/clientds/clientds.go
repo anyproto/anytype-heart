@@ -110,7 +110,6 @@ func (r *clientds) Run(context.Context) error {
 	}
 
 	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(SpaceDSDir), &r.cfg.Spacestore)
-	fmt.Println("INIT SPACE DS", fmt.Sprint(r.spaceDS.DiskUsage(context.Background())))
 	if err != nil {
 		return err
 	}
