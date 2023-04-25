@@ -3,9 +3,9 @@ package status
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -40,7 +40,7 @@ type service struct {
 	spaceService      space.Service
 	watcher           syncstatus.StatusWatcher
 	coreService       core.Service
-	fileStatusService *filesync.Status
+	fileStatusService *filesync.StatusWatcher
 
 	nodeConnected bool
 	subObjects    []string
@@ -104,9 +104,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.coreService = a.MustComponent(core.CName).(core.Service)
 
-	dagService := a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	fileSyncService := app.MustComponent[filesync.FileSync](a)
-	s.fileStatusService = filesync.NewStatus(s, dagService, fileSyncService)
+	s.fileStatusService = fileSyncService.NewStatusWatcher(s, 5*time.Second)
 	return
 }
 

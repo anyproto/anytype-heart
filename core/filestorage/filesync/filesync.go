@@ -33,6 +33,7 @@ type FileSync interface {
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	SyncStatus() (ss SyncStatus, err error)
+	NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher
 	app.ComponentRunnable
 }
 

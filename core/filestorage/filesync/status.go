@@ -23,58 +23,72 @@ type fileWithSpace struct {
 type fileStatus struct {
 	chunksCount int
 	status      syncstatus.SyncStatus
+	updatedAt   time.Time
 }
 
-type Status struct {
-	lock  *sync.Mutex
-	files map[fileWithSpace]fileStatus
+type StatusWatcher struct {
+	lock         *sync.Mutex
+	filesToWatch map[fileWithSpace]struct{}
+	files        map[fileWithSpace]fileStatus
 
+	updateInterval  time.Duration
 	statusService   StatusService
 	dagService      ipld.DAGService
 	fileSyncService FileSync
 }
 
-func NewStatus(statusService StatusService, dagService ipld.DAGService, fileSyncService FileSync) *Status {
-	return &Status{
+func (f *fileSync) NewStatusWatcher(statusService StatusService, updateInterval time.Duration) *StatusWatcher {
+	return &StatusWatcher{
 		lock:            &sync.Mutex{},
 		files:           map[fileWithSpace]fileStatus{},
+		filesToWatch:    map[fileWithSpace]struct{}{},
 		statusService:   statusService,
-		dagService:      dagService,
-		fileSyncService: fileSyncService,
+		dagService:      f.dagService,
+		fileSyncService: f,
+		updateInterval:  updateInterval,
 	}
 }
 
-func (s *Status) Run() {
+func (s *StatusWatcher) Run() {
 	go s.run()
 }
 
-func (s *Status) run() {
-	s.check()
-	t := time.NewTicker(time.Second)
+func (s *StatusWatcher) run() {
+	ctx := context.Background()
+
+	s.checkFiles(ctx)
+	t := time.NewTicker(s.updateInterval)
 	for range t.C {
-		s.check()
+		s.checkFiles(ctx)
 	}
 }
 
-func (s *Status) check() {
+func (s *StatusWatcher) checkFiles(ctx context.Context) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	for key := range s.files {
-		status, err := s.checkFile(context.Background(), key)
-		if err != nil {
-			log.Error("check file", zap.Error(err))
-			continue
-		}
-
-		err = s.statusService.UpdateTree(context.Background(), key.fileID, status.status)
-		if err != nil {
-			log.Error("update tree", zap.Error(err))
+	for key := range s.filesToWatch {
+		if err := s.updateFileStatus(ctx, key); err != nil {
+			log.Error("check file",
+				zap.String("spaceID", key.spaceID),
+				zap.String("fileID", key.fileID),
+				zap.Error(err),
+			)
 		}
 	}
 }
 
-func (s *Status) checkFile(ctx context.Context, key fileWithSpace) (fileStatus, error) {
+func (s *StatusWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
+	status, err := s.getFileStatus(ctx, key)
+	if err != nil {
+		return fmt.Errorf("get file status: %w", err)
+	}
+
+	return s.statusService.UpdateTree(context.Background(), key.fileID, status.status)
+}
+
+func (s *StatusWatcher) getFileStatus(ctx context.Context, key fileWithSpace) (fileStatus, error) {
+	now := time.Now()
 	status, ok := s.files[key]
 	if !ok || status.chunksCount == 0 {
 		chunksCount, err := s.countFileChunks(ctx, key.fileID)
@@ -92,6 +106,11 @@ func (s *Status) checkFile(ctx context.Context, key fileWithSpace) (fileStatus, 
 		return status, nil
 	}
 
+	if time.Since(status.updatedAt) < s.updateInterval {
+		return status, nil
+	}
+	status.updatedAt = now
+
 	fstat, err := s.fileSyncService.FileStat(ctx, key.spaceID, key.fileID)
 	if err != nil {
 		return fileStatus{}, fmt.Errorf("file stat: %w", err)
@@ -103,8 +122,7 @@ func (s *Status) checkFile(ctx context.Context, key fileWithSpace) (fileStatus, 
 	return status, nil
 }
 
-// TODO share chunks count with uploader queue
-func (s *Status) countFileChunks(ctx context.Context, id string) (int, error) {
+func (s *StatusWatcher) countFileChunks(ctx context.Context, id string) (int, error) {
 	fileCid, err := cid.Parse(id)
 	if err != nil {
 		return 0, err
@@ -126,14 +144,32 @@ func (s *Status) countFileChunks(ctx context.Context, id string) (int, error) {
 	return count, err
 }
 
-func (s *Status) Watch(spaceID, fileID string) {
+func (s *StatusWatcher) Watch(spaceID, fileID string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.files[fileWithSpace{spaceID: spaceID, fileID: fileID}] = fileStatus{}
+
+	key := fileWithSpace{spaceID: spaceID, fileID: fileID}
+	if _, ok := s.filesToWatch[key]; ok {
+		return
+	}
+	s.filesToWatch[key] = struct{}{}
+
+	go func() {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+
+		if err := s.updateFileStatus(context.Background(), key); err != nil {
+			log.Error("watch: check file",
+				zap.String("spaceID", key.spaceID),
+				zap.String("fileID", key.fileID),
+				zap.Error(err),
+			)
+		}
+	}()
 }
 
-func (s *Status) Unwatch(spaceID, fileID string) {
+func (s *StatusWatcher) Unwatch(spaceID, fileID string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	delete(s.files, fileWithSpace{spaceID: spaceID, fileID: fileID})
+	delete(s.filesToWatch, fileWithSpace{spaceID: spaceID, fileID: fileID})
 }
