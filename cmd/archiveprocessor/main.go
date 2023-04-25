@@ -35,12 +35,17 @@ type idsCollection struct {
 const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 
 var (
-	idsInfo             idsCollection
-	useCase             string
-	sbTypesToBeExcluded map[model.SmartBlockType]struct{}
-	profileFileFound    bool
+	idsInfo          idsCollection
+	useCase          string
+	profileFileFound bool
 
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
+
+	sbTypesToBeExcluded = map[model.SmartBlockType]struct{}{
+		model.SmartBlockType_Workspace:   {},
+		model.SmartBlockType_Widget:      {},
+		model.SmartBlockType_ProfilePage: {},
+	}
 )
 
 func main() {
@@ -57,6 +62,7 @@ func run() error {
 	path := os.Args[1]
 	fileName := filepath.Base(path)
 	useCase = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	pathToNewZip := strings.TrimSuffix(path, filepath.Ext(fileName)) + "_new.zip"
 
 	r, err := zip.OpenReader(path)
 	if err != nil {
@@ -69,20 +75,14 @@ func run() error {
 		return fmt.Errorf("profile file does not present in archive")
 	}
 
-	pathToNewZip := strings.TrimSuffix(path, filepath.Ext(fileName)) + "_new.zip"
 	zf, err := os.Create(pathToNewZip)
 	if err != nil {
 		return fmt.Errorf("failed to create output zip file: %v", err)
 	}
 	defer zf.Close()
+
 	writer := zip.NewWriter(zf)
 	defer writer.Close()
-
-	sbTypesToBeExcluded = map[model.SmartBlockType]struct{}{
-		model.SmartBlockType_Workspace:   {},
-		model.SmartBlockType_Widget:      {},
-		model.SmartBlockType_ProfilePage: {},
-	}
 
 	if err := processFiles(r.File, writer); err != nil {
 		if err == errIncorrectFileFound {
@@ -179,25 +179,11 @@ func processFile(r io.ReadCloser, name string) ([]byte, error) {
 
 	isArchived := pbtypes.GetBool(snapshot.Data.Details, bundle.RelationKeyIsArchived.String())
 	if isArchived {
-		return nil, fmt.Errorf("object %s has isarchived == true", id)
+		return nil, fmt.Errorf("object %s has isArchived == true", id)
 	}
 
-	processRootBlock(snapshot, id)
-	processExtraRelations(snapshot)
-	processAccountRelatedDetails(snapshot)
-
-	processRules(snapshot)
-
-	if !strings.HasPrefix(id, addr.RelationKeyToIdPrefix) && !strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-		isValid := true
-		for _, v := range validators {
-			if err := v(snapshot); err != nil {
-				isValid = false
-			}
-		}
-		if !isValid {
-			return nil, fmt.Errorf("object '%s' is invalid", id)
-		}
+	if err = processAndValidate(snapshot); err != nil {
+		return nil, err
 	}
 
 	if isOldAccount {
@@ -228,6 +214,28 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.ChangeSnapshot, sbt
 		sbt = snapshotWithType.SbType
 	}
 	return s, sbt, isOldAccount, nil
+}
+
+func processAndValidate(snapshot *pb.ChangeSnapshot) error {
+	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
+
+	processRootBlock(snapshot, id)
+	processExtraRelations(snapshot)
+	processAccountRelatedDetails(snapshot)
+	processRules(snapshot)
+
+	if !strings.HasPrefix(id, addr.RelationKeyToIdPrefix) && !strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
+		isValid := true
+		for _, v := range validators {
+			if err := v(snapshot); err != nil {
+				isValid = false
+			}
+		}
+		if !isValid {
+			return fmt.Errorf("object '%s' is invalid", id)
+		}
+	}
+	return nil
 }
 
 func processRootBlock(s *pb.ChangeSnapshot, id string) {
@@ -269,7 +277,9 @@ func processAccountRelatedDetails(s *pb.ChangeSnapshot) {
 func processProfile(data []byte) ([]byte, error) {
 	profile := &pb.Profile{}
 	if err := profile.Unmarshal(data); err != nil {
-		panic(fmt.Errorf("cannot unmarshal profile: %v", err))
+		e := fmt.Errorf("cannot unmarshal profile: %v", err)
+		fmt.Println(e)
+		return nil, e
 	}
 	profile.Name = ""
 	profile.ProfileId = ""
