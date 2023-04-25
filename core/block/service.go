@@ -605,12 +605,11 @@ func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceReque
 }
 
 func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId string, id string) (setId string, err error) {
-	s.Do(workspaceId, func(ws smartblock.SmartBlock) error {
+	err = Do(s, workspaceId, func(ws *editor.Workspaces) error {
 		if ws.Type() != model.SmartBlockType_Workspace {
 			return ErrUnexpectedBlockType
 		}
-		commonOperations := ws.(basic.CommonOperations)
-		if err = commonOperations.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
+		if err = ws.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
@@ -621,7 +620,7 @@ func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId stri
 		s.spaceDashboardID = id
 		return nil
 	})
-	return id, nil
+	return id, err
 }
 
 func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
@@ -1108,7 +1107,10 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 
 		if toLayout, ok := orig.Layout(); ok {
-			commonOperations := b.(basic.CommonOperations)
+			commonOperations, ok := b.(basic.CommonOperations)
+			if !ok {
+				return fmt.Errorf("common operations is not allowed for this object")
+			}
 			if err := commonOperations.SetLayoutInState(ts, toLayout); err != nil {
 				return fmt.Errorf("set layout: %w", err)
 			}

@@ -239,7 +239,10 @@ func (oc *ObjectCreator) setSpaceDashboardID(newID string, sn *converter.Snapsho
 func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, snapshot *model.SmartBlockSnapshotBase, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
-		commonOperations := b.(basic.CommonOperations)
+		commonOperations, ok := b.(basic.CommonOperations)
+		if !ok {
+			return fmt.Errorf("common operations is not allowed for this object")
+		}
 		err := commonOperations.SetObjectTypes(ctx, snapshot.ObjectTypes)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set object types %s: %s", newID, err.Error())
