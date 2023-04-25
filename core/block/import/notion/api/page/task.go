@@ -142,15 +142,13 @@ func (pt *Task) retrieveRelation(ctx context.Context,
 
 	if err := pt.handlePagination(ctx, apiKey, pageID, propObject); err != nil {
 		return nil, err
-	} else {
-		pt.handleLinkRelationsIDWithAnytypeID(propObject, req)
-
-		if err := pt.setDetails(propObject, key, details); err != nil {
-			return nil, err
-		} else {
-			return pt.handleRelation(key, propObject), nil
-		}
 	}
+	pt.handleLinkRelationsIDWithAnytypeID(propObject, req)
+
+	if err := pt.setDetails(propObject, key, details); err != nil {
+		return nil, err
+	}
+	return pt.handleRelation(key, propObject), nil
 }
 
 // linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
@@ -171,7 +169,11 @@ func (pt *Task) handleLinkRelationsIDWithAnytypeID(propObject property.Object, r
 
 func (pt *Task) handlePagination(ctx context.Context, apiKey string, pageID string, propObject property.Object) error {
 	if isPropertyPaginated(propObject) {
-		if properties, err :=
+		var (
+			properties []interface{}
+			err        error
+		)
+		if properties, err =
 			pt.propertyService.GetPropertyObject(
 				ctx,
 				pageID,
@@ -180,9 +182,8 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, pageID stri
 				propObject.GetPropertyType(),
 			); err != nil {
 			return fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
-		} else {
-			pt.handlePaginatedProperties(propObject, properties)
 		}
+		pt.handlePaginatedProperties(propObject, properties)
 	}
 	return nil
 }
@@ -277,59 +278,60 @@ func isPropertyTag(pr property.Object) bool {
 }
 
 func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
-	text, color := getTextColorOptions(pr)
-	appendToSelectDict(text, rel, color)
+	appendToSelectDict(rel, getRelationOptions(pr))
 }
 
-func getTextColorOptions(pr property.Object) ([]string, []string) {
-	var text, color []string
-
+func getRelationOptions(pr property.Object) []*model.RelationOption {
+	var opts []*model.RelationOption
 	switch property := pr.(type) {
 	case *property.StatusItem:
-		text, color = statusItemOptions(text, property, color)
+		opts = append(opts, statusItemOptions(property))
 	case *property.SelectItem:
-		text, color = selectItemOptions(text, property, color)
+		opts = append(opts, selectItemOptions(property))
 	case *property.MultiSelectItem:
-		text, color = multiselectItemOptions(property, text, color)
+		opts = append(opts, multiselectItemOptions(property)...)
 	case *property.PeopleItem:
-		text, color = peopleItemOptions(property, text, color)
+		opts = append(opts, peopleItemOptions(property)...)
 	}
-	return text, color
+	return opts
 }
 
-func appendToSelectDict(text []string, rel *model.Relation, color []string) {
-	for i := 0; i < len(text); i++ {
-		rel.SelectDict = append(rel.SelectDict, &model.RelationOption{
-			Text:  text[i],
-			Color: color[i],
+func appendToSelectDict(rel *model.Relation, opts []*model.RelationOption) {
+	rel.SelectDict = append(rel.SelectDict, opts...)
+}
+
+func peopleItemOptions(property *property.PeopleItem) []*model.RelationOption {
+	res := make([]*model.RelationOption, 0, len(property.People))
+	for _, so := range property.People {
+		res = append(res, &model.RelationOption{
+			Text:  so.Name,
+			Color: api.DefaultColor,
 		})
 	}
+	return res
 }
 
-func peopleItemOptions(property *property.PeopleItem, text []string, color []string) ([]string, []string) {
-	for _, so := range property.People {
-		text = append(text, so.Name)
-		color = append(color, api.DefaultColor)
-	}
-	return text, color
-}
-
-func multiselectItemOptions(property *property.MultiSelectItem, text []string, color []string) ([]string, []string) {
+func multiselectItemOptions(property *property.MultiSelectItem) []*model.RelationOption {
+	res := make([]*model.RelationOption, 0, len(property.MultiSelect))
 	for _, so := range property.MultiSelect {
-		text = append(text, so.Name)
-		color = append(color, api.NotionColorToAnytype[so.Color])
+		res = append(res, &model.RelationOption{
+			Text:  so.Name,
+			Color: api.NotionColorToAnytype[so.Color],
+		})
 	}
-	return text, color
+	return res
 }
 
-func selectItemOptions(text []string, property *property.SelectItem, color []string) ([]string, []string) {
-	text = append(text, property.Select.Name)
-	color = append(color, api.NotionColorToAnytype[property.Select.Color])
-	return text, color
+func selectItemOptions(property *property.SelectItem) *model.RelationOption {
+	return &model.RelationOption{
+		Text:  property.Select.Name,
+		Color: api.NotionColorToAnytype[property.Select.Color],
+	}
 }
 
-func statusItemOptions(text []string, property *property.StatusItem, color []string) ([]string, []string) {
-	text = append(text, property.Status.Name)
-	color = append(color, api.NotionColorToAnytype[property.Status.Color])
-	return text, color
+func statusItemOptions(property *property.StatusItem) *model.RelationOption {
+	return &model.RelationOption{
+		Text:  property.Status.Name,
+		Color: api.NotionColorToAnytype[property.Status.Color],
+	}
 }
