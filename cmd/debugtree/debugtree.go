@@ -3,17 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/proto"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"io/ioutil"
 	"log"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/debug/debugtree"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/goccy/go-graphviz"
 )
@@ -35,62 +35,57 @@ func main() {
 	}
 	fmt.Println("opening file...")
 	st := time.Now()
-	dt, err := debugtree.Open(*file)
+	archive, err := treearchive.Open(*file)
 	if err != nil {
 		log.Fatal("can't open debug file:", err)
 	}
-	defer dt.Close()
-	fmt.Printf("open tree done in %.1fs\n", time.Since(st).Seconds())
-	fmt.Println(dt.Stats().MlString())
+	defer archive.Close()
+	fmt.Printf("open archive done in %.1fs\n", time.Since(st).Seconds())
+
+	importer := treearchive.NewTreeImporter(archive.ListStorage(), archive.TreeStorage())
+	st = time.Now()
+	err = importer.Import("")
+	if err != nil {
+		log.Fatal("can't import the tree", err)
+	}
+	fmt.Printf("import tree done in %.1fs\n", time.Since(st).Seconds())
 
 	if *changeIdx != -1 {
-		id := ""
-		i := 0
-
-		dt.IterateFrom(dt.Root().Id,
-			func(decrypted []byte) (any, error) {
-				ch := &pb.Change{}
-				err = proto.Unmarshal(decrypted, ch)
-				if err != nil {
-					return nil, err
-				}
-				return ch, nil
-			}, func(change *objecttree.Change) bool {
-				if change.Id == dt.Id() {
-					return true
-				}
-				model := change.Model.(*pb.Change)
-				if i == *changeIdx {
-					id = change.Id
-					fmt.Println("Change:")
-					fmt.Println(pbtypes.Sprint(model))
-					return false
-				} else {
-					i++
-				}
-				return true
-			})
-		// TODO: [MR] Add full tree
-		//if id != "" {
-		//	if t, err = change.BuildTreeBefore(context.TODO(), dt, id, true); err != nil {
-		//		log.Fatal("build tree before error:", err)
-		//	}
-		//}
+		ch, err := importer.ChangeAt(*changeIdx)
+		if err != nil {
+			log.Fatal("can't get the change in tree", err)
+		}
+		fmt.Println("Change:")
+		fmt.Println(pbtypes.Sprint(ch.Model))
+		err = importer.Import(ch.Id)
+		if err != nil {
+			log.Fatal("can't import the tree before", ch.Id, err)
+		}
 	}
-
-	//fmt.Printf("Tree len:\t%d\n", .Len())
-	fmt.Printf("Tree root:\t%s\n", t.RootId())
+	ot := importer.ObjectTree()
+	di, err := ot.Debug(state.ChangeParser{})
+	if err != nil {
+		log.Fatal("can't get debug info from tree", err)
+	}
+	fmt.Printf("Tree root:\t%s\nTree len:\t%d\nTree heads:\t%s\n",
+		ot.Root().Id,
+		di.TreeLen,
+		strings.Join(di.Heads, ","))
 
 	if *printState {
 		fmt.Println("Building state...")
 		stt := time.Now()
-		s, err := dt.BuildState()
+		s, err := importer.State()
 		if err != nil {
 			log.Fatal("can't build state:", err)
 		}
 		dur := time.Since(stt)
 		fmt.Println(s.StringDebug())
-		sbt, _ := smartblock.SmartBlockTypeFromID(s.RootId())
+		sbt := smartblock.SmartBlockTypePage
+		changeType := string(ot.UnmarshalledHeader().Data)
+		if v, exists := model.SmartBlockType_value[changeType]; exists {
+			sbt = smartblock.SmartBlockType(v)
+		}
 		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
 		if *fileHashes {
 			fmt.Println("File keys:")
@@ -103,7 +98,7 @@ func main() {
 
 	if *objectStore {
 		fmt.Println("fetch object store info..")
-		ls, err := dt.LocalStore()
+		ls, err := archive.LocalStore()
 		if err != nil {
 			fmt.Println("can't open objectStore info:", err)
 		} else {
@@ -112,12 +107,7 @@ func main() {
 	}
 
 	if *makeTree {
-		fmt.Println("saving tree file...")
-		gv, err := t.Graphviz()
-		if err != nil {
-			log.Fatal("can't make graphviz data:", err)
-		}
-		gvo, err := graphviz.ParseBytes([]byte(gv))
+		gvo, err := graphviz.ParseBytes([]byte(di.Graphviz))
 		if err != nil {
 			log.Fatal("can't open graphviz data:", err)
 		}

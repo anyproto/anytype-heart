@@ -107,8 +107,8 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 
 	// 1 - create ZIP file
 	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
-	builder := &treeBuilder{s: d.store, anonymized: anonymize, id: blockId}
-	zipFilename, err := builder.Build(path, tree)
+	exporter := &treeExporter{s: d.store, anonymized: anonymize, id: blockId}
+	zipFilename, err := exporter.Export(path, tree)
 	if err != nil {
 		logger.Fatal("build tree error:", err)
 		return "", err
@@ -126,7 +126,7 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 	// generate a filename just like zip file had
 	maxReplacements := 1
 	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
-	dump, err := tree.DebugDump(state.ChangeParser{})
+	debugInfo, err := tree.Debug(state.ChangeParser{})
 	if err != nil {
 		return
 	}
@@ -136,7 +136,7 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 		return
 	}
 	defer file.Close()
-	_, err = file.Write([]byte(dump))
+	_, err = file.Write([]byte(debugInfo.Graphviz))
 	if err != nil {
 		return
 	}
