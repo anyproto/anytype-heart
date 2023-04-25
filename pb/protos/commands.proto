@@ -1469,7 +1469,8 @@ message Rpc {
 
             message Request {
                 string contextId = 1;
-                string newDashboardId = 2;
+                string workspaceId = 2;
+                string objectId = 3;
             }
 
             message Response {

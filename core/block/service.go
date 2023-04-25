@@ -603,7 +603,14 @@ func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceReque
 	})
 }
 
-func (s Service) SetDashboardId(ctx *session.Context, id string) (setId string, err error) {
+func (s *Service) SetWorkspaceDashboardId(ctx context.Context, workspaceId string, id string) (setId string, err error) {
+	var ws smartblock.SmartBlock
+	if ws, _, err = s.PickBlock(ctx, workspaceId); err != nil {
+		return "", err
+	}
+	if ws.Type() != model.SmartBlockType_Workspace {
+		return "", ErrUnexpectedBlockType
+	}
 	s.spaceDashboardID = id
 	return id, nil
 }
