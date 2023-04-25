@@ -48,6 +48,7 @@ func NewFile(
 }
 
 type BlockService interface {
+	Do(id string, apply func(sb smartblock.SmartBlock) error) error
 	DoFile(id string, apply func(f File) error) error
 	CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
 	ProcessAdd(p process.Process) (err error)

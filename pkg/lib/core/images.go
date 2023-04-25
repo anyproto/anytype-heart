@@ -44,6 +44,7 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}, nil
 }
 
+// TODO: Touch the file to fire indexing
 func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Image, error) {
 	opts := files.AddOptions{}
 	for _, opt := range options {
@@ -65,24 +66,5 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		variantsByWidth: variants,
 		service:         a.files,
 	}
-
-	details, err := img.Details()
-	if err != nil {
-		if err == ErrFileNotIndexable {
-			return img, nil
-		}
-		return nil, err
-	}
-
-	err = a.objectStore.UpdateObjectDetails(img.hash, details, false)
-	if err != nil {
-		return nil, err
-	}
-
-	err = a.objectStore.AddToIndexQueue(img.hash)
-	if err != nil {
-		return nil, err
-	}
-
 	return img, nil
 }

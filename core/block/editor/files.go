@@ -120,17 +120,6 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 				},
 			})
 		}
-
-		if pbtypes.GetInt64(d, bundle.RelationKeySizeInBytes.String()) != 0 {
-			blocks = append(blocks, &model.Block{
-				Id: "rel5",
-				Content: &model.BlockContentOfRelation{
-					Relation: &model.BlockContentRelation{
-						Key: bundle.RelationKeySizeInBytes.String(),
-					},
-				},
-			})
-		}
 		if pbtypes.GetString(d, bundle.RelationKeyMediaArtistName.String()) != "" {
 			blocks = append(blocks, &model.Block{
 				Id: "rel6",

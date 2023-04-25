@@ -16,6 +16,7 @@ import (
 
 	"github.com/h2non/filetype"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -382,6 +383,14 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.MIME = meta.Media
 			result.Size = meta.Size
 		}
+	}
+
+	// Touch the file to activate indexing
+	derr := u.service.Do(result.Hash, func(_ smartblock.SmartBlock) error {
+		return nil
+	})
+	if derr != nil {
+		log.Errorf("can't touch file object %s: %s", result.Hash, derr)
 	}
 	result.Type = u.fileType
 	result.Name = u.name

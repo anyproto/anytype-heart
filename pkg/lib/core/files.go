@@ -3,8 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
@@ -126,6 +127,7 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	}, nil
 }
 
+// TODO: Touch the file to fire indexing
 func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File, error) {
 	opts := files.AddOptions{}
 	for _, opt := range options {
@@ -147,20 +149,5 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 		info: info,
 		node: a.files,
 	}
-
-	details, err := f.Details()
-	if err != nil {
-		return nil, err
-	}
-
-	err = a.objectStore.UpdateObjectDetails(f.hash, details, false)
-	if err != nil {
-		return nil, err
-	}
-	err = a.objectStore.AddToIndexQueue(f.hash)
-	if err != nil {
-		return nil, err
-	}
-
 	return f, nil
 }
