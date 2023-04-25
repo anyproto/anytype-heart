@@ -9,21 +9,6 @@ func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {}
 
 func SetInterfaceGetter(getter InterfaceGetter) {}
 
-type Interface struct {
-	net.Interface
-	Addrs []InterfaceAddr
-}
-
-type InterfaceAddr struct {
-	Ip     []byte
-	Prefix int
-}
-
-type InterfacesAddrs struct {
-	Interfaces []net.Interface
-	Addrs      []net.Addr
-}
-
 type InterfaceGetter interface {
 	Interfaces() []Interface
 }

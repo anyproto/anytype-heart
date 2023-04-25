@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/net"
+	"github.com/anytypeio/any-sync/util/periodicsync"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/net/addrs"
 	"github.com/libp2p/zeroconf/v2"
@@ -49,6 +50,7 @@ type localDiscovery struct {
 	cancel          context.CancelFunc
 	closeWait       sync.WaitGroup
 	interfacesAddrs addrs.InterfacesAddrs
+	periodicCheck   periodicsync.PeriodicSync
 
 	notifier Notifier
 }
@@ -65,6 +67,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	addrs := a.MustComponent(config.CName).(net.ConfigGetter).GetNet().Server.ListenAddrs
 	l.port, err = getPort(addrs)
+	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
 	return
 }
 
@@ -72,11 +75,7 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 	if l.port == 0 {
 		return
 	}
-	l.ctx, l.cancel = context.WithCancel(ctx)
-	if err = l.startServer(); err != nil {
-		return
-	}
-	l.startQuerying(l.ctx)
+	l.periodicCheck.Run()
 	return
 }
 
@@ -88,19 +87,39 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	if len(l.addrs) == 0 {
 		return
 	}
+	l.periodicCheck.Close()
 	l.cancel()
 	if l.server != nil {
 		l.server.Shutdown()
+		l.closeWait.Wait()
 	}
-	l.closeWait.Wait()
 	return nil
 }
 
-func (l *localDiscovery) startServer() (err error) {
-	l.interfacesAddrs, err = addrs.GetInterfacesAddrs()
+func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
+	newAddrs, err := addrs.GetInterfacesAddrs()
 	if err != nil {
 		return
 	}
+	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
+		return
+	}
+	l.interfacesAddrs = newAddrs
+	if l.server != nil {
+		l.cancel()
+		l.server.Shutdown()
+		l.closeWait.Wait()
+		l.closeWait = sync.WaitGroup{}
+	}
+	l.ctx, l.cancel = context.WithCancel(ctx)
+	if err = l.startServer(); err != nil {
+		return
+	}
+	l.startQuerying(l.ctx)
+	return
+}
+
+func (l *localDiscovery) startServer() (err error) {
 	var ips []string
 	for _, addr := range l.interfacesAddrs.Addrs {
 		ip := strings.Split(addr.String(), "/")[0]
