@@ -624,10 +624,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			skipIfNoChanges = true
 		}
 	}
-	if sb.source.ReadOnly() && addHistory {
-		// workaround to detect user-generated action
-		return fmt.Errorf("object is readonly")
-	}
+
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
 			return nil
@@ -700,8 +697,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return err
 		}
 		if sb.undo != nil && addHistory {
-			act.Group = s.GroupId()
-			sb.undo.Add(act)
+			if !sb.source.ReadOnly() {
+				act.Group = s.GroupId()
+				sb.undo.Add(act)
+			}
 		}
 	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
