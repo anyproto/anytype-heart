@@ -401,9 +401,9 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 
 func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, error) {
 	switch collection {
-	case collectionKeyObjectTypes:
+	case CollectionKeyObjectTypes:
 		return NewObjectType(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
-	case collectionKeyRelations:
+	case CollectionKeyRelations:
 		return NewRelation(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
 	case collectionKeyRelationOptions:
 		return NewRelationOption(c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil

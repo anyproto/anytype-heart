@@ -14,8 +14,11 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
+	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
@@ -203,7 +206,21 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 }
 
 func (e *export) getAllObjects(includeArchived bool) (map[string]*types.Struct, error) {
-	var res []*model.ObjectInfo
+	var (
+		res   []*model.ObjectInfo
+		store *types.Struct
+	)
+
+	err := e.bs.Do(e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+		st := b.NewState()
+		store = st.Store()
+		return nil
+	})
+
+	if err != nil {
+		log.Errorf("failed to get store, %s", err.Error())
+	}
+
 	if includeArchived {
 		archivedObjects, err := e.getArchivedObjects()
 		if err != nil {
@@ -211,12 +228,12 @@ func (e *export) getAllObjects(includeArchived bool) (map[string]*types.Struct, 
 		}
 		res = append(res, archivedObjects...)
 	}
-	objectDetails, err := e.getExistedObjects()
+	objectDetails, err := e.getExistedObjects(store)
 	if err != nil {
 		return nil, err
 	}
 	for _, re := range res {
-		if !e.objectValid(re.Id, re) {
+		if !e.objectValid(re.Id, re, store) {
 			continue
 		}
 		objectDetails[re.Id] = re.Details
@@ -253,14 +270,14 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 }
 
-func (e *export) getExistedObjects() (map[string]*types.Struct, error) {
+func (e *export) getExistedObjects(store *types.Struct) (map[string]*types.Struct, error) {
 	res, err := e.objectStore.List()
 	if err != nil {
 		return nil, err
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, info := range res {
-		if !e.objectValid(info.Id, info) {
+		if !e.objectValid(info.Id, info, store) {
 			continue
 		}
 		objectDetails[info.Id] = info.Details
@@ -471,18 +488,25 @@ func (e *export) createProfileFile(wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(id string, r *model.ObjectInfo) bool {
-	if id == addr.AnytypeProfileId {
+func (e *export) objectValid(id string, r *model.ObjectInfo, store *types.Struct) bool {
+	if r.Id == addr.AnytypeProfileId {
 		return false
 	}
 	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
 		return false
 	}
+	if installedSubObject(id, r.ObjectType, store) {
+		return true
+	}
 	if sourceObject := pbtypes.GetString(r.Details, bundle.RelationKeySourceObject.String()); sourceObject != "" {
 		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
 			return true
 		}
-		return false
+		if strings.HasPrefix(sourceObject, addr.BundledRelationURLPrefix) ||
+			strings.HasPrefix(sourceObject, addr.BundledObjectTypeURLPrefix) {
+			return false
+		}
+		return true
 	}
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		if deleted := pbtypes.GetBool(r.Details, bundle.RelationKeyIsDeleted.String()); deleted {
@@ -491,6 +515,50 @@ func (e *export) objectValid(id string, r *model.ObjectInfo) bool {
 		return false
 	}
 	return true
+}
+
+func installedSubObject(id string, objectType model.SmartBlockType, store *types.Struct) bool {
+	if objectType == model.SmartBlockType_SubObject {
+		if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+			return isRelationInstalled(id, store)
+		}
+		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
+			return isObjectTypeInstalled(id, store)
+		}
+	}
+	return false
+}
+
+func isObjectTypeInstalled(id string, store *types.Struct) bool {
+	objectTypes := pbtypes.GetStruct(store, editor.CollectionKeyObjectTypes)
+	tk, err := bundle.TypeKeyFromUrl(id)
+	if err != nil {
+		return false
+	}
+	if lo.Contains(bundle.InternalTypes, tk) {
+		return false
+	}
+	if lo.Contains(bundle.SystemTypes, tk) {
+		return false
+	}
+	str := pbtypes.GetStruct(objectTypes, tk.String())
+	return str != nil
+}
+
+func isRelationInstalled(id string, store *types.Struct) bool {
+	key, err := pbtypes.RelationIdToKey(id)
+	if err != nil {
+		return false
+	}
+	if slices.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
+		return false
+	}
+	if slices.Contains(bundle.RequiredInternalRelations, bundle.RelationKey(key)) {
+		return false
+	}
+	relations := pbtypes.GetStruct(store, editor.CollectionKeyRelations)
+	str := pbtypes.GetStruct(relations, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
+	return str != nil
 }
 
 func newNamer() *namer {

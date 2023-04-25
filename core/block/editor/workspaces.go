@@ -40,13 +40,13 @@ const (
 
 const (
 	collectionKeyRelationOptions = "opt"
-	collectionKeyRelations       = "rel"
-	collectionKeyObjectTypes     = "ot"
+	CollectionKeyRelations       = "rel"
+	CollectionKeyObjectTypes     = "ot"
 )
 
 var objectTypeToCollection = map[bundle.TypeKey]string{
-	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
-	bundle.TypeKeyRelation:       collectionKeyRelations,
+	bundle.TypeKeyObjectType:     CollectionKeyObjectTypes,
+	bundle.TypeKeyRelation:       CollectionKeyRelations,
 	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
 }
 
@@ -193,7 +193,7 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 		key = bson.NewObjectId().Hex()
 	} else {
 		// no need to check for the generated bson's
-		if st.HasInStore([]string{collectionKeyRelations, key}) {
+		if st.HasInStore([]string{CollectionKeyRelations, key}) {
 			return id, object, ErrSubObjectAlreadyExists
 		}
 		if bundle.HasRelation(key) {
@@ -216,10 +216,10 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	}
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.URL())
-	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	st.SetInStore([]string{CollectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyRelations, key, true); err != nil {
+	if err = w.initSubObject(st, CollectionKeyRelations, key, true); err != nil {
 		return
 	}
 	return
@@ -323,15 +323,15 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	object.Fields[bundle.RelationKeySmartblockTypes.String()] = pbtypes.IntList(sbType...)
 
 	// no need to check for the generated bson's
-	if st.HasInStore([]string{collectionKeyObjectTypes, key}) {
+	if st.HasInStore([]string{CollectionKeyObjectTypes, key}) {
 		// todo: optimize this
 		return id, object, ErrSubObjectAlreadyExists
 	}
 
-	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
+	st.SetInStore([]string{CollectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyObjectTypes, key, true); err != nil {
+	if err = w.initSubObject(st, CollectionKeyObjectTypes, key, true); err != nil {
 		return
 	}
 
