@@ -91,7 +91,6 @@ build-js-addon:
 
 build-ios: setup-go
 	gomobile init
-	@go get golang.org/x/mobile/bind
 	@echo 'Clear xcframework'
 	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
@@ -105,7 +104,6 @@ build-ios: setup-go
 
 build-android: setup-go
 	gomobile init
-	@go get golang.org/x/mobile/bind
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
