@@ -1,0 +1,10 @@
+syntax = "proto3";
+package anytype;
+option go_package = "pb";
+
+import "pkg/lib/pb/model/protos/models.proto";
+
+message MigrationObject {
+  anytype.model.SmartBlockType sbType = 1;
+  anytype.model.SmartBlockSnapshotBase snapshot = 2;
+}

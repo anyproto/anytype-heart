@@ -863,6 +863,29 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	return response(pb.RpcObjectImportResponseError_NULL, nil)
 }
 
+func (mw *Middleware) UserDataImport(cctx context.Context, req *pb.RpcUserDataImportRequest) *pb.RpcUserDataImportResponse {
+	ctx := mw.newContext(cctx)
+
+	response := func(code pb.RpcUserDataImportResponseErrorCode, err error) *pb.RpcUserDataImportResponse {
+		m := &pb.RpcUserDataImportResponse{Error: &pb.RpcUserDataImportResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
+	err := importer.ImportUserData(ctx, req)
+
+	if err != nil {
+		return response(pb.RpcUserDataImportResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcUserDataImportResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
 	ctx := mw.newContext(cctx)
 

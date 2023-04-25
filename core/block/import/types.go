@@ -18,6 +18,7 @@ type Importer interface {
 	Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error
 	ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
+	ImportUserData(ctx *session.Context, req *pb.RpcUserDataImportRequest) error
 }
 
 // Creator incapsulate logic with creation of given smartblocks

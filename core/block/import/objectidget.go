@@ -26,6 +26,17 @@ func NewObjectIDGetter(core core.Service, service *block.Service) IDGetter {
 }
 
 func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error) {
+	if predefinedSmartBlockType(sbType) {
+		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{}, []sb.SmartBlockType{sbType})
+		if err != nil {
+			return "", false, err
+		}
+		if len(ids) > 0 {
+			return ids[0], true, err
+		}
+		return "", false, nil
+	}
+
 	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeySource.String()] != nil && updateExisting {
 		source := snapshot.Details.Fields[bundle.RelationKeySource.String()].GetStringValue()
 		records, _, err := ou.core.ObjectStore().Query(nil, database.Query{
@@ -75,4 +86,25 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 	}
 	release()
 	return sb.Id(), false, nil
+}
+
+func predefinedSmartBlockType(sbType sb.SmartBlockType) bool {
+	sbTypes := []sb.SmartBlockType{
+		sb.SmartBlockTypeWorkspace,
+		sb.SmartBlockTypeProfilePage,
+		sb.SmartBlockTypeArchive,
+		sb.SmartblockTypeMarketplaceType,
+		sb.SmartblockTypeMarketplaceRelation,
+		sb.SmartblockTypeMarketplaceTemplate,
+		sb.SmartBlockTypeWidget,
+		sb.SmartBlockTypeHome,
+	}
+
+	for _, blockType := range sbTypes {
+		if blockType == sbType {
+			return true
+		}
+	}
+
+	return false
 }
