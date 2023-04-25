@@ -123,9 +123,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		if err = oc.createRelationsInWorkspace(newID, st); err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
-		}
+		oc.handleWorkspace(ctx, details, newID, st)
 		return nil, newID, nil
 	}
 
@@ -156,6 +154,18 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	return respDetails, newID, nil
+}
+
+func (oc *ObjectCreator) handleWorkspace(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, newID string, st *state.State) {
+	if err := oc.createRelationsInWorkspace(newID, st); err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
+	}
+	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
+		return b.SetDetails(ctx, details, true)
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to set details %s: %s", newID, err.Error())
+	}
 }
 
 func (oc *ObjectCreator) getDetails(d *types.Struct) []*pb.RpcObjectSetDetailsDetail {
