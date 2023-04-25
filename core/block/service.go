@@ -5,18 +5,19 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/any-sync/accountservice"
+	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
+	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/hashicorp/go-multierror"
 	"strings"
 	"time"
 
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
 
+	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/app/ocache"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -26,6 +27,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -43,11 +45,9 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -66,11 +66,17 @@ const (
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
+	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
+
+var (
+	blockCacheTTL       = time.Minute
+	blockCleanupTimeout = time.Second * 30
+)
 
 var (
 	// quick fix for limiting file upload goroutines
@@ -92,7 +98,7 @@ func New() *Service {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, objectID string)
 
 	CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
@@ -124,14 +130,10 @@ type Service struct {
 	relationService relation.Service
 	cache           ocache.OCache
 
-	objectCreator   objectCreator
-	objectFactory   *editor.ObjectFactory
-	clientService   space.Service
-	commonAccount   accountservice.Service
-	fileStore       filestore.FileStore
-	tempDirProvider core.TempDirProvider
-
-	spaceDashboardID string
+	objectCreator objectCreator
+	objectFactory *editor.ObjectFactory
+	clientService space.Service
+	commonAccount accountservice.Service
 }
 
 func (s *Service) Name() string {
@@ -154,7 +156,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.clientService = a.MustComponent(space.CName).(space.Service)
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.cache = s.createCache()
 	s.app = a
 	return
@@ -162,22 +163,6 @@ func (s *Service) Init(a *app.App) (err error) {
 
 func (s *Service) Run(ctx context.Context) (err error) {
 	return
-}
-
-func (s *Service) GetSpaceDashboardID(ctx context.Context) (string, error) {
-	if s.spaceDashboardID == "" {
-		obj, release, err := s.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *smartblock.InitContext {
-			return &smartblock.InitContext{
-				Ctx: ctx,
-			}
-		})
-		if err != nil {
-			return "", err
-		}
-		release()
-		s.spaceDashboardID = obj.Id()
-	}
-	return s.spaceDashboardID, nil
 }
 
 func (s *Service) Anytype() core.Service {
@@ -215,7 +200,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	// TODO: [MR] add files to status logic
+	// TODO: [MR] improve status logic
 	if tp, err := coresb.SmartBlockTypeFromID(id); err == nil && tp == coresb.SmartBlockTypePage {
 		s.status.Watch(id, func() []string {
 			return nil
@@ -225,7 +210,7 @@ func (s *Service) OpenBlock(
 			return nil
 		}, smartblock.HookOnClose)
 	}
-	// if tid := ob.threadId; tid != thread.Undef && s.status != nil {
+	//if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 	//	var (
 	//		fList = func() []string {
 	//			ob.Lock()
@@ -241,7 +226,7 @@ func (s *Service) OpenBlock(
 	//			return nil
 	//		}, smartblock.HookOnClose)
 	//	}
-	// }
+	//}
 	afterHashesTime := time.Now()
 	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
@@ -302,7 +287,7 @@ func (s *Service) CloseBlock(id string) error {
 		b.ObjectClose()
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
-		// workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		//workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
 		return nil
 	})
 	if err != nil {
@@ -385,13 +370,13 @@ func (s *Service) AddSubObjectsToWorkspace(
 	return
 }
 
-func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string, orphansGC bool) (err error) {
+func (s *Service) RemoveSubObjectsInWorkspace(objectIds []string, workspaceId string) (err error) {
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")
 		}
-		err = ws.RemoveSubObjects(objectIds, orphansGC)
+		err = ws.RemoveSubObjects(objectIds)
 		return err
 	})
 
@@ -403,7 +388,7 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	workspaceId, err := s.objectStore.GetCurrentWorkspaceId()
+	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
 	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
 		return "", nil
 	}
@@ -416,14 +401,14 @@ func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 
 func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
 	panic("is not implemented")
-	// workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	// return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+	//workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	//return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 	//	workspace, ok := b.(*editor.Workspaces)
 	//	if !ok {
 	//		return fmt.Errorf("incorrect object with workspace id")
 	//	}
 	//	return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
-	// })
+	//})
 }
 
 func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
@@ -442,51 +427,51 @@ func (s *Service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest)
 	}
 	// TODO: [MR] check the meaning of method and what should be the result
 	return fmt.Errorf("not implemented")
-	// return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+	//return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 	//	workspace, ok := b.(*editor.Workspaces)
 	//	if !ok {
 	//		return fmt.Errorf("incorrect object with workspace id")
 	//	}
 	//
 	//	return workspace.AddObject(req.ObjectId, protoPayload.Key, protoPayload.Addrs)
-	// })
+	//})
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
 	return "", fmt.Errorf("not implemented")
-	// workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	// if err == core.ErrObjectDoesNotBelongToWorkspace {
+	//workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	//if err == core.ErrObjectDoesNotBelongToWorkspace {
 	//	workspaceId = s.Anytype().PredefinedBlocks().Account
-	// }
-	// var key string
-	// var addrs []string
-	// err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+	//}
+	//var key string
+	//var addrs []string
+	//err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 	//	workspace, ok := b.(*editor.Workspaces)
 	//	if !ok {
 	//		return fmt.Errorf("incorrect object with workspace id")
 	//	}
 	//	key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
 	//	return err
-	// })
-	// if err != nil {
+	//})
+	//if err != nil {
 	//	return "", err
-	// }
-	// payload := &model.ThreadDeeplinkPayload{
+	//}
+	//payload := &model.ThreadDeeplinkPayload{
 	//	Key:   key,
 	//	Addrs: addrs,
-	// }
-	// marshalledPayload, err := proto.Marshal(payload)
-	// if err != nil {
+	//}
+	//marshalledPayload, err := proto.Marshal(payload)
+	//if err != nil {
 	//	return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
-	// }
-	// encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
+	//}
+	//encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
 	//
-	// params := url.Values{}
-	// params.Add("id", req.ObjectId)
-	// params.Add("payload", encodedPayload)
-	// encoded := params.Encode()
+	//params := url.Values{}
+	//params.Add("id", req.ObjectId)
+	//params.Add("payload", encodedPayload)
+	//encoded := params.Encode()
 	//
-	// return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
+	//return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 // SetPagesIsArchived is deprecated
@@ -595,33 +580,6 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
 }
 
-func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
-	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		st := b.NewStateCtx(ctx)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-		return b.Apply(st, smartblock.NoRestrictions)
-	})
-}
-
-func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId string, id string) (setId string, err error) {
-	s.Do(workspaceId, func(ws smartblock.SmartBlock) error {
-		if ws.Type() != model.SmartBlockType_Workspace {
-			return ErrUnexpectedBlockType
-		}
-		if err = ws.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
-			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
-			},
-		}, false); err != nil {
-			return err
-		}
-		s.spaceDashboardID = id
-		return nil
-	})
-	return id, nil
-}
-
 func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil
@@ -727,16 +685,16 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 	}
 
 	for _, fileHash := range fileHashes {
-		inboundLinks, err := s.objectStore.GetOutboundLinksById(fileHash)
+		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
 		if err != nil {
 			log.Errorf("failed to get inbound links for file %s: %s", fileHash, err.Error())
 			continue
 		}
 		if len(inboundLinks) == 0 {
-			if err = s.objectStore.DeleteObject(fileHash); err != nil {
+			if err = s.Anytype().ObjectStore().DeleteObject(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from objectstore: %s", err.Error())
 			}
-			if err = s.fileStore.DeleteByHash(fileHash); err != nil {
+			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
 			}
 			// space will be reclaimed on the next GC cycle
@@ -744,14 +702,10 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) (err error) 
 				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
 				continue
 			}
-			if err = s.fileStore.DeleteFileKeys(fileHash); err != nil {
+			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
 			}
 		}
-	}
-
-	if err := s.objectStore.DeleteObject(id); err != nil {
-		return fmt.Errorf("delete object from local store: %w", err)
 	}
 
 	return
@@ -799,7 +753,7 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 					},
 				},
 			}
-			f, err := database.NewFilters(q, nil, s.objectStore, nil)
+			f, err := database.NewFilters(q, nil, nil)
 			if err != nil {
 				return nil
 			}
@@ -820,23 +774,20 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 	return nil
 }
 
-// TODO: remove proxy
 func (s *Service) Process() process.Service {
 	return s.process
 }
 
-// TODO: remove proxy
 func (s *Service) ProcessAdd(p process.Process) (err error) {
 	return s.process.Add(p)
 }
 
-// TODO: remove proxy
 func (s *Service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	// return s.cache.Close()
+	//return s.cache.Close()
 	return
 }
 
@@ -959,6 +910,21 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 	return fmt.Errorf("undo operation not available for this block type: %T", sb)
 }
 
+func (s *Service) DoImport(id string, apply func(b _import.Import) error) error {
+	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_import"), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(_import.Import); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+
+	return fmt.Errorf("import operation not available for this block type: %T", sb)
+}
+
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
 	sb, release, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
 	if err != nil {
@@ -1028,34 +994,6 @@ func DoWithContext[t any](ctx context.Context, p Picker, id string, apply func(s
 
 func DoState[t any](p Picker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	return DoStateCtx(p, nil, id, apply, flags...)
-}
-
-// DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
-// It correctly handles the case when two ids are the same.
-func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
-	if firstID == secondID {
-		return DoState(s, firstID, func(st *state.State, b t1) error {
-			// Check that b satisfies t2
-			b2, ok := any(b).(t2)
-			if !ok {
-				var dummy t2
-				return fmt.Errorf("block %s is not of type %T", firstID, dummy)
-			}
-			return f(st, st, b, b2)
-		})
-	}
-	if firstID < secondID {
-		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
-			return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
-				return f(firstState, secondState, firstBlock, secondBlock)
-			})
-		})
-	}
-	return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
-		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
-			return f(firstState, secondState, firstBlock, secondBlock)
-		})
-	})
 }
 
 func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
@@ -1138,7 +1076,7 @@ func (s *Service) ResetToState(pageId string, state *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	url, err := uri.NormalizeURI(req.Url)
+	url, err := uri.ProcessURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
@@ -1180,6 +1118,43 @@ func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err 
 		err = nil
 	}
 
+	return
+}
+
+func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
+	// TODO: [MR] Add SubObjects logic
+	//sbt, _ := coresb.SmartBlockTypeFromID(id)
+	//if sbt == coresb.SmartBlockTypeSubObject {
+	//	workspaceId := s.anytype.PredefinedBlocks().Account
+	//	if value, err = s.cache.Get(ctx, workspaceId); err != nil {
+	//		return
+	//	}
+	//
+	//	var ok bool
+	//	var ob *openedBlock
+	//	if ob, ok = value.(*openedBlock); !ok {
+	//		return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, workspaceId)
+	//	}
+	//
+	//	var sbOpener SmartblockOpener
+	//	if sbOpener, ok = ob.SmartBlock.(SmartblockOpener); !ok {
+	//		return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, workspaceId)
+	//	}
+	//
+	//	var sb smartblock.SmartBlock
+	//	if sb, err = sbOpener.Open(id); err != nil {
+	//		return
+	//	}
+	//	return newOpenedBlock(sb), nil
+	//}
+	//
+	//sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{
+	//	Ctx: ctx,
+	//})
+	//if err != nil {
+	//	return
+	//}
+	//value = newOpenedBlock(sb)
 	return
 }
 

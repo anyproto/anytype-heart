@@ -2,11 +2,13 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/anytypeio/any-sync/app/ocache"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -17,6 +19,8 @@ import (
 )
 
 type ctxKey int
+
+var errAppIsNotRunning = errors.New("app is not running")
 
 const (
 	optsKey ctxKey = iota
@@ -103,7 +107,13 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	})
 }
 
+// GetTree should only be called by either space services or debug apis, not the client code
 func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
+	if !s.anytype.IsStarted() {
+		err = errAppIsNotRunning
+		return
+	}
+
 	ctx = context.WithValue(ctx, optsKey, cacheOpts{spaceId: spaceId})
 	v, err := s.cache.Get(ctx, id)
 	if err != nil {
@@ -136,19 +146,27 @@ func (s *Service) GetAccountObject(ctx context.Context, id string) (sb smartbloc
 	return s.GetObject(ctx, s.clientService.AccountId(), id)
 }
 
+// DeleteTree should only be called by space services
 func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
+	if !s.anytype.IsStarted() {
+		return errAppIsNotRunning
+	}
+
 	obj, _, err := s.GetObject(ctx, spaceId, treeId)
 	if err != nil {
 		return
 	}
-	err = s.OnDelete(obj)
+	err = s.OnDelete(obj.Id(), nil)
 	if err != nil {
-		return
+		log.With(zap.Error(err)).Error("failed to execute on delete for tree")
 	}
+	// this should be done not inside lock
 	err = obj.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
 	if err != nil {
 		return
 	}
+
+	s.sendOnRemoveEvent(treeId)
 	_, err = s.cache.Remove(treeId)
 	return
 }
@@ -160,16 +178,35 @@ func (s *Service) DeleteObject(id string) (err error) {
 		}
 		return nil
 	})
-	// TODO: [MR] Delete subObjects
 	if err != nil {
 		return
 	}
-	space, err := s.clientService.AccountSpace(context.Background())
+
+	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	switch sbt {
+	case coresb.SmartBlockTypePage:
+		space, err := s.clientService.AccountSpace(context.Background())
+		if err != nil {
+			return
+		}
+		// this will call DeleteTree asynchronously in the end
+		return space.DeleteTree(context.Background(), id)
+	case coresb.SmartBlockTypeSubObject:
+		err = s.OnDelete(id, func() error {
+			return Do(s, s.anytype.PredefinedBlocks().Account, func(w editor.Workspaces) error {
+				return w.DeleteSubObject(id)
+			})
+		})
+	default:
+		err = s.OnDelete(id, nil)
+	}
 	if err != nil {
 		return
 	}
-	// this will call DeleteTree in the end
-	return space.DeleteTree(context.Background(), id)
+
+	s.sendOnRemoveEvent(id)
+	_, err = s.cache.Remove(id)
+	return
 }
 
 func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, release func(), err error) {
