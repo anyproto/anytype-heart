@@ -2,6 +2,9 @@ package database
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -22,6 +25,8 @@ import (
 )
 
 const ObjectType = "database"
+
+const rootCollection = "Notion Import"
 
 type Service struct {
 	collectionService *collection.Service
@@ -79,7 +84,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 
 		id := uuid.New().String()
 
-		snapshot, err := ds.transformDatabase(d)
+		snapshot, rel, err := ds.transformDatabase(d)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, nil, converter.NewFromError(d.ID, err)
 		}
@@ -96,7 +101,6 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		})
 		notionIdsToAnytype[d.ID] = id
 		databaseNameToID[d.ID] = pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())
-		rel := make([]*converter.Relation, 0, len(d.Properties))
 		for key := range d.Properties {
 			rel = append(rel, &converter.Relation{
 				Relation: &model.Relation{
@@ -113,7 +117,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	return &converter.Response{Snapshots: allSnapshots, Relations: relations}, notionIdsToAnytype, databaseNameToID, convertError
 }
 
-func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase, error) {
+func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase, []*converter.Relation, error) {
 	details := make(map[string]*types.Value, 0)
 	relations := make([]*converter.Relation, 0)
 	details[bundle.RelationKeySource.String()] = pbtypes.String(d.URL)
@@ -157,13 +161,13 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.String(d.LastEditedTime.String())
 	details[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(d.LastEditedBy.Name)
 	details[bundle.RelationKeyDescription.String()] = pbtypes.String(api.RichTextToDescription(d.Description))
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshot := &model.SmartBlockSnapshotBase{
@@ -174,7 +178,7 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 		RelationLinks: st.GetRelationLinks(),
 	}
 
-	return snapshot, nil
+	return snapshot, relations, nil
 }
 
 func (ds *Service) AddPagesToCollections(databaseSnapshots *converter.Response,
@@ -201,6 +205,62 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots *converter.Response,
 	for db, objects := range databaseToObjects {
 		ds.addObjectToCollection(snapshots[db], objects)
 	}
+}
+
+func (ds *Service) AddPagesToRootCollections(databaseSnapshots *converter.Response, pagesSnapshots *converter.Response) error {
+	details := make(map[string]*types.Value, 0)
+	details[bundle.RelationKeySource.String()] = pbtypes.String(rootCollection)
+	details[bundle.RelationKeyName.String()] = pbtypes.String(rootCollection)
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+
+	detailsStruct := &types.Struct{Fields: details}
+	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
+	if err != nil {
+		return err
+	}
+
+	for _, relation := range []*model.Relation{
+		{
+			Key:    bundle.RelationKeyTag.String(),
+			Format: model.RelationFormat_tag,
+		},
+		{
+			Key:    bundle.RelationKeyCreatedDate.String(),
+			Format: model.RelationFormat_date,
+		},
+	} {
+		err = ds.addRelationsToCollectionDataView(st, relation)
+		if err != nil {
+			return err
+		}
+	}
+
+	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
+	rootCol := &converter.Snapshot{
+		Id:       uuid.New().String(),
+		FileName: rootCollection,
+		SbType:   sb.SmartBlockTypeCollection,
+		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
+			Blocks:        st.Blocks(),
+			Details:       detailsStruct,
+			ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
+			RelationLinks: st.GetRelationLinks(),
+			Collections:   st.GetCollection(smartblock.CollectionStoreKey),
+		},
+		},
+	}
+	allObjects := make([]string, 0, len(databaseSnapshots.Snapshots)+len(pagesSnapshots.Snapshots))
+
+	for _, snapshot := range databaseSnapshots.Snapshots {
+		allObjects = append(allObjects, snapshot.Id)
+	}
+
+	ds.addObjectToCollection(rootCol, allObjects)
+
+	databaseSnapshots.Snapshots = append(databaseSnapshots.Snapshots, rootCol)
+
+	return nil
 }
 
 func (ds *Service) addObjectToCollection(snapshots *converter.Snapshot, targetID []string) {
@@ -239,4 +299,30 @@ func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*conve
 		snapshotsMap[s.Id] = s
 	}
 	return snapshotsMap
+}
+
+func (ds *Service) addRelationsToCollectionDataView(st *state.State, rel *model.Relation) error {
+	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if dv, ok := bl.(simpleDataview.Block); ok {
+			if len(bl.Model().GetDataview().GetViews()) == 0 {
+				return false
+			}
+			err := dv.AddViewRelation(bl.Model().GetDataview().GetViews()[0].GetId(), &model.BlockContentDataviewRelation{
+				Key:       rel.Key,
+				IsVisible: true,
+				Width:     192,
+			})
+			if err != nil {
+				return false
+			}
+			err = dv.AddRelation(&model.RelationLink{
+				Key:    rel.Key,
+				Format: rel.Format,
+			})
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
 }
