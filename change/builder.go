@@ -129,10 +129,22 @@ func (sb *stateBuilder) buildTree(ctx context.Context, heads []string, breakpoin
 		return
 	}
 	if sb.onlyMeta {
-		sb.tree = NewMetaTree()
+		sb.tree = NewMetaTree(ctx)
 	} else {
-		sb.tree = NewTree()
+		sb.tree = NewTree(ctx)
 	}
+	defer func() {
+		if err != nil {
+			return
+		}
+		// check if ctx is canceled
+		// in this case the tree is not complete and should not be used
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+		default:
+		}
+	}()
 	sb.tree.AddFast(ch)
 	var changes = make([]*Change, 0, len(heads)*2)
 	var uniqMap = map[string]struct{}{breakpoint: {}}

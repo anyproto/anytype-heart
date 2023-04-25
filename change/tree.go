@@ -19,12 +19,12 @@ const (
 	Nothing
 )
 
-func NewTree() *Tree {
-	return &Tree{}
+func NewTree(ctx context.Context) *Tree {
+	return &Tree{ctx: ctx}
 }
 
-func NewMetaTree() *Tree {
-	return &Tree{metaOnly: true}
+func NewMetaTree(ctx context.Context) *Tree {
+	return &Tree{metaOnly: true, ctx: ctx}
 }
 
 type Tree struct {
@@ -40,6 +40,7 @@ type Tree struct {
 	// bufs
 	iterCompBuf []*Change
 	iterQueue   []*Change
+	ctx         context.Context
 }
 
 func (t *Tree) RootId() string {
@@ -187,6 +188,12 @@ func (t *Tree) recalculateHeads() (heads []string, metaHeads []string) {
 	start := time.Now()
 	total := 0
 	t.iterate(t.root, func(c *Change) (isContinue bool) {
+		// check if context is cancelled
+		select {
+		case <-t.ctx.Done():
+			return false
+		default:
+		}
 		total++
 		if len(c.Next) == 0 {
 			heads = append(heads, c.Id)
@@ -221,6 +228,12 @@ func (t *Tree) updateHeads(chs []*Change) {
 
 	if newHeadIds == nil {
 		newHeadIds, newMetaHeadIds = t.recalculateHeads()
+		// check if context is cancelled
+		select {
+		case <-t.ctx.Done():
+			return
+		default:
+		}
 	}
 	if newHeadIds != nil {
 		t.headIds = newHeadIds
@@ -235,6 +248,7 @@ func (t *Tree) updateHeads(chs []*Change) {
 
 func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	it := newIterator()
+	it.ctx = t.ctx
 	defer freeIterator(it)
 	it.iterate(start, f)
 }

@@ -78,6 +78,12 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, changesAp
 	if err != nil {
 		return nil, changesApplied, err
 	}
+	select {
+	case <-t.ctx.Done():
+		return nil, changesApplied, t.ctx.Err()
+	default:
+	}
+
 	if lastChange != nil {
 		s.SetLastModified(lastChange.Timestamp, lastChange.Account)
 	}

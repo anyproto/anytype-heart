@@ -1,6 +1,9 @@
 package change
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 var itPool = &sync.Pool{
 	New: func() interface{} {
@@ -22,6 +25,7 @@ type iterator struct {
 	doneMap    map[*Change]struct{}
 	breakpoint *Change
 	f          func(c *Change) bool
+	ctx        context.Context
 }
 
 func (i *iterator) iterate(start *Change, f func(c *Change) (isContinue bool)) {
@@ -37,6 +41,12 @@ func (i *iterator) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	i.f = f
 
 	for len(i.queue) > 0 {
+		select {
+		case <-i.ctx.Done():
+			return
+		default:
+
+		}
 		c := i.queue[0]
 		i.queue = i.queue[1:]
 		nl := len(c.Next)
