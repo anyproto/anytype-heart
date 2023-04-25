@@ -2,8 +2,10 @@ package block
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/any-sync/util/crypto"
 	"time"
 
 	"github.com/anytypeio/any-sync/app/ocache"
@@ -221,14 +223,11 @@ func (s *Service) CreateTreePayloadWithSpace(ctx context.Context, space commonsp
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	payload := objecttree.ObjectTreeCreatePayload{
-		PrivKey:       s.commonAccount.Account().SignKey,
-		ChangeType:    spaceservice.ChangeType,
-		ChangePayload: changePayload,
-		SpaceId:       space.Id(),
-		IsEncrypted:   true,
+	treePayload, err := createPayload(space.Id(), s.commonAccount.Account().SignKey, changePayload, time.Now().Unix())
+	if err != nil {
+		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	return space.CreateTree(ctx, payload)
+	return space.CreateTree(ctx, treePayload)
 }
 
 func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
@@ -286,14 +285,8 @@ func (s *Service) DeriveTreeCreatePayload(
 	if err != nil {
 		return nil, err
 	}
-	payload := objecttree.ObjectTreeCreatePayload{
-		PrivKey:       s.commonAccount.Account().SignKey,
-		ChangeType:    spaceservice.ChangeType,
-		ChangePayload: changePayload,
-		SpaceId:       space.Id(),
-		IsEncrypted:   true,
-	}
-	create, err := space.DeriveTree(context.Background(), payload)
+	treePayload := derivePayload(space.Id(), s.commonAccount.Account().SignKey, changePayload)
+	create, err := space.CreateTree(context.Background(), treePayload)
 	return &create, err
 }
 
@@ -392,4 +385,30 @@ func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts)
 func createChangePayload(sbType coresb.SmartBlockType) (data []byte, err error) {
 	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType)}
 	return payload.Marshal()
+}
+
+func derivePayload(spaceId string, signKey crypto.PrivKey, changePayload []byte) objecttree.ObjectTreeCreatePayload {
+	return objecttree.ObjectTreeCreatePayload{
+		PrivKey:       signKey,
+		ChangeType:    spaceservice.ChangeType,
+		ChangePayload: changePayload,
+		SpaceId:       spaceId,
+		IsEncrypted:   true,
+	}
+}
+
+func createPayload(spaceId string, signKey crypto.PrivKey, changePayload []byte, timestamp int64) (objecttree.ObjectTreeCreatePayload, error) {
+	seed := make([]byte, 32)
+	if _, err := rand.Read(seed); err != nil {
+		return objecttree.ObjectTreeCreatePayload{}, err
+	}
+	return objecttree.ObjectTreeCreatePayload{
+		PrivKey:       signKey,
+		ChangeType:    spaceservice.ChangeType,
+		ChangePayload: changePayload,
+		SpaceId:       spaceId,
+		IsEncrypted:   true,
+		Timestamp:     timestamp,
+		Seed:          seed,
+	}, nil
 }
