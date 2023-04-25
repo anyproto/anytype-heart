@@ -208,7 +208,7 @@ protos-java:
 build-cli:
 	@echo 'Building middleware cli...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
-	@go build -v -o dist/cli -ldflags "$(FLAGS)" ./cmd/cli
+	@go build -v -o dist/cli -ldflags "$(FLAGS)" github.com/anytypeio/go-anytype-middleware/cmd/cli
 
 build-server:
 	@echo 'Building middleware server...'
@@ -217,12 +217,12 @@ build-server:
 ifeq ($(LOCALNODE), true)
 	$(eval TAGS := $(TAGS) localnode)
 endif
-	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" ./cmd/grpcserver/grpc.go
+	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
 
 build-server-debug: protos-server
 	@echo 'Building middleware server with debug symbols...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
-	@go build -v -o dist/server -gcflags "all=-N -l" -ldflags "$(FLAGS)" ./cmd/grpcserver/grpc.go
+	@go build -v -o dist/server -gcflags "all=-N -l" -ldflags "$(FLAGS)" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
 
 run-server: build-server
 	@echo 'Running server...'
