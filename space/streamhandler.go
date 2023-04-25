@@ -46,7 +46,7 @@ func (s *streamHandler) OpenSpaceStream(ctx context.Context, p peer.Peer, spaceI
 			return
 		}
 	}
-	return objectStream, spaceIds, nil
+	return objectStream, nil, nil
 }
 
 func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg drpc.Message) (err error) {

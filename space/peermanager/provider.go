@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/any-sync/commonspace/peermanager"
 	"github.com/anytypeio/any-sync/net/pool"
 	"github.com/anytypeio/any-sync/net/streampool"
-	"github.com/anytypeio/any-sync/nodeconf"
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
 )
@@ -21,7 +20,6 @@ const CName = peermanager.CName
 var log = logger.NewNamed(CName)
 
 type provider struct {
-	nodeconf   nodeconf.Service
 	pool       pool.Pool
 	commonPool pool.Pool
 	streamPool streampool.StreamPool
@@ -29,7 +27,6 @@ type provider struct {
 }
 
 func (p *provider) Init(a *app.App) (err error) {
-	p.nodeconf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
 	p.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	poolService := a.MustComponent(pool.CName).(pool.Service)
 	p.commonPool = poolService

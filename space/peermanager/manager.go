@@ -43,12 +43,14 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 	if err == nil {
 		peers = []peer.Peer{p}
 	}
+	log.Debug("local responsible peers are", zap.Strings("local peers", n.peerStore.LocalPeerIds(n.spaceId)))
 	for _, peerId := range n.peerStore.LocalPeerIds(n.spaceId) {
 		if slices.ContainsFunc(peers, func(p peer.Peer) bool { return p.Id() == peerId }) {
 			continue
 		}
 		clientPeer, err := n.p.commonPool.Get(ctx, peerId)
 		if err != nil {
+			log.Debug("removing peer", zap.String("peerId", peerId), zap.Error(err))
 			n.peerStore.RemoveLocalPeer(peerId)
 			continue
 		}

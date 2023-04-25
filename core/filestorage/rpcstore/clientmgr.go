@@ -104,7 +104,11 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 			log.Debug("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
 			if !slices.Contains(t.denyPeerIds, peerId) {
 				t.denyPeerIds = append(t.denyPeerIds, c.peerId)
-				m.add(t.ctx, t)
+				err := m.add(t.ctx, t)
+				if err != nil {
+					taskErr = err
+					break
+				}
 				return
 			}
 		}
@@ -166,10 +170,9 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 	rand.Shuffle(len(nodePeerIds), func(i, j int) {
 		nodePeerIds[i], nodePeerIds[j] = nodePeerIds[j], nodePeerIds[i]
 	})
-NodeLoop:
 	for _, peerId := range nodePeerIds {
 		if addPeer(peerId) {
-			break NodeLoop
+			break
 		}
 	}
 	localPeerIds := m.s.allLocalPeers()
