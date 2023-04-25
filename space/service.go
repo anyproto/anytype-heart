@@ -94,7 +94,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.streamHandler = &streamHandler{s: s}
 
 	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(s.streamHandler, streampool.StreamConfig{
-		SendQueueWorkers: 10,
 		SendQueueSize:    300,
 		DialQueueWorkers: 4,
 		DialQueueSize:    300,
