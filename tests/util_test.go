@@ -215,14 +215,14 @@ func dropBlockIDs(b *Block) {
 	}
 }
 
-func AssertTreesEqual(t *testing.T, a, b *Block) bool {
-	ac := a.Copy()
-	bc := b.Copy()
+func AssertPagesEqual(t *testing.T, want, got []*model.Block) bool {
+	wantTree := BuildAST(want)
+	gotTree := BuildAST(got)
 
-	dropBlockIDs(ac)
-	dropBlockIDs(bc)
+	dropBlockIDs(wantTree)
+	dropBlockIDs(gotTree)
 
-	return assert.Equal(t, ac, bc)
+	return assert.Equal(t, wantTree, gotTree)
 }
 
 func TestBuilder(t *testing.T) {
@@ -256,5 +256,5 @@ func TestTreesEquality(t *testing.T) {
 	a := makeTree()
 	b := makeTree()
 
-	AssertTreesEqual(t, a, b)
+	AssertPagesEqual(t, a.Build(), b.Build())
 }

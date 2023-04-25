@@ -131,5 +131,5 @@ func (s *testSuite) TestSimpleEditor() {
 			Text("Level 2")),
 		))
 
-	AssertTreesEqual(s.T(), BuildAST(want.Build()), BuildAST(sresp.ObjectView.Blocks))
+	AssertPagesEqual(s.T(), want.Build(), sresp.ObjectView.Blocks)
 }
