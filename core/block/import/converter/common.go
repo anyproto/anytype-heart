@@ -3,13 +3,12 @@ package converter
 import (
 	"bytes"
 	"path/filepath"
-	"sort"
 	"strings"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/widget"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -42,8 +41,8 @@ func GetDetails(name string) *types.Struct {
 	}
 
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():           pbtypes.String(title),
-		bundle.RelationKeySourceFilePath.String(): pbtypes.String(name),
+		bundle.RelationKeyName.String():   pbtypes.String(title),
+		bundle.RelationKeySource.String(): pbtypes.String(name),
 	}
 	return &types.Struct{Fields: fields}
 }
@@ -54,9 +53,9 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID 
 		case link.Block:
 			handleLinkBlock(oldIDtoNew, block, st)
 		case bookmark.Block:
-			handleBookmarkBlock(oldIDtoNew, block, st)
+			handleBookmarkBlock(oldIDtoNew, block, pageID, st)
 		case text.Block:
-			handleMarkdownTest(oldIDtoNew, block, st)
+			handleMarkdownTest(oldIDtoNew, block, st, pageID)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		}
@@ -65,68 +64,23 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID 
 }
 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
-	dataview := block.Model().GetDataview()
-	target := dataview.TargetObjectId
-	if target != "" {
-		newTarget := oldIDtoNew[target]
-		if newTarget == "" {
-			newTarget = addr.MissingObject
-		}
-		dataview.TargetObjectId = newTarget
-		st.Set(simple.New(block.Model()))
-	}
-
-	for _, view := range dataview.GetViews() {
-		for _, filter := range view.GetFilters() {
-			updateObjectIDsInFilter(filter, oldIDtoNew)
-		}
-	}
-	for _, group := range dataview.GetGroupOrders() {
-		for _, vg := range group.ViewGroups {
-			groups := replaceChunks(vg.GroupId, oldIDtoNew)
-			sort.Strings(groups)
-			vg.GroupId = strings.Join(groups, "")
-		}
-	}
-	for _, group := range dataview.GetObjectOrders() {
-		for i, id := range group.ObjectIds {
-			if newId, exist := oldIDtoNew[id]; exist {
-				group.ObjectIds[i] = newId
-			}
-		}
-	}
-}
-
-func updateObjectIDsInFilter(filter *model.BlockContentDataviewFilter, oldIDtoNew map[string]string) {
-	if filter.Format != model.RelationFormat_object &&
-		filter.Format != model.RelationFormat_tag &&
-		filter.Format != model.RelationFormat_status {
+	target := block.Model().GetDataview().TargetObjectId
+	if target == "" {
 		return
 	}
-	if objectIDs := pbtypes.GetStringListValue(filter.Value); objectIDs != nil {
-		var newIDs []string
-		for _, objectID := range objectIDs {
-			if newID := oldIDtoNew[objectID]; newID != "" {
-				newIDs = append(newIDs, newID)
-			}
-		}
-		if len(newIDs) != 0 {
-			filter.Value = pbtypes.StringList(newIDs)
-		}
-		return
+	newTarget := oldIDtoNew[target]
+	if newTarget == "" {
+		newTarget = addr.MissingObject
 	}
-	if objectID := filter.Value.GetStringValue(); objectID != "" {
-		if newID := oldIDtoNew[objectID]; newID != "" {
-			filter.Value = pbtypes.String(newID)
-		}
-	}
+
+	block.Model().GetDataview().TargetObjectId = newTarget
+	st.Set(simple.New(block.Model()))
 }
 
-func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, pageID string, st *state.State) {
 	newTarget := oldIDtoNew[block.Model().GetBookmark().TargetObjectId]
 	if newTarget == "" {
-		log.Errorf("failed to find bookmark object")
-		return
+		newTarget = addr.MissingObject
 	}
 
 	block.Model().GetBookmark().TargetObjectId = newTarget
@@ -137,9 +91,6 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	targetBlockID := block.Model().GetLink().TargetBlockId
 	newTarget := oldIDtoNew[targetBlockID]
 	if newTarget == "" {
-		if widget.IsPredefinedWidgetTargetId(targetBlockID) {
-			return
-		}
 		if isBundledObjects(targetBlockID) {
 			return
 		}
@@ -162,7 +113,7 @@ func isBundledObjects(targetBlockID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, objectID string) {
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
@@ -178,7 +129,7 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateRelationsIDs(st *state.State, oldIDtoNew map[string]string) {
+func UpdateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]string) {
 	rels := st.GetRelationLinks()
 	for k, v := range st.Details().GetFields() {
 		relLink := rels.Get(k)
@@ -190,38 +141,19 @@ func UpdateRelationsIDs(st *state.State, oldIDtoNew map[string]string) {
 			relLink.Format != model.RelationFormat_status {
 			continue
 		}
-		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {
-			// special cases
-			// featured relations have incorrect IDs
-			continue
-		}
-		handleObjectRelation(st, oldIDtoNew, v, k)
+
+		objectsIDs := pbtypes.GetStringListValue(v)
+		objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID)
+		st.SetDetail(k, pbtypes.StringList(objectsIDs))
 	}
 }
 
-func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string) {
-	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
-		objectsID := v.GetStringValue()
-		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew)
-		if len(newObjectIDs) != 0 {
-			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
-		}
-		return
-	}
-	objectsIDs := pbtypes.GetStringListValue(v)
-	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew)
-	st.SetDetail(k, pbtypes.StringList(objectsIDs))
-}
-
-func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string) []string {
+func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID string) []string {
 	for i, val := range objectsIDs {
 		newTarget := oldIDtoNew[val]
 		if newTarget == "" {
-			// preserve links to bundled objects
-			if isBundledObjects(val) {
-				continue
-			}
-			newTarget = addr.MissingObject
+			log.With("object", pageID).Errorf("cant find target id for relation: %s", val)
+			continue
 		}
 		objectsIDs[i] = newTarget
 	}
@@ -235,40 +167,11 @@ func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
 	}
 }
 
-func replaceChunks(s string, oldToNew map[string]string) []string {
-	var result []string
-	i := 0
-
-	var buf strings.Builder
-	for i < len(s) {
-		// Assume no match found
-		foundMatch := false
-
-		// Iterate through the oldToNew map keys to find the first match
-		for o, n := range oldToNew {
-			if strings.HasPrefix(s[i:], o) {
-				// Write the new substring to the result
-				if buf.Len() != 0 {
-					// dump the buffer to the result
-					result = append(result, buf.String())
-					buf.Reset()
-				}
-
-				result = append(result, n)
-
-				// Move the index forward by the length of the matched old substring
-				i += len(o)
-				foundMatch = true
-				break
-			}
-		}
-
-		// If no match found, append the current character to the result
-		if !foundMatch {
-			buf.WriteByte(s[i])
-			i++
-		}
+func ConvertStringToTime(t string) int64 {
+	parsedTime, err := time.Parse(time.RFC3339, t)
+	if err != nil {
+		log.Errorf("failed to convert time %s", t)
+		return 0
 	}
-
-	return result
+	return parsedTime.Unix()
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -28,7 +26,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -49,8 +46,6 @@ type ObjectCreator struct {
 	fileStore       filestore.FileStore
 	relationCreator RelationCreator
 	syncFactory     *syncer.Factory
-	spaceService    space.Service
-	fileSync        filesync.FileSync
 	mu              sync.Mutex
 }
 
@@ -61,8 +56,6 @@ func NewCreator(service *block.Service,
 	relationCreator RelationCreator,
 	objectStore objectstore.ObjectStore,
 	fileStore filestore.FileStore,
-	fileSync filesync.FileSync,
-	spaceService space.Service,
 ) Creator {
 	return &ObjectCreator{
 		service:         service,
@@ -72,8 +65,6 @@ func NewCreator(service *block.Service,
 		relationCreator: relationCreator,
 		objectStore:     objectStore,
 		fileStore:       fileStore,
-		fileSync:        fileSync,
-		spaceService:    spaceService,
 	}
 }
 
@@ -82,7 +73,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	sn *converter.Snapshot,
 	relations []*converter.Relation,
 	oldIDtoNew map[string]string,
-	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	existing bool) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 
@@ -92,25 +82,25 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	oc.setWorkspaceID(err, newID, snapshot)
 
-	filesToDelete, _, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
+	var oldRelationBlocksToNew map[string]*model.Block
+	filesToDelete, oldRelationBlocksToNew, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
 	if err != nil {
 		return nil, "", fmt.Errorf("relation create '%s'", err)
 	}
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
-	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
-	st.SetLastModified(pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String()), oc.core.ProfileID())
+
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	converter.UpdateRelationsIDs(st, oldIDtoNew)
+	converter.UpdateRelationsIDs(st, newID, oldIDtoNew)
+	details := oc.getDetails(st.Details(), snapshot.Details)
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		oc.handleSubObject(st, newID)
-		return nil, newID, nil
+		return oc.handleSubObject(ctx, snapshot, newID, details), "", nil
 	}
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, newID); err != nil {
@@ -125,33 +115,18 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(st, oldIDtoNew)
+		oc.handleWorkspace(ctx, details, newID, st, oldIDtoNew, sn.Snapshot.Data.Details)
 		return nil, newID, nil
 	}
 
-	var respDetails *types.Struct
 	converter.UpdateObjectType(oldIDtoNew, st)
-	if payload := createPayloads[newID]; payload.RootRawChange != nil {
-		sb, err := oc.service.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
-			return &sb.InitContext{
-				IsNewObject: true,
-				State:       st,
-			}
-		})
-		if err != nil {
-			log.With("object", newID).Errorf("failed to create %s: %s", newID, err.Error())
-			return nil, "", err
-		}
-		respDetails = sb.Details()
-	} else {
-		respDetails = oc.resetState(ctx, newID, st)
-	}
+	respDetails := oc.resetState(ctx, newID, st, details)
+
 	oc.setFavorite(snapshot, newID)
 
 	oc.setArchived(snapshot, newID)
 
-	// we do not change relation ids during the migration
-	//oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
+	oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
 
 	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
 	if syncErr != nil {
@@ -159,17 +134,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	return respDetails, newID, nil
-}
-
-func (oc *ObjectCreator) getDetails(d *types.Struct) []*pb.RpcObjectSetDetailsDetail {
-	var details []*pb.RpcObjectSetDetailsDetail
-	for key, value := range d.Fields {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   key,
-			Value: value,
-		})
-	}
-	return details
 }
 
 func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
@@ -193,10 +157,45 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
+func (oc *ObjectCreator) handleWorkspace(ctx *session.Context,
+	details []*pb.RpcObjectSetDetailsDetail,
+	newID string,
+	st *state.State,
+	oldToNew map[string]string,
+	d *types.Struct) {
+	if err := oc.createObjectsInWorkspace(newID, st); err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to create sub objects in workspace: %s", err.Error())
+	}
+	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
+		return b.SetDetails(ctx, details, true)
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to set details %s: %s", newID, err.Error())
+	}
+	oc.setSpaceDashboardID(newID, d, oldToNew)
+}
+
+func (oc *ObjectCreator) getDetails(d *types.Struct, snapshotDetails *types.Struct) []*pb.RpcObjectSetDetailsDetail {
+	var details []*pb.RpcObjectSetDetailsDetail
+	for key, value := range d.Fields {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   key,
+			Value: value,
+		})
+	}
+	createdDate := pbtypes.GetFloat64(snapshotDetails, bundle.RelationKeyCreatedDate.String())
+	if createdDate != 0 {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyCreatedDate.String(),
+			Value: pbtypes.Float64(createdDate),
+		})
+	}
+	return details
+}
+
 func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model.SmartBlockSnapshotBase) {
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
 	if err != nil {
-		// todo: GO-1304 I catch this during the import, we need find the root cause and fix it
 		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", newID, err.Error())
 	}
 
@@ -219,13 +218,6 @@ func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase,
 }
 
 func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
-	for _, fileID := range st.GetAllFileHashes(st.FileRelationKeys()) {
-		log.With(zap.String("fileID", fileID)).Info("sync file link")
-		if sErr := oc.fileSync.AddFile(oc.spaceService.AccountId(), fileID); sErr != nil {
-			log.With(zap.String("object id", newID)).Errorf("sync file link: %s", sErr)
-		}
-	}
-
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
@@ -250,46 +242,27 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, oldIDtoNew map[string]string) {
-	// hand-pick relation because space is a special case
-	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
-	var details []*pb.RpcObjectSetDetailsDetail
+func (oc *ObjectCreator) setSpaceDashboardID(newID string, details *types.Struct, oldIDtoNew map[string]string) {
+	spaceDashBoardID := pbtypes.GetString(details, bundle.RelationKeySpaceDashboardId.String())
 	if id, ok := oldIDtoNew[spaceDashBoardID]; ok {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeySpaceDashboardId.String(),
-			Value: pbtypes.String(id),
-		})
-	}
-
-	spaceName := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String())
-	if spaceName != "" {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(spaceName),
-		})
-	}
-
-	iconOption := pbtypes.GetInt64(st.CombinedDetails(), bundle.RelationKeyIconOption.String())
-	if iconOption != 0 {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyIconOption.String(),
-			Value: pbtypes.Int64(iconOption),
-		})
-	}
-	if len(details) > 0 {
-		err := block.Do(oc.service, oc.core.PredefinedBlocks().Account, func(ws basic.CommonOperations) error {
-			if err := ws.SetDetails(nil, details, false); err != nil {
+		e := block.Do(oc.service, newID, func(ws basic.CommonOperations) error {
+			if err := ws.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+				{
+					Key:   bundle.RelationKeySpaceDashboardId.String(),
+					Value: pbtypes.String(id),
+				},
+			}, false); err != nil {
 				return err
 			}
 			return nil
 		})
-		if err != nil {
-			log.Errorf("failed to set spaceDashBoardID, %s", err.Error())
+		if e != nil {
+			log.Errorf("failed to set spaceDashBoardID, %s", e)
 		}
 	}
 }
 
-func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State) *types.Struct {
+func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
@@ -300,9 +273,9 @@ func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *stat
 		if !ok {
 			return fmt.Errorf("common operations is not allowed for this object")
 		}
-		err = commonOperations.FeaturedRelationAdd(ctx, bundle.RelationKeyType.String())
+		err = commonOperations.SetDetails(ctx, details, true)
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err.Error())
+			return err
 		}
 		respDetails = b.CombinedDetails()
 		return nil
@@ -361,18 +334,24 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
-func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
+func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, newID string, details []*pb.RpcObjectSetDetailsDetail) *types.Struct {
 	defer oc.mu.Unlock()
 	oc.mu.Lock()
-	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, oc.core.PredefinedBlocks().Account, true)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
+	if snapshot.GetDetails() != nil && snapshot.GetDetails().GetFields() != nil {
+		if _, ok := snapshot.GetDetails().GetFields()[bundle.RelationKeyIsDeleted.String()]; ok {
+			err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, oc.core.PredefinedBlocks().Account, true)
+			if err != nil {
+				log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
+			}
 		}
-		return
 	}
-
-	// RQ: the rest handling were removed
+	err := block.Do(oc.service, newID, func(b basic.CommonOperations) error {
+		return b.SetDetails(ctx, details, true)
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
+	}
+	return nil
 }
 
 func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat) error {
@@ -442,4 +421,65 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	}
 	result := slice.Union(existedObjects, objectsInCollections)
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
+}
+
+// createObjectsInWorkspace compare current workspace store with imported and create objects, which are absent in current workspace
+func (oc *ObjectCreator) createObjectsInWorkspace(newID string, st *state.State) error {
+	var ids []string
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+		bs := b.NewState()
+		oldStore := bs.Store()
+		newStore := st.Store()
+		ids = oc.compareStoresAndGetAbsentObjectsIDs(oldStore, newStore)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		_, _, err = oc.service.AddSubObjectToWorkspace(id, newID)
+		if err != nil {
+			log.Errorf("can't add object to workspace: %s", err.Error())
+		}
+	}
+	return nil
+}
+
+func (oc *ObjectCreator) compareStoresAndGetAbsentObjectsIDs(oldStore *types.Struct, newStore *types.Struct) []string {
+	var ids []string
+	for colName, objects := range oldStore.GetFields() {
+		oldStr := objects.GetStructValue()
+		if objectsFromNewStore, ok := newStore.GetFields()[colName]; ok {
+			newStr := objectsFromNewStore.GetStructValue()
+			diff := pbtypes.StructDiff(oldStr, newStr)
+			ids = append(ids, oc.getAbsentObjectsIDs(diff)...)
+		}
+	}
+	return ids
+}
+
+func (oc *ObjectCreator) getAbsentObjectsIDs(diff *types.Struct) []string {
+	var ids []string
+	for objectName, details := range diff.GetFields() {
+		var isSystem bool
+		for _, relation := range bundle.SystemRelations {
+			if string(relation) == objectName {
+				isSystem = true
+				break
+			}
+		}
+		for _, objTypes := range bundle.SystemTypes {
+			if string(objTypes) == objectName {
+				isSystem = true
+				break
+			}
+		}
+		if isSystem {
+			continue
+		}
+		if source := pbtypes.GetString(details.GetStructValue(), bundle.RelationKeySourceObject.String()); source != "" {
+			ids = append(ids, source)
+		}
+	}
+	return ids
 }
