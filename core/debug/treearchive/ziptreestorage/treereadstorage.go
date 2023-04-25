@@ -71,7 +71,7 @@ func (z *zipTreeReadStorage) AddRawChange(change *treechangeproto.RawTreeChangeW
 	panic("should not be called")
 }
 
-func (z *zipTreeReadStorage) TransactionAdd(changes []*treechangeproto.RawTreeChangeWithId, heads []string) (err error) {
+func (z *zipTreeReadStorage) AddRawChangesSetHeads(changes []*treechangeproto.RawTreeChangeWithId, heads []string) (err error) {
 	panic("should not be called")
 }
 

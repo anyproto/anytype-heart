@@ -63,7 +63,7 @@ func (z *zipTreeWriteStorage) AddRawChange(change *treechangeproto.RawTreeChange
 	return
 }
 
-func (z *zipTreeWriteStorage) TransactionAdd(changes []*treechangeproto.RawTreeChangeWithId, heads []string) (err error) {
+func (z *zipTreeWriteStorage) AddRawChangesSetHeads(changes []*treechangeproto.RawTreeChangeWithId, heads []string) (err error) {
 	for _, ch := range changes {
 		err = z.AddRawChange(ch)
 		if err != nil {

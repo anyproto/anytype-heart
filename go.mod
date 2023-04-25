@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anytypeio/any-sync v0.0.44
+	github.com/anytypeio/any-sync v0.0.45
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.6
@@ -89,7 +89,6 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230420155640-133eef4313cb
 	golang.org/x/image v0.6.0
-	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028
 	golang.org/x/net v0.10.0
 	golang.org/x/oauth2 v0.5.0
 	golang.org/x/text v0.9.0
