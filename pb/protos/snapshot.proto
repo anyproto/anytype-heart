@@ -5,15 +5,13 @@ option go_package = "pb";
 import "pkg/lib/pb/model/protos/models.proto";
 import "pb/protos/changes.proto";
 
-message SnapshotWithType {
+message MigrationObject {
   anytype.model.SmartBlockType sbType = 1;
   anytype.Change.Snapshot snapshot = 2;
 }
 
 message Profile {
-  string mnemonic = 1;
-  string name = 2;
-  string avatar = 3;
-  string address = 4;
-  string spaceDashboardId = 5;
+  string name = 1;
+  string avatar = 2;
+  string address = 3;
 }

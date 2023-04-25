@@ -756,18 +756,36 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return err
 	}
 
+	index := len(mw.foundAccounts)
+	var account wallet.Keypair
+	account, err := core.WalletAccountAt(mw.mnemonic, index, "")
+	if err != nil {
+		return err
+	}
+
+	if profile.Address != account.Address() {
+		return fmt.Errorf("mnemonics are not equal")
+	}
+
 	mw.rootPath = req.RootPath
 	mw.foundAccounts = nil
 
-	err := os.MkdirAll(mw.rootPath, 0700)
+	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
 		return err
 	}
-	err = mw.setMnemonic(profile.Mnemonic)
-	if err != nil {
-		return err
-	}
+
 	mw.accountSearchCancel()
+
+	if _, statErr := os.Stat(filepath.Join(mw.rootPath, account.Address())); os.IsNotExist(statErr) {
+		seedRaw, seedRrr := account.Raw()
+		if seedRrr != nil {
+			return seedRrr
+		}
+		if walletErr := core.WalletInitRepo(mw.rootPath, seedRaw); walletErr != nil {
+			return walletErr
+		}
+	}
 
 	archive, err := zip.OpenReader(req.Path)
 	if err != nil {
@@ -780,24 +798,6 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
-
-	index := len(mw.foundAccounts)
-	var account wallet.Keypair
-	account, err = core.WalletAccountAt(mw.mnemonic, index, "")
-	if err != nil {
-		return err
-	}
-
-	if _, statErr := os.Stat(filepath.Join(mw.rootPath, account.Address())); os.IsNotExist(statErr) {
-		seedRaw, seedRrr := account.Raw()
-		if seedRrr != nil {
-			return seedRrr
-		}
-		if walletErr := core.WalletInitRepo(mw.rootPath, seedRaw); walletErr != nil {
-			return walletErr
-		}
-	}
-
 	// todo: parse config.json from legacy export
 
 	newAcc := &model.Account{Id: account.Address()}
