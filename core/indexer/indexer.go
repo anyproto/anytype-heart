@@ -707,7 +707,10 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	if err != nil {
 		return fmt.Errorf("incorrect sb type: %v", err)
 	}
-
+	// add timeout so we don't stuck forever on the reindex
+	ctx = context.WithValue(ctx, ocache.CacheTimeout, time.Second*10)
+	// do not fetch missing records on reindex: this can lead to bad situations
+	ctx = context.WithValue(ctx, core.ThreadLoadSkipMissingRecords, true)
 	d, err := i.doc.GetDocInfo(ctx, id)
 	if err != nil {
 		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
