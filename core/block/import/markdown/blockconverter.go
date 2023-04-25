@@ -68,10 +68,6 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 	files := make(map[string]*FileInfo, 0)
 	zipName := strings.TrimSuffix(importPath, filepath.Ext(importPath))
 	for _, f := range r.File {
-		if f.FileInfo().IsDir() {
-			fileInfo := m.processDirectory(f.Name, mode, allErrors)
-			mergeFileInfoMaps(files, fileInfo)
-		}
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
@@ -107,17 +103,13 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 		}
 	}
 	for name, file := range files {
+		m.processBlocks(name, files[name], files)
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, files)
 		}
-		m.processBlocks(name, files[name], files)
 	}
 
 	return files
-}
-
-func mergeFileInfoMaps(files map[string]*FileInfo, info map[string]*FileInfo) {
-
 }
 
 func (m *mdConverter) processDirectory(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
@@ -148,10 +140,10 @@ func (m *mdConverter) processDirectory(importPath, mode string, allErrors ce.Con
 		},
 	)
 	for name, file := range files {
+		m.processBlocks(name, files[name], files)
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, files)
 		}
-		m.processBlocks(name, files[name], files)
 	}
 	if err != nil {
 		allErrors.Add(importPath, err)
@@ -170,46 +162,19 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 	txt := block.GetText()
 	if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
 		txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-
 		link := txt.Marks.Marks[0].Param
-
-		var wholeLineLink bool
-		textRunes := []rune(txt.Text)
-		var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
-		if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
-			if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
-				wholeLineLink = true
-			}
-		}
-
+		wholeLineLink := m.isWholeLineLink(txt)
 		ext := filepath.Ext(link)
 
 		// todo: bug with multiple markup links in arow when the first is external
 		if file := files[link]; file != nil {
 			if strings.EqualFold(ext, ".csv") {
-				csvDir := strings.TrimSuffix(link, ext)
-				for name, file := range files {
-					// set HasInboundLinks for all CSV-origin md files
-					fileExt := filepath.Ext(name)
-					if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
-						file.HasInboundLinks = true
-					}
-				}
-				if wholeLineLink {
-					m.convertTextToPageLink(block)
-				} else {
-					m.convertTextToPageMention(block)
-				}
-				file.HasInboundLinks = true
+				m.processCSVFileLink(block, files, link, wholeLineLink)
 				return
 			}
 			if strings.EqualFold(ext, ".md") {
 				// only convert if this is the only link in the row
-				if wholeLineLink {
-					m.convertTextToPageLink(block)
-				} else {
-					m.convertTextToPageMention(block)
-				}
+				m.convertToAnytypeLinkBlock(block, wholeLineLink)
 			} else {
 				m.convertTextToFile(block)
 			}
@@ -218,6 +183,39 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 			m.convertTextToBookmark(block)
 		}
 	}
+}
+
+func (m *mdConverter) isWholeLineLink(txt *model.BlockContentText) bool {
+	var wholeLineLink bool
+	textRunes := []rune(txt.Text)
+	var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
+	if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
+		if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
+			wholeLineLink = true
+		}
+	}
+	return wholeLineLink
+}
+
+func (m *mdConverter) convertToAnytypeLinkBlock(block *model.Block, wholeLineLink bool) {
+	if wholeLineLink {
+		m.convertTextToPageLink(block)
+	} else {
+		m.convertTextToPageMention(block)
+	}
+}
+
+func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*FileInfo, link string, wholeLineLink bool) {
+	csvDir := strings.TrimSuffix(link, ".csv")
+	for name, file := range files {
+		// set HasInboundLinks for all CSV-origin md files
+		fileExt := filepath.Ext(name)
+		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
+			file.HasInboundLinks = true
+		}
+	}
+	m.convertToAnytypeLinkBlock(block, wholeLineLink)
+	files[link].HasInboundLinks = true
 }
 
 func (m *mdConverter) processFileBlock(block *model.Block, files map[string]*FileInfo) {
