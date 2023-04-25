@@ -133,9 +133,6 @@ func UpdateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]st
 
 func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID string, k string) []string {
 	for i, val := range objectsIDs {
-		if bundle.HasRelation(val) {
-			continue
-		}
 		newTarget := oldIDtoNew[val]
 		if newTarget == "" {
 			log.With("object", pageID).Errorf("cant find target id for relation %s: %s", k, val)

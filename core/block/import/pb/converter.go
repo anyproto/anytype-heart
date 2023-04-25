@@ -339,6 +339,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors con
 		}
 		converter.UpdateRelationsIDs(st.(*state.State), snapshot.Id, newIDToOld)
 		converter.UpdateObjectType(newIDToOld, st.(*state.State))
+		snapshot.Snapshot.Data.Details = st.CombinedDetails()
 		snapshot.Snapshot.Data.Blocks = st.Blocks()
 		snapshot.Snapshot.Data.ObjectTypes = st.ObjectTypes()
 	}
