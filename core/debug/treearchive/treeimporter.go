@@ -1,11 +1,12 @@
 package treearchive
 
 import (
+	"errors"
 	"fmt"
+	"github.com/anytypeio/any-sync/commonspace/object/acl/list"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 
 	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/exporter"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/proto"
@@ -14,6 +15,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
+
+var ErrCantRequestHeaderModel = errors.New("can't request header model")
 
 type IdChange struct {
 	Model *pb.Change
@@ -42,7 +45,7 @@ func (m MarshalledJsonChange) MarshalJSON() ([]byte, error) {
 type TreeImporter interface {
 	ObjectTree() objecttree.ReadableObjectTree
 	State() (*state.State, error)
-	Import(beforeId string) error
+	Import(fromRoot bool, beforeId string) error
 	Json() (TreeJson, error)
 	ChangeAt(idx int) (IdChange, error)
 }
@@ -76,14 +79,18 @@ func (t *treeImporter) State() (*state.State, error) {
 	return st, nil
 }
 
-func (t *treeImporter) Import(beforeId string) (err error) {
-	params := exporter.TreeImportParams{
-		ListStorage:     t.listStorage,
+func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
+	aclList, err := list.BuildAclList(t.listStorage)
+	if err != nil {
+		return
+	}
+	t.objectTree, err = objecttree.BuildNonVerifiableHistoryTree(objecttree.HistoryTreeParams{
 		TreeStorage:     t.treeStorage,
+		AclList:         aclList,
 		BeforeId:        beforeId,
 		IncludeBeforeId: true,
-	}
-	t.objectTree, err = exporter.ImportHistoryTree(params)
+		BuildFullTree:   fullTree,
+	})
 	return
 }
 
@@ -91,7 +98,7 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 	treeJson = TreeJson{
 		Id: t.objectTree.Id(),
 	}
-	i := 1
+	i := 0
 	err = t.objectTree.IterateRoot(func(decrypted []byte) (any, error) {
 		ch := &pb.Change{}
 		err := proto.Unmarshal(decrypted, ch)
@@ -102,7 +109,6 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 	}, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
-			// probably this will never be the case, because all our trees should have snapshots, and not root change
 			return true
 		}
 		model := change.Model.(*pb.Change)
@@ -118,7 +124,11 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 }
 
 func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
-	i := 1
+	if idx == 0 && t.objectTree.Root().Id == t.objectTree.Id() {
+		err = ErrCantRequestHeaderModel
+		return
+	}
+	i := 0
 	err = t.objectTree.IterateRoot(func(decrypted []byte) (any, error) {
 		ch := &pb.Change{}
 		err := proto.Unmarshal(decrypted, ch)
@@ -129,7 +139,6 @@ func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
 	}, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
-			// probably this will never be the case, because all our trees should have snapshots, and not root change
 			return true
 		}
 		model := change.Model.(*pb.Change)

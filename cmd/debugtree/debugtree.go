@@ -27,6 +27,7 @@ import (
 
 var (
 	file        = flag.String("f", "", "path to debug file")
+	fromRoot    = flag.Bool("r", false, "build from root of the tree")
 	makeJson    = flag.Bool("j", false, "generate json file")
 	makeTree    = flag.Bool("t", false, "generate graphviz file")
 	printState  = flag.Bool("s", false, "print result state debug")
@@ -52,7 +53,7 @@ func main() {
 
 	importer := treearchive.NewTreeImporter(archive.ListStorage(), archive.TreeStorage())
 	st = time.Now()
-	err = importer.Import("")
+	err = importer.Import(*fromRoot, "")
 	if err != nil {
 		log.Fatal("can't import the tree", err)
 	}
@@ -83,7 +84,7 @@ func main() {
 		}
 		fmt.Println("Change:")
 		fmt.Println(pbtypes.Sprint(ch.Model))
-		err = importer.Import(ch.Id)
+		err = importer.Import(*fromRoot, ch.Id)
 		if err != nil {
 			log.Fatal("can't import the tree before", ch.Id, err)
 		}
