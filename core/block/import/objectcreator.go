@@ -100,6 +100,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		oc.handleSubObject(st, newID)
+		return nil, newID, nil
 	}
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, newID); err != nil {
@@ -132,6 +133,17 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	return respDetails, newID, nil
+}
+
+func (oc *ObjectCreator) getDetails(d *types.Struct) []*pb.RpcObjectSetDetailsDetail {
+	var details []*pb.RpcObjectSetDetailsDetail
+	for key, value := range d.Fields {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   key,
+			Value: value,
+		})
+	}
+	return details
 }
 
 func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
@@ -296,6 +308,15 @@ func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
 	_, _, err := oc.service.AddSubObjectToWorkspace(newID, oc.core.PredefinedBlocks().Account)
 	if err != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to add object to workspace %s: %s", newID, err.Error())
+	}
+	details := oc.getDetails(st.CombinedDetails())
+	err = oc.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: newID,
+		Details:   details,
+	})
+	if err != nil {
+		log.With(zap.String("object id", newID)).Errorf("failed to set details %s: %s", newID, err.Error())
+
 	}
 }
 
