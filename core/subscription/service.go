@@ -144,12 +144,13 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		req.Limit = 0
 	}
 
-	// if req.SubId == "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a-dataview" {
-	// 	req.CollectionId = "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a"
-	// }
+	if req.SubId == "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a-dataview" {
+		req.CollectionId = "bafyreihpmkuqonqzmackvtvwzraz4z3plilzgq4x7bntraes5nctu4pw7a"
+	}
 
 	if req.CollectionId != "" {
-		return s.makeCollectionSubscription(req, f, records)
+		return s.makeNewCollectionSubscription(req, f, filterDepIds)
+		// return s.makeCollectionSubscription(req, f, records)
 	}
 
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
@@ -189,6 +190,41 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		},
 	}
 	return
+}
+
+func (s *service) makeNewCollectionSubscription(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
+	sub, err := s.newCollectionSubscription(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return nil, err
+	}
+	if req.NoDepSubscription {
+		sub.sortedSub.disableDep = true
+	} else {
+		sub.sortedSub.forceSubIds = filterDepIds
+	}
+	if err := sub.init(nil); err != nil {
+		return nil, fmt.Errorf("subscription init error: %v", err)
+	}
+	s.subscriptions[sub.sortedSub.id] = sub
+	prev, next := sub.counters()
+
+	var depRecords, subRecords []*types.Struct
+	subRecords = sub.getActiveRecords()
+
+	if sub.sortedSub.depSub != nil {
+		depRecords = sub.sortedSub.depSub.getActiveRecords()
+	}
+
+	return &pb.RpcObjectSearchSubscribeResponse{
+		Records:      subRecords,
+		Dependencies: depRecords,
+		SubId:        sub.sortedSub.id,
+		Counters: &pb.EventObjectSubscriptionCounters{
+			Total:     int64(sub.sortedSub.skl.Len()),
+			NextCount: int64(prev),
+			PrevCount: int64(next),
+		},
+	}, nil
 }
 
 func (s *service) makeCollectionSubscription(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, records []database.Record) (*pb.RpcObjectSearchSubscribeResponse, error) {

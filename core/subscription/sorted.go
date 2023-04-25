@@ -2,10 +2,12 @@ package subscription
 
 import (
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var (
