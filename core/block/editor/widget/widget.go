@@ -10,6 +10,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
+const (
+	DefaultWidgetFavorite = "favorite"
+	DefaultWidgetSet      = "set"
+	DefaultWidgetRecent   = "recent"
+
+	LayoutTree = 1
+	LayoutList = 2
+)
+
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
 }
