@@ -127,14 +127,14 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, allErrors
 		}
-		p.setDashboardID(profile, snapshots)
+		p.setWorkspaceDetails(profile, snapshots)
 		allSnapshots = append(allSnapshots, snapshots...)
 		targetObjects = append(targetObjects, objects...)
 	}
 	return allSnapshots, targetObjects, allErrors
 }
 
-func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot) {
+func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Snapshot) {
 	var (
 		newSpaceDashBoardID string
 		workspace           *converter.Snapshot
@@ -168,10 +168,7 @@ func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot
 
 		iconOption := pbtypes.GetInt64(workspace.Snapshot.Data.Details, bundle.RelationKeyIconOption.String())
 		if iconOption == 0 {
-			if p.iconOption == 0 {
-				p.iconOption = int64(rand.Intn(16) + 1)
-			}
-			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.iconOption)
+			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.getIconOption())
 		}
 	}
 
@@ -240,10 +237,14 @@ func (p *Pb) setProfileIconOption(mo *pb.SnapshotWithType, profileID string) {
 	if objectID != profileID {
 		return
 	}
+	mo.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.getIconOption())
+}
+
+func (p *Pb) getIconOption() int64 {
 	if p.iconOption == 0 {
 		p.iconOption = int64(rand.Intn(16) + 1)
 	}
-	mo.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.iconOption)
+	return p.iconOption
 }
 
 func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
