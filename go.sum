@@ -42,8 +42,10 @@ github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxB
 github.com/andybalholm/cascadia v1.3.1 h1:nhxRkql1kdYCc8Snf7D5/D3spOX+dBgjA6u8x004T2c=
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/anytypeio/any-sync v0.0.43 h1:iRYThhkG37bFHO9QjQvvKE7F72M9RvbZmuFnwMd9RpE=
-github.com/anytypeio/any-sync v0.0.43/go.mod h1:G8ScbRRMkdlvbWmBC6lYCw5e5I7FWD5hQG8mpNrrSDQ=
+github.com/anytypeio/any-sync v0.0.41 h1:S5vrsxQxU1KC6nlSr83scHmqlR2MPfDl5OLyvBTRsII=
+github.com/anytypeio/any-sync v0.0.41/go.mod h1:G8ScbRRMkdlvbWmBC6lYCw5e5I7FWD5hQG8mpNrrSDQ=
+github.com/anytypeio/any-sync v0.0.42 h1:Dy36jFzmtbh6vrAFpgzowFbADTAhop1dzlcUonhTV5c=
+github.com/anytypeio/any-sync v0.0.42/go.mod h1:G8ScbRRMkdlvbWmBC6lYCw5e5I7FWD5hQG8mpNrrSDQ=
 github.com/anytypeio/go-chash v0.1.0 h1:nYCMh13SEai/7cXRUoKfU27uASj7XEF6NhvY6hFMKY8=
 github.com/anytypeio/go-chash v0.1.0/go.mod h1:Q7XiggkMrThRFAwYSItzLOT9OPC8a497SLZtgmJtC/I=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
