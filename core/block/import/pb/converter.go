@@ -100,7 +100,10 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 				return nil, nil, allErrors
 			}
 		}
-		var needToImportWidgets bool
+		var (
+			needToImportWidgets bool
+			profileId           string
+		)
 		if profile != nil {
 			pr, e := p.core.LocalProfile()
 			if e != nil {
@@ -110,8 +113,9 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 				}
 			}
 			needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
+			profileId = profile.ProfileId
 		}
-		snapshots, objects, ce := p.getSnapshotsFromFiles(req, progress, pbFiles, allErrors, path, needToImportWidgets)
+		snapshots, objects, ce := p.getSnapshotsFromFiles(req, progress, pbFiles, allErrors, path, needToImportWidgets, profileId)
 		if !ce.IsEmpty() {
 			return nil, nil, ce
 		}
@@ -153,9 +157,9 @@ func (p *Pb) setDashboardID(profile *pb.Profile, snapshots []*converter.Snapshot
 func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	pbFiles map[string]*converter.IOReader,
-	allErrors converter.ConvertError,
-	path string,
-	needToCreateWidgets bool) ([]*converter.Snapshot, []string, converter.ConvertError) {
+	allErrors converter.ConvertError, path string,
+	needToCreateWidgets bool,
+	profileID string) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
@@ -179,7 +183,10 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		if mo == nil {
 			continue
 		}
-		p.fillDetails(name, path, mo)
+		if mo.SbType == model.SmartBlockType_ProfilePage {
+			id = p.getIDForUserProfile(mo, profileID, id)
+		}
+		p.fillDetails(name, path, mo, id)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
 			Id:       id,
 			SbType:   smartblock.SmartBlockType(mo.SbType),
@@ -195,7 +202,15 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	return allSnapshots, targetObjects, nil
 }
 
-func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
+func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string) string {
+	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	if objectID == profileID {
+		return p.core.ProfileID()
+	}
+	return id
+}
+
+func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType, id string) {
 	source := converter.GetSourceDetail(name, path)
 	if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
 		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
