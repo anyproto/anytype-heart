@@ -38,7 +38,12 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_Workspace:           objRestrictAll,
+		model.SmartBlockType_Workspace: {
+			model.Restrictions_Delete,
+			model.Restrictions_TypeChange,
+			model.Restrictions_Template,
+			model.Restrictions_Duplicate,
+		},
 		model.SmartBlockType_File:                objRestrictAll,
 		model.SmartBlockType_MarketplaceRelation: objRestrictAll,
 		model.SmartBlockType_MarketplaceTemplate: objRestrictAll,
