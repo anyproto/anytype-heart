@@ -417,8 +417,8 @@ func (s *Service) SetLinkAppearance(ctx *session.Context, req pb.RpcBlockLinkLis
 func (s *Service) SetAlign(
 	ctx *session.Context, contextId string, align model.BlockAlign, blockIds ...string,
 ) (err error) {
-	return Do(s, contextId, func(sb basic.CommonOperations) error {
-		return sb.SetAlign(ctx, align, blockIds...)
+	return DoStateCtx(s, ctx, contextId, func(st *state.State, sb smartblock.SmartBlock) error {
+		return st.SetAlign(align, blockIds...)
 	})
 }
 

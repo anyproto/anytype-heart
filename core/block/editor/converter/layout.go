@@ -56,8 +56,50 @@ func (c LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.Obj
 		return c.fromAnyToNote(st)
 	}
 	if fromLayout == model.ObjectType_note {
-		return c.fromNoteToAny(st)
+		if err := c.fromNoteToAny(st); err != nil {
+			return err
+		}
 	}
+
+	if toLayout == model.ObjectType_todo {
+		return c.fromAnyToTodo(st)
+	}
+
+	if toLayout == model.ObjectType_bookmark {
+		return c.fromAnyToBookmark(st)
+	}
+
+	// TODO We need more granular cases (not catch-all)
+
+	return c.fromAnyToAny(st)
+}
+
+func (c LayoutConverter) fromAnyToAny(st *state.State) error {
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithDescription,
+	)
+	return nil
+}
+
+func (c LayoutConverter) fromAnyToBookmark(st *state.State) error {
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithDescription,
+		template.WithBookmarkBlocks,
+	)
+	return nil
+}
+
+func (c LayoutConverter) fromAnyToTodo(st *state.State) error {
+	if err := st.SetAlign(model.Block_AlignLeft); err != nil {
+		return err
+	}
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithDescription,
+		template.WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
+	)
 	return nil
 }
 
@@ -109,6 +151,15 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 
 	dvBlock.Model().GetDataview().IsCollection = true
 
+	ids, err := c.listIDsFromSet(typesFromSet)
+	if err != nil {
+		return err
+	}
+	st.StoreSlice(template.CollectionStoreKey, ids)
+	return nil
+}
+
+func (c *LayoutConverter) listIDsFromSet(typesFromSet []string) ([]string, error) {
 	recs, _, qErr := c.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -119,14 +170,13 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 		},
 	})
 	if qErr != nil {
-		return fmt.Errorf("can't get records for collection: %w", qErr)
+		return nil, fmt.Errorf("can't get records for collection: %w", qErr)
 	}
 	ids := make([]string, 0, len(recs))
 	for _, r := range recs {
 		ids = append(ids, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()))
 	}
-	st.StoreSlice(template.CollectionStoreKey, ids)
-	return nil
+	return ids, nil
 }
 
 func (c *LayoutConverter) fromNoteToCollection(st *state.State) error {
@@ -181,6 +231,12 @@ func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
 
 		st.RemoveDetail(bundle.RelationKeyName.String())
 	}
+
+	st.Unlink(template.TitleBlockId)
+	st.Unlink(template.DescriptionBlockId)
+
+	// TODO Do we need to run WithFirstTextBlockContent?
+
 	return nil
 }
 

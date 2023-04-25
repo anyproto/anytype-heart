@@ -33,6 +33,7 @@ const (
 
 	HeaderLayoutID           = "header"
 	TitleBlockID             = "title"
+	DescriptionBlockID       = "description"
 	DataviewBlockID          = "dataview"
 	DataviewTemplatesBlockID = "templates"
 	FeaturedRelationsID      = "featuredRelations"
@@ -881,6 +882,19 @@ func (s *State) SetDetail(key string, value *types.Value) {
 		return
 	}
 	s.details.Fields[key] = value
+	return
+}
+
+func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
+	if len(ids) == 0 {
+		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
+		ids = []string{TitleBlockID, DescriptionBlockID, FeaturedRelationsID}
+	}
+	for _, id := range ids {
+		if b := s.Get(id); b != nil {
+			b.Model().Align = align
+		}
+	}
 	return
 }
 

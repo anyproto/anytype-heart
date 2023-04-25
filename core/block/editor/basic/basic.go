@@ -55,7 +55,6 @@ type CommonOperations interface {
 	SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
 	SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
-	SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) (err error)
 }
 
 type Movable interface {

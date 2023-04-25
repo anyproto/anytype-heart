@@ -7,7 +7,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -191,38 +190,9 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 	fromLayout, _ := s.Layout()
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
-	// reset align when layout todo
-	// TODO Move to converter
-	if toLayout == model.ObjectType_todo {
-		if err = setAlign(s, model.Block_AlignLeft); err != nil {
-			return
-		}
-	}
 
 	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
-	template.InitTemplate(s, template.ByLayout(toLayout)...)
 	return nil
-}
-
-func (bs *basic) SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) (err error) {
-	s := bs.NewStateCtx(ctx)
-	if err = setAlign(s, align, ids...); err != nil {
-		return
-	}
-	return bs.Apply(s)
-}
-
-func setAlign(s *state.State, align model.BlockAlign, ids ...string) (err error) {
-	if len(ids) == 0 {
-		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
-		ids = []string{template.TitleBlockId, template.DescriptionBlockId, template.FeaturedRelationsId}
-	}
-	for _, id := range ids {
-		if b := s.Get(id); b != nil {
-			b.Model().Align = align
-		}
-	}
-	return
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
@@ -102,7 +103,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 1,
 		Proc: func(s *state.State) {
 			layout, ok := ctx.State.Layout()
 			if !ok {
@@ -113,16 +114,46 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				}
 			}
 
-			tmpls := []template.StateTransformer{
+			// TODO Templates must be dumb here, no migration logic
+
+			templates := []template.StateTransformer{
+				template.WithEmpty,
 				template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls, layout),
 				bookmarksvc.WithFixedBookmarks(p.Bookmark),
+				template.WithLayout(layout),
+				template.WithDefaultFeaturedRelations,
+				template.WithFeaturedRelations,
+				template.WithRequiredRelations(),
+				template.WithLinkFieldsMigration,
+				template.WithCreatorRemovedFromFeaturedRelations,
 			}
 
-			trans := template.ByLayout(
-				layout,
-				tmpls...,
-			)
-			template.InitTemplate(s, trans...)
+			switch layout {
+			case model.ObjectType_note:
+				templates = append(templates,
+					template.WithNoTitle,
+					template.WithNoDescription,
+				)
+			case model.ObjectType_todo:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
+				)
+			case model.ObjectType_bookmark:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithBookmarkBlocks,
+				)
+			default:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+				)
+			}
+
+			template.InitTemplate(s, templates...)
 		},
 	}
 }
