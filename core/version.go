@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/vcs"
 )
 
 func (mw *Middleware) AppGetVersion(cctx context.Context, req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
@@ -16,5 +18,19 @@ func (mw *Middleware) AppGetVersion(cctx context.Context, req *pb.RpcAppGetVersi
 		return m
 	}
 
-	return response(mw.app.Version(), mw.app.VersionDescription(), pb.RpcAppGetVersionResponseError_NULL, nil)
+	buildDate, revision, modified, cgo := vcs.GetVCSInfo()
+	if revision == "" {
+		revision = "unknown"
+	}
+
+	desc := fmt.Sprintf("build on %s from %s", buildDate.Format("2006-01-02 15:04:05"), revision)
+	if !cgo {
+		desc += " (no-cgo)"
+	}
+
+	if modified {
+		desc += " (unclean)"
+	}
+
+	return response(revision, desc, pb.RpcAppGetVersionResponseError_NULL, nil)
 }
