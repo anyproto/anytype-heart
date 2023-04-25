@@ -1,15 +1,17 @@
 package txt
 
 import (
-	"github.com/google/uuid"
 	"os"
 	"path/filepath"
+
+	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -81,6 +83,7 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
 			Id:       uuid.New().String(),
 			FileName: p,
 			Snapshot: &pb.ChangeSnapshot{Data: sn},
+			SbType:   smartblock.SmartBlockTypePage,
 		}
 		snapshots = append(snapshots, snapshot)
 	}

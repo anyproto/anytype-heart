@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -81,6 +82,7 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 			Id:       uuid.New().String(),
 			FileName: p,
 			Snapshot: &pb.ChangeSnapshot{Data: sn},
+			SbType:   smartblock.SmartBlockTypePage,
 		}
 		snapshots = append(snapshots, snapshot)
 	}
