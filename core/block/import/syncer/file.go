@@ -30,7 +30,11 @@ func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	if b.Model().GetFile().Name == "" {
 		return nil
 	}
-
+	if b.Model().GetFile().State == model.BlockContentFile_Error {
+		// we store error in the name field in case of error
+		return nil
+	}
+	// todo: name unknown format. handle state?
 	params := pb.RpcBlockUploadRequest{
 		FilePath: b.Model().GetFile().Name,
 		BlockId:  b.Model().Id,

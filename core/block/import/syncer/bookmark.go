@@ -21,6 +21,10 @@ func (bs *BookmarkSyncer) Sync(ctx *session.Context, id string, b simple.Block) 
 	if b.Model().GetBookmark().TargetObjectId != "" {
 		return nil
 	}
+	if b.Model().GetBookmark().Url == "" {
+		return nil
+	}
+
 	err := bs.service.BookmarkFetch(ctx, pb.RpcBlockBookmarkFetchRequest{
 		ContextId: id,
 		BlockId:   b.Model().GetId(),
