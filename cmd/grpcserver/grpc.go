@@ -130,7 +130,7 @@ func main() {
 			resp, err = handler(ctx, req)
 			close(doneCh)
 			if time.Since(start) > defaultUnaryWarningAfter {
-				log.With("method", info.FullMethod).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
+				log.With("method", info.FullMethod).With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
 			}
 			return
 		})
