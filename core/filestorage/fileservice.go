@@ -47,6 +47,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 		return
 	}
 	bs := badgerfilestore.NewBadgerStorage(db)
+	// TODO: rpcHandler
 	ps := &proxyStore{
 		cache:  bs,
 		origin: f.rpcStore.NewStore(),
