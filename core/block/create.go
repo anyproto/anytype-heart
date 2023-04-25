@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -159,6 +160,10 @@ func (s *Service) ObjectToSet(id string, source []string) error {
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 		commonOperations.SetLayoutInState(st, model.ObjectType_set)
 		st.SetObjectType(bundle.TypeKeySet.URL())
+		flags := internalflag.NewFromState(st)
+		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.AddToState(st)
+
 		return b.Apply(st)
 	}); err != nil {
 		return err

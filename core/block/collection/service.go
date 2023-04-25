@@ -223,6 +223,9 @@ func (s *Service) ObjectToCollection(id string) error {
 		st := b.NewState()
 		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
 		st.SetObjectType(bundle.TypeKeyCollection.URL())
+		flags := internalflag.NewFromState(st)
+		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.AddToState(st)
 		return b.Apply(st)
 	}); err != nil {
 		return err
