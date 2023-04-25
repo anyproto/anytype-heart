@@ -843,6 +843,10 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 		return
 	}
 
+	if err := pbtypes.ValidateValue(value); err != nil {
+		log.Errorf("invalid value for pb %s: %v", key, err)
+	}
+
 	s.localDetails.Fields[key] = value
 	return
 }
@@ -873,6 +877,11 @@ func (s *State) SetDetail(key string, value *types.Value) {
 		delete(s.details.Fields, key)
 		return
 	}
+
+	if err := pbtypes.ValidateValue(value); err != nil {
+		log.Errorf("invalid value for pb %s: %v", key, err)
+	}
+
 	s.details.Fields[key] = value
 	return
 }

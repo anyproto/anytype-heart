@@ -68,6 +68,11 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	detailsToSave := pbtypes.StructCutKeys(snapshot.Data.Details,
 		append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 
+	if err := pbtypes.ValidateStruct(detailsToSave); err != nil {
+		log.Errorf("NewDocFromSnapshot details validation error: %v; details normalized", err)
+		pbtypes.NormalizeStruct(detailsToSave)
+	}
+
 	s := &State{
 		rootId:          rootId,
 		blocks:          blocks,

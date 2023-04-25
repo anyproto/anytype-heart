@@ -798,6 +798,9 @@ func (sb *smartBlock) SetDetails(ctx *session.Context, details []*pb.RpcObjectSe
 
 	for _, detail := range details {
 		if detail.Value != nil {
+			if err := pbtypes.ValidateValue(detail.Value); err != nil {
+				return fmt.Errorf("detail %s validation error: %s", detail.Key, err.Error())
+			}
 			if detail.Key == bundle.RelationKeyType.String() {
 				// special case when client sets the type's detail directly instead of using setObjectType command
 				err = sb.SetObjectTypes(ctx, pbtypes.GetStringListValue(detail.Value))

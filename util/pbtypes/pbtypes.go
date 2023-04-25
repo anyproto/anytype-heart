@@ -454,3 +454,94 @@ func ValueListWrapper(value *types.Value) (*types.ListValue, error) {
 	}
 	return nil, fmt.Errorf("not supported type")
 }
+
+// NormalizeStruct replace some cases with nil values with NullValue instead
+// - nil values in the Struct.Fields (supported by protobuf, not by all our clients)
+// - calls NormalizeValue for each field
+// the Struct argument is modified in place
+func NormalizeStruct(t *types.Struct) (wasNormalized bool) {
+	if t == nil {
+		return false
+	}
+
+	for k, v := range t.Fields {
+		if v == nil {
+			t.Fields[k] = &types.Value{Kind: &types.Value_NullValue{NullValue: types.NullValue_NULL_VALUE}}
+			wasNormalized = true
+			continue
+		}
+		if NormalizeValue(v) {
+			wasNormalized = true
+		}
+	}
+	return
+}
+
+// NormalizeValue replace some cases with nil values with NullValue instead
+// - nil values in the Value.Kind (not supported by protobuf, because it is required field)
+// - nil values in the ListValue.Values (supported by protobuf, not by all our clients)
+// the Struct argument is modified in place
+func NormalizeValue(t *types.Value) (wasNormalized bool) {
+	if t == nil {
+		return false
+	}
+	switch v := t.Kind.(type) {
+	case *types.Value_StructValue:
+		return NormalizeStruct(v.StructValue)
+	case *types.Value_ListValue:
+		for i, lv := range v.ListValue.Values {
+			if lv == nil {
+				v.ListValue.Values[i] = &types.Value{Kind: &types.Value_NullValue{NullValue: types.NullValue_NULL_VALUE}}
+				wasNormalized = true
+				continue
+			}
+			if NormalizeValue(lv) {
+				wasNormalized = true
+			}
+		}
+	case nil:
+		// nil value is not valid in most of the others pb implementations. Replace it with NullValue
+		t.Kind = &types.Value_NullValue{NullValue: types.NullValue_NULL_VALUE}
+	}
+
+	return
+}
+
+func ValidateStruct(t *types.Struct) error {
+	if t == nil {
+		return nil
+	}
+	for _, v := range t.Fields {
+		if v == nil {
+			return fmt.Errorf("map value is nil")
+		}
+		if err := ValidateValue(v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ValidateValue(t *types.Value) error {
+	if t == nil {
+		return nil
+	}
+	switch v := t.Kind.(type) {
+	case *types.Value_StructValue:
+		return ValidateStruct(v.StructValue)
+	case *types.Value_ListValue:
+		for _, v := range v.ListValue.Values {
+			if v == nil {
+				return fmt.Errorf("list value is nil")
+			}
+			if err := ValidateValue(v); err != nil {
+				return err
+			}
+		}
+	case nil:
+		return fmt.Errorf("value Kind is nil")
+	default:
+		return nil
+	}
+	return nil
+}
