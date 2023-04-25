@@ -98,6 +98,15 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		return nil
 	})
 
+	workspaceID, err := oc.core.GetWorkspaceIdForObject(pageID)
+	if err != nil {
+		log.With(zap.String("object id", pageID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
+	}
+
+	if snapshot.Details != nil {
+		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
+	}
+
 	err = oc.service.SetObjectTypes(ctx, pageID, snapshot.ObjectTypes)
 	if err != nil {
 		log.With(zap.String("object id", pageID)).Errorf("failed to set object types %s: %s", pageID, err.Error())
