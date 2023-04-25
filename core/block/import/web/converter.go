@@ -67,12 +67,8 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 		we.Add(url, err)
 		return &converter.Response{Error: we}
 	}
-	var objID string
-	if obj != nil {
-		objID = obj.Id()
-	}
 	s := &converter.Snapshot{
-		Id:       objID,
+		Id:       obj.Id(),
 		FileName: url,
 		Snapshot: snapshots,
 	}

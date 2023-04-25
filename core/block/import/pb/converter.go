@@ -69,6 +69,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 				continue
 			}
 		}
+		// TODO need to get rid from dependencies from old IDs and extract sb type
 		sbt, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
 			sbt, err = builtinobjects.SmartBlockTypeFromThreadID(id)
@@ -96,14 +97,10 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 				continue
 			}
 		}
-		var objID string
-		if obj != nil {
-			objID = obj.Id()
-		}
 		source := converter.GetSourceDetail(name, path)
 		snapshot.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
-			Id:       objID,
+			Id:       obj.Id(),
 			FileName: name,
 			Snapshot: snapshot,
 		})
