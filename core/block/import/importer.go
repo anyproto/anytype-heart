@@ -25,9 +25,10 @@ var log = logging.Logger("import")
 const CName = "importer"
 
 type Import struct {
-	converters map[string]converter.Converter
-	s          *block.Service
-	oc         Creator
+	converters     map[string]converter.Converter
+	s              *block.Service
+	oc             Creator
+	objectIDGetter IDGetter
 }
 
 func New() Importer {
@@ -40,12 +41,12 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.s = a.MustComponent(block.CName).(*block.Service)
 	core := a.MustComponent(core.CName).(core.Service)
 	for _, f := range converter.GetConverters() {
-		converter := f(core, i.s)
+		converter := f(core)
 		i.converters[converter.Name()] = converter
 	}
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s))
-	ou := NewObjectUpdater(i.s, core, factory)
-	i.oc = NewCreator(i.s, a.MustComponent(object.CName).(objectCreator), core, ou, factory)
+	i.objectIDGetter = NewObjectIDGetter(core, i.s)
+	i.oc = NewCreator(i.s, a.MustComponent(object.CName).(objectCreator), core, factory)
 	return nil
 }
 
@@ -150,6 +151,29 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 	}
 
 	details := make(map[string]*types.Struct, 0)
+	oldIDToNew := make(map[string]string, len(res.Snapshots))
+	existedObject := make(map[string]struct{}, 0)
+	for _, snapshot := range res.Snapshots {
+		var (
+			err   error
+			id    string
+			exist bool
+		)
+		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot.Snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
+			oldIDToNew[snapshot.Id] = id
+			if exist {
+				existedObject[snapshot.Id] = struct{}{}
+			}
+			continue
+		}
+		if err != nil {
+			allErrors[getFileName(snapshot)] = err
+			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
+				return nil
+			}
+			log.With(zap.String("object name", getFileName(snapshot))).Error(err)
+		}
+	}
 	for _, snapshot := range res.Snapshots {
 		progress.SetTotal(int64(len(res.Snapshots)))
 		select {
@@ -159,7 +183,8 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 		default:
 		}
 		progress.AddDone(1)
-		detail, err := i.oc.Create(ctx, snapshot.Snapshot, snapshot.Id, req.UpdateExistingObjects)
+		_, ok := existedObject[snapshot.Id]
+		detail, err := i.oc.Create(ctx, snapshot.Snapshot, snapshot.Id, oldIDToNew, ok)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {

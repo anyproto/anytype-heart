@@ -1436,7 +1436,6 @@ type Block struct {
 	Align           BlockAlign         `protobuf:"varint,6,opt,name=align,proto3,enum=anytype.model.BlockAlign" json:"align,omitempty"`
 	VerticalAlign   BlockVerticalAlign `protobuf:"varint,7,opt,name=verticalAlign,proto3,enum=anytype.model.BlockVerticalAlign" json:"verticalAlign,omitempty"`
 	// Types that are valid to be assigned to Content:
-	//
 	//	*BlockContentOfSmartblock
 	//	*BlockContentOfText
 	//	*BlockContentOfFile
@@ -3277,7 +3276,6 @@ func (m *BlockContentDataviewObjectOrder) GetObjectIds() []string {
 type BlockContentDataviewGroup struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Types that are valid to be assigned to Value:
-	//
 	//	*BlockContentDataviewGroupValueOfStatus
 	//	*BlockContentDataviewGroupValueOfTag
 	//	*BlockContentDataviewGroupValueOfCheckbox
@@ -4042,7 +4040,6 @@ func (m *Account) GetInfo() *AccountInfo {
 // Avatar of a user's account. It could be an image or color
 type AccountAvatar struct {
 	// Types that are valid to be assigned to Avatar:
-	//
 	//	*AccountAvatarAvatarOfImage
 	//	*AccountAvatarAvatarOfColor
 	Avatar IsAccountAvatarAvatar `protobuf_oneof:"avatar"`

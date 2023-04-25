@@ -13,13 +13,13 @@ import (
 )
 
 // Functions to create in-tree and plugin converters
-var converterCreators []ConverterCreator
+var converterCreators []Creator
 
 // Function to register converter
-type ConverterCreator = func(s core.Service, otc ObjectTreeCreator) Converter
+type Creator = func(s core.Service) Converter
 
 // RegisterFunc add converter creation function to converterCreators
-func RegisterFunc(c ConverterCreator) {
+func RegisterFunc(c Creator) {
 	converterCreators = append(converterCreators, c)
 }
 
@@ -45,6 +45,7 @@ type IOReader struct {
 }
 type Snapshot struct {
 	Id       string
+	SbType   coresb.SmartBlockType
 	FileName string
 	Snapshot *model.SmartBlockSnapshotBase
 }
@@ -55,6 +56,6 @@ type Response struct {
 	Error     ConvertError
 }
 
-func GetConverters() []func(s core.Service, otc ObjectTreeCreator) Converter {
+func GetConverters() []func(s core.Service) Converter {
 	return converterCreators
 }

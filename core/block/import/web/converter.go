@@ -1,15 +1,13 @@
 package web
 
 import (
-	"context"
 	"fmt"
+	"github.com/google/uuid"
 
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 )
 
 const Name = "web"
@@ -22,10 +20,8 @@ func init() {
 	converter.RegisterFunc(NewConverter)
 }
 
-func NewConverter(s core.Service, otc converter.ObjectTreeCreator) converter.Converter {
-	return &Converter{
-		otc: otc,
-	}
+func NewConverter(s core.Service) converter.Converter {
+	return &Converter{}
 }
 
 func (*Converter) GetParser(url string) parsers.Parser {
@@ -56,19 +52,12 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 		return &converter.Response{Error: we}
 	}
 
-	ctx := context.Background()
-	obj, release, err := c.otc.CreateTreeObject(ctx, smartblock.SmartBlockTypePage, func(id string) *sb.InitContext {
-		return &sb.InitContext{
-			Ctx: ctx,
-		}
-	})
-	defer release()
 	if err != nil {
 		we.Add(url, err)
 		return &converter.Response{Error: we}
 	}
 	s := &converter.Snapshot{
-		Id:       obj.Id(),
+		Id:       uuid.New().String(),
 		FileName: url,
 		Snapshot: snapshots,
 	}

@@ -2,7 +2,6 @@ package pb
 
 import (
 	"archive/zip"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -25,17 +23,14 @@ import (
 const Name = "PB"
 
 type Pb struct {
-	otc converter.ObjectTreeCreator
 }
 
 func init() {
 	converter.RegisterFunc(New)
 }
 
-func New(s core.Service, otc converter.ObjectTreeCreator) converter.Converter {
-	return &Pb{
-		otc: otc,
-	}
+func New(s core.Service) converter.Converter {
+	return &Pb{}
 }
 
 func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
@@ -82,13 +77,6 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 				}
 			}
 		}
-		ctx := context.Background()
-		obj, release, err := p.otc.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
-			return &sb.InitContext{
-				Ctx: ctx,
-			}
-		})
-		defer release()
 		if err != nil {
 			allErrors.Add(path, e)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -100,7 +88,8 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 		source := converter.GetSourceDetail(name, path)
 		snapshot.Details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 		allSnapshots = append(allSnapshots, &converter.Snapshot{
-			Id:       obj.Id(),
+			Id:       id,
+			SbType:   sbt,
 			FileName: name,
 			Snapshot: snapshot,
 		})

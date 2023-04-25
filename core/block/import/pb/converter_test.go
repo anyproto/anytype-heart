@@ -12,11 +12,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	importer "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/test"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -35,12 +32,6 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 
 	p := &Pb{}
 
-	ctrl := gomock.NewController(t)
-	otc := importer.NewMockObjectTreeCreator(ctrl)
-	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(test.MockObject{}, func() {}, nil).Times(1)
-
-	p.otc = otc
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: wr.Path()}},
 		UpdateExistingObjects: false,
@@ -66,9 +57,6 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 	assert.NoError(t, wr.Close())
 
 	p := &Pb{}
-	ctrl := gomock.NewController(t)
-	otc := importer.NewMockObjectTreeCreator(ctrl)
-	p.otc = otc
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "not exists"}},
 		UpdateExistingObjects: false,
@@ -93,9 +81,6 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 	assert.NoError(t, wr.Close())
 
 	p := &Pb{}
-	ctrl := gomock.NewController(t)
-	otc := importer.NewMockObjectTreeCreator(ctrl)
-	p.otc = otc
 
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfNotionParams{NotionParams: &pb.RpcObjectImportRequestNotionParams{Path: "notexist.zip"}},
@@ -129,13 +114,6 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	assert.NoError(t, wr.Close())
 
 	p := &Pb{}
-
-	ctrl := gomock.NewController(t)
-	otc := importer.NewMockObjectTreeCreator(ctrl)
-	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(test.MockObject{}, func() {}, nil).Times(1)
-
-	p.otc = otc
 
 	// ALL_OR_NOTHING mode
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
