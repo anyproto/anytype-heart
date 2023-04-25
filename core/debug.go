@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -97,4 +98,32 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 		return response(err, debug.SpaceSummary{})
 	}
 	return response(nil, spaceSummary)
+}
+
+func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
+	response := func(path string, err error) (res *pb.RpcDebugExportLocalstoreResponse) {
+		res = &pb.RpcDebugExportLocalstoreResponse{
+			Error: &pb.RpcDebugExportLocalstoreResponseError{
+				Code: pb.RpcDebugExportLocalstoreResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcDebugExportLocalstoreResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		} else {
+			res.Path = path
+		}
+		return res
+	}
+	var (
+		path string
+		err  error
+	)
+	err = mw.doBlockService(func(s *block.Service) error {
+		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
+		path, err = dbg.DumpLocalstore(req.DocIds, req.Path)
+		return err
+	})
+	return response(path, err)
 }
