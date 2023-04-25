@@ -4,8 +4,8 @@
 1. Install Golang 1.19+ [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
-#### Build and install for the [desktop client](https://github.com/anytypeio/js-anytype)
-1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../js-anytype`
+#### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
+1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../anytype-ts`
 
 #### Build for iOS
 Instructions to set up environment for ios [here](https://github.com/anytypeio/ios-anytype/blob/develop/docs/Setup_For_Middleware.md)

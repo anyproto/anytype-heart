@@ -243,28 +243,28 @@ run-server: build-server
 
 install-dev-js-addon: setup build-lib build-js-addon protos-js
 	@echo 'Installing JS-addon (dev-mode)...'
-	@rm -rf ../js-anytype/build
-	@cp -r clientlibrary/jsaddon/build ../js-anytype/
-	@cp -r dist/js/pb/* ../js-anytype/dist/lib
+	@rm -rf ../anytype-ts/build
+	@cp -r clientlibrary/jsaddon/build ../anytype-ts/
+	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
 
 install-dev-js: build-js
 	@echo 'Installing JS-server (dev-mode)...'
-	@rm -f ../js-anytype/dist/anytypeHelper
+	@rm -f ../anytype-ts/dist/anytypeHelper
 
 ifeq ($(OS),Windows_NT)
-	@cp -r dist/server ../js-anytype/dist/anytypeHelper.exe
+	@cp -r dist/server ../anytype-ts/dist/anytypeHelper.exe
 else
-	@cp -r dist/server ../js-anytype/dist/anytypeHelper
+	@cp -r dist/server ../anytype-ts/dist/anytypeHelper
 endif
 
-	@cp -r dist/js/pb/* ../js-anytype/dist/lib
-	@cp -r dist/js/pb/* ../js-anytype/dist/lib
-	@mkdir -p ../js-anytype/dist/lib/json/
-	@cp pkg/lib/bundle/system*.json ../js-anytype/dist/lib/json/
-	@cp pkg/lib/bundle/internal*.json ../js-anytype/dist/lib/json/
+	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
+	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
+	@mkdir -p ../anytype-ts/dist/lib/json/
+	@cp pkg/lib/bundle/system*.json ../anytype-ts/dist/lib/json/
+	@cp pkg/lib/bundle/internal*.json ../anytype-ts/dist/lib/json/
 
 build-js: setup-go build-server protos-js
-	@echo "Run 'make install-dev-js' instead if you want to build&install into ../js-anytype"
+	@echo "Run 'make install-dev-js' instead if you want to build&install into ../anytype-ts"
 
 install-linter:
 	@go install github.com/daixiang0/gci@latest
