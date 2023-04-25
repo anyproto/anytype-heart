@@ -53,11 +53,13 @@ npm run test
 
 First you need to start a docker container via docker-compose:
 ```
+export ANYTYPE_TEST_GRPC_PORT=31088
 docker-compose up -d
 ```
 
 Then 
 ```
+export ANYTYPE_TEST_GRPC_PORT=31088
 make test-integration
 ```
 

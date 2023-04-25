@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -11,8 +12,12 @@ import (
 )
 
 type options struct {
-	children []*Block
-	color    string
+	children     []*Block
+	color        string
+	restrictions *model.BlockRestrictions
+	textStyle    model.BlockContentTextStyle
+	marks        *model.BlockContentTextMarks
+	fields       *types.Struct
 }
 
 type Option func(*options)
@@ -23,9 +28,33 @@ func Children(v ...*Block) Option {
 	}
 }
 
+func Restrictions(r model.BlockRestrictions) Option {
+	return func(o *options) {
+		o.restrictions = &r
+	}
+}
+
+func Fields(v *types.Struct) Option {
+	return func(o *options) {
+		o.fields = v
+	}
+}
+
 func Color(v string) Option {
 	return func(o *options) {
 		o.color = v
+	}
+}
+
+func TextStyle(s model.BlockContentTextStyle) Option {
+	return func(o *options) {
+		o.textStyle = s
+	}
+}
+
+func TextMarks(m model.BlockContentTextMarks) Option {
+	return func(o *options) {
+		o.marks = &m
 	}
 }
 
@@ -63,25 +92,79 @@ func (b *Block) Build() []*model.Block {
 	}, descendants...)
 }
 
-func Text(s string, opts ...Option) *Block {
+func mkBlock(b *model.Block, opts ...Option) *Block {
 	o := options{
 		// Init children for easier equality check in tests
-		children: []*Block{},
+		children:     []*Block{},
+		restrictions: &model.BlockRestrictions{},
+	}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	b.Restrictions = o.restrictions
+	b.Fields = o.fields
+	return &Block{
+		block:    b,
+		children: o.children,
+	}
+}
+
+func Root(opts ...Option) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		},
+	}, opts...)
+}
+
+func Layout(style model.BlockContentLayoutStyle, opts ...Option) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{Style: style},
+		},
+	}, opts...)
+}
+
+func Header(opts ...Option) *Block {
+	return Layout(model.BlockContentLayout_Header, append(opts, Restrictions(
+		model.BlockRestrictions{
+			Edit:   true,
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		}))...)
+}
+
+func FeaturedRelations(opts ...Option) *Block {
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfFeaturedRelations{
+			FeaturedRelations: &model.BlockContentFeaturedRelations{},
+		},
+	}, append(opts, Restrictions(model.BlockRestrictions{
+		Remove: true,
+		Drag:   true,
+		DropOn: true,
+	}))...)
+}
+
+func Text(s string, opts ...Option) *Block {
+	o := options{
+		marks: &model.BlockContentTextMarks{},
 	}
 	for _, apply := range opts {
 		apply(&o)
 	}
 
-	return &Block{
-		block: &model.Block{
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{
-					Text: s,
-				},
+	return mkBlock(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  s,
+				Style: o.textStyle,
+				Color: o.color,
+				Marks: o.marks,
 			},
 		},
-		children: o.children,
-	}
+	}, opts...)
 }
 
 func BuildAST(raw []*model.Block) *Block {

@@ -1,8 +1,4 @@
-.idea/*
-!.idea/vcs.xml
-!.idea/copyright
-*.iml
-.idea/*.xml
+.idea
 .project
 .DS_Store
 node_modules
@@ -16,5 +12,4 @@ lib-server/service.pb.go
 dist/cli
 grpc-web
 .gradle
-tests/mnemonic.txt
-.env
+tests/.cache/

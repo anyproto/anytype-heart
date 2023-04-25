@@ -139,7 +139,7 @@ func (s *testSuite) accountCreate() string {
 	return mnemonic
 }
 
-const mnemonicFile = "mnemonic.txt"
+const mnemonicFile = ".cache/mnemonic.txt"
 
 func getError(i interface{}) (int, string) {
 	v := reflect.ValueOf(i).Elem()
