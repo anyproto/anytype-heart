@@ -176,6 +176,11 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 	return
 }
 
+func (s *Service) DeleteSpace(ctx context.Context, spaceId string) error {
+	log.Debug("space deleted", zap.String("spaceId", spaceId))
+	return nil
+}
+
 func (s *Service) DeleteObject(id string) (err error) {
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {

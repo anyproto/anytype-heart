@@ -52,11 +52,11 @@ type ConfigFetcher interface {
 }
 
 type configFetcher struct {
-	sync.RWMutex
-	store       objectstore.ObjectStore
-	cafe        cafeClient.Client
-	eventSender func(event *pbMiddle.Event)
-	fetched     chan struct{}
+	store         objectstore.ObjectStore
+	cafe          cafeClient.Client
+	eventSender   func(event *pbMiddle.Event)
+	fetched       chan struct{}
+	fetchedClosed sync.Once
 
 	observers    []util.CafeAccountStateUpdateObserver
 	periodicSync periodicsync.PeriodicSync
@@ -104,7 +104,11 @@ func (c *configFetcher) Name() (name string) {
 }
 
 func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
-	defer close(c.fetched)
+	defer func() {
+		c.fetchedClosed.Do(func() {
+			close(c.fetched)
+		})
+	}()
 	res, err := c.client.StatusCheck(ctx, c.accountId)
 	if err != nil {
 		return
