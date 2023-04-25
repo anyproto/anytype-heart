@@ -16,14 +16,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -106,12 +104,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	var details []*pb.RpcObjectSetDetailsDetail
-
-	var oldRelationBlocksToNew map[string]*model.Block
-	filesToDelete, oldRelationBlocksToNew, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
-	if err != nil {
-		return nil, fmt.Errorf("relation create '%s'", err)
-	}
 	if snapshot.Details != nil {
 		for key, value := range snapshot.Details.Fields {
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
@@ -125,6 +117,12 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		Key:   bundle.RelationKeyWorkspaceId.String(),
 		Value: pbtypes.String(workspaceID),
 	})
+
+	var oldRelationBlocksToNew map[string]*model.Block
+	filesToDelete, oldRelationBlocksToNew, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
+	if err != nil {
+		return nil, fmt.Errorf("relation create '%s'", err)
+	}
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		return oc.handleSubObject(ctx, snapshot, newID, workspaceID, details), nil
@@ -174,7 +172,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return nil
 	})
 	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to resset state %s: %s", newID, err.Error())
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err.Error())
 	}
 
 	if isFavorite {
@@ -320,17 +318,6 @@ func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldI
 func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch a := bl.(type) {
-		case relation.Block:
-			var newTarget string
-			if newTarget = oldIDtoNew[a.Model().GetRelation().GetKey()]; newTarget == "" {
-				if newTarget = oldIDtoNew[addr.RelationKeyToIdPrefix+a.Model().GetRelation().GetKey()]; newTarget == "" {
-					log.With("object", st.RootId()).Errorf("cant find target id for relation: %s", a.Model().GetRelation().Key)
-					return true
-				}
-			}
-
-			a.Model().GetRelation().Key = newTarget
-			st.Set(simple.New(a.Model()))
 		case link.Block:
 			newTarget := oldIDtoNew[a.Model().GetLink().TargetBlockId]
 			if newTarget == "" {
