@@ -1632,6 +1632,7 @@ the element of change tree used to store and internal apply smartBlock history
 | snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the Content will be ignored |
 | fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | file keys related to changes content |
 | timestamp | [int64](#int64) |  | creation timestamp |
+| version | [uint32](#uint32) |  | version of business logic |
 
 
 

@@ -33,7 +33,6 @@ const (
 
 	HeaderLayoutID           = "header"
 	TitleBlockID             = "title"
-	DescriptionBlockID       = "description"
 	DataviewBlockID          = "dataview"
 	DataviewTemplatesBlockID = "templates"
 	FeaturedRelationsID      = "featuredRelations"
@@ -66,7 +65,7 @@ type Doc interface {
 	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
-	GetFirstTextBlock() (simple.Block, error)
+	GetFirstTextBlock() (*model.BlockContentOfText, error)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -94,6 +93,8 @@ type State struct {
 	localDetails  *types.Struct
 	relationLinks pbtypes.RelationLinks
 
+	migrationVersion uint32
+
 	// deprecated, used for migration
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption // deprecated, used for migration
@@ -110,6 +111,14 @@ type State struct {
 
 	groupId      string
 	noObjectType bool
+}
+
+func (s *State) MigrationVersion() uint32 {
+	return s.migrationVersion
+}
+
+func (s *State) SetMigrationVersion(v uint32) {
+	s.migrationVersion = v
 }
 
 func (s *State) RootId() string {
@@ -132,11 +141,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
 }
 
 func (s *State) NewStateCtx(ctx *session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
 }
 
 func (s *State) Context() *session.Context {
@@ -287,13 +296,6 @@ func (s *State) IsChild(parentId, childId string) bool {
 	}
 }
 
-func (s *State) PickOriginParentOf(id string) (res simple.Block) {
-	if s.parent != nil {
-		return s.parent.PickParentOf(id)
-	}
-	return
-}
-
 func (s *State) getStringBuf() []string {
 	if s.parent != nil {
 		return s.parent.getStringBuf()
@@ -370,11 +372,11 @@ func (s *State) SearchText() (text string) {
 	return
 }
 
-func (s *State) GetFirstTextBlock() (simple.Block, error) {
-	var res simple.Block
+func (s *State) GetFirstTextBlock() (*model.BlockContentOfText, error) {
+	var firstTextBlock *model.BlockContentOfText
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
-		if b.Model().GetText() != nil {
-			res = b
+		if content, ok := b.Model().Content.(*model.BlockContentOfText); ok {
+			firstTextBlock = content
 			return false
 		}
 		return true
@@ -382,7 +384,8 @@ func (s *State) GetFirstTextBlock() (simple.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	return res, nil
+
+	return firstTextBlock, nil
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
@@ -583,6 +586,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	if s.parent != nil {
 		s.parent.changes = s.changes
+		s.parent.migrationVersion = s.migrationVersion
 	}
 	if s.parent != nil && s.changeId != "" {
 		s.parent.changeId = s.changeId
@@ -708,7 +712,10 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 	var prev []byte
 	filtered = msgs[:0]
 	for _, e := range msgs {
-		curr, _ := e.Msg.Marshal()
+		curr, err := e.Msg.Marshal()
+		if err != nil {
+			continue
+		}
 		if bytes.Equal(prev, curr) {
 			log.With("thread", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
 			continue
@@ -843,10 +850,6 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 		return
 	}
 
-	if err := pbtypes.ValidateValue(value); err != nil {
-		log.Errorf("invalid value for pb %s: %v", key, err)
-	}
-
 	s.localDetails.Fields[key] = value
 	return
 }
@@ -877,11 +880,6 @@ func (s *State) SetDetail(key string, value *types.Value) {
 		delete(s.details.Fields, key)
 		return
 	}
-
-	if err := pbtypes.ValidateValue(value); err != nil {
-		log.Errorf("invalid value for pb %s: %v", key, err)
-	}
-
 	s.details.Fields[key] = value
 	return
 }
@@ -903,14 +901,6 @@ func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
-	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
-		if b := s.Get("dataview"); b != nil {
-			source := b.Model().GetDataview().GetSource()
-			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		} else {
-			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList([]string{}))
-		}
-	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 
 	if ot := s.ObjectType(); ot != "" {
@@ -1298,37 +1288,25 @@ func (s *State) Copy() *State {
 	objTypesToMigrate := make([]string, len(s.ObjectTypesToMigrate()))
 	copy(objTypesToMigrate, s.ObjectTypesToMigrate())
 
-	agOptsCopy := make(map[string][]*model.RelationOption, len(s.AggregatedOptionsByRelation()))
-	for k, v := range s.AggregatedOptionsByRelation() {
-		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
-	}
-	relationLinks := make([]*model.RelationLink, len(s.relationLinks))
-	for i, rl := range s.relationLinks {
-		relationLinks[i] = &model.RelationLink{
-			Format: rl.Format,
-			Key:    rl.Key,
-		}
-	}
-
 	storeKeyRemoved := s.StoreKeysRemoved()
 	storeKeyRemovedCopy := make(map[string]struct{}, len(storeKeyRemoved))
 	for i := range storeKeyRemoved {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
-		ctx:                         s.ctx,
-		blocks:                      blocks,
-		rootId:                      s.rootId,
-		details:                     pbtypes.CopyStruct(s.Details()),
-		localDetails:                pbtypes.CopyStruct(s.LocalDetails()),
-		relationLinks:               relationLinks,
-		extraRelations:              pbtypes.CopyRelations(s.OldExtraRelations()),
-		aggregatedOptionsByRelation: agOptsCopy,
-		objectTypes:                 objTypes,
-		objectTypesToMigrate:        objTypesToMigrate,
-		noObjectType:                s.noObjectType,
-		store:                       pbtypes.CopyStruct(s.Store()),
-		storeKeyRemoved:             storeKeyRemovedCopy,
+		ctx:                  s.ctx,
+		blocks:               blocks,
+		rootId:               s.rootId,
+		details:              pbtypes.CopyStruct(s.Details()),
+		localDetails:         pbtypes.CopyStruct(s.LocalDetails()),
+		relationLinks:        s.GetRelationLinks(), // Get methods copy inside
+		extraRelations:       pbtypes.CopyRelations(s.OldExtraRelations()),
+		objectTypes:          objTypes,
+		objectTypesToMigrate: objTypesToMigrate,
+		noObjectType:         s.noObjectType,
+		migrationVersion:     s.migrationVersion,
+		store:                pbtypes.CopyStruct(s.Store()),
+		storeKeyRemoved:      storeKeyRemovedCopy,
 	}
 	return copy
 }
