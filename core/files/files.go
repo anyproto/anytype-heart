@@ -378,10 +378,6 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash strin
 
 // fileIndexNode walks a file node, indexing file links
 func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string) error {
-	if err := s.AddToSyncQueue(fileID); err != nil {
-		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
-	}
-
 	if looksLikeFileNode(inode) {
 		return s.fileIndexLink(ctx, inode, fileID)
 	}
@@ -408,7 +404,14 @@ func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID str
 	if dlink == nil {
 		return ErrMissingContentLink
 	}
-	return s.fileStore.AddTarget(dlink.Cid.String(), fileID)
+	linkID := dlink.Cid.String()
+	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
+		return fmt.Errorf("add target to %s: %w", linkID, err)
+	}
+	if err := s.AddToSyncQueue(fileID); err != nil {
+		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
+	}
+	return nil
 }
 
 func (s *service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
