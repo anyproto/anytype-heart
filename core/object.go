@@ -14,7 +14,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
-	"github.com/anytypeio/go-anytype-middleware/core/block/object/graph"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object/objectgraph"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -391,7 +391,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		)
 	}
 
-	nodes, edges, err := getService[graph.Service](mw).ObjectGraph(req)
+	nodes, edges, err := getService[objectgraph.Service](mw).ObjectGraph(req)
 	if err != nil {
 		return unknownError(err)
 	}

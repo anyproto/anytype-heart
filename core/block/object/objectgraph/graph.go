@@ -1,4 +1,4 @@
-package graph
+package objectgraph
 
 import (
 	"github.com/anytypeio/any-sync/app"
@@ -22,45 +22,48 @@ type Service interface {
 	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
 }
 
-type Renderer struct {
+type Builder struct {
 	graphService    Service //nolint:unused
 	relationService relation.Service
-	app             *app.App
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 	coreService     core.Service
 	objectStore     objectstore.ObjectStore
+
+	*app.App
 }
 
 func NewGraphRender(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
-) *Renderer {
-	return &Renderer{
-		sbtProvider: sbtProvider,
+	relationService relation.Service,
+	objectStore objectstore.ObjectStore,
+	coreService core.Service,
+) *Builder {
+	return &Builder{
+		sbtProvider:     sbtProvider,
+		relationService: relationService,
+		objectStore:     objectStore,
+		coreService:     coreService,
 	}
 }
 
-func (gr *Renderer) Init(a *app.App) (err error) {
-	gr.app = a
-	gr.coreService = a.MustComponent(core.CName).(core.Service)
-	gr.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	gr.relationService = a.MustComponent(relation.CName).(relation.Service)
+func (gr *Builder) Init(a *app.App) (err error) {
 	return nil
 }
 
 const CName = "graphRenderer"
 
-func (gr *Renderer) Name() (name string) {
+func (gr *Builder) Name() (name string) {
 	return CName
 }
 
-func (gr *Renderer) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
+func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
 	records, err := gr.queryRecords(req)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var nodes = make([]*types.Struct, 0, len(records))
-	var edges = make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
+	nodes := make([]*types.Struct, 0, len(records))
+	edges := make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
 
 	existedNodes := fillExistedNodes(records)
 
@@ -73,7 +76,7 @@ func (gr *Renderer) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct,
 	return nodes, edges, nil
 }
 
-func (gr *Renderer) extractGraph(
+func (gr *Builder) extractGraph(
 	records []database.Record,
 	nodes []*types.Struct,
 	req *pb.RpcObjectGraphRequest,
@@ -86,7 +89,7 @@ func (gr *Renderer) extractGraph(
 
 		nodes = append(nodes, pbtypes.Map(rec.Details, req.Keys...))
 
-		var outgoingRelationLink = make(map[string]struct{}, 10)
+		outgoingRelationLink := make(map[string]struct{}, 10)
 		for k, v := range rec.Details.GetFields() {
 			rel := relations.GetByKey(k)
 			if rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) {
@@ -99,12 +102,12 @@ func (gr *Renderer) extractGraph(
 	return nodes, edges
 }
 
-func (gr *Renderer) provideRelations() (relationutils.Relations, error) {
+func (gr *Builder) provideRelations() (relationutils.Relations, error) {
 	relations, err := gr.relationService.ListAll(relation.WithWorkspaceId(gr.coreService.PredefinedBlocks().Account))
 	return relations, err
 }
 
-func (gr *Renderer) queryRecords(req *pb.RpcObjectGraphRequest) ([]database.Record, error) {
+func (gr *Builder) queryRecords(req *pb.RpcObjectGraphRequest) ([]database.Record, error) {
 	records, _, err := gr.objectStore.Query(
 		nil,
 		database.Query{
@@ -117,7 +120,7 @@ func (gr *Renderer) queryRecords(req *pb.RpcObjectGraphRequest) ([]database.Reco
 }
 
 func fillExistedNodes(records []database.Record) map[string]struct{} {
-	var existedNodes = make(map[string]struct{}, len(records))
+	existedNodes := make(map[string]struct{}, len(records))
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		existedNodes[id] = struct{}{}
@@ -162,7 +165,7 @@ func unallowedRelation(rel *relationutils.Relation) bool {
 		rel.Key == bundle.RelationKeyLastModifiedBy.String()
 }
 
-func (gr *Renderer) appendLinks(
+func (gr *Builder) appendLinks(
 	rec database.Record,
 	outgoingRelationLink map[string]struct{},
 	existedNodes map[string]struct{},

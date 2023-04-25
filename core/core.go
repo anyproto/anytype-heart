@@ -115,10 +115,6 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 	return f(app.MustComponent[*collection.Service](a))
 }
 
-type DoActionable[T interface{}] interface {
-	doLoggedService(action func(T) error) error
-}
-
 func getService[T any](mw *Middleware) T {
 	mw.m.RLock()
 	a := mw.app

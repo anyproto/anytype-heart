@@ -29,7 +29,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object/creator"
-	"github.com/anytypeio/go-anytype-middleware/core/block/object/graph"
+	"github.com/anytypeio/go-anytype-middleware/core/block/object/objectgraph"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -112,7 +112,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
 	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
 	indexerService := indexer.New(blockService, spaceService)
-	graphRenderer := graph.NewGraphRender(sbtProvider)
+	relationService := relation.New()
+	coreService := core.New()
+	graphRenderer := objectgraph.NewGraphRender(sbtProvider, relationService, objectStore, coreService)
 
 	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).
@@ -136,7 +138,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(spaceService).
 		Register(peermanager.New()).
 		Register(sbtProvider).
-		Register(relation.New()).
+		Register(relationService).
 		Register(ftsearch.New()).
 		Register(objectStore).
 		Register(filestore.New()).
@@ -146,7 +148,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
-		Register(core.New()).
+		Register(coreService).
 		Register(builtintemplate.New()).
 		Register(blockService).
 		Register(indexerService).
