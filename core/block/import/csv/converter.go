@@ -122,7 +122,7 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 		}
 		allObjectsIDs = append(allObjectsIDs, objectsIDs...)
 		allSnapshots = append(allSnapshots, snapshots...)
-		allRelations = makeRelationsResultMap(allRelations, relations)
+		allRelations = mergeRelationsMaps(allRelations, relations)
 	}
 	return allObjectsIDs, allSnapshots, allRelations, cErr
 }
@@ -166,14 +166,14 @@ func getDetailsFromCSVTable(csvTable [][]string) []*converter.Relation {
 	return relations
 }
 
-func makeRelationsResultMap(rel1 map[string][]*converter.Relation, rel2 map[string][]*converter.Relation) map[string][]*converter.Relation {
-	if len(rel1) != 0 {
+func mergeRelationsMaps(rel1 map[string][]*converter.Relation, rel2 map[string][]*converter.Relation) map[string][]*converter.Relation {
+	if rel1 != nil {
 		for id, relations := range rel2 {
 			rel1[id] = relations
 		}
 		return rel1
 	}
-	if len(rel2) != 0 {
+	if rel2 != nil {
 		for id, relations := range rel1 {
 			rel2[id] = relations
 		}
