@@ -262,6 +262,10 @@ func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *stat
 		if err != nil {
 			return err
 		}
+		err = commonOperations.FeaturedRelationAdd(ctx, bundle.RelationKeyType.String())
+		if err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err.Error())
+		}
 		respDetails = b.CombinedDetails()
 		return nil
 	})
