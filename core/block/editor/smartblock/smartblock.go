@@ -684,11 +684,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if err != nil {
 			return err
 		}
+
+		if changeId != "" {
+			sb.Doc.(*state.State).SetChangeId(changeId)
+		}
 		return nil
 	}
-	if changeId != "" {
-		sb.Doc.(*state.State).SetChangeId(changeId)
-	}
+
 	if !act.IsEmpty() {
 		if len(changes) == 0 && !doSnapshot {
 			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
@@ -709,9 +711,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if changeId != "" {
+	if changeId != "" || hasDetailsMsgs(msgs) {
 		// if changeId is empty, it means that we didn't push any changes to the source
-		// in this case we don't need to reindex the state
+		// but we can also have some local details changes, so check the events
 		sb.runIndexer(st)
 	}
 	afterPushChangeTime := time.Now()
@@ -1257,6 +1259,17 @@ func hasStoreChanges(changes []*pb.ChangeContent) bool {
 		if ch.GetStoreKeySet() != nil ||
 			ch.GetStoreKeyUnset() != nil ||
 			ch.GetStoreSliceUpdate() != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func hasDetailsMsgs(msgs []simple.EventMessage) bool {
+	for _, msg := range msgs {
+		if msg.Msg.GetObjectDetailsSet() != nil ||
+			msg.Msg.GetObjectDetailsUnset() != nil ||
+			msg.Msg.GetObjectDetailsAmend() != nil {
 			return true
 		}
 	}
