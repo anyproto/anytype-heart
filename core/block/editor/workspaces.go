@@ -150,7 +150,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) error {
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
-		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeySpace.URL())),
+		template.WithForcedObjectTypes([]string{bundle.TypeKeySpace.URL()}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedBlocks().Profile)),
 		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
