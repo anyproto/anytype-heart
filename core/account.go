@@ -788,6 +788,16 @@ func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb
 		return err
 	}
 
+	if _, statErr := os.Stat(filepath.Join(mw.rootPath, account.Address())); os.IsNotExist(statErr) {
+		seedRaw, seedRrr := account.Raw()
+		if seedRrr != nil {
+			return seedRrr
+		}
+		if walletErr := core.WalletInitRepo(mw.rootPath, seedRaw); walletErr != nil {
+			return walletErr
+		}
+	}
+
 	// todo: parse config.json from legacy export
 
 	newAcc := &model.Account{Id: account.Address()}
