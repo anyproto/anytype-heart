@@ -154,7 +154,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 	}
 
 	if !isSpaceDashboardIDFound {
-		panic("Space Home object file was not find in built-in objects")
+		panic("Workspace dashboard object file was not found in built-in objects")
 	}
 
 	for _, zf := range zr.File {
