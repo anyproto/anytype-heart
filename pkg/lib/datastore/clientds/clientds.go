@@ -64,7 +64,7 @@ func init() {
 	DefaultConfig.Spacestore.GcInterval = 0
 	DefaultConfig.Spacestore.GcSleep = 0
 	DefaultConfig.Spacestore.ValueThreshold = 1024 * 128 // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
-	DefaultConfig.Spacestore.Logger = logging.Logger("badger-localstore")
+	DefaultConfig.Spacestore.Logger = logging.LWrapper{logging.Logger("store.spacestore")}
 	DefaultConfig.Spacestore.SyncWrites = false
 	DefaultConfig.Spacestore.WithCompression(0) // disable compression
 
@@ -74,7 +74,7 @@ func init() {
 	DefaultConfig.Localstore.GcInterval = 0                      // we don't need to have value GC here, because all the values should fit in the ValueThreshold. So GC will be done by the live LSM compactions
 	DefaultConfig.Localstore.GcSleep = 0
 	DefaultConfig.Localstore.ValueThreshold = 1024 * 1024 // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
-	DefaultConfig.Localstore.Logger = logging.Logger("badger-localstore")
+	DefaultConfig.Localstore.Logger = logging.LWrapper{logging.Logger("store.localstore")}
 	DefaultConfig.Localstore.SyncWrites = false
 	DefaultConfig.Localstore.WithCompression(0) // disable compression
 

@@ -16,16 +16,15 @@ var defaultCfg = logger.Config{
 }
 
 type LWrapper struct {
-	zap.SugaredLogger
+	*zap.SugaredLogger
 }
 
-func (l *LWrapper) Warningf(template string, args ...interface{}) {
+func (l LWrapper) Warningf(template string, args ...interface{}) {
 	l.Warnf(template, args...)
 }
 
-func Logger(system string) *LWrapper {
-	lg := logger.NewNamed(system)
-	return &LWrapper{*(lg.Sugar())}
+func Logger(system string) *zap.SugaredLogger {
+	return logger.NewNamedSugared(system)
 }
 
 func LoggerNotSugared(system string) *zap.Logger {
