@@ -137,8 +137,6 @@ type Service struct {
 	fileStore       filestore.FileStore
 	tempDirProvider core.TempDirProvider
 	sbtProvider     typeprovider.SmartBlockTypeProvider
-
-	spaceDashboardID string
 }
 
 func (s *Service) Name() string {
@@ -168,22 +166,6 @@ func (s *Service) Init(a *app.App) (err error) {
 
 func (s *Service) Run(ctx context.Context) (err error) {
 	return
-}
-
-func (s *Service) GetSpaceDashboardID(ctx context.Context) (string, error) {
-	if s.spaceDashboardID == "" {
-		obj, release, err := s.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *smartblock.InitContext {
-			return &smartblock.InitContext{
-				Ctx: ctx,
-			}
-		})
-		if err != nil {
-			return "", err
-		}
-		release()
-		s.spaceDashboardID = obj.Id()
-	}
-	return s.spaceDashboardID, nil
 }
 
 func (s *Service) Anytype() core.Service {
@@ -630,7 +612,6 @@ func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId stri
 		}, false); err != nil {
 			return err
 		}
-		s.spaceDashboardID = id
 		return nil
 	})
 	return id, nil

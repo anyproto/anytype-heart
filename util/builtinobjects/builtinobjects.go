@@ -29,6 +29,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -64,6 +65,7 @@ type builtinObjects struct {
 	service     *block.Service
 	relService  relation2.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
+	coreService core.Service
 
 	createBuiltinObjects bool
 	idsMap               map[string]string
@@ -80,6 +82,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.service = a.MustComponent(block.CName).(*block.Service)
 	b.createBuiltinObjects = a.MustComponent(config.CName).(*config.Config).CreateBuiltinObjects
 	b.relService = a.MustComponent(relation2.CName).(relation2.Service)
+	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.cancel = func() {}
 	return
 }
@@ -133,14 +136,6 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			b.idsMap[id] = id
 			continue
 		}
-		if id == builtInDashboardObjectID {
-			b.idsMap[id], err = b.service.GetSpaceDashboardID(ctx)
-			if err != nil {
-				return err
-			}
-			isSpaceDashboardIDFound = true
-			continue
-		}
 
 		// create object
 		obj, release, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
@@ -152,6 +147,22 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 			return err
 		}
 		newId := obj.Id()
+
+		if id == builtInDashboardObjectID {
+			isSpaceDashboardIDFound = true
+			if err2 := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+				ContextId: b.coreService.PredefinedBlocks().Account,
+				Details: []*pb.RpcObjectSetDetailsDetail{
+					{
+						Key:   bundle.RelationKeySpaceDashboardId.String(),
+						Value: pbtypes.String(newId),
+					},
+				},
+			}); err2 != nil {
+				log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err2.Error())
+			}
+		}
+
 		release()
 		b.idsMap[id] = newId
 	}

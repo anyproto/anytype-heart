@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -53,13 +52,12 @@ var objectTypeToCollection = map[bundle.TypeKey]string{
 type Workspaces struct {
 	*SubObjectCollection
 
-	app               *app.App
-	DetailsModifier   DetailsModifier
-	templateCloner    templateCloner
-	dashboardIDGetter dashboardIDGetter
-	sourceService     source.Service
-	anytype           core.Service
-	objectStore       objectstore.ObjectStore
+	app             *app.App
+	DetailsModifier DetailsModifier
+	templateCloner  templateCloner
+	sourceService   source.Service
+	anytype         core.Service
+	objectStore     objectstore.ObjectStore
 }
 
 func NewWorkspace(
@@ -99,9 +97,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	p.app = ctx.App
 	// TODO pass as explicit deps
 	p.sourceService = p.app.MustComponent(source.CName).(source.Service)
-	treeGetter := p.app.MustComponent(treegetter.CName)
-	p.templateCloner = treeGetter.(templateCloner)
-	p.dashboardIDGetter = treeGetter.(dashboardIDGetter)
+	p.templateCloner = p.app.MustComponent(treegetter.CName).(templateCloner)
 
 	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 
@@ -131,18 +127,12 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	spaceDashboardID, err := p.dashboardIDGetter.GetSpaceDashboardID(ctx.Ctx)
-	if err != nil {
-		log.Errorf("failed to get Space Dashboard ID: %v", err)
-	}
-
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		template.WithDetail(bundle.RelationKeySpaceDashboardId, pbtypes.String(spaceDashboardID)),
 		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeySpace.URL())),
@@ -154,10 +144,6 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 type templateCloner interface {
 	TemplateClone(id string) (templateID string, err error)
-}
-
-type dashboardIDGetter interface {
-	GetSpaceDashboardID(ctx context.Context) (string, error)
 }
 
 type WorkspaceParameters struct {
