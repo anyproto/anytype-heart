@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
+	"io"
 	"strings"
 )
 
@@ -99,8 +100,7 @@ func (z *zipTreeReadStorage) readChange(id string) (change *treechangeproto.RawT
 	}
 	defer opened.Close()
 
-	var buf []byte
-	_, err = opened.Read(buf)
+	buf, err := io.ReadAll(opened)
 	if err != nil {
 		return
 	}
