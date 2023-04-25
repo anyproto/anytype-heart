@@ -190,8 +190,8 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 	}
 
 	cfg := config.ConfigRequired{}
-	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
-	if cfg.CustomFileStorePath == "" {
+	err := files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
+	if err != nil || cfg.CustomFileStorePath == "" {
 		cfg.CustomFileStorePath = wallet.RepoPath()
 	}
 

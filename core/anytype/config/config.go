@@ -200,6 +200,9 @@ func (c *Config) Init(a *app.App) (err error) {
 }
 
 func (c *Config) initFromFileAndEnv(repoPath string) error {
+	if repoPath == "" {
+		return fmt.Errorf("repo is missing")
+	}
 	c.RepoPath = repoPath
 
 	if !c.DisableFileConfig {
@@ -212,7 +215,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		writeConfig := func() error {
 			err = files.WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 			if err != nil {
-				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
+				return fmt.Errorf("failed to save required configuration to the cfg file: %s", err.Error())
 			}
 			return nil
 		}
