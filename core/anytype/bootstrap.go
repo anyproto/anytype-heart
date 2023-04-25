@@ -119,6 +119,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
+
+	walletService := a.Component(wallet.CName).(wallet.Wallet)
+	tempDirService := core.NewTempDirService(walletService)
+
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
@@ -163,12 +167,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientdebugrpc.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
-		Register(bookmark.New()).
+		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
-		Register(importer.New()).
+		Register(importer.New(tempDirService)).
 		Register(decorator.New()).
 		Register(object.NewCreator()).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory())
+		Register(editor.NewObjectFactory(tempDirService))
 	return
 }

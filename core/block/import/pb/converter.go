@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
@@ -22,32 +22,36 @@ import (
 
 const Name = "PB"
 
-type Pb struct {
+type Pb struct{}
+
+func New() converter.Converter {
+	return new(Pb)
 }
 
-func init() {
-	converter.RegisterFunc(New)
-}
-
-func New(s core.Service) converter.Converter {
-	return &Pb{}
-}
-
-func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
+	progress *process.Progress) (*converter.Response, converter.ConvertError) {
 	path, e := p.GetParams(req.Params)
 	allErrors := converter.NewError()
 	if e != nil {
 		allErrors.Add(path, e)
-		return &converter.Response{Error: allErrors}
+		return nil, allErrors
 	}
 	pbFiles, err := p.readFile(path, req.Mode.String())
 	if err != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-		return &converter.Response{Error: err}
+		allErrors.Merge(err)
+		return nil, allErrors
 	}
-
 	allSnapshots := make([]*converter.Snapshot, 0)
-	allErrors.Merge(err)
+
+	progress.SetProgressMessage("Start creating snapshots from files")
+	progress.SetTotal(int64(len(pbFiles) * 2))
+
 	for name, file := range pbFiles {
+		if err := progress.TryStep(1); err != nil {
+			ce := converter.NewFromError(name, err)
+			return nil, ce
+		}
+
 		id := strings.TrimSuffix(file.Name, filepath.Ext(file.Name))
 		var (
 			snapshot *model.SmartBlockSnapshotBase
@@ -59,30 +63,21 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 		if errGS != nil {
 			allErrors.Add(file.Name, errGS)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &converter.Response{Error: allErrors}
+				return nil, allErrors
 			} else {
 				continue
 			}
 		}
-		// TODO need to get rid from dependencies from old IDs and extract sb type
 		sbt, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
 			sbt, err = builtinobjects.SmartBlockTypeFromThreadID(id)
 			if err != nil {
 				allErrors.Add(path, e)
 				if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-					return &converter.Response{Error: allErrors}
+					return nil, allErrors
 				} else {
 					continue
 				}
-			}
-		}
-		if err != nil {
-			allErrors.Add(path, e)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return &converter.Response{Error: allErrors}
-			} else {
-				continue
 			}
 		}
 		source := converter.GetSourceDetail(name, path)
@@ -96,10 +91,10 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
 	}
 
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Error: nil}
+		return &converter.Response{Snapshots: allSnapshots}, nil
 	}
 
-	return &converter.Response{Snapshots: allSnapshots, Error: allErrors}
+	return &converter.Response{Snapshots: allSnapshots}, allErrors
 }
 
 func (p *Pb) Name() string {
@@ -111,8 +106,8 @@ func (p *Pb) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (p *Pb) GetParams(params pb.IsRpcObjectImportRequestParams) (string, error) {
-	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfNotionParams); ok {
-		return p.NotionParams.GetPath(), nil
+	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfMarkdownParams); ok {
+		return p.MarkdownParams.GetPath(), nil
 	}
 	return "", errors.New("PB: GetParams wrong parameters format")
 }

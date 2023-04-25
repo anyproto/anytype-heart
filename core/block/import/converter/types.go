@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -54,8 +55,4 @@ type Snapshot struct {
 type Response struct {
 	Snapshots []*Snapshot
 	Error     ConvertError
-}
-
-func GetConverters() []func(s core.Service) Converter {
-	return converterCreators
 }

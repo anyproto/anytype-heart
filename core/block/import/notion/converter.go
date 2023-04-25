@@ -13,7 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/search"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 const (
@@ -25,17 +24,13 @@ const (
 	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
 )
 
-func init() {
-	converter.RegisterFunc(New)
-}
-
 type Notion struct {
 	search    *search.Service
 	dbService *database.Service
 	pgService *page.Service
 }
 
-func New(core.Service) converter.Converter {
+func New() converter.Converter {
 	cl := client.NewClient()
 	return &Notion{
 		search:    search.New(cl),

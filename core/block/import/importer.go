@@ -10,7 +10,9 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion"
+	pbc "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/syncer"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
@@ -28,34 +30,43 @@ var log = logging.Logger("import")
 const CName = "importer"
 
 type Import struct {
-	converters     map[string]converter.Converter
-	s              *block.Service
-	oc             Creator
-	objectIDGetter IDGetter
+	converters      map[string]converter.Converter
+	s               *block.Service
+	oc              Creator
+	objectIDGetter  IDGetter
+	tempDirProvider core.TempDirProvider
 }
 
-func New() Importer {
+func New(tempDirProvider core.TempDirProvider) Importer {
 	return &Import{
-		converters: make(map[string]converter.Converter, 0),
+		tempDirProvider: tempDirProvider,
+		converters:      make(map[string]converter.Converter, 0),
 	}
 }
 
 func (i *Import) Init(a *app.App) (err error) {
 	i.s = a.MustComponent(block.CName).(*block.Service)
-	core := a.MustComponent(core.CName).(core.Service)
-	for _, f := range converter.GetConverters() {
-		converter := f(core)
-		i.converters[converter.Name()] = converter
+	coreService := a.MustComponent(core.CName).(core.Service)
+
+	converters := []converter.Converter{
+		markdown.New(i.tempDirProvider),
+		notion.New(),
+		pbc.New(),
+		web.NewConverter(),
 	}
+	for _, c := range converters {
+		i.converters[c.Name()] = c
+	}
+
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
 	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	objCreator := a.MustComponent(object.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	relationCreator := NewRelationCreator(i.s, objCreator, fs, core, store)
+	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
 	ou := NewObjectUpdater(i.s, store, factory, relationCreator)
 	i.objectIDGetter = NewObjectIDGetter(store, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	i.oc = NewCreator(i.s, objCreator, ou, core, factory, relationCreator, store, fileStore)
+	i.oc = NewCreator(i.s, objCreator, ou, coreService, factory, relationCreator, store, fileStore)
 	return nil
 }
 

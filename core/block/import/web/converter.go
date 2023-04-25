@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 const Name = "web"
@@ -16,11 +15,7 @@ type Converter struct {
 	otc converter.ObjectTreeCreator
 }
 
-func init() {
-	converter.RegisterFunc(NewConverter)
-}
-
-func NewConverter(s core.Service) converter.Converter {
+func NewConverter() converter.Converter {
 	return &Converter{}
 }
 
