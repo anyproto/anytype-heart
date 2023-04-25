@@ -33,7 +33,7 @@ import (
 
 var (
 	linkRegexp                   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
-	filenameCleanRegexp          = regexp.MustCompile(`[^\wcore/block/import/objectcreator.go:49:15_\s]+`)
+	filenameCleanRegexp          = regexp.MustCompile(`[^\w_\s]+`)
 	filenameDuplicateSpaceRegexp = regexp.MustCompile(`\s+`)
 	emojiAproxRegexp             = regexp.MustCompile(`[\x{2194}-\x{329F}\x{1F000}-\x{1FADF}]`)
 
