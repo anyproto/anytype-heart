@@ -2,7 +2,7 @@ package importer
 
 import (
 	"context"
-
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -91,6 +91,7 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 	if len(sn.Snapshot.ObjectTypes) > 0 {
 		ot := sn.Snapshot.ObjectTypes
 		var objects *types.Struct
+		sn.Snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(bson.NewObjectId().Hex())
 		req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Details}
 		id, objects, err = ou.service.CreateObject(req, "")
 		if err != nil {

@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
@@ -318,6 +319,16 @@ func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldI
 func (oc *ObjectCreator) updateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch a := bl.(type) {
+		case relation.Block:
+			newTarget := oldIDtoNew[a.Model().GetRelation().GetKey()]
+			if newTarget == "" {
+				// maybe we should panic here?
+				log.With("object", st.RootId()).Errorf("cant find target id for relation: %s", a.Model().GetLink().TargetBlockId)
+				return true
+			}
+
+			a.Model().GetRelation().Key = newTarget
+			st.Set(simple.New(a.Model()))
 		case link.Block:
 			newTarget := oldIDtoNew[a.Model().GetLink().TargetBlockId]
 			if newTarget == "" {
