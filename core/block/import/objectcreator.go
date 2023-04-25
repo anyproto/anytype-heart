@@ -3,7 +3,6 @@ package importer
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
@@ -31,22 +30,6 @@ type ObjectCreator struct {
 	core          core.Service
 	syncFactory   *syncer.Factory
 	oldIDToNew    map[string]string
-}
-
-type CreateSubObjectRequest struct {
-	subObjectType string
-	details       *types.Struct
-}
-
-func (c CreateSubObjectRequest) GetDetails() *types.Struct {
-	sbt := bundle.TypeKey(c.subObjectType).String()
-	detailsType := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyType.String(): pbtypes.String(sbt),
-		},
-	}
-
-	return pbtypes.StructMerge(c.details, detailsType, false)
 }
 
 type objectCreator interface {
@@ -138,28 +121,8 @@ func (oc *ObjectCreator) Create(ctx *session.Context, sn *converter.Snapshot, ol
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		if !existing {
-			ot := st.ObjectTypes()
-			req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
-			id, subObjectDetails, err := oc.service.CreateObject(req, "")
-			if err != nil && err != editor.ErrSubObjectAlreadyExists {
-				return nil, err
-			}
-			if id == "" {
-				id = oldIDtoNew[pageID]
-			}
-			newID = id
-			if subObjectDetails != nil {
-				for key, value := range subObjectDetails.GetFields() {
-					details = append(details, &pb.RpcObjectSetDetailsDetail{
-						Key:   key,
-						Value: value,
-					})
-				}
-			}
-		}
 		err = oc.service.Do(newID, func(b sb.SmartBlock) error {
-			return b.SetDetails(ctx, details, true)
+			return b.Apply(st)
 		})
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())

@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -11,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 type ObjectIDGetter struct {
@@ -25,6 +27,22 @@ func NewObjectIDGetter(core core.Service, service *block.Service) IDGetter {
 	}
 }
 
+type CreateSubObjectRequest struct {
+	subObjectType string
+	details       *types.Struct
+}
+
+func (c CreateSubObjectRequest) GetDetails() *types.Struct {
+	sbt := bundle.TypeKey(c.subObjectType).String()
+	detailsType := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyType.String(): pbtypes.String(sbt),
+		},
+	}
+
+	return pbtypes.StructMerge(c.details, detailsType, false)
+}
+
 func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, sbType sb.SmartBlockType, updateExisting bool) (string, bool, error) {
 	if predefinedSmartBlockType(sbType) {
 		ids, _, err := ou.core.ObjectStore().QueryObjectIds(database.Query{}, []sb.SmartBlockType{sbType})
@@ -34,6 +52,16 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context, snapshot *model.SmartBlockSn
 		if len(ids) > 0 {
 			return ids[0], true, err
 		}
+	}
+
+	if sbType == sb.SmartBlockTypeSubObject {
+		ot := snapshot.ObjectTypes
+		req := &CreateSubObjectRequest{subObjectType: ot[0], details: snapshot.Details}
+		id, _, err := ou.service.CreateObject(req, "")
+		if err != nil && err != editor.ErrSubObjectAlreadyExists {
+			return "", true, nil
+		}
+		return id, false, nil
 	}
 
 	if snapshot.Details != nil && snapshot.Details.Fields[bundle.RelationKeySource.String()] != nil && updateExisting {

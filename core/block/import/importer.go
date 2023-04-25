@@ -196,12 +196,11 @@ func (i *Import) createObjects(ctx *session.Context, res *converter.Response, pr
 			exist bool
 		)
 
-		if snapshot.SbType == sb.SmartBlockTypeSubObject {
-			oldIDToNew[snapshot.Id] = snapshot.Id
-			continue
-		}
 		if id, exist, err = i.objectIDGetter.Get(ctx, snapshot.Snapshot, snapshot.SbType, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
+			if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
+				oldIDToNew[snapshot.Id] = snapshot.Id
+			}
 			if snapshot.SbType == sb.SmartBlockTypeWorkspace || snapshot.SbType == sb.SmartBlockTypeWorkspaceOld {
 				workspaceID = id
 			}
