@@ -88,6 +88,8 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	if err != nil {
 		return nil, "", fmt.Errorf("relation create '%s'", err)
 	}
+	converter.UpdateRelationsIDs(sn, newID, oldIDtoNew)
+
 	details := oc.getDetails(snapshot)
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		return oc.handleSubObject(ctx, snapshot, newID, details), "", nil
@@ -326,36 +328,6 @@ func (oc *ObjectCreator) handleSubObject(ctx *session.Context, snapshot *model.S
 		log.With(zap.String("object id", newID)).Errorf("failed to reset state state %s: %s", newID, err.Error())
 	}
 	return nil
-}
-
-func (oc *ObjectCreator) updateRelationsIDs(st *state.State, pageID string, oldIDtoNew map[string]string) {
-	for k, v := range st.Details().GetFields() {
-		rel, err := bundle.GetRelation(bundle.RelationKey(k))
-		if err != nil {
-			log.With("object", pageID).Errorf("failed to find relation %s: %s", k, err.Error())
-			continue
-		}
-		if rel.Format != model.RelationFormat_object &&
-			rel.Format != model.RelationFormat_tag &&
-			rel.Format != model.RelationFormat_status {
-			continue
-		}
-
-		vals := pbtypes.GetStringListValue(v)
-		for i, val := range vals {
-			if bundle.HasRelation(val) {
-				continue
-			}
-			newTarget := oldIDtoNew[val]
-			if newTarget == "" {
-				log.With("object", pageID).Errorf("cant find target id for relation %s: %s", k, val)
-				continue
-			}
-			vals[i] = newTarget
-
-		}
-		st.SetDetail(k, pbtypes.StringList(vals))
-	}
 }
 
 func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat) error {

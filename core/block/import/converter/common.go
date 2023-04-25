@@ -114,3 +114,43 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 	}
 	st.Set(simple.New(block.Model()))
 }
+
+func UpdateRelationsIDs(sn *Snapshot, pageID string, oldIDtoNew map[string]string) {
+	rels := sn.Snapshot.Data.RelationLinks
+	for k, v := range sn.Snapshot.Data.Details.GetFields() {
+		var relLink *model.RelationLink
+		for _, rel := range rels {
+			if rel.Key == k {
+				relLink = rel
+				break
+			}
+		}
+		if relLink == nil {
+			continue
+		}
+		if relLink.Format != model.RelationFormat_object &&
+			relLink.Format != model.RelationFormat_tag &&
+			relLink.Format != model.RelationFormat_status {
+			continue
+		}
+
+		objectsIDs := pbtypes.GetStringListValue(v)
+		objectsIDs = getNewRelationsID(objectsIDs, oldIDtoNew, pageID, k)
+		sn.Snapshot.Data.Details.Fields[k] = pbtypes.StringList(objectsIDs)
+	}
+}
+
+func getNewRelationsID(objectsIDs []string, oldIDtoNew map[string]string, pageID string, k string) []string {
+	for i, val := range objectsIDs {
+		if bundle.HasRelation(val) {
+			continue
+		}
+		newTarget := oldIDtoNew[val]
+		if newTarget == "" {
+			log.With("object", pageID).Errorf("cant find target id for relation %s: %s", k, val)
+			continue
+		}
+		objectsIDs[i] = newTarget
+	}
+	return objectsIDs
+}
