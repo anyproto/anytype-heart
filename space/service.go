@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/anytypeio/any-sync/accountservice"
@@ -29,7 +30,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
 )
 
-const CName = "client.clientspace"
+const (
+	CName      = "client.clientspace"
+	SpaceType  = "anytype.space"
+	ChangeType = "anytype.object"
+)
+
+var ErrUsingOldStorage = errors.New("using old storage")
 
 var log = logger.NewNamed(CName)
 
@@ -105,9 +112,14 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	err = s.checkOldSpace()
+	if err != nil {
+		return
+	}
 	s.accountId, err = s.commonSpace.DeriveSpace(context.Background(), commonspace.SpaceDerivePayload{
 		SigningKey:    s.account.Account().SignKey,
 		EncryptionKey: s.account.Account().EncKey,
+		SpaceType:     SpaceType,
 	})
 	if err != nil {
 		return
@@ -237,4 +249,20 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
 	}
 	log.Debug("got peer ids from peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", resp.SpaceIds))
 	s.peerStore.UpdateLocalPeer(peer.PeerId, resp.SpaceIds)
+}
+
+func (s *service) checkOldSpace() (err error) {
+	accId, err := s.commonSpace.DeriveSpace(context.Background(), commonspace.SpaceDerivePayload{
+		SigningKey:    s.account.Account().SignKey,
+		EncryptionKey: s.account.Account().EncKey,
+		SpaceType:     "derived.space",
+	})
+	if err != nil {
+		return
+	}
+	_, err = s.spaceStorageProvider.WaitSpaceStorage(context.Background(), accId)
+	if err == nil {
+		return ErrUsingOldStorage
+	}
+	return nil
 }

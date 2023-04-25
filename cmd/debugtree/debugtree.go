@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -81,11 +82,13 @@ func main() {
 		}
 		dur := time.Since(stt)
 		fmt.Println(s.StringDebug())
-		sbt := smartblock.SmartBlockTypePage
-		changeType := string(ot.UnmarshalledHeader().Data)
-		if v, exists := model.SmartBlockType_value[changeType]; exists {
-			sbt = smartblock.SmartBlockType(v)
+
+		payload := &model.ObjectChangePayload{}
+		err = proto.Unmarshal(ot.ChangeInfo().ChangePayload, payload)
+		if err != nil {
+			return
 		}
+		sbt := smartblock.SmartBlockType(payload.ObjectType)
 		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
 		if *fileHashes {
 			fmt.Println("File keys:")

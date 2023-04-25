@@ -201,11 +201,13 @@ func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht obje
 		return
 	}
 
-	sbt = smartblock.SmartBlockTypePage
-	changeType := string(ht.UnmarshalledHeader().Data)
-	if v, exists := model.SmartBlockType_value[changeType]; exists {
-		sbt = smartblock.SmartBlockType(v)
+	payload := &model.ObjectChangePayload{}
+	err = proto.Unmarshal(ht.ChangeInfo().ChangePayload, payload)
+	if err != nil {
+		return
 	}
+
+	sbt = smartblock.SmartBlockType(payload.ObjectType)
 	return
 }
 

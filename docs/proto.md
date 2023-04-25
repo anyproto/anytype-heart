@@ -224,10 +224,6 @@
     - [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response)
     - [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error)
     - [Rpc.BlockDataview.ObjectOrder](#anytype-Rpc-BlockDataview-ObjectOrder)
-    - [Rpc.BlockDataview.ObjectOrder.Move](#anytype-Rpc-BlockDataview-ObjectOrder-Move)
-    - [Rpc.BlockDataview.ObjectOrder.Move.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Request)
-    - [Rpc.BlockDataview.ObjectOrder.Move.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Response)
-    - [Rpc.BlockDataview.ObjectOrder.Move.Response.Error](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Response-Error)
     - [Rpc.BlockDataview.ObjectOrder.Update](#anytype-Rpc-BlockDataview-ObjectOrder-Update)
     - [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request)
     - [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response)
@@ -934,7 +930,6 @@
     - [Rpc.BlockDataview.Filter.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Replace-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Sort-Response-Error-Code)
     - [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code)
-    - [Rpc.BlockDataview.ObjectOrder.Move.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Response-Error-Code)
     - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
@@ -1110,7 +1105,6 @@
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
-    - [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet)
     - [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate)
     - [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete)
     - [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet)
@@ -1334,6 +1328,8 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [Object](#anytype-model-Object)
+    - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
     - [ObjectView](#anytype-model-ObjectView)
     - [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet)
@@ -1555,7 +1551,6 @@
 | BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response) |  |
 | BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
 | BlockDataviewObjectOrderUpdate | [Rpc.BlockDataview.ObjectOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Request) | [Rpc.BlockDataview.ObjectOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response) |  |
-| BlockDataviewObjectOrderMove | [Rpc.BlockDataview.ObjectOrder.Move.Request](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Request) | [Rpc.BlockDataview.ObjectOrder.Move.Response](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Response) |  |
 | BlockDataviewCreateFromExistingObject | [Rpc.BlockDataview.CreateFromExistingObject.Request](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Request) | [Rpc.BlockDataview.CreateFromExistingObject.Response](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response) |  |
 | BlockDataviewFilterAdd | [Rpc.BlockDataview.Filter.Add.Request](#anytype-Rpc-BlockDataview-Filter-Add-Request) | [Rpc.BlockDataview.Filter.Add.Response](#anytype-Rpc-BlockDataview-Filter-Add-Response) |  |
 | BlockDataviewFilterRemove | [Rpc.BlockDataview.Filter.Remove.Request](#anytype-Rpc-BlockDataview-Filter-Remove-Request) | [Rpc.BlockDataview.Filter.Remove.Response](#anytype-Rpc-BlockDataview-Filter-Remove-Response) |  |
@@ -4822,68 +4817,6 @@ Makes blocks copy by given ids and paste it to shown place
 
 ### Rpc.BlockDataview.ObjectOrder
 
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-ObjectOrder-Move"></a>
-
-### Rpc.BlockDataview.ObjectOrder.Move
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-ObjectOrder-Move-Request"></a>
-
-### Rpc.BlockDataview.ObjectOrder.Move.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| viewId | [string](#string) |  |  |
-| groupId | [string](#string) |  |  |
-| afterId | [string](#string) |  |  |
-| objectIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-ObjectOrder-Move-Response"></a>
-
-### Rpc.BlockDataview.ObjectOrder.Move.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.ObjectOrder.Move.Response.Error](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-ObjectOrder-Move-Response-Error"></a>
-
-### Rpc.BlockDataview.ObjectOrder.Move.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.ObjectOrder.Move.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Move-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -10297,7 +10230,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | relationKey | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | source | [string](#string) | repeated |  |
-| collectionId | [string](#string) |  |  |
 
 
 
@@ -15094,19 +15026,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockDataview-ObjectOrder-Move-Response-Error-Code"></a>
-
-### Rpc.BlockDataview.ObjectOrder.Move.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code
@@ -17410,22 +17329,6 @@ B. Partial block load
 
 
 
-<a name="anytype-Event-Block-Dataview-IsCollectionSet"></a>
-
-### Event.Block.Dataview.IsCollectionSet
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | dataview block&#39;s id |
-| value | [bool](#bool) |  |  |
-
-
-
-
-
-
 <a name="anytype-Event-Block-Dataview-ObjectOrderUpdate"></a>
 
 ### Event.Block.Dataview.ObjectOrderUpdate
@@ -19374,7 +19277,6 @@ Precondition: user A opened a block
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
 | blockDataviewViewUpdate | [Event.Block.Dataview.ViewUpdate](#anytype-Event-Block-Dataview-ViewUpdate) |  |  |
 | blockDataviewTargetObjectIdSet | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
-| blockDataviewIsCollectionSet | [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
 | blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |
@@ -20457,7 +20359,6 @@ Bookmark is to keep a web-link and to preview a content.
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | TargetObjectId | [string](#string) |  |  |
-| isCollection | [bool](#bool) |  |  |
 
 
 
@@ -21012,6 +20913,31 @@ Used to decode block meta only, without the content itself
 | imageUrl | [string](#string) |  |  |
 | faviconUrl | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Object"></a>
+
+### Object
+
+
+
+
+
+
+
+<a name="anytype-model-Object-ChangePayload"></a>
+
+### Object.ChangePayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 
 
 

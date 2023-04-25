@@ -651,6 +651,12 @@ message ThreadCreateQueueEntry {
     string threadId = 2;
 }
 
+message Object {
+    message ChangePayload {
+        SmartBlockType objectType = 1;
+    }
+}
+
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one
     string name = 2; // name of objectType (can be localized for bundled types)
