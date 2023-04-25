@@ -200,7 +200,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	// TODO: [MR] improve status logic
+	// TODO: [MR] add files to status logic
 	if tp, err := coresb.SmartBlockTypeFromID(id); err == nil && tp == coresb.SmartBlockTypePage {
 		s.status.Watch(id, func() []string {
 			return nil
@@ -1118,43 +1118,6 @@ func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err 
 		err = nil
 	}
 
-	return
-}
-
-func (s *Service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
-	// TODO: [MR] Add SubObjects logic
-	//sbt, _ := coresb.SmartBlockTypeFromID(id)
-	//if sbt == coresb.SmartBlockTypeSubObject {
-	//	workspaceId := s.anytype.PredefinedBlocks().Account
-	//	if value, err = s.cache.Get(ctx, workspaceId); err != nil {
-	//		return
-	//	}
-	//
-	//	var ok bool
-	//	var ob *openedBlock
-	//	if ob, ok = value.(*openedBlock); !ok {
-	//		return nil, fmt.Errorf("invalid id path '%s': '%s' not implement openedBlock", id, workspaceId)
-	//	}
-	//
-	//	var sbOpener SmartblockOpener
-	//	if sbOpener, ok = ob.SmartBlock.(SmartblockOpener); !ok {
-	//		return nil, fmt.Errorf("invalid id path '%s': '%s' not implement SmartblockOpener", id, workspaceId)
-	//	}
-	//
-	//	var sb smartblock.SmartBlock
-	//	if sb, err = sbOpener.Open(id); err != nil {
-	//		return
-	//	}
-	//	return newOpenedBlock(sb), nil
-	//}
-	//
-	//sb, err := s.objectFactory.InitObject(id, &smartblock.InitContext{
-	//	Ctx: ctx,
-	//})
-	//if err != nil {
-	//	return
-	//}
-	//value = newOpenedBlock(sb)
 	return
 }
 

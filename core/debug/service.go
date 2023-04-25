@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -68,13 +67,17 @@ func (d *debug) SpaceSummary() (summary SpaceSummary, err error) {
 	if err != nil {
 		return
 	}
-	summary.SpaceId = spc.Id()
-	for _, t := range spc.DebugAllHeads() {
-		summary.TreeInfos = append(summary.TreeInfos, TreeInfo{
+	var (
+		debugTrees = spc.DebugAllHeads()
+		treeInfos  = make([]TreeInfo, 0, len(debugTrees))
+	)
+	for _, t := range debugTrees {
+		treeInfos = append(treeInfos, TreeInfo{
 			Heads: t.Heads,
 			Id:    t.Id,
 		})
 	}
+	summary.SpaceId = spc.Id()
 	return
 }
 
@@ -83,7 +86,7 @@ func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
 	if err != nil {
 		return
 	}
-	tree, err := spc.BuildHistoryTree(context.Background(), id, commonspace.HistoryTreeOpts{})
+	tree, err := d.block.GetTree(context.Background(), spc.Id(), id)
 	if err != nil {
 		return
 	}
@@ -96,22 +99,18 @@ func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
 }
 
 func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (filename string, err error) {
-	// 0 - get space and tree
-	spc, err := d.clientService.AccountSpace(context.Background())
-	if err != nil {
-		return
-	}
-	tree, err := spc.BuildHistoryTree(context.Background(), blockId, commonspace.HistoryTreeOpts{})
+	// 0 - get first block
+	tree, err := d.block.GetAccountTree(context.Background(), blockId)
 	if err != nil {
 		return
 	}
 
 	// 1 - create ZIP file
 	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
-	exporter := &treeExporter{s: d.store, anonymized: anonymize, id: blockId}
-	zipFilename, err := exporter.Export(path, tree)
+	builder := &treeBuilder{s: d.store, anonymized: anonymize, id: blockId}
+	zipFilename, err := builder.Build(path, tree)
 	if err != nil {
-		logger.Error("build tree error:", err)
+		logger.Fatal("build tree error:", err)
 		return "", err
 	}
 
@@ -127,12 +126,17 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 	// generate a filename just like zip file had
 	maxReplacements := 1
 	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
-	debugInfo, err := tree.Debug(state.ChangeParser{})
+	dump, err := tree.DebugDump(state.ChangeParser{})
 	if err != nil {
 		return
 	}
 
-	err = GraphvizSvg(debugInfo.Graphviz, svgFilename)
+	file, err := os.Create(svgFilename)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	_, err = file.Write([]byte(dump))
 	if err != nil {
 		return
 	}
