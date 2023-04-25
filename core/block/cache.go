@@ -234,7 +234,8 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 	return s.cacheCreatedObject(ctx, space.Id(), initFunc, create)
 }
 
-// DeriveTreeCreatePayload creates payload for the tree of derived object
+// DeriveTreeCreatePayload creates payload for the tree of derived object.
+// Method should be called before DeriveObject to prepare payload
 func (s *Service) DeriveTreeCreatePayload(
 	ctx context.Context, tp coresb.SmartBlockType,
 ) (*treestorage.TreeStorageCreatePayload, error) {
