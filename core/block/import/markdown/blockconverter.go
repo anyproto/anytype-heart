@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/pkg/errors"
 
 	ce "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark"
@@ -48,22 +49,13 @@ func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*Fil
 	return files, allErrors
 }
 
-func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
-	fileInfo := make(map[string]*FileInfo, 0)
+func (m *mdConverter) processFiles(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	ext := filepath.Ext(importPath)
 	if strings.EqualFold(ext, ".zip") {
-		fileInfo = m.processZipFile(importPath, mode, allErrors)
-	} else if strings.EqualFold(ext, ".md") {
-		m.processFile(importPath, fileInfo, allErrors)
+		return m.processZipFile(importPath, mode, allErrors)
 	} else {
-		fileInfo = m.processDirectory(importPath, allErrors)
+		return m.processDirectory(importPath, mode, allErrors)
 	}
-	for _, file := range fileInfo {
-		for _, b := range file.ParsedBlocks {
-			m.processFileBlock(b, fileInfo)
-		}
-	}
-	return fileInfo
 }
 
 func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
@@ -76,6 +68,10 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 	files := make(map[string]*FileInfo, 0)
 	zipName := strings.TrimSuffix(importPath, filepath.Ext(importPath))
 	for _, f := range r.File {
+		if f.FileInfo().IsDir() {
+			fileInfo := m.processDirectory(f.Name, mode, allErrors)
+			mergeFileInfoMaps(files, fileInfo)
+		}
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
@@ -83,6 +79,14 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 		// remove zip root folder if exists
 		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
 
+		if err != nil {
+			allErrors.Add(shortPath, err)
+			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
+				return nil
+			}
+			log.Errorf("failed to read file: %s", err.Error())
+			continue
+		}
 		rc, err := f.Open()
 		if err != nil {
 			allErrors.Add(shortPath, err)
@@ -102,15 +106,29 @@ func (m *mdConverter) processZipFile(importPath, mode string, allErrors ce.Conve
 			log.Errorf("failed to create blocks from file: %s", err.Error())
 		}
 	}
+	for name, file := range files {
+		for _, b := range file.ParsedBlocks {
+			m.processFileBlock(b, files)
+		}
+		m.processBlocks(name, files[name], files)
+	}
 
 	return files
 }
 
-func (m *mdConverter) processDirectory(importPath string, allErrors ce.ConvertError) map[string]*FileInfo {
+func mergeFileInfoMaps(files map[string]*FileInfo, info map[string]*FileInfo) {
+
+}
+
+func (m *mdConverter) processDirectory(importPath, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
 	files := make(map[string]*FileInfo)
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
-			if info != nil && !info.IsDir() {
+			if err != nil {
+				return errors.Wrap(err, "markdown import: processDirectory")
+			}
+
+			if !info.IsDir() {
 				shortPath, err := filepath.Rel(importPath+string(filepath.Separator), path)
 				if err != nil {
 					return fmt.Errorf("failed to get relative path %s", err)
@@ -129,10 +147,11 @@ func (m *mdConverter) processDirectory(importPath string, allErrors ce.ConvertEr
 			return nil
 		},
 	)
-	for _, file := range files {
+	for name, file := range files {
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, files)
 		}
+		m.processBlocks(name, files[name], files)
 	}
 	if err != nil {
 		allErrors.Add(importPath, err)
@@ -167,6 +186,23 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 
 		// todo: bug with multiple markup links in arow when the first is external
 		if file := files[link]; file != nil {
+			if strings.EqualFold(ext, ".csv") {
+				csvDir := strings.TrimSuffix(link, ext)
+				for name, file := range files {
+					// set HasInboundLinks for all CSV-origin md files
+					fileExt := filepath.Ext(name)
+					if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
+						file.HasInboundLinks = true
+					}
+				}
+				if wholeLineLink {
+					m.convertTextToPageLink(block)
+				} else {
+					m.convertTextToPageMention(block)
+				}
+				file.HasInboundLinks = true
+				return
+			}
 			if strings.EqualFold(ext, ".md") {
 				// only convert if this is the only link in the row
 				if wholeLineLink {
@@ -177,22 +213,9 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 			} else {
 				m.convertTextToFile(block)
 			}
-
-			if strings.EqualFold(ext, ".csv") {
-				csvDir := strings.TrimSuffix(link, ext)
-				for name, file := range files {
-					// set HasInboundLinks for all CSV-origin md files
-					fileExt := filepath.Ext(name)
-					if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
-						file.HasInboundLinks = true
-					}
-				}
-			}
 			file.HasInboundLinks = true
 		} else if wholeLineLink {
 			m.convertTextToBookmark(block)
-		} else {
-			log.Debugf("")
 		}
 	}
 }
@@ -208,24 +231,14 @@ func (m *mdConverter) processFileBlock(block *model.Block, files map[string]*Fil
 
 func (m *mdConverter) processLinkBlock(shortPath string, file *FileInfo, files map[string]*FileInfo) {
 	ext := filepath.Ext(shortPath)
+	if !strings.EqualFold(ext, ".csv") {
+		return
+	}
 	dependentFilesDir := strings.TrimSuffix(shortPath, ext)
-	var hasUnlinkedDependentMDFiles bool
 	for targetName, targetFile := range files {
 		fileExt := filepath.Ext(targetName)
 		if filepath.Dir(targetName) == dependentFilesDir && strings.EqualFold(fileExt, ".md") {
 			if !targetFile.HasInboundLinks {
-				if !hasUnlinkedDependentMDFiles {
-					// add Unsorted header
-					file.ParsedBlocks = append(file.ParsedBlocks, &model.Block{
-						Id: bson.NewObjectId().Hex(),
-						Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-							Text:  "Unsorted",
-							Style: model.BlockContentText_Header3,
-						}},
-					})
-					hasUnlinkedDependentMDFiles = true
-				}
-
 				file.ParsedBlocks = append(file.ParsedBlocks, &model.Block{
 					Id: bson.NewObjectId().Hex(),
 					Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
@@ -332,8 +345,6 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		if err != nil {
 			log.Errorf("failed to read blocks: %s", err.Error())
 		}
-		// md file no longer needed
-		m.processBlocks(shortPath, files[shortPath], files)
 		f.Close()
 	} else {
 		// need to store file reader, so we can use it to create local file and upload it
@@ -373,21 +384,4 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 	targetFile.Close()
 	tmpFile.Close()
 	f.Name = newFile
-}
-
-func (m *mdConverter) processFile(fName string, files map[string]*FileInfo, allErrors ce.ConvertError) {
-	shortPath := filepath.Clean(fName)
-
-	f, err := os.Open(fName)
-	if err != nil {
-		allErrors.Add(shortPath, err)
-		log.Errorf("failed to read file %s: %s", shortPath, err.Error())
-		return
-	}
-	files[shortPath] = &FileInfo{}
-	files[shortPath].Source = ce.GetSourceDetail(fName, fName)
-	if err = m.createBlocksFromFile(shortPath, f, files); err != nil {
-		allErrors.Add(shortPath, err)
-		log.Errorf("failed to create block from file %s: %s", shortPath, err.Error())
-	}
 }
