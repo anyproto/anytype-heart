@@ -10,6 +10,7 @@ import (
 
 	cv "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	pbc "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/test"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -278,6 +279,8 @@ func Test_ImportWebNoParser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	i.converters = make(map[string]cv.Converter, 0)
+	otc := cv.NewMockObjectTreeCreator(ctrl)
+	i.converters[web.Name] = web.NewConverter(nil, otc)
 
 	creator := NewMockCreator(ctrl)
 	i.oc = creator
@@ -327,7 +330,8 @@ func Test_ImportWebSuccess(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 
 	otc := cv.NewMockObjectTreeCreator(ctrl)
-	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, func(){}, nil).Times(1)
+	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(test.MockObject{}, func() {}, nil).Times(1)
 	i.converters[web.Name] = web.NewConverter(nil, otc)
 
 	creator := NewMockCreator(ctrl)
@@ -367,7 +371,8 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 	otc := cv.NewMockObjectTreeCreator(ctrl)
-	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, func(){}, nil).Times(1)
+	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(test.MockObject{}, func() {}, nil).Times(1)
 	i.converters[web.Name] = web.NewConverter(nil, otc)
 
 	creator := NewMockCreator(ctrl)

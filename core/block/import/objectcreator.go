@@ -88,16 +88,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		}
 	}()
 
-	err = oc.service.Do(pageID, func(b sb.SmartBlock) error {
-		return b.ResetToVersion(st)
-	})
-	if err != nil {
-		return nil, err
-	}
-	err = oc.service.Do(pageID, func(b sb.SmartBlock) error {
-		return nil
-	})
-
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(pageID)
 	if err != nil {
 		log.With(zap.String("object id", pageID)).Errorf("failed to get workspace id %s: %s", pageID, err.Error())
@@ -105,19 +95,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 
 	if snapshot.Details != nil {
 		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
-	}
-
-	err = oc.service.SetObjectTypes(ctx, pageID, snapshot.ObjectTypes)
-	if err != nil {
-		log.With(zap.String("object id", pageID)).Errorf("failed to set object types %s: %s", pageID, err.Error())
-	}
-
-	if isFavorite {
-		err = oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: pageID, IsFavorite: true})
-		if err != nil {
-			log.With(zap.String("object id", pageID)).Errorf("failed to set isFavorite when importing object %s: %s", pageID, err.Error())
-			err = nil
-		}
 	}
 
 	var details []*pb.RpcObjectSetDetailsDetail
@@ -130,16 +107,36 @@ func (oc *ObjectCreator) Create(ctx *session.Context, snapshot *model.SmartBlock
 		}
 	}
 
-	oc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-		ContextId: pageID,
-		Details:   details,
+	err = oc.service.Do(pageID, func(b sb.SmartBlock) error {
+		err = b.SetObjectTypes(ctx, snapshot.ObjectTypes)
+		if err != nil {
+			log.With(zap.String("object id", pageID)).Errorf("failed to set object types %s: %s", pageID, err.Error())
+		}
+
+		err = b.ResetToVersion(st)
+		if err != nil {
+			log.With(zap.String("object id", pageID)).Errorf("failed to set state %s: %s", pageID, err.Error())
+		}
+		return b.SetDetails(ctx, details, true)
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if isFavorite {
+		err = oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: pageID, IsFavorite: true})
+		if err != nil {
+			log.With(zap.String("object id", pageID)).
+				Errorf("failed to set isFavorite when importing object %s: %s", pageID, err.Error())
+			err = nil
+		}
+	}
 
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
-			if serr := s.Sync(ctx, pageID, bl); serr != nil {
-				log.With(zap.String("object id", pageID)).Errorf("sync: %s", serr)
+			if sErr := s.Sync(ctx, pageID, bl); sErr != nil {
+				log.With(zap.String("object id", pageID)).Errorf("sync: %s", sErr)
 			}
 		}
 		return true

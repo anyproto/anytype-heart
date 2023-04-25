@@ -114,11 +114,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Respo
 					return &converter.Response{Error: allErrors}
 				}
 			}
-			var objID string
-			if obj != nil {
-				objID = obj.Id()
-			}
-			file.PageID = objID
+			file.PageID = obj.Id()
 			release()
 			if len(file.ParsedBlocks) > 0 {
 				if text := file.ParsedBlocks[0].GetText(); text != nil && text.Style == model.BlockContentText_Header1 {

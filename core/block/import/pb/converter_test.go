@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/test"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -33,9 +34,11 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	assert.NoError(t, wr.Close())
 
 	p := &Pb{}
+
 	ctrl := gomock.NewController(t)
 	otc := importer.NewMockObjectTreeCreator(ctrl)
-	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, func() {}, nil).Times(1)
+	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(test.MockObject{}, func() {}, nil).Times(1)
 
 	p.otc = otc
 	res := p.GetSnapshots(&pb.RpcObjectImportRequest{
@@ -129,7 +132,8 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	otc := importer.NewMockObjectTreeCreator(ctrl)
-	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, func() {}, nil).Times(1)
+	otc.EXPECT().CreateTreeObject(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(test.MockObject{}, func() {}, nil).Times(1)
 
 	p.otc = otc
 
