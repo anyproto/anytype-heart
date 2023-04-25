@@ -611,6 +611,14 @@ func (s *Service) SetWorkspaceDashboardId(ctx context.Context, workspaceId strin
 	if ws.Type() != model.SmartBlockType_Workspace {
 		return "", ErrUnexpectedBlockType
 	}
+	if err = ws.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+		{
+			Key:   bundle.RelationKeySpaceDashboardId.String(),
+			Value: pbtypes.String(id),
+		},
+	}, false); err != nil {
+		return
+	}
 	s.spaceDashboardID = id
 	return id, nil
 }
