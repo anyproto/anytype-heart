@@ -1191,6 +1191,10 @@ func (sb *smartBlock) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if !sb.Locker.TryLock() {
 		return false, nil
 	}
+	if sb.IsLocked() {
+		sb.Unlock()
+		return false, nil
+	}
 	return true, sb.closeLocked()
 }
 
