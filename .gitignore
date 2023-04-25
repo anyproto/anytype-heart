@@ -1,4 +1,8 @@
-.idea
+.idea/*
+!.idea/vcs.xml
+!.idea/copyright
+*.iml
+.idea/*.xml
 .project
 .DS_Store
 node_modules
@@ -13,3 +17,5 @@ dist/cli
 grpc-web
 .gradle
 tests/.cache/
+.env
+deps

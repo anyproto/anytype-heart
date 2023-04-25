@@ -27,7 +27,7 @@ setup: setup-go
 setup-go:
 	@echo 'Setting up go modules...'
 	@go mod download
-	@GO111MODULE=off go get github.com/ahmetb/govvv
+	go install github.com/ahmetb/govvv@latest
 	go install golang.org/x/mobile/cmd/gomobile@latest
 	go install golang.org/x/mobile/cmd/gobind@latest
 

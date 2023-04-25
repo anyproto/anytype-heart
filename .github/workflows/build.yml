@@ -18,7 +18,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.19.7
+          go-version: 1.19.8
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -65,7 +65,6 @@ jobs:
       - name: Go mod download
         run: |
           go mod download
-          go get golang.org/x/mobile/cmd/...@76c259c465ba39f84de7e2751a666612ddca556b
       - name: install protoc
         run: |
           make setup-protoc
@@ -77,9 +76,9 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
-          CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           ls -lha .
       - name: Make JS protos
         run: |
@@ -143,7 +142,7 @@ jobs:
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile ios lib
         run: |
-          gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
+          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf json
           mv ios_framework_${VERSION}.tar.gz .release/
@@ -165,7 +164,7 @@ jobs:
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile android lib
         run: |
-          gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
+          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core || true
           sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
@@ -189,7 +188,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.19.7
+          go-version: 1.19.8
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -262,8 +261,8 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          CXX=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-g++ CC=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
-          CXX=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++ CC=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CXX=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-g++ CC=$HOME/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc gox -cgo -osarch="linux/amd64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
+          CXX=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-g++ CC=$HOME/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc gox -cgo -osarch="linux/arm64" -ldflags="$FLAGS -linkmode external -extldflags=-static" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
           make protos-server
       - name: Make JS protos
         run: |
