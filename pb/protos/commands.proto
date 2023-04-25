@@ -1874,6 +1874,7 @@ message Rpc {
                         INTERNAL_ERROR = 1;
                         UNKNOWN_ERROR = 2;
                         BAD_INPUT = 3;
+                        ACCOUNT_IS_NOT_RUNNING = 4;
                     }
                 }
             }
