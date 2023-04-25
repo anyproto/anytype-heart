@@ -4,15 +4,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/textileio/go-threads/core/thread"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -21,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/object"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -35,8 +33,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
+
+	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -59,7 +59,7 @@ type BuiltinObjects interface {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 type builtinObjects struct {
@@ -115,18 +115,23 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
 		sbt, err := smartblock.SmartBlockTypeFromID(id)
 		if err != nil {
-			return err
+			sbt, err = smartBlockTypeFromThreadID(id)
+			if err != nil {
+				return err
+			}
 		}
-		if sbt == smartblock.SmartBlockTypeSubObject {
-			// preserve original id for subobjects, it makes no sense to replace them and also it breaks the grouping
-			b.idsMap[id] = id
-			continue
-		}
-		tid, err := threads.ThreadCreateID(thread.AccessControlled, sbt)
+		// create object
+		obj, release, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
+			return &sb.InitContext{
+				Ctx: ctx,
+			}
+		})
 		if err != nil {
 			return err
 		}
-		b.idsMap[id] = tid.String()
+		newId := obj.Id()
+		release()
+		b.idsMap[id] = newId
 	}
 
 	for _, zf := range zr.File {
@@ -170,16 +175,13 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	}
 	m.Fields = &types.Struct{Fields: f}
 	f["analyticsContext"] = pbtypes.String(analyticsContext)
-	if f["analyticsOriginalId"] == nil {
-		// in case we already have analyticsOriginalId do not update it
-		f["analyticsOriginalId"] = pbtypes.String(oldId)
-	}
+	f["analyticsOriginalId"] = pbtypes.String(oldId)
 
 	st.Set(simple.New(m))
 	rels := relationutils.MigrateRelationModels(st.OldExtraRelations())
 	st.AddRelationLinks(rels...)
 
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String(), bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyLinks.String())
+	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
@@ -189,20 +191,6 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 
 	st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch a := bl.(type) {
-		case dataview.Block:
-			target := a.Model().GetDataview().TargetObjectId
-			if target == "" {
-				return true
-			}
-			newTarget := b.idsMap[target]
-			if newTarget == "" {
-				// maybe we should panic here?
-				log.With("object", st.RootId()).Errorf("cant find target id for dataview: %s", a.Model().GetDataview().TargetObjectId)
-				return true
-			}
-
-			a.Model().GetDataview().TargetObjectId = newTarget
-			st.Set(simple.New(a.Model()))
 		case link.Block:
 			newTarget := b.idsMap[a.Model().GetLink().TargetBlockId]
 			if newTarget == "" {
@@ -247,7 +235,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 			log.With("object", oldId).Errorf("failed to find relation %s: %s", k, err.Error())
 			continue
 		}
-		if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
+		if rel.Format != model.RelationFormat_object {
 			continue
 		}
 
@@ -266,13 +254,15 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 		}
 		st.SetDetail(k, pbtypes.StringList(vals))
 	}
-
-	sbt, err := smartblock.SmartBlockTypeFromID(newId)
+	start := time.Now()
+	err = b.service.Do(newId, func(b sb.SmartBlock) error {
+		return b.Apply(st)
+	})
 	if err != nil {
 		return err
 	}
+	log.With("timeMs", time.Now().Sub(start).Milliseconds()).Info("creating debug obj")
 
-	_, _, err = b.objectCreator.CreateSmartBlockFromState(ctx, sbt, nil, st)
 	if isFavorite {
 		err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
 		if err != nil {
@@ -310,4 +300,43 @@ func (b *builtinObjects) Close(ctx context.Context) (err error) {
 		b.cancel()
 	}
 	return
+}
+
+func smartBlockTypeFromThreadID(id string) (coresb.SmartBlockType, error) {
+	tid, err := thread.Decode(id)
+	if err != nil {
+		return coresb.SmartBlockTypePage, err
+	}
+
+	rawid := tid.KeyString()
+	// skip version
+	_, n := uvarint(rawid)
+	// skip variant
+	_, n2 := uvarint(rawid[n:])
+	blockType, _ := uvarint(rawid[n+n2:])
+
+	// checks in order to detect invalid sb type
+	if err := coresb.SmartBlockType(blockType).Valid(); err != nil {
+		return 0, err
+	}
+
+	return coresb.SmartBlockType(blockType), nil
+}
+
+func uvarint(buf string) (uint64, int) {
+	var x uint64
+	var s uint
+	// we have a binary string so we can't use a range loope
+	for i := 0; i < len(buf); i++ {
+		b := buf[i]
+		if b < 0x80 {
+			if i > 9 || i == 9 && b > 1 {
+				return 0, -(i + 1) // overflow
+			}
+			return x | uint64(b)<<s, i + 1
+		}
+		x |= uint64(b&0x7f) << s
+		s += 7
+	}
+	return 0, 0
 }

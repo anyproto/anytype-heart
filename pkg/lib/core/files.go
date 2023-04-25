@@ -13,6 +13,8 @@ import (
 var ErrFileNotFound = fmt.Errorf("file not found")
 
 func (a *Anytype) FileGetKeys(hash string) (*files.FileKeys, error) {
+	// TODO: [MR] Fix files
+	return nil, fmt.Errorf("files not working now")
 	return a.files.FileGetKeys(hash)
 }
 

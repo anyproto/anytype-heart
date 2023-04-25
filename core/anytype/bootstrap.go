@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/space/storage"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"os"
 
@@ -151,7 +152,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(doc.New()).
 		Register(subscription.New()).
-		//Register(builtinobjects.New()).
+		Register(builtinobjects.New()).
 		Register(bookmark.New()).
 		Register(session.New()).
 		Register(importer.New()).
