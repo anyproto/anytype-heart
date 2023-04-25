@@ -10,21 +10,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 func TestTree_Add(t *testing.T) {
 	t.Run("add first el", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		assert.Equal(t, Rebuild, tr.Add(newSnapshot("root", "", nil)))
 		assert.Equal(t, tr.root.Id, "root")
 		assert.Equal(t, []string{"root"}, tr.Heads())
 		assert.Equal(t, []string{"root"}, tr.MetaHeads())
 	})
 	t.Run("linear add", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		assert.Equal(t, Rebuild, tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("one", "root", "root", "root", true),
@@ -47,7 +48,7 @@ func TestTree_Add(t *testing.T) {
 		assert.Equal(t, []string{"one"}, tr.MetaHeads())
 	})
 	t.Run("branch", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		assert.Equal(t, Rebuild, tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("1", "root", "root", "root", false),
@@ -66,7 +67,7 @@ func TestTree_Add(t *testing.T) {
 		assert.Equal(t, []string{"1.2", "2"}, tr.MetaHeads())
 	})
 	t.Run("branch union", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		c3 := newDetailsChange("3", "root", "", "", true)
 		c3.PreviousMetaIds = []string{"2", "1.3"}
 		c3.PreviousIds = []string{"2", "1.3"}
@@ -86,7 +87,7 @@ func TestTree_Add(t *testing.T) {
 		assert.Equal(t, []string{"3"}, tr.MetaHeads())
 	})
 	t.Run("big set", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		tr.Add(newSnapshot("root", "", nil))
 		var changes []*Change
 		for i := 0; i < 10000; i++ {
@@ -105,7 +106,7 @@ func TestTree_Add(t *testing.T) {
 }
 
 func TestTree_Hash(t *testing.T) {
-	tr := new(Tree)
+	tr := NewTree(context.Background())
 	tr.Add(newSnapshot("root", "", nil))
 	hash1 := tr.Hash()
 	assert.Equal(t, tr.Hash(), hash1)
@@ -134,7 +135,7 @@ func TestTree_AddFuzzy(t *testing.T) {
 	}
 	var phash string
 	for i := 0; i < 100; i++ {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		tr.Add(newSnapshot("root", "", nil))
 		tr.Add(getChanges()...)
 		assert.Len(t, tr.unAttached, 0)
@@ -151,7 +152,7 @@ func TestTree_AddFuzzy(t *testing.T) {
 
 func TestTree_Iterate(t *testing.T) {
 	t.Run("complex tree", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		tr.Add(
 			newSnapshot("0", "", nil),
 			newChange("1", "0", "0"),
@@ -179,7 +180,7 @@ func TestTree_Iterate(t *testing.T) {
 }
 
 func TestTree_IterateBranching(t *testing.T) {
-	tr := new(Tree)
+	tr := NewTree(context.Background())
 	tr.Add(
 		newSnapshot("0", "", nil),
 		newChange("1", "0", "0"),
@@ -222,7 +223,7 @@ func BenchmarkTree_Add(b *testing.B) {
 		c3,
 	}
 	b.Run("by one", func(b *testing.B) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		tr.Add(newSnapshot("root", "", nil))
 		tr.Add(changes...)
 		for i := 0; i < b.N; i++ {
@@ -231,14 +232,14 @@ func BenchmarkTree_Add(b *testing.B) {
 	})
 	b.Run("add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			tr := new(Tree)
+			tr := NewTree(context.Background())
 			tr.Add(newSnapshot("root", "", nil))
 			tr.Add(changes...)
 		}
 	})
 	b.Run("add fast", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			tr := new(Tree)
+			tr := NewTree(context.Background())
 			tr.AddFast(newSnapshot("root", "", nil))
 			tr.AddFast(changes...)
 		}
@@ -277,7 +278,7 @@ func BenchmarkTree_Iterate(b *testing.B) {
 
 func TestTree_LastSnapshotId(t *testing.T) {
 	t.Run("trivial", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		assert.Equal(t, Rebuild, tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("one", "root", "root", "root", true),
@@ -288,11 +289,11 @@ func TestTree_LastSnapshotId(t *testing.T) {
 		assert.Equal(t, "three", tr.LastSnapshotId(context.Background()))
 	})
 	t.Run("empty", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		assert.Equal(t, "", tr.LastSnapshotId(context.Background()))
 	})
 	t.Run("builder", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("one", "root", "root", "root", true),
@@ -303,7 +304,7 @@ func TestTree_LastSnapshotId(t *testing.T) {
 		assert.Equal(t, "root", tr.LastSnapshotId(context.Background()))
 	})
 	t.Run("builder with split", func(t *testing.T) {
-		tr := new(Tree)
+		tr := NewTree(context.Background())
 		tr.Add(
 			newSnapshot("b", "", nil),
 			newSnapshot("root", "b", nil, "b"),

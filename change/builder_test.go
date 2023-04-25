@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 var (
@@ -359,7 +360,7 @@ func TestBuildTree_Issue639(t *testing.T) {
 		changes = append(changes, c)
 	}
 
-	tr := new(Tree)
+	tr := NewTree(context.Background())
 	tr.Add(changes[len(changes)-1])
 	tr.AddFast(changes...)
 	//t.Log(tr.Graphviz())

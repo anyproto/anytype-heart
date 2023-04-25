@@ -41,11 +41,12 @@ func (i *iterator) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	i.f = f
 
 	for len(i.queue) > 0 {
-		select {
-		case <-i.ctx.Done():
-			return
-		default:
-
+		if i.ctx != nil {
+			select {
+			case <-i.ctx.Done():
+				return
+			default:
+			}
 		}
 		c := i.queue[0]
 		i.queue = i.queue[1:]

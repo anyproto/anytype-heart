@@ -338,7 +338,6 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 	defer cancel()
 
 	ctx = context.WithValue(ctx, core.ThreadLoadSkipMissingRecords, true)
-	t, err := smartblock.SmartBlockTypeFromID(docId)
 	b, release, err := e.bs.PickBlockOffload(ctx, docId)
 	if err != nil {
 		log.With("threadId", docId).Errorf("can't export doc: %v", err)
