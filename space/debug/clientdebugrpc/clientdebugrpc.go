@@ -68,7 +68,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 		Wrapper: func(handler drpc.Handler) drpc.Handler {
 			return handler
 		},
-		Converter: s.transport.BasicListener,
 	}
 	err = s.BaseDrpcServer.Run(ctx, params)
 	if err != nil {
