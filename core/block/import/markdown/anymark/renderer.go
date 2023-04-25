@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/yuin/goldmark/ast"
+	ext "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 
@@ -54,6 +55,7 @@ func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	reg.Register(ast.KindRawHTML, r.renderRawHTML)
 	reg.Register(ast.KindText, r.renderText)
 	reg.Register(ast.KindString, r.renderString)
+	reg.Register(ext.KindStrikethrough, r.renderStrikethrough)
 }
 
 func (r *Renderer) writeLines(source []byte, n ast.Node) {
@@ -413,5 +415,19 @@ func (r *Renderer) renderString(_ util.BufWriter, source []byte, node ast.Node, 
 
 	r.AddTextToBuffer(string(n.Value))
 
+	return ast.WalkContinue, nil
+}
+
+func (r *Renderer) renderStrikethrough(_ util.BufWriter, _ []byte, _ ast.Node, entering bool) (ast.WalkStatus, error) {
+	tag := model.BlockContentTextMark_Strikethrough
+	if entering {
+		r.SetMarkStart()
+	} else {
+		to := int32(text.UTF16RuneCountString(r.GetText()))
+		r.AddMark(model.BlockContentTextMark{
+			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
+			Type:  tag,
+		})
+	}
 	return ast.WalkContinue, nil
 }

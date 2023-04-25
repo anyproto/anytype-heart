@@ -32,7 +32,7 @@ func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
 	}
 	gm := goldmark.New(goldmark.WithRenderer(
 		renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...)),
-	), goldmark.WithExtensions(extension.Table))
+	), goldmark.WithExtensions(extension.Table), goldmark.WithExtensions(extension.Strikethrough))
 	return gm.Convert(source, &bytes.Buffer{})
 }
 
