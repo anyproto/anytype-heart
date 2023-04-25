@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -28,6 +29,7 @@ func NewTemplate(
 	bookmarkService bookmark.BookmarkService,
 	relationService relation2.Service,
 	tempDirProvider core.TempDirProvider,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *Template {
 	return &Template{Page: NewPage(
 		objectStore,
@@ -37,6 +39,7 @@ func NewTemplate(
 		bookmarkService,
 		relationService,
 		tempDirProvider,
+		sbtProvider,
 	)}
 }
 

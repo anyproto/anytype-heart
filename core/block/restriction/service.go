@@ -2,52 +2,22 @@ package restriction
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
 const CName = "restriction"
 
-func New() Service {
-	return new(service)
-}
-
 var ErrRestricted = errors.New("restricted")
 
 var log = logging.Logger("anytype-mw-restrictions")
-
-type simpleObject struct {
-	id string
-	tp model.SmartBlockType
-}
-
-func newSimpleObject(id string) (Object, error) {
-	tp, err := smartblock.SmartBlockTypeFromID(id)
-	if err != nil {
-		return nil, err
-	}
-	return &simpleObject{
-		id: id,
-		tp: tp.ToProto(),
-	}, nil
-}
-
-func (s *simpleObject) Id() string {
-	return s.id
-}
-
-func (s *simpleObject) Type() model.SmartBlockType {
-	return s.tp
-}
-
-type Object interface {
-	Id() string
-	Type() model.SmartBlockType
-}
 
 type Service interface {
 	ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions)
@@ -58,7 +28,14 @@ type Service interface {
 }
 
 type service struct {
-	anytype core.Service
+	anytype     core.Service
+	sbtProvider typeprovider.SmartBlockTypeProvider
+}
+
+func New(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
+	return &service{
+		sbtProvider: sbtProvider,
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -89,11 +66,40 @@ func (s *service) CheckRestrictions(id string, cr ...model.RestrictionsObjectRes
 }
 
 func (s *service) RestrictionsById(id string) (r Restrictions, err error) {
-	obj, err := newSimpleObject(id)
+	sbType, err := s.sbtProvider.Type(id)
+	if err != nil {
+		return Restrictions{}, fmt.Errorf("get smartblock type: %w", err)
+	}
+	obj, err := newSimpleObject(id, sbType)
 	if err != nil {
 		return Restrictions{}, err
 	}
 	return s.RestrictionsByObj(obj), nil
+}
+
+type simpleObject struct {
+	id string
+	tp model.SmartBlockType
+}
+
+func newSimpleObject(id string, sbType smartblock.SmartBlockType) (Object, error) {
+	return &simpleObject{
+		id: id,
+		tp: sbType.ToProto(),
+	}, nil
+}
+
+func (s *simpleObject) Id() string {
+	return s.id
+}
+
+func (s *simpleObject) Type() model.SmartBlockType {
+	return s.tp
+}
+
+type Object interface {
+	Id() string
+	Type() model.SmartBlockType
 }
 
 type Restrictions struct {

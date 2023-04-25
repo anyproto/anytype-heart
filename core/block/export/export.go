@@ -31,6 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
 )
@@ -38,10 +39,6 @@ import (
 const CName = "export"
 
 var log = logging.Logger("anytype-mw-export")
-
-func New() Export {
-	return new(export)
-}
 
 type Export interface {
 	Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
@@ -52,6 +49,13 @@ type export struct {
 	bs          *block.Service
 	objectStore objectstore.ObjectStore
 	a           core.Service
+	sbtProvider typeprovider.SmartBlockTypeProvider
+}
+
+func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
+	return &export{
+		sbtProvider: sbtProvider,
+	}
 }
 
 func (e *export) Init(a *app.App) (err error) {
@@ -102,14 +106,14 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		if req.Format == pb.RpcObjectListExport_SVG {
 			format = dot.ExportFormatSVG
 		}
-		mc := dot.NewMultiConverter(format)
+		mc := dot.NewMultiConverter(format, e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
-		mc := graphjson.NewMultiConverter()
+		mc := graphjson.NewMultiConverter(e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
@@ -180,12 +184,12 @@ func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[st
 		}
 		for _, link := range links {
 			if _, exists := docs[link]; !exists {
-				sbt, err2 := smartblock.SmartBlockTypeFromID(link)
+				sbt, err2 := e.sbtProvider.Type(link)
 				if err2 != nil {
 					log.Errorf("failed to get smartblocktype of id %s", link)
 					continue
 				}
-				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
+				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet && sbt != smartblock.SmartBlockTypeCollection {
 					continue
 				}
 				rec, _ := e.objectStore.QueryById(links)

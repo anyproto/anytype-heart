@@ -25,6 +25,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -73,12 +74,14 @@ func NewDataview(
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) Dataview {
 	dv := &sdataview{
 		SmartBlock:      sb,
 		anytype:         anytype,
 		objectStore:     objectStore,
 		relationService: relationService,
+		sbtProvider:     sbtProvider,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv
@@ -89,6 +92,7 @@ type sdataview struct {
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
 	relationService relation2.Service
+	sbtProvider     typeprovider.SmartBlockTypeProvider
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
@@ -115,7 +119,7 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := DataviewBlockBySource(d.objectStore, source)
+	dvContent, _, err := DataviewBlockBySource(d.sbtProvider, d.objectStore, source)
 	if err != nil {
 		return
 	}
@@ -314,7 +318,7 @@ func (d *sdataview) CreateView(ctx *session.Context, id string,
 		}}
 	}
 
-	sbType, err := smartblock2.SmartBlockTypeFromID(d.Id())
+	sbType, err := d.sbtProvider.Type(d.Id())
 	if err != nil {
 		return nil, err
 	}
@@ -357,11 +361,11 @@ func (d *sdataview) UpdateViewObjectOrder(ctx *session.Context, blockId string, 
 	return d.Apply(st)
 }
 
-func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
+func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
 	var hasRelations, hasType bool
 
 	for _, source := range sources {
-		sbt, err := smartblock2.SmartBlockTypeFromID(source)
+		sbt, err := sbtProvider.Type(source)
 		if err != nil {
 			return nil, err
 		}
@@ -433,7 +437,7 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 }
 
 func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
-	return SchemaBySources(source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
+	return SchemaBySources(d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -565,8 +569,8 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
-	if schema, err = SchemaBySources(source, store, nil); err != nil {
+func DataviewBlockBySource(sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
+	if schema, err = SchemaBySources(sbtProvider, source, store, nil); err != nil {
 		return
 	}
 

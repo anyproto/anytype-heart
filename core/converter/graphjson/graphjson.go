@@ -2,17 +2,24 @@ package graphjson
 
 import (
 	"encoding/json"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
-func NewMultiConverter() converter.MultiConverter {
-	return &graphjson{linksByNode: map[string][]*Edge{}, nodes: map[string]*Node{}}
+func NewMultiConverter(sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
+	return &graphjson{
+		linksByNode: map[string][]*Edge{},
+		nodes:       map[string]*Node{},
+		sbtProvider: sbtProvider,
+	}
 }
 
 type edgeType int
@@ -50,6 +57,7 @@ type graphjson struct {
 	imageHashes []string
 	nodes       map[string]*Node
 	linksByNode map[string][]*Edge
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func (g *graphjson) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
@@ -89,7 +97,7 @@ func (g *graphjson) Add(st *state.State) error {
 		objIds := pbtypes.GetStringList(st.Details(), rel.Key)
 
 		for _, objId := range objIds {
-			t, err := smartblock.SmartBlockTypeFromID(objId)
+			t, err := g.sbtProvider.Type(objId)
 			if err != nil {
 				continue
 			}
@@ -111,7 +119,7 @@ func (g *graphjson) Add(st *state.State) error {
 	}
 
 	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
-		t, err := smartblock.SmartBlockTypeFromID(depID)
+		t, err := g.sbtProvider.Type(depID)
 		if err != nil {
 			continue
 		}

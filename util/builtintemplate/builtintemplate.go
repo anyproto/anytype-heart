@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"io/ioutil"
 
 	"github.com/anytypeio/any-sync/app"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
@@ -23,6 +23,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+
+	_ "embed"
 )
 
 const CName = "builtintemplate"
@@ -119,10 +121,8 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	if err = b.validate(st.Copy()); err != nil {
 		return
 	}
-	log.With("id", id).Info("registering template")
-	b.source.RegisterStaticSource(id, func() source.Source {
-		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil)
-	})
+
+	b.source.RegisterStaticSource(id, b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil))
 	return
 }
 

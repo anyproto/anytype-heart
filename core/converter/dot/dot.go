@@ -6,28 +6,36 @@ package dot
 import (
 	"bytes"
 	"fmt"
-	"github.com/gogo/protobuf/types"
 	"io/ioutil"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewMultiConverter(format graphviz.Format) converter.MultiConverter {
+func NewMultiConverter(format graphviz.Format, sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
 	g := graphviz.New()
 	graph, err := g.Graph()
 	if err != nil {
 		return nil
 	}
 
-	return &dot{graph: graph, graphviz: g, exportFormat: format, linksByNode: map[string][]linkInfo{}, nodes: map[string]*cgraph.Node{}}
+	return &dot{
+		graph:        graph,
+		graphviz:     g,
+		exportFormat: format,
+		linksByNode:  map[string][]linkInfo{},
+		nodes:        map[string]*cgraph.Node{},
+		sbtProvider:  sbtProvider,
+	}
 }
 
 const (
@@ -58,6 +66,7 @@ type dot struct {
 	exportFormat graphviz.Format
 	nodes        map[string]*cgraph.Node
 	linksByNode  map[string][]linkInfo
+	sbtProvider  typeprovider.SmartBlockTypeProvider
 }
 
 func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
@@ -84,7 +93,7 @@ func (d *dot) Add(st *state.State) error {
 	image := pbtypes.GetString(st.Details(), bundle.RelationKeyIconImage.String())
 	if image != "" {
 		n.Set("iconImage", image)
-		//n.SetImage(image+".jpg")
+		// n.SetImage(image+".jpg")
 	}
 
 	iconEmoji := pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String())
@@ -113,7 +122,7 @@ func (d *dot) Add(st *state.State) error {
 		objIds := pbtypes.GetStringList(st.Details(), rel.Key)
 
 		for _, objId := range objIds {
-			t, err := smartblock.SmartBlockTypeFromID(objId)
+			t, err := d.sbtProvider.Type(objId)
 			if err != nil {
 				continue
 			}
@@ -135,7 +144,7 @@ func (d *dot) Add(st *state.State) error {
 	}
 
 	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
-		t, err := smartblock.SmartBlockTypeFromID(depID)
+		t, err := d.sbtProvider.Type(depID)
 		if err != nil {
 			continue
 		}

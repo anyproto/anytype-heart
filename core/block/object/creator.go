@@ -25,6 +25,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
@@ -44,6 +45,7 @@ type Creator struct {
 	bookmark          bookmark.Service
 	objectFactory     *editor.ObjectFactory
 	app               *app.App
+	sbtProvider       typeprovider.SmartBlockTypeProvider
 
 	// TODO: remove it?
 	anytype core.Service
@@ -53,8 +55,10 @@ type CollectionService interface {
 	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 }
 
-func NewCreator() *Creator {
-	return &Creator{}
+func NewCreator(sbtProvider typeprovider.SmartBlockTypeProvider) *Creator {
+	return &Creator{
+		sbtProvider: sbtProvider,
+	}
 }
 
 func (c *Creator) Init(a *app.App) (err error) {
@@ -201,7 +205,7 @@ func (c *Creator) CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, ne
 	if len(source) == 0 {
 		source = []string{bundle.TypeKeyPage.URL()}
 	}
-	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.objectStore, source); err != nil {
+	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.sbtProvider, c.objectStore, source); err != nil {
 		return
 	}
 

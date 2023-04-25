@@ -65,8 +65,12 @@ func (s *Service) TemplateClone(id string) (templateID string, err error) {
 }
 
 func (s *Service) ObjectDuplicate(id string) (objectID string, err error) {
-	var st *state.State
+	var (
+		st  *state.State
+		sbt coresb.SmartBlockType
+	)
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		sbt = coresb.SmartBlockType(b.Type())
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
 		}
@@ -74,11 +78,6 @@ func (s *Service) ObjectDuplicate(id string) (objectID string, err error) {
 		st.SetLocalDetails(nil)
 		return nil
 	}); err != nil {
-		return
-	}
-
-	sbt, err := coresb.SmartBlockTypeFromID(id)
-	if err != nil {
 		return
 	}
 

@@ -31,6 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -190,8 +191,10 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
-func New() ObjectStore {
-	return &dsObjectStore{}
+func New(sbtProvider typeprovider.SmartBlockTypeProvider) ObjectStore {
+	return &dsObjectStore{
+		sbtProvider: sbtProvider,
+	}
 }
 
 func NewWithLocalstore(ds noctxds.DSTxnBatching) ObjectStore {
@@ -292,17 +295,18 @@ type relationObjectType struct {
 
 var ErrNotAnObject = fmt.Errorf("not an object")
 
-var filterNotSystemObjects = &filterSmartblockTypes{
-	smartBlockTypes: []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeArchive,
-		smartblock.SmartBlockTypeHome,
-	},
-	not: true,
-}
-
 type filterSmartblockTypes struct {
 	smartBlockTypes []smartblock.SmartBlockType
 	not             bool
+	sbtProvider     typeprovider.SmartBlockTypeProvider
+}
+
+func newSmartblockTypesFilter(sbtProvider typeprovider.SmartBlockTypeProvider, not bool, smartBlockTypes []smartblock.SmartBlockType) *filterSmartblockTypes {
+	return &filterSmartblockTypes{
+		smartBlockTypes: smartBlockTypes,
+		not:             not,
+		sbtProvider:     sbtProvider,
+	}
 }
 
 type RelationWithObjectType struct {
@@ -314,7 +318,7 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 	keyParts := strings.Split(e.Key, "/")
 	id := keyParts[len(keyParts)-1]
 
-	t, err := smartblock.SmartBlockTypeFromID(id)
+	t, err := m.sbtProvider.Type(id)
 	if err != nil {
 		log.Errorf("failed to detect smartblock type for %s: %s", id, err.Error())
 		return false
@@ -343,6 +347,8 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
@@ -568,19 +574,19 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 }
 
 func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
-	var filter filterSmartblockTypes
+	var sbTypes []smartblock.SmartBlockType
 	for _, otUrl := range ots {
 		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
 			for _, sbt := range ot.Types {
-				filter.smartBlockTypes = append(filter.smartBlockTypes, smartblock.SmartBlockType(sbt))
+				sbTypes = append(sbTypes, smartblock.SmartBlockType(sbt))
 			}
 			continue
 		}
-		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
-			filter.smartBlockTypes = append(filter.smartBlockTypes, sbt)
+		if sbt, err := m.sbtProvider.Type(otUrl); err == nil {
+			sbTypes = append(sbTypes, sbt)
 		}
 	}
-	return &filter
+	return newSmartblockTypesFilter(m.sbtProvider, false, sbTypes)
 }
 
 func (m *dsObjectStore) QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
@@ -668,6 +674,11 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if !q.WithSystemObjects {
+		filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
+			smartblock.SmartBlockTypeArchive,
+			smartblock.SmartBlockTypeHome,
+		})
+
 		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 	}
 
@@ -790,7 +801,7 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{&filterSmartblockTypes{smartBlockTypes: objectTypes}}, dsq.Filters...)
+		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, objectTypes)}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
@@ -854,7 +865,7 @@ func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartbloc
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{&filterSmartblockTypes{smartBlockTypes: objectTypes}}, dsq.Filters...)
+		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, objectTypes)}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
@@ -904,7 +915,7 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	defer txn.Discard()
 
 	for _, id := range ids {
-		if sbt, err := smartblock.SmartBlockTypeFromID(id); err == nil {
+		if sbt, err := m.sbtProvider.Type(id); err == nil {
 			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
 				details, err := m.sourceService.GetDetailsFromIdBasedSource(id)
 				if err != nil {
@@ -1753,7 +1764,7 @@ func (m *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string
 }
 
 func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
-	t, err := smartblock.SmartBlockTypeFromID(id)
+	t, err := m.sbtProvider.Type(id)
 	if err != nil {
 		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
 		return fmt.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
@@ -2021,7 +2032,7 @@ func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
 }
 
 func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
-	sbt, err := smartblock.SmartBlockTypeFromID(id)
+	sbt, err := m.sbtProvider.Type(id)
 	if err != nil {
 		log.With("thread", id).Errorf("failed to extract smartblock type %s", id)
 		return nil, ErrNotAnObject

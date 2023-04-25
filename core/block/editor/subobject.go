@@ -21,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -43,6 +44,7 @@ func NewSubObject(
 	relationService relation2.Service,
 	forcedObjectType bundle.TypeKey,
 	tempDirProvider core.TempDirProvider,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *SubObject {
 	sb := smartblock.New()
 	return &SubObject{
@@ -69,6 +71,7 @@ func NewSubObject(
 			anytype,
 			objectStore,
 			relationService,
+			sbtProvider,
 		),
 		forcedObjectType: forcedObjectType,
 	}

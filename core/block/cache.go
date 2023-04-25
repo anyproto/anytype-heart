@@ -93,7 +93,8 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 		break
 	}
 
-	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	// TODO Move to source service. IT WILL NOT WORK FOR SETS/COLLECTIONS
+	sbt, _ := s.sbtProvider.Type(id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		return s.initSubObject(ctx, id)
@@ -133,7 +134,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartbl
 		return
 	}
 	return v.(smartblock.SmartBlock), func() {
-		sbt, _ := coresb.SmartBlockTypeFromID(id)
+		sbt, _ := s.sbtProvider.Type(id)
 		// TODO: [MR] check if this is correct
 		if sbt == coresb.SmartBlockTypeSubObject {
 			s.cache.Release(s.anytype.PredefinedBlocks().Account)
@@ -187,7 +188,8 @@ func (s *Service) DeleteObject(id string) (err error) {
 		return
 	}
 
-	sbt, _ := coresb.SmartBlockTypeFromID(id)
+	// TODO Move to source service ?
+	sbt, _ := s.sbtProvider.Type(id)
 	switch sbt {
 	case coresb.SmartBlockTypePage:
 		var space commonspace.Space

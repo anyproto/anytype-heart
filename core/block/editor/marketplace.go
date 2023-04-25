@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -25,9 +26,10 @@ func NewMarketplaceType(
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *MarketplaceType {
 	return &MarketplaceType{
-		Set: NewSet(anytype, objectStore, relationService),
+		Set: NewSet(anytype, objectStore, relationService, sbtProvider),
 	}
 }
 
@@ -113,9 +115,10 @@ func NewMarketplaceRelation(
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *MarketplaceRelation {
 	return &MarketplaceRelation{
-		Set: NewSet(anytype, objectStore, relationService),
+		Set: NewSet(anytype, objectStore, relationService, sbtProvider),
 	}
 }
 
@@ -183,9 +186,10 @@ func NewMarketplaceTemplate(
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *MarketplaceTemplate {
 	return &MarketplaceTemplate{
-		Set: NewSet(anytype, objectStore, relationService),
+		Set: NewSet(anytype, objectStore, relationService, sbtProvider),
 	}
 }
 

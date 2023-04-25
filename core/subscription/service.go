@@ -24,6 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -34,9 +35,10 @@ var log = logging.Logger("anytype-mw-subscription")
 
 var batchTime = 50 * time.Millisecond
 
-func New(collectionService CollectionService) Service {
+func New(collectionService CollectionService, sbtProvider typeprovider.SmartBlockTypeProvider) Service {
 	return &service{
 		collectionService: collectionService,
+		sbtProvider:       sbtProvider,
 	}
 }
 
@@ -74,6 +76,7 @@ type service struct {
 	objectStore       objectstore.ObjectStore
 	kanban            kanban.Service
 	collectionService CollectionService
+	sbtProvider       typeprovider.SmartBlockTypeProvider
 	sendEvent         func(e *pb.Event)
 
 	m      sync.Mutex
@@ -457,7 +460,7 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 	var objTypeIds, relTypeKeys []string
 
 	for _, source := range sources {
-		sbt, err := smartblock.SmartBlockTypeFromID(source)
+		sbt, err := s.sbtProvider.Type(source)
 		if err != nil {
 			return nil, err
 		}

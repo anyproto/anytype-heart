@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -42,6 +43,7 @@ func NewPage(
 	bookmarkService bookmark.BookmarkService,
 	relationService relation2.Service,
 	tempDirProvider core.TempDirProvider,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *Page {
 	sb := smartblock.New()
 	f := file.NewFile(
@@ -76,6 +78,7 @@ func NewPage(
 			anytype,
 			objectStore,
 			relationService,
+			sbtProvider,
 		),
 		TableEditor: table.NewEditor(sb),
 

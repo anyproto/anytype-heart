@@ -6,12 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/treegetter"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-
-	"github.com/anytypeio/any-sync/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -27,6 +25,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -70,6 +69,8 @@ func NewWorkspace(
 	sourceService source.Service,
 	modifier DetailsModifier,
 	fileBlockService file.BlockService,
+	tempDirProvider core.TempDirProvider,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
@@ -79,6 +80,8 @@ func NewWorkspace(
 			relationService,
 			sourceService,
 			fileBlockService,
+			tempDirProvider,
+			sbtProvider,
 		),
 		DetailsModifier: modifier,
 		anytype:         anytype,

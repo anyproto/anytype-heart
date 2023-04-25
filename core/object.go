@@ -24,6 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -379,6 +380,7 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 	return response(nil)
 }
 
+// TODO Move logic to block service
 func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
 	response := func(code pb.RpcObjectGraphResponseErrorCode, nodes []*types.Struct, edges []*pb.RpcObjectGraphEdge, err error) *pb.RpcObjectGraphResponse {
 		m := &pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: code}, Nodes: nodes, Edges: edges}
@@ -476,9 +478,11 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 				}
 			}
 		}
+
+		sbtProvider := app.MustComponent[typeprovider.SmartBlockTypeProvider](mw.app)
 		links := pbtypes.GetStringList(rec.Details, bundle.RelationKeyLinks.String())
 		for _, link := range links {
-			sbType, _ := smartblock.SmartBlockTypeFromID(link)
+			sbType, _ := sbtProvider.Type(link)
 			// ignore files because we index all file blocks as outgoing links
 			if sbType == smartblock.SmartBlockTypeFile {
 				continue

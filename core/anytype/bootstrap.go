@@ -2,6 +2,9 @@ package anytype
 
 import (
 	"context"
+	"os"
+
+	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/net/dialer"
@@ -9,24 +12,13 @@ import (
 	"github.com/anytypeio/any-sync/net/secureservice"
 	"github.com/anytypeio/any-sync/net/streampool"
 	"github.com/anytypeio/any-sync/nodeconf"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
-	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
-	"github.com/anytypeio/go-anytype-middleware/space/storage"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
-	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
-	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
-	"os"
 
-	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	decorator "github.com/anytypeio/go-anytype-middleware/core/block/bookmark/bookmarkimporter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	importer "github.com/anytypeio/go-anytype-middleware/core/block/import"
@@ -37,6 +29,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/kanban"
@@ -57,6 +51,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
+	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc"
+	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
+	"github.com/anytypeio/go-anytype-middleware/space/peermanager"
+	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
+	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
+	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
@@ -116,23 +120,36 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
+
+	spaceService := space.New()
+	sbtProvider := typeprovider.New(spaceService)
+	objectStore := objectstore.New(sbtProvider)
+	objectCreator := object.NewCreator(sbtProvider)
+	blockService := block.New(sbtProvider)
+	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
+	walletService := a.Component(wallet.CName).(wallet.Wallet)
+	tempDirService := core.NewTempDirService(walletService)
+
 	a.Register(clientds.New()).
 		Register(nodeconf.New()).
+		Register(peerstore.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(dialer.New()).
 		Register(pool.New()).
 		Register(streampool.New()).
+		Register(clientserver.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
-		Register(space.New()).
+		Register(localdiscovery.New()).
+		Register(spaceService).
 		Register(peermanager.New()).
-		Register(typeprovider.New()).
+		Register(sbtProvider).
 		Register(relation.New()).
 		Register(ftsearch.New()).
-		Register(objectstore.New()).
+		Register(objectStore).
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
@@ -144,25 +161,25 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(builtintemplate.New()).
 		Register(status.New()).
-		Register(block.New()).
-		Register(doc.New()).
+		Register(blockService).
 		Register(indexer.New()).
 		Register(history.New()).
 		Register(gateway.New()).
-		Register(export.New()).
+		Register(export.New(sbtProvider)).
 		Register(linkpreview.New()).
-		Register(unsplash.New()).
-		Register(restriction.New()).
+		Register(unsplash.New(tempDirService)).
+		Register(restriction.New(sbtProvider)).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
-		Register(subscription.New()).
-		Register(builtinobjects.New()).
-		Register(bookmark.New()).
+		Register(collectionService).
+		Register(subscription.New(collectionService, sbtProvider)).
+		Register(builtinobjects.New(sbtProvider)).
+		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
-		Register(importer.New()).
+		Register(importer.New(tempDirService, sbtProvider)).
 		Register(decorator.New()).
-		Register(object.NewCreator()).
+		Register(objectCreator).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory())
+		Register(editor.NewObjectFactory(tempDirService, sbtProvider))
 	return
 }

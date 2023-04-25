@@ -2,19 +2,22 @@ package source
 
 import (
 	"fmt"
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"sync"
 
+	"github.com/anytypeio/any-sync/accountservice"
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/types"
+	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
 const CName = "source"
@@ -25,7 +28,7 @@ func New() Service {
 
 type Service interface {
 	NewSource(id string, ot objecttree.ObjectTree) (s Source, err error)
-	RegisterStaticSource(id string, new func() Source)
+	RegisterStaticSource(id string, s Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
@@ -37,19 +40,22 @@ type Service interface {
 type service struct {
 	anytype       core.Service
 	statusService status.Service
-	typeProvider  typeprovider.ObjectTypeProvider
+	sbtProvider   typeprovider.SmartBlockTypeProvider
 	account       accountservice.Service
-
-	staticIds map[string]func() Source
-	mu        sync.Mutex
+	fileStore     filestore.FileStore
+	spaceService  space.Service
+	staticIds     map[string]Source
+	mu            sync.Mutex
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.staticIds = make(map[string]func() Source)
+	s.staticIds = make(map[string]Source)
 	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.statusService = a.MustComponent(status.CName).(status.Service)
-	s.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.ObjectTypeProvider)
+	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
+	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 
@@ -61,10 +67,10 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(s.anytype, id), nil
 	}
-	st, err := smartblock.SmartBlockTypeFromID(id)
+	st, err := s.sbtProvider.Type(id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFiles(s.anytype, id), nil
+		return NewFiles(s.anytype, s.fileStore, id), nil
 	case smartblock.SmartBlockTypeDate:
 		return NewDate(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBundledObjectType:
@@ -79,8 +85,8 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if newStatic := s.staticIds[id]; newStatic != nil {
-		return newStatic(), nil
+	if src := s.staticIds[id]; src != nil {
+		return src, nil
 	}
 
 	if ot == nil {
@@ -89,7 +95,7 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 	}
 
 	// TODO: [MR] get this from objectTree directly
-	sbt, err := s.typeProvider.Type(id)
+	sbt, err := s.sbtProvider.Type(id)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +105,8 @@ func (s *service) NewSource(id string, ot objecttree.ObjectTree) (source Source,
 		accountService: s.account,
 		sbt:            sbt,
 		ot:             ot,
+		spaceService:   s.spaceService,
+		sbtProvider:    s.sbtProvider,
 	}
 	return newTreeSource(id, deps)
 }
@@ -116,10 +124,10 @@ func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) 
 	return nil, fmt.Errorf("id unsupported")
 }
 
-func (s *service) RegisterStaticSource(id string, new func() Source) {
+func (s *service) RegisterStaticSource(id string, src Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.staticIds[id] = new
+	s.staticIds[id] = src
 }
 
 func (s *service) RemoveStaticSource(id string) {

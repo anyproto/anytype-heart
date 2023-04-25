@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -68,8 +67,8 @@ func (s *static) PushChange(params PushChangeParams) (id string, err error) {
 func (s *static) ListIds() (result []string, err error) {
 	s.s.mu.Lock()
 	defer s.s.mu.Unlock()
-	for id := range s.s.staticIds {
-		if sbt, _ := smartblock.SmartBlockTypeFromID(id); sbt.ToProto() == s.Type() {
+	for id, src := range s.s.staticIds {
+		if src.Type() == s.Type() {
 			result = append(result, id)
 		}
 	}

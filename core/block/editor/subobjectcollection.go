@@ -22,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -62,6 +63,7 @@ type SubObjectCollection struct {
 	relationService  relation2.Service
 	fileBlockService file.BlockService
 	tempDirProvider  core.TempDirProvider
+	sbtProvider      typeprovider.SmartBlockTypeProvider
 }
 
 func NewSubObjectCollection(
@@ -72,6 +74,7 @@ func NewSubObjectCollection(
 	sourceService source.Service,
 	fileBlockService file.BlockService,
 	tempDirProvider core.TempDirProvider,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *SubObjectCollection {
 	sb := smartblock.New()
 	return &SubObjectCollection{
@@ -87,6 +90,7 @@ func NewSubObjectCollection(
 			anytype,
 			objectStore,
 			relationService,
+			sbtProvider,
 		),
 
 		objectStore:           objectStore,
@@ -296,13 +300,13 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 
 	switch collection {
 	case collectionKeyObjectTypes:
-		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService)
+		subObj = NewObjectType(c.anytype, c.objectStore, c.relationService, c.sbtProvider)
 	default:
 		ot, ok := collectionKeyToObjectType(collection)
 		if !ok {
 			return fmt.Errorf("unknown collection '%s'", collection)
 		}
-		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService, ot, c.tempDirProvider)
+		subObj = NewSubObject(c.objectStore, c.fileBlockService, c.anytype, c.relationService, ot, c.tempDirProvider, c.sbtProvider)
 	}
 
 	var fullId string

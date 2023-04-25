@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
 type Collection struct {
@@ -26,9 +27,10 @@ func NewCollection(
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	collectionService CollectionService,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *Collection {
 	return &Collection{
-		Set:               NewSet(anytype, objectStore, relationService),
+		Set:               NewSet(anytype, objectStore, relationService, sbtProvider),
 		collectionService: collectionService,
 		objectStore:       objectStore,
 	}

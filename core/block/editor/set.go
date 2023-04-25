@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -27,6 +28,7 @@ func NewSet(
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *Set {
 	sb := smartblock.New()
 	return &Set{
@@ -38,6 +40,7 @@ func NewSet(
 			anytype,
 			objectStore,
 			relationService,
+			sbtProvider,
 		),
 		Text: stext.NewText(
 			sb,

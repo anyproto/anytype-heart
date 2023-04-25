@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,15 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/textileio/go-threads/core/thread"
-
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -37,7 +34,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+
+	_ "embed"
 )
 
 const CName = "builtinobjects"
@@ -54,22 +54,25 @@ const (
 	injectionTimeout = 30 * time.Second
 )
 
-func New() BuiltinObjects {
-	return new(builtinObjects)
-}
-
 type BuiltinObjects interface {
 	app.ComponentRunnable
 }
 
 type builtinObjects struct {
-	cancel     func()
-	source     source.Service
-	service    *block.Service
-	relService relation2.Service
+	cancel      func()
+	source      source.Service
+	service     *block.Service
+	relService  relation2.Service
+	sbtProvider typeprovider.SmartBlockTypeProvider
 
 	createBuiltinObjects bool
 	idsMap               map[string]string
+}
+
+func New(sbtProvider typeprovider.SmartBlockTypeProvider) BuiltinObjects {
+	return &builtinObjects{
+		sbtProvider: sbtProvider,
+	}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
@@ -117,7 +120,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 	isSpaceDashboardIDFound := false
 	for _, zf := range zr.File {
 		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
-		sbt, err := smartblock.SmartBlockTypeFromID(id)
+		sbt, err := b.sbtProvider.Type(id)
 		if err != nil {
 			sbt, err = SmartBlockTypeFromThreadID(id)
 			if err != nil {
@@ -192,7 +195,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	st.SetRootId(newId)
 	a := st.Get(newId)
 	m := a.Model()
-	sbt, err := smartblock.SmartBlockTypeFromID(newId)
+	sbt, err := b.sbtProvider.Type(newId)
 	if sbt == smartblock.SmartBlockTypeSubObject {
 		ot, err := bundle.TypeKeyFromUrl(pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyType.String()))
 		if err != nil {

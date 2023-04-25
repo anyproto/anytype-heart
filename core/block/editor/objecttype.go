@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -31,9 +32,10 @@ type ObjectType struct {
 func NewObjectType(anytype core.Service,
 	objectStore objectstore.ObjectStore,
 	relationService relation2.Service,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) *ObjectType {
 	return &ObjectType{
-		Set: NewSet(anytype, objectStore, relationService),
+		Set: NewSet(anytype, objectStore, relationService, sbtProvider),
 
 		relationService: relationService,
 	}

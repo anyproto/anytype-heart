@@ -2,20 +2,17 @@ package history
 
 import (
 	"context"
-	"fmt"
-	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/gogo/protobuf/proto"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
-
 	"github.com/anytypeio/any-sync/app"
+	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -24,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/space"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -71,17 +69,14 @@ func (h *history) Name() (name string) {
 }
 
 func (h *history) Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error) {
-	s, ver, err := h.buildState(pageId, versionId)
+	s, sbType, ver, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
 	}
 	metaD, _ := h.objectStore.QueryById(s.DepSmartIds(true, true, false, true, false))
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
 	var uniqueObjTypes []string
-	sbType, err := smartblock.SmartBlockTypeFromID(pageId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("incorrect sb type: %w", err)
-	}
+
 	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
 	uniqueObjTypes = s.ObjectTypes()
 	for _, m := range metaD {
@@ -186,7 +181,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 }
 
 func (h *history) SetVersion(pageId, versionId string) (err error) {
-	s, _, err := h.buildState(pageId, versionId)
+	s, _, _, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
 	}
@@ -214,21 +209,17 @@ func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht obje
 	return
 }
 
-func (h *history) buildState(pageId, versionId string) (st *state.State, ver *pb.RpcHistoryVersion, err error) {
+func (h *history) buildState(pageId, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {
 	tree, sbType, err := h.treeWithId(pageId, versionId, true)
 	if err != nil {
 		return
 	}
 
-	st, _, err = source.BuildState(nil, tree, h.a.PredefinedBlocks().Profile)
+	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedBlocks().Profile)
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
-	switch sbType {
-	case smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeProfilePage, smartblock.SmartBlockTypeSet:
-		// todo: set case not handled
-		template.InitTemplate(st, template.WithTitle)
-	}
+
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
 		profileId, profileName, e := h.getProfileInfo()

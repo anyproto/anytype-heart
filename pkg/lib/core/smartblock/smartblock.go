@@ -4,14 +4,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/textileio/go-threads/core/thread"
-	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/globalsign/mgo/bson"
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 )
 
 type SmartBlockType uint64
@@ -44,54 +40,6 @@ const (
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
-
-func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
-	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
-		return SmartBlockTypeBundledRelation, nil
-	}
-
-	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
-		return SmartBlockTypeBundledObjectType, nil
-	}
-
-	if len(strings.Split(id, addr.SubObjectCollectionIdSeparator)) == 2 {
-		return SmartBlockTypeSubObject, nil
-	}
-
-	// workaround for options that have no prefix
-	// todo: remove this after migration to the new records format
-	if bson.IsObjectIdHex(id) {
-		return SmartBlockTypeSubObject, nil
-	}
-
-	if strings.HasPrefix(id, addr.AnytypeProfileId) {
-		return SmartBlockTypeProfilePage, nil
-	}
-	if strings.HasPrefix(id, addr.VirtualPrefix) {
-		sbt, err := addr.ExtractVirtualSourceType(id)
-		if err != nil {
-			return 0, err
-		}
-		return SmartBlockType(sbt), nil
-	}
-	if strings.HasPrefix(id, addr.DatePrefix) {
-		return SmartBlockTypeDate, nil
-	}
-
-	c, err := cid.Decode(id)
-	if err != nil {
-		return SmartBlockTypePage, err
-	}
-	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
-	if c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256 {
-		return SmartBlockTypeFile, nil
-	}
-	if c.Prefix().Codec == cid.DagCBOR {
-		return SmartBlockTypePage, nil
-	}
-
-	return SmartBlockTypePage, ErrNoSuchSmartblock
-}
 
 func PatchSmartBlockType(id string, sbt SmartBlockType) (string, error) {
 	tid, err := thread.Decode(id)
