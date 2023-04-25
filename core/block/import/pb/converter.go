@@ -62,6 +62,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	}
 
 	p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
+	p.updateDetails(allSnapshots)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
@@ -214,9 +215,6 @@ func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType, id s
 	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
-	if id == p.core.ProfileID() {
-		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
-	}
 }
 
 func (p *Pb) Name() string {
@@ -334,10 +332,16 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors con
 		}
 		converter.UpdateRelationsIDs(st.(*state.State), snapshot.Id, newIDToOld)
 		snapshot.Snapshot.Data.Blocks = st.Blocks()
-		details := pbtypes.StructCutKeys(st.CombinedDetails(), append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+	}
+}
+
+func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
+	for _, snapshot := range snapshots {
+		details := pbtypes.StructCutKeys(snapshot.Snapshot.Data.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 		snapshot.Snapshot.Data.Details = details
 	}
 }
+
 func (p *Pb) GetSnapshot(rd io.ReadCloser, name string, needToCreateWidget bool) (*pb.SnapshotWithType, error) {
 	defer rd.Close()
 	snapshot := &pb.SnapshotWithType{}
