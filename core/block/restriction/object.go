@@ -107,6 +107,7 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
+		model.SmartBlockType_MissingObject: objRestrictAll,
 	}
 )
 

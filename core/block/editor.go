@@ -650,7 +650,10 @@ func (s *Service) ModifyLocalDetails(
 }
 
 func (s *Service) AddExtraRelations(ctx *session.Context, objectId string, relationIds []string) (err error) {
-	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+	if len(relationIds) == 0 {
+		return nil
+	}
+	return s.Do(objectId, func(b smartblock.SmartBlock) error { // TODO RQ: check if empty
 		return b.AddRelationLinks(ctx, relationIds...)
 	})
 }

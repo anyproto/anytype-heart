@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -467,6 +468,9 @@ func (t *Editor) cleanupTables(_ smartblock.ApplyInfo) error {
 	}
 
 	if err = t.sb.Apply(s); err != nil {
+		if err == source.ErrReadOnly {
+			return nil
+		}
 		log.Errorf("cleanup apply: %s", err)
 	}
 	return nil

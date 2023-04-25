@@ -185,6 +185,18 @@ func generateRelations() error {
 		Return(String().Params(Id("rk"))),
 	)
 
+	f.Func().Params(
+		Id("rk").Id("RelationKey"),
+	).Id("URL").Params().String().Block(
+		Return(String().Params(Qual(addrPkg, "RelationKeyToIdPrefix").Op("+").Id("rk"))),
+	)
+
+	f.Func().Params(
+		Id("rk").Id("RelationKey"),
+	).Id("BundledURL").Params().String().Block(
+		Return(String().Params(Qual(addrPkg, "BundledRelationURLPrefix").Op("+").Id("rk"))),
+	)
+
 	f.Const().DefsFunc(func(g *Group) {
 		for _, relation := range relations {
 			g.Id(relConst(relation.Key)).Id("RelationKey").Op("=").Lit(relation.Key)
@@ -268,7 +280,7 @@ func generateTypes() error {
 	f.Func().Params(
 		Id("tk").Id("TypeKey"),
 	).Id("BundledURL").Params().String().Block(
-		Return(String().Params(Id("TypePrefix").Op("+").Id("tk"))),
+		Return(String().Params(Qual(addrPkg, "BundledObjectTypeURLPrefix").Op("+").Id("tk"))),
 	)
 
 	f.Const().DefsFunc(func(g *Group) {

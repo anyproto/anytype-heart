@@ -421,14 +421,11 @@ func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[strin
 	}
 }
 
-// getIDForSubObject preserve id for bundled relations and object types
+// getIDForSubObject preserves original id from snapshot for relations and object types
 func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
-	so := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceObject.String())
-	if strings.HasPrefix(so, addr.BundledObjectTypeURLPrefix) ||
-		strings.HasPrefix(so, addr.BundledRelationURLPrefix) {
-		if objectID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String()); objectID != "" {
-			return objectID
-		}
+	originalId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	if strings.HasPrefix(originalId, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(originalId, addr.RelationKeyToIdPrefix) {
+		return originalId
 	}
 	return id
 }

@@ -4,7 +4,10 @@ source: pkg/lib/bundle/relations.json
 */
 package bundle
 
-import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+)
 
 const RelationChecksum = "076e0450f34681ba0ea3f21585c3cf3cd83c2915210d39b6a10da94d13f54db7"
 
@@ -12,6 +15,12 @@ type RelationKey string
 
 func (rk RelationKey) String() string {
 	return string(rk)
+}
+func (rk RelationKey) URL() string {
+	return string(addr.RelationKeyToIdPrefix + rk)
+}
+func (rk RelationKey) BundledURL() string {
+	return string(addr.BundledRelationURLPrefix + rk)
 }
 
 const (

@@ -316,23 +316,8 @@ func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
 		}
 		return
 	}
-	so := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySourceObject.String())
-	if so == "" {
-		so = newID
-	}
-	_, _, err := oc.service.AddSubObjectToWorkspace(so, oc.core.PredefinedBlocks().Account)
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to add object to workspace %s: %s", newID, err.Error())
-	}
-	details := oc.getDetails(st.CombinedDetails())
-	err = oc.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: newID,
-		Details:   details,
-	})
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to set details %s: %s", newID, err.Error())
 
-	}
+	// RQ: the rest handling were removed
 }
 
 func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat) error {

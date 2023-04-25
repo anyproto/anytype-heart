@@ -112,17 +112,14 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 }
 
 func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, bool, error) {
-	ids, err := ou.extractID(sn, sbType)
+	// in case it already
+	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	ids, err := ou.getAlreadyExistingObject(id, sbType)
 	if err == nil && len(ids) > 0 {
 		return ids[0], true, nil
 	}
-	if id := ou.getIDBySourceObject(sn); id != "" {
-		return id, true, nil
-	}
-	var id string
-	if len(sn.Snapshot.Data.ObjectTypes) > 0 {
-		id = ou.createSubObject(sn)
-	}
+
+	id = ou.createSubObject(sn)
 	return id, false, nil
 }
 
@@ -151,8 +148,7 @@ func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
 	return ""
 }
 
-func (ou *ObjectIDGetter) extractID(sn *converter.Snapshot, sbType sb.SmartBlockType) ([]string, error) {
-	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+func (ou *ObjectIDGetter) getAlreadyExistingObject(id string, sbType sb.SmartBlockType) ([]string, error) {
 	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -167,6 +163,10 @@ func (ou *ObjectIDGetter) extractID(sn *converter.Snapshot, sbType sb.SmartBlock
 
 func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
 	subID := sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+	if subID == "" && (strings.HasPrefix(sn.Id, addr.RelationKeyToIdPrefix) || strings.HasPrefix(sn.Id, addr.ObjectTypeKeyToIdPrefix)) {
+		// preserve id for the case of relation or object type
+		subID = sn.Id
+	}
 	subID = ou.removePrefixesFromSubID(subID)
 	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subID)
 }

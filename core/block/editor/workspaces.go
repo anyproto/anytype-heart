@@ -296,6 +296,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 		if bundle.HasObjectType(key) {
 			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledObjectTypeURLPrefix + key)
 		}
+		key = strings.TrimPrefix(key, addr.ObjectTypeKeyToIdPrefix)
 	}
 
 	rawLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())

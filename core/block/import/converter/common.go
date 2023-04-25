@@ -171,6 +171,11 @@ func UpdateRelationsIDs(st *state.State, oldIDtoNew map[string]string) {
 			relLink.Format != model.RelationFormat_status {
 			continue
 		}
+		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {
+			// special cases
+			// featured relations have incorrect IDs
+			continue
+		}
 		handleObjectRelation(st, oldIDtoNew, v, k)
 	}
 }
@@ -193,6 +198,10 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 	for i, val := range objectsIDs {
 		newTarget := oldIDtoNew[val]
 		if newTarget == "" {
+			// preserve links to bundled objects
+			if isBundledObjects(val) {
+				continue
+			}
 			newTarget = addr.MissingObject
 		}
 		objectsIDs[i] = newTarget

@@ -20,7 +20,7 @@ func (tk TypeKey) URL() string {
 	return string(addr.ObjectTypeKeyToIdPrefix + tk)
 }
 func (tk TypeKey) BundledURL() string {
-	return string(TypePrefix + tk)
+	return string(addr.BundledObjectTypeURLPrefix + tk)
 }
 
 const (

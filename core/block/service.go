@@ -68,9 +68,10 @@ const (
 )
 
 var (
-	ErrBlockNotFound       = errors.New("block not found")
-	ErrUnexpectedBlockType = errors.New("unexpected block type")
-	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
+	ErrBlockNotFound                     = errors.New("block not found")
+	ErrUnexpectedBlockType               = errors.New("unexpected block type")
+	ErrUnknownObjectType                 = fmt.Errorf("unknown object type")
+	ErrSubobjectAlreadyExistInCollection = errors.New("subobject already exist in collection")
 )
 
 var log = logging.Logger("anytype-mw-service")
