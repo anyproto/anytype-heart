@@ -195,7 +195,7 @@ func (c *LayoutConverter) fromAnyToCollection(st *state.State) error {
 
 func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
 	if name, ok := st.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
-		textBlock, err := st.GetFirstTextBlock()
+		textBlock, err := getFirstTextBlock(st)
 		if err != nil {
 			return err
 		}
@@ -246,4 +246,19 @@ func (c *LayoutConverter) removeRelationSetOf(st *state.State) {
 	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
 	fr = slice.Remove(fr, bundle.RelationKeySetOf.String())
 	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+}
+
+func getFirstTextBlock(st *state.State) (simple.Block, error) {
+	var res simple.Block
+	err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		if b.Model().GetText() != nil {
+			res = b
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }

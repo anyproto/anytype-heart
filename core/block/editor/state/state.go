@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -66,7 +67,6 @@ type Doc interface {
 	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
-	GetFirstTextBlock() (*model.BlockContentOfText, error)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -371,22 +371,6 @@ func (s *State) SearchText() (text string) {
 		return true
 	})
 	return
-}
-
-func (s *State) GetFirstTextBlock() (*model.BlockContentOfText, error) {
-	var firstTextBlock *model.BlockContentOfText
-	err := s.Iterate(func(b simple.Block) (isContinue bool) {
-		if content, ok := b.Model().Content.(*model.BlockContentOfText); ok {
-			firstTextBlock = content
-			return false
-		}
-		return true
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return firstTextBlock, nil
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
@@ -851,6 +835,10 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 		return
 	}
 
+	if err := pbtypes.ValidateValue(value); err != nil {
+		log.Errorf("invalid value for pb %s: %v", key, err)
+	}
+
 	s.localDetails.Fields[key] = value
 	return
 }
@@ -881,6 +869,11 @@ func (s *State) SetDetail(key string, value *types.Value) {
 		delete(s.details.Fields, key)
 		return
 	}
+
+	if err := pbtypes.ValidateValue(value); err != nil {
+		log.Errorf("invalid value for pb %s: %v", key, err)
+	}
+
 	s.details.Fields[key] = value
 	return
 }
@@ -1164,8 +1157,8 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
-			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) &&
-			(slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+			!slices.Contains(bundle.LocalRelationsKeys, rel.Key) &&
+			!slices.Contains(bundle.DerivedRelationsKeys, rel.Key) {
 			relInt := pbtypes.GetInt64(det, rel.Key)
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)
@@ -1186,7 +1179,6 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 		}
 
 		if rel.Key == bundle.RelationKeyId.String() ||
-			rel.Key == bundle.RelationKeyLinks.String() ||
 			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
 			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
 			continue
@@ -1437,6 +1429,48 @@ func (s *State) SetInStore(path []string, value *types.Value) (changed bool) {
 		})
 	}
 	return
+}
+
+func (s *State) StoreSlice(key string, val []string) {
+	old := pbtypes.GetStringList(s.Store(), key)
+	s.setInStore([]string{key}, pbtypes.StringList(val))
+
+	diff := slice.Diff(old, val, slice.StringIdentity[string], slice.Equal[string])
+	changes := slice.UnwrapChanges(diff,
+		func(afterID string, items []string) *pb.ChangeStoreSliceUpdate {
+			return &pb.ChangeStoreSliceUpdate{
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{
+					Add: &pb.ChangeStoreSliceUpdateAdd{
+						AfterId: afterID,
+						Ids:     items,
+					},
+				},
+			}
+		}, func(items []string) *pb.ChangeStoreSliceUpdate {
+			return &pb.ChangeStoreSliceUpdate{
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfRemove{
+					Remove: &pb.ChangeStoreSliceUpdateRemove{
+						Ids: items,
+					},
+				},
+			}
+		}, func(afterID string, items []string) *pb.ChangeStoreSliceUpdate {
+			return &pb.ChangeStoreSliceUpdate{
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfMove{
+					Move: &pb.ChangeStoreSliceUpdateMove{
+						AfterId: afterID,
+						Ids:     items,
+					},
+				},
+			}
+		}, nil)
+
+	for _, ch := range changes {
+		ch.Key = key
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreSliceUpdate{StoreSliceUpdate: ch},
+		})
+	}
 }
 
 func (s *State) HasInStore(path []string) bool {

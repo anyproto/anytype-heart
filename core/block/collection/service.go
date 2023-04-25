@@ -231,15 +231,6 @@ func (s *Service) ObjectToCollection(id string) (string, error) {
 		details = pbtypes.CopyStruct(sb.Details())
 
 		st := sb.NewState()
-		if layout, ok := st.Layout(); ok && layout == model.ObjectType_note {
-			textBlock, err := st.GetFirstTextBlock()
-			if err != nil {
-				return err
-			}
-			if textBlock != nil {
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Model().GetText().Text)
-			}
-		}
 
 		b := st.Pick(template.DataviewBlockId)
 		if b != nil {

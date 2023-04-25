@@ -3,6 +3,7 @@ package smarttest
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -63,10 +64,6 @@ func (st *SmartTest) Locked() bool {
 	return false
 }
 
-func (st *SmartTest) DocService() doc.Service {
-	return nil
-}
-
 func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
 	return st.os
 }
@@ -103,10 +100,10 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
 
-func (st *SmartTest) GetDocInfo() (DocInfo, error) {
-	return DocInfo{
+func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
+	return smartblock.DocInfo{
 		Id: st.Id(),
-	}, nil
+	}
 }
 
 func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hook) {
@@ -194,6 +191,9 @@ func (st *SmartTest) SetDetails(ctx *session.Context, details []*pb.RpcObjectSet
 }
 
 func (st *SmartTest) Init(ctx *smartblock.InitContext) (err error) {
+	if ctx.State == nil {
+		ctx.State = st.NewState()
+	}
 	return
 }
 
@@ -287,6 +287,10 @@ func (st *SmartTest) ObjectClose() {
 }
 
 func (st *SmartTest) Close() (err error) {
+	return
+}
+
+func (st *SmartTest) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return
 }
 

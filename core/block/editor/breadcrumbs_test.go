@@ -61,7 +61,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	fx.mockStore = testMock.RegisterMockObjectStore(fx.ctrl, fx.app)
 	fx.mockAnytype = testMock.RegisterMockAnytype(fx.ctrl, fx.app)
-	fx.app.Register(restriction.New())
+	fx.app.Register(restriction.New(testMock.NewMockSmartBlockTypeProvider(fx.ctrl)))
 	mockRelation.RegisterMockRelation(fx.ctrl, fx.app)
 
 	require.NoError(t, fx.app.Start(context.Background()))
@@ -78,11 +78,10 @@ type fixture struct {
 
 func (fx *fixture) expectDerivedDetails() {
 	fx.mockStore.EXPECT().GetDetails(gomock.Any()).Return(&model.ObjectDetails{}, nil)
-	fx.mockStore.EXPECT().GetPendingLocalDetails(gomock.Any()).Return(&model.ObjectDetails{}, nil)
 	fx.mockStore.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any())
 }
 
 func (fx *fixture) Finish() {
-	assert.NoError(fx.t, fx.app.Close())
+	assert.NoError(fx.t, fx.app.Close(context.Background()))
 	fx.ctrl.Finish()
 }

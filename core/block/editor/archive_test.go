@@ -1,27 +1,49 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
-	"github.com/stretchr/testify/require"
+	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 )
 
-func NewArchiveTest() *Archive {
+func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 	sb := smarttest.New("root")
+	objectStore := testMock.NewMockObjectStore(ctrl)
+	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
+	objectStore.EXPECT().Query(gomock.Any(), gomock.Any()).AnyTimes()
 
-	return &Archive{
-		SmartBlock: sb,
-		Collection: collection.NewCollection(sb),
+	a := &Archive{
+		SmartBlock:  sb,
+		Collection:  collection.NewCollection(sb),
+		objectStore: objectStore,
 	}
+	initCtx := &smartblock.InitContext{IsNewObject: true}
+	if err := a.Init(initCtx); err != nil {
+		return nil, err
+	}
+	if err := migration.RunMigrations(a, initCtx); err != nil {
+		return nil, err
+	}
+	if err := a.Apply(initCtx.State); err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
 func TestArchive_Archive(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	t.Run("archive", func(t *testing.T) {
-		a := NewArchiveTest()
-		require.NoError(t, a.Init(&smartblock.InitContext{}))
+		a, err := NewArchiveTest(ctrl)
+		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))
 		require.NoError(t, a.AddObject("2"))
@@ -34,8 +56,8 @@ func TestArchive_Archive(t *testing.T) {
 
 	})
 	t.Run("archive archived", func(t *testing.T) {
-		a := NewArchiveTest()
-		require.NoError(t, a.Init(&smartblock.InitContext{}))
+		a, err := NewArchiveTest(ctrl)
+		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))
 		require.NoError(t, a.AddObject("1"))
@@ -47,9 +69,12 @@ func TestArchive_Archive(t *testing.T) {
 }
 
 func TestArchive_UnArchive(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	t.Run("unarchive", func(t *testing.T) {
-		a := NewArchiveTest()
-		require.NoError(t, a.Init(&smartblock.InitContext{}))
+		a, err := NewArchiveTest(ctrl)
+		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))
 		require.NoError(t, a.AddObject("2"))
@@ -60,8 +85,9 @@ func TestArchive_UnArchive(t *testing.T) {
 		require.Len(t, chIds, 1)
 	})
 	t.Run("unarchived", func(t *testing.T) {
-		a := NewArchiveTest()
-		require.NoError(t, a.Init(&smartblock.InitContext{}))
+		a, err := NewArchiveTest(ctrl)
+		require.NoError(t, err)
+
 		require.NoError(t, a.AddObject("1"))
 		require.EqualError(t, a.RemoveObject("2"), collection.ErrObjectNotFound.Error())
 
