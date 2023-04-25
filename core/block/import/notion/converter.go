@@ -22,8 +22,8 @@ const (
 	pageSize                  = 100
 	retryDelay                = time.Second
 	retryAmount               = 5
-	numberOfStepsForPages     = 4 // 3 cycles to get snapshots and 1 cycle to create objects
-	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
+	numberOfStepsForPages     = 6 // 3 cycles to get snapshots and 1 cycle to create objects
+	numberOfStepsForDatabases = 3 // 1 cycles to get snapshots and 1 cycle to create objects
 )
 
 func init() {

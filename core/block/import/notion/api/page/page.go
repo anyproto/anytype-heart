@@ -20,7 +20,7 @@ var logger = logging.Logger("notion-page")
 const (
 	ObjectType     = "page"
 	pageSize       = 100
-	workerPoolSize = 5
+	workerPoolSize = 10
 )
 
 type Service struct {
@@ -79,7 +79,11 @@ func (ds *Service) GetPages(ctx context.Context,
 	progress.SetProgressMessage("Start creating blocks")
 	request.PageNameToID = ds.extractTitleFromPages(pages)
 	request.NotionPageIdsToAnytype = notionPagesIdsToAnytype
-	pool := NewPool(workerPoolSize, len(pages))
+	numWorkers := workerPoolSize
+	if len(pages) < workerPoolSize {
+		numWorkers = 1
+	}
+	pool := NewPool(numWorkers, len(pages))
 
 	wg := &sync.WaitGroup{}
 	ds.addWorkToPool(pages, pool, wg)

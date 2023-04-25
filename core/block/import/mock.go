@@ -136,12 +136,12 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(ctx *session.Context, snapshot *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, existing bool) (*types.Struct, error) {
+func (m *MockCreator) Create(ctx *session.Context, sn *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, existing bool) (*types.Struct, string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, snapshot, relations, oldIDtoNew, existing)
+	ret := m.ctrl.Call(m, "Create", ctx, sn, relations, oldIDtoNew, existing)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret0, "", ret1
 }
 
 // Create indicates an expected call of Create.

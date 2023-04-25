@@ -29,7 +29,7 @@ type Importer interface {
 // Creator incapsulate logic with creation of given smartblocks
 type Creator interface {
 	//nolint:lll
-	Create(ctx *session.Context, sn *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, existing bool) (*types.Struct, error)
+	Create(ctx *session.Context, sn *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, existing bool) (*types.Struct, string, error)
 }
 
 // IDGetter is interface for updating existing objects

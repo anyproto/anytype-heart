@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
@@ -33,6 +34,8 @@ import (
 var log = logging.Logger("import")
 
 const CName = "importer"
+
+const workerPoolSize = 10
 
 type Import struct {
 	converters      map[string]converter.Converter
@@ -198,7 +201,6 @@ func (i *Import) createObjects(ctx *session.Context,
 		return ""
 	}
 
-	details := make(map[string]*types.Struct, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	existedObject := make(map[string]struct{}, 0)
 	for _, snapshot := range res.Snapshots {
@@ -226,7 +228,12 @@ func (i *Import) createObjects(ctx *session.Context,
 			log.With(zap.String("object name", getFileName(snapshot))).Error(err)
 		}
 	}
-
+	numWorkers := workerPoolSize
+	if len(res.Snapshots) < workerPoolSize {
+		numWorkers = 1
+	}
+	wg := &sync.WaitGroup{}
+	pool := NewPool(numWorkers, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
 		if err := progress.TryStep(1); err != nil {
 			allErrors[getFileName(snapshot)] = err
@@ -237,17 +244,19 @@ func (i *Import) createObjects(ctx *session.Context,
 			relations = res.Relations[snapshot.Id]
 		}
 		_, ok := existedObject[snapshot.Id]
-		detail, err := i.oc.Create(ctx, snapshot, relations, oldIDToNew, ok)
-		if err != nil {
-			allErrors[getFileName(snapshot)] = err
-			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
-				break
-			}
-			log.With(zap.String("object name", getFileName(snapshot))).Error(err)
+		t := &Task{
+			sn:        snapshot,
+			relations: relations,
+			existing:  ok,
+			oc:        i.oc,
+			wg:        wg,
 		}
-		details[snapshot.Id] = detail
+		pool.AddWork(t)
+		wg.Add(1)
 	}
-	return details
+	pool.Start(ctx, oldIDToNew, req.Mode, progress)
+	wg.Wait()
+	return pool.Details()
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

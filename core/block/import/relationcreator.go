@@ -97,6 +97,11 @@ func (rc *RelationService) CreateRelations(ctx *session.Context,
 		if err == nil && len(records) > 0 {
 			id := pbtypes.GetString(records[0].Details, bundle.RelationKeyRelationKey.String())
 			existedRelations[id] = r
+			format := model.RelationFormat(pbtypes.GetFloat64(records[0].Details, bundle.RelationKeyRelationFormat.String()))
+			rc.createdRelations[r.Name] = append(rc.createdRelations[r.Name], RelationIDFormat{
+				ID:     id,
+				Format: format,
+			})
 			continue
 		}
 		notExistedRelations = append(notExistedRelations, r)
@@ -237,28 +242,13 @@ func (rc *RelationService) update(ctx *session.Context,
 				filesToDelete = append(filesToDelete, rc.handleFileRelation(ctx, snapshot, r.Name)...)
 			}
 		}
-		setDetailsRequest := make([]*pb.RpcObjectSetDetailsDetail, 0)
-		setDetailsRequest = append(setDetailsRequest, &pb.RpcObjectSetDetailsDetail{
-			Key:   key,
-			Value: snapshot.Details.Fields[r.Name],
-		})
 		if r.BlockID != "" {
 			original, new := rc.linkRelationsBlocks(snapshot, r.BlockID, key)
 			if original != nil && new != nil {
 				oldRelationBlockToNew[original.GetId()] = new
 			}
 		}
-		err = rc.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-			ContextId: pageID,
-			Details:   setDetailsRequest,
-		})
-		if err != nil {
-			log.Errorf("set details %s", err)
-			failedRelations = append(failedRelations, r)
-		} else {
-			rc.updateDetails(snapshot, r.Name, key)
-		}
-
+		rc.updateDetails(snapshot, r.Name, key)
 	}
 
 	if ftd, err := rc.handleCoverRelation(ctx, snapshot, pageID); err != nil {

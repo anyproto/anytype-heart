@@ -79,7 +79,6 @@ func (p *WorkerPool) work(ctx context.Context, apiKey string, mode pb.RpcObjectI
 		case task, ok := <-p.tasks:
 			if err := progress.TryStep(1); err != nil {
 				p.ce = converter.NewFromError("", err)
-				p.stop()
 				return
 			}
 			if !ok {
