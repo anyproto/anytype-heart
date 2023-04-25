@@ -204,34 +204,8 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	table := htmlconverter.Rule{
 		Filter: []string{"table"},
 		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			var (
-				hasHeader     = false
-				numberOfRows  int
-				numberOfCells int
-				isContinue    = true
-			)
-
 			node := selec.Children()
-			for {
-				if isContinue {
-					if hasHeader, isContinue = isHeadingRow(node); hasHeader {
-						break
-					}
-				}
-				if len(node.Nodes) == 0 {
-					break
-				}
-				node.Each(func(i int, s *goquery.Selection) {
-					nodeName := goquery.NodeName(s)
-					if nodeName == "tr" {
-						numberOfRows++
-					}
-					if nodeName == "td" || nodeName == "th" {
-						numberOfCells++
-					}
-				})
-				node = node.Children()
-			}
+			hasHeader, numberOfRows, numberOfCells := calculateTotalCellsAndRows(node)
 			if hasHeader {
 				return htmlconverter.String(content)
 			}
@@ -239,17 +213,7 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 			if numberOfRows == 0 {
 				return nil
 			}
-			numberOfColumns := numberOfCells / numberOfRows
-
-			headerRow := "|"
-			for i := 0; i < numberOfColumns; i++ {
-				headerRow += " |"
-			}
-			headerRow += "\n|"
-			for i := 0; i < numberOfColumns; i++ {
-				headerRow += " --- |"
-			}
-			headerRow += content
+			headerRow := addHeaderRow(content, numberOfCells, numberOfRows)
 			return htmlconverter.String(headerRow)
 		},
 	}
@@ -257,6 +221,50 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 	rules = append(rules, strikethrough, underscore, br, anohref,
 		simpleText, blockquote, italic, code, bdo, div, img, table)
 	return rules
+}
+
+func addHeaderRow(content string, numberOfCells int, numberOfRows int) string {
+	numberOfColumns := numberOfCells / numberOfRows
+
+	headerRow := "|"
+	for i := 0; i < numberOfColumns; i++ {
+		headerRow += " |"
+	}
+	headerRow += "\n|"
+	for i := 0; i < numberOfColumns; i++ {
+		headerRow += " --- |"
+	}
+	headerRow += content
+	return headerRow
+}
+
+func calculateTotalCellsAndRows(node *goquery.Selection) (bool, int, int) {
+	var (
+		isContinue                  = true
+		hasHeader                   = false
+		numberOfRows, numberOfCells int
+	)
+	for {
+		if isContinue {
+			if hasHeader, isContinue = isHeadingRow(node); hasHeader {
+				break
+			}
+		}
+		if len(node.Nodes) == 0 {
+			break
+		}
+		node.Each(func(i int, s *goquery.Selection) {
+			nodeName := goquery.NodeName(s)
+			if nodeName == "tr" {
+				numberOfRows++
+			}
+			if nodeName == "td" || nodeName == "th" {
+				numberOfCells++
+			}
+		})
+		node = node.Children()
+	}
+	return hasHeader, numberOfRows, numberOfCells
 }
 
 func isHeadingRow(s *goquery.Selection) (bool, bool) {
