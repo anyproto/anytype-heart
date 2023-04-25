@@ -91,11 +91,13 @@ func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, sbType sb.Smart
 	}
 	if len(sn.Snapshot.ObjectTypes) > 0 {
 		ot := sn.Snapshot.ObjectTypes
+		var objects *types.Struct
 		req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Details}
-		id, _, err = ou.service.CreateObject(req, "")
+		id, objects, err = ou.service.CreateObject(req, "")
 		if err != nil {
 			id = sn.Id
 		}
+		sn.Snapshot.Details = pbtypes.StructMerge(sn.Snapshot.Details, objects, false)
 	}
 	return id, exist, nil
 }
