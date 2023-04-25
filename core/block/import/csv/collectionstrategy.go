@@ -1,13 +1,19 @@
 package csv
 
 import (
+	"strings"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown/anymark/whitespace"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -77,16 +83,38 @@ func getEmptyObjects(csvTable [][]string, relations []*converter.Relation) ([]*c
 	objectsRelations := make(map[string][]*converter.Relation, len(csvTable))
 
 	for i := 1; i < len(csvTable); i++ {
+		st := state.NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Content: &model.BlockContentOfSmartblock{
+					Smartblock: &model.BlockContentSmartblock{},
+				},
+			}),
+		}).NewState()
 		details := &types.Struct{Fields: map[string]*types.Value{}}
 		for j, value := range csvTable[i] {
+			name := strings.TrimSpace(whitespace.WhitespaceNormalizeString(relations[j].Name))
+			if strings.EqualFold(name, "name") {
+				relations[j].Name = bundle.RelationKeyName.String()
+			}
 			details.Fields[relations[j].Name] = pbtypes.String(value)
 		}
+
+		st.SetDetails(details)
+		err := template.InitTemplate(st, template.WithTitle)
+		if err != nil {
+			log.With(zap.String("method", "CollectionStrategy.getEmptyObjects")).Error(err)
+			continue
+		}
+
 		sn := &converter.Snapshot{
 			Id:     uuid.New().String(),
 			SbType: smartblock.SmartBlockTypePage,
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
-					Details: details,
+					Blocks:        st.Blocks(),
+					Details:       details,
+					RelationLinks: st.GetRelationLinks(),
+					ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
 				},
 			},
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -17,6 +18,8 @@ const (
 	Name               = "Csv"
 	rootCollectionName = "CSV Import"
 )
+
+var log = logging.Logger("csv-import")
 
 type CSV struct {
 	collectionService *collection.Service
@@ -53,41 +56,8 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
-	allSnapshots := make([]*converter.Snapshot, 0)
-	allRelations := make(map[string][]*converter.Relation, 0)
-	allObjectsIDs := make([]string, 0)
-	cErr := converter.NewError()
-	csvMode := c.GetMode(req)
-	str := c.chooseStrategy(csvMode)
-	for _, p := range path {
-		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(p, err)
-			return nil, cancelError
-		}
-		if filepath.Ext(p) != ".csv" {
-			continue
-		}
-		csvTable, err := readCsvFile(p)
-		if err != nil {
-			cErr.Add(p, err)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, cErr
-			}
-			continue
-		}
 
-		objectsIDs, snapshots, relations, err := str.CreateObjects(p, csvTable)
-		if err != nil {
-			cErr.Add(p, err)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, cErr
-			}
-			continue
-		}
-		allObjectsIDs = append(allObjectsIDs, objectsIDs...)
-		allSnapshots = append(allSnapshots, snapshots...)
-		allRelations = makeRelationsResultMap(allRelations, relations)
-	}
+	allObjectsIDs, allSnapshots, allRelations, cErr := c.CreateObjectsFromCSVFiles(req, progress, path)
 
 	rootCollection := converter.NewRootCollection(c.collectionService)
 	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjectsIDs)
@@ -102,6 +72,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 		allSnapshots = append(allSnapshots, rootCol)
 	}
 	progress.SetTotal(int64(len(allObjectsIDs)))
+
 	if cErr.IsEmpty() {
 		return &converter.Response{
 			Snapshots: allSnapshots,
@@ -113,6 +84,47 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 		Snapshots: allSnapshots,
 		Relations: allRelations,
 	}, cErr
+}
+
+func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
+	progress *process.Progress,
+	path []string) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
+	csvMode := c.GetMode(req)
+	str := c.chooseStrategy(csvMode)
+	allSnapshots := make([]*converter.Snapshot, 0)
+	allRelations := make(map[string][]*converter.Relation, 0)
+	allObjectsIDs := make([]string, 0)
+	cErr := converter.NewError()
+	for _, p := range path {
+		if err := progress.TryStep(1); err != nil {
+			cancelError := converter.NewFromError(p, err)
+			return nil, nil, nil, cancelError
+		}
+		if filepath.Ext(p) != ".csv" {
+			continue
+		}
+		csvTable, err := readCsvFile(p)
+		if err != nil {
+			cErr.Add(p, err)
+			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, nil, nil, cErr
+			}
+			continue
+		}
+
+		objectsIDs, snapshots, relations, err := str.CreateObjects(p, csvTable)
+		if err != nil {
+			cErr.Add(p, err)
+			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, nil, nil, cErr
+			}
+			continue
+		}
+		allObjectsIDs = append(allObjectsIDs, objectsIDs...)
+		allSnapshots = append(allSnapshots, snapshots...)
+		allRelations = makeRelationsResultMap(allRelations, relations)
+	}
+	return allObjectsIDs, allSnapshots, allRelations, cErr
 }
 
 func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strategy {
