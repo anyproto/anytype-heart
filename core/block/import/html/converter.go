@@ -44,8 +44,7 @@ func (h *HTML) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
-	progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*converter.Response, converter.ConvertError) {
 	path := h.GetParams(req)
 	if len(path) == 0 {
 		return nil, nil

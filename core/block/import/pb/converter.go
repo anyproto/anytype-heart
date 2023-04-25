@@ -45,8 +45,7 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 	}
 }
 
-func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
-	progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*converter.Response, converter.ConvertError) {
 	params, e := p.GetParams(req.Params)
 	if e != nil || params == nil {
 		errors := converter.NewError()
@@ -82,7 +81,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 	return &converter.Response{Snapshots: allSnapshots}, allErrors
 }
 
-func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress, allPaths []string) ([]*converter.Snapshot, []string, converter.ConvertError) {
+func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress, allPaths []string) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allErrors := converter.NewError()
@@ -107,7 +106,7 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest, progress *process.Prog
 }
 
 func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
-	progress *process.Progress,
+	progress process.IProgress,
 	pbFiles map[string]*converter.IOReader,
 	allErrors converter.ConvertError,
 	path string) ([]*converter.Snapshot, []string, converter.ConvertError) {

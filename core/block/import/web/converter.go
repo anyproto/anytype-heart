@@ -2,12 +2,13 @@ package web
 
 import (
 	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/web/parsers"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 const Name = "web"
@@ -16,11 +17,7 @@ type Converter struct {
 	otc converter.ObjectTreeCreator
 }
 
-func init() {
-	converter.RegisterFunc(NewConverter)
-}
-
-func NewConverter(core.Service, *collection.Service) converter.Converter {
+func NewConverter() converter.Converter {
 	return &Converter{}
 }
 
@@ -34,28 +31,27 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Response {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*converter.Response, converter.ConvertError) {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
+	progress.SetTotal(1)
 	if err != nil {
 		we.Add(url, err)
-		return &converter.Response{Error: we}
+		return nil, we
 	}
 	p := c.GetParser(url)
 	if p == nil {
 		we.Add(url, fmt.Errorf("unknown url format"))
-		return &converter.Response{Error: we}
+		return nil, we
 	}
 	snapshots, err := p.ParseUrl(url)
-	if err != nil {
-		we.Add(url, err)
-		return &converter.Response{Error: we}
-	}
+	progress.AddDone(1)
 
 	if err != nil {
 		we.Add(url, err)
-		return &converter.Response{Error: we}
+		return nil, we
 	}
+
 	s := &converter.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: url,
@@ -63,9 +59,8 @@ func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest) *converter.Resp
 	}
 	res := &converter.Response{
 		Snapshots: []*converter.Snapshot{s},
-		Error:     nil,
 	}
-	return res
+	return res, nil
 }
 
 func (p *Converter) Name() string {

@@ -10,7 +10,18 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func NewProgress(pType pb.ModelProcessType) *Progress {
+type IProgress interface {
+	Process
+	SetTotal(total int64)
+	SetDone(done int64)
+	AddDone(delta int64)
+	SetProgressMessage(msg string)
+	Canceled() chan struct{}
+	Finish()
+	TryStep(delta int64) error
+}
+
+func NewProgress(pType pb.ModelProcessType) IProgress {
 	return &Progress{
 		id:     bson.NewObjectId().Hex(),
 		done:   make(chan struct{}),

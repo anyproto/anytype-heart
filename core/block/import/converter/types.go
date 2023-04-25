@@ -30,7 +30,7 @@ type ObjectTreeCreator interface {
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*Response, ConvertError)
+	GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*Response, ConvertError)
 	Name() string
 }
 

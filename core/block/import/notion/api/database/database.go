@@ -63,7 +63,7 @@ func (p *Database) GetObjectType() string {
 func (ds *Service) GetDatabase(ctx context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
-	progress *process.Progress) (*converter.Response, map[string]string, map[string]string, converter.ConvertError) {
+	progress process.IProgress) (*converter.Response, map[string]string, map[string]string, converter.ConvertError) {
 	var (
 		allSnapshots       = make([]*converter.Snapshot, 0)
 		notionIdsToAnytype = make(map[string]string, 0)

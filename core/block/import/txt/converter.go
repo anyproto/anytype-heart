@@ -42,8 +42,7 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest,
-	progress *process.Progress) (*converter.Response, converter.ConvertError) {
+func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*converter.Response, converter.ConvertError) {
 	path := t.GetParams(req)
 	if len(path) == 0 {
 		return nil, nil

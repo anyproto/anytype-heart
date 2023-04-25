@@ -79,7 +79,7 @@ func (m *MockConverter) EXPECT() *MockConverterMockRecorder {
 }
 
 // GetSnapshots mocks base method.
-func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest, progress *process.Progress) (*Response, ConvertError) {
+func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.IProgress) (*Response, ConvertError) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSnapshots", req, progress)
 	ret0, _ := ret[0].(*Response)
