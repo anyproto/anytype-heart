@@ -3,6 +3,7 @@ package template
 import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -324,7 +325,8 @@ var WithForcedDescription = func(s *state.State) {
 		}
 	}
 
-	blockExists := s.Exists(DescriptionBlockId)
+	header := s.Get(HeaderLayoutId)
+	blockExists := s.Exists(DescriptionBlockId) && slices.Contains(header.Model().ChildrenIds, DescriptionBlockId)
 	if blockExists && (s.Get(DescriptionBlockId).Model().Align == align) {
 		return
 	}
