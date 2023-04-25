@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -39,6 +40,8 @@ import (
 )
 
 const CName = "export"
+
+const tempFileName = "temp"
 
 var log = logging.Logger("anytype-mw-export")
 
@@ -91,7 +94,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 
 	var wr writer
 	if req.Zip {
-		if wr, err = newZipWriter(req.Path); err != nil {
+		if wr, err = newZipWriter(req.Path, tempFileName); err != nil {
 			return
 		}
 	} else {
@@ -149,7 +152,12 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		succeed = 0
 		return
 	}
-	return wr.Path(), succeed, nil
+	zipName := getZipName(req.Path)
+	err = os.Rename(wr.Path(), zipName)
+	if err != nil {
+		return
+	}
+	return zipName, succeed, nil
 }
 
 func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool) (docs map[string]*types.Struct, err error) {
