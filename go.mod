@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/VividCortex/ewma v1.2.0
-	github.com/anytypeio/any-sync v0.0.2-0.20230111181804-76aa703b8dc0
+	github.com/anytypeio/any-sync v0.0.2-0.20230113115528-25a52f41b8dc
 	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -89,12 +89,14 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/yuin/goldmark v1.4.13
+	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230105202349-8879d0199aa3
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 	golang.org/x/text v0.6.0
 	google.golang.org/grpc v1.47.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
+	storj.io/drpc v0.0.32
 
 )
 
@@ -105,7 +107,7 @@ require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
-	github.com/anytypeio/go-chash v0.0.1 // indirect
+	github.com/anytypeio/go-chash v0.0.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -263,7 +265,6 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.15.0 // indirect
 	go.uber.org/fx v1.18.2 // indirect
-	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/image v0.0.0-20200119044424-58c23975cae1 // indirect
 	golang.org/x/mod v0.7.0 // indirect
@@ -279,7 +280,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
-	storj.io/drpc v0.0.32 // indirect
 )
 
 replace github.com/elastic/gosigar => github.com/anytypeio/gosigar v0.0.0-20220811145612-92bd3366198a
