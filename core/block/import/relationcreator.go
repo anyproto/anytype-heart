@@ -307,7 +307,10 @@ func (rc *RelationService) ReplaceRelationBlock(ctx *session.Context,
 func (rc *RelationService) handleCoverRelation(ctx *session.Context,
 	snapshot *model.SmartBlockSnapshotBase) []string {
 
-	// todo: check if coverId is color
+	if pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyCoverType.String()) != 1 {
+		return nil
+	}
+
 	filesToDelete := rc.handleFileRelation(ctx, snapshot, bundle.RelationKeyCoverId.String())
 	coverId := pbtypes.GetString(snapshot.Details, bundle.RelationKeyCoverId.String())
 	if coverId == "" {
