@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/any-sync/net/secureservice"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/dgraph-io/badger/v3"
+	gonet "net"
 	"storj.io/drpc"
 	"strconv"
 	"strings"
@@ -78,7 +79,9 @@ func (s *drpcServer) Run(ctx context.Context) (err error) {
 		Wrapper: func(handler drpc.Handler) drpc.Handler {
 			return handler
 		},
-		Converter: s.transport.TLSListener,
+		Converter: func(listener gonet.Listener, timeoutMillis int) secureservice.ContextListener {
+			return s.transport.TLSListener(listener, timeoutMillis, s.config.Server.IdentityHandshake)
+		},
 	}
 	// TODO: the logic must be written so that server wouldn't be mandatory for client to work
 	err = s.BaseDrpcServer.Run(ctx, params)
