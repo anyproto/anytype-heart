@@ -1172,6 +1172,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 		}
 
 		if rel.Key == bundle.RelationKeyId.String() ||
+			rel.Key == bundle.RelationKeyLinks.String() ||
 			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
 			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
 			continue

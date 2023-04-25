@@ -119,6 +119,10 @@ func (ds *dependencyService) depKeys(keys []string) (depKeys []string) {
 		if key == bundle.RelationKeyId.String() {
 			continue
 		}
+		if key == bundle.RelationKeyLinks.String() {
+			// skip links because it's aggregated from other relations and blocks
+			continue
+		}
 		if ds.isRelationObject(key) {
 			depKeys = append(depKeys, key)
 		}
