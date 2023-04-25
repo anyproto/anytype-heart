@@ -9,13 +9,13 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/proto"
 	dsCtx "github.com/ipfs/go-datastore"
+	"github.com/samber/lo"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	ds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 )
 
 var (
@@ -517,7 +517,7 @@ func (m *dsFileStore) ListTargets() ([]string, error) {
 		targets[i] = target
 	}
 
-	return util.UniqueStrings(targets), nil
+	return lo.Uniq(targets), nil
 }
 
 func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {

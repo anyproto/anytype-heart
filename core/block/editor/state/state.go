@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -19,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	textutil "github.com/anytypeio/go-anytype-middleware/util/text"
@@ -1253,7 +1253,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 		}
 	}
 
-	ids = util.UniqueStrings(ids)
+	ids = lo.Uniq(ids)
 	return
 }
 

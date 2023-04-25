@@ -151,7 +151,7 @@ func (s *Service) storeChunksCount(ctx context.Context, node ipld.Node) error {
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
-func (s *Service) FileRestoreKeys(ctx context.Context, hash string) (map[string]string, error) {
+func (s *Service) fileRestoreKeys(ctx context.Context, hash string) (map[string]string, error) {
 	links, err := helpers.LinksAtCid(ctx, s.dagService, hash)
 	if err != nil {
 		return nil, err
@@ -326,7 +326,7 @@ func (s *Service) FileGetKeys(hash string) (*FileKeys, error) {
 	// we should have all the CIDs locally, so 5s is more than enough
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	fileKeysRestored, err := s.FileRestoreKeys(ctx, hash)
+	fileKeysRestored, err := s.fileRestoreKeys(ctx, hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to restore file keys: %w", err)
 	}
