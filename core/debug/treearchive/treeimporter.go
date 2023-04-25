@@ -1,6 +1,7 @@
 package treearchive
 
 import (
+	"fmt"
 	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/exporter"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
@@ -75,6 +76,7 @@ func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
 	}, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
+			// probably this will never be the case, because all our trees should have snapshots, and not root change
 			return true
 		}
 		model := change.Model.(*pb.Change)
@@ -84,7 +86,12 @@ func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
 			return false
 		}
 		return true
-	},
-	)
+	})
+	if err != nil {
+		return
+	}
+	if idCh.Model == nil {
+		err = fmt.Errorf("no such index in tree")
+	}
 	return
 }
