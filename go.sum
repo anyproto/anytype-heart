@@ -87,6 +87,8 @@ github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31 h1:fCXBjRAx
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
 github.com/anytypeio/any-sync v0.0.17-0.20230306092229-bee7146a6082 h1:eDU5oAvkv3C/8Wth5ptMSMpvJ1Rgt/rzPLaM871LzvA=
 github.com/anytypeio/any-sync v0.0.17-0.20230306092229-bee7146a6082/go.mod h1:6s5VKHxubX/zZ5JpgwnEnuWl6L75BQmJ9vxh8z8qqdg=
+github.com/anytypeio/any-sync v0.0.17-0.20230319154028-49248b02b38b h1:PvtFvkd1exWVq+t03YDNp8NJcp1+u7pcZ5bPmb8FDuc=
+github.com/anytypeio/any-sync v0.0.17-0.20230319154028-49248b02b38b/go.mod h1:6s5VKHxubX/zZ5JpgwnEnuWl6L75BQmJ9vxh8z8qqdg=
 github.com/anytypeio/go-chash v0.0.2 h1:BSpyMC3HXNkf2eosQrHM4svov0DrvxL9tb4gnHbdmbA=
 github.com/anytypeio/go-chash v0.0.2/go.mod h1:G+R6q7jYgNa52NqcRhnNm28pogfWW+cuHtgBktrc2QA=
 github.com/anytypeio/go-ds-badger3 v0.3.1-0.20221103102622-3233d4e13cb8 h1:LC9w0M0SbA5VuZeBtUdq+uR4mdjbJhxurNtovmRiOrU=
