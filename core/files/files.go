@@ -22,6 +22,7 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
@@ -53,6 +54,7 @@ type Service struct {
 	fileSync     filesync.FileSync
 	dagService   ipld.DAGService
 	spaceService space.Service
+	fileStorage  filestorage.FileStorage
 }
 
 func (s *Service) Init(a *app.App) (err error) {
@@ -61,6 +63,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.dagService = s.commonFile.DAGService()
+	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	return nil
 }
 

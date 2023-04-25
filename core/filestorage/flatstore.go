@@ -51,7 +51,7 @@ func (f *flatStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Blo
 		for _, k := range ks {
 			b, err := f.Get(ctx, k)
 			if err != nil {
-				log.Error("flatStore.GetMany", zap.Error(err))
+				log.Error("localStore.GetMany", zap.Error(err))
 				continue
 			}
 			ch <- b

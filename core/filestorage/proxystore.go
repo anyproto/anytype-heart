@@ -16,8 +16,8 @@ import (
 )
 
 type proxyStore struct {
-	cache  *flatStore
-	origin rpcstore.RpcStore
+	localStore *flatStore
+	origin     rpcstore.RpcStore
 
 	oldStore *badger.DB
 }
@@ -29,7 +29,7 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 	}
 
 	log.Debug("get cid", zap.String("cid", k.String()))
-	if b, err = c.cache.Get(ctx, k); err != nil {
+	if b, err = c.localStore.Get(ctx, k); err != nil {
 		if format.IsNotFound(err) {
 			err = nil
 			log.Debug("proxyStore local cid not found", zap.String("cid", k.String()))
@@ -43,8 +43,8 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 		log.Debug("proxyStore remote cid error", zap.String("cid", k.String()), zap.Error(err))
 		return
 	}
-	if addErr := c.cache.Add(ctx, []blocks.Block{b}); addErr != nil {
-		log.Error("block fetched from origin but got error for add to cache", zap.Error(addErr))
+	if addErr := c.localStore.Add(ctx, []blocks.Block{b}); addErr != nil {
+		log.Error("block fetched from origin but got error for add to localStore", zap.Error(addErr))
 	}
 	return
 }
@@ -86,20 +86,20 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 	}
 	gotFromOldStore := len(ks) - len(remaining)
 
-	fromCache, fromOrigin, localErr := c.cache.PartitionByExistence(ctx, remaining)
+	fromCache, fromOrigin, localErr := c.localStore.PartitionByExistence(ctx, remaining)
 	if localErr != nil {
 		log.Error("proxy store hasCIDs error", zap.Error(localErr))
 		fromOrigin = ks
 	}
 	log.Debug("get many cids", zap.Int("cached", len(fromCache)), zap.Int("origin", len(fromOrigin)))
 	if len(fromOrigin) == 0 && gotFromOldStore == 0 {
-		return c.cache.GetMany(ctx, fromCache)
+		return c.localStore.GetMany(ctx, fromCache)
 	}
 	results := make(chan blocks.Block)
 
 	go func() {
 		defer close(results)
-		localResults := c.cache.GetMany(ctx, fromCache)
+		localResults := c.localStore.GetMany(ctx, fromCache)
 		originResults := c.origin.GetMany(ctx, fromOrigin)
 		oOk, cOk, oldOk := true, true, true
 		for {
@@ -115,8 +115,8 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 				}
 			case ob, oOk = <-originResults:
 				if oOk {
-					if addErr := c.cache.Add(ctx, []blocks.Block{ob}); addErr != nil {
-						log.Error("add block to cache error", zap.Error(addErr))
+					if addErr := c.localStore.Add(ctx, []blocks.Block{ob}); addErr != nil {
+						log.Error("add block to localStore error", zap.Error(addErr))
 					}
 					results <- ob
 				}
@@ -185,26 +185,26 @@ func (c *proxyStore) getManyFromOldStore(ks []cid.Cid) (remaining []cid.Cid, res
 }
 
 func (c *proxyStore) Add(ctx context.Context, bs []blocks.Block) (err error) {
-	if bs, err = c.cache.NotExistsBlocks(ctx, bs); err != nil {
+	if bs, err = c.localStore.NotExistsBlocks(ctx, bs); err != nil {
 		return
 	}
 	if len(bs) == 0 {
 		return nil
 	}
-	return c.cache.Add(ctx, bs)
+	return c.localStore.Add(ctx, bs)
 }
 
 func (c *proxyStore) Delete(ctx context.Context, k cid.Cid) error {
-	return c.cache.Delete(ctx, k)
+	return c.localStore.Delete(ctx, k)
 }
 
 func (c *proxyStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, err error) {
-	exist, _, err = c.cache.PartitionByExistence(ctx, ks)
+	exist, _, err = c.localStore.PartitionByExistence(ctx, ks)
 	return
 }
 
 func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
-	return c.cache.NotExistsBlocks(ctx, bs)
+	return c.localStore.NotExistsBlocks(ctx, bs)
 }
 
 func (c *proxyStore) Close() error {
@@ -213,8 +213,8 @@ func (c *proxyStore) Close() error {
 			log.Error("error while closing old store", zap.Error(err))
 		}
 	}
-	if err := c.cache.Close(); err != nil {
-		log.Error("error while closing cache store", zap.Error(err))
+	if err := c.localStore.Close(); err != nil {
+		log.Error("error while closing localStore store", zap.Error(err))
 	}
 	if closer, ok := c.origin.(io.Closer); ok {
 		return closer.Close()

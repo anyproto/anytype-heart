@@ -3,6 +3,9 @@ package filestorage
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/logger"
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
@@ -12,8 +15,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"os"
-	"path/filepath"
+	"go.uber.org/zap"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
@@ -35,6 +37,8 @@ func New() FileStorage {
 type FileStorage interface {
 	fileblockstore.BlockStoreLocal
 	app.ComponentRunnable
+
+	LocalDiskUsage(ctx context.Context) (uint64, error)
 }
 
 type fileStorage struct {
@@ -47,6 +51,7 @@ type fileStorage struct {
 	spaceService space.Service
 	handler      *rpcHandler
 	spaceStorage storage.ClientStorage
+	localStore   *flatStore
 }
 
 func (f *fileStorage) Init(a *app.App) (err error) {
@@ -82,27 +87,40 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
-	bs, err := newFlatStore(f.flatfsPath)
+	localStore, err := newFlatStore(f.flatfsPath)
 	if err != nil {
 		return fmt.Errorf("flatstore: %w", err)
 	}
-	f.handler.store = bs
+	f.handler.store = localStore
+	f.localStore = localStore
 
-	var oldStore *badger.DB
-	if f.cfg.LegacyFileStorePath != "" {
-		oldStore, err = badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
-		if err != nil {
-			return fmt.Errorf("open old file store: %w", err)
-		}
+	oldStore, storeErr := f.initOldStore()
+	if storeErr != nil {
+		log.Error("can't open legacy file store", zap.Error(storeErr))
 	}
 	ps := &proxyStore{
-		cache:    bs,
-		origin:   f.rpcStore.NewStore(),
-		oldStore: oldStore,
+		localStore: localStore,
+		origin:     f.rpcStore.NewStore(),
+		oldStore:   oldStore,
 	}
 	f.BlockStoreLocal = ps
 	return
 }
+
+func (f *fileStorage) initOldStore() (*badger.DB, error) {
+	if f.cfg.LegacyFileStorePath == "" {
+		return nil, nil
+	}
+	if _, err := os.Stat(f.cfg.LegacyFileStorePath); os.IsNotExist(err) {
+		return nil, nil
+	}
+	return badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath))
+}
+
+func (f *fileStorage) LocalDiskUsage(ctx context.Context) (uint64, error) {
+	return f.localStore.ds.DiskUsage(ctx)
+}
+
 func (f *fileStorage) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
 	return f.BlockStoreLocal.Get(f.patchAccountIdCtx(ctx), k)
 }

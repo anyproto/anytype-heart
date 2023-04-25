@@ -8,10 +8,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/space"
 )
 
 func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
@@ -130,14 +128,11 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	return response(hash, pb.RpcFileUploadResponseError_NULL, nil)
 }
 
-func (mw *Middleware) FileGetSpaceQuota(cctx context.Context, req *pb.RpcFileGetSpaceQuotaRequest) *pb.RpcFileGetSpaceQuotaResponse {
-	response := func(path string, code pb.RpcFileGetSpaceQuotaResponseErrorCode, err error, stat filesync.SpaceStat) *pb.RpcFileGetSpaceQuotaResponse {
-		m := &pb.RpcFileGetSpaceQuotaResponse{
-			Error:      &pb.RpcFileGetSpaceQuotaResponseError{Code: code},
-			FilesCount: uint32(stat.FileCount),
-			CidsCount:  uint32(stat.CidsCount),
-			BytesUsage: uint32(stat.BytesUsage),
-			BytesLimit: uint32(stat.BytesLimit),
+func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {
+	response := func(code pb.RpcFileSpaceUsageResponseErrorCode, err error, usage *pb.RpcFileSpaceUsageResponseUsage) *pb.RpcFileSpaceUsageResponse {
+		m := &pb.RpcFileSpaceUsageResponse{
+			Error: &pb.RpcFileSpaceUsageResponseError{Code: code},
+			Usage: usage,
 		}
 
 		if err != nil {
@@ -145,15 +140,8 @@ func (mw *Middleware) FileGetSpaceQuota(cctx context.Context, req *pb.RpcFileGet
 		}
 		return m
 	}
-	var path string
 
-	fileSync := app.MustComponent[filesync.FileSync](mw.app)
-	spaceService := app.MustComponent[space.Service](mw.app)
+	// TODO call service
 
-	stat, err := fileSync.SpaceStat(context.Background(), spaceService.AccountId())
-	if err != nil {
-		return response("", pb.RpcFileGetSpaceQuotaResponseError_UNKNOWN_ERROR, err, stat)
-	}
-
-	return response(path, pb.RpcFileGetSpaceQuotaResponseError_NULL, nil, stat)
+	return response(pb.RpcFileSpaceUsageResponseError_NULL, nil, nil)
 }

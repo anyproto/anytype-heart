@@ -3,12 +3,12 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/anytypeio/any-sync/commonfile/fileproto"
 	"github.com/dgraph-io/badger/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -26,7 +26,7 @@ func TestCacheStore_Add(t *testing.T) {
 		testBlocks := newTestBocks("1", "2", "3")
 		require.NoError(t, cs.Add(ctx, testBlocks))
 		for _, b := range testBlocks {
-			gb, err := cs.cache.Get(ctx, b.Cid())
+			gb, err := cs.localStore.Get(ctx, b.Cid())
 			assert.NoError(t, err)
 			assert.NotNil(t, gb)
 		}
@@ -38,7 +38,7 @@ func TestCacheStore_Get(t *testing.T) {
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
-		require.NoError(t, cs.cache.Add(ctx, testBlocks))
+		require.NoError(t, cs.localStore.Add(ctx, testBlocks))
 		require.NoError(t, cs.origin.Add(ctx, testBlocks))
 		for _, b := range testBlocks {
 			gb, err := cs.Get(ctx, b.Cid())
@@ -50,7 +50,7 @@ func TestCacheStore_Get(t *testing.T) {
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
-		require.NoError(t, cs.cache.Add(ctx, testBlocks[:1]))
+		require.NoError(t, cs.localStore.Add(ctx, testBlocks[:1]))
 		require.NoError(t, cs.origin.Add(ctx, testBlocks))
 		for _, b := range testBlocks {
 			gb, err := cs.Get(ctx, b.Cid())
@@ -58,7 +58,7 @@ func TestCacheStore_Get(t *testing.T) {
 			assert.NotNil(t, gb)
 		}
 		for _, b := range testBlocks {
-			lb, err := cs.cache.Get(ctx, b.Cid())
+			lb, err := cs.localStore.Get(ctx, b.Cid())
 			assert.NoError(t, err)
 			assert.NotNil(t, lb)
 		}
@@ -70,7 +70,7 @@ func TestCacheStore_GetMany(t *testing.T) {
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
-		require.NoError(t, cs.cache.Add(ctx, testBlocks))
+		require.NoError(t, cs.localStore.Add(ctx, testBlocks))
 		require.NoError(t, cs.origin.Add(ctx, testBlocks))
 
 		var cids, resCids []cid.Cid
@@ -99,7 +99,7 @@ func TestCacheStore_GetMany(t *testing.T) {
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
-		require.NoError(t, cs.cache.Add(ctx, testBlocks[:1]))
+		require.NoError(t, cs.localStore.Add(ctx, testBlocks[:1]))
 		require.NoError(t, cs.origin.Add(ctx, testBlocks))
 
 		var cids, resCids []cid.Cid
@@ -124,7 +124,7 @@ func TestCacheStore_GetMany(t *testing.T) {
 		}()
 		require.Equal(t, len(cids), len(resCids))
 		for _, b := range testBlocks {
-			gb, err := cs.cache.Get(ctx, b.Cid())
+			gb, err := cs.localStore.Get(ctx, b.Cid())
 			assert.NoError(t, err)
 			assert.NotNil(t, gb)
 		}
@@ -135,10 +135,10 @@ func TestCacheStore_Delete(t *testing.T) {
 	testBlocks := newTestBocks("1", "2", "3")
 	cs := newPSFixture(t)
 	defer cs.Finish(t)
-	require.NoError(t, cs.cache.Add(ctx, testBlocks))
+	require.NoError(t, cs.localStore.Add(ctx, testBlocks))
 	for _, b := range testBlocks {
 		require.NoError(t, cs.Delete(ctx, b.Cid()))
-		gb, err := cs.cache.Get(ctx, b.Cid())
+		gb, err := cs.localStore.Get(ctx, b.Cid())
 		assert.Nil(t, gb)
 		assert.True(t, format.IsNotFound(err))
 	}
@@ -291,8 +291,8 @@ func newPSFixture(t *testing.T) *psFixture {
 	require.NoError(t, err)
 
 	fx.proxyStore = &proxyStore{
-		cache:  cache,
-		origin: newTestStore(nil),
+		localStore: cache,
+		origin:     newTestStore(nil),
 	}
 	return fx
 }
