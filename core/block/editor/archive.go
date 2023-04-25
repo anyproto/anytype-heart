@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"sync"
-
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
@@ -99,12 +97,9 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 		storeArchivedIds = append(storeArchivedIds, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
 	}
 
-	var wg sync.WaitGroup
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
 	for _, removedId := range removedIds {
-		wg.Add(1)
 		go func(id string) {
-			defer wg.Done()
 			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
@@ -119,9 +114,7 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 		}(removedId)
 	}
 	for _, addedId := range addedIds {
-		wg.Add(1)
 		go func(id string) {
-			defer wg.Done()
 			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
@@ -135,7 +128,5 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 			}
 		}(addedId)
 	}
-
-	wg.Wait()
 	return
 }
