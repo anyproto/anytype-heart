@@ -87,6 +87,10 @@ github.com/anytypeio/any-sync v0.0.7-0.20230201222102-36307440863f h1:4lHBH7zi2T
 github.com/anytypeio/any-sync v0.0.7-0.20230201222102-36307440863f/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
 github.com/anytypeio/any-sync v0.0.7-0.20230203115544-9ba0620cab5c h1:YZengvmCCH1orqBRnwy9xlCveC7gmJMp2OiUK05u3Y0=
 github.com/anytypeio/any-sync v0.0.7-0.20230203115544-9ba0620cab5c/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
+github.com/anytypeio/any-sync v0.0.7-0.20230203134905-2da9f84907fe h1:NewhEh95b3moPGefARnw7DZSN13l2X4THi8BWX9ArAo=
+github.com/anytypeio/any-sync v0.0.7-0.20230203134905-2da9f84907fe/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
+github.com/anytypeio/any-sync v0.0.7-0.20230203135530-fad981daee3a h1:Ae9mAPEiWnZ1O6wo/FnajIXtMb0pUaCP6buaseKklLw=
+github.com/anytypeio/any-sync v0.0.7-0.20230203135530-fad981daee3a/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
 github.com/anytypeio/any-sync v0.0.7 h1:LpPj1ktb8h9vl2nsU/Zd1QYPihEqKU7mZzD3CbrC1ho=
 github.com/anytypeio/any-sync v0.0.7/go.mod h1:mV4G+5MaTn7CMkYJ2joUDY7fsHLsSN9N/6kRFW443No=
 github.com/anytypeio/go-chash v0.0.2 h1:BSpyMC3HXNkf2eosQrHM4svov0DrvxL9tb4gnHbdmbA=

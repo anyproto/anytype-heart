@@ -130,6 +130,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
+		Register(localdiscovery.New()).
 		Register(space.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
@@ -160,7 +161,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientdebugrpc.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
-		Register(localdiscovery.New()).
 		Register(bookmark.New()).
 		Register(session.New()).
 		Register(importer.New()).

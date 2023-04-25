@@ -101,6 +101,7 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 	})
 	if taskErr != nil {
 		for _, peerId := range taskClientIds {
+			log.Debug("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
 			if !slices.Contains(t.denyPeerIds, peerId) {
 				t.denyPeerIds = append(t.denyPeerIds, c.peerId)
 				m.add(t.ctx, t)
@@ -108,6 +109,7 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 			}
 		}
 	}
+	log.Debug("finishing task task", zap.String("cid", t.cid.String()))
 	t.ready <- result{cid: t.cid, err: taskErr}
 	t.release()
 }

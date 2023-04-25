@@ -46,14 +46,13 @@ func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.O
 
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	p, err := n.p.commonPool.GetOneOf(ctx, n.responsiblePeerIds)
-	if err != nil {
-		return
+	if err == nil {
+		peers = []peer.Peer{p}
 	}
-	peers = []peer.Peer{p}
 	streams := n.p.streamPool.Streams(n.spaceId)
 	for _, stream := range streams {
 		peerId, err := peer.CtxPeerId(stream.Context())
-		if err != nil {
+		if err != nil || slices.ContainsFunc(peers, func(p peer.Peer) bool { return p.Id() == peerId }) {
 			continue
 		}
 		clientPeer, err := n.p.UnaryPeerPool().Get(ctx, peerId)
@@ -61,6 +60,9 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 			continue
 		}
 		peers = append(peers, clientPeer)
+	}
+	if err != nil && len(peers) > 0 {
+		err = nil
 	}
 	return
 }
