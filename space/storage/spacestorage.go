@@ -19,14 +19,6 @@ type spaceStorage struct {
 	header          *spacesyncproto.RawSpaceHeaderWithId
 }
 
-func (s *spaceStorage) SetSpaceDeleted() error {
-	return nil
-}
-
-func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
-	return false, nil
-}
-
 var spaceValidationFunc = spacestorage.ValidateSpaceStorageCreatePayload
 
 func newSpaceStorage(objDb *badger.DB, spaceId string) (store spacestorage.SpaceStorage, err error) {
@@ -216,6 +208,23 @@ func (s *spaceStorage) SetTreeDeletedStatus(id, status string) (err error) {
 	return s.objDb.Update(func(txn *badger.Txn) error {
 		return txn.Set(s.keys.TreeDeletedKey(id), []byte(status))
 	})
+}
+
+func (s *spaceStorage) SetSpaceDeleted() error {
+	return s.objDb.Update(func(txn *badger.Txn) error {
+		return txn.Set(s.keys.SpaceDeletedKey(), s.keys.SpaceDeletedKey())
+	})
+}
+
+func (s *spaceStorage) IsSpaceDeleted() (res bool, err error) {
+	err = s.objDb.View(func(txn *badger.Txn) error {
+		_, err = getTxn(txn, s.keys.SpaceDeletedKey())
+		return err
+	})
+	if err != badger.ErrKeyNotFound {
+		return false, err
+	}
+	return err == nil, nil
 }
 
 func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
