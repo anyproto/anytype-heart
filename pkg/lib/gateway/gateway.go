@@ -215,7 +215,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reader, err := file.Reader()
+	reader, err := file.Reader(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -271,7 +271,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reader, err := file.Reader()
+	reader, err := file.Reader(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return

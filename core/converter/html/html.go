@@ -533,7 +533,7 @@ func (h *HTML) getImageBase64(hash string) (res string) {
 	if err != nil {
 		return
 	}
-	rd, err := f.Reader()
+	rd, err := f.Reader(context.TODO())
 	if err != nil {
 		return
 	}

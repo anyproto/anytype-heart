@@ -1,11 +1,13 @@
 package editor
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/filestorage"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -60,7 +62,11 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	doc, err := ctx.Source.ReadDoc(ctx.Ctx, nil, true)
+	var loadCtx = ctx.Ctx
+	if ctx.BuildOpts.DisableRemoteLoad {
+		loadCtx = context.WithValue(loadCtx, filestorage.CtxKeyRemoteLoadDisabled, true)
+	}
+	doc, err := ctx.Source.ReadDoc(loadCtx, nil, true)
 	if err != nil {
 		return err
 	}

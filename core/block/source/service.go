@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anytypeio/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -29,7 +30,7 @@ func New() Service {
 }
 
 type Service interface {
-	NewSource(id string, spaceID string, buildOptions commonspace.BuildTreeOpts) (source Source, err error)
+	NewSource(id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(id string, s Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
@@ -66,7 +67,20 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.BuildTreeOpts) (source Source, err error) {
+type BuildOptions struct {
+	DisableRemoteLoad bool
+	RetryRemoteLoad   bool // anysync only; useful for account cold load from p2p nodes
+	Listener          updatelistener.UpdateListener
+}
+
+func (b *BuildOptions) BuildTreeOpts() commonspace.BuildTreeOpts {
+	return commonspace.BuildTreeOpts{
+		Listener:           b.Listener,
+		WaitTreeRemoteSync: b.RetryRemoteLoad,
+	}
+}
+
+func (s *service) NewSource(id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
@@ -98,7 +112,7 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 		return
 	}
 	var ot objecttree.ObjectTree
-	ot, err = spc.BuildTree(ctx, id, buildOptions)
+	ot, err = spc.BuildTree(ctx, id, buildOptions.BuildTreeOpts())
 	if err != nil {
 		return
 	}

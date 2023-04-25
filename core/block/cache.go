@@ -40,10 +40,8 @@ type treeCreateCache struct {
 type cacheOpts struct {
 	spaceId      string
 	createOption *treeCreateCache
-	buildOption  commonspace.BuildTreeOpts
+	buildOption  source.BuildOptions
 	putObject    smartblock.SmartBlock
-
-	waitRemote bool
 }
 
 type InitFunc = func(id string) *smartblock.InitContext
@@ -62,20 +60,21 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	// TODO Pass options as parameter?
 	opts := ctx.Value(optsKey).(cacheOpts)
 
-	buildTreeObject := func(id string) (sb smartblock.SmartBlock, err error) {
-		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildTreeOpts: opts.buildOption, SpaceID: opts.spaceId})
+	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
+		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
-	createTreeObject := func() (sb smartblock.SmartBlock, err error) {
+	createObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)
 		initCtx.IsNewObject = true
+		initCtx.Ctx = ctx
 		initCtx.SpaceID = opts.spaceId
-		initCtx.BuildTreeOpts = opts.buildOption
+		initCtx.BuildOpts = opts.buildOption
 		return s.objectFactory.InitObject(id, initCtx)
 	}
 
 	switch {
 	case opts.createOption != nil:
-		return createTreeObject()
+		return createObject()
 	case opts.putObject != nil:
 		// putting object through cache
 		return opts.putObject, nil
@@ -88,7 +87,7 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	case coresb.SmartBlockTypeSubObject:
 		return s.initSubObject(ctx, id)
 	default:
-		return buildTreeObject(id)
+		return buildObject(id)
 	}
 }
 
@@ -342,8 +341,8 @@ func (s *Service) getDerivedObject(
 	ctx = context.WithValue(ctx,
 		optsKey,
 		cacheOpts{
-			buildOption: commonspace.BuildTreeOpts{
-				WaitTreeRemoteSync: true,
+			buildOption: source.BuildOptions{
+				RetryRemoteLoad: true,
 			},
 		},
 	)
@@ -381,6 +380,13 @@ func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.
 		return
 	}
 	return account.(SmartblockOpener).Open(id)
+}
+
+func CacheOptsWithRemoteLoadDisabled(ctx context.Context) context.Context {
+	return updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
+		opts.buildOption.DisableRemoteLoad = true
+		return opts
+	})
 }
 
 func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts) context.Context {

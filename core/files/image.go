@@ -23,9 +23,9 @@ const (
 )
 
 type Image interface {
-	Exif() (*mill.ImageExifSchema, error)
+	Exif(ctx context.Context) (*mill.ImageExifSchema, error)
 	Hash() string
-	Details() (*types.Struct, error)
+	Details(ctx context.Context) (*types.Struct, error)
 	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
 	GetFileForLargestWidth(ctx context.Context) (File, error)
 	GetOriginalFile(ctx context.Context) (File, error)
@@ -105,7 +105,7 @@ func (i *image) Hash() string {
 	return i.hash
 }
 
-func (i *image) Exif() (*mill.ImageExifSchema, error) {
+func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/exif")
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 		info: fileIndex,
 		node: i.service,
 	}
-	r, err := f.Reader()
+	r, err := f.Reader(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	return &exif, nil
 }
 
-func (i *image) Details() (*types.Struct, error) {
+func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():         pbtypes.String(i.hash),
@@ -171,7 +171,7 @@ func (i *image) Details() (*types.Struct, error) {
 
 	}
 
-	exif, err := i.Exif()
+	exif, err := i.Exif(ctx)
 	if err != nil {
 		log.Errorf("failed to get exif for image: %s", err.Error())
 		exif = &mill.ImageExifSchema{}

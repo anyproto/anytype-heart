@@ -10,7 +10,6 @@ import (
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonspace"
 	// nolint:misspell
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -166,7 +165,7 @@ type InitContext struct {
 	Restriction    restriction.Service
 	ObjectStore    objectstore.ObjectStore
 	SpaceID        string
-	BuildTreeOpts  commonspace.BuildTreeOpts
+	BuildOpts      source.BuildOptions
 	Ctx            context.Context
 }
 

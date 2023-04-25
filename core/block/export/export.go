@@ -374,7 +374,7 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 	}
 	origName := file.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := file.Reader()
+	rd, err := file.Reader(context.TODO())
 	if err != nil {
 		return
 	}
@@ -392,7 +392,7 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	}
 	origName := orig.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := orig.Reader()
+	rd, err := orig.Reader(context.TODO())
 	if err != nil {
 		return
 	}

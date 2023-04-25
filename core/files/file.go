@@ -19,8 +19,8 @@ import (
 type File interface {
 	Meta() *FileMeta
 	Hash() string
-	Reader() (io.ReadSeeker, error)
-	Details() (*types.Struct, error)
+	Reader(ctx context.Context) (io.ReadSeeker, error)
+	Details(ctx context.Context) (*types.Struct, error)
 	Info() *storage.FileInfo
 }
 
@@ -37,8 +37,8 @@ type FileMeta struct {
 	Added time.Time
 }
 
-func (f *file) audioDetails() (*types.Struct, error) {
-	r, err := f.Reader()
+func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
+	r, err := f.Reader(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (f *file) audioDetails() (*types.Struct, error) {
 	return d, nil
 }
 
-func (f *file) Details() (*types.Struct, error) {
+func (f *file) Details(ctx context.Context) (*types.Struct, error) {
 	meta := f.Meta()
 
 	t := &types.Struct{
@@ -96,7 +96,7 @@ func (f *file) Details() (*types.Struct, error) {
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {
-		if audioDetails, err := f.audioDetails(); err == nil {
+		if audioDetails, err := f.audioDetails(ctx); err == nil {
 			t = pbtypes.StructMerge(t, audioDetails, false)
 		}
 		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyAudio.URL())
@@ -122,6 +122,6 @@ func (f *file) Hash() string {
 	return f.hash
 }
 
-func (f *file) Reader() (io.ReadSeeker, error) {
-	return f.node.getContentReader(context.Background(), f.info)
+func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
+	return f.node.getContentReader(ctx, f.info)
 }

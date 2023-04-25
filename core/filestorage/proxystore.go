@@ -15,6 +15,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
 )
 
+const CtxKeyRemoteLoadDisabled = "object_remote_load_disabled"
+
 type proxyStore struct {
 	localStore *flatStore
 	origin     rpcstore.RpcStore
@@ -38,6 +40,10 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 		}
 	} else {
 		return
+	}
+	v, ok := ctx.Value(CtxKeyRemoteLoadDisabled).(bool)
+	if ok && v {
+		return nil, fmt.Errorf("remote load disabled")
 	}
 	if b, err = c.origin.Get(ctx, k); err != nil {
 		log.Debug("proxyStore remote cid error", zap.String("cid", k.String()), zap.Error(err))

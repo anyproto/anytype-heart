@@ -95,7 +95,7 @@ func (f *ObjectFactory) Name() (name string) {
 }
 
 func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := f.sourceService.NewSource(id, initCtx.SpaceID, initCtx.BuildTreeOpts)
+	sc, err := f.sourceService.NewSource(id, initCtx.SpaceID, initCtx.BuildOpts)
 	if err != nil {
 		return
 	}

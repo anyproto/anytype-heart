@@ -59,7 +59,7 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 
 	progress.SetTotal(f.Meta().Size)
 
-	r, err := f.Reader()
+	r, err := f.Reader(ctx)
 	if err != nil {
 		return "", fmt.Errorf("get file reader: %w", err)
 	}

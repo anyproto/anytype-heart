@@ -651,7 +651,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 		log.Errorf("failed to update isArchived and isFavorite details for %s: %s", id, err)
 	}
 
-	// Touch the object to initiate indexing
+	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	err = block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
 		d := sb.GetDocInfo()
 		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
