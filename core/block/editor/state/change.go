@@ -384,11 +384,18 @@ func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error 
 }
 
 func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
-	var bIds = make([]string, len(bc.Blocks))
-	for i, m := range bc.Blocks {
+	var bIds = make([]string, 0, len(bc.Blocks))
+	for _, m := range bc.Blocks {
+		if m.Id == s.rootId {
+			if b := s.Pick(m.Id); b != nil {
+				continue
+			}
+		}
 		b := simple.New(m)
-		bIds[i] = b.Model().Id
-		s.Unlink(bIds[i])
+		if m.Id != s.rootId {
+			bIds = append(bIds, b.Model().Id)
+			s.Unlink(m.Id)
+		}
 		s.Set(b)
 		if dv := b.Model().GetDataview(); dv != nil {
 			if len(dv.RelationLinks) == 0 {
@@ -495,6 +502,16 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
 		case *pb.EventMessageValueOfBlockAdd:
 			for _, b := range o.BlockAdd.Blocks {
+				if b.Id == s.rootId {
+					// special case to add root block
+					s.changes = append(s.changes, &pb.ChangeContent{
+						Value: &pb.ChangeContentValueOfBlockCreate{
+							BlockCreate: &pb.ChangeBlockCreate{
+								Blocks: []*model.Block{b},
+							},
+						},
+					})
+				}
 				s.newIds = append(s.newIds, b.Id)
 				if len(b.ChildrenIds) > 0 {
 					structMsgs = append(structMsgs, &pb.EventBlockSetChildrenIds{
@@ -503,7 +520,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 					})
 				}
 			}
-
 		case *pb.EventMessageValueOfBlockDataviewSourceSet:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewViewSet:
