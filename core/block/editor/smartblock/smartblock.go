@@ -1054,9 +1054,6 @@ func (sb *smartBlock) SetLayout(ctx *session.Context, layout model.ObjectTypeLay
 
 func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (err error) {
 	fromLayout, _ := s.Layout()
-	if err = converter.ConvertLayout(s, fromLayout, layout); err != nil {
-		return fmt.Errorf("convert layout: %w", err)
-	}
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(layout)))
 	// reset align when layout todo
@@ -1067,7 +1064,13 @@ func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (
 		}
 	}
 
-	return template.InitTemplate(s, template.ByLayout(layout)...)
+	if err = template.InitTemplate(s, template.ByLayout(layout)...); err != nil {
+		return fmt.Errorf("init template: %w", err)
+	}
+	if err = converter.ConvertLayout(s, fromLayout, layout); err != nil {
+		return fmt.Errorf("convert layout: %w", err)
+	}
+	return nil
 }
 
 func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
