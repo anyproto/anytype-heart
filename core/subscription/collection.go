@@ -83,31 +83,17 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	updatedIDs := slice.Union(ids, c.ids)
+	removed, added := slice.DifferenceRemovedAdded(c.ids, ids)
 
+	// TODO update idsIndex map atomically
 	c.setIDs(ids)
 
-	entries := fetchEntries(c.cache, c.objectStore, updatedIDs)
+	entries := fetchEntries(c.cache, c.objectStore, append(removed, added...))
 	for _, e := range entries {
 		c.recBatch.Add(database.Record{
 			Details: e.data,
 		})
 	}
-}
-
-func (c *collectionObserver) Compare(a, b filter.Getter) int {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
-	ae, be := a.(*entry), b.(*entry)
-	ap, bp := c.idsIndex[ae.id], c.idsIndex[be.id]
-	if ap == bp {
-		return 0
-	}
-	if ap < bp {
-		return -1
-	}
-	return 1
 }
 
 func (c *collectionObserver) FilterObject(g filter.Getter) bool {
@@ -167,17 +153,7 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 		flt = filter.AndFilters{obs, flt}
 	}
 
-	var orderFromCollection bool
-	if order == nil {
-		// Take an order from collection
-		order = obs
-		orderFromCollection = true
-	}
 	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)
-	if orderFromCollection {
-		ssub.batchUpdate = true
-	}
-
 	sub := &collectionSub{
 		id:           id,
 		collectionID: collectionID,

@@ -36,12 +36,6 @@ type sortedSub struct {
 	filter filter.Filter
 	order  filter.Order
 
-	// batchUpdate enables a mechanism of updating underlying skip-list in a batch,
-	// so it will handle reordering of elements correctly. Reordering works correctly
-	// only if client code sends all entries of skip-list because we need to re-create
-	// the skip-list entirely from scratch
-	batchUpdate bool
-
 	afterId, beforeId string
 	limit, offset     int
 
@@ -138,16 +132,15 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 }
 
 func (s *sortedSub) onChange(ctx *opCtx) {
-	if s.batchUpdate {
-		if !s.onEntriesChangeBatchUpdate(ctx.entries) {
-			return
-		}
-	} else {
-		if !s.onEntriesChangeDefault(ctx.entries) {
-			return
+	var changed bool
+	for _, e := range ctx.entries {
+		if !s.onEntryChange(ctx, e) {
+			changed = true
 		}
 	}
-
+	if !changed {
+		return
+	}
 	defer s.diff.reset()
 	s.activeEntriesBuf = s.activeEntriesBuf[:0]
 	if s.iterateActive(func(e *entry) {
@@ -190,17 +183,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 
 }
 
-func (s *sortedSub) onEntriesChangeDefault(entries []*entry) bool {
-	var changed bool
-	for _, e := range entries {
-		if !s.onEntryChangeDefault(e) {
-			changed = true
-		}
-	}
-	return changed
-}
-
-func (s *sortedSub) onEntryChangeDefault(e *entry) (noChange bool) {
+func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
 	newInSet := true
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e)
@@ -229,102 +212,6 @@ func (s *sortedSub) onEntryChangeDefault(e *entry) (noChange bool) {
 		s.skl.Set(e, nil)
 		e.SetSub(s.id, false)
 		return
-	}
-	panic("subscription: check algo")
-}
-
-func (s *sortedSub) onEntriesChangeBatchUpdate(entries []*entry) (changed bool) {
-	var changes []*skipListChange
-	for _, e := range entries {
-		if ch := s.onEntryChangeReorder(e); ch != nil {
-			changes = append(changes, ch)
-		}
-	}
-	if len(changes) == 0 {
-		return false
-	}
-
-	// TODO cache changes and updateBatch
-
-	// Collect updates in one batch to recreate skip-list correctly
-	var updateBatch []*skipListChangePair
-	applyBatch := func() {
-		// We can't remove and then set immediately because of how skip-list works:
-		// if order was changed then it can't correctly find an old entry
-		// or insert a new entry into proper position.
-		// So firstly remove all entries
-		for _, u := range updateBatch {
-			s.skl.Remove(u.old)
-		}
-		// And insert them with updated order
-		for _, u := range updateBatch {
-			s.skl.Set(u.new, nil)
-			u.new.SetSub(s.id, false)
-		}
-		updateBatch = updateBatch[:0]
-	}
-
-	for _, ch := range changes {
-		if ch.add != nil {
-			applyBatch()
-			s.skl.Set(ch.add, nil)
-			ch.add.SetSub(s.id, false)
-			continue
-		}
-
-		if ch.remove != nil {
-			applyBatch()
-			s.skl.Remove(ch.remove.old)
-			ch.remove.new.RemoveSubId(s.id)
-			continue
-		}
-
-		if ch.change != nil {
-			updateBatch = append(updateBatch, ch.change)
-		}
-	}
-	applyBatch()
-	return true
-}
-
-type skipListChange struct {
-	add    *entry
-	remove *skipListChangePair
-	change *skipListChangePair
-}
-
-type skipListChangePair struct {
-	old, new *entry
-}
-
-func (s *sortedSub) onEntryChangeReorder(e *entry) *skipListChange {
-	newInSet := true
-	if s.filter != nil {
-		newInSet = s.filter.FilterObject(e)
-	}
-	curr := s.cache.Get(e.id)
-	curInSet := curr != nil
-	// nothing
-	if !curInSet && !newInSet {
-		return nil
-	}
-	// remove
-	if curInSet && !newInSet {
-		return &skipListChange{remove: &skipListChangePair{
-			old: curr,
-			new: e,
-		}}
-	}
-	// add
-	if !curInSet && newInSet {
-		return &skipListChange{add: e}
-	}
-	// change
-	if curInSet && newInSet {
-		return &skipListChange{change: &skipListChangePair{
-			old: curr,
-			new: e,
-		}}
 	}
 	panic("subscription: check algo")
 }
