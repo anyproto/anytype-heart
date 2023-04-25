@@ -101,6 +101,13 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
 
+	// init template before sub-object initialization because sub-objects could fire onSubObjectChange callback
+	// and index incomplete workspace template
+	err = p.initTemplate(ctx)
+	if err != nil {
+		return fmt.Errorf("init template: %w", err)
+	}
+
 	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
 		for collName, coll := range data.Fields {
@@ -127,6 +134,10 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
+	return nil
+}
+
+func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) error {
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithEmpty,
