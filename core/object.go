@@ -636,6 +636,7 @@ func (mw *Middleware) ObjectSetSource(cctx context.Context,
 }
 
 func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
+	ctx := mw.newContext(cctx)
 	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
 		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
 			ObjectId: setId,
@@ -646,6 +647,8 @@ func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.
 		if err != nil {
 			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
 			resp.Error.Description = err.Error()
+		} else {
+			resp.Event = ctx.GetResponseEvent()
 		}
 		return resp
 	}
@@ -654,7 +657,7 @@ func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.
 		err   error
 	)
 	err = mw.doBlockService(func(bs *block.Service) error {
-		if setId, err = bs.SetWorkspaceDashboardId(cctx, req.ContextId, req.ObjectId); err != nil {
+		if setId, err = bs.SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId); err != nil {
 			return err
 		}
 		return nil

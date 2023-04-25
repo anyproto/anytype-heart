@@ -11894,6 +11894,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.WorkspaceSetDashboard.Response.Error](#anytype-Rpc-Object-WorkspaceSetDashboard-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | objectId | [string](#string) |  |  |
 
 

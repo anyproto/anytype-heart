@@ -603,23 +603,22 @@ func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceReque
 	})
 }
 
-func (s *Service) SetWorkspaceDashboardId(ctx context.Context, workspaceId string, id string) (setId string, err error) {
-	var ws smartblock.SmartBlock
-	if ws, _, err = s.PickBlock(ctx, workspaceId); err != nil {
-		return "", err
-	}
-	if ws.Type() != model.SmartBlockType_Workspace {
-		return "", ErrUnexpectedBlockType
-	}
-	if err = ws.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
-		{
-			Key:   bundle.RelationKeySpaceDashboardId.String(),
-			Value: pbtypes.String(id),
-		},
-	}, false); err != nil {
-		return
-	}
-	s.spaceDashboardID = id
+func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId string, id string) (setId string, err error) {
+	s.Do(workspaceId, func(ws smartblock.SmartBlock) error {
+		if ws.Type() != model.SmartBlockType_Workspace {
+			return ErrUnexpectedBlockType
+		}
+		if err = ws.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
+			{
+				Key:   bundle.RelationKeySpaceDashboardId.String(),
+				Value: pbtypes.String(id),
+			},
+		}, false); err != nil {
+			return err
+		}
+		s.spaceDashboardID = id
+		return nil
+	})
 	return id, nil
 }
 

@@ -1474,7 +1474,8 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string objectId = 2;
+                ResponseEvent event = 2;
+                string objectId = 3;
 
                 message Error {
                     Code code = 1;
