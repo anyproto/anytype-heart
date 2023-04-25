@@ -1098,7 +1098,9 @@ func (s *State) CheckRestrictions() (err error) {
 		return
 	}
 	for id, b := range s.blocks {
-		rest := b.Model().Restrictions
+		// get the restrictions from the parent state
+		bParent := s.parent.Get(id)
+		rest := bParent.Model().Restrictions
 		if rest == nil {
 			continue
 		}
