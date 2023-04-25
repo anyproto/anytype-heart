@@ -13,5 +13,5 @@ message MigrationObject {
 message Profile {
   string name = 1;
   string avatar = 2;
-  string address = 3;
+  string address = 4;
 }
