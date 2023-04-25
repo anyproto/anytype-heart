@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	file2 "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
@@ -58,13 +59,13 @@ func TestUploader_Upload(t *testing.T) {
 	t.Run("image to file failover", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
-		meta := &core.FileMeta{
+		meta := &files.FileMeta{
 			Media: "text/text",
 			Name:  "test.txt",
 			Size:  3,
 			Added: time.Now(),
 		}
-		//fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(nil, image.ErrFormat)
+		// fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(nil, image.ErrFormat)
 		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
 		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", meta), nil)
 		b := newBlock(model.BlockContentFile_Image)
@@ -146,7 +147,7 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.fileService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
-		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", &core.FileMeta{}), nil)
+		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", &files.FileMeta{}), nil)
 		res := fx.Uploader.SetBytes([]byte("my bytes")).SetName("filename").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.Hash, "123")
@@ -178,7 +179,7 @@ func (fx *uplFixture) newImage(hash string) *testMock.MockImage {
 	return im
 }
 
-func (fx *uplFixture) newFile(hash string, meta *core.FileMeta) *testMock.MockFile {
+func (fx *uplFixture) newFile(hash string, meta *files.FileMeta) *testMock.MockFile {
 	f := testMock.NewMockFile(fx.ctrl)
 	f.EXPECT().Hash().Return(hash).AnyTimes()
 	f.EXPECT().Meta().Return(meta).AnyTimes()

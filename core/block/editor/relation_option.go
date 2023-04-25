@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -27,6 +28,7 @@ func NewRelationOption(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
+	fileService *files.Service,
 ) *RelationOption {
 	return &RelationOption{
 		SubObject: NewSubObject(
@@ -38,6 +40,7 @@ func NewRelationOption(
 			tempDirProvider,
 			sbtProvider,
 			layoutConverter,
+			fileService,
 		),
 	}
 }

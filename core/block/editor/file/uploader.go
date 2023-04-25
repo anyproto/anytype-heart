@@ -40,12 +40,12 @@ func init() {
 
 func NewUploader(
 	s BlockService,
-	coreService core.Service,
+	fileService *files.Service,
 	provider core.TempDirProvider,
 ) Uploader {
 	return &uploader{
 		service:         s,
-		anytype:         coreService,
+		fileService:     fileService,
 		tempDirProvider: provider,
 	}
 }
@@ -109,16 +109,8 @@ type uploader struct {
 	opts         []files.AddOption
 	groupId      string
 
-	anytype         core.Service
 	tempDirProvider core.TempDirProvider
-}
-
-func newUploader(s BlockService, coreService core.Service, tmpDirService core.TempDirProvider) *uploader {
-	return &uploader{
-		service:         s,
-		anytype:         coreService,
-		tempDirProvider: tmpDirService,
-	}
+	fileService     *files.Service
 }
 
 type bufioSeekClose struct {
@@ -357,7 +349,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.anytype.ImageAdd(ctx, opts...)
+		im, e := u.fileService.ImageAdd(ctx, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			log.Infof("can't add file '%s' as image: add as file", u.name)
 			e = nil
@@ -373,7 +365,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, e := u.anytype.FileAdd(ctx, opts...)
+		fl, e := u.fileService.FileAdd(ctx, opts...)
 		if e != nil {
 			err = e
 			return

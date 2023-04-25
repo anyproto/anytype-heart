@@ -9,7 +9,68 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
-func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
+var ErrImageNotFound = fmt.Errorf("image not found")
+
+func (s *Service) ImageByHash(ctx context.Context, hash string) (Image, error) {
+	files, err := s.fileStore.ListByTarget(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	// check the image files count explicitly because we have a bug when the info can be cached not fully(only for some files)
+	if len(files) < 4 || files[0].MetaHash == "" {
+		// index image files info from ipfs
+		files, err = s.FileIndexInfo(ctx, hash, true)
+		if err != nil {
+			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
+			return nil, ErrImageNotFound
+		}
+	}
+
+	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
+	for _, f := range files {
+		if f.Mill != "/image/resize" {
+			continue
+		}
+
+		if v, exists := f.Meta.Fields["width"]; exists {
+			variantsByWidth[int(v.GetNumberValue())] = f
+		}
+	}
+
+	return &image{
+		hash:            files[0].Targets[0],
+		variantsByWidth: variantsByWidth,
+		service:         s,
+	}, nil
+}
+
+// TODO: Touch the file to fire indexing
+func (s *Service) ImageAdd(ctx context.Context, options ...AddOption) (Image, error) {
+	opts := AddOptions{}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	err := s.NormalizeOptions(ctx, &opts)
+	if err != nil {
+		return nil, err
+	}
+
+	hash, variants, err := s.imageAdd(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	img := &image{
+		hash:            hash,
+		variantsByWidth: variants,
+		service:         s,
+	}
+	return img, nil
+}
+
+func (s *Service) imageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
 	dir, err := s.fileBuildDirectory(ctx, opts.Reader, opts.Name, opts.Plaintext, anytype.ImageNode())
 	if err != nil {
 		return "", nil, err
@@ -24,7 +85,7 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 	}
 
 	nodeHash := node.Cid().String()
-	err = s.store.AddFileKeys(filestore.FileKeys{
+	err = s.fileStore.AddFileKeys(filestore.FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
 	})

@@ -79,7 +79,7 @@ func (s *service) NewSource(id string, spaceID string, buildOptions commonspace.
 	st, err := s.sbtProvider.Type(id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFiles(s.coreService, s.fileStore, id), nil
+		return NewFiles(s.coreService, s.fileStore, s.fileService, id), nil
 	case smartblock.SmartBlockTypeDate:
 		return NewDate(id, s.coreService), nil
 	case smartblock.SmartBlockTypeBundledObjectType:

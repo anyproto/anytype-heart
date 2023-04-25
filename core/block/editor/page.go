@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -48,12 +49,13 @@ func NewPage(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
+	fileService *files.Service,
 ) *Page {
 	f := file.NewFile(
 		sb,
 		fileBlockService,
-		anytype,
 		tempDirProvider,
+		fileService,
 	)
 	return &Page{
 		SmartBlock:    sb,
@@ -67,9 +69,9 @@ func NewPage(
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			f,
-			anytype,
 			tempDirProvider,
 			relationService,
+			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,

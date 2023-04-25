@@ -9,8 +9,8 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	files2 "github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/files"
 )
 
@@ -79,15 +79,15 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 	return path, nil
 }
 
-func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (core.File, error) {
-	image, err := s.anytype.ImageByHash(ctx, hash)
+func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files2.File, error) {
+	image, err := s.fileService.ImageByHash(ctx, hash)
 	if err != nil {
-		return s.anytype.FileByHash(ctx, hash)
+		return s.fileService.FileByHash(ctx, hash)
 	}
 
 	f, err := image.GetOriginalFile(ctx)
 	if err != nil {
-		return s.anytype.FileByHash(ctx, hash)
+		return s.fileService.FileByHash(ctx, hash)
 	}
 
 	return f, nil

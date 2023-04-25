@@ -41,12 +41,6 @@ type Service interface {
 	EnsurePredefinedBlocks(ctx context.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
-	FileByHash(ctx context.Context, hash string) (File, error)
-	FileAdd(ctx context.Context, opts ...files2.AddOption) (File, error)
-
-	ImageByHash(ctx context.Context, hash string) (Image, error)
-	ImageAdd(ctx context.Context, opts ...files2.AddOption) (Image, error)
-
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
 

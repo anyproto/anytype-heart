@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/util/netutil"
 	"net"
 	"net/http"
 	"os"
@@ -15,8 +13,11 @@ import (
 	"time"
 
 	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+
+	"github.com/anytypeio/go-anytype-middleware/core/files"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/util/netutil"
 )
 
 const CName = "gateway"
@@ -37,7 +38,7 @@ type Gateway interface {
 }
 
 type gateway struct {
-	Node            core.Service
+	fileService     *files.Service
 	server          *http.Server
 	listener        net.Listener
 	handler         *http.ServeMux
@@ -76,7 +77,7 @@ func GatewayAddr() string {
 }
 
 func (g *gateway) Init(a *app.App) (err error) {
-	g.Node = a.MustComponent(core.CName).(core.Service)
+	g.fileService = app.MustComponent[*files.Service](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -204,7 +205,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	fileHash = parts[0]
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
-	file, err := g.Node.FileByHash(ctx, fileHash)
+	file, err := g.fileService.FileByHash(ctx, fileHash)
 	if err != nil {
 		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
@@ -238,7 +239,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(w)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
-	image, err := g.Node.ImageByHash(ctx, imageHash)
+	image, err := g.fileService.ImageByHash(ctx, imageHash)
 	if err != nil {
 		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
@@ -247,7 +248,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	var file core.File
+	var file files.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
 		file, err = image.GetOriginalFile(ctx)

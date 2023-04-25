@@ -24,6 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/converter/md"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/pbc"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/pbjson"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -55,6 +56,7 @@ type export struct {
 	objectStore objectstore.ObjectStore
 	a           core.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
+	fileService *files.Service
 }
 
 func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
@@ -67,6 +69,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.bs = a.MustComponent(block.CName).(*block.Service)
 	e.a = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	e.fileService = app.MustComponent[*files.Service](a)
 	return
 }
 
@@ -365,7 +368,7 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 }
 
 func (e *export) saveFile(wr writer, hash string) (err error) {
-	file, err := e.a.FileByHash(context.TODO(), hash)
+	file, err := e.fileService.FileByHash(context.TODO(), hash)
 	if err != nil {
 		return
 	}
@@ -379,7 +382,7 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 }
 
 func (e *export) saveImage(wr writer, hash string) (err error) {
-	file, err := e.a.ImageByHash(context.TODO(), hash)
+	file, err := e.fileService.ImageByHash(context.TODO(), hash)
 	if err != nil {
 		return
 	}

@@ -398,15 +398,16 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	return
 }
 
+// TODO Extract to subobject factory
 func (c *SubObjectCollection) newSubObject(collection string) (SubObjectImpl, error) {
 	sb := c.smartblockFactory.Produce()
 	switch collection {
 	case collectionKeyObjectTypes:
-		return NewObjectType(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
+		return NewObjectType(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter, c.smartblockFactory.fileService), nil
 	case collectionKeyRelations:
-		return NewRelation(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
+		return NewRelation(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter, c.smartblockFactory.fileService), nil
 	case collectionKeyRelationOptions:
-		return NewRelationOption(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter), nil
+		return NewRelationOption(sb, c.objectStore, c.fileBlockService, c.anytype, c.relationService, c.tempDirProvider, c.sbtProvider, c.layoutConverter, c.smartblockFactory.fileService), nil
 	default:
 		return nil, fmt.Errorf("unknown collection: %s", collection)
 	}

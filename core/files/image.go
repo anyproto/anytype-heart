@@ -1,4 +1,4 @@
-package core
+package files
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -39,7 +38,7 @@ type Image interface {
 type image struct {
 	hash            string // directory hash
 	variantsByWidth map[int]*storage.FileInfo
-	service         *files.Service
+	service         *Service
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {

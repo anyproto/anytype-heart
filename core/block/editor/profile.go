@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -39,19 +40,19 @@ func NewProfile(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
-	anytype core.Service,
 	fileBlockService file.BlockService,
 	bookmarkBlockService bookmark.BlockService,
 	bookmarkService bookmark.BookmarkService,
 	sendEvent func(e *pb.Event),
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,
+	fileService *files.Service,
 ) *Profile {
 	f := file.NewFile(
 		sb,
 		fileBlockService,
-		anytype,
 		tempDirProvider,
+		fileService,
 	)
 	return &Profile{
 		SmartBlock:    sb,
@@ -66,8 +67,9 @@ func NewProfile(
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			f,
-			anytype,
 			tempDirProvider,
+			relationService,
+			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,

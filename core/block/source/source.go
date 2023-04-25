@@ -62,6 +62,7 @@ type SourceIdEndodedDetails interface {
 	DetailsFromId() (*types.Struct, error)
 }
 
+// TODO Extract implementation from sources impl
 type SourceType interface {
 	ListIds() ([]string, error)
 	Virtual() bool

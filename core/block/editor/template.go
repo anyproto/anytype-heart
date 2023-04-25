@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -34,6 +35,7 @@ func NewTemplate(
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
+	fileService *files.Service,
 ) *Template {
 	return &Template{Page: NewPage(
 		sb,
@@ -46,6 +48,7 @@ func NewTemplate(
 		tempDirProvider,
 		sbtProvider,
 		layoutConverter,
+		fileService,
 	)}
 }
 

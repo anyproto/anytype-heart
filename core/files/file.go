@@ -1,4 +1,4 @@
-package core
+package files
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/dhowden/tag"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
@@ -28,7 +27,7 @@ type File interface {
 type file struct {
 	hash string
 	info *storage.FileInfo
-	node *files.Service
+	node *Service
 }
 
 type FileMeta struct {
@@ -38,8 +37,8 @@ type FileMeta struct {
 	Added time.Time
 }
 
-func (i *file) audioDetails() (*types.Struct, error) {
-	r, err := i.Reader()
+func (f *file) audioDetails() (*types.Struct, error) {
+	r, err := f.Reader()
 	if err != nil {
 		return nil, err
 	}
@@ -75,12 +74,12 @@ func (i *file) audioDetails() (*types.Struct, error) {
 	return d, nil
 }
 
-func (i *file) Details() (*types.Struct, error) {
-	meta := i.Meta()
+func (f *file) Details() (*types.Struct, error) {
+	meta := f.Meta()
 
 	t := &types.Struct{
 		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():           pbtypes.String(i.hash),
+			bundle.RelationKeyId.String():           pbtypes.String(f.hash),
 			bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(model.ObjectType_file)),
 			bundle.RelationKeyIsReadonly.String():   pbtypes.Bool(true),
 			bundle.RelationKeyType.String():         pbtypes.String(bundle.TypeKeyFile.URL()),
@@ -97,7 +96,7 @@ func (i *file) Details() (*types.Struct, error) {
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {
-		if audioDetails, err := i.audioDetails(); err == nil {
+		if audioDetails, err := f.audioDetails(); err == nil {
 			t = pbtypes.StructMerge(t, audioDetails, false)
 		}
 		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyAudio.URL())
@@ -106,23 +105,23 @@ func (i *file) Details() (*types.Struct, error) {
 	return t, nil
 }
 
-func (i *file) Info() *storage.FileInfo {
-	return i.info
+func (f *file) Info() *storage.FileInfo {
+	return f.info
 }
 
-func (file *file) Meta() *FileMeta {
+func (f *file) Meta() *FileMeta {
 	return &FileMeta{
-		Media: file.info.Media,
-		Name:  file.info.Name,
-		Size:  file.info.Size_,
-		Added: time.Unix(file.info.Added, 0),
+		Media: f.info.Media,
+		Name:  f.info.Name,
+		Size:  f.info.Size_,
+		Added: time.Unix(f.info.Added, 0),
 	}
 }
 
-func (file *file) Hash() string {
-	return file.hash
+func (f *file) Hash() string {
+	return f.hash
 }
 
-func (file *file) Reader() (io.ReadSeeker, error) {
-	return file.node.FileContentReader(context.Background(), file.info)
+func (f *file) Reader() (io.ReadSeeker, error) {
+	return f.node.FileContentReader(context.Background(), f.info)
 }

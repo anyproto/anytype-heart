@@ -12,7 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	utf16 "github.com/anytypeio/go-anytype-middleware/util/text"
@@ -61,14 +61,14 @@ const (
 		</html>`
 )
 
-func NewHTMLConverter(a core.Service, s *state.State) *HTML {
-	return &HTML{a: a, s: s}
+func NewHTMLConverter(fileService *files.Service, s *state.State) *HTML {
+	return &HTML{fileService: fileService, s: s}
 }
 
 type HTML struct {
-	a   core.Service
-	s   *state.State
-	buf *bytes.Buffer
+	s           *state.State
+	buf         *bytes.Buffer
+	fileService *files.Service
 }
 
 func (h *HTML) Convert() (result string) {
@@ -525,7 +525,7 @@ func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell m
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {
-	im, err := h.a.ImageByHash(context.TODO(), hash)
+	im, err := h.fileService.ImageByHash(context.TODO(), hash)
 	if err != nil {
 		return
 	}

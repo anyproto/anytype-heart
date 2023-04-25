@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -43,25 +44,25 @@ type Clipboard interface {
 func NewClipboard(
 	sb smartblock.SmartBlock,
 	file file.File,
-	anytype core.Service,
 	tempDirProvider core.TempDirProvider,
 	relationService relation.Service,
+	fileService *files.Service,
 ) Clipboard {
 	return &clipboard{
 		SmartBlock:      sb,
 		file:            file,
-		anytype:         anytype,
 		tempDirProvider: tempDirProvider,
 		relationService: relationService,
+		fileService:     fileService,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
 	file            file.File
-	anytype         core.Service
 	tempDirProvider core.TempDirProvider
 	relationService relation.Service
+	fileService     *files.Service
 }
 
 func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -141,14 +142,14 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.anytype, s).Convert()
+		htmlSlot = html.NewHTMLConverter(cb.fileService, s).Convert()
 		textSlot = cutBlock.GetText().Text
 		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
-	htmlSlot = html.NewHTMLConverter(cb.anytype, s).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.fileService, s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
@@ -207,7 +208,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
 		cbs.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.anytype, cbs).Convert()
+		htmlSlot = html.NewHTMLConverter(cb.fileService, cbs).Convert()
 
 		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
@@ -222,7 +223,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 		ids = append(ids, b.Id)
 	}
 
-	htmlSlot = html.NewHTMLConverter(cb.anytype, cb.blocksToState(req.Blocks)).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.fileService, cb.blocksToState(req.Blocks)).Convert()
 	anySlot = req.Blocks
 
 	var someUnlinked bool
@@ -242,7 +243,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	s := cb.blocksToState(req.Blocks)
-	htmlData := html.NewHTMLConverter(cb.anytype, s).Export()
+	htmlData := html.NewHTMLConverter(cb.fileService, s).Export()
 
 	dir := cb.tempDirProvider.TempDir()
 	fileName := "export-" + cb.Id() + ".html"

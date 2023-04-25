@@ -67,7 +67,7 @@ func (s *Service) fileOffload(hash string) (totalSize uint64, err error) {
 
 func (s *Service) FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
 	if len(fileIDs) == 0 {
-		allFiles, err := s.store.List()
+		allFiles, err := s.fileStore.List()
 		if err != nil {
 			return 0, 0, fmt.Errorf("list all files: %w", err)
 		}

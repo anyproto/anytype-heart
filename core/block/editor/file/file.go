@@ -19,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -37,14 +38,14 @@ var log = logging.Logger("anytype-mw-smartfile")
 func NewFile(
 	sb smartblock.SmartBlock,
 	fileSource BlockService,
-	anytype core.Service,
 	tempDirProvider core.TempDirProvider,
+	fileService *files.Service,
 ) File {
 	return &sfile{
 		SmartBlock:      sb,
 		fileSource:      fileSource,
-		anytype:         anytype,
 		tempDirProvider: tempDirProvider,
+		fileService:     fileService,
 	}
 }
 
@@ -77,8 +78,8 @@ type FileSource struct {
 type sfile struct {
 	smartblock.SmartBlock
 	fileSource      BlockService
-	anytype         core.Service
 	tempDirProvider core.TempDirProvider
+	fileService     *files.Service
 }
 
 func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -167,7 +168,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 }
 
 func (sf *sfile) newUploader() Uploader {
-	return newUploader(sf.fileSource, sf.anytype, sf.tempDirProvider)
+	return NewUploader(sf.fileSource, sf.fileService, sf.tempDirProvider)
 }
 
 func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
@@ -186,7 +187,7 @@ func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	proc := &dropFilesProcess{
 		s:               sf.fileSource,
-		coreService:     sf.anytype,
+		fileService:     sf.fileService,
 		tempDirProvider: sf.tempDirProvider,
 	}
 	if err = proc.Init(req.LocalFilePaths); err != nil {
@@ -300,7 +301,7 @@ type dropFilesHandler interface {
 type dropFilesProcess struct {
 	id              string
 	s               BlockService
-	coreService     core.Service
+	fileService     *files.Service
 	tempDirProvider core.TempDirProvider
 	root            *dropFileEntry
 	total, done     int64
@@ -518,7 +519,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 }
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
-	upl := newUploader(dp.s, dp.coreService, dp.tempDirProvider)
+	upl := NewUploader(dp.s, dp.fileService, dp.tempDirProvider)
 	res := upl.SetName(f.name).AutoType(true).SetFile(f.path).Upload(context.TODO())
 	if res.Err != nil {
 		f.err = fmt.Errorf("upload error")

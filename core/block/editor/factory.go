@@ -41,6 +41,7 @@ type ObjectFactory struct {
 	sourceService        source.Service
 	tempDirProvider      core.TempDirProvider
 	templateCloner       templateCloner
+	fileService          *files.Service
 
 	smartblockFactory smartblockFactory
 }
@@ -68,10 +69,11 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	f.templateCloner = app.MustComponent[templateCloner](a)
+	f.fileService = app.MustComponent[*files.Service](a)
 
 	f.smartblockFactory = smartblockFactory{
 		anytype:            f.anytype,
-		fileService:        app.MustComponent[*files.Service](a),
+		fileService:        f.fileService,
 		indexer:            app.MustComponent[smartblock.Indexer](a),
 		objectStore:        f.objectStore,
 		relationService:    f.relationService,
@@ -158,6 +160,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
+			f.fileService,
 		), nil
 	case model.SmartBlockType_Archive:
 		return NewArchive(
@@ -179,13 +182,13 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			sb,
 			f.objectStore,
 			f.relationService,
-			f.anytype,
 			f.fileBlockService,
 			f.bookmarkBlockService,
 			f.bookmarkService,
 			f.sendEvent,
 			f.tempDirProvider,
 			f.layoutConverter,
+			f.fileService,
 		), nil
 	case model.SmartBlockType_File:
 		return NewFiles(sb), nil
@@ -201,6 +204,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
+			f.fileService,
 		), nil
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
@@ -214,6 +218,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
+			f.fileService,
 		), nil
 	case model.SmartBlockType_Workspace:
 		return NewWorkspace(

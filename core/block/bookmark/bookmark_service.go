@@ -62,7 +62,7 @@ type service struct {
 	store          objectstore.ObjectStore
 	linkPreview    linkpreview.LinkPreview
 	tempDirService *core.TempDirService
-	coreService    core.Service
+	fileService    *files.Service
 }
 
 func New(tempDirService *core.TempDirService) Service {
@@ -74,7 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	s.coreService = a.MustComponent(core.CName).(core.Service)
+	s.fileService = app.MustComponent[*files.Service](a)
 	return nil
 }
 
@@ -238,7 +238,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.coreService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
+			hash, err := loadImage(s.fileService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
 			if err != nil {
 				log.Errorf("can't load image url %s: %s", data.ImageUrl, err)
 				return
@@ -252,7 +252,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.coreService, s.tempDirService.TempDir(), "", data.FaviconUrl)
+			hash, err := loadImage(s.fileService, s.tempDirService.TempDir(), "", data.FaviconUrl)
 			if err != nil {
 				log.Errorf("can't load favicon url %s: %s", data.FaviconUrl, err)
 				return
@@ -292,7 +292,7 @@ func (s *service) fetcher(id string, params bookmark.FetchParams) error {
 	return nil
 }
 
-func loadImage(coreService core.Service, tempDir string, title, url string) (hash string, err error) {
+func loadImage(fileService *files.Service, tempDir string, title, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -339,7 +339,7 @@ func loadImage(coreService core.Service, tempDir string, title, url string) (has
 		fileName = title
 	}
 
-	im, err := coreService.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(fileName))
+	im, err := fileService.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(fileName))
 	if err != nil {
 		return
 	}
