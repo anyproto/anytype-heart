@@ -242,12 +242,6 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
-	// TODO: [MR] duplicate events
-	//if events := s.tree.GetDuplicateEvents(); events > 30 {
-	//	params.DoSnapshot = true
-	//	log.With("thread", s.id).Errorf("found %d duplicate events: do the snapshot", events)
-	//	s.tree.ResetDuplicateEvents()
-	//}
 	c := &pb.Change{
 		Timestamp: time.Now().Unix(),
 	}

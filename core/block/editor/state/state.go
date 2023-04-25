@@ -9,7 +9,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/exp/slices"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -565,6 +564,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
+	msgs = s.processTrailingDuplicatedEvents(msgs)
+
 	// generate changes
 	s.fillChanges(msgs)
 
@@ -662,8 +663,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.storeKeyRemoved = s.storeKeyRemoved
 	}
 
-	msgs = s.processTrailingDuplicatedEvents(msgs)
-
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -708,7 +707,6 @@ func (s *State) intermediateApply() {
 
 func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (filtered []simple.EventMessage) {
 	var prev []byte
-	filtered = msgs[:0]
 	for _, e := range msgs {
 		curr, _ := e.Msg.Marshal()
 		if bytes.Equal(prev, curr) {
@@ -718,7 +716,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 		prev = curr
 		filtered = append(filtered, e)
 	}
-	return filtered
+	return
 }
 
 func (s *State) Blocks() []*model.Block {
@@ -1153,8 +1151,8 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
-			!slices.Contains(bundle.LocalRelationsKeys, rel.Key) &&
-			!slices.Contains(bundle.DerivedRelationsKeys, rel.Key) {
+			(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) &&
+			(slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
 			relInt := pbtypes.GetInt64(det, rel.Key)
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)
@@ -1437,48 +1435,6 @@ func (s *State) SetInStore(path []string, value *types.Value) (changed bool) {
 		})
 	}
 	return
-}
-
-func (s *State) StoreSlice(key string, val []string) {
-	old := pbtypes.GetStringList(s.Store(), key)
-	s.setInStore([]string{key}, pbtypes.StringList(val))
-
-	diff := slice.Diff(old, val, slice.StringIdentity[string], slice.Equal[string])
-	changes := slice.UnwrapChanges(diff,
-		func(afterID string, items []string) *pb.ChangeStoreSliceUpdate {
-			return &pb.ChangeStoreSliceUpdate{
-				Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{
-					Add: &pb.ChangeStoreSliceUpdateAdd{
-						AfterId: afterID,
-						Ids:     items,
-					},
-				},
-			}
-		}, func(items []string) *pb.ChangeStoreSliceUpdate {
-			return &pb.ChangeStoreSliceUpdate{
-				Operation: &pb.ChangeStoreSliceUpdateOperationOfRemove{
-					Remove: &pb.ChangeStoreSliceUpdateRemove{
-						Ids: items,
-					},
-				},
-			}
-		}, func(afterID string, items []string) *pb.ChangeStoreSliceUpdate {
-			return &pb.ChangeStoreSliceUpdate{
-				Operation: &pb.ChangeStoreSliceUpdateOperationOfMove{
-					Move: &pb.ChangeStoreSliceUpdateMove{
-						AfterId: afterID,
-						Ids:     items,
-					},
-				},
-			}
-		}, nil)
-
-	for _, ch := range changes {
-		ch.Key = key
-		s.changes = append(s.changes, &pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfStoreSliceUpdate{StoreSliceUpdate: ch},
-		})
-	}
 }
 
 func (s *State) HasInStore(path []string) bool {
