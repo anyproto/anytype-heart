@@ -49,7 +49,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/syncstatus"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
@@ -73,7 +72,6 @@ import (
 
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects, createBuiltinTemplates bool) *config.Config {
 	return config.New(
-		config.WithStagingCafe(isStaging),
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
 		config.WithCreateBuiltinObjects(createBuiltinObjects),
@@ -118,7 +116,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	relationService := relation.New()
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
-	fileSyncService := filesync.New()
+	fileSyncService := filesync.New(eventService.Send)
 	fileStore := filestore.New()
 
 	const fileWatcherUpdateInterval = 5 * time.Second
@@ -134,7 +132,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		fileWatcherUpdateInterval,
 	)
 
-	fileService := files.New(syncStatusService)
+	fileService := files.New(syncStatusService, objectStore)
 
 	indexerService := indexer.New(blockService, spaceService, fileService)
 
@@ -155,7 +153,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(rpcstore.New()).
 		Register(fileStore).
 		Register(fileservice.New()).
-		Register(filestorage.New()).
+		Register(filestorage.New(eventService.Send)).
 		Register(fileSyncService).
 		Register(localdiscovery.New()).
 		Register(spaceService).
@@ -166,7 +164,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectStore).
 		Register(recordsbatcher.New()).
 		Register(fileService).
-		Register(cafe.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
@@ -180,7 +177,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(export.New(sbtProvider)).
 		Register(linkpreview.New()).
 		Register(unsplash.New(tempDirService)).
-		Register(restriction.New(sbtProvider)).
+		Register(restriction.New(sbtProvider, objectStore)).
 		Register(debug.New()).
 		Register(clientdebugrpc.New()).
 		Register(collectionService).

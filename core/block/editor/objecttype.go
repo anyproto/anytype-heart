@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/files"
 	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
@@ -142,14 +141,8 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}*/
 
-	recommendedLayout := pbtypes.GetString(t.Details(), bundle.RelationKeyRecommendedLayout.String())
-	if recommendedLayout == "" {
-		recommendedLayout = model.ObjectType_basic.String()
-	} else if _, ok := model.ObjectTypeLayout_value[recommendedLayout]; !ok {
-		recommendedLayout = model.ObjectType_basic.String()
-	}
-
-	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(model.ObjectTypeLayout_value[recommendedLayout]))
+	recommendedLayout := pbtypes.GetInt64(t.Details(), bundle.RelationKeyRecommendedLayout.String())
+	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(recommendedLayout))
 	for _, rel := range recommendedLayoutObj.RequiredRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.Key) == -1 {
 			recommendedRelationsKeys = append(recommendedRelationsKeys, rel.Key)
@@ -197,36 +190,6 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(t.RootId())}}
 
-	if !isBundled {
-		var system bool
-		for _, o := range bundle.SystemTypes {
-			if o.URL() == t.RootId() {
-				system = true
-				break
-			}
-		}
-
-		var internal bool
-		for _, o := range bundle.InternalTypes {
-			if o.URL() == t.RootId() {
-				internal = true
-				break
-			}
-		}
-
-		if system {
-			rest := t.Restrictions()
-			obj := append(rest.Object.Copy(), []model.RestrictionsObjectRestriction{model.Restrictions_Details, model.Restrictions_Delete}...)
-			dv := rest.Dataview.Copy()
-			if internal {
-				// internal mean not possible to create the object using the standard ObjectCreate flow
-				dv = append(dv, model.RestrictionsDataviewRestrictions{BlockId: template.DataviewBlockId, Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject}})
-			}
-			t.SetRestrictions(restriction.Restrictions{Object: obj, Dataview: dv})
-
-		}
-	}
-
 	fixMissingSmartblockTypes := func(s *state.State) {
 		if isBundled {
 			return
@@ -261,6 +224,7 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	return smartblock.ObjectApplyTemplate(t, ctx.State,
 		template.WithForcedObjectTypes([]string{objectType}),
+		template.WithDetail(bundle.RelationKeyRecommendedLayout, pbtypes.Int64(recommendedLayout)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType))),
 		template.WithEmpty,
 		template.WithTitle,

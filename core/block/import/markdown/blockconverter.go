@@ -76,7 +76,8 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 		}
 	}
 
-	for _, file := range fileInfo {
+	for name, file := range fileInfo {
+		m.processBlocks(name, file, fileInfo)
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, fileInfo)
 		}
@@ -105,50 +106,60 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 	txt := block.GetText()
 	if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
 		txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-
 		link := txt.Marks.Marks[0].Param
-
-		var wholeLineLink bool
-		textRunes := []rune(txt.Text)
-		var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
-		if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
-			if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
-				wholeLineLink = true
-			}
-		}
-
+		wholeLineLink := m.isWholeLineLink(txt)
 		ext := filepath.Ext(link)
 
 		// todo: bug with multiple markup links in arow when the first is external
 		if file := files[link]; file != nil {
+			if strings.EqualFold(ext, ".csv") {
+				m.processCSVFileLink(block, files, link, wholeLineLink)
+				return
+			}
 			if strings.EqualFold(ext, ".md") {
 				// only convert if this is the only link in the row
-				if wholeLineLink {
-					m.convertTextToPageLink(block)
-				} else {
-					m.convertTextToPageMention(block)
-				}
+				m.convertToAnytypeLinkBlock(block, wholeLineLink)
 			} else {
 				m.convertTextToFile(block)
-			}
-
-			if strings.EqualFold(ext, ".csv") {
-				csvDir := strings.TrimSuffix(link, ext)
-				for name, file := range files {
-					// set HasInboundLinks for all CSV-origin md files
-					fileExt := filepath.Ext(name)
-					if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
-						file.HasInboundLinks = true
-					}
-				}
 			}
 			file.HasInboundLinks = true
 		} else if wholeLineLink {
 			m.convertTextToBookmark(block)
-		} else {
-			log.Debugf("")
 		}
 	}
+}
+
+func (m *mdConverter) isWholeLineLink(txt *model.BlockContentText) bool {
+	var wholeLineLink bool
+	textRunes := []rune(txt.Text)
+	var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
+	if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
+		if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
+			wholeLineLink = true
+		}
+	}
+	return wholeLineLink
+}
+
+func (m *mdConverter) convertToAnytypeLinkBlock(block *model.Block, wholeLineLink bool) {
+	if wholeLineLink {
+		m.convertTextToPageLink(block)
+	} else {
+		m.convertTextToPageMention(block)
+	}
+}
+
+func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*FileInfo, link string, wholeLineLink bool) {
+	csvDir := strings.TrimSuffix(link, ".csv")
+	for name, file := range files {
+		// set HasInboundLinks for all CSV-origin md files
+		fileExt := filepath.Ext(name)
+		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
+			file.HasInboundLinks = true
+		}
+	}
+	m.convertToAnytypeLinkBlock(block, wholeLineLink)
+	files[link].HasInboundLinks = true
 }
 
 func (m *mdConverter) processFileBlock(block *model.Block, files map[string]*FileInfo) {
@@ -162,24 +173,14 @@ func (m *mdConverter) processFileBlock(block *model.Block, files map[string]*Fil
 
 func (m *mdConverter) processLinkBlock(shortPath string, file *FileInfo, files map[string]*FileInfo) {
 	ext := filepath.Ext(shortPath)
+	if !strings.EqualFold(ext, ".csv") {
+		return
+	}
 	dependentFilesDir := strings.TrimSuffix(shortPath, ext)
-	var hasUnlinkedDependentMDFiles bool
 	for targetName, targetFile := range files {
 		fileExt := filepath.Ext(targetName)
 		if filepath.Dir(targetName) == dependentFilesDir && strings.EqualFold(fileExt, ".md") {
 			if !targetFile.HasInboundLinks {
-				if !hasUnlinkedDependentMDFiles {
-					// add Unsorted header
-					file.ParsedBlocks = append(file.ParsedBlocks, &model.Block{
-						Id: bson.NewObjectId().Hex(),
-						Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-							Text:  "Unsorted",
-							Style: model.BlockContentText_Header3,
-						}},
-					})
-					hasUnlinkedDependentMDFiles = true
-				}
-
 				file.ParsedBlocks = append(file.ParsedBlocks, &model.Block{
 					Id: bson.NewObjectId().Hex(),
 					Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{

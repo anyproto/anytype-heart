@@ -3,27 +3,29 @@ package helpers
 import (
 	"context"
 	"fmt"
+	"net"
+	gopath "path"
+	"time"
+
 	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers/resolver"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	ma "github.com/multiformats/go-multiaddr"
-	"net"
-	gopath "path"
-	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers/resolver"
+
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
 	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/anytypeio/any-sync/app"
@@ -16,10 +15,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 )
 
 var log = logging.Logger("anytype-config")
@@ -46,25 +44,15 @@ type Config struct {
 	Offline                  bool
 	DisableThreadsSyncEvents bool
 
-	RepoPath string
-
-	PrivateNetworkSecret string
-
-	SwarmLowWater  int
-	SwarmHighWater int
-	BootstrapNodes []string
-	RelayNodes     []string
-
-	CafeAddr        string
-	CafeGrpcPort    int
-	CafeP2PPort     int
-	CafePeerId      string
-	CafeAPIInsecure bool
+	RepoPath    string
+	AnalyticsId string
 
 	DebugAddr       string
 	LocalServerAddr string
 
-	Threads                threads.Config
+	InviteServerURL       string
+	InviteServerPublicKey string
+
 	DS                     clientds.Config
 	FS                     FSConfig
 	DisableFileConfig      bool `ignored:"true"` // set in order to skip reading/writing config from/to file
@@ -86,41 +74,19 @@ const (
 )
 
 var DefaultConfig = Config{
-	Offline:              false,
-	SwarmLowWater:        10,
-	SwarmHighWater:       50,
-	LocalServerAddr:      ":0",
-	PrivateNetworkSecret: ipfs.IpfsPrivateNetworkKey,
-	BootstrapNodes: []string{
-		"/ip4/54.93.109.23/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",           // fra1
-		"/dns4/bootstrap2.anytype.io/tcp/4001/p2p/QmSxuiczQTjgj5agSoNtp4esSsj64RisDyKt2MCZQsKZUx", // sfo1
-		"/dns4/bootstrap3.anytype.io/tcp/4001/p2p/QmUdDTWzgdcf4cM4aHeihoYSUfQJJbLVLTZFZvm1b46NNT", // sgp1
-	},
-	RelayNodes: []string{
-		"/dns4/relay2.anytype.io/tcp/4101/p2p/12D3KooWMLuW43JqNzUHbXMJH2Ted5Nf26sxv1VMcZAxXV3d3YtB",
-		"/dns4/relay1.anytype.io/tcp/4101/p2p/12D3KooWNPqCu4BC5WMBuHmqdiNWwAHGTNKbNy6JP5W1DML2psg1",
-	},
-	CafeAPIInsecure: false,
-	CafeAddr:        "cafe1.anytype.io",
-	CafeP2PPort:     4001,
-	CafeGrpcPort:    3006,
-	CafePeerId:      "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw",
+	Offline: false,
 
-	DS:      clientds.DefaultConfig,
-	Threads: threads.DefaultConfig,
+	LocalServerAddr:       ":0",
+	DS:                    clientds.DefaultConfig,
+	InviteServerPublicKey: "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw",
+	InviteServerURL:       "https://cafe1.anytype.io",
 }
 
 func WithNewAccount(isNewAccount bool) func(*Config) {
 	return func(c *Config) {
 		c.NewAccount = isNewAccount
-	}
-}
-
-func WithStagingCafe(isStaging bool) func(*Config) {
-	return func(c *Config) {
-		if isStaging {
-			c.CafeAddr = "cafe-staging.anytype.io"
-			c.CafePeerId = "12D3KooWPGR6LQyTEtBzFnJ7fGEMe6hKiQKeNof29zLH4bGq2djR"
+		if isNewAccount {
+			c.AnalyticsId = metrics.GenerateAnalyticsId()
 		}
 	}
 }
@@ -160,33 +126,7 @@ func New(options ...func(*Config)) *Config {
 	for _, opt := range options {
 		opt(&cfg)
 	}
-	cfg.Threads.CafeP2PAddr = cfg.CafeP2PFullAddr()
-	cfg.Threads.CafePID = cfg.CafePeerId
-
 	return &cfg
-}
-
-func (c *Config) CafeNodeGrpcAddr() string {
-	return c.CafeAddr + ":" + strconv.Itoa(c.CafeGrpcPort)
-}
-
-func (c *Config) CafeUrl() string {
-	if net.ParseIP(c.CafeAddr) != nil {
-		return c.CafeAddr
-	}
-	prefix := "https://"
-	if c.CafeAPIInsecure {
-		prefix = "http://"
-	}
-	return prefix + c.CafeAddr
-}
-
-func (c *Config) CafeP2PFullAddr() string {
-	prefix := "dns4"
-	if net.ParseIP(c.CafeAddr) != nil {
-		prefix = "ip4"
-	}
-	return fmt.Sprintf("/%s/%s/tcp/%d/p2p/%s", prefix, c.CafeAddr, c.CafeP2PPort, c.CafePeerId)
 }
 
 func (c *Config) Init(a *app.App) (err error) {
@@ -199,6 +139,9 @@ func (c *Config) Init(a *app.App) (err error) {
 }
 
 func (c *Config) initFromFileAndEnv(repoPath string) error {
+	if repoPath == "" {
+		return fmt.Errorf("repo is missing")
+	}
 	c.RepoPath = repoPath
 
 	if !c.DisableFileConfig {
@@ -211,7 +154,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		writeConfig := func() error {
 			err = WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 			if err != nil {
-				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
+				return fmt.Errorf("failed to save required configuration to the cfg file: %s", err.Error())
 			}
 			return nil
 		}
@@ -291,10 +234,6 @@ func (c *Config) FSConfig() (FSConfig, error) {
 	}
 
 	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
-}
-
-func (c *Config) ThreadsConfig() threads.Config {
-	return c.Threads
 }
 
 func (c *Config) GetConfigPath() string {

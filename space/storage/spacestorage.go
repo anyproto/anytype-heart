@@ -186,23 +186,6 @@ func (s *spaceStorage) TreeRoot(id string) (root *treechangeproto.RawTreeChangeW
 	return
 }
 
-func (s *spaceStorage) SetSpaceDeleted() error {
-	return s.objDb.Update(func(txn *badger.Txn) error {
-		return txn.Set(s.keys.SpaceDeletedKey(), s.keys.SpaceDeletedKey())
-	})
-}
-
-func (s *spaceStorage) IsSpaceDeleted() (res bool, err error) {
-	err = s.objDb.View(func(txn *badger.Txn) error {
-		_, err = getTxn(txn, s.keys.SpaceDeletedKey())
-		return err
-	})
-	if err != badger.ErrKeyNotFound {
-		return false, err
-	}
-	return err == nil, nil
-}
-
 func (s *spaceStorage) SetTreeDeletedStatus(id, status string) (err error) {
 	return s.objDb.Update(func(txn *badger.Txn) error {
 		return txn.Set(s.keys.TreeDeletedKey(id), []byte(status))

@@ -285,10 +285,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictionsUpdater = func() {
-		restrictions := sb.restrictionService.RestrictionsByObj(sb)
+		restrictions := sb.restrictionService.GetRestrictions(sb)
 		sb.SetRestrictions(restrictions)
 	}
-	sb.restrictions = sb.restrictionService.RestrictionsByObj(sb)
+	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
@@ -522,8 +522,12 @@ func (sb *smartBlock) navigationalLinks() []string {
 
 	s := sb.Doc.(*state.State)
 
-	// Objects from collection
-	ids := s.GetStoreSlice(template.CollectionStoreKey)
+	var ids []string
+
+	if !internalflag.NewFromState(s).Has(model.InternalFlag_collectionDontIndexLinks) {
+		// flag used when importing a large set of objects
+		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
+	}
 
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
@@ -644,12 +648,23 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
+
+	var lastModified = time.Now()
+	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
+		// in case it is the first change, allow to explicitly set the last modified time
+		// this case is used when we import existing data from other sources and want to preserve the original dates
+		if err != nil {
+			log.Errorf("failed to get creation info: %s", err)
+		} else {
+			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
+		}
+	}
 	if err = sb.onApply(s); err != nil {
 		return
 	}
 	if sb.coreService != nil {
 		// this one will be reverted in case we don't have any actual change being made
-		s.SetLastModified(time.Now().Unix(), sb.coreService.PredefinedBlocks().Profile)
+		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedBlocks().Profile)
 	}
 	beforeApplyStateTime := time.Now()
 
@@ -684,6 +699,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			}
 		}
 		pushChangeParams := source.PushChangeParams{
+			Time:              lastModified,
 			State:             st,
 			Changes:           changes,
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),

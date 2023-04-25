@@ -9,8 +9,9 @@
 package debug
 
 import (
-	"github.com/goccy/go-graphviz"
 	"os"
+
+	"github.com/goccy/go-graphviz"
 )
 
 func GraphvizSvg(gv, svgFilename string) (err error) {

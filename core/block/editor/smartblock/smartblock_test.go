@@ -118,7 +118,7 @@ func newFixture(t *testing.T) *fixture {
 	indexer := NewMockIndexer(ctrl)
 	indexer.EXPECT().Name().Return("indexer").AnyTimes()
 
-	restrictionService := restriction.New(nil)
+	restrictionService := restriction.New(nil, nil)
 	relationService := mockRelation.NewMockService(ctrl)
 
 	fileService := testMock.NewMockFileService(ctrl)

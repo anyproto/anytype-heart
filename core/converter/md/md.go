@@ -18,13 +18,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
-
-var logger = logging.Logger("markdownRenderer")
 
 type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
@@ -153,31 +150,19 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 
 	switch text.Style {
 	case model.BlockContentText_Header1, model.BlockContentText_Title:
-		_, err := buf.WriteString(`# `)
-		if err != nil {
-			logger.Errorf("failed to export MD, %v", err)
-		}
+		buf.WriteString(` # `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header2:
-		_, err := buf.WriteString(`## `)
-		if err != nil {
-			logger.Errorf("failed to export MD, %v", err)
-		}
+		buf.WriteString(` ## `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header3:
-		_, err := buf.WriteString(`### `)
-		if err != nil {
-			logger.Errorf("failed to export MD, %v", err)
-		}
+		buf.WriteString(` ### `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header4:
-		_, err := buf.WriteString(`#### `)
-		if err != nil {
-			logger.Errorf("failed to export MD, %v", err)
-		}
+		buf.WriteString(` #### `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Quote, model.BlockContentText_Toggle:

@@ -3,7 +3,6 @@ package file
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"os"
 	"path/filepath"
 	"strings"

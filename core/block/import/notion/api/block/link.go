@@ -178,7 +178,6 @@ func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 	if l.LinkToPage.DatabaseID != "" {
 		anytypeID = req.NotionDatabaseIdsToAnytype[l.LinkToPage.DatabaseID]
 	}
-
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id:          id,
@@ -188,22 +187,6 @@ func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
 				TargetBlockId: anytypeID,
 			},
 		}}
-	// notion page has link to page/database which isn't added to notion integration,
-	// so we don't create anytype page for it
-	if anytypeID == "" {
-		bl = &model.Block{
-			Id:          id,
-			ChildrenIds: nil,
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{
-					Text: notFoundPageMessage,
-					Marks: &model.BlockContentTextMarks{
-						Marks: []*model.BlockContentTextMark{},
-					},
-				},
-			},
-		}
-	}
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{id},

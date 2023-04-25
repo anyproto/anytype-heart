@@ -1779,8 +1779,6 @@ message Rpc {
                 // for protobuf export
                 bool isJson = 7;
                 // for migration
-                bool includeDeleted = 8;
-                // for migration
                 bool includeArchived = 9;
             }
 
@@ -1837,7 +1835,7 @@ message Rpc {
                 }
 
                 message MarkdownParams {
-                    string path = 1;
+                    repeated string path = 1;
                 }
 
                 message BookmarksParams {

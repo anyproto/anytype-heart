@@ -203,11 +203,11 @@ func (c *client) checkConnectivity(ctx context.Context) (err error) {
 	return
 }
 
-func (c *client) TryClose(objectTTL time.Duration) (res bool, err error) {
-	if time.Now().After(c.stat.LastUsage().Add(objectTTL)) {
-		return true, c.Close()
+func (c *client) TryClose(objectTTL time.Duration) (bool, error) {
+	if time.Now().Sub(c.stat.lastUsage) < objectTTL {
+		return false, nil
 	}
-	return false, nil
+	return true, c.Close()
 }
 
 func (c *client) Close() error {

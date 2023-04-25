@@ -6,7 +6,7 @@ import (
 	"github.com/anytypeio/any-sync/app"
 	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
@@ -42,6 +42,7 @@ type ObjectFactory struct {
 	tempDirProvider      core.TempDirProvider
 	templateCloner       templateCloner
 	fileService          files.Service
+	config               *config.Config
 
 	subObjectFactory subObjectFactory
 }
@@ -70,6 +71,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
+	f.config = app.MustComponent[*config.Config](a)
 
 	f.subObjectFactory = subObjectFactory{
 		coreService:        f.anytype,
@@ -133,14 +135,6 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	err = sb.Init(initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
-	}
-
-	basicEditor := basic.NewBasic(sb, f.objectStore, f.relationService, f.layoutConverter)
-	if len(initCtx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
-		err = basicEditor.SetObjectTypesInState(initCtx.State, initCtx.ObjectTypeUrls)
-		if err != nil {
-			return nil, fmt.Errorf("set object types in state: %w", err)
-		}
 	}
 
 	err = migration.RunMigrations(sb, initCtx)
@@ -237,6 +231,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.layoutConverter,
 			f.subObjectFactory,
 			f.templateCloner,
+			f.config,
 		), nil
 	case model.SmartBlockType_MissingObject:
 		return NewMissingObject(sb), nil

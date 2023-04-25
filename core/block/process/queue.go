@@ -5,10 +5,9 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
-
-	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 var (
@@ -113,9 +112,8 @@ func (p *queue) Wait(ts ...Task) (err error) {
 	p.m.Unlock()
 	var done = make(chan struct{}, len(ts))
 	for _, t := range ts {
-		var f = t
 		if err = p.msgs.Add(func() {
-			f()
+			t()
 			done <- struct{}{}
 		}); err != nil {
 			return ErrQueueDone

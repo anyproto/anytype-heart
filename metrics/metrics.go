@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
 	"net/http"
 	"os"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/textileio/go-threads/metrics"
 
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 

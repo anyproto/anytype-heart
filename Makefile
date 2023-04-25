@@ -283,7 +283,3 @@ ifdef GOLANGCI_LINT_BRANCH
 else 
 	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
 endif
-
-version = latest
-docker-run:
-	@docker run --interactive --tty --rm --publish 31007:31007 --publish 31008:31008 ghcr.io/anytypeio/go-anytype-middleware:$(version)

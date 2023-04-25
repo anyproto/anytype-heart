@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anytypeio/any-sync/accountservice"
@@ -35,7 +36,7 @@ type Service interface {
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
-	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
+	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	IDsListerBySmartblockType(blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
@@ -161,17 +162,17 @@ func (s *service) IDsListerBySmartblockType(blockType smartblock.SmartBlockType)
 	}
 }
 
-func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
-	ss, err := s.NewSource(id, "", commonspace.BuildTreeOpts{})
-	if err != nil {
-		return nil, err
+func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	if !strings.HasPrefix(id, addr.DatePrefix) {
+		return nil, fmt.Errorf("unsupported id")
 	}
+	ss := NewDate(id, s.coreService)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()
 	}
 	_ = ss.Close()
-	return nil, fmt.Errorf("id unsupported")
+	return nil, fmt.Errorf("date source miss the details")
 }
 
 func (s *service) RegisterStaticSource(id string, src Source) {

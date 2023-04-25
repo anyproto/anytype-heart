@@ -8,21 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
-
-// Functions to create in-tree and plugin converters
-var converterCreators []Creator
-
-// Creator function to register converter
-type Creator = func(s core.Service, col *collection.Service) Converter
-
-// RegisterFunc add converter creation function to converterCreators
-func RegisterFunc(c Creator) {
-	converterCreators = append(converterCreators, c)
-}
 
 type ObjectTreeCreator interface {
 	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
@@ -48,7 +36,7 @@ type Snapshot struct {
 	Id       string
 	SbType   coresb.SmartBlockType
 	FileName string
-	Snapshot *model.SmartBlockSnapshotBase
+	Snapshot *pb.ChangeSnapshot
 }
 
 // Relation are stored during GetSnapshots step in converter and create them in RelationCreator
@@ -62,8 +50,4 @@ type Response struct {
 	Snapshots []*Snapshot
 	Relations map[string][]*Relation // object id to its relations
 	Error     ConvertError
-}
-
-func GetConverters() []func(s core.Service, service *collection.Service) Converter {
-	return converterCreators
 }

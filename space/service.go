@@ -249,7 +249,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return s.spaceCache.Close()
 }
 
-func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
+func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
 	s.dialer.SetPeerAddrs(peer.PeerId, peer.Addrs)
 	ctx := context.Background()
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
@@ -263,6 +263,10 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer) {
 	log.Debug("sending info about spaces to peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", allIds))
 	resp, err := clientspaceproto.NewDRPCClientSpaceClient(unaryPeer).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
 		SpaceIds: allIds,
+		LocalServer: &clientspaceproto.LocalServer{
+			Ips:  own.Addrs,
+			Port: int32(own.Port),
+		},
 	})
 	if err != nil {
 		return

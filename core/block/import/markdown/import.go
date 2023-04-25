@@ -2,7 +2,6 @@ package markdown
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -12,6 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -262,9 +262,9 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 
 			if file == nil || len(file.PageID) == 0 {
 				text += potentialFileName
-				log.Errorf("target file not found:", shortPath, potentialFileName)
+				log.Errorf("target file not found")
 			} else {
-				log.Debug("target file found:", file.PageID, shortPath)
+				log.Debug("target file found:", file.PageID)
 				file.HasInboundLinks = true
 				if file.Title == "" {
 					// shouldn't be a case

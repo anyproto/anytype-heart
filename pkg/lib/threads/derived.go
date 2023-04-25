@@ -2,6 +2,7 @@ package threads
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 )
 
@@ -18,9 +19,9 @@ const (
 
 	threadDerivedIndexSetPages threadDerivedIndex = 20 // deprecated
 
-	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30
-	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31
-	threadDerivedIndexMarketplaceTemplate threadDerivedIndex = 32
+	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30 // deprecated
+	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31 // deprecated
+	threadDerivedIndexMarketplaceTemplate threadDerivedIndex = 32 // deprecated
 
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
@@ -34,15 +35,12 @@ const (
 )
 
 type DerivedSmartblockIds struct {
-	AccountOld          string
-	Account             string
-	Profile             string
-	Home                string
-	Archive             string
-	MarketplaceType     string
-	MarketplaceRelation string
-	MarketplaceTemplate string
-	Widgets             string
+	AccountOld string
+	Account    string
+	Profile    string
+	Home       string
+	Archive    string
+	Widgets    string
 }
 
 func (d DerivedSmartblockIds) IsAccount(id string) bool {
@@ -53,14 +51,8 @@ func (d *DerivedSmartblockIds) InsertId(sbt smartblock.SmartBlockType, id string
 	switch sbt {
 	case smartblock.SmartBlockTypeWorkspace:
 		d.Account = id
-	case smartblock.SmartblockTypeMarketplaceTemplate:
-		d.MarketplaceTemplate = id
-	case smartblock.SmartblockTypeMarketplaceRelation:
-		d.MarketplaceRelation = id
 	case smartblock.SmartBlockTypeWidget:
 		d.Widgets = id
-	case smartblock.SmartblockTypeMarketplaceType:
-		d.MarketplaceType = id
 	case smartblock.SmartBlockTypeHome:
 		d.Home = id
 	case smartblock.SmartBlockTypeArchive:

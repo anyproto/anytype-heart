@@ -8,10 +8,11 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 )
 
-func NewMultiConverter(format int, sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
+func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
 	return &dot{}
 }
 
@@ -46,7 +47,7 @@ func (d *dot) Add(st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert() []byte {
+func (d *dot) Convert(_ model.SmartBlockType) []byte {
 	panic("not supported on windows")
 	return nil
 }

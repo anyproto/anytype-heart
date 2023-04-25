@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/any-sync/util/periodicsync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	pbMiddle "github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
