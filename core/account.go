@@ -37,6 +37,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -192,8 +193,8 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 
 	cfg := config.ConfigRequired{}
 	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
-	if cfg.IPFSStorageAddr == "" {
-		cfg.IPFSStorageAddr = wallet.RepoPath()
+	if cfg.CustomFileStorePath == "" {
+		cfg.CustomFileStorePath = wallet.RepoPath()
 	}
 
 	pBlocks := at.PredefinedBlocks()
@@ -206,7 +207,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		WidgetsId:              pBlocks.Widgets,
 		GatewayUrl:             gwAddr,
 		DeviceId:               deviceId,
-		LocalStoragePath:       cfg.IPFSStorageAddr,
+		LocalStoragePath:       cfg.CustomFileStorePath,
 		TimeZone:               cfg.TimeZone,
 	}
 }
@@ -279,7 +280,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 
-		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
+		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
 		}
 	}
@@ -525,8 +526,8 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
 	}
-	if fileConf.IPFSStorageAddr != "" {
-		srcPath = fileConf.IPFSStorageAddr
+	if fileConf.CustomFileStorePath != "" {
+		srcPath = fileConf.CustomFileStorePath
 	}
 
 	parts := strings.Split(srcPath, string(filepath.Separator))
@@ -564,7 +565,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 		}
 	}
 
-	err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: destination})
+	err = files.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: destination})
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
@@ -649,7 +650,7 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 	cfg := config.ConfigRequired{}
 	cfg.TimeZone = req.TimeZone
-	cfg.IPFSStorageAddr = req.IPFSStorageAddr
+	cfg.CustomFileStorePath = req.IPFSStorageAddr
 	err := files.WriteJsonConfig(conf.GetConfigPath(), cfg)
 	if err != nil {
 		return response(pb.RpcAccountConfigUpdateResponseError_FAILED_TO_WRITE_CONFIG, err)
@@ -673,8 +674,8 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 		return err
 	}
 
-	if fileConf.IPFSStorageAddr != "" {
-		if err2 := os.RemoveAll(fileConf.IPFSStorageAddr); err2 != nil {
+	if fileConf.CustomFileStorePath != "" {
+		if err2 := os.RemoveAll(fileConf.CustomFileStorePath); err2 != nil {
 			return err2
 		}
 	}
@@ -687,12 +688,12 @@ func (mw *Middleware) AccountRemoveLocalData() error {
 	return nil
 }
 
-func (mw *Middleware) AccountRecoverFromLegacyBackup(cctx context.Context,
-	req *pb.RpcAccountRecoverFromLegacyBackupRequest) *pb.RpcAccountRecoverFromLegacyBackupResponse {
+func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
+	req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
 	ctx := mw.newContext(cctx)
 
-	response := func(address string, code pb.RpcAccountRecoverFromLegacyBackupResponseErrorCode, err error) *pb.RpcAccountRecoverFromLegacyBackupResponse {
-		m := &pb.RpcAccountRecoverFromLegacyBackupResponse{Address: address, Error: &pb.RpcAccountRecoverFromLegacyBackupResponseError{Code: code}}
+	response := func(address string, code pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, err error) *pb.RpcAccountRecoverFromLegacyExportResponse {
+		m := &pb.RpcAccountRecoverFromLegacyExportResponse{Address: address, Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -700,17 +701,17 @@ func (mw *Middleware) AccountRecoverFromLegacyBackup(cctx context.Context,
 	}
 	profile, err := importer.ImportUserProfile(ctx, req)
 	if err != nil {
-		return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
+		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
 	}
-	err = mw.createAccountFromLegacyBackup(profile, req)
+	err = mw.createAccountFromLegacyExport(profile, req)
 	if err != nil {
-		return response("", pb.RpcAccountRecoverFromLegacyBackupResponseError_UNKNOWN_ERROR, err)
+		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(profile.Address, pb.RpcAccountRecoverFromLegacyBackupResponseError_NULL, nil)
+	return response(profile.Address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil)
 }
 
-func (mw *Middleware) createAccountFromLegacyBackup(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyBackupRequest) error {
+func (mw *Middleware) createAccountFromLegacyExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) error {
 	mw.m.Lock()
 
 	defer mw.m.Unlock()
@@ -744,20 +745,7 @@ func (mw *Middleware) createAccountFromLegacyBackup(profile *pb.Profile, req *pb
 		return err
 	}
 
-	if req.StorePath != "" && req.StorePath != mw.rootPath {
-		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
-
-		storePath := filepath.Join(req.StorePath, account.Address())
-
-		err = os.MkdirAll(storePath, 0700)
-		if err != nil {
-			return err
-		}
-
-		if err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
-			return err
-		}
-	}
+	// todo: parse config.json from legacy export
 
 	newAcc := &model.Account{Id: account.Address()}
 
@@ -796,7 +784,7 @@ func (mw *Middleware) createAccountFromLegacyBackup(profile *pb.Profile, req *pb
 	return nil
 }
 
-func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyBackupRequest) error {
+func (mw *Middleware) extractAccountDirectory(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) error {
 	archive, err := zip.OpenReader(req.Path)
 	if err != nil {
 		return err

@@ -38,7 +38,7 @@ service ClientCommands {
     rpc AccountStop (anytype.Rpc.Account.Stop.Request) returns (anytype.Rpc.Account.Stop.Response);
     rpc AccountMove (anytype.Rpc.Account.Move.Request) returns (anytype.Rpc.Account.Move.Response);
     rpc AccountConfigUpdate (anytype.Rpc.Account.ConfigUpdate.Request) returns (anytype.Rpc.Account.ConfigUpdate.Response);
-    rpc AccountRecoverFromLegacyBackup (anytype.Rpc.Account.RecoverFromLegacyBackup.Request) returns (anytype.Rpc.Account.RecoverFromLegacyBackup.Response);
+    rpc AccountRecoverFromLegacyExport(anytype.Rpc.Account.RecoverFromLegacyExport.Request) returns (anytype.Rpc.Account.RecoverFromLegacyExport.Response);
 
     // Object
     // ***

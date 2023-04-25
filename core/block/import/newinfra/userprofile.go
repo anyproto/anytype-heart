@@ -8,7 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func GetUserProfile(req *pb.RpcAccountRecoverFromLegacyBackupRequest,
+func GetUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest,
 	progress *process.Progress) (*pb.Profile, error) {
 	archive, err := zip.OpenReader(req.Path)
 	if err != nil {

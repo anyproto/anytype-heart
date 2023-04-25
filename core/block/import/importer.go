@@ -157,7 +157,7 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func ImportUserProfile(ctx *session.Context, req *pb.RpcAccountRecoverFromLegacyBackupRequest) (*pb.Profile, error) {
+func ImportUserProfile(ctx *session.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	progress.SetProgressMessage("Getting user data from path")

@@ -522,12 +522,11 @@ message Rpc {
             }
         }
 
-        message RecoverFromLegacyBackup {
+        message RecoverFromLegacyExport {
             option (no_auth) = true;
             message Request {
                 string path = 1;
                 string rootPath = 2;
-                string storePath = 3;
             }
 
             message Response {
