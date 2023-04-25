@@ -89,7 +89,7 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 		// getting tree from remote, if it doesn't exist locally
 		if _, err = spc.Storage().TreeRoot(id); err != nil {
 			var ot objecttree.ObjectTree
-			ot, err = spc.BuildTree(ctx, id, commonspace.BuildTreeOpts{})
+			ot, err = spc.BuildTree(ctx, id, cacheOpts.buildOption)
 			if err != nil {
 				return
 			}

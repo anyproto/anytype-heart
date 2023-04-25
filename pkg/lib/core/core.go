@@ -87,7 +87,7 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveObject(ctx context.Context, tp coresb.SmartBlockType) (id string, err error)
+	DeriveObject(ctx context.Context, tp coresb.SmartBlockType, newAccount bool) (id string, err error)
 }
 
 type Anytype struct {
@@ -242,7 +242,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (
 	}
 	for _, sbt := range sbTypes {
 		var id string
-		id, err = a.deriver.DeriveObject(ctx, sbt)
+		id, err = a.deriver.DeriveObject(ctx, sbt, newAccount)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return
