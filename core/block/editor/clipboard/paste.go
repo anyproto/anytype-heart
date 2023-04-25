@@ -65,6 +65,10 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	}
 	p.normalize()
 
+	if p.mode.singleRange && req.FocusedBlockId != "" {
+		p.setTargetIdForLastBlock(req.FocusedBlockId)
+	}
+
 	p.processFiles()
 	return
 }
@@ -187,7 +191,7 @@ func (p *pasteCtrl) singleRange() (err error) {
 	if target := resolvePasteTarget(p.s.Get(targetId)); target != nil {
 		return target.PasteInside(p.s, p.ps, secondBlock)
 	}
-	
+
 	isPasteToHeader := targetId == template.TitleBlockId || targetId == template.DescriptionBlockId
 	pos := model.Block_Bottom
 	if isPasteToHeader {
@@ -339,4 +343,15 @@ func (p *pasteCtrl) intoCodeBlock() (err error) {
 	p.ps.Get(p.ps.RootId()).Model().ChildrenIds = nil
 	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, true)
 	return err
+}
+
+func (p *pasteCtrl) setTargetIdForLastBlock(target string) {
+	root := p.s.Get(p.s.RootId())
+	rootChildren := root.Model().ChildrenIds
+	lastBlockId := rootChildren[len(rootChildren)-1]
+	root.Model().ChildrenIds = append(rootChildren[:len(rootChildren)-1], target)
+
+	lastBlock := p.s.Get(lastBlockId)
+	lastBlock.Model().Id = target
+	p.s.Set(lastBlock)
 }
