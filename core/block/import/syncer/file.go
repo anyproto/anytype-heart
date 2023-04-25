@@ -37,7 +37,7 @@ func (fs *FileSyncer) SyncExistingFile(fileID string) error {
 
 func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
-		return fs.SyncExistingFile(hash)
+		return nil
 	}
 
 	params := pb.RpcBlockUploadRequest{

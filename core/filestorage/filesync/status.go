@@ -88,10 +88,12 @@ func (s *StatusWatcher) GetFileStatus(ctx context.Context, spaceID string, fileI
 	s.filesLock.Lock()
 	defer s.filesLock.Unlock()
 
-	status, err := s.getFileStatus(ctx, fileWithSpace{
+	key := fileWithSpace{
 		spaceID: spaceID,
 		fileID:  fileID,
-	})
+	}
+	status, err := s.getFileStatus(ctx, key)
+	s.files[key] = status
 
 	return status.status, err
 }

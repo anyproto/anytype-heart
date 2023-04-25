@@ -6,12 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/anytypeio/any-sync/app"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
 	dsbadgerv3 "github.com/textileio/go-ds-badger3"
-
-	"github.com/anytypeio/any-sync/app"
 
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -111,6 +110,7 @@ func (r *clientds) Run(context.Context) error {
 	}
 
 	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(SpaceDSDir), &r.cfg.Spacestore)
+	fmt.Println("INIT SPACE DS", fmt.Sprint(r.spaceDS.DiskUsage(context.Background())))
 	if err != nil {
 		return err
 	}

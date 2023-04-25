@@ -21,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/files"
 	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/relation/relationutils"
 	"github.com/anytypeio/go-anytype-middleware/core/session"
@@ -29,7 +30,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -212,15 +212,7 @@ func (sb *smartBlock) Inner() SmartBlock {
 }
 
 func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
-	for _, rel := range s.GetRelationLinks() {
-		// coverId can contains both hash or predefined cover id
-		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
-			if slice.FindPos(fileKeys, rel.Key) == -1 {
-				fileKeys = append(fileKeys, rel.Key)
-			}
-		}
-	}
-	return
+	return s.FileRelationKeys()
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
@@ -624,10 +616,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			skipIfNoChanges = true
 		}
 	}
-	if sb.source.ReadOnly() && addHistory {
-		// workaround to detect user-generated action
-		return source.ErrReadOnly
-	}
+
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
 			return nil
@@ -703,8 +692,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return err
 		}
 		if sb.undo != nil && addHistory {
-			act.Group = s.GroupId()
-			sb.undo.Add(act)
+			if !sb.source.ReadOnly() {
+				act.Group = s.GroupId()
+				sb.undo.Add(act)
+			}
 		}
 	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))

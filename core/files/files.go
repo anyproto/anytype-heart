@@ -44,7 +44,6 @@ const (
 )
 
 var log = logging.Logger("anytype-files")
-var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
 
 var _ app.Component = (*Service)(nil)
 
@@ -442,7 +441,7 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 		}
 		err = proto.Unmarshal(b, &file)
 		if err != nil || file.Hash == "" {
-			return nil, ErrorFailedToUnmarhalNotencrypted
+			return nil, fmt.Errorf("failed to unmarshal not-encrypted file info: %w", err)
 		}
 	}
 

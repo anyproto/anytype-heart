@@ -96,7 +96,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	converter.UpdateRelationsIDs(st, newID, oldIDtoNew)
+	converter.UpdateRelationsIDs(st, oldIDtoNew)
 
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		oc.handleSubObject(st, newID)
@@ -193,6 +193,12 @@ func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase,
 }
 
 func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
+	for _, fileID := range st.GetAllFileHashes(st.FileRelationKeys()) {
+		log.With(zap.String("fileID", fileID)).Info("sync file link")
+		if sErr := oc.syncFactory.FileSyncer().SyncExistingFile(fileID); sErr != nil {
+			log.With(zap.String("object id", newID)).Errorf("sync file link: %s", sErr)
+		}
+	}
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
@@ -287,21 +293,12 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 func (oc *ObjectCreator) deleteFile(hash string) {
 	inboundLinks, err := oc.objectStore.GetOutboundLinksById(hash)
 	if err != nil {
-		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err.Error())
-		return
+		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
 	}
 	if len(inboundLinks) == 0 {
-		if err = oc.objectStore.DeleteObject(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file from objectstore: %s", err.Error())
-		}
-		if err = oc.fileStore.DeleteByHash(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file from filestore: %s", err.Error())
-		}
-		if _, err = oc.core.FileOffload(hash); err != nil {
-			log.With("file", hash).Errorf("failed to offload file: %s", err.Error())
-		}
-		if err = oc.fileStore.DeleteFileKeys(hash); err != nil {
-			log.With("file", hash).Errorf("failed to delete file keys: %s", err.Error())
+		err = oc.service.DeleteObject(hash)
+		if err != nil {
+			log.With("file", hash).Errorf("failed to delete file: %s", err)
 		}
 	}
 }

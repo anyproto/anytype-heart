@@ -55,7 +55,6 @@ func (f *fileSync) FileListStats(ctx context.Context, spaceID string, fileIDs []
 	if err != nil {
 		return nil, err
 	}
-	// TODO FilesInfo contains deleted files and have no indication of that
 	return conc.MapErr(filesInfo, func(fileInfo *fileproto.FileInfo) (FileStat, error) {
 		return f.fileInfoToStat(ctx, spaceID, fileInfo)
 	})
@@ -127,9 +126,14 @@ func (f *fileSync) fetchChunksCount(ctx context.Context, fileID string) (int, er
 	}
 
 	var count int
+	visited := map[string]struct{}{}
 	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
 	err = walker.Iterate(func(node ipld.NavigableNode) error {
-		count++
+		id := node.GetIPLDNode().Cid().String()
+		if _, ok := visited[id]; !ok {
+			visited[id] = struct{}{}
+			count++
+		}
 		return nil
 	})
 	if err == ipld.EndOfDag {

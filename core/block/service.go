@@ -15,6 +15,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/samber/lo"
 
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -218,7 +219,8 @@ func (s *Service) OpenBlock(
 		ob.Lock()
 		defer ob.Unlock()
 		bs := ob.NewState()
-		return bs.GetAllFileHashes(ob.FileRelationKeys(bs))
+
+		return lo.Uniq(bs.GetAllFileHashes(ob.FileRelationKeys(bs)))
 	})
 	if err == nil {
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {

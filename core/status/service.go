@@ -48,8 +48,8 @@ type service struct {
 
 	sync.Mutex
 
-	dependentFilesCloseCh map[string]chan struct{}
-	dependentFilesStats   map[string]pb.EventStatusThreadCafePinStatus
+	linkedFilesCloseCh map[string]chan struct{}
+	linkedFilesSummary map[string]pb.EventStatusThreadCafePinStatus
 }
 
 func (s *service) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) (err error) {
@@ -60,7 +60,7 @@ func (s *service) UpdateTree(ctx context.Context, objId string, status syncstatu
 	)
 	s.Lock()
 	nodeConnected = s.nodeConnected
-	pinStatus := s.dependentFilesStats[objId]
+	pinStatus := s.linkedFilesSummary[objId]
 	s.Unlock()
 	switch status {
 	case syncstatus.StatusUnknown:
@@ -97,8 +97,8 @@ func (s *service) UpdateNodeConnection(online bool) {
 
 func New() Service {
 	return &service{
-		dependentFilesStats:   map[string]pb.EventStatusThreadCafePinStatus{},
-		dependentFilesCloseCh: map[string]chan struct{}{},
+		linkedFilesSummary: map[string]pb.EventStatusThreadCafePinStatus{},
+		linkedFilesCloseCh: map[string]chan struct{}{},
 	}
 }
 
@@ -166,62 +166,69 @@ func (s *service) watch(id string, filesGetter func() []string) (new bool, err e
 		return false, nil
 	}
 
-	s.watchDependentFiles(id, filesGetter)
+	s.watchLinkedFiles(id, filesGetter)
 	if err = s.watcher.Watch(id); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (s *service) watchDependentFiles(parentObjectID string, filesGetter func() []string) {
+func (s *service) watchLinkedFiles(parentObjectID string, filesGetter func() []string) {
 	if filesGetter == nil {
 		return
 	}
 
-	unwatch, ok := s.dependentFilesCloseCh[parentObjectID]
+	closeCh, ok := s.linkedFilesCloseCh[parentObjectID]
 	if ok {
-		close(unwatch)
+		close(closeCh)
 	}
-	unwatch = make(chan struct{})
-	s.dependentFilesCloseCh[parentObjectID] = unwatch
+	closeCh = make(chan struct{})
+	s.linkedFilesCloseCh[parentObjectID] = closeCh
 
 	go func() {
+		s.updateLinkedFilesSummary(parentObjectID, filesGetter)
 		ticker := time.NewTicker(5 * time.Second)
 		for {
 			select {
-			case <-unwatch:
+			case <-closeCh:
 				return
 			case <-ticker.C:
-				fileIDs := filesGetter()
-
-				var pinStatus pb.EventStatusThreadCafePinStatus
-				for _, fileID := range fileIDs {
-					status, err := s.fileStatusService.GetFileStatus(context.Background(), s.spaceService.AccountId(), fileID)
-					if err != nil {
-						log.Error("can't get status of dependent file", zap.String("fileID", fileID), zap.Error(err))
-					}
-
-					switch status {
-					case syncstatus.StatusUnknown:
-						// skip
-					case syncstatus.StatusNotSynced:
-						pinStatus.Pinning++
-					case syncstatus.StatusSynced:
-						pinStatus.Pinned++
-					}
-				}
-
-				s.Lock()
-				s.dependentFilesStats[parentObjectID] = pinStatus
-				s.Unlock()
+				s.updateLinkedFilesSummary(parentObjectID, filesGetter)
 			}
 		}
 	}()
 }
 
-func (s *service) unwatchDependentFiles(parentObjectID string) {
-	if ch, ok := s.dependentFilesCloseCh[parentObjectID]; ok {
+func (s *service) updateLinkedFilesSummary(parentObjectID string, filesGetter func() []string) {
+	// TODO Cache linked files list?
+	fileIDs := filesGetter()
+
+	var summary pb.EventStatusThreadCafePinStatus
+	for _, fileID := range fileIDs {
+		status, err := s.fileStatusService.GetFileStatus(context.Background(), s.spaceService.AccountId(), fileID)
+		if err != nil {
+			log.Error("can't get status of dependent file", zap.String("fileID", fileID), zap.Error(err))
+		}
+
+		switch status {
+		case syncstatus.StatusUnknown:
+			summary.Pinning++
+		case syncstatus.StatusNotSynced:
+			summary.Pinning++
+		case syncstatus.StatusSynced:
+			summary.Pinned++
+		}
+	}
+
+	s.Lock()
+	s.linkedFilesSummary[parentObjectID] = summary
+	s.Unlock()
+}
+
+func (s *service) unwatchLinkedFiles(parentObjectID string) {
+	if ch, ok := s.linkedFilesCloseCh[parentObjectID]; ok {
 		close(ch)
+		delete(s.linkedFilesCloseCh, parentObjectID)
 	}
 }
 
@@ -240,7 +247,7 @@ func (s *service) unwatch(id string) {
 		s.fileStatusService.Unwatch(s.spaceService.AccountId(), id)
 		return
 	}
-	s.unwatchDependentFiles(id)
+	s.unwatchLinkedFiles(id)
 	s.watcher.Unwatch(id)
 }
 
@@ -249,6 +256,9 @@ func (s *service) Close(ctx context.Context) (err error) {
 	defer s.Unlock()
 	s.isRunning = false
 	s.unwatch(s.coreService.PredefinedBlocks().Account)
+	for _, closeCh := range s.linkedFilesCloseCh {
+		close(closeCh)
+	}
 	return nil
 }
 

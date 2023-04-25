@@ -3,6 +3,7 @@ package rpcstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
@@ -161,6 +162,8 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 		return err
 	}
 
+	log.Info("add to file input", zap.String("fileID", fileID), zap.Int("input", len(bs)))
+
 	// exclude existing ids
 	var excludeCids []cid.Cid
 	for _, check := range checkResult {
@@ -170,6 +173,8 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 			}
 		}
 	}
+
+	wasLen := len(bs)
 
 	if len(excludeCids) > 0 {
 		// bind existing ids
@@ -186,6 +191,12 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 		}
 		bs = fileteredBs
 	}
+
+	if wasLen != len(excludeCids)+len(bs) {
+		fmt.Println("HERE WE GO")
+	}
+
+	log.Info("add to file, check availability", zap.String("fileID", fileID), zap.Int("got", len(excludeCids)), zap.Int("toUpload", len(bs)))
 
 	if len(bs) == 0 {
 		return nil

@@ -82,6 +82,7 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 }
 
 func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
+	log.Info("add file to queue", zap.String("fileID", fileId))
 	defer func() {
 		if err == nil {
 			select {
@@ -148,22 +149,23 @@ func (f *fileSync) tryToUpload() (string, error) {
 	if err != nil {
 		return fileId, err
 	}
+	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
+		ok, storeErr := f.hasFileInStore(fileId)
+		if storeErr != nil {
+			return fileId, storeErr
+		}
+		if !ok {
+			log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+			return fileId, f.queue.DoneUpload(spaceId, fileId)
+		}
 
-	ok, err := f.hasFileInStore(fileId)
-	if err != nil {
+		// Push to the back of the queue
+		if qerr := f.queue.QueueUpload(spaceId, fileId); qerr != nil {
+			log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
+		}
 		return fileId, err
 	}
-	if ok {
-		if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
-			// Push to the back of the queue
-			if qerr := f.queue.QueueUpload(spaceId, fileId); qerr != nil {
-				log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
-			}
-			return fileId, err
-		}
-	} else {
-		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
-	}
+	log.Info("done upload", zap.String("fileID", fileId))
 	return fileId, f.queue.DoneUpload(spaceId, fileId)
 }
 
@@ -205,6 +207,8 @@ func (f *fileSync) removeLoop() {
 }
 
 func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err error) {
+	log.Info("uploading file", zap.String("fileId", fileId))
+
 	fileCid, err := cid.Parse(fileId)
 	if err != nil {
 		return
@@ -247,7 +251,11 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 	return <-dagErr
 }
 
-func (f *fileSync) dagWalk(ctx context.Context, node ipld.Node, batcher *mb.MB[blocks.Block]) (err error) {
+func (f *fileSync) dagWalk(
+	ctx context.Context,
+	node ipld.Node,
+	batcher *mb.MB[blocks.Block],
+) (err error) {
 	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
 	err = walker.Iterate(func(node ipld.NavigableNode) error {
 		b, err := blocks.NewBlockWithCid(node.GetIPLDNode().RawData(), node.GetIPLDNode().Cid())
@@ -262,7 +270,7 @@ func (f *fileSync) dagWalk(ctx context.Context, node ipld.Node, batcher *mb.MB[b
 	if err == ipld.EndOfDag {
 		err = nil
 	}
-	return
+	return err
 }
 
 func (f *fileSync) removeFile(ctx context.Context, spaceId, fileId string) (err error) {
