@@ -15,9 +15,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
+	"github.com/anytypeio/go-anytype-middleware/space/typeprovider"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -27,11 +26,15 @@ const (
 )
 
 type Pb struct {
-	service *collection.Service
+	service     *collection.Service
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-func New(service *collection.Service) converter.Converter {
-	return &Pb{service: service}
+func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypeProvider) converter.Converter {
+	return &Pb{
+		service:     service,
+		sbtProvider: sbtProvider,
+	}
 }
 
 func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
@@ -75,16 +78,13 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest,
 				continue
 			}
 		}
-		sbt, err := smartblock.SmartBlockTypeFromID(id)
+		sbt, err := p.sbtProvider.Type(id)
 		if err != nil {
-			sbt, err = builtinobjects.SmartBlockTypeFromThreadID(id)
-			if err != nil {
-				allErrors.Add(path, e)
-				if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-					return nil, allErrors
-				} else {
-					continue
-				}
+			allErrors.Add(path, e)
+			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+				return nil, allErrors
+			} else {
+				continue
 			}
 		}
 		source := converter.GetSourceDetail(name, path)

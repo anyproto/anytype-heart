@@ -3,7 +3,6 @@ package importer
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/csv"
 
 	"github.com/anytypeio/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -12,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/block/import/csv"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/html"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/newinfra"

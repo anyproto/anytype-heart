@@ -116,5 +116,5 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest,
 
 	return &converter.Response{
 		Snapshots: snapshots,
-	}, nil
+	}, cErr
 }

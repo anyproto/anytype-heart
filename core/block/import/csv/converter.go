@@ -2,25 +2,29 @@ package csv
 
 import (
 	"encoding/csv"
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
-	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 	"os"
 	"path/filepath"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
+	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
-const Name = "Csv"
+const (
+	Name               = "Csv"
+	rootCollectionName = "CSV Import"
+)
 
 type CSV struct {
 	collectionService *collection.Service
@@ -52,6 +56,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 	progress.SetProgressMessage("Start creating snapshots from files")
 	snapshots := make([]*converter.Snapshot, 0)
 	allRelations := make(map[string][]*converter.Relation, 0)
+	allObjectsIDs := make([]string, 0)
 	cErr := converter.NewError()
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
@@ -69,39 +74,41 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 			}
 			continue
 		}
+
 		details := converter.GetDetails(p)
 		details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 		_, _, st, err := c.collectionService.CreateCollection(details, nil)
-		relations := getDetailsFromCSVTable(csvTable)
-		details = pbtypes.StructMerge(st.CombinedDetails(), details, false)
-		objectsSnapshots, objectsRelations := getEmptyObjects(csvTable, relations)
 
+		relations := getDetailsFromCSVTable(csvTable)
+		objectsSnapshots, objectsRelations := getEmptyObjects(csvTable, relations)
 		targetIDs := make([]string, 0, len(objectsSnapshots))
 		for _, objectsSnapshot := range objectsSnapshots {
 			targetIDs = append(targetIDs, objectsSnapshot.Id)
 		}
+		allObjectsIDs = append(allObjectsIDs, targetIDs...)
 
 		st.StoreSlice(sb.CollectionStoreKey, targetIDs)
-		sn := &model.SmartBlockSnapshotBase{
-			Blocks:        st.Blocks(),
-			Details:       details,
-			ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
-			Collections:   st.Store(),
-			RelationLinks: st.GetRelationLinks(),
-		}
-
-		snapshot := &converter.Snapshot{
-			Id:       uuid.New().String(),
-			FileName: p,
-			Snapshot: &pb.ChangeSnapshot{Data: sn},
-			SbType:   smartblock.SmartBlockTypeCollection,
-		}
+		snapshot := c.getCollectionSnapshot(details, st, p)
 
 		snapshots = append(snapshots, snapshot)
 		snapshots = append(snapshots, objectsSnapshots...)
-		allRelations[snapshot.Id] = relations
+		allObjectsIDs = append(allObjectsIDs, snapshot.Id)
 
+		allRelations[snapshot.Id] = relations
 		allRelations = makeRelationsResultMap(allRelations, objectsRelations)
+	}
+
+	rootCollection := converter.NewRootCollection(c.collectionService)
+	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjectsIDs)
+	if err != nil {
+		cErr.Add(rootCollectionName, err)
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, cErr
+		}
+	}
+
+	if rootCol != nil {
+		snapshots = append(snapshots, rootCol)
 	}
 
 	if cErr.IsEmpty() {
@@ -115,6 +122,25 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest,
 		Snapshots: snapshots,
 		Relations: allRelations,
 	}, cErr
+}
+
+func (c *CSV) getCollectionSnapshot(details *types.Struct, st *state.State, p string) *converter.Snapshot {
+	details = pbtypes.StructMerge(st.CombinedDetails(), details, false)
+	sn := &model.SmartBlockSnapshotBase{
+		Blocks:        st.Blocks(),
+		Details:       details,
+		ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
+		Collections:   st.Store(),
+		RelationLinks: st.GetRelationLinks(),
+	}
+
+	snapshot := &converter.Snapshot{
+		Id:       uuid.New().String(),
+		FileName: p,
+		Snapshot: &pb.ChangeSnapshot{Data: sn},
+		SbType:   smartblock.SmartBlockTypeCollection,
+	}
+	return snapshot
 }
 
 func readCsvFile(filePath string) ([][]string, error) {
