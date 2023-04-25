@@ -55,7 +55,7 @@ func (c *proxyStore) getFromOldStore(k cid.Cid) (blocks.Block, error) {
 	if c.oldStore == nil {
 		return nil, fmt.Errorf("old store is not used")
 	}
-	dsKey := cidToDsKey(k)
+	dsKey := cidToOldDsKey(k)
 	var b blocks.Block
 	err := c.oldStore.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(dsKey))
@@ -77,7 +77,7 @@ func (c *proxyStore) getFromOldStore(k cid.Cid) (blocks.Block, error) {
 	return nil, err
 }
 
-func cidToDsKey(k cid.Cid) string {
+func cidToOldDsKey(k cid.Cid) string {
 	return "/blocks" + dshelp.MultihashToDsKey(k.Hash()).String()
 }
 
@@ -154,7 +154,7 @@ func (c *proxyStore) getManyFromOldStore(ks []cid.Cid) (remaining []cid.Cid, res
 	var bs []blocks.Block
 	err := c.oldStore.View(func(txn *badger.Txn) error {
 		for _, k := range ks {
-			dsKey := cidToDsKey(k)
+			dsKey := cidToOldDsKey(k)
 			b, err := get(txn, k, dsKey)
 			if err != nil {
 				remaining = append(remaining, k)
@@ -220,6 +220,11 @@ func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (no
 }
 
 func (c *proxyStore) Close() error {
+	if c.oldStore != nil {
+		if err := c.oldStore.Close(); err != nil {
+			log.Error("error while closing old store", zap.Error(err))
+		}
+	}
 	if err := c.cache.Close(); err != nil {
 		log.Error("error while closing cache store", zap.Error(err))
 	}
