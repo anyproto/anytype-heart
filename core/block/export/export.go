@@ -188,7 +188,7 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(res))
+	ids := make([]string, 0, len(res))
 	for _, r := range res {
 		docs[r.Id] = r.Details
 		ids = append(ids, r.Id)
@@ -214,7 +214,7 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 				log.Errorf("failed to get smartblocktype of id %s", link)
 				continue
 			}
-			if sbt != smartblock.SmartBlockTypePage {
+			if !validType(sbt) {
 				continue
 			}
 			rec, qErr := e.objectStore.QueryById(links)
