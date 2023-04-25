@@ -369,6 +369,16 @@ func (d *Dataview) SetViewObjectOrder(orders []*model.BlockContentDataviewObject
 		}
 	}
 }
+
+func (d *Dataview) resetObjectOrderForView(viewId string) {
+	orders := d.Model().GetDataview().ObjectOrders
+	for _, order := range orders {
+		if order.ViewId == viewId {
+			order.ObjectIds = nil
+		}
+	}
+}
+
 func (s *Dataview) GetRelation(relationKey string) (*model.Relation, error) {
 	for _, v := range s.content.Relations {
 		if v.Key == relationKey {

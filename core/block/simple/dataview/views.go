@@ -8,6 +8,8 @@ import (
 )
 
 func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error {
+	l.resetObjectOrderForView(viewID)
+
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
@@ -21,6 +23,8 @@ func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFi
 }
 
 func (l *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
+	l.resetObjectOrderForView(viewID)
+
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
@@ -33,6 +37,8 @@ func (l *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
 }
 
 func (l *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error {
+	l.resetObjectOrderForView(viewID)
+
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
@@ -73,6 +79,8 @@ func (l *Dataview) ReorderFilters(viewID string, ids []string) error {
 }
 
 func (l *Dataview) AddSort(viewID string, sort *model.BlockContentDataviewSort) error {
+	l.resetObjectOrderForView(viewID)
+
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
@@ -87,6 +95,8 @@ func (l *Dataview) AddSort(viewID string, sort *model.BlockContentDataviewSort) 
 }
 
 func (l *Dataview) RemoveSorts(viewID string, ids []string) error {
+	l.resetObjectOrderForView(viewID)
+
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
@@ -99,6 +109,8 @@ func (l *Dataview) RemoveSorts(viewID string, ids []string) error {
 }
 
 func (l *Dataview) ReplaceSort(viewID string, id string, sort *model.BlockContentDataviewSort) error {
+	l.resetObjectOrderForView(viewID)
+
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
