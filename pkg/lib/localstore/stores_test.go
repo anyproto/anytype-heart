@@ -2,15 +2,16 @@ package localstore
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	badger "github.com/ipfs/go-ds-badger"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	badger "github.com/textileio/go-ds-badger3"
 )
 
 func Test_AddIndex(t *testing.T) {

@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="anytype-heart" />
+    <module name="go-anytype-middleware" />
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-tags &quot;nomutexdeadlockdetector noauth nographviz&quot;" />
     <envs>
@@ -10,7 +10,7 @@
       <env name="ANYTYPE_GRPCWEB_ADDR" value="127.0.0.1:31008" />
     </envs>
     <kind value="PACKAGE" />
-    <package value="github.com/anyproto/anytype-heart/cmd/grpcserver" />
+    <package value="github.com/anytypeio/go-anytype-middleware/cmd/grpcserver" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$" />
     <method v="2" />

@@ -248,7 +248,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true, true)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
 
 	derivationResult, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
@@ -421,7 +421,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 
 	comps := []app.Component{
-		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false, false),
+		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false),
 		anytype.BootstrapWallet(mw.rootPath, res),
 		mw.EventSender,
 	}
@@ -797,7 +797,7 @@ func (mw *Middleware) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExpo
 		return nil, fmt.Errorf("failed to extract config: %w", err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false, false)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
 	return cfg, nil
 }

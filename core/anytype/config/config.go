@@ -56,7 +56,6 @@ type Config struct {
 	DS                     clientds.Config
 	FS                     FSConfig
 	DisableFileConfig      bool `ignored:"true"` // set in order to skip reading/writing config from/to file
-	CreateBuiltinObjects   bool
 	CreateBuiltinTemplates bool
 }
 
@@ -100,12 +99,6 @@ func WithDebugAddr(addr string) func(*Config) {
 func WithLocalServer(addr string) func(*Config) {
 	return func(c *Config) {
 		c.LocalServerAddr = addr
-	}
-}
-
-func WithCreateBuiltinObjects(createBuiltinObjects bool) func(*Config) {
-	return func(c *Config) {
-		c.CreateBuiltinObjects = createBuiltinObjects
 	}
 }
 

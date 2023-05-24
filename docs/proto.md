@@ -625,6 +625,10 @@
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
     - [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error)
+    - [Rpc.Object.ImportUseCase](#anytype-Rpc-Object-ImportUseCase)
+    - [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request)
+    - [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response)
+    - [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error)
     - [Rpc.Object.ListDelete](#anytype-Rpc-Object-ListDelete)
     - [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request)
     - [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response)
@@ -1034,6 +1038,8 @@
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
+    - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase)
+    - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
     - [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format)
@@ -1482,6 +1488,7 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
+| ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
@@ -10688,6 +10695,62 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-ImportUseCase"></a>
+
+### Rpc.Object.ImportUseCase
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Request"></a>
+
+### Rpc.Object.ImportUseCase.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Response"></a>
+
+### Rpc.Object.ImportUseCase.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Response-Error"></a>
+
+### Rpc.Object.ImportUseCase.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ListDelete"></a>
 
 ### Rpc.Object.ListDelete
@@ -16432,6 +16495,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INTERNAL_ERROR | 1 |  |
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Request-UseCase"></a>
+
+### Rpc.Object.ImportUseCase.Request.UseCase
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SKIP | 0 |  |
+| PERSONAL_PROJECTS | 1 |  |
+| KNOWLEDGE_BASE | 2 |  |
+| NOTES_DIARY | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Response-Error-Code"></a>
+
+### Rpc.Object.ImportUseCase.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

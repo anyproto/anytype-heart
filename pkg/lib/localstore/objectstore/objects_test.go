@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/ipfs/go-datastore/sync"
@@ -20,66 +18,10 @@ import (
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-	app := testapp.New()
-	defer app.Close(context.Background())
-
-	tp := typeprovider.New(nil)
-	tp.Init(nil)
-	ds := New(tp)
-	id := bson.NewObjectId()
-	tp.RegisterStaticType(id.String(), smartblock.SmartBlockTypePage)
-
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ds).Start(context.Background())
-	require.NoError(t, err)
-	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
-	err = ds.CreateObject(id.String(), &types.Struct{
-		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
-	}, nil, "")
-	require.NoError(t, err)
-
-	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
-	recs, _, err := ds.Query(schema.NewByType(ot, nil), database.Query{})
-	require.NoError(t, err)
-	require.Len(t, recs, 1)
-	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
-
-	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
-	}, true)
-	require.NoError(t, err)
-
-	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
-	require.NoError(t, err)
-	require.Len(t, recs, 1)
-	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
-	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
-
-	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
-	}, false)
-	require.NoError(t, err)
-
-	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
-	require.NoError(t, err)
-	require.Len(t, recs, 1)
-	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
-	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
-}
 
 func TestDsObjectStore_IndexQueue(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
@@ -136,104 +78,6 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 		return nil
 	}))
 	assert.Equal(t, 2, count)
-}
-
-func TestDsObjectStore_Query(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-
-	app := testapp.New()
-	defer app.Close(context.Background())
-	tp := typeprovider.New(nil)
-	tp.Init(nil)
-	ds := New(tp)
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
-	require.NoError(t, err)
-	fts := app.MustComponent(ftsearch.CName).(ftsearch.FTSearch)
-
-	newDet := func(name string) *types.Struct {
-		return &types.Struct{
-			Fields: map[string]*types.Value{
-				"name": pbtypes.String(name),
-			},
-		}
-	}
-
-	id1 := bson.NewObjectId().Hex()
-	id2 := bson.NewObjectId().Hex()
-	id3 := bson.NewObjectId().Hex()
-	tp.RegisterStaticType(id1, smartblock.SmartBlockTypePage)
-	tp.RegisterStaticType(id2, smartblock.SmartBlockTypePage)
-	tp.RegisterStaticType(id3, smartblock.SmartBlockTypePage)
-
-	require.NoError(t, ds.CreateObject(id1, newDet("one"), nil, "s1"))
-	require.NoError(t, ds.CreateObject(id2, newDet("two"), nil, "s2"))
-	require.NoError(t, ds.CreateObject(id3, newDet("three"), nil, "s3"))
-	require.NoError(t, fts.Index(ftsearch.SearchDoc{
-		Id:    id1,
-		Title: "one",
-		Text:  "text twoone uniqone",
-	}))
-	require.NoError(t, fts.Index(ftsearch.SearchDoc{
-		Id:    id2,
-		Title: "two",
-		Text:  "twoone text twoone uniqtwo",
-	}))
-	require.NoError(t, fts.Index(ftsearch.SearchDoc{
-		Id:    id3,
-		Title: "three",
-		Text:  "text uniqthree",
-	}))
-
-	// should return all records
-	rec, tot, err := ds.Query(nil, database.Query{})
-	require.NoError(t, err)
-	assert.Equal(t, 3, tot)
-	assert.Len(t, rec, 3)
-
-	// filter
-	rec, tot, err = ds.Query(nil, database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Operator:    model.BlockContentDataviewFilter_And,
-				RelationKey: "name",
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String("two"),
-			},
-		},
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 1, tot)
-	assert.Len(t, rec, 1)
-
-	// fulltext
-	rec, tot, err = ds.Query(nil, database.Query{
-		FullText: "twoone",
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 2, tot)
-	assert.Len(t, rec, 2)
-	var names []string
-	for _, r := range rec {
-		names = append(names, pbtypes.GetString(r.Details, "name"))
-	}
-	assert.Equal(t, []string{"two", "one"}, names)
-
-	// fulltext + filter
-	rec, tot, err = ds.Query(nil, database.Query{
-		FullText: "twoone",
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Operator:    model.BlockContentDataviewFilter_And,
-				RelationKey: "name",
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String("one"),
-			},
-		},
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 1, tot)
-	assert.Len(t, rec, 1)
 }
 
 func TestDsObjectStore_PrefixQuery(t *testing.T) {

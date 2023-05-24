@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -837,4 +838,25 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
 	errCode, err := importer.ValidateNotionToken(ctx, request)
 	return response(errCode, err)
+}
+
+func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
+	ctx := mw.newContext(cctx)
+
+	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
+		resp := &pb.RpcObjectImportUseCaseResponse{
+			Error: &pb.RpcObjectImportUseCaseResponseError{
+				Code: code,
+			},
+		}
+		if err != nil {
+			resp.Error.Description = err.Error()
+		}
+		return resp
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	return response(getService[builtinobjects.BuiltinObjects](mw).CreateObjectsForUseCase(ctx, req.UseCase))
 }
