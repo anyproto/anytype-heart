@@ -85,8 +85,7 @@ func (t *TXT) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
 	targetObjects := make([]string, 0)
 	for _, p := range paths {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(p, err)
-			return nil, nil, cancelError
+			return nil, nil, converter.NewFromError(p, err)
 		}
 		sn, to, err := t.handleImportPath(p, req.GetMode())
 		if err != nil {
@@ -113,6 +112,9 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
 		}
+	}
+	if len(readers) == 0 {
+		return nil, nil, converter.ErrNoObjectsToImport
 	}
 	snapshots := make([]*converter.Snapshot, 0, len(readers))
 	targetObjects := make([]string, 0, len(readers))

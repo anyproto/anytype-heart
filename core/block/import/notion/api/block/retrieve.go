@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -110,6 +111,7 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 		}
 
 		cursor = *objects.NextCursor
+		time.Sleep(time.Millisecond * 5) // to avoid rate limit
 
 	}
 	return blocks, nil
@@ -402,6 +404,10 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 		notionErr := client.TransformHTTPCodeToError(b)
 		if notionErr == nil {
 			return Response{}, fmt.Errorf("GetBlocks: failed http request, %d code", res.StatusCode)
+		}
+		if code := client.GetErrorCode(b); code == http.StatusTooManyRequests {
+			logger.Errorf("GetPropertyObject: failed http request, too many request") // not fail if too many request to Notion
+			return Response{}, nil
 		}
 		return Response{}, notionErr
 	}

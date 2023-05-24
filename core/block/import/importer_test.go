@@ -272,7 +272,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Mode:                  2,
 	})
 	assert.NotNil(t, res)
-	assert.Contains(t, res.Error(), "snapshots are empty")
+	assert.Contains(t, res.Error(), cv.ErrNoObjectsToImport.Error())
 }
 
 func Test_ListImports(t *testing.T) {

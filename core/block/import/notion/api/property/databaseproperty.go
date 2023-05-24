@@ -87,6 +87,8 @@ func getFormatGetter(v interface{}) (FormatGetter, error) {
 			p = &DatabaseLastEditedBy{}
 		case PropertyConfigStatus:
 			p = &DatabaseStatus{}
+		case PropertyConfigVerification:
+			p = &DatabaseVerification{}
 		default:
 			return nil, fmt.Errorf("unsupported property type: %s", rawProperty["type"].(string))
 		}
@@ -265,4 +267,12 @@ type DatabasePhoneNumber struct {
 
 func (r *DatabasePhoneNumber) GetFormat() model.RelationFormat {
 	return model.RelationFormat_phone
+}
+
+type DatabaseVerification struct {
+	Property
+}
+
+func (v *DatabaseVerification) GetFormat() model.RelationFormat {
+	return model.RelationFormat_date
 }

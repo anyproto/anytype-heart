@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -21,7 +22,8 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		Mode: 1,
 	}, p)
 
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
+	assert.Equal(t, err["testdata/test"], converter.ErrNoObjectsToImport)
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 2)
 	assert.Contains(t, sn.Snapshots[0].FileName, "test.txt")
