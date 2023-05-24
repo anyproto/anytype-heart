@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/search"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
+	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 const (

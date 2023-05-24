@@ -6,21 +6,21 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anytypeio/any-sync/commonspace/object/treemanager"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/metrics"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
 var log = logging.Logger("anytype-core")
@@ -31,7 +31,7 @@ const (
 	CName = "anytype"
 )
 
-//go:generate mockgen -package mock_core -destination ./mock_core/service_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/core Service
+//go:generate mockgen -package mock_core -destination ./mock_core/service_mock.go github.com/anyproto/anytype-heart/pkg/lib/core Service
 type Service interface {
 	Stop() error
 	IsStarted() bool

@@ -6,7 +6,7 @@ package service
 import (
 	context "context"
 	fmt "fmt"
-	pb "github.com/anytypeio/go-anytype-middleware/pb"
+	pb "github.com/anyproto/anytype-heart/pb"
 	proto "github.com/gogo/protobuf/proto"
 	grpc "google.golang.org/grpc"
 	math "math"

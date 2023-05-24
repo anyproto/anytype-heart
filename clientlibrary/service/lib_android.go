@@ -5,7 +5,7 @@ import "C"
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/net/addrs"
+	"github.com/anyproto/anytype-heart/net/addrs"
 	"net"
 )
 

@@ -1,6 +1,6 @@
 package syncer
 
-import "github.com/anytypeio/go-anytype-middleware/core/block/simple"
+import "github.com/anyproto/anytype-heart/core/block/simple"
 
 type Factory struct {
 	fs *FileSyncer

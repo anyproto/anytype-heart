@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 )
 
 const (

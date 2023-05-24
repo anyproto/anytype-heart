@@ -5,31 +5,31 @@ import (
 	"errors"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonspace"
 	// nolint: misspell
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anytypeio/any-sync/commonspace/peermanager"
-	"github.com/anytypeio/any-sync/commonspace/spacestorage"
-	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
-	"github.com/anytypeio/any-sync/commonspace/syncstatus"
-	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
-	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
-	"github.com/anytypeio/any-sync/net/dialer"
-	"github.com/anytypeio/any-sync/net/pool"
-	"github.com/anytypeio/any-sync/net/rpc/server"
-	"github.com/anytypeio/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/peermanager"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/net/dialer"
+	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/rpc/server"
+	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
-	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
-	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
-	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/space/clientspaceproto"
+	"github.com/anyproto/anytype-heart/space/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/peerstore"
+	"github.com/anyproto/anytype-heart/space/storage"
 )
 
 const (
@@ -51,8 +51,8 @@ type PoolManager interface {
 	StreamPeerPool() pool.Pool
 }
 
-//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anytypeio/go-anytype-middleware/space Service
-//go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anytypeio/any-sync/commonspace Space
+//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anyproto/anytype-heart/space Service
+//go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anyproto/any-sync/commonspace Space
 type Service interface {
 	AccountSpace(ctx context.Context) (commonspace.Space, error)
 	AccountId() string

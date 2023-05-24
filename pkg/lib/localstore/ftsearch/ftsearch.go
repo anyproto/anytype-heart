@@ -13,12 +13,12 @@ import (
 	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/samber/lo"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anyproto/any-sync/app"
 
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch/analyzers"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/analyzers"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 
 	ipld "github.com/ipfs/go-ipld-format"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 // ErrEmptySchema indicates a schema is empty

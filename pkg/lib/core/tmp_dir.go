@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
 const tmpDir = "tmp"

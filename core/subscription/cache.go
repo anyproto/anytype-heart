@@ -3,7 +3,7 @@ package subscription
 import (
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func newCache() *cache {

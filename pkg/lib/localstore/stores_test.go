@@ -2,7 +2,7 @@ package localstore
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 	"io/ioutil"
 	"os"
 	"path/filepath"

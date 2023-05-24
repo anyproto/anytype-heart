@@ -1,6 +1,6 @@
 package parsers
 
-import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 type RegisterParser func() Parser
 

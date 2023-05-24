@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

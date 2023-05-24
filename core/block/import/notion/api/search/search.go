@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/client"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/database"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api/page"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 var logger = logging.Logger("notion-search")

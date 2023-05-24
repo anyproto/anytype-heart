@@ -7,16 +7,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 )
 
 const CName = "filesync"
@@ -27,7 +27,7 @@ var loopTimeout = time.Minute
 
 var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
-//go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync FileSync
+//go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anyproto/anytype-heart/core/filestorage/filesync FileSync
 type FileSync interface {
 	AddFile(spaceId, fileId string) (err error)
 	RemoveFile(spaceId, fileId string) (err error)

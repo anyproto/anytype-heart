@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
-	"github.com/anytypeio/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
+	"github.com/anyproto/any-sync/commonfile/fileproto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/multierr"

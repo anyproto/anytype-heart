@@ -3,8 +3,8 @@ package dataview
 import (
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error {

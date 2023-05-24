@@ -7,7 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
+	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 )
 
 type Sizable interface {

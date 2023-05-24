@@ -4,8 +4,8 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace/object/acl/aclrecordproto"
-	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
+	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
+	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"io"
 	"strings"
 )

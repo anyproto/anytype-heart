@@ -6,14 +6,14 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/anytypeio/go-anytype-middleware/core"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/core"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-mw")

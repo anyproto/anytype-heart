@@ -6,17 +6,17 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/proto"
 	dsCtx "github.com/ipfs/go-datastore"
 	"github.com/samber/lo"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	ds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	ds "github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (

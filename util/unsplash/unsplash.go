@@ -12,17 +12,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/hbagdi/go-unsplash/unsplash"
 	"golang.org/x/oauth2"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config/loadenv"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
+	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 var log = logging.Logger("unsplash")

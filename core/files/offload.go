@@ -8,8 +8,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 func (s *service) FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error) {

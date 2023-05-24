@@ -12,16 +12,16 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/util/strutil"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/util/strutil"
 
 	. "github.com/dave/jennifer/jen"
 )
 
 const (
-	relPbPkg = "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	addrPkg  = "github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	relPbPkg = "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	addrPkg  = "github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 
 	pkgPrefix = "pkg/lib/bundle/"
 	jsonExt   = ".json"

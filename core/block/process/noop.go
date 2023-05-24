@@ -1,7 +1,7 @@
 package process
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 type noOp struct{}

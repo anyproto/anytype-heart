@@ -3,9 +3,9 @@ package filter
 import (
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	timeutil "github.com/anytypeio/go-anytype-middleware/util/time"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
 func TransformQuickOption(protoFilters []*model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {

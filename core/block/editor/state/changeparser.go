@@ -2,8 +2,8 @@ package state
 
 import (
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/anytype-heart/pb"
 	"strings"
 	"unicode"
 )

@@ -3,11 +3,11 @@ package storage
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/dgraph-io/badger/v3"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 )
 
 type storageService struct {

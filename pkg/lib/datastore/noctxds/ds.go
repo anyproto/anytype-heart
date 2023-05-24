@@ -2,7 +2,7 @@ package noctxds
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"io"

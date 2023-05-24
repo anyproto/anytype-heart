@@ -1,4 +1,4 @@
-//go:generate mockgen -package mockBuiltinTemplate -destination builtintemplate_mock.go github.com/anytypeio/go-anytype-middleware/util/builtintemplate BuiltinTemplate
+//go:generate mockgen -package mockBuiltinTemplate -destination builtintemplate_mock.go github.com/anyproto/anytype-heart/util/builtintemplate BuiltinTemplate
 package mockBuiltinTemplate
 
 import (
@@ -6,8 +6,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
+	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/anyproto/anytype-heart/util/builtintemplate"
 )
 
 func RegisterMockBuiltinTemplate(ctrl *gomock.Controller, ta *testapp.TestApp) *MockBuiltinTemplate {

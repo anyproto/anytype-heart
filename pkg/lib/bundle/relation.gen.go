@@ -5,8 +5,8 @@ source: pkg/lib/bundle/relations.json
 package bundle
 
 import (
-	addr "github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	addr "github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const RelationChecksum = "d70a343f0d99ab1216c0b0383197054635ed30184092de714cedc0ef258dd9f8"

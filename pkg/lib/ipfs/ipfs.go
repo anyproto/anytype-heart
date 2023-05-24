@@ -2,8 +2,8 @@ package ipfs
 
 import (
 	"context"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"

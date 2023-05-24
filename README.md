@@ -8,18 +8,18 @@
 1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../anytype-ts`
 
 #### Build for iOS
-Instructions to set up environment for ios [here](https://github.com/anytypeio/ios-anytype/blob/develop/docs/Setup_For_Middleware.md)
+Instructions to set up environment for ios [here](https://github.com/anyproto/ios-anytype/blob/develop/docs/Setup_For_Middleware.md)
 1. `make build-ios` to build the framework into `dist/ios` folder
 2. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
 
 #### Build for Android
-Instructions to setup environment for android [here](https://github.com/anytypeio/android-anytype/blob/develop/docs/Setup_For_Middleware.md)
+Instructions to setup environment for android [here](https://github.com/anyproto/android-anytype/blob/develop/docs/Setup_For_Middleware.md)
 1. `make build-android` to build the library into `dist/android` folder
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
 
 ### Rebuild protobuf generated files
-First, you need to install [protobuf](https://github.com/anytypeio/go-anytype-middleware#install-local-deps-mac) pkg using your preferred package manager.
-This repo uses custom protoc located at [anytypeio/protobuf](https://github.com/anytypeio/protobuf/tree/master/protoc-gen-gogo). It adds `gomobile` plugin and some env-controlled options to control the generated code style.
+First, you need to install [protobuf](https://github.com/anyproto/anytype-heart#install-local-deps-mac) pkg using your preferred package manager.
+This repo uses custom protoc located at [anyproto/protobuf](https://github.com/anyproto/protobuf/tree/master/protoc-gen-gogo). It adds `gomobile` plugin and some env-controlled options to control the generated code style.
 This protobuf generator will replace your `protoc` binary, BTW it doesn't have any breaking changes for other protobuf and grpc code
 
 You can override the binary with a simple command:
@@ -76,7 +76,7 @@ make test-migration
 
 
 ### Run local gRPC server to debug
-⚠️ Make sure to update/install protobuf compiler from [this repo](https://github.com/anytypeio/protobuf) using `make setup-protoc`
+⚠️ Make sure to update/install protobuf compiler from [this repo](https://github.com/anyproto/protobuf) using `make setup-protoc`
 
 Commands:
 - `make run-server` - builds proto files for grpc server, builds the binary and runs it

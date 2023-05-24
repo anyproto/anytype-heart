@@ -4,18 +4,18 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/exporter"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive"
-	"github.com/anytypeio/go-anytype-middleware/util/anonymize"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anyproto/anytype-heart/core/debug/treearchive"
+	"github.com/anyproto/anytype-heart/util/anonymize"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/any-sync/commonspace/object/tree/exporter"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
 type treeExporter struct {

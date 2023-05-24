@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/cheggaaa/mb/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -13,8 +13,8 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
 func (f *fileSync) AddFile(spaceId, fileId string) (err error) {

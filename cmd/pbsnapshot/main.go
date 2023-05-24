@@ -1,10 +1,11 @@
+//go:build !nogrpcserver && !_test
 // +build !nogrpcserver,!_test
 
 package main
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"io/ioutil"

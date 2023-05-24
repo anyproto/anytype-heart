@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/metrics"
 )
 
 type Picker interface {

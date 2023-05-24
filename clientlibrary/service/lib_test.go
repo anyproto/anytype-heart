@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/core"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 )

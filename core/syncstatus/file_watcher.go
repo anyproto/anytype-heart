@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 )
 

@@ -11,14 +11,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/util/periodicsync"
+	"github.com/anyproto/any-sync/accountservice"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/libp2p/zeroconf/v2"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/net/addrs"
-	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
+	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/space/clientserver"
 )
 
 var interfacesSortPriority = []string{"en", "wlan", "wl", "eth", "lo"}

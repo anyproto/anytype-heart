@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func Test_GetBookmarkBlock(t *testing.T) {

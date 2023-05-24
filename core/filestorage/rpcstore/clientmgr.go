@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app/ocache"
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
+	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"

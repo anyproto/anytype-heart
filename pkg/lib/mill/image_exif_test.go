@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/testdata"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill/testdata"
 )
 
 func TestImageExif_Mill(t *testing.T) {

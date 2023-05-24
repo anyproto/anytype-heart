@@ -3,9 +3,9 @@ package syncstatus
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
-	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 type objectWatcher struct {

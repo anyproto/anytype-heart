@@ -6,9 +6,9 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 var log = logging.Logger("anytype-core-mill")

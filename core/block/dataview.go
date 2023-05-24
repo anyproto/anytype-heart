@@ -1,10 +1,10 @@
 package block
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (s *Service) AddDataviewFilter(

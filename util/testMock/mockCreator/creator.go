@@ -1,11 +1,11 @@
-//go:generate mockgen -package mockCreator -destination creator_mock.go github.com/anytypeio/go-anytype-middleware/core/block/object/objectcreator Service
+//go:generate mockgen -package mockCreator -destination creator_mock.go github.com/anyproto/anytype-heart/core/block/object/objectcreator Service
 package mockCreator
 
 import (
 	"github.com/golang/mock/gomock"
 
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 )
 
 func RegisterMockCreator(ctrl *gomock.Controller, ta *testapp.TestApp) *MockService {

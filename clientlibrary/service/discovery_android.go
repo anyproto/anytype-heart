@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/space/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/localdiscovery"
 )
 
 type AndroidDiscoveryProxy interface {

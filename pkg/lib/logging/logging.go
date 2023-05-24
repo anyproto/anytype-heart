@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anytypeio/any-sync/app/logger"
+	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/util/vcs"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 var defaultCfg = logger.Config{

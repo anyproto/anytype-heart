@@ -1,4 +1,4 @@
-//go:generate mockgen -package mockSpace -destination space_mock.go github.com/anytypeio/go-anytype-middleware/space Service
+//go:generate mockgen -package mockSpace -destination space_mock.go github.com/anyproto/anytype-heart/space Service
 package mockSpace
 
 import (
@@ -6,8 +6,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 func RegisterMockSpace(ctrl *gomock.Controller, ta *testapp.TestApp) *MockService {

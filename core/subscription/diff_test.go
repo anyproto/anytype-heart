@@ -2,7 +2,7 @@ package subscription
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"strings"

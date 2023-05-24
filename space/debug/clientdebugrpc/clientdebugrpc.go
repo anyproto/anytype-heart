@@ -3,19 +3,19 @@ package clientdebugrpc
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/any-sync/commonspace/spacestorage"
-	"github.com/anytypeio/any-sync/net/rpc/server"
-	"github.com/anytypeio/any-sync/net/secureservice"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/rpc/server"
+	"github.com/anyproto/any-sync/net/secureservice"
 	"storj.io/drpc"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc/clientdebugrpcproto"
-	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc/clientdebugrpcproto"
+	"github.com/anyproto/anytype-heart/space/storage"
 )
 
 const CName = "common.debug.clientdebugrpc"

@@ -1,7 +1,7 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 )
 
 func NewMissingObject(sb smartblock.SmartBlock) *MissingObject {

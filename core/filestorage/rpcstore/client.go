@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/commonfile/fileproto"
-	"github.com/anytypeio/any-sync/net/rpc/rpcerr"
+	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"

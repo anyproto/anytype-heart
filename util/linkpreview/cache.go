@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/golang/groupcache/lru"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (

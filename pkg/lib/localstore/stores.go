@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	ds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	ds "github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/slice"
 
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"

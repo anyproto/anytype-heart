@@ -3,7 +3,7 @@ package datastore
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v3"
 	ds "github.com/ipfs/go-datastore"
 )

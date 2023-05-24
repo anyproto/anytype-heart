@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 type linkedFilesWatcher struct {

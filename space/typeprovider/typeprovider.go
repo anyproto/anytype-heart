@@ -6,18 +6,18 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/space"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 const CName = "space.typeprovider"
@@ -28,7 +28,7 @@ var (
 	ErrUnknownChangeType = errors.New("error unknown change type")
 )
 
-//go:generate mockgen -package mock_typeprovider -destination ./mock_typeprovider/provider_mock.go github.com/anytypeio/go-anytype-middleware/space/typeprovider SmartBlockTypeProvider
+//go:generate mockgen -package mock_typeprovider -destination ./mock_typeprovider/provider_mock.go github.com/anyproto/anytype-heart/space/typeprovider SmartBlockTypeProvider
 type SmartBlockTypeProvider interface {
 	app.Component
 	Type(id string) (smartblock.SmartBlockType, error)

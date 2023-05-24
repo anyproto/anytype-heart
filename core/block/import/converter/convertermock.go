@@ -6,13 +6,13 @@ package converter
 
 import (
 	context "context"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	reflect "reflect"
 
-	block "github.com/anytypeio/go-anytype-middleware/core/block"
-	smartblock "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	pb "github.com/anytypeio/go-anytype-middleware/pb"
-	smartblock0 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	block "github.com/anyproto/anytype-heart/core/block"
+	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	pb "github.com/anyproto/anytype-heart/pb"
+	smartblock0 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	gomock "github.com/golang/mock/gomock"
 )
 

@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/anytypeio/go-anytype-middleware/clientlibrary/service"
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/clientlibrary/service"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/gogo/protobuf/proto"
 )
 

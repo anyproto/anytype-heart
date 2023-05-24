@@ -3,9 +3,9 @@ package block
 import (
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/block/editor/table"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // columnLayoutBlock + tableRowLayoutBlock + table

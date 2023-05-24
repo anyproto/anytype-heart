@@ -6,18 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/metric"
-	commonnet "github.com/anytypeio/any-sync/net"
-	"github.com/anytypeio/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/metric"
+	commonnet "github.com/anyproto/any-sync/net"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-config")

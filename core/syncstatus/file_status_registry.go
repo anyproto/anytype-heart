@@ -6,16 +6,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
-	"github.com/anytypeio/go-anytype-middleware/core/block/getblock"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fileStatusRegistry struct {

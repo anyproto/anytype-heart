@@ -13,7 +13,7 @@ jobs:
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     env:
-      GOPRIVATE: github.com/anytypeio
+      GOPRIVATE: github.com/anyproto
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
@@ -45,7 +45,7 @@ jobs:
       - name: Setup license repository
         uses: actions/checkout@master
         with:
-          repository: anytypeio/open
+          repository: anyproto/open
           ref: refs/heads/main
           path: ./open
       - name: Check licenses
@@ -68,7 +68,7 @@ jobs:
           export ANYTYPE_LOG_LEVEL=DEBUG
           export ANYTYPE_LOG_NOGELF=1
           go install gotest.tools/gotestsum@latest
-          PACKAGE_NAMES=$(go list -tags nogrpcserver ./... | grep -v "github.com/anytypeio/go-anytype-middleware/cmd/grpserver" | grep -v "github.com/anytypeio/go-anytype-middleware/clientlibrary/clib")
+          PACKAGE_NAMES=$(go list -tags nogrpcserver ./... | grep -v "github.com/anyproto/anytype-heart/cmd/grpserver" | grep -v "github.com/anyproto/anytype-heart/clientlibrary/clib")
           mkdir ~/gotestsum-report
           gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags nogrpcserver -p 1 $(echo $PACKAGE_NAMES) -coverprofile=coverage.out -covermode=count ./...
           COVERAGE=$(go tool cover -func coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')

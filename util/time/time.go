@@ -5,7 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func CutValueToDay(val *types.Value) *types.Value {

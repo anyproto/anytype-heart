@@ -10,16 +10,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/any-sync/net"
-	"github.com/anytypeio/any-sync/net/rpc/server"
-	"github.com/anytypeio/any-sync/net/secureservice"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/net"
+	"github.com/anyproto/any-sync/net/rpc/server"
+	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/libp2p/go-libp2p/core/sec"
 	"storj.io/drpc"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 )
 
 const CName = server.CName

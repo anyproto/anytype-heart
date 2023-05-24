@@ -3,12 +3,12 @@ package treearchive
 import (
 	"archive/zip"
 	"encoding/json"
-	"github.com/anytypeio/any-sync/commonspace/object/acl/aclrecordproto"
-	"github.com/anytypeio/any-sync/commonspace/object/acl/liststorage"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive/zipaclstorage"
-	"github.com/anytypeio/go-anytype-middleware/core/debug/treearchive/ziptreestorage"
+	"github.com/anyproto/anytype-heart/core/debug/treearchive/zipaclstorage"
+	"github.com/anyproto/anytype-heart/core/debug/treearchive/ziptreestorage"
+	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
+	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"io/fs"
 	"os"
 )

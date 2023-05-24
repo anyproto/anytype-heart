@@ -1,4 +1,4 @@
-//go:generate mockgen -package filesync -destination filestore_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore FileStore
+//go:generate mockgen -package filesync -destination filestore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore FileStore
 
 package filesync
 
@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
-	"github.com/anytypeio/any-sync/commonfile/fileproto"
-	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
+	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
@@ -24,12 +24,12 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore/mock_rpcstore"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 var ctx = context.Background()

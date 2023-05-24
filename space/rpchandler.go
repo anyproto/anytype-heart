@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anytypeio/any-sync/commonspace"
-	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
-	"github.com/anytypeio/any-sync/net/peer"
+	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/space/clientspaceproto"
+	"github.com/anyproto/anytype-heart/space/clientspaceproto"
 )
 
 type rpcHandler struct {

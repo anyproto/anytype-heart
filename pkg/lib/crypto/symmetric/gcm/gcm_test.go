@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
+	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/stretchr/testify/require"
 )
 

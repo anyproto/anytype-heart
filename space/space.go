@@ -3,7 +3,7 @@ package space
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace"
 )
 
 func newClientSpace(cc commonspace.Space) (commonspace.Space, error) {

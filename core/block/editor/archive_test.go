@@ -6,12 +6,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
-	"github.com/anytypeio/go-anytype-middleware/core/block/migration"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDetailsModifier"
+	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/util/testMock"
+	"github.com/anyproto/anytype-heart/util/testMock/mockDetailsModifier"
 )
 
 func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {

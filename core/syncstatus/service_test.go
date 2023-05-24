@@ -9,12 +9,12 @@ package syncstatus
 // 	"github.com/golang/mock/gomock"
 // 	"github.com/stretchr/testify/require"
 //
-// 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-// 	"github.com/anytypeio/go-anytype-middleware/core/filestorage/filesync/mock_filesync"
-// 	"github.com/anytypeio/go-anytype-middleware/pb"
-// 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/mock_core"
-// 	"github.com/anytypeio/go-anytype-middleware/space/mock_space"
-// 	"github.com/anytypeio/go-anytype-middleware/space/typeprovider/mock_typeprovider"
+// 	"github.com/anyproto/anytype-heart/core/anytype/config"
+// 	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
+// 	"github.com/anyproto/anytype-heart/pb"
+// 	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
+// 	"github.com/anyproto/anytype-heart/space/mock_space"
+// 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 // )
 //
 // type fixture struct {

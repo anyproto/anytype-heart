@@ -3,7 +3,7 @@ package linkpreview
 import (
 	"bytes"
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/util/text"
+	"github.com/anyproto/anytype-heart/util/text"
 	"github.com/go-shiori/go-readability"
 	"io"
 	"net/http"
@@ -11,10 +11,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
+	"github.com/anyproto/anytype-heart/util/uri"
+	"github.com/anyproto/any-sync/app"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/otiai10/opengraph/v2"
 )

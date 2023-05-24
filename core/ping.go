@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func nsToMs(n int64) int64 {

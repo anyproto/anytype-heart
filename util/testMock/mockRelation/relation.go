@@ -1,9 +1,9 @@
-//go:generate mockgen -package mockRelation -destination relation_mock.go github.com/anytypeio/go-anytype-middleware/core/relation Service
+//go:generate mockgen -package mockRelation -destination relation_mock.go github.com/anyproto/anytype-heart/core/relation Service
 package mockRelation
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/core/relation"
+	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/golang/mock/gomock"
 )
 

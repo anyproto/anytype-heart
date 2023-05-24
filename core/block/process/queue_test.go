@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -3,7 +3,7 @@ package threads
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 type threadDerivedIndex uint32

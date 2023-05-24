@@ -5,10 +5,10 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/notion/api"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	textUtil "github.com/anytypeio/go-anytype-middleware/util/text"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
 const notFoundPageMessage = "Can't access object in Notion, please provide access in API"

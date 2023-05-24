@@ -1,7 +1,7 @@
 package block
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // MapRequest is a data object with all necessary structures for blocks

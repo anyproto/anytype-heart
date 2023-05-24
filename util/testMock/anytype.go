@@ -1,21 +1,21 @@
-//go:generate mockgen -package testMock -destination anytype_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/core Service
-//go:generate mockgen -package testMock -destination objectstore_mock.go github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore ObjectStore
-//go:generate mockgen -package testMock -destination history_mock.go github.com/anytypeio/go-anytype-middleware/core/block/undo History
-//go:generate mockgen -package testMock -destination sbt_provider_mock.go github.com/anytypeio/go-anytype-middleware/space/typeprovider SmartBlockTypeProvider
-//go:generate mockgen -package testMock -destination file_service_mock.go -mock_names Service=MockFileService github.com/anytypeio/go-anytype-middleware/core/files Service,Image,File
+//go:generate mockgen -package testMock -destination anytype_mock.go github.com/anyproto/anytype-heart/pkg/lib/core Service
+//go:generate mockgen -package testMock -destination objectstore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore ObjectStore
+//go:generate mockgen -package testMock -destination history_mock.go github.com/anyproto/anytype-heart/core/block/undo History
+//go:generate mockgen -package testMock -destination sbt_provider_mock.go github.com/anyproto/anytype-heart/space/typeprovider SmartBlockTypeProvider
+//go:generate mockgen -package testMock -destination file_service_mock.go -mock_names Service=MockFileService github.com/anyproto/anytype-heart/core/files Service,Image,File
 package testMock
 
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anyproto/any-sync/app"
 	"github.com/golang/mock/gomock"
 
-	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/core/kanban"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockKanban"
+	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/util/testMock/mockKanban"
 )
 
 type App interface {

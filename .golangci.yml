@@ -17,13 +17,13 @@ linters-settings:
     sections:
       - standard                       
       - default                       
-      - prefix(github.com/anytypeio/go-anytype-middleware)
+      - prefix(github.com/anyproto/anytype-heart)
       - blank                          
       - dot                           
     skip-generated: false
     custom-order: true
   goimports:
-    local-prefixes: github.com/anytypeio/go-anytype-middleware
+    local-prefixes: github.com/anyproto/anytype-heart
   govet:
     check-shadowing: true
   funlen:

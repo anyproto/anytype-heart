@@ -1,4 +1,4 @@
-//go:generate mockgen -package file_test -destination block_service_mock_test.go github.com/anytypeio/go-anytype-middleware/core/block/editor/file BlockService
+//go:generate mockgen -package file_test -destination block_service_mock_test.go github.com/anyproto/anytype-heart/core/block/editor/file BlockService
 
 package file_test
 
@@ -13,13 +13,13 @@ import (
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	file2 "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	"github.com/anytypeio/go-anytype-middleware/core/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestUploader_Upload(t *testing.T) {

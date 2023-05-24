@@ -5,17 +5,17 @@ import (
 	"io"
 	"os"
 
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/commonfile/fileservice"
-	"github.com/anytypeio/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/accountservice"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/space"
-	"github.com/anytypeio/go-anytype-middleware/space/debug/clientdebugrpc/clientdebugrpcproto"
-	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc/clientdebugrpcproto"
+	"github.com/anyproto/anytype-heart/space/storage"
 )
 
 type rpcHandler struct {

@@ -1,15 +1,15 @@
-//go:generate mockgen -destination mock_rpcstore/mock_rpcstore.go github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore Service,RpcStore
+//go:generate mockgen -destination mock_rpcstore/mock_rpcstore.go github.com/anyproto/anytype-heart/core/filestorage/rpcstore Service,RpcStore
 package rpcstore
 
 import (
 	"sync"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/app/logger"
-	"github.com/anytypeio/any-sync/net/pool"
-	"github.com/anytypeio/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/nodeconf"
 
-	"github.com/anytypeio/go-anytype-middleware/space/peerstore"
+	"github.com/anyproto/anytype-heart/space/peerstore"
 )
 
 const CName = "common.commonfile.rpcstore"

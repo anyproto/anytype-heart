@@ -2,8 +2,8 @@ package debug
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/util/anonymize"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/gogo/protobuf/proto"
 )
 

@@ -3,12 +3,12 @@ package peerstore
 import (
 	"sync"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/nodeconf"
-	libslice "github.com/anytypeio/any-sync/util/slice"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/nodeconf"
+	libslice "github.com/anyproto/any-sync/util/slice"
 	"golang.org/x/exp/slices"
 
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const CName = "client.space.peerstore"

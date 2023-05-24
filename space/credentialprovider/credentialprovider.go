@@ -3,13 +3,13 @@ package credentialprovider
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/credentialprovider"
-	"github.com/anytypeio/any-sync/commonspace/spacesyncproto"
-	"github.com/anytypeio/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/credentialprovider"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
 func New() app.Component {

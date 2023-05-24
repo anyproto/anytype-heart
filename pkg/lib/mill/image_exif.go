@@ -10,7 +10,7 @@ import (
 
 	"github.com/rwcarlsen/goexif/exif"
 
-	"github.com/anytypeio/go-anytype-middleware/util/jsonutil"
+	"github.com/anyproto/anytype-heart/util/jsonutil"
 )
 
 type ImageExifSchema struct {

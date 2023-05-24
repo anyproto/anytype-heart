@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/linkpreview"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {

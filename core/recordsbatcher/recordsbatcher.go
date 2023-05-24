@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb"
 )
 

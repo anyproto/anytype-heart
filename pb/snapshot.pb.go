@@ -5,7 +5,7 @@ package pb
 
 import (
 	fmt "fmt"
-	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
 	math "math"

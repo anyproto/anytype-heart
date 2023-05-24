@@ -3,7 +3,7 @@ package anymark
 import (
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {

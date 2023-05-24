@@ -6,10 +6,10 @@ package event
 import (
 	"sync"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pb/service"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pb/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/status"
 	"google.golang.org/grpc/codes"
 )

@@ -1,7 +1,7 @@
 package csv
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
 )
 
 type Strategy interface {

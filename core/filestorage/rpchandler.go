@@ -3,12 +3,12 @@ package filestorage
 import (
 	"context"
 
-	"github.com/anytypeio/any-sync/commonfile/fileblockstore"
-	"github.com/anytypeio/any-sync/commonfile/fileproto"
-	"github.com/anytypeio/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
+	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/ipfs/go-cid"
 
-	"github.com/anytypeio/go-anytype-middleware/space/storage"
+	"github.com/anyproto/anytype-heart/space/storage"
 )
 
 type rpcHandler struct {

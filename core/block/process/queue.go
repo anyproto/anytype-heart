@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
 )

@@ -1,22 +1,22 @@
-//go:generate mockgen -package importer -destination mock.go github.com/anytypeio/go-anytype-middleware/core/block/import Creator,IDGetter
+//go:generate mockgen -package importer -destination mock.go github.com/anyproto/anytype-heart/core/block/import Creator,IDGetter
 package importer
 
 import (
 	"context"
 	"time"
 
-	"github.com/anytypeio/any-sync/app"
-	"github.com/anytypeio/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/import/converter"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/markdown"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/pb"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/import/web"
-	"github.com/anytypeio/go-anytype-middleware/core/session"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	sb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
+	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
+	_ "github.com/anyproto/anytype-heart/core/block/import/web"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // Importer incapsulate logic with import

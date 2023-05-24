@@ -6,7 +6,7 @@ package addrs
 import (
 	"net"
 
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {}

@@ -1,11 +1,11 @@
 package subscription
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -36,8 +36,8 @@ type opCounter struct {
 }
 
 type opGroup struct {
-	subId string
-	group *model.BlockContentDataviewGroup
+	subId  string
+	group  *model.BlockContentDataviewGroup
 	remove bool
 }
 
@@ -135,9 +135,9 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 		subMsgs = append(subMsgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionGroups{
 				SubscriptionGroups: &pb.EventObjectSubscriptionGroups{
-					SubId: opGroup.subId,
-					Group: opGroup.group,
-					Remove:  opGroup.remove,
+					SubId:  opGroup.subId,
+					Group:  opGroup.group,
+					Remove: opGroup.remove,
 				},
 			},
 		})

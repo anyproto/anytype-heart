@@ -6,12 +6,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anytypeio/any-sync/accountservice"
-	"github.com/anytypeio/any-sync/app"
+	"github.com/anyproto/any-sync/accountservice"
+	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/net/addrs"
-	"github.com/anytypeio/go-anytype-middleware/space/clientserver"
+	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/space/clientserver"
 )
 
 var notifierProvider NotifierProvider

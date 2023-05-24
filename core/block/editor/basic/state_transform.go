@@ -1,8 +1,8 @@
 package basic
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 )
 
 func CutBlocks(s *state.State, blockIds []string) (blocks []simple.Block) {

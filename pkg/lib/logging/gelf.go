@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/any-sync/app/logger"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/cheggaaa/mb"
 	"go.uber.org/zap"
 	"gopkg.in/Graylog2/go-gelf.v2/gelf"

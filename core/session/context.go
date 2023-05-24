@@ -1,6 +1,6 @@
 package session
 
-import "github.com/anytypeio/go-anytype-middleware/pb"
+import "github.com/anyproto/anytype-heart/pb"
 
 func NewContext(opts ...ContextOption) *Context {
 	ctx := &Context{}

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/anytypeio/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 )
 
 type Status int32

@@ -7,8 +7,8 @@ import (
 
 	"github.com/cheggaaa/mb"
 
-	"github.com/anytypeio/go-anytype-middleware/metrics/amplitude"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/metrics/amplitude"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 var (

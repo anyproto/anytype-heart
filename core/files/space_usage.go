@@ -3,7 +3,7 @@ package files
 import (
 	"context"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (s *service) GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error) {

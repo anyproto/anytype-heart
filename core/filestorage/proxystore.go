@@ -12,7 +12,7 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
-	"github.com/anytypeio/go-anytype-middleware/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 )
 
 const CtxKeyRemoteLoadDisabled = "object_remote_load_disabled"
