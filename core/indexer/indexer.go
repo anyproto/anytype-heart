@@ -357,6 +357,12 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	if err != nil {
 		return err
 	}
+	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
+	// due to parallel load which can overload the stream
+	err = i.spaceService.StartSync(ctx)
+	if err != nil {
+		return err
+	}
 
 	if flags.any() {
 		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)

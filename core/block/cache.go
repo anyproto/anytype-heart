@@ -30,7 +30,9 @@ type ctxKey int
 var errAppIsNotRunning = errors.New("app is not running")
 
 const (
-	optsKey ctxKey = iota
+	optsKey                  ctxKey = iota
+	derivedObjectLoadTimeout        = time.Minute * 30
+	objectLoadTimeout               = time.Minute * 3
 )
 
 type treeCreateCache struct {
@@ -124,6 +126,11 @@ func (s *Service) GetAccountTree(ctx context.Context, id string) (tr objecttree.
 }
 
 func (s *Service) GetAccountObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, objectLoadTimeout)
+		defer cancel()
+	}
 	return s.GetObject(ctx, s.clientService.AccountId(), id)
 }
 
@@ -337,7 +344,8 @@ func (s *Service) getDerivedObject(
 		id     = payload.RootRawChange.Id
 	)
 	// timing out when getting objects from remote
-	ctx, cancel = context.WithTimeout(ctx, time.Minute)
+	// here we set very long timeout, because we must load these documents
+	ctx, cancel = context.WithTimeout(ctx, derivedObjectLoadTimeout)
 	ctx = context.WithValue(ctx,
 		optsKey,
 		cacheOpts{
