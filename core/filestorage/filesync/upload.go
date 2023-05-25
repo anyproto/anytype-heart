@@ -27,14 +27,6 @@ func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
 		return nil
 	}
 
-	ok, err = f.queue.IsAlreadyUploaded(spaceId, fileId)
-	if err != nil {
-		return fmt.Errorf("check if file is already uploaded: %w", err)
-	}
-	if ok {
-		log.Info("file is already uploaded", zap.String("fileID", fileId))
-		return nil
-	}
 	log.Info("add file to uploading queue", zap.String("fileID", fileId))
 	defer func() {
 		if err == nil {
@@ -142,6 +134,12 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 	if err != nil {
 		return fmt.Errorf("select blocks to upload: %w", err)
 	}
+
+	log.Info("collecting blocks to upload",
+		zap.String("fileID", fileId),
+		zap.Int("blocksToUpload", len(blocksToUpload)),
+		zap.Int("totalBlocks", len(fileBlocks)),
+	)
 
 	stat, err := f.SpaceStat(ctx, spaceId)
 	if err != nil {
