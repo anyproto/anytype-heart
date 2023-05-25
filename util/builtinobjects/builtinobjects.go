@@ -130,6 +130,8 @@ func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigratio
 		return err
 	}
 
+	b.setCreationDateToday()
+
 	var oldId string
 	if isMigration {
 		oldId = migrationDashboardName
@@ -172,6 +174,34 @@ func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err e
 	}
 
 	return nil
+}
+
+func (b *builtinObjects) setCreationDateToday() {
+	ids, _, err := b.store.QueryObjectIds(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Exists,
+				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
+			},
+		},
+	}, nil)
+	if err != nil {
+		log.Errorf("Failed to query created built-in objects for setting CreationDate")
+		return
+	}
+	for _, id := range ids {
+		if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+			ContextId: id,
+			Details: []*pb.RpcObjectSetDetailsDetail{
+				{
+					Key:   bundle.RelationKeyCreatedDate.String(),
+					Value: pbtypes.Float64(float64(time.Now().Unix())),
+				},
+			},
+		}); err != nil {
+			log.Errorf("Failed to set CreatedDate relation to built-in object '%s': %s", id, err.Error())
+		}
+	}
 }
 
 func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err error) {
