@@ -258,6 +258,7 @@ jobs:
       - name: setup go
         run: |
           make setup-go
+          make setup-gomobile
       - name: Cross-compile library for linux amd64/arm64
         run: |
           echo $FLAGS
