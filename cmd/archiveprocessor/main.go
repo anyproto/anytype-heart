@@ -138,6 +138,9 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo) error {
 			incorrectFileFound = true
 			continue
 		}
+		if data == nil {
+			continue
+		}
 		nf, err := zw.Create(f.Name)
 		if err != nil {
 			return fmt.Errorf("failed to create new file %s: %v", f.Name, err)

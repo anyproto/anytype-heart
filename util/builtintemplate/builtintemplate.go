@@ -93,7 +93,11 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	data, err := ioutil.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
 	if err = snapshot.Unmarshal(data); err != nil {
-		return
+		snapshotWithType := &pb.SnapshotWithType{}
+		if err = snapshotWithType.Unmarshal(data); err != nil {
+			return
+		}
+		snapshot = snapshotWithType.Snapshot
 	}
 
 	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)
