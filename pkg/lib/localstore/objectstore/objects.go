@@ -821,7 +821,7 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		},
 	}
 
-	f, err := database.NewFilters(q, nil, m, nil)
+	f, err := database.NewFilters(q, nil, m)
 	if err != nil {
 		return nil, err
 	}
