@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -23,6 +24,8 @@ import (
 const CName = "gateway"
 
 const defaultPort = 47800
+
+const getFileTimeout = 1 * time.Minute
 
 var log = logging.Logger("anytype-gateway")
 
@@ -198,15 +201,12 @@ func enableCors(w http.ResponseWriter) {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
-	fileHashAndPath := r.URL.Path[len("/file/"):]
 	enableCors(w)
-	var fileHash string
-	parts := strings.Split(fileHashAndPath, "/")
-	fileHash = parts[0]
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
 	defer cancel()
-	file, err := g.fileService.FileByHash(ctx, fileHash)
+	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
+		log.With("path", r.URL.Path).Errorf("error getting file: %s", err)
 		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
 			return
@@ -214,9 +214,43 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	meta := file.Meta()
+	w.Header().Set("Content-Type", meta.Media)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+
+	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
+	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
+	http.ServeContent(w, r, meta.Name, meta.Added, reader)
+}
+
+func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
+	fileHashAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
+	parts := strings.Split(fileHashAndPath, "/")
+	fileHash := parts[0]
+
+	file, err := g.fileService.FileByHash(ctx, fileHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get file by hash: %s", err)
+	}
 
 	reader, err := file.Reader(ctx)
+	return file, reader, err
+}
+
+// fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
+func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+
+	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+	defer cancel()
+
+	file, reader, err := g.getImage(ctx, r)
 	if err != nil {
+		log.With("path", r.URL.Path).Errorf("error getting image: %s", err)
+		if strings.Contains(err.Error(), "file not found") {
+			http.NotFound(w, r)
+			return
+		}
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -230,58 +264,33 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 
-// fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
-func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageHash := urlParts[2]
 	query := r.URL.Query()
 
-	enableCors(w)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
 	image, err := g.fileService.ImageByHash(ctx, imageHash)
 	if err != nil {
-		if strings.Contains(err.Error(), "file not found") {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, err.Error(), 500)
-		return
+		return nil, nil, fmt.Errorf("get image by hash: %w", err)
 	}
 	var file files.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
 		file, err = image.GetOriginalFile(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get image file: %w", err)
+		}
 	} else {
-		wantWidth, err2 := strconv.Atoi(wantWidthStr)
-		if err2 != nil {
-			http.Error(w, err2.Error(), 400)
-			return
+		wantWidth, err := strconv.Atoi(wantWidthStr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parse width: %w", err)
 		}
-
 		file, err = image.GetFileForWidth(ctx, wantWidth)
-	}
-
-	if err != nil {
-		if strings.Contains(err.Error(), "file not found") {
-			http.NotFound(w, r)
-			return
+		if err != nil {
+			return nil, nil, fmt.Errorf("get image file: %w", err)
 		}
-		http.Error(w, err.Error(), 500)
-		return
 	}
 
 	reader, err := file.Reader(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	meta := file.Meta()
-	w.Header().Set("Content-Type", meta.Media)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
-
-	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
-	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
-	http.ServeContent(w, r, meta.Name, meta.Added, reader)
+	return file, reader, err
 }
