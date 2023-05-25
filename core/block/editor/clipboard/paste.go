@@ -363,6 +363,9 @@ func (p *pasteCtrl) restoreFocusedBlockId(target string) {
 	}
 
 	lastPasteText := p.getLastPasteText()
+	if lastPasteText == nil {
+		return
+	}
 	p.caretPos = int32(len(lastPasteText.GetText()))
 	lastPasteTextId := lastPasteText.Model().Id
 	lastBlock := p.s.Get(lastPasteTextId)
