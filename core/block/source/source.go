@@ -191,9 +191,9 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	if err != nil {
 		return
 	}
-	err = st.Validate()
-	if err != nil {
-		return
+	validationErr := st.Validate()
+	if validationErr != nil {
+		log.With("objectID", s.id).Errorf("not valid state: %v", validationErr)
 	}
 	st.BlocksInit(st)
 	st.InjectDerivedDetails()
