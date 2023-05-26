@@ -61,7 +61,6 @@ type Service interface {
 	DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error)
 	DeleteAccount(ctx context.Context, revert bool) (payload StatusPayload, err error)
 	StreamPool() streampool.StreamPool
-	StartSync(ctx context.Context) (err error)
 	app.ComponentRunnable
 }
 
@@ -145,15 +144,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 			return
 		}
 	}
-	return
-}
-
-func (s *service) StartSync(ctx context.Context) (err error) {
-	sp, err := s.AccountSpace(ctx)
-	if err != nil {
-		return
-	}
-	sp.HeadSync().Run()
 	return
 }
 

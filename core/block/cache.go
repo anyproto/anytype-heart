@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"time"
 
 	"github.com/anyproto/any-sync/app/ocache"
@@ -107,6 +108,28 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 	}
 	sb := v.(smartblock.SmartBlock).Inner()
 	return sb.(source.ObjectTreeProvider).Tree(), nil
+}
+
+func (s *Service) NewTreeSyncer(spaceId string) treemanager.TreeSyncer {
+	s.syncerLock.Lock()
+	defer s.syncerLock.Unlock()
+	if s.syncer != nil {
+		s.syncer.Close()
+		s.syncer = newTreeSyncer(spaceId, time.Second, 10, s)
+	}
+	if s.syncStarted {
+		s.syncer.Run()
+	}
+	return s.syncer
+}
+
+func (s *Service) StartSync() {
+	s.syncerLock.Lock()
+	defer s.syncerLock.Unlock()
+	s.syncStarted = true
+	if s.syncer != nil {
+		s.syncer.Run()
+	}
 }
 
 func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartblock.SmartBlock, err error) {

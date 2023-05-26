@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -148,6 +149,10 @@ type Service struct {
 
 	fileSync    filesync.FileSync
 	fileService files.Service
+	// TODO: move all this into separate treecache component or something like this
+	syncer      *treeSyncer
+	syncStarted bool
+	syncerLock  sync.Mutex
 }
 
 func (s *Service) Name() string {

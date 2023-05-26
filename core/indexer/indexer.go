@@ -91,6 +91,10 @@ type subObjectCreator interface {
 	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
 
+type syncStarter interface {
+	StartSync()
+}
+
 type indexer struct {
 	store            objectstore.ObjectStore
 	fileStore        filestore.FileStore
@@ -99,6 +103,7 @@ type indexer struct {
 	picker           block.Picker
 	ftsearch         ftsearch.FTSearch
 	subObjectCreator subObjectCreator
+	syncStarter      syncStarter
 	fileService      files.Service
 
 	quit        chan struct{}
@@ -123,6 +128,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
+	i.syncStarter = app.MustComponent[syncStarter](a)
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
@@ -359,10 +365,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
 	// due to parallel load which can overload the stream
-	err = i.spaceService.StartSync(ctx)
-	if err != nil {
-		return err
-	}
+	i.syncStarter.StartSync()
 
 	if flags.any() {
 		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)
