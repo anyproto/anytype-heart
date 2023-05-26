@@ -116,6 +116,7 @@ func (s *Service) NewTreeSyncer(spaceId string) treemanager.TreeSyncer {
 	// this can happen if it was closed by the space, and we somehow got new instance of space
 	s.syncer = newTreeSyncer(spaceId, time.Second, 10, s)
 	if s.syncStarted {
+		log.Warn("creating tree syncer after run")
 		s.syncer.Run()
 	}
 	return s.syncer

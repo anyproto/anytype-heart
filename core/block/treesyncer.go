@@ -76,6 +76,7 @@ func (t *treeSyncer) Run() {
 	t.Lock()
 	defer t.Unlock()
 	t.isRunning = true
+	log.Info("starting request pool")
 	for _, p := range t.requestPools {
 		p.run()
 	}
@@ -131,9 +132,9 @@ func (t *treeSyncer) requestTree(peerId, id string) {
 	defer cancel()
 	_, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
-		log.Warn(ctx, "can't load missing tree", zap.Error(err))
+		log.Warn("can't load missing tree", zap.Error(err))
 	} else {
-		log.Debug(ctx, "loaded missing tree")
+		log.Debug("loaded missing tree")
 	}
 }
 
