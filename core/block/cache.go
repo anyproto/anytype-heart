@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"time"
 
 	"github.com/anyproto/any-sync/app/ocache"
@@ -13,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
@@ -34,6 +34,7 @@ const (
 	optsKey                  ctxKey = iota
 	derivedObjectLoadTimeout        = time.Minute * 30
 	objectLoadTimeout               = time.Minute * 3
+	concurrentTrees                 = 10
 )
 
 type treeCreateCache struct {
@@ -110,11 +111,11 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 	return sb.(source.ObjectTreeProvider).Tree(), nil
 }
 
-func (s *Service) NewTreeSyncer(spaceId string) treemanager.TreeSyncer {
+func (s *Service) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
 	s.syncerLock.Lock()
 	defer s.syncerLock.Unlock()
 	// this can happen if it was closed by the space, and we somehow got new instance of space
-	s.syncer = newTreeSyncer(spaceId, time.Second, 10, s)
+	s.syncer = newTreeSyncer(spaceId, time.Second, concurrentTrees, treeManager)
 	if s.syncStarted {
 		log.Warn("creating tree syncer after run")
 		s.syncer.Run()
