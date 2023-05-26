@@ -406,7 +406,8 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
-	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
+	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub)
+	if err != nil {
 		// datastore unavailable, cancel the subscription
 		sb.recordsSub.Close()
 		sb.closeRecordsSub = nil

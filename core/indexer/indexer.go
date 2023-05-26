@@ -106,13 +106,11 @@ type indexer struct {
 	syncStarter      syncStarter
 	fileService      files.Service
 
-	quit        chan struct{}
-	mu          sync.Mutex
-	btHash      Hasher
-	archivedMap map[string]struct{}
-	favoriteMap map[string]struct{}
-	newAccount  bool
-	forceFt     chan struct{}
+	quit       chan struct{}
+	mu         sync.Mutex
+	btHash     Hasher
+	newAccount bool
+	forceFt    chan struct{}
 
 	typeProvider typeprovider.SmartBlockTypeProvider
 	spaceService space.Service
@@ -130,8 +128,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
 	i.syncStarter = app.MustComponent[syncStarter](a)
 	i.quit = make(chan struct{})
-	i.archivedMap = make(map[string]struct{}, 100)
-	i.favoriteMap = make(map[string]struct{}, 100)
 	i.forceFt = make(chan struct{})
 	return
 }
@@ -366,26 +362,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
 	// due to parallel load which can overload the stream
 	i.syncStarter.StartSync()
-
-	if flags.any() {
-		d, err := i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Archive)
-		if err != nil {
-			log.Errorf("reindex failed to open archive: %s", err.Error())
-		} else {
-			for _, target := range d.Links {
-				i.archivedMap[target] = struct{}{}
-			}
-		}
-
-		d, err = i.getObjectInfo(ctx, i.anytype.PredefinedBlocks().Home)
-		if err != nil {
-			log.Errorf("reindex failed to open home: %s", err.Error())
-		} else {
-			for _, b := range d.Links {
-				i.favoriteMap[b] = struct{}{}
-			}
-		}
-	}
 
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
@@ -648,26 +624,14 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 }
 
 func (i *indexer) reindexDoc(ctx context.Context, id string) error {
-	_, isArchived := i.archivedMap[id]
-	_, isFavorite := i.favoriteMap[id]
-	// todo: this may be racy because of reindexOutdatedThreads
-	err := i.store.UpdatePendingLocalDetails(id, func(pending *types.Struct) (*types.Struct, error) {
-		pending.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
-		pending.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
-		return pending, nil
-	})
-	if err != nil {
-		log.Errorf("failed to update isArchived and isFavorite details for %s: %s", id, err)
-	}
-
 	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
-	err = block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
+	err := block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
 		d := sb.GetDocInfo()
 		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
 			// index all the subobjects
 			v.GetAllDocInfoIterator(
 				func(info smartblock2.DocInfo) (contin bool) {
-					err = i.Index(ctx, info)
+					err := i.Index(ctx, info)
 					if err != nil {
 						log.Errorf("failed to index subobject %s: %s", info.Id, err)
 					}

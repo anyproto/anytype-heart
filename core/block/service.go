@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -762,8 +763,7 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	// return s.cache.Close()
-	return
+	return s.cache.Close()
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode

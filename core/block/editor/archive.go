@@ -48,7 +48,8 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	p.DisableLayouts()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	return nil
+
+	return p.updateObjects(smartblock.ApplyInfo{})
 }
 
 func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
