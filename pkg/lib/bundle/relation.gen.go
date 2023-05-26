@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d70a343f0d99ab1216c0b0383197054635ed30184092de714cedc0ef258dd9f8"
+const RelationChecksum = "c51bc0adad1c93aa09c98ebb241d724714d8aefa5520e360d9999410674a0942"
 
 type RelationKey string
 
@@ -239,6 +239,7 @@ var (
 			Id:               "_brassignee",
 			Key:              "assignee",
 			Name:             "Assignee",
+			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -329,6 +330,7 @@ var (
 			Id:               "_brauthor",
 			Key:              "author",
 			Name:             "Author",
+			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1112,6 +1114,7 @@ var (
 			Id:               "_brlinkedProjects",
 			Key:              "linkedProjects",
 			Name:             "Linked Projects",
+			ObjectTypes:      []string{TypePrefix + "task", TypePrefix + "project"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
