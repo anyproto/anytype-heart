@@ -49,6 +49,8 @@ func (e *executor) close() {
 
 type treeSyncer struct {
 	sync.Mutex
+	mainCtx      context.Context
+	cancel       context.CancelFunc
 	requests     int
 	spaceId      string
 	timeout      time.Duration
@@ -59,7 +61,10 @@ type treeSyncer struct {
 }
 
 func newTreeSyncer(spaceId string, timeout time.Duration, concurrentReqs int, treeManager treemanager.TreeManager) *treeSyncer {
+	mainCtx, cancel := context.WithCancel(context.Background())
 	return &treeSyncer{
+		mainCtx:      mainCtx,
+		cancel:       cancel,
 		requests:     concurrentReqs,
 		spaceId:      spaceId,
 		timeout:      timeout,
@@ -127,7 +132,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 
 func (t *treeSyncer) requestTree(peerId, id string) {
 	log := log.With(zap.String("treeId", id))
-	ctx := peer.CtxWithPeerId(context.Background(), peerId)
+	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
 	_, err := t.treeManager.GetTree(ctx, t.spaceId, id)
@@ -140,7 +145,7 @@ func (t *treeSyncer) requestTree(peerId, id string) {
 
 func (t *treeSyncer) updateTree(peerId, id string) {
 	log := log.With(zap.String("treeId", id))
-	ctx := peer.CtxWithPeerId(context.Background(), peerId)
+	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
@@ -162,6 +167,7 @@ func (t *treeSyncer) updateTree(peerId, id string) {
 func (t *treeSyncer) Close() error {
 	t.Lock()
 	defer t.Unlock()
+	t.cancel()
 	t.isRunning = false
 	for _, pool := range t.headPools {
 		pool.close()

@@ -95,4 +95,25 @@ func TestTreeSyncer(t *testing.T) {
 			ch <- struct{}{}
 		}
 	})
+
+	t.Run("sync context cancel", func(t *testing.T) {
+		var events []string
+		syncer := newTreeSyncer(spaceId, objectLoadTimeout, 1, managerMock)
+		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
+			<-ctx.Done()
+			events = append(events, "after done")
+			return missingMock, nil
+		})
+		syncer.Init()
+		syncer.Run()
+		err := syncer.SyncAll(context.Background(), peerId, nil, []string{missingId})
+		require.NoError(t, err)
+		require.NotNil(t, syncer.requestPools[peerId])
+		require.NotNil(t, syncer.headPools[peerId])
+		time.Sleep(100 * time.Millisecond)
+		events = append(events, "before close")
+		syncer.Close()
+		time.Sleep(100 * time.Millisecond)
+		require.Equal(t, []string{"before close", "after done"}, events)
+	})
 }
