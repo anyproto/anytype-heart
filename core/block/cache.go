@@ -114,7 +114,6 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 func (s *Service) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
 	s.syncerLock.Lock()
 	defer s.syncerLock.Unlock()
-	// this can happen if it was closed by the space, and we somehow got new instance of space
 	s.syncer = newTreeSyncer(spaceId, objectLoadTimeout, concurrentTrees, treeManager)
 	if s.syncStarted {
 		log.Warn("creating tree syncer after run")
