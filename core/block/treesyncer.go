@@ -146,8 +146,6 @@ func (t *treeSyncer) requestTree(peerId, id string) {
 func (t *treeSyncer) updateTree(peerId, id string) {
 	log := log.With(zap.String("treeId", id))
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
-	ctx, cancel := context.WithTimeout(ctx, t.timeout)
-	defer cancel()
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
 		log.Warn("can't load existing tree", zap.Error(err))
