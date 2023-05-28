@@ -2,10 +2,13 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/cheggaaa/mb/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -89,7 +92,7 @@ func (f *fileSync) tryToUpload() (string, error) {
 		return fileId, f.queue.DoneUpload(spaceId, fileId)
 	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
-		if err == errReachedLimit {
+		if errors.Is(err, errReachedLimit) || strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error()) {
 			if !wasDiscarded {
 				f.sendLimitReachedEvent(spaceId, fileId)
 			}
@@ -275,4 +278,8 @@ func (f *fileSync) collectFileBlocks(ctx context.Context, fileId string) (result
 
 func (f *fileSync) HasUpload(spaceId, fileId string) (ok bool, err error) {
 	return f.queue.HasUpload(spaceId, fileId)
+}
+
+func (f *fileSync) IsFileUploadLimited(spaceId, fileId string) (ok bool, err error) {
+	return f.queue.IsFileUploadLimited(spaceId, fileId)
 }

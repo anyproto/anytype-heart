@@ -46,7 +46,7 @@ const (
 	// ForceThreadsObjectsReindexCounter reindex thread-based objects
 	ForceThreadsObjectsReindexCounter int32 = 8
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
-	ForceFilesReindexCounter int32 = 10 //
+	ForceFilesReindexCounter int32 = 11 //
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
@@ -546,22 +546,6 @@ func (i *indexer) saveLatestChecksums() error {
 		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 
-		IdxRebuildCounter:                ForceIdxRebuildCounter,
-		FulltextRebuild:                  ForceFulltextIndexCounter,
-		BundledObjects:                   ForceBundledObjectsReindexCounter,
-		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-	}
-	return i.store.SaveChecksums(&checksums)
-}
-
-func (i *indexer) saveLatestCounters() error {
-	// todo: add layout indexing when needed
-	checksums := model.ObjectStoreChecksums{
-		BundledObjectTypes:               bundle.TypeChecksum,
-		BundledRelations:                 bundle.RelationChecksum,
-		BundledTemplates:                 i.btHash.Hash(),
-		ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
-		FilesForceReindexCounter:         ForceFilesReindexCounter,
 		IdxRebuildCounter:                ForceIdxRebuildCounter,
 		FulltextRebuild:                  ForceFulltextIndexCounter,
 		BundledObjects:                   ForceBundledObjectsReindexCounter,

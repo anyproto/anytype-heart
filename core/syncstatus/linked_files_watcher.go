@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -83,9 +82,11 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, fil
 		}
 
 		switch status {
-		case syncstatus.StatusUnknown, syncstatus.StatusNotSynced:
+		case FileStatusUnknown, FileStatusSyncing:
 			summary.Pinning++
-		case syncstatus.StatusSynced:
+		case FileStatusLimited:
+			summary.Failed++
+		case FileStatusSynced:
 			summary.Pinned++
 		}
 	}

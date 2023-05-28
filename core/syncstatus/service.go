@@ -2,6 +2,7 @@ package syncstatus
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
@@ -50,6 +52,7 @@ type service struct {
 
 func New(
 	typeProvider typeprovider.SmartBlockTypeProvider,
+	dbProvider datastore.Datastore,
 	spaceService space.Service,
 	coreService core.Service,
 	fileSyncService filesync.FileSync,
@@ -63,7 +66,7 @@ func New(
 	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
 	subObjectsWatcher := newSubObjectsWatcher()
 	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, cfg, sendEvent)
-	fileWatcher := newFileWatcher(fileStatusRegistry, updateReceiver, fileWatcherUpdateInterval)
+	fileWatcher := newFileWatcher(spaceService, dbProvider, fileStatusRegistry, updateReceiver, fileWatcherUpdateInterval)
 	objectWatcher := newObjectWatcher(spaceService, updateReceiver)
 	return &service{
 		spaceService:       spaceService,
@@ -77,7 +80,7 @@ func New(
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	return
+	return nil
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
@@ -85,7 +88,10 @@ func (s *service) Run(ctx context.Context) (err error) {
 	defer s.Unlock()
 	s.isRunning = true
 
-	go s.fileWatcher.run()
+	err = s.fileWatcher.run()
+	if err != nil {
+		return fmt.Errorf("failed to run file watcher: %w", err)
+	}
 
 	if err = s.objectWatcher.run(ctx); err != nil {
 		return err
@@ -121,8 +127,8 @@ func (s *service) watch(id string, filesGetter func() []string) (new bool, err e
 	}
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
-		s.fileWatcher.Watch(s.spaceService.AccountId(), id)
-		return false, nil
+		err := s.fileWatcher.Watch(s.spaceService.AccountId(), id)
+		return false, err
 	case smartblock.SmartBlockTypeSubObject:
 		s.subObjectsWatcher.Watch(id)
 		return true, nil
@@ -145,7 +151,7 @@ func (s *service) unwatch(id string) {
 	}
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
-		s.fileWatcher.Unwatch(s.spaceService.AccountId(), id)
+		// File watcher unwatches files automatically
 	case smartblock.SmartBlockTypeSubObject:
 		s.subObjectsWatcher.Unwatch(id)
 	default:
