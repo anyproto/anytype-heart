@@ -236,6 +236,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 					logger.Errorf("GetPropertyObject: failed to marshal PeopleItem: %s", err)
 					continue
 				}
+
 				properties = append(properties, &p.People)
 			}
 		}

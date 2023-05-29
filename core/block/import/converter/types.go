@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ObjectTreeCreator interface {
@@ -39,15 +38,8 @@ type Snapshot struct {
 	Snapshot *pb.ChangeSnapshot
 }
 
-// Relation are stored during GetSnapshots step in converter and create them in RelationCreator
-type Relation struct {
-	BlockID string // if relations is used as a block
-	*model.Relation
-}
-
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors
 type Response struct {
 	Snapshots []*Snapshot
-	Relations map[string][]*Relation // object id to its relations
 	Error     ConvertError
 }

@@ -40,9 +40,9 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(arg0 *session.Context, arg1 *converter.Snapshot, arg2 []*converter.Relation, arg3 map[string]string, arg4 map[string]treestorage.TreeStorageCreatePayload, arg5 bool) (*types.Struct, string, error) {
+func (m *MockCreator) Create(arg0 *session.Context, arg1 *converter.Snapshot, arg3 map[string]string, arg4 map[string]treestorage.TreeStorageCreatePayload) (*types.Struct, string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg3, arg4)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(string)
 	ret2, _ := ret[2].(error)
@@ -50,9 +50,9 @@ func (m *MockCreator) Create(arg0 *session.Context, arg1 *converter.Snapshot, ar
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockCreatorMockRecorder) Create(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockCreatorMockRecorder) Create(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreator)(nil).Create), arg0, arg1, arg2, arg3)
 }
 
 // MockIDGetter is a mock of IDGetter interface.

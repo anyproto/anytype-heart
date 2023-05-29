@@ -66,30 +66,38 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID 
 }
 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
-	dataview := block.Model().GetDataview()
-	target := dataview.TargetObjectId
+	dv := block.Model().GetDataview()
+	target := dv.TargetObjectId
 	if target != "" {
 		newTarget := oldIDtoNew[target]
 		if newTarget == "" {
 			newTarget = addr.MissingObject
 		}
-		dataview.TargetObjectId = newTarget
+		dv.TargetObjectId = newTarget
 		st.Set(simple.New(block.Model()))
 	}
 
-	for _, view := range dataview.GetViews() {
+	for _, view := range dv.GetViews() {
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
+		for _, relation := range view.Relations {
+			if r, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+relation.Key]; ok {
+				oldKey := relation.Key
+				relation.Key = strings.TrimPrefix(r, addr.RelationKeyToIdPrefix)
+				db := block.(dataview.Block)
+				db.ReplaceViewRelation(view.Id, oldKey, relation)
+			}
+		}
 	}
-	for _, group := range dataview.GetGroupOrders() {
+	for _, group := range dv.GetGroupOrders() {
 		for _, vg := range group.ViewGroups {
 			groups := replaceChunks(vg.GroupId, oldIDtoNew)
 			sort.Strings(groups)
 			vg.GroupId = strings.Join(groups, "")
 		}
 	}
-	for _, group := range dataview.GetObjectOrders() {
+	for _, group := range dv.GetObjectOrders() {
 		for i, id := range group.ObjectIds {
 			if newId, exist := oldIDtoNew[id]; exist {
 				group.ObjectIds[i] = newId
@@ -179,7 +187,7 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateRelationsIDs(st *state.State, oldIDtoNew map[string]string) {
+func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 	rels := st.GetRelationLinks()
 	for k, v := range st.Details().GetFields() {
 		relLink := rels.Get(k)
@@ -198,6 +206,35 @@ func UpdateRelationsIDs(st *state.State, oldIDtoNew map[string]string) {
 		}
 		handleObjectRelation(st, oldIDtoNew, v, k)
 	}
+}
+
+func UpdateDetailsKey(st *state.State, oldIDtoNew map[string]string) {
+	details := st.Details()
+	keyToRemove := make([]string, 0)
+	for k, v := range details.GetFields() {
+		if newKey, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+k]; ok && newKey != addr.RelationKeyToIdPrefix+k {
+			relKey := strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix)
+			st.SetDetail(relKey, v)
+			keyToRemove = append(keyToRemove, k)
+		}
+	}
+	updateRelationLinks(st, keyToRemove, oldIDtoNew)
+	st.RemoveRelation(keyToRemove...)
+
+}
+
+func updateRelationLinks(st *state.State, keyToRemove []string, oldToNewIDs map[string]string) {
+	relLinksToUpdate := make([]*model.RelationLink, 0)
+	for _, key := range keyToRemove {
+		if relLink := st.GetRelationLinks().Get(key); relLink != nil {
+			newKey := oldToNewIDs[addr.RelationKeyToIdPrefix+key]
+			relLinksToUpdate = append(relLinksToUpdate, &model.RelationLink{
+				Key:    strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix),
+				Format: relLink.Format,
+			})
+		}
+	}
+	st.AddRelationLinks(relLinksToUpdate...)
 }
 
 func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string) {

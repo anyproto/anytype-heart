@@ -9,10 +9,8 @@ import (
 )
 
 type Task struct {
-	sn        *converter.Snapshot
-	relations []*converter.Relation
-	existing  bool
-	oc        Creator
+	sn *converter.Snapshot
+	oc Creator
 }
 
 type DataObject struct {
@@ -31,13 +29,13 @@ func NewDataObject(oldIDtoNew map[string]string, createPayloads map[string]trees
 	return &DataObject{oldIDtoNew: oldIDtoNew, createPayloads: createPayloads, ctx: ctx}
 }
 
-func NewTask(sn *converter.Snapshot, relations []*converter.Relation, existing bool, oc Creator) *Task {
-	return &Task{sn: sn, relations: relations, existing: existing, oc: oc}
+func NewTask(sn *converter.Snapshot, oc Creator) *Task {
+	return &Task{sn: sn, oc: oc}
 }
 
 func (t *Task) Execute(data interface{}) interface{} {
 	dataObject := data.(*DataObject)
-	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, t.relations, dataObject.oldIDtoNew, dataObject.createPayloads, t.existing)
+	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, dataObject.oldIDtoNew, dataObject.createPayloads)
 	return &Result{
 		details: details,
 		newID:   newID,

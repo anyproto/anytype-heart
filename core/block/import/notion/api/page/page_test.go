@@ -34,7 +34,7 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"Select": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["Select"])
 }
@@ -53,7 +53,7 @@ func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 		LastEditedTime: "2022-10-24T22:56:00.000Z",
 	}
 	pr := property.Properties{"LastEditedTime": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["LastEditedTime"])
 }
@@ -73,7 +73,7 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 
 	p := property.RichTextItem{ID: "id", Type: string(property.PropertyConfigLastEditedTime)}
 	pr := property.Properties{"RichText": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["RichText"])
 	assert.Equal(t, details["RichText"].GetStringValue(), "example text")
@@ -97,7 +97,7 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"Status": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["Status"])
 }
@@ -117,7 +117,7 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 		Number: &num,
 	}
 	pr := property.Properties{"Number": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["Number"])
 }
@@ -142,7 +142,7 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"MultiSelect": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["MultiSelect"])
 }
@@ -161,7 +161,7 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 		Checkbox: true,
 	}
 	pr := property.Properties{"Checkbox": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["Checkbox"])
 }
@@ -181,7 +181,7 @@ func Test_handlePagePropertiesEmail(t *testing.T) {
 		Email: &email,
 	}
 	pr := property.Properties{"Email": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["Email"])
 }
@@ -204,7 +204,7 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 	notionPageIdsToAnytype := map[string]string{"id": "anytypeID"}
 	notionDatabaseIdsToAnytype := map[string]string{"id": "anytypeID"}
 	req := &block.MapRequest{NotionPageIdsToAnytype: notionPageIdsToAnytype, NotionDatabaseIdsToAnytype: notionDatabaseIdsToAnytype}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
 
 	assert.NotNil(t, details["Relation"].GetListValue())
 	assert.Len(t, details["Relation"].GetListValue().Values, 1)
@@ -229,7 +229,7 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 		Type:   string(property.PropertyConfigTypePeople),
 	}
 	pr := property.Properties{"People": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["People"])
 	assert.Len(t, pbtypes.GetStringListValue(details["People"]), 2)
@@ -252,7 +252,7 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 		Formula: map[string]interface{}{"type": property.NumberFormula, "number": float64(1)},
 	}
 	pr := property.Properties{"Formula": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["Formula"])
 }
@@ -271,7 +271,7 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 		Title: []*api.RichText{{PlainText: "Title"}},
 	}
 	pr := property.Properties{"Title": &p}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["name"])
 	assert.NotEmpty(t, details["name"].GetStringValue(), "Title")
@@ -317,7 +317,7 @@ func Test_handleRollupProperties(t *testing.T) {
 	}
 
 	pr := property.Properties{"Rollup1": &p1, "Rollup2": &p2, "Rollup3": &p3}
-	_ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
+	_, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, &block.MapRequest{})
 
 	assert.NotEmpty(t, details["Rollup1"])
 	assert.NotEmpty(t, details["Rollup1"].GetNumberValue(), float64(2))

@@ -3,6 +3,7 @@ package notion
 import (
 	"context"
 	"fmt"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -54,15 +55,17 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	}
 
 	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases + len(pages)*numberOfStepsForPages))
-	dbSnapshots, notionIdsToAnytype, dbNameToID, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
+	dbSnapshots, mapRequest, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
 	if dbErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(dbErr)
 		return nil, ce
 	}
 
 	r := &block.MapRequest{
-		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
-		DatabaseNameToID:           dbNameToID,
+		NotionDatabaseIdsToAnytype: mapRequest.NotionDatabaseIdsToAnytype,
+		DatabaseNameToID:           mapRequest.DatabaseNameToID,
+		RelationsIdsToAnytypeID:    mapRequest.RelationsIdsToAnytypeID,
+		RelationsIdsToOptions:      make(map[string][]*model.SmartBlockSnapshotBase, 0),
 	}
 
 	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, r, progress)
@@ -71,22 +74,17 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 
-	var (
-		pgs, dbs       []*converter.Snapshot
-		pgRels, dbRels map[string][]*converter.Relation
-	)
+	var pgs, dbs []*converter.Snapshot
 
 	if pgSnapshots != nil {
 		pgs = pgSnapshots.Snapshots
-		pgRels = pgSnapshots.Relations
 	}
 
 	if dbSnapshots != nil {
 		dbs = dbSnapshots.Snapshots
-		dbRels = dbSnapshots.Relations
 	}
 
-	n.dbService.AddPagesToCollections(dbs, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
+	n.dbService.AddPagesToCollections(dbs, pages, db, notionPageIDToAnytype, mapRequest.NotionDatabaseIdsToAnytype)
 
 	dbs, err = n.dbService.AddObjectsToNotionCollection(dbs, pgs)
 	if err != nil {
@@ -96,12 +94,9 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		}
 	}
 
-	dbRels = n.dbService.MapProperties(dbRels, pgRels, pages, db, notionPageIDToAnytype, notionIdsToAnytype)
-
 	allSnapshots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
-	relations := mergeMaps(dbRels, pgRels)
 
 	if pgErr != nil {
 		ce.Merge(pgErr)
@@ -111,10 +106,10 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Merge(dbErr)
 	}
 	if !ce.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Relations: relations}, ce
+		return &converter.Response{Snapshots: allSnapshots}, ce
 	}
 
-	return &converter.Response{Snapshots: allSnapshots, Relations: relations}, nil
+	return &converter.Response{Snapshots: allSnapshots}, nil
 }
 
 func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {
@@ -126,18 +121,4 @@ func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {
 
 func (n *Notion) Name() string {
 	return name
-}
-
-func mergeMaps(first, second map[string][]*converter.Relation) map[string][]*converter.Relation {
-	res := make(map[string][]*converter.Relation, 0)
-
-	for pageID, rel := range first {
-		res[pageID] = rel
-	}
-
-	for pageID, rel := range second {
-		res[pageID] = rel
-	}
-
-	return res
 }

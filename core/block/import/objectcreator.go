@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -18,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -42,44 +42,39 @@ type objectCreator interface {
 }
 
 type ObjectCreator struct {
-	service         *block.Service
-	objCreator      objectCreator
-	core            core.Service
-	objectStore     objectstore.ObjectStore
-	fileStore       filestore.FileStore
-	relationCreator RelationCreator
-	syncFactory     *syncer.Factory
-	spaceService    space.Service
-	fileSync        filesync.FileSync
-	mu              sync.Mutex
+	service      *block.Service
+	objCreator   objectCreator
+	core         core.Service
+	objectStore  objectstore.ObjectStore
+	fileStore    filestore.FileStore
+	syncFactory  *syncer.Factory
+	spaceService space.Service
+	fileSync     filesync.FileSync
+	mu           sync.Mutex
 }
 
 func NewCreator(service *block.Service,
 	objCreator objectCreator,
 	core core.Service,
 	syncFactory *syncer.Factory,
-	relationCreator RelationCreator,
 	objectStore objectstore.ObjectStore,
 	fileStore filestore.FileStore,
 ) Creator {
 	return &ObjectCreator{
-		service:         service,
-		objCreator:      objCreator,
-		core:            core,
-		syncFactory:     syncFactory,
-		relationCreator: relationCreator,
-		objectStore:     objectStore,
-		fileStore:       fileStore,
+		service:     service,
+		objCreator:  objCreator,
+		core:        core,
+		syncFactory: syncFactory,
+		objectStore: objectStore,
+		fileStore:   fileStore,
 	}
 }
 
 // Create creates smart blocks from given snapshots
 func (oc *ObjectCreator) Create(ctx *session.Context,
 	sn *converter.Snapshot,
-	relations []*converter.Relation,
 	oldIDtoNew map[string]string,
-	createPayloads map[string]treestorage.TreeStorageCreatePayload,
-	existing bool) (*types.Struct, string, error) {
+	createPayloads map[string]treestorage.TreeStorageCreatePayload) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 
 	var err error
@@ -88,21 +83,17 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	oc.setWorkspaceID(err, newID, snapshot)
 
-	filesToDelete, _, createdRelations, err := oc.relationCreator.CreateRelations(ctx, snapshot, newID, relations)
-	if err != nil {
-		return nil, "", fmt.Errorf("relation create '%s'", err)
-	}
-
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
 	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
 	st.SetLastModified(pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String()), oc.core.ProfileID())
+	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	converter.UpdateRelationsIDs(st, oldIDtoNew)
+	converter.UpdateObjectIDsInRelations(st, oldIDtoNew)
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		oc.handleSubObject(st, newID)
 		return nil, newID, nil
@@ -112,20 +103,20 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		log.With("object", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
-	if st.GetStoreSlice(template.CollectionStoreKey) != nil {
-		oc.updateLinksInCollections(st, oldIDtoNew)
-		if err = oc.addRelationsToCollectionDataView(st, relations, createdRelations); err != nil {
-			log.With("object", newID).Errorf("failed to add relations to object view: %s", err.Error())
-		}
-	}
-
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(st, oldIDtoNew)
 		return nil, newID, nil
 	}
 
-	var respDetails *types.Struct
 	converter.UpdateObjectType(oldIDtoNew, st)
+	for _, link := range st.GetRelationLinks() {
+		if link.Format == model.RelationFormat_file {
+			filesToDelete = oc.handleFileRelation(st, link.Key)
+		}
+	}
+	converter.UpdateDetailsKey(st, oldIDtoNew)
+	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
+	var respDetails *types.Struct
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
 		sb, err := oc.service.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
 			return &sb.InitContext{
@@ -138,15 +129,20 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 			return nil, "", err
 		}
 		respDetails = sb.Details()
+		// update collection after we create it
+		if st.Store() != nil {
+			oc.updateLinksInCollections(st, oldIDtoNew)
+			oc.resetState(ctx, newID, st)
+		}
 	} else {
+		if st.Store() != nil {
+			oc.updateLinksInCollections(st, oldIDtoNew)
+		}
 		respDetails = oc.resetState(ctx, newID, st)
 	}
 	oc.setFavorite(snapshot, newID)
 
 	oc.setArchived(snapshot, newID)
-
-	// we do not change relation ids during the migration
-	// oc.relationCreator.ReplaceRelationBlock(ctx, oldRelationBlocksToNew, newID)
 
 	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
 	if syncErr != nil {
@@ -335,8 +331,8 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 }
 
 func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
-	defer oc.mu.Unlock()
 	oc.mu.Lock()
+	defer oc.mu.Unlock()
 	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
 		err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, oc.core.PredefinedBlocks().Account, true)
 		if err != nil {
@@ -346,56 +342,6 @@ func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
 	}
 
 	// RQ: the rest handling were removed
-}
-
-func (oc *ObjectCreator) addRelationsToCollectionDataView(st *state.State, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat) error {
-	return st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if dv, ok := bl.(simpleDataview.Block); ok {
-			return oc.handleDataviewBlock(bl, rels, createdRelations, dv)
-		}
-		return true
-	})
-}
-
-func (oc *ObjectCreator) handleDataviewBlock(bl simple.Block, rels []*converter.Relation, createdRelations map[string]RelationsIDToFormat, dv simpleDataview.Block) bool {
-	for i, rel := range rels {
-		if relation, exist := createdRelations[rel.Name]; exist {
-			isVisible := i <= relationsLimit
-			if err := oc.addRelationToView(bl, relation, rel, dv, isVisible); err != nil {
-				log.Errorf("can't add relations to view: %s", err.Error())
-			}
-		}
-	}
-	return false
-}
-
-func (oc *ObjectCreator) addRelationToView(bl simple.Block, relation RelationsIDToFormat, rel *converter.Relation, dv simpleDataview.Block, visible bool) error {
-	for _, relFormat := range relation {
-		if relFormat.Format == rel.Format {
-			if len(bl.Model().GetDataview().GetViews()) == 0 {
-				return nil
-			}
-			for _, view := range bl.Model().GetDataview().GetViews() {
-				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
-					Key:       relFormat.ID,
-					IsVisible: visible,
-					Width:     192,
-				})
-				if err != nil {
-					return err
-				}
-			}
-			err := dv.AddRelation(&model.RelationLink{
-				Key:    relFormat.ID,
-				Format: relFormat.Format,
-			})
-			if err != nil {
-				return err
-			}
-			break
-		}
-	}
-	return nil
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
@@ -415,4 +361,62 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	}
 	result := slice.Union(existedObjects, objectsInCollections)
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
+}
+
+func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
+	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
+		return nil
+	}
+	filesToDelete := oc.handleFileRelation(st, bundle.RelationKeyCoverId.String())
+	return filesToDelete
+}
+
+func (oc *ObjectCreator) handleFileRelation(st *state.State, name string) []string {
+	var allFiles []string
+	if files := st.Details().Fields[name].GetListValue(); files != nil {
+		for _, f := range files.Values {
+			allFiles = append(allFiles, f.GetStringValue())
+		}
+	}
+
+	if files := st.Details().Fields[name].GetStringValue(); files != "" {
+		allFiles = append(allFiles, files)
+	}
+
+	allFilesHashes := make([]string, 0)
+
+	filesToDelete := make([]string, 0, len(allFiles))
+	for _, f := range allFiles {
+		if f == "" {
+			continue
+		}
+		if _, err := oc.fileStore.GetByHash(f); err == nil {
+			allFilesHashes = append(allFilesHashes, f)
+			continue
+		}
+		if strings.HasPrefix(f, "http://") || strings.HasPrefix(f, "https://") {
+			req := pb.RpcFileUploadRequest{LocalPath: f}
+			req.Url = f
+			req.LocalPath = ""
+			hash, err := oc.service.UploadFile(req)
+			if err != nil {
+				log.Errorf("file uploading %s", err)
+			} else {
+				f = hash
+			}
+
+			filesToDelete = append(filesToDelete, f)
+			allFilesHashes = append(allFilesHashes, f)
+		}
+	}
+
+	if st.Details().Fields[name].GetListValue() != nil && len(allFilesHashes) != 0 {
+		st.SetDetail(name, pbtypes.StringList(allFilesHashes))
+	}
+
+	if st.Details().Fields[name].GetStringValue() != "" && len(allFilesHashes) != 0 {
+		st.SetDetail(name, pbtypes.String(allFilesHashes[0]))
+	}
+
+	return filesToDelete
 }

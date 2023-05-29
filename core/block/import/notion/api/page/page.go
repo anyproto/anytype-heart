@@ -92,37 +92,35 @@ func (ds *Service) GetPages(ctx context.Context,
 	do := NewDataObject(ctx, apiKey, mode, request)
 	go pool.Start(do)
 
-	allSnapshots, relationsToPageID, converterError := ds.readResultFromPool(pool, mode, progress)
+	allSnapshots, converterError := ds.readResultFromPool(pool, mode, progress)
 	if converterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Relations: relationsToPageID}, notionPagesIdsToAnytype, nil
+		return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, nil
 	}
 
 	return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, converterError
 }
 
-func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
+func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, converter.ConvertError) {
 	allSnapshots := make([]*converter.Snapshot, 0)
-	relations := make(map[string][]*converter.Relation, 0)
 	ce := converter.NewError()
 
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			ce = converter.NewFromError("cancel error", err)
 			pool.Stop()
-			return nil, nil, ce
+			return nil, ce
 		}
 		res := r.(*Result)
 		if res.ce != nil {
 			ce.Merge(res.ce)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				pool.Stop()
-				return nil, nil, ce
+				return nil, ce
 			}
 		}
-		allSnapshots = append(allSnapshots, res.snapshot)
-		relations[res.snapshot.Id] = res.relations
+		allSnapshots = append(allSnapshots, res.snapshot...)
 	}
-	return allSnapshots, relations, ce
+	return allSnapshots, ce
 }
 
 func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {

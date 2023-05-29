@@ -3,6 +3,9 @@ package importer
 import (
 	"context"
 	"fmt"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/samber/lo"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -80,13 +83,11 @@ func (i *Import) Init(a *app.App) (err error) {
 	}
 
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
-	fs := a.MustComponent(filestore.CName).(filestore.FileStore)
 	objCreator := a.MustComponent(objectcreator.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	relationCreator := NewRelationCreator(i.s, objCreator, fs, coreService, store)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	i.oc = NewCreator(i.s, objCreator, coreService, factory, relationCreator, store, fileStore)
+	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, fileStore)
 	return nil
 }
 
@@ -218,14 +219,18 @@ func (i *Import) createObjects(ctx *session.Context,
 
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
-	existedObject := make(map[string]struct{}, 0)
+	relationOptions := make([]*converter.Snapshot, 0)
 	for _, snapshot := range res.Snapshots {
 		var (
 			err     error
 			id      string
 			payload treestorage.TreeStorageCreatePayload
-			exist   bool
 		)
+		// we will get id of relation options after we figure out according relations keys
+		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.URL()) {
+			relationOptions = append(relationOptions, snapshot)
+			continue
+		}
 		var createdTime time.Time
 		createdTimeTS := pbtypes.GetInt64(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyCreatedDate.String())
 		if createdTimeTS > 0 {
@@ -233,13 +238,10 @@ func (i *Import) createObjects(ctx *session.Context,
 		} else {
 			createdTime = time.Now()
 		}
-		if id, exist, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, createdTime, req.UpdateExistingObjects); err == nil {
+		if id, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, createdTime, req.UpdateExistingObjects); err == nil {
 			oldIDToNew[snapshot.Id] = id
 			if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 				oldIDToNew[snapshot.Id] = snapshot.Id
-			}
-			if exist {
-				existedObject[snapshot.Id] = struct{}{}
 			}
 			if payload.RootRawChange != nil {
 				createPayloads[id] = payload
@@ -254,6 +256,41 @@ func (i *Import) createObjects(ctx *session.Context,
 			log.With(zap.String("object name", getFileName(snapshot))).Error(err)
 		}
 	}
+	for _, option := range relationOptions {
+		var (
+			err     error
+			id      string
+			payload treestorage.TreeStorageCreatePayload
+		)
+		var createdTime time.Time
+		createdTimeTS := pbtypes.GetInt64(option.Snapshot.GetData().GetDetails(), bundle.RelationKeyCreatedDate.String())
+		if createdTimeTS > 0 {
+			createdTime = time.Unix(createdTimeTS, 0)
+		} else {
+			createdTime = time.Now()
+		}
+		relationKey := pbtypes.GetString(option.Snapshot.GetData().GetDetails(), bundle.RelationKeyRelationKey.String())
+		if newKey, ok := oldIDToNew[addr.RelationKeyToIdPrefix+relationKey]; ok {
+			option.Snapshot.GetData().GetDetails().GetFields()[bundle.RelationKeyRelationKey.String()] = pbtypes.String(strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix))
+		}
+		if id, payload, err = i.objectIDGetter.Get(ctx, option, option.SbType, createdTime, req.UpdateExistingObjects); err == nil {
+			oldIDToNew[option.Id] = id
+			if option.SbType == sb.SmartBlockTypeSubObject && id == "" {
+				oldIDToNew[option.Id] = option.Id
+			}
+			if payload.RootRawChange != nil {
+				createPayloads[id] = payload
+			}
+			continue
+		}
+		if err != nil {
+			allErrors[getFileName(option)] = err
+			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
+				return nil
+			}
+			log.With(zap.String("object name", getFileName(option))).Error(err)
+		}
+	}
 	numWorkers := workerPoolSize
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
@@ -261,20 +298,15 @@ func (i *Import) createObjects(ctx *session.Context,
 	do := NewDataObject(oldIDToNew, createPayloads, ctx)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
-	go i.addWork(res, existedObject, pool)
+	go i.addWork(res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
 	return details
 }
 
-func (i *Import) addWork(res *converter.Response, existedObject map[string]struct{}, pool *workerpool.WorkerPool) {
+func (i *Import) addWork(res *converter.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
-		var relations []*converter.Relation
-		if res.Relations != nil {
-			relations = res.Relations[snapshot.Id]
-		}
-		_, ok := existedObject[snapshot.Id]
-		t := NewTask(snapshot, relations, ok, i.oc)
+		t := NewTask(snapshot, i.oc)
 		stop := pool.AddWork(t)
 		if stop {
 			break

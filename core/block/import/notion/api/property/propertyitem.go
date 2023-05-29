@@ -18,10 +18,18 @@ import (
 
 type ConfigType string
 
+type FormatGetter interface {
+	GetFormat() model.RelationFormat
+}
+
+type IDGetter interface {
+	GetID() string
+}
+
 type Object interface {
 	GetPropertyType() ConfigType
-	GetID() string
-	GetFormat() model.RelationFormat
+	IDGetter
+	FormatGetter
 }
 
 const (

@@ -66,7 +66,7 @@ func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *st
 }
 
 func (r *RootCollection) addRelations(st *state.State) error {
-	for _, relation := range []*model.Relation{
+	for _, relation := range []*model.RelationLink{
 		{
 			Key:    bundle.RelationKeyTag.String(),
 			Format: model.RelationFormat_tag,
@@ -76,7 +76,7 @@ func (r *RootCollection) addRelations(st *state.State) error {
 			Format: model.RelationFormat_date,
 		},
 	} {
-		err := addRelationsToCollectionDataView(st, relation)
+		err := AddRelationsToCollectionDataView(st, relation)
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func (r *RootCollection) getCreateCollectionRequest(collectionName string) *type
 	return detailsStruct
 }
 
-func addRelationsToCollectionDataView(st *state.State, rel *model.Relation) error {
+func AddRelationsToCollectionDataView(st *state.State, rel *model.RelationLink) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if dv, ok := bl.(simpleDataview.Block); ok {
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
