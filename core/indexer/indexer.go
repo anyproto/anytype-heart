@@ -74,6 +74,7 @@ func New(
 		picker:       picker,
 		spaceService: spaceService,
 		fileService:  fileService,
+		indexedFiles: &sync.Map{},
 	}
 }
 
@@ -109,6 +110,8 @@ type indexer struct {
 
 	typeProvider typeprovider.SmartBlockTypeProvider
 	spaceService space.Service
+
+	indexedFiles *sync.Map
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -220,7 +223,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 			log.With("thread", info.Id).Debugf("to index queue")
 		}
 
-		go i.indexLinkedFiles(ctx, info.FileHashes)
+		i.indexLinkedFiles(ctx, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -256,16 +259,22 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	}
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
-		// TODO ensure that file is added to sync queue
-		// file's hash is id
-		err = i.reindexDoc(ctx, id)
-		if err != nil {
-			log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
-		}
-		err = i.store.AddToIndexQueue(id)
-		if err != nil {
-			log.With("id", id).Error(err.Error())
-		}
+		go func(id string) {
+			// Deduplicate
+			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
+			if ok {
+				return
+			}
+			// file's hash is id
+			err = i.reindexDoc(ctx, id)
+			if err != nil {
+				log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
+			}
+			err = i.store.AddToIndexQueue(id)
+			if err != nil {
+				log.With("id", id).Error(err.Error())
+			}
+		}(id)
 	}
 }
 
@@ -410,15 +419,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
-		}
-		fileIDs, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
-		for _, fileID := range fileIDs {
-			if addErr := i.fileService.AddToSyncQueue(fileID); addErr != nil {
-				log.Errorf("failed to add file %s to sync queue: %s", fileID, addErr.Error())
-			}
-		}
-		if err != nil {
-			return fmt.Errorf("get all file ids: %w", err)
 		}
 	}
 	if flags.bundledRelations {
