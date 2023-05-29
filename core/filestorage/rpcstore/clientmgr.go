@@ -20,8 +20,12 @@ const (
 	maxTasks       = 100
 )
 
+type operationNameKeyType string
+
+const operationNameKey operationNameKeyType = "operationName"
+
 var (
-	clientCreateTimeout = time.Second * 10
+	clientCreateTimeout = 1 * time.Minute
 )
 
 func newClientManager(s *service, peerUpdateCh chan struct{}) *clientManager {
@@ -39,6 +43,7 @@ func newClientManager(s *service, peerUpdateCh chan struct{}) *clientManager {
 		s:            s,
 	}
 	cm.ctx, cm.ctxCancel = context.WithCancel(context.Background())
+	cm.ctx = context.WithValue(cm.ctx, operationNameKey, "checkPeerLoop")
 	go cm.checkPeerLoop()
 	return cm
 }
@@ -153,7 +158,8 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 			ctx, cancel := context.WithTimeout(ctx, clientCreateTimeout)
 			cl, e := newClient(ctx, m.s, peerId, m.mb)
 			if e != nil {
-				log.Info("can't create client", zap.Error(e))
+				opName, _ := ctx.Value(operationNameKey).(string)
+				log.Info("can't create client", zap.String("operation", opName), zap.Error(e))
 				cancel()
 				added = false
 				return
