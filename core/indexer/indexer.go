@@ -51,7 +51,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 40
+	ForceIdxRebuildCounter int32 = 41
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -61,7 +61,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 var (
-	ftIndexInterval         = time.Minute
+	ftIndexInterval         = 10 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
 )
 
@@ -220,7 +220,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 			log.With("thread", info.Id).Debugf("to index queue")
 		}
 
-		i.indexLinkedFiles(ctx, info.FileHashes)
+		go i.indexLinkedFiles(ctx, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -256,6 +256,12 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	}
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
+		// TODO ensure that file is added to sync queue
+		// file's hash is id
+		err = i.reindexDoc(ctx, id)
+		if err != nil {
+			log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
+		}
 		err = i.store.AddToIndexQueue(id)
 		if err != nil {
 			log.With("id", id).Error(err.Error())
@@ -615,7 +621,6 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 }
 
 func (i *indexer) reindexDoc(ctx context.Context, id string) error {
-	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	err := block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
 		d := sb.GetDocInfo()
 		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
@@ -637,6 +642,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
+	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, id)
 		if err != nil {
