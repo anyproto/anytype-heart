@@ -74,7 +74,7 @@ func (f *file) getDetailsForFileOrImage(ctx context.Context, id string) (p *type
 func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(f.id, nil).(*state.State)
 
-	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+	ctx, cancel := context.WithTimeout(ctx, getFileTimeout)
 	defer cancel()
 
 	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)

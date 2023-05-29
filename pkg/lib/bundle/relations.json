@@ -329,7 +329,11 @@
     "maxCount": 0,
     "name": "Linked Projects",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "objectTypes": [
+      "task",
+      "project"
+    ]
   },
   {
     "description": "Audio record's album name",
@@ -603,7 +607,11 @@
     "maxCount": 0,
     "name": "Author",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "objectTypes": [
+      "profile",
+      "contact"
+    ]
   },
   {
     "description": "Name of artist",
@@ -741,7 +749,11 @@
     "maxCount": 0,
     "name": "Assignee",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "objectTypes": [
+      "profile",
+      "contact"
+    ]
   },
   {
     "format": "shorttext",
