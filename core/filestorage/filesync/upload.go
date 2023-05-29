@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/cheggaaa/mb/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -21,6 +22,13 @@ import (
 )
 
 func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
+	status, err := f.fileStore.GetSyncStatus(fileId)
+	if err != nil && !errors.Is(err, localstore.ErrNotFound) {
+		return fmt.Errorf("get file sync status: %w", err)
+	}
+	if status == int(syncstatus.StatusSynced) {
+		return nil
+	}
 	ok, storeErr := f.hasFileInStore(fileId)
 	if storeErr != nil {
 		return fmt.Errorf("check if file is in store: %w", storeErr)

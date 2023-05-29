@@ -801,9 +801,6 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	if err != nil {
 		return nil, fmt.Errorf("failed to add files to store: %w", err)
 	}
-	if err := s.AddToSyncQueue(hash); err != nil {
-		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
-	}
 
 	return files, nil
 }
@@ -900,6 +897,9 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
 		}
+	}
+	if err := s.AddToSyncQueue(hash); err != nil {
+		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
 	}
 
 	fileIndex := fileList[0]
