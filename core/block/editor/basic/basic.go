@@ -392,7 +392,7 @@ func (bs *basic) FeaturedRelationAdd(ctx *session.Context, relations ...string) 
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
-		if bs.HasRelation(s, r) && slice.FindPos(frc, r) == -1 {
+		if slice.FindPos(frc, r) == -1 {
 			// special cases
 			switch r {
 			case bundle.RelationKeyDescription.String():
@@ -400,6 +400,12 @@ func (bs *basic) FeaturedRelationAdd(ctx *session.Context, relations ...string) 
 				template.WithForcedDescription(s)
 			}
 			frc = append(frc, r)
+			if !bs.HasRelation(s, r) {
+				err = bs.addRelationLink(r, s)
+				if err != nil {
+					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %s", r, err.Error())
+				}
+			}
 		}
 	}
 	if len(frc) != len(fr) {
