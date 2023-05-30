@@ -31,6 +31,11 @@ func CopyStruct(s *types.Struct) *types.Struct {
 	if s == nil {
 		return nil
 	}
+	// this state shouldn't happen in the protobuf,
+	// but in Go wrapper it possible so lets copy the exact state
+	if s.Fields == nil {
+		return &types.Struct{}
+	}
 
 	copiedStruct := &types.Struct{
 		Fields: make(map[string]*types.Value, len(s.Fields)),
