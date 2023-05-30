@@ -387,6 +387,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			smartblock.SmartBlockTypeTemplate,
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeWorkspace,
 		)
 		if err != nil {
 			return err

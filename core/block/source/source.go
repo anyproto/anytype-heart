@@ -278,9 +278,6 @@ func (s *source) ListIds() (ids []string, err error) {
 		return
 	}
 	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
-		if s.coreService.PredefinedBlocks().IsAccount(id) {
-			return false
-		}
 		t, err := s.sbtProvider.Type(id)
 		if err != nil {
 			return false
