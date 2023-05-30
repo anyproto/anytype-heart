@@ -1232,6 +1232,7 @@
     - [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign)
     - [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget)
     - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
+    - [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
@@ -2981,6 +2982,7 @@ common simple block command
 | block | [model.Block](#anytype-model-Block) |  |  |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | widgetLayout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+| objectLimit | [int32](#int32) |  |  |
 
 
 
@@ -16404,6 +16406,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
 
 
 
@@ -19350,6 +19354,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | layout | [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout) |  |  |
+| limit | [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit) |  |  |
 
 
 
@@ -19365,6 +19370,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Widget-Limit"></a>
+
+### Event.Block.Set.Widget.Limit
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [int32](#int32) |  |  |
 
 
 
@@ -21048,6 +21068,7 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | layout | [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+| limit | [int32](#int32) |  |  |
 
 
 

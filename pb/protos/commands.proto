@@ -3055,6 +3055,7 @@ message Rpc {
                 anytype.model.Block block = 3;
                 anytype.model.Block.Position position = 4;
                 anytype.model.Block.Content.Widget.Layout widgetLayout = 5;
+                int32 objectLimit = 6;
             }
 
             message Response {

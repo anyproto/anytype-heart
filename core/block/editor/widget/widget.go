@@ -3,6 +3,8 @@ package widget
 import (
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -14,7 +16,27 @@ const (
 	DefaultWidgetFavorite = "favorite"
 	DefaultWidgetSet      = "set"
 	DefaultWidgetRecent   = "recent"
+
+	TreeLowLimit    int32 = 6
+	TreeMiddleLimit int32 = 10
+	TreeHighLimit   int32 = 14
+	ListLowLimit    int32 = 4
+	ListMiddleLimit int32 = 6
+	ListHighLimit   int32 = 8
 )
+
+var LimitOptionsByLayout = map[model.BlockContentWidgetLayout][]int32{
+	model.BlockContentWidget_Tree: {
+		TreeLowLimit,
+		TreeMiddleLimit,
+		TreeHighLimit,
+	},
+	model.BlockContentWidget_List: {
+		ListLowLimit,
+		ListMiddleLimit,
+		ListHighLimit,
+	},
+}
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
@@ -65,6 +87,7 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		Content: &model.BlockContentOfWidget{
 			Widget: &model.BlockContentWidget{
 				Layout: req.WidgetLayout,
+				Limit:  w.computeObjectLimit(req),
 			},
 		},
 	})
@@ -80,4 +103,21 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 	}
 
 	return wrapper.Model().Id, nil
+}
+
+func (w *widget) computeObjectLimit(req *pb.RpcBlockCreateWidgetRequest) int32 {
+	switch req.WidgetLayout {
+	case model.BlockContentWidget_Tree, model.BlockContentWidget_CompactList:
+		if lo.Contains(LimitOptionsByLayout[model.BlockContentWidget_Tree], req.ObjectLimit) {
+			return req.ObjectLimit
+		}
+		return TreeLowLimit
+	case model.BlockContentWidget_List:
+		if lo.Contains(LimitOptionsByLayout[model.BlockContentWidget_List], req.ObjectLimit) {
+			return req.ObjectLimit
+		}
+		return TreeLowLimit
+	default:
+		return 0
+	}
 }
