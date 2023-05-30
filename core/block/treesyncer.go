@@ -25,11 +25,11 @@ func newExecutor(workers, size int) *executor {
 }
 
 func (e *executor) tryAdd(id string, action func()) (err error) {
+	e.Lock()
+	defer e.Unlock()
 	if _, exists := e.objs[id]; exists {
 		return nil
 	}
-	e.Lock()
-	defer e.Unlock()
 	e.objs[id] = struct{}{}
 	return e.pool.TryAdd(func() {
 		action()
