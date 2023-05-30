@@ -82,17 +82,8 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
 		for _, relation := range view.Relations {
-			if r, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+relation.Key]; ok && r != addr.RelationKeyToIdPrefix+relation.Key {
-				oldKey := relation.Key
-				db := block.(dataview.Block)
-				db.RemoveViewRelations(view.Id, []string{oldKey})
-				relation.Key = strings.TrimPrefix(r, addr.RelationKeyToIdPrefix)
-				db.AddViewRelation(view.Id, relation)
-				for _, relationLink := range db.Model().GetDataview().RelationLinks {
-					if relationLink.Key == oldKey {
-						relationLink.Key = strings.TrimPrefix(r, addr.RelationKeyToIdPrefix)
-					}
-				}
+			if newID, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+relation.Key]; ok && newID != addr.RelationKeyToIdPrefix+relation.Key {
+				updateRelationID(block, relation, view, newID)
 			}
 		}
 	}
@@ -108,6 +99,27 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 			if newId, exist := oldIDtoNew[id]; exist {
 				group.ObjectIds[i] = newId
 			}
+		}
+	}
+}
+
+func updateRelationID(block simple.Block, relation *model.BlockContentDataviewRelation, view *model.BlockContentDataviewView, newID string) {
+	oldKey := relation.Key
+	db := block.(dataview.Block)
+	err := db.RemoveViewRelations(view.Id, []string{oldKey})
+	if err != nil {
+		log.Error("failed to remove relation from view, %s", err.Error())
+		return
+	}
+	relation.Key = strings.TrimPrefix(newID, addr.RelationKeyToIdPrefix)
+	err = db.AddViewRelation(view.Id, relation)
+	if err != nil {
+		log.Error("failed to add new relations from view, %s", err.Error())
+		return
+	}
+	for _, relationLink := range db.Model().GetDataview().GetRelationLinks() {
+		if relationLink.Key == oldKey {
+			relationLink.Key = strings.TrimPrefix(newID, addr.RelationKeyToIdPrefix)
 		}
 	}
 }
@@ -214,35 +226,6 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 	}
 }
 
-func UpdateDetailsKey(st *state.State, oldIDtoNew map[string]string) {
-	details := st.Details()
-	keyToRemove := make([]string, 0)
-	for k, v := range details.GetFields() {
-		if newKey, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+k]; ok && newKey != addr.RelationKeyToIdPrefix+k {
-			relKey := strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix)
-			st.SetDetail(relKey, v)
-			keyToRemove = append(keyToRemove, k)
-		}
-	}
-	updateRelationLinks(st, keyToRemove, oldIDtoNew)
-	st.RemoveRelation(keyToRemove...)
-
-}
-
-func updateRelationLinks(st *state.State, keyToRemove []string, oldToNewIDs map[string]string) {
-	relLinksToUpdate := make([]*model.RelationLink, 0)
-	for _, key := range keyToRemove {
-		if relLink := st.GetRelationLinks().Get(key); relLink != nil {
-			newKey := oldToNewIDs[addr.RelationKeyToIdPrefix+key]
-			relLinksToUpdate = append(relLinksToUpdate, &model.RelationLink{
-				Key:    strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix),
-				Format: relLink.Format,
-			})
-		}
-	}
-	st.AddRelationLinks(relLinksToUpdate...)
-}
-
 func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string) {
 	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
 		objectsID := v.GetStringValue()
@@ -315,6 +298,34 @@ func replaceChunks(s string, oldToNew map[string]string) []string {
 	}
 
 	return result
+}
+
+func AddRelationsToDataView(st *state.State, rel *model.RelationLink) error {
+	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if dv, ok := bl.(dataview.Block); ok {
+			if len(bl.Model().GetDataview().GetViews()) == 0 {
+				return false
+			}
+			for _, view := range bl.Model().GetDataview().GetViews() {
+				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+					Key:       rel.Key,
+					IsVisible: true,
+					Width:     192,
+				})
+				if err != nil {
+					return false
+				}
+			}
+			err := dv.AddRelation(&model.RelationLink{
+				Key:    rel.Key,
+				Format: rel.Format,
+			})
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
 }
 
 func ConvertStringToTime(t string) int64 {

@@ -356,28 +356,16 @@ func peopleItemOptions(property *property.PeopleItem, rel string, req *block.Map
 		}
 		exist, optionID := isOptionAlreadyExist(po.Name, rel, req)
 		if exist {
-			po.Name = optionID
+			po.ID = optionID
 			continue
 		}
-		details := getDetailsForRelationOption(po.Name, rel)
+		details, optSnapshot := provideRelationOptionSnapshot(po.Name, "", rel)
+		peopleOptions = append(peopleOptions, optSnapshot)
 		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
-		po.Name = optionID
-		peopleOptions = append(peopleOptions, &model.SmartBlockSnapshotBase{
-			Details:     details,
-			ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
-		})
+		po.ID = optionID
 	}
 	req.WriteToRelationsOptionsMap(rel, peopleOptions)
 	return peopleOptions
-}
-
-func getDetailsForRelationOption(name, rel string) *types.Struct {
-	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(bson.NewObjectId().Hex())
-	return details
 }
 
 func multiselectItemOptions(property *property.MultiSelectItem, rel string, req *block.MapRequest) []*model.SmartBlockSnapshotBase {
@@ -388,18 +376,13 @@ func multiselectItemOptions(property *property.MultiSelectItem, rel string, req 
 		}
 		exist, optionID := isOptionAlreadyExist(so.Name, rel, req)
 		if exist {
-			so.Name = optionID
+			so.ID = optionID
 			continue
 		}
-		details := getDetailsForRelationOption(so.Name, rel)
-		details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[so.Color])
+		details, optSnapshot := provideRelationOptionSnapshot(so.Name, so.Color, rel)
 		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
-		so.Name = optionID
-		snapshot := &model.SmartBlockSnapshotBase{
-			Details:     details,
-			ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
-		}
-		multiSelectOptions = append(multiSelectOptions, snapshot)
+		so.ID = optionID
+		multiSelectOptions = append(multiSelectOptions, optSnapshot)
 	}
 	req.WriteToRelationsOptionsMap(rel, multiSelectOptions)
 	return multiSelectOptions
@@ -411,20 +394,14 @@ func selectItemOptions(property *property.SelectItem, rel string, req *block.Map
 	}
 	exist, optionID := isOptionAlreadyExist(property.Select.Name, rel, req)
 	if exist {
-		property.Select.Name = optionID
+		property.Select.ID = optionID
 		return nil
 	}
-	details := getDetailsForRelationOption(property.Select.Name, rel)
-	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[property.Select.Color])
+	details, optSnapshot := provideRelationOptionSnapshot(property.Select.Name, property.Select.Color, rel)
 	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
-	property.Select.Name = optionID
-
-	snapshot := &model.SmartBlockSnapshotBase{
-		Details:     details,
-		ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
-	}
-	req.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{snapshot})
-	return snapshot
+	property.Select.ID = optionID
+	req.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
+	return optSnapshot
 }
 
 func statusItemOptions(property *property.StatusItem, rel string, req *block.MapRequest) *model.SmartBlockSnapshotBase {
@@ -433,18 +410,13 @@ func statusItemOptions(property *property.StatusItem, rel string, req *block.Map
 	}
 	exist, optionID := isOptionAlreadyExist(property.Status.Name, rel, req)
 	if exist {
-		property.Status.Name = optionID
+		property.Status.ID = optionID
 		return nil
 	}
-	details := getDetailsForRelationOption(property.Status.Name, rel)
-	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[property.Status.Color])
-	optSnapshot := &model.SmartBlockSnapshotBase{
-		Details:     details,
-		ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
-	}
-	req.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
+	details, optSnapshot := provideRelationOptionSnapshot(property.Status.Name, property.Status.Color, rel)
 	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
-	property.Status.Name = optionID
+	property.Status.ID = optionID
+	req.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
 	return optSnapshot
 }
 
@@ -458,4 +430,23 @@ func isOptionAlreadyExist(optName, rel string, req *block.MapRequest) (bool, str
 		}
 	}
 	return false, ""
+}
+
+func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *model.SmartBlockSnapshotBase) {
+	details := getDetailsForRelationOption(name, rel)
+	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
+	optSnapshot := &model.SmartBlockSnapshotBase{
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
+	}
+	return details, optSnapshot
+}
+
+func getDetailsForRelationOption(name, rel string) *types.Struct {
+	details := &types.Struct{Fields: map[string]*types.Value{}}
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(bson.NewObjectId().Hex())
+	return details
 }

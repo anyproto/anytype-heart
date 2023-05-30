@@ -4,11 +4,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	te "github.com/anyproto/anytype-heart/core/block/editor/table"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/globalsign/mgo/bson"
 	"io"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -201,30 +196,4 @@ func transpose(csvTable [][]string) [][]string {
 		}
 	}
 	return result
-}
-
-func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converter.Snapshot) {
-	if len(csvTable) == 0 {
-		return nil, nil
-	}
-	relations := make([]*model.Relation, 0, len(csvTable[0]))
-	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
-	allRelations := csvTable[0]
-	for _, relation := range allRelations {
-		id := bson.NewObjectId().Hex()
-		relations = append(relations, &model.Relation{
-			Format: model.RelationFormat_longtext,
-			Name:   relation,
-			Key:    id,
-		})
-		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
-			Id:     addr.RelationKeyToIdPrefix + id,
-			SbType: smartblock2.SmartBlockTypeSubObject,
-			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-				Details:     getRelationDetails(relation, id, float64(model.RelationFormat_longtext)),
-				ObjectTypes: []string{bundle.TypeKeyRelation.String()},
-			}},
-		})
-	}
-	return relations, relationsSnapshots
 }

@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"strings"
 	"sync"
 
@@ -25,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -42,15 +42,15 @@ type objectCreator interface {
 }
 
 type ObjectCreator struct {
-	service      *block.Service
-	objCreator   objectCreator
-	core         core.Service
-	objectStore  objectstore.ObjectStore
-	fileStore    filestore.FileStore
-	syncFactory  *syncer.Factory
-	spaceService space.Service
-	fileSync     filesync.FileSync
-	mu           sync.Mutex
+	service        *block.Service
+	objCreator     objectCreator
+	core           core.Service
+	objectStore    objectstore.ObjectStore
+	relationSyncer syncer.RelationSyncer
+	syncFactory    *syncer.Factory
+	spaceService   space.Service
+	fileSync       filesync.FileSync
+	mu             sync.Mutex
 }
 
 func NewCreator(service *block.Service,
@@ -58,15 +58,15 @@ func NewCreator(service *block.Service,
 	core core.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
-	fileStore filestore.FileStore,
+	relationSyncer syncer.RelationSyncer,
 ) Creator {
 	return &ObjectCreator{
-		service:     service,
-		objCreator:  objCreator,
-		core:        core,
-		syncFactory: syncFactory,
-		objectStore: objectStore,
-		fileStore:   fileStore,
+		service:        service,
+		objCreator:     objCreator,
+		core:           core,
+		syncFactory:    syncFactory,
+		objectStore:    objectStore,
+		relationSyncer: relationSyncer,
 	}
 }
 
@@ -104,41 +104,27 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(st, oldIDtoNew)
+		oc.setSpaceDashboardID(st)
 		return nil, newID, nil
 	}
 
 	converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
 		if link.Format == model.RelationFormat_file {
-			filesToDelete = oc.handleFileRelation(st, link.Key)
+			filesToDelete = oc.relationSyncer.Sync(st, link.Key)
 		}
 	}
-	converter.UpdateDetailsKey(st, oldIDtoNew)
+	oc.updateDetailsKey(st, oldIDtoNew)
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
 	var respDetails *types.Struct
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
-		sb, err := oc.service.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
-			return &sb.InitContext{
-				IsNewObject: true,
-				State:       st,
-			}
-		})
+		respDetails, err = oc.createNewObject(ctx, payload, st, newID, oldIDtoNew)
 		if err != nil {
 			log.With("object", newID).Errorf("failed to create %s: %s", newID, err.Error())
 			return nil, "", err
 		}
-		respDetails = sb.Details()
-		// update collection after we create it
-		if st.Store() != nil {
-			oc.updateLinksInCollections(st, oldIDtoNew)
-			oc.resetState(ctx, newID, st)
-		}
 	} else {
-		if st.Store() != nil {
-			oc.updateLinksInCollections(st, oldIDtoNew)
-		}
-		respDetails = oc.resetState(ctx, newID, st)
+		respDetails = oc.updateExistingObject(ctx, st, oldIDtoNew, newID)
 	}
 	oc.setFavorite(snapshot, newID)
 
@@ -152,25 +138,77 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	return respDetails, newID, nil
 }
 
-func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
-	if isArchive {
-		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
-		if err != nil {
-			log.With(zap.String("object id", newID)).
-				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
+func (oc *ObjectCreator) updateExistingObject(ctx *session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
+	if st.Store() != nil {
+		oc.updateLinksInCollections(st, oldIDtoNew)
+	}
+	respDetails := oc.resetState(ctx, newID, st)
+	return respDetails
+}
+
+func (oc *ObjectCreator) createNewObject(ctx *session.Context,
+	payload treestorage.TreeStorageCreatePayload,
+	st *state.State,
+	newID string,
+	oldIDtoNew map[string]string) (*types.Struct, error) {
+	sb, err := oc.service.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
+		return &sb.InitContext{
+			IsNewObject: true,
+			State:       st,
 		}
+	})
+	if err != nil {
+		log.With("object", newID).Errorf("failed to create %s: %s", newID, err.Error())
+		return nil, err
+	}
+	respDetails := sb.Details()
+	// update collection after we create it
+	if st.Store() != nil {
+		oc.updateLinksInCollections(st, oldIDtoNew)
+		oc.resetState(ctx, newID, st)
+	}
+	return respDetails, nil
+}
+
+func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase, newID string) {
+	var found bool
+	for _, b := range snapshot.Blocks {
+		if b.Id == newID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		oc.addRootBlock(snapshot, newID)
 	}
 }
 
-func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
-	if isFavorite {
-		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
+func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
+	for i, b := range snapshot.Blocks {
+		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
+			snapshot.Blocks[i].Id = pageID
+			return
 		}
 	}
+	notRootBlockChild := make(map[string]bool, 0)
+	for _, b := range snapshot.Blocks {
+		for _, id := range b.ChildrenIds {
+			notRootBlockChild[id] = true
+		}
+	}
+	childrenIds := make([]string, 0)
+	for _, b := range snapshot.Blocks {
+		if _, ok := notRootBlockChild[b.Id]; !ok {
+			childrenIds = append(childrenIds, b.Id)
+		}
+	}
+	snapshot.Blocks = append(snapshot.Blocks, &model.Block{
+		Id: pageID,
+		Content: &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		},
+		ChildrenIds: childrenIds,
+	})
 }
 
 func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model.SmartBlockSnapshotBase) {
@@ -188,31 +226,6 @@ func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model
 	}
 }
 
-func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	var found bool
-	for _, b := range snapshot.Blocks {
-		if b.Id == newID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		oc.addRootBlock(snapshot, newID)
-	}
-}
-
-func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
-	return st.Iterate(func(bl simple.Block) (isContinue bool) {
-		s := oc.syncFactory.GetSyncer(bl)
-		if s != nil {
-			if sErr := s.Sync(ctx, newID, bl); sErr != nil {
-				log.With(zap.String("object id", newID)).Errorf("sync: %s", sErr)
-			}
-		}
-		return true
-	})
-}
-
 func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []string) {
 	if err != nil {
 		for _, bl := range st.Blocks() {
@@ -226,7 +239,34 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, oldIDtoNew map[string]string) {
+func (oc *ObjectCreator) deleteFile(hash string) {
+	inboundLinks, err := oc.objectStore.GetOutboundLinksById(hash)
+	if err != nil {
+		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
+	}
+	if len(inboundLinks) == 0 {
+		err = oc.service.DeleteObject(hash)
+		if err != nil {
+			log.With("file", hash).Errorf("failed to delete file: %s", err)
+		}
+	}
+}
+
+func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
+	oc.mu.Lock()
+	defer oc.mu.Unlock()
+	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
+		err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, oc.core.PredefinedBlocks().Account, true)
+		if err != nil {
+			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
+		}
+		return
+	}
+
+	// RQ: the rest handling were removed
+}
+
+func (oc *ObjectCreator) setSpaceDashboardID(st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []*pb.RpcObjectSetDetailsDetail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
@@ -265,6 +305,62 @@ func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, oldIDtoNew map[str
 	}
 }
 
+func (oc *ObjectCreator) updateDetailsKey(st *state.State, oldIDtoNew map[string]string) {
+	details := st.Details()
+	keyToRemove := make([]string, 0)
+	for k, v := range details.GetFields() {
+		if newKey, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+k]; ok && newKey != addr.RelationKeyToIdPrefix+k {
+			relKey := strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix)
+			st.SetDetail(relKey, v)
+			keyToRemove = append(keyToRemove, k)
+		}
+	}
+	oc.updateRelationLinks(st, keyToRemove, oldIDtoNew)
+	st.RemoveRelation(keyToRemove...)
+
+}
+
+func (oc *ObjectCreator) updateRelationLinks(st *state.State, keyToRemove []string, oldToNewIDs map[string]string) {
+	relLinksToUpdate := make([]*model.RelationLink, 0)
+	for _, key := range keyToRemove {
+		if relLink := st.GetRelationLinks().Get(key); relLink != nil {
+			newKey := oldToNewIDs[addr.RelationKeyToIdPrefix+key]
+			relLinksToUpdate = append(relLinksToUpdate, &model.RelationLink{
+				Key:    strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix),
+				Format: relLink.Format,
+			})
+		}
+	}
+	st.AddRelationLinks(relLinksToUpdate...)
+}
+
+func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
+	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
+		return nil
+	}
+	filesToDelete := oc.relationSyncer.Sync(st, bundle.RelationKeyCoverId.String())
+	return filesToDelete
+}
+
+func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
+	var existedObjects []string
+	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
+		existedObjects = s.GetStoreSlice(template.CollectionStoreKey)
+		return nil
+	})
+	if err != nil {
+		log.Errorf("failed to get existed objects in collection, %s", err)
+	}
+	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
+	for i, id := range objectsInCollections {
+		if newID, ok := oldIDtoNew[id]; ok {
+			objectsInCollections[i] = newID
+		}
+	}
+	result := slice.Union(existedObjects, objectsInCollections)
+	st.UpdateStoreSlice(template.CollectionStoreKey, result)
+}
+
 func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
@@ -289,134 +385,35 @@ func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *stat
 	return respDetails
 }
 
-func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
-	for i, b := range snapshot.Blocks {
-		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
-			snapshot.Blocks[i].Id = pageID
-			return
-		}
-	}
-	notRootBlockChild := make(map[string]bool, 0)
-	for _, b := range snapshot.Blocks {
-		for _, id := range b.ChildrenIds {
-			notRootBlockChild[id] = true
-		}
-	}
-	childrenIds := make([]string, 0)
-	for _, b := range snapshot.Blocks {
-		if _, ok := notRootBlockChild[b.Id]; !ok {
-			childrenIds = append(childrenIds, b.Id)
-		}
-	}
-	snapshot.Blocks = append(snapshot.Blocks, &model.Block{
-		Id: pageID,
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-		ChildrenIds: childrenIds,
-	})
-}
-
-func (oc *ObjectCreator) deleteFile(hash string) {
-	inboundLinks, err := oc.objectStore.GetOutboundLinksById(hash)
-	if err != nil {
-		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
-	}
-	if len(inboundLinks) == 0 {
-		err = oc.service.DeleteObject(hash)
+func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
+	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
+	if isFavorite {
+		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
-			log.With("file", hash).Errorf("failed to delete file: %s", err)
+			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
 		}
 	}
 }
 
-func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
-	oc.mu.Lock()
-	defer oc.mu.Unlock()
-	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, oc.core.PredefinedBlocks().Account, true)
+func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
+	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
+	if isArchive {
+		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
+			log.With(zap.String("object id", newID)).
+				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
 		}
-		return
 	}
-
-	// RQ: the rest handling were removed
 }
 
-func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
-	var existedObjects []string
-	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
-		existedObjects = s.GetStoreSlice(template.CollectionStoreKey)
-		return nil
-	})
-	if err != nil {
-		log.Errorf("failed to get existed objects in collection, %s", err)
-	}
-	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
-	for i, id := range objectsInCollections {
-		if newID, ok := oldIDtoNew[id]; ok {
-			objectsInCollections[i] = newID
-		}
-	}
-	result := slice.Union(existedObjects, objectsInCollections)
-	st.UpdateStoreSlice(template.CollectionStoreKey, result)
-}
-
-func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
-	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
-		return nil
-	}
-	filesToDelete := oc.handleFileRelation(st, bundle.RelationKeyCoverId.String())
-	return filesToDelete
-}
-
-func (oc *ObjectCreator) handleFileRelation(st *state.State, name string) []string {
-	var allFiles []string
-	if files := st.Details().Fields[name].GetListValue(); files != nil {
-		for _, f := range files.Values {
-			allFiles = append(allFiles, f.GetStringValue())
-		}
-	}
-
-	if files := st.Details().Fields[name].GetStringValue(); files != "" {
-		allFiles = append(allFiles, files)
-	}
-
-	allFilesHashes := make([]string, 0)
-
-	filesToDelete := make([]string, 0, len(allFiles))
-	for _, f := range allFiles {
-		if f == "" {
-			continue
-		}
-		if _, err := oc.fileStore.GetByHash(f); err == nil {
-			allFilesHashes = append(allFilesHashes, f)
-			continue
-		}
-		if strings.HasPrefix(f, "http://") || strings.HasPrefix(f, "https://") {
-			req := pb.RpcFileUploadRequest{LocalPath: f}
-			req.Url = f
-			req.LocalPath = ""
-			hash, err := oc.service.UploadFile(req)
-			if err != nil {
-				log.Errorf("file uploading %s", err)
-			} else {
-				f = hash
+func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
+	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+		s := oc.syncFactory.GetSyncer(bl)
+		if s != nil {
+			if sErr := s.Sync(ctx, newID, bl); sErr != nil {
+				log.With(zap.String("object id", newID)).Errorf("sync: %s", sErr)
 			}
-
-			filesToDelete = append(filesToDelete, f)
-			allFilesHashes = append(allFilesHashes, f)
 		}
-	}
-
-	if st.Details().Fields[name].GetListValue() != nil && len(allFilesHashes) != 0 {
-		st.SetDetail(name, pbtypes.StringList(allFilesHashes))
-	}
-
-	if st.Details().Fields[name].GetStringValue() != "" && len(allFilesHashes) != 0 {
-		st.SetDetail(name, pbtypes.String(allFilesHashes[0]))
-	}
-
-	return filesToDelete
+		return true
+	})
 }
