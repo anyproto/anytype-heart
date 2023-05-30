@@ -851,6 +851,9 @@ func (m *dsObjectStore) ListRelationsKeys() ([]string, error) {
 }
 
 func (m *dsObjectStore) DeleteDetails(id string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -883,6 +886,9 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to overwrite details and relations: %w", err)
 	}
+
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -918,25 +924,6 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 			return err
 		}
 	}
-	return txn.Commit()
-}
-
-// RemoveRelationFromCache removes cached relation data
-func (m *dsObjectStore) RemoveRelationFromCache(key string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	for _, k := range []ds.Key{
-		relationsBase.ChildString(key),
-	} {
-		if err = txn.Delete(k); err != nil {
-			return err
-		}
-	}
-
 	return txn.Commit()
 }
 
