@@ -2,27 +2,27 @@ package database
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/globalsign/mgo/bson"
 	"strings"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -133,7 +133,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	relationsIdsToAnytypeID := make(map[string]*model.SmartBlockSnapshotBase, 0)
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, nil, converter.NewFromError(d.ID, err)
+			return nil, nil, converter.NewFromError(d.ID, err)
 		}
 		snapshot, err := ds.makeDatabaseSnapshot(d, relationsIdsToAnytypeID, notionIdsToAnytype, databaseNameToID)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

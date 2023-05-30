@@ -3,7 +3,6 @@ package importer
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"strings"
 	"sync"
 
@@ -21,15 +20,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -48,8 +46,6 @@ type ObjectCreator struct {
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
-	spaceService   space.Service
-	fileSync       filesync.FileSync
 	mu             sync.Mutex
 }
 
@@ -79,7 +75,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	var err error
 	newID := oldIDtoNew[sn.Id]
-	oc.updateRootBlock(snapshot, newID)
+	oc.setRootBlock(snapshot, newID)
 
 	oc.setWorkspaceID(err, newID, snapshot)
 
@@ -124,9 +120,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 			return nil, "", err
 		}
 	} else {
-		if st.Store() != nil {
-			oc.updateCollectionState(st, oldIDtoNew, relations, createdRelations)
-		}
 		respDetails = oc.updateExistingObject(ctx, st, oldIDtoNew, newID)
 	}
 	oc.setFavorite(snapshot, newID)
@@ -139,16 +132,6 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	return respDetails, newID, nil
-}
-
-func (oc *ObjectCreator) updateCollectionState(st *state.State,
-	oldIDtoNew map[string]string,
-	relations []*converter.Relation,
-	createdRelations map[string]RelationsIDToFormat) {
-	oc.updateLinksInCollections(st, oldIDtoNew)
-	if err := oc.addRelationsToCollectionDataView(st, relations, createdRelations); err != nil {
-		log.With("object", st.RootId()).Errorf("failed to add relations to object view: %s", err.Error())
-	}
 }
 
 func (oc *ObjectCreator) updateExistingObject(ctx *session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -183,7 +166,7 @@ func (oc *ObjectCreator) createNewObject(ctx *session.Context,
 	return respDetails, nil
 }
 
-func (oc *ObjectCreator) updateRootBlock(snapshot *model.SmartBlockSnapshotBase, newID string) {
+func (oc *ObjectCreator) setRootBlock(snapshot *model.SmartBlockSnapshotBase, newID string) {
 	var found bool
 	for _, b := range snapshot.Blocks {
 		if b.Id == newID {

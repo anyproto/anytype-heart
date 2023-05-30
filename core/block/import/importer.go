@@ -3,13 +3,13 @@ package importer
 import (
 	"context"
 	"fmt"
-	"github.com/samber/lo"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"

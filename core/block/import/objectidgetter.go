@@ -73,7 +73,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 	if sbType == sb.SmartBlockTypeSubObject {
-		id, err := ou.getSubObjectID(sn)
+		id, err = ou.getSubObjectID(sn)
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 

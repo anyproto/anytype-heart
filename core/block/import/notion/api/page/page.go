@@ -107,7 +107,7 @@ func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcOb
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			pool.Stop()
-			return nil, nil, converter.NewFromError("cancel error", err)
+			return nil, converter.NewFromError("cancel error", err)
 		}
 		res := r.(*Result)
 		if res.ce != nil {

@@ -3,7 +3,6 @@ package notion
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -15,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (

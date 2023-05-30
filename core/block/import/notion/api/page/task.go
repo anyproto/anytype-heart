@@ -3,7 +3,6 @@ package page
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )

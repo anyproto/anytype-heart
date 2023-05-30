@@ -3,10 +3,11 @@ package property
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // DatabaseProperties represent database properties (their structure is different from pages properties)
@@ -415,4 +416,12 @@ type DatabaseVerification struct {
 
 func (v *DatabaseVerification) GetFormat() model.RelationFormat {
 	return model.RelationFormat_date
+}
+
+func (v *DatabaseVerification) GetID() string {
+	return v.ID
+}
+
+func (v *DatabaseVerification) SetDetail(key string, details map[string]*types.Value) {
+	details[key] = pbtypes.StringList(nil)
 }

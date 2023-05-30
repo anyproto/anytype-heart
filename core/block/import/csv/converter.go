@@ -3,10 +3,10 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
-	te "github.com/anyproto/anytype-heart/core/block/editor/table"
 	"io"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	te "github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"

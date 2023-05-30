@@ -3,6 +3,7 @@ package bookmarkimporter
 import (
 	"go.uber.org/zap"
 
+	"github.com/anyproto/any-sync/app"
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -10,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 )
 

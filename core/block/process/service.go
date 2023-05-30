@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/any-sync/app"
 )
 
 const CName = "process"
