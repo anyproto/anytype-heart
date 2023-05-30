@@ -59,14 +59,13 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 		return fmt.Errorf("source type should be a file")
 	}
 
+	if ctx.BuildOpts.DisableRemoteLoad {
+		ctx.Ctx = context.WithValue(ctx.Ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
+	}
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	var loadCtx = ctx.Ctx
-	if ctx.BuildOpts.DisableRemoteLoad {
-		loadCtx = context.WithValue(loadCtx, filestorage.CtxKeyRemoteLoadDisabled, true)
-	}
-	doc, err := ctx.Source.ReadDoc(loadCtx, nil, true)
+	doc, err := ctx.Source.ReadDoc(ctx.Ctx, nil, true)
 	if err != nil {
 		return err
 	}

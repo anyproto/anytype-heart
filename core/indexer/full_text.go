@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -20,7 +21,7 @@ func (i *indexer) ForceFTIndex() {
 
 func (i *indexer) ftLoop() {
 	ticker := time.NewTicker(ftIndexInterval)
-	i.ftIndex()
+	i.runFullTextIndexer()
 	var lastForceIndex time.Time
 	i.mu.Lock()
 	quit := i.quit
@@ -30,27 +31,47 @@ func (i *indexer) ftLoop() {
 		case <-quit:
 			return
 		case <-ticker.C:
-			i.ftIndex()
+			i.runFullTextIndexer()
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.ftIndex()
+				i.runFullTextIndexer()
 				lastForceIndex = time.Now()
 			}
 		}
 	}
 }
 
-func (i *indexer) ftIndex() {
-	if err := i.store.IndexForEach(i.ftIndexDoc); err != nil {
-		log.Errorf("store.IndexForEach error: %v", err)
+func (i *indexer) runFullTextIndexer() {
+	ids, err := i.store.ListIDsFromFullTextQueue()
+	if err != nil {
+		log.Errorf("list ids from full-text queue: %v", err)
+		return
 	}
+
+	var docs []ftsearch.SearchDoc
+	for _, id := range ids {
+		doc, err := i.prepareSearchDocument(id)
+		if err != nil {
+			log.With("id", id).Errorf("prepare document for full-text indexing: %s", err)
+			continue
+		}
+		docs = append(docs, doc)
+	}
+
+	err = i.ftsearch.BatchIndex(docs)
+	if err != nil {
+		log.Errorf("full-text indexing: %v", err)
+		return
+	}
+
+	i.store.RemoveIDsFromFullTextQueue(ids)
 }
 
-func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
-	st := time.Now()
+func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "index_fulltext")
 
+	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	info, err := i.getObjectInfo(ctx, id)
 	if err != nil {
 		return
@@ -60,18 +81,9 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-
-	// Placed it here because I don't want to introduce a new queue now
-	if sbType == smartblock.SmartBlockTypeFile {
-		// file's hash is id
-		err = i.reindexDoc(ctx, id)
-		if err != nil {
-			log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
-		}
-	}
 	indexDetails, _ := sbType.Indexable()
 	if !indexDetails {
-		return nil
+		return ftsearch.SearchDoc{}, nil
 	}
 
 	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
@@ -82,17 +94,11 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
 		title = info.State.Snippet()
 	}
-	ftDoc := ftsearch.SearchDoc{
+	ftDoc = ftsearch.SearchDoc{
 		Id:    id,
 		Title: title,
 		Text:  info.State.SearchText(),
 	}
-	if err := i.ftsearch.Index(ftDoc); err != nil {
-		log.Errorf("can't ft index doc: %v", err)
-	}
-	log.Debugf("ft search indexed with title: '%s'", ftDoc.Title)
-
-	log.With("thread", id).Infof("ft index updated for a %v", time.Since(st))
 	return
 }
 

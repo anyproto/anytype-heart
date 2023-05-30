@@ -17,6 +17,8 @@ import (
 
 const CtxKeyRemoteLoadDisabled = "object_remote_load_disabled"
 
+var ErrRemoteLoadDisabled = fmt.Errorf("remote load disabled")
+
 type proxyStore struct {
 	localStore *flatStore
 	origin     rpcstore.RpcStore
@@ -43,7 +45,7 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 	}
 	v, ok := ctx.Value(CtxKeyRemoteLoadDisabled).(bool)
 	if ok && v {
-		return nil, fmt.Errorf("remote load disabled")
+		return nil, ErrRemoteLoadDisabled
 	}
 	if b, err = c.origin.Get(ctx, k); err != nil {
 		log.Debug("proxyStore remote cid error", zap.String("cid", k.String()), zap.Error(err))

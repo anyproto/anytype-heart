@@ -2,6 +2,7 @@ package ftsearch
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,6 +52,7 @@ func New() FTSearch {
 type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
+	BatchIndex(docs []SearchDoc) (err error)
 	Search(query string) (results []string, err error)
 	Has(id string) (exists bool, err error)
 	Delete(id string) error
@@ -108,6 +110,20 @@ func (f *ftSearch) Index(doc SearchDoc) (err error) {
 	doc.TitleNoTerms = doc.Title
 	doc.TextNoTerms = doc.Text
 	return f.index.Index(doc.Id, doc)
+}
+
+func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
+	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
+	b := f.index.NewBatch()
+	for _, doc := range docs {
+
+		doc.TitleNoTerms = doc.Title
+		doc.TextNoTerms = doc.Text
+		if err := b.Index(doc.Id, doc); err != nil {
+			return fmt.Errorf("failed to index document %s: %w", doc.Id, err)
+		}
+	}
+	return f.index.Batch(b)
 }
 
 func (f *ftSearch) Search(qry string) (results []string, err error) {
