@@ -3,6 +3,12 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
+	te "github.com/anyproto/anytype-heart/core/block/editor/table"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/globalsign/mgo/bson"
 	"io"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -88,20 +94,20 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
 	cErr converter.ConvertError) (*Result, converter.ConvertError) {
-	//csvMode := params.GetMode()
-	//str := c.chooseStrategy(csvMode)
+	csvMode := params.GetMode()
+	str := c.chooseStrategy(csvMode)
 	result := &Result{}
-	//for _, p := range params.GetPath() {
-	//	if err := progress.TryStep(1); err != nil {
-	//		cancelError := converter.NewFromError(p, err)
-	//		return nil, cancelError
-	//	}
-	//	pathResult := c.handlePath(req, p, cErr, str)
-	//	if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-	//		return nil, nil
-	//	}
-	//	result.Merge(pathResult)
-	//}
+	for _, p := range params.GetPath() {
+		if err := progress.TryStep(1); err != nil {
+			cancelError := converter.NewFromError(p, err)
+			return nil, cancelError
+		}
+		pathResult := c.handlePath(req, p, cErr, str)
+		if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, nil
+		}
+		result.Merge(pathResult)
+	}
 	return result, nil
 }
 
@@ -142,7 +148,7 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 		if c.needToTranspose(params) && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		//objectsIDs, snapshots, _, err := str.CreateObjects(p, csvTable)
+		objectsIDs, snapshots, err := str.CreateObjects(p, csvTable)
 		if err != nil {
 			cErr.Add(p, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -150,8 +156,8 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 			}
 			continue
 		}
-		//allObjectsIDs = append(allObjectsIDs, objectsIDs...)
-		//allSnapshots = append(allSnapshots, snapshots...)
+		allObjectsIDs = append(allObjectsIDs, objectsIDs...)
+		allSnapshots = append(allSnapshots, snapshots...)
 	}
 	return &Result{objectIDs: allObjectsIDs, snapshots: allSnapshots}
 }
@@ -175,12 +181,12 @@ func (c *CSV) needToTranspose(params *pb.RpcObjectImportRequestCsvParams) bool {
 		(!params.GetUseFirstRowForRelations() && !params.GetTransposeRowsAndColumns())
 }
 
-//func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strategy {
-//	if mode == pb.RpcObjectImportRequestCsvParams_COLLECTION {
-//		return NewCollectionStrategy(c.collectionService)
-//}
-//return NewTableStrategy(te.NewEditor(nil))
-//}
+func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strategy {
+	if mode == pb.RpcObjectImportRequestCsvParams_COLLECTION {
+		return NewCollectionStrategy(c.collectionService)
+	}
+	return NewTableStrategy(te.NewEditor(nil))
+}
 
 func transpose(csvTable [][]string) [][]string {
 	x := len(csvTable[0])
@@ -197,35 +203,28 @@ func transpose(csvTable [][]string) [][]string {
 	return result
 }
 
-//func getDetailsFromCSVTable(csvTable [][]string) []*converter.Relation {
-//	if len(csvTable) == 0 {
-//		return nil
-//	}
-//	relations := make([]*converter.Relation, 0, len(csvTable[0]))
-//	allRelations := csvTable[0]
-//	for _, relation := range allRelations {
-//		relations = append(relations, &converter.Relation{
-//			Relation: &model.Relation{
-//				Format: model.RelationFormat_longtext,
-//				Name:   relation,
-//			},
-//		})
-//	}
-//	return relations
-//}
-
-//func mergeRelationsMaps(rel1 map[string][]*converter.Relation, rel2 map[string][]*converter.Relation) map[string][]*converter.Relation {
-//	if rel1 != nil {
-//		for id, relations := range rel2 {
-//			rel1[id] = relations
-//		}
-//		return rel1
-//	}
-//	if rel2 != nil {
-//		for id, relations := range rel1 {
-//			rel2[id] = relations
-//		}
-//		return rel2
-//	}
-//	return map[string][]*converter.Relation{}
-//}
+func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converter.Snapshot) {
+	if len(csvTable) == 0 {
+		return nil, nil
+	}
+	relations := make([]*model.Relation, 0, len(csvTable[0]))
+	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
+	allRelations := csvTable[0]
+	for _, relation := range allRelations {
+		id := bson.NewObjectId().Hex()
+		relations = append(relations, &model.Relation{
+			Format: model.RelationFormat_longtext,
+			Name:   relation,
+			Key:    id,
+		})
+		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
+			Id:     addr.RelationKeyToIdPrefix + id,
+			SbType: smartblock2.SmartBlockTypeSubObject,
+			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
+				Details:     getRelationDetails(relation, id, float64(model.RelationFormat_longtext)),
+				ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+			}},
+		})
+	}
+	return relations, relationsSnapshots
+}

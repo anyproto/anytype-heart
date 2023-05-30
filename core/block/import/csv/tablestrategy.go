@@ -1,6 +1,10 @@
 package csv
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -17,39 +21,39 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-//func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
-//	st := state.NewDoc("root", map[string]simple.Block{
-//		"root": simple.New(&model.Block{
-//			Content: &model.BlockContentOfSmartblock{
-//				Smartblock: &model.BlockContentSmartblock{},
-//			},
-//		}),
-//	}).NewState()
-//
-//	if len(csvTable) != 0 {
-//		err := c.createTable(st, csvTable)
-//		if err != nil {
-//			return nil, nil, nil, err
-//		}
-//	}
-//
-//	details := converter.GetDetails(path)
-//	sn := &model.SmartBlockSnapshotBase{
-//		Blocks:        st.Blocks(),
-//		Details:       details,
-//		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
-//		Collections:   st.Store(),
-//		RelationLinks: st.GetRelationLinks(),
-//	}
-//
-//	snapshot := &converter.Snapshot{
-//		Id:       uuid.New().String(),
-//		SbType:   smartblock.SmartBlockTypePage,
-//		FileName: path,
-//		Snapshot: &pb.ChangeSnapshot{Data: sn},
-//	}
-//	return []string{snapshot.Id}, []*converter.Snapshot{snapshot}, nil, nil
-//}
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Content: &model.BlockContentOfSmartblock{
+				Smartblock: &model.BlockContentSmartblock{},
+			},
+		}),
+	}).NewState()
+
+	if len(csvTable) != 0 {
+		err := c.createTable(st, csvTable)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	details := converter.GetDetails(path)
+	sn := &model.SmartBlockSnapshotBase{
+		Blocks:        st.Blocks(),
+		Details:       details,
+		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
+		Collections:   st.Store(),
+		RelationLinks: st.GetRelationLinks(),
+	}
+
+	snapshot := &converter.Snapshot{
+		Id:       uuid.New().String(),
+		SbType:   smartblock.SmartBlockTypePage,
+		FileName: path,
+		Snapshot: &pb.ChangeSnapshot{Data: sn},
+	}
+	return []string{snapshot.Id}, []*converter.Snapshot{snapshot}, nil
+}
 
 func (c *TableStrategy) createTable(st *state.State, csvTable [][]string) error {
 	tableID, err := c.tableEditor.TableCreate(st, pb.RpcBlockTableCreateRequest{})
