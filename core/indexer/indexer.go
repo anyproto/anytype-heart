@@ -315,11 +315,11 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	if flags.fileKeys {
-		err = i.fileStore.RemoveEmpty()
+		err = i.fileStore.RemoveEmptyFileKeys()
 		if err != nil {
-			log.Errorf("reindex failed to RemoveEmpty filekeys: %v", err.Error())
+			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err.Error())
 		} else {
-			log.Infof("RemoveEmpty filekeys succeed")
+			log.Infof("RemoveEmptyFileKeys filekeys succeed")
 		}
 	}
 
