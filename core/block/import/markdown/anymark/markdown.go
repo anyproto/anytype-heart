@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	htmlconverter "github.com/JohannesKaufmann/html-to-markdown"
+	html2md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/JohannesKaufmann/html-to-markdown/plugin"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/yuin/goldmark"
@@ -20,7 +20,7 @@ import (
 
 var (
 	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
-	reWikiCode      = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
+	reWikiCode      = regexp.MustCompile(`<span\s*?>(\s*?)</span>`)
 
 	reWikiWbr = regexp.MustCompile(`<wbr[^>]*>`)
 )
@@ -65,7 +65,7 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
-	converter := htmlconverter.NewConverter("", true, &htmlconverter.Options{
+	converter := html2md.NewConverter("", true, &html2md.Options{
 		DisableEscaping:  true,
 		AllowHeaderBreak: true,
 		EmDelimiter:      "*",
@@ -91,101 +91,98 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
 
-func getCustomHTMLRules() []htmlconverter.Rule {
-	var rules []htmlconverter.Rule
-	strikethrough := htmlconverter.Rule{
-		Filter: []string{"span", "del"},
-		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
-			// If the span element has not the classname `bb_strike` return nil.
-			// That way the next rules will apply. In this case the commonmark rules.
-			// -> return nil -> next rule applies
-			if !selec.HasClass("bb_strike") {
-				return nil
-			}
-
-			// Trim spaces so that the following does NOT happen: `~ and cake~`.
-			// Because of the space it is not recognized as strikethrough.
-			// -> trim spaces at begin&end of string when inside strong/italic/...
-			content = strings.TrimSpace(content)
-			return htmlconverter.String("~" + content + "~")
+func getCustomHTMLRules() []html2md.Rule {
+	span := html2md.Rule{
+		Filter: []string{"span"},
+		Replacement: func(content string, selec *goquery.Selection, opt *html2md.Options) *string {
+			return html2md.String(content)
 		},
 	}
-	underscore := htmlconverter.Rule{
+
+	del := html2md.Rule{
+		Filter: []string{"del"},
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			content = strings.TrimSpace(content)
+			return html2md.String("~~" + content + "~~")
+		},
+	}
+
+	underscore := html2md.Rule{
 		Filter: []string{"u", "ins", "abbr"},
-		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, opt *html2md.Options) *string {
 			content = strings.TrimSpace(content)
-			return htmlconverter.String("<u>" + content + "</u>")
+			return html2md.String("<u>" + content + "</u>")
 		},
 	}
 
-	br := htmlconverter.Rule{
+	br := html2md.Rule{
 		Filter: []string{"br"},
-		Replacement: func(content string, selec *goquery.Selection, opt *htmlconverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, opt *html2md.Options) *string {
 			content = strings.TrimSpace(content)
-			return htmlconverter.String("\n" + content)
+			return html2md.String("\n" + content)
 		},
 	}
 
-	anohref := htmlconverter.Rule{
+	anohref := html2md.Rule{
 		Filter: []string{"a"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
 			content = strings.ReplaceAll(content, `\`, ``)
 			if _, exists := selec.Attr("href"); exists {
 				return nil
 			}
-			return htmlconverter.String(content)
+			return html2md.String(content)
 		},
 	}
 
-	simpleText := htmlconverter.Rule{
+	simpleText := html2md.Rule{
 		Filter: []string{"small", "sub", "sup", "caption"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			return htmlconverter.String(content)
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			return html2md.String(content)
 		},
 	}
 
-	blockquote := htmlconverter.Rule{
+	blockquote := html2md.Rule{
 		Filter: []string{"blockquote", "q"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			return htmlconverter.String("> " + strings.TrimSpace(content))
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			return html2md.String("> " + strings.TrimSpace(content))
 		},
 	}
 
-	italic := htmlconverter.Rule{
+	italic := html2md.Rule{
 		Filter: []string{"cite", "dfn", "address"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			return htmlconverter.String("*" + strings.TrimSpace(content) + "*")
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			return html2md.String("*" + strings.TrimSpace(content) + "*")
 		},
 	}
 
-	code := htmlconverter.Rule{
+	code := html2md.Rule{
 		Filter: []string{"samp", "var"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			return htmlconverter.String("`" + content + "`")
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			return html2md.String("`" + content + "`")
 		},
 	}
 
-	bdo := htmlconverter.Rule{
+	bdo := html2md.Rule{
 		Filter: []string{"bdo"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
 			runes := []rune(content)
 			for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 				runes[i], runes[j] = runes[j], runes[i]
 			}
-			return htmlconverter.String(string(runes))
+			return html2md.String(string(runes))
 		},
 	}
 
-	div := htmlconverter.Rule{
+	div := html2md.Rule{
 		Filter: []string{"hr"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
-			return htmlconverter.String("___")
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			return html2md.String("___")
 		},
 	}
 
-	img := htmlconverter.Rule{
+	img := html2md.Rule{
 		Filter: []string{"img"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
 			var (
 				src, title string
 				ok         bool
@@ -197,33 +194,32 @@ func getCustomHTMLRules() []htmlconverter.Rule {
 			title, _ = selec.Attr("alt")
 
 			if title != "" {
-				return htmlconverter.String("![" + title + "]" + "(" + src + ")")
+				return html2md.String("![" + title + "]" + "(" + src + ")")
 			}
-			return htmlconverter.String(src)
+			return html2md.String(src)
 		},
 	}
 
 	// Add header row to table to support tables without headers, because markdown doesn't parse tables without headers
-	table := htmlconverter.Rule{
+	table := html2md.Rule{
 		Filter: []string{"table"},
-		Replacement: func(content string, selec *goquery.Selection, options *htmlconverter.Options) *string {
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
 			node := selec.Children()
 			hasHeader, numberOfRows, numberOfCells := calculateTotalCellsAndRows(node)
 			if hasHeader {
-				return htmlconverter.String(content)
+				return html2md.String(content)
 			}
 
 			if numberOfRows == 0 {
 				return nil
 			}
 			headerRow := addHeaderRow(content, numberOfCells, numberOfRows)
-			return htmlconverter.String(headerRow)
+			return html2md.String(headerRow)
 		},
 	}
 
-	rules = append(rules, strikethrough, underscore, br, anohref,
-		simpleText, blockquote, italic, code, bdo, div, img, table)
-	return rules
+	return []html2md.Rule{span, del, underscore, br, anohref,
+		simpleText, blockquote, italic, code, bdo, div, img, table}
 }
 
 func addHeaderRow(content string, numberOfCells int, numberOfRows int) string {
