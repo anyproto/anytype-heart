@@ -119,9 +119,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	fileSyncService := filesync.New(eventService.Send)
 	fileStore := filestore.New()
 
+	datastoreProvider := clientds.New()
+
 	const fileWatcherUpdateInterval = 5 * time.Second
 	syncStatusService := syncstatus.New(
 		sbtProvider,
+		datastoreProvider,
 		spaceService,
 		coreService,
 		fileSyncService,
@@ -136,7 +139,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	indexerService := indexer.New(blockService, spaceService, fileService)
 
-	a.Register(clientds.New()).
+	a.Register(datastoreProvider).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).

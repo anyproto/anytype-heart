@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
@@ -44,6 +45,8 @@ func TestFileSync_AddFile(t *testing.T) {
 	require.NoError(t, err)
 	fileId := n.Cid().String()
 	spaceId := "spaceId"
+
+	fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
 
 	fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
 		{}, // We can use just empty struct here, because we don't use any fields
