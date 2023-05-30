@@ -31,10 +31,10 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	ds := database.New(nil)
-	databases, _, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import))
+	databases, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import))
 
 	assert.NotNil(t, databases)
-	assert.Len(t, databases.Snapshots, 1)
+	assert.Len(t, databases.Snapshots, 17) //1 database + 16 properties (name doesn't count)
 	assert.Nil(t, ce)
 }
 
@@ -324,7 +324,7 @@ func Test_GetPagesSuccess(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func Test_SearcheFailedRequest(t *testing.T) {
+func Test_SearchFailedRequest(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"object":"error","status":400,"code":"validation_error","message":"path failed validation: path.database_id should be a valid uuid"}`))

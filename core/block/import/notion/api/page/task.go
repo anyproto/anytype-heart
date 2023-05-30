@@ -178,8 +178,10 @@ func (pt *Task) retrieveRelation(ctx context.Context,
 		return nil, nil, err
 	}
 	relation := pt.getRelationSnapshot(id, key, propObject)
-	req.WriteToRelationsMap(propObject.GetID(), relation)
-	subObjectsSnapshots = append(subObjectsSnapshots, relation)
+	if relation != nil {
+		req.WriteToRelationsMap(propObject.GetID(), relation)
+		subObjectsSnapshots = append(subObjectsSnapshots, relation)
+	}
 	relationLink := &model.RelationLink{
 		Key:    id,
 		Format: propObject.GetFormat(),
@@ -188,6 +190,9 @@ func (pt *Task) retrieveRelation(ctx context.Context,
 }
 
 func (pt *Task) getRelationSnapshot(id string, key string, propObject property.Object) *model.SmartBlockSnapshotBase {
+	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
+		return nil
+	}
 	details := pt.getRelationDetails(id, key, propObject)
 	rel := &model.SmartBlockSnapshotBase{
 		Details:     details,

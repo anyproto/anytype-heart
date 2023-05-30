@@ -99,9 +99,9 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		RelationsIdsToAnytypeID:    relationsIdsToAnytypeID,
 	}
 	if convertError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, mapRequest, convertError
+		return &converter.Response{Snapshots: allSnapshots}, mapRequest, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, mapRequest, nil
+	return &converter.Response{Snapshots: allSnapshots}, mapRequest, convertError
 }
 
 func (ds *Service) makeDatabaseSnapshot(d Database, relationsIdsToAnytypeID map[string]*model.SmartBlockSnapshotBase, notionIdsToAnytype map[string]string, databaseNameToID map[string]string) ([]*converter.Snapshot, error) {

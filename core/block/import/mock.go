@@ -79,14 +79,13 @@ func (m *MockIDGetter) EXPECT() *MockIDGetterMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockIDGetter) Get(arg0 *session.Context, arg1 *converter.Snapshot, arg2 smartblock.SmartBlockType, arg3 time.Time, arg4 bool) (string, bool, treestorage.TreeStorageCreatePayload, error) {
+func (m *MockIDGetter) Get(arg0 *session.Context, arg1 *converter.Snapshot, arg2 smartblock.SmartBlockType, arg3 time.Time, arg4 bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(bool)
-	ret2, _ := ret[2].(treestorage.TreeStorageCreatePayload)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
+	ret1, _ := ret[1].(treestorage.TreeStorageCreatePayload)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Get indicates an expected call of Get.
