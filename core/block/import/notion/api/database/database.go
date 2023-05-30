@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"strings"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
@@ -65,57 +65,6 @@ type Database struct {
 
 func (p *Database) GetObjectType() string {
 	return ObjectType
-}
-
-func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
-	snapshots := makeSnapshotMapFromArray(databaseSnapshots)
-
-	databaseToObjects := make(map[string][]string, 0)
-	for _, p := range pages {
-		if p.Parent.DatabaseID != "" {
-			if parentID, ok := notionDatabaseIdsToAnytype[p.Parent.DatabaseID]; ok {
-				databaseToObjects[parentID] = append(databaseToObjects[parentID], notionPageIdsToAnytype[p.ID])
-			}
-		}
-	}
-	for _, d := range databases {
-		if d.Parent.DatabaseID != "" {
-			if parentID, ok := notionDatabaseIdsToAnytype[d.Parent.DatabaseID]; ok {
-				databaseToObjects[parentID] = append(databaseToObjects[parentID], notionDatabaseIdsToAnytype[d.ID])
-			}
-		}
-	}
-	for db, objects := range databaseToObjects {
-		addObjectToSnapshot(snapshots[db], objects)
-	}
-}
-
-func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots []*converter.Snapshot, pagesSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
-	allObjects := make([]string, 0, len(databaseSnapshots)+len(pagesSnapshots))
-
-	for _, snapshot := range databaseSnapshots {
-		if snapshot.SbType == sb.SmartBlockTypeSubObject {
-			continue
-		}
-		allObjects = append(allObjects, snapshot.Id)
-	}
-
-	for _, snapshot := range pagesSnapshots {
-		if snapshot.SbType == sb.SmartBlockTypeSubObject {
-			continue
-		}
-		allObjects = append(allObjects, snapshot.Id)
-	}
-
-	rootCollection := converter.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjects)
-	if err != nil {
-		return nil, err
-	}
-
-	databaseSnapshots = append(databaseSnapshots, rootCol)
-
-	return databaseSnapshots, nil
 }
 
 // GetDatabase makes snapshots from notion Database objects
@@ -263,6 +212,57 @@ func (ds *Service) provideSnapshot(d Database, st *state.State, detailsStruct *t
 		SbType:   sb.SmartBlockTypePage,
 	}
 	return id, converterSnapshot
+}
+
+func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
+	snapshots := makeSnapshotMapFromArray(databaseSnapshots)
+
+	databaseToObjects := make(map[string][]string, 0)
+	for _, p := range pages {
+		if p.Parent.DatabaseID != "" {
+			if parentID, ok := notionDatabaseIdsToAnytype[p.Parent.DatabaseID]; ok {
+				databaseToObjects[parentID] = append(databaseToObjects[parentID], notionPageIdsToAnytype[p.ID])
+			}
+		}
+	}
+	for _, d := range databases {
+		if d.Parent.DatabaseID != "" {
+			if parentID, ok := notionDatabaseIdsToAnytype[d.Parent.DatabaseID]; ok {
+				databaseToObjects[parentID] = append(databaseToObjects[parentID], notionDatabaseIdsToAnytype[d.ID])
+			}
+		}
+	}
+	for db, objects := range databaseToObjects {
+		addObjectToSnapshot(snapshots[db], objects)
+	}
+}
+
+func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots []*converter.Snapshot, pagesSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
+	allObjects := make([]string, 0, len(databaseSnapshots)+len(pagesSnapshots))
+
+	for _, snapshot := range databaseSnapshots {
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			continue
+		}
+		allObjects = append(allObjects, snapshot.Id)
+	}
+
+	for _, snapshot := range pagesSnapshots {
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			continue
+		}
+		allObjects = append(allObjects, snapshot.Id)
+	}
+
+	rootCollection := converter.NewRootCollection(ds.collectionService)
+	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjects)
+	if err != nil {
+		return nil, err
+	}
+
+	databaseSnapshots = append(databaseSnapshots, rootCol)
+
+	return databaseSnapshots, nil
 }
 
 func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*converter.Snapshot {

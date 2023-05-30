@@ -78,14 +78,10 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}
 	progress.SetTotal(int64(len(result.objectIDs)))
 	if cErr.IsEmpty() {
-		return &converter.Response{
-			Snapshots: result.snapshots,
-		}, nil
+		return &converter.Response{Snapshots: result.snapshots}, nil
 	}
 
-	return &converter.Response{
-		Snapshots: result.snapshots,
-	}, cErr
+	return &converter.Response{Snapshots: result.snapshots}, cErr
 }
 
 func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
