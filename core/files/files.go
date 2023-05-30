@@ -918,7 +918,6 @@ func (s *service) isDeleted(fileID string) (bool, error) {
 	return pbtypes.GetBool(d.GetDetails(), bundle.RelationKeyIsDeleted.String()), nil
 }
 
-// TODO: Touch the file to fire indexing
 func (s *service) FileAdd(ctx context.Context, options ...AddOption) (File, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
