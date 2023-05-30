@@ -53,7 +53,9 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
 		return nil, ce
 	}
-
+	if err = progress.TryStep(1); err != nil {
+		return nil, converter.NewFromError("", err)
+	}
 	if len(db) == 0 && len(pages) == 0 {
 		return nil, converter.NewFromError("", converter.ErrNoObjectsToImport)
 	}
