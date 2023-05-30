@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -101,22 +102,23 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	if c, ok := i.converters[req.Type.String()]; ok {
 		res, err := c.GetSnapshots(req, progress)
 		if len(err) != 0 {
-			allErrors.Merge(err)
-			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
-				return allErrors.Error()
+			e := getResultError(err)
+			if shouldReturnError(e, req) {
+				return e
 			}
+			allErrors.Merge(err)
 		}
 
 		if res == nil {
-			return fmt.Errorf("no files to import")
+			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 		}
 
 		if len(res.Snapshots) == 0 {
-			return fmt.Errorf("no files to import")
+			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 		}
 
 		i.createObjects(ctx, res, progress, req, allErrors)
-		return allErrors.Error()
+		return getResultError(allErrors)
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		if req.Snapshots != nil {
@@ -131,11 +133,20 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 				Snapshots: sn,
 			}
 			i.createObjects(ctx, res, progress, req, allErrors)
-			return allErrors.Error()
+			if !allErrors.IsEmpty() {
+				return getResultError(allErrors)
+			}
+			return nil
 		}
-		return fmt.Errorf("snapshots are empty")
+		return converter.ErrNoObjectsToImport
 	}
 	return fmt.Errorf("unknown import type %s", req.Type)
+}
+
+func shouldReturnError(e error, req *pb.RpcObjectImportRequest) bool {
+	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
+		e == converter.ErrNoObjectsToImport ||
+		e == converter.ErrCancel
 }
 
 func (i *Import) setupProgressBar(req *pb.RpcObjectImportRequest) process.Progress {
@@ -290,7 +301,8 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			allErrors["cancel error"] = err
+			wrappedError := errors.Wrap(converter.ErrCancel, err.Error())
+			allErrors["cancel error"] = wrappedError
 			pool.Stop()
 			return nil
 		}
@@ -309,4 +321,24 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {
 	return pb.RpcObjectImportListImportResponseType(pb.RpcObjectImportListImportResponseType_value[cType])
+}
+
+func getResultError(err converter.ConvertError) error {
+	if err.IsEmpty() {
+		return nil
+	}
+	var countNoObjectsToImport int
+	for _, e := range err {
+		switch {
+		case errors.Is(e, converter.ErrCancel):
+			return converter.ErrCancel
+		case errors.Is(e, converter.ErrNoObjectsToImport):
+			countNoObjectsToImport++
+		}
+	}
+	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
+	if countNoObjectsToImport == len(err) {
+		return converter.ErrNoObjectsToImport
+	}
+	return err.Error()
 }

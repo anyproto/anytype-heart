@@ -3,7 +3,12 @@ package converter
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/pkg/errors"
 )
+
+var ErrCancel = fmt.Errorf("import is canceled")
+var ErrNoObjectsToImport = fmt.Errorf("source path doesn't contain objects to import")
 
 type ConvertError map[string]error
 
@@ -17,6 +22,12 @@ func NewFromError(name string, initialError error) ConvertError {
 	ce.Add(name, initialError)
 
 	return ce
+}
+
+func NewCancelError(path string, err error) ConvertError {
+	wrappedError := errors.Wrap(ErrCancel, err.Error())
+	cancelError := NewFromError(path, wrappedError)
+	return cancelError
 }
 
 func (ce ConvertError) Add(objectName string, err error) {

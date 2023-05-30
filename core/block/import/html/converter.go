@@ -90,8 +90,7 @@ func (h *HTML) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
 	targetObjects := make([]string, 0)
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(p, err)
-			return nil, nil, cancelError
+			return nil, nil, converter.NewCancelError(p, err)
 		}
 		sn, to, err := h.handleImportPath(p, req.GetMode())
 		if err != nil {
@@ -118,6 +117,9 @@ func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
 		}
+	}
+	if len(readers) == 0 {
+		return nil, nil, converter.ErrNoObjectsToImport
 	}
 	snapshots := make([]*converter.Snapshot, 0, len(readers))
 	targetObjects := make([]string, 0, len(readers))
