@@ -54,7 +54,8 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	p.DisableLayouts()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	return nil
+
+	return p.updateObjects(smartblock.ApplyInfo{})
 
 }
 
