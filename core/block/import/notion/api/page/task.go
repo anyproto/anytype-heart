@@ -91,7 +91,9 @@ func (pt *Task) makeSnapshotFromPages(
 		}
 	}
 
-	snapshot := pt.provideSnapshot(request, notionBlocks, details, relationLinks)
+	request.Blocks = notionBlocks
+	resp := pt.blockService.MapNotionBlocksToAnytype(request)
+	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
 
 	return snapshot, subObjectsSnapshots, nil
 }
@@ -103,11 +105,9 @@ func (pt *Task) provideDetails(ctx context.Context, apiKey string, p Page, reque
 	return details, relations, relationLinks
 }
 
-func (pt *Task) provideSnapshot(request *block.MapRequest, notionBlocks []interface{}, details map[string]*types.Value, relationLinks []*model.RelationLink) *model.SmartBlockSnapshotBase {
-	request.Blocks = notionBlocks
-	resp := pt.blockService.MapNotionBlocksToAnytype(request)
+func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]*types.Value, relationLinks []*model.RelationLink) *model.SmartBlockSnapshotBase {
 	snapshot := &model.SmartBlockSnapshotBase{
-		Blocks:        resp.Blocks,
+		Blocks:        notionBlocks,
 		Details:       &types.Struct{Fields: details},
 		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
 		RelationLinks: relationLinks,
