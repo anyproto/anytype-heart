@@ -33,7 +33,6 @@ func (c CreateSubObjectRequest) GetDetails() *types.Struct {
 			bundle.RelationKeyType.String(): pbtypes.String(sbt),
 		},
 	}
-
 	return pbtypes.StructMerge(c.details, detailsType, false)
 }
 
@@ -172,41 +171,51 @@ func (ou *ObjectIDGetter) getAlreadyExistingSubObject(snapshot *converter.Snapsh
 		subObjectType = snapshot.Snapshot.Data.GetObjectTypes()[0]
 	}
 	if len(ids) == 0 && subObjectType == bundle.TypeKeyRelation.URL() {
-		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-		format := pbtypes.GetFloat64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-		ids, _, err = ou.objectStore.QueryObjectIds(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeyName.String(),
-					Value:       pbtypes.String(name),
-				},
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeyRelationFormat.String(),
-					Value:       pbtypes.Float64(format),
-				},
-			},
-		}, []sb.SmartBlockType{snapshot.SbType})
+		return ou.getExistingRelation(snapshot, ids)
 	}
 	if len(ids) == 0 && subObjectType == bundle.TypeKeyRelationOption.URL() {
-		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-		key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-		ids, _, err = ou.objectStore.QueryObjectIds(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeyName.String(),
-					Value:       pbtypes.String(name),
-				},
-				{
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					RelationKey: bundle.RelationKeyRelationKey.String(),
-					Value:       pbtypes.String(key),
-				},
-			},
-		}, []sb.SmartBlockType{snapshot.SbType})
+		return ou.getExistingRelationOption(snapshot, ids)
 	}
+	return ids, err
+}
+
+func (ou *ObjectIDGetter) getExistingRelation(snapshot *converter.Snapshot, ids []string) ([]string, error) {
+	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+	format := pbtypes.GetFloat64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyName.String(),
+				Value:       pbtypes.String(name),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationFormat.String(),
+				Value:       pbtypes.Float64(format),
+			},
+		},
+	}, []sb.SmartBlockType{snapshot.SbType})
+	return ids, err
+}
+
+func (ou *ObjectIDGetter) getExistingRelationOption(snapshot *converter.Snapshot, ids []string) ([]string, error) {
+	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyName.String(),
+				Value:       pbtypes.String(name),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Value:       pbtypes.String(key),
+			},
+		},
+	}, []sb.SmartBlockType{snapshot.SbType})
 	return ids, err
 }
 
