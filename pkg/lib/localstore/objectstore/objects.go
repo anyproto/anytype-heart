@@ -1500,9 +1500,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		return nil
 	}
 
-	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
-	// TODO should we remove it, because we can see user data in Graylog?
-	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(diff))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
