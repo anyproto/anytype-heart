@@ -27,40 +27,66 @@ func CopyBlock(in *model.Block) (out *model.Block) {
 	return
 }
 
-func CopyStruct(in *types.Struct) (out *types.Struct) {
-	if in == nil {
+func CopyStruct(s *types.Struct) *types.Struct {
+	if s == nil {
 		return nil
 	}
-	buf := bytesPool.Get().([]byte)
-	size := in.Size()
-	if cap(buf) < size {
-		buf = make([]byte, 0, size*2)
+	// this state shouldn't happen in the protobuf,
+	// but in Go wrapper it possible so lets copy the exact state
+	if s.Fields == nil {
+		return &types.Struct{}
 	}
-	size, _ = in.MarshalToSizedBuffer(buf[:size])
-	out = &types.Struct{}
-	_ = out.Unmarshal(buf[:size])
-	if out.Fields == nil && in.Fields != nil {
-		out.Fields = make(map[string]*types.Value)
+
+	copiedStruct := &types.Struct{
+		Fields: make(map[string]*types.Value, len(s.Fields)),
 	}
-	bytesPool.Put(buf)
-	return
+
+	for key, value := range s.Fields {
+		copiedStruct.Fields[key] = CopyVal(value)
+	}
+
+	return copiedStruct
 }
 
-func CopyVal(in *types.Value) (out *types.Value) {
-	if in == nil {
+func CopyVal(v *types.Value) *types.Value {
+	if v == nil {
 		return nil
 	}
-	buf := bytesPool.Get().([]byte)
-	size := in.Size()
-	if cap(buf) < size {
-		buf = make([]byte, 0, size*2)
-	}
-	size, _ = in.MarshalToSizedBuffer(buf[:size])
-	out = &types.Value{}
-	_ = out.Unmarshal(buf[:size])
 
-	bytesPool.Put(buf)
-	return
+	copiedValue := &types.Value{}
+
+	switch kind := v.Kind.(type) {
+	case *types.Value_NullValue:
+		copiedValue.Kind = &types.Value_NullValue{NullValue: kind.NullValue}
+	case *types.Value_NumberValue:
+		copiedValue.Kind = &types.Value_NumberValue{NumberValue: kind.NumberValue}
+	case *types.Value_StringValue:
+		copiedValue.Kind = &types.Value_StringValue{StringValue: kind.StringValue}
+	case *types.Value_BoolValue:
+		copiedValue.Kind = &types.Value_BoolValue{BoolValue: kind.BoolValue}
+	case *types.Value_StructValue:
+		copiedValue.Kind = &types.Value_StructValue{StructValue: CopyStruct(kind.StructValue)}
+	case *types.Value_ListValue:
+		copiedValue.Kind = &types.Value_ListValue{ListValue: CopyListVal(kind.ListValue)}
+	}
+
+	return copiedValue
+}
+
+func CopyListVal(lv *types.ListValue) *types.ListValue {
+	if lv == nil {
+		return nil
+	}
+
+	copiedListValue := &types.ListValue{
+		Values: make([]*types.Value, len(lv.Values)),
+	}
+
+	for i, value := range lv.Values {
+		copiedListValue.Values[i] = CopyVal(value)
+	}
+
+	return copiedListValue
 }
 
 func CopyRelation(in *model.Relation) (out *model.Relation) {
@@ -78,14 +104,6 @@ func CopyRelation(in *model.Relation) (out *model.Relation) {
 
 	bytesPool.Put(buf)
 	return out
-}
-
-func CopyRelationOptions(in []*model.RelationOption) (out []*model.RelationOption) {
-	out = make([]*model.RelationOption, len(in))
-	for i := range in {
-		out[i] = &*in[i]
-	}
-	return
 }
 
 func CopyLayout(in *model.Layout) (out *model.Layout) {
