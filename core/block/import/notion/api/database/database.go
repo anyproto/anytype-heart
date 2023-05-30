@@ -2,9 +2,13 @@ package database
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/globalsign/mgo/bson"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -133,9 +137,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 			return nil, nil, ce
 		}
 
-		id := uuid.New().String()
-
-		snapshot, err := ds.transformDatabase(d)
+		snapshot, err := ds.transformDatabase(d, relationsIdsToAnytypeID, notionIdsToAnytype, databaseNameToID)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, converter.NewFromError(d.ID, err)
 		}
@@ -143,33 +145,8 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		if err != nil {
 			continue
 		}
-		notionIdsToAnytype[d.ID] = id
-		databaseNameToID[d.ID] = pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())
-		for key, databaseProperty := range d.Properties {
-			details := ds.getRelationDetails(databaseProperty, key, id)
-			rel := &model.SmartBlockSnapshotBase{
-				Details:     details,
-				ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
-			}
-			sn := &converter.Snapshot{
-				Id:       addr.RelationKeyToIdPrefix + id,
-				Snapshot: &pb.ChangeSnapshot{Data: rel},
-				SbType:   sb.SmartBlockTypeSubObject,
-			}
-			allSnapshots = append(allSnapshots, sn)
-			databaseProperty.SetDetail(addr.RelationKeyToIdPrefix+id, snapshot.Details.Fields)
-			snapshot.RelationLinks = append(snapshot.RelationLinks, &model.RelationLink{
-				Key:    key,
-				Format: databaseProperty.GetFormat(),
-			})
-			relationsIdsToAnytypeID[databaseProperty.GetID()] = rel
-		}
-		allSnapshots = append(allSnapshots, &converter.Snapshot{
-			Id:       id,
-			FileName: d.URL,
-			Snapshot: &pb.ChangeSnapshot{Data: snapshot},
-			SbType:   sb.SmartBlockTypePage,
-		})
+
+		allSnapshots = append(allSnapshots, snapshot...)
 	}
 	mapRequest := &block.MapRequest{
 		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
@@ -193,7 +170,7 @@ func (ds *Service) getRelationDetails(propertyFormat property.DatabasePropertyHa
 	return details
 }
 
-func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase, error) {
+func (ds *Service) transformDatabase(d Database, relationsIdsToAnytypeID map[string]*model.SmartBlockSnapshotBase, notionIdsToAnytype map[string]string, databaseNameToID map[string]string) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
 	detailsStruct := &types.Struct{Fields: details}
@@ -202,8 +179,28 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 		return nil, err
 	}
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
-	for _, link := range st.GetRelationLinks() {
-		err := converter.AddRelationsToCollectionDataView(st, link)
+	snapshots := make([]*converter.Snapshot, 0)
+	for key, databaseProperty := range d.Properties {
+		relID := bson.NewObjectId().Hex()
+		relDetails := ds.getRelationDetails(databaseProperty, key, relID)
+		rel := &model.SmartBlockSnapshotBase{
+			Details:     relDetails,
+			ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
+		}
+		sn := &converter.Snapshot{
+			Id:       addr.RelationKeyToIdPrefix + relID,
+			Snapshot: &pb.ChangeSnapshot{Data: rel},
+			SbType:   sb.SmartBlockTypeSubObject,
+		}
+		snapshots = append(snapshots, sn)
+		databaseProperty.SetDetail(relID, st.Details().GetFields())
+		relationLinks := &model.RelationLink{
+			Key:    relID,
+			Format: databaseProperty.GetFormat(),
+		}
+		st.AddRelationLinks(relationLinks)
+		relationsIdsToAnytypeID[databaseProperty.GetID()] = rel
+		err := addRelationsToDataView(st, relationLinks)
 		if err != nil {
 			//TODO log here
 		}
@@ -216,7 +213,17 @@ func (ds *Service) transformDatabase(d Database) (*model.SmartBlockSnapshotBase,
 		RelationLinks: st.GetRelationLinks(),
 	}
 
-	return snapshot, nil
+	id := uuid.New().String()
+	converterSnapshot := &converter.Snapshot{
+		Id:       id,
+		FileName: d.URL,
+		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
+		SbType:   sb.SmartBlockTypePage,
+	}
+	notionIdsToAnytype[d.ID] = id
+	databaseNameToID[d.ID] = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyName.String())
+	snapshots = append(snapshots, converterSnapshot)
+	return snapshots, nil
 }
 
 func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
@@ -265,4 +272,32 @@ func addObjectToSnapshot(snapshots *converter.Snapshot, targetID []string) {
 	snapshots.Snapshot.Data.Collections = &types.Struct{
 		Fields: map[string]*types.Value{template.CollectionStoreKey: pbtypes.StringList(targetID)},
 	}
+}
+
+func addRelationsToDataView(st *state.State, rel *model.RelationLink) error {
+	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if dv, ok := bl.(simpleDataview.Block); ok {
+			if len(bl.Model().GetDataview().GetViews()) == 0 {
+				return false
+			}
+			for _, view := range bl.Model().GetDataview().GetViews() {
+				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+					Key:       rel.Key,
+					IsVisible: true,
+					Width:     192,
+				})
+				if err != nil {
+					return false
+				}
+			}
+			err := dv.AddRelation(&model.RelationLink{
+				Key:    rel.Key,
+				Format: rel.Format,
+			})
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
 }

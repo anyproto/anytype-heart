@@ -82,11 +82,17 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
 		for _, relation := range view.Relations {
-			if r, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+relation.Key]; ok {
+			if r, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+relation.Key]; ok && r != addr.RelationKeyToIdPrefix+relation.Key {
 				oldKey := relation.Key
-				relation.Key = strings.TrimPrefix(r, addr.RelationKeyToIdPrefix)
 				db := block.(dataview.Block)
-				db.ReplaceViewRelation(view.Id, oldKey, relation)
+				db.RemoveViewRelations(view.Id, []string{oldKey})
+				relation.Key = strings.TrimPrefix(r, addr.RelationKeyToIdPrefix)
+				db.AddViewRelation(view.Id, relation)
+				for _, relationLink := range db.Model().GetDataview().RelationLinks {
+					if relationLink.Key == oldKey {
+						relationLink.Key = strings.TrimPrefix(r, addr.RelationKeyToIdPrefix)
+					}
+				}
 			}
 		}
 	}

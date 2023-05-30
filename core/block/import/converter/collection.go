@@ -76,7 +76,7 @@ func (r *RootCollection) addRelations(st *state.State) error {
 			Format: model.RelationFormat_date,
 		},
 	} {
-		err := AddRelationsToCollectionDataView(st, relation)
+		err := replaceRelationsToCollectionDataView(st, relation)
 		if err != nil {
 			return err
 		}
@@ -95,14 +95,14 @@ func (r *RootCollection) getCreateCollectionRequest(collectionName string) *type
 	return detailsStruct
 }
 
-func AddRelationsToCollectionDataView(st *state.State, rel *model.RelationLink) error {
+func replaceRelationsToCollectionDataView(st *state.State, rel *model.RelationLink) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if dv, ok := bl.(simpleDataview.Block); ok {
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
 				return false
 			}
 			for _, view := range bl.Model().GetDataview().GetViews() {
-				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+				err := dv.ReplaceViewRelation(view.Id, rel.Key, &model.BlockContentDataviewRelation{
 					Key:       rel.Key,
 					IsVisible: true,
 					Width:     192,
@@ -110,13 +110,6 @@ func AddRelationsToCollectionDataView(st *state.State, rel *model.RelationLink) 
 				if err != nil {
 					return false
 				}
-			}
-			err := dv.AddRelation(&model.RelationLink{
-				Key:    rel.Key,
-				Format: rel.Format,
-			})
-			if err != nil {
-				return false
 			}
 		}
 		return true
