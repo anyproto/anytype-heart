@@ -207,6 +207,7 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.ChangeSnapshot, sbt
 		return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %v", name, err)
 	}
 	if snapshotWithType.SbType == model.SmartBlockType_AccountOld {
+		s = &pb.ChangeSnapshot{}
 		isOldAccount = true
 		if err = s.Unmarshal(data); err != nil {
 			return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %v", name, err)
