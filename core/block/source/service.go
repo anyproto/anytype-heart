@@ -31,7 +31,7 @@ func New() Service {
 }
 
 type Service interface {
-	NewSource(id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
+	NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(id string, s Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
@@ -81,7 +81,7 @@ func (b *BuildOptions) BuildTreeOpts() commonspace.BuildTreeOpts {
 	}
 }
 
-func (s *service) NewSource(id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
+func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
@@ -107,7 +107,6 @@ func (s *service) NewSource(id string, spaceID string, buildOptions BuildOptions
 		return staticSrc, nil
 	}
 
-	ctx := context.Background()
 	spc, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
 		return
