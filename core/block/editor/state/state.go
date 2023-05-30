@@ -81,6 +81,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
+	// todo: this fires debug logs regarding objectType
 	s.InjectDerivedDetails()
 	return s
 }

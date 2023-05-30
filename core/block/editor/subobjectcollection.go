@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -396,7 +397,14 @@ func SubState(st *state.State, collection string, fullId string, workspaceId str
 	for _, rk := range relationsToCopy {
 		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
 	}
-	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate)
+
+	restrictions := restriction.GetRestrictionsForSubobject(fullId)
+	subst.SetLocalDetail(bundle.RelationKeyRestrictions.String(), restrictions.ToPB())
+	subst.SetLocalDetail(bundle.RelationKeyIsReadonly.String(), pbtypes.Bool(false))
+	subst.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList([]string{}))
+
+	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate, bundle.RelationKeyLastModifiedBy)
+	subst.SetDetailAndBundledRelation(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySourceObject.String()}))
 	subst.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
 	return subst, nil
 }

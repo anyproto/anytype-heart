@@ -739,7 +739,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if changeId != "" || hasDetailsMsgs(msgs) {
+	if changeId != "" || hasDetailsMsgs(msgs, bundle.RelationKeyLastOpenedDate, bundle.RelationKeyLastModifiedDate, bundle.RelationKeyIsArchived, bundle.RelationKeyIsFavorite, bundle.RelationKeyRestrictions, bundle.RelationKeyInternalFlags) {
 		// if changeId is empty, it means that we didn't push any changes to the source
 		// but we can also have some local details changes, so check the events
 		sb.runIndexer(st)
@@ -885,8 +885,12 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
+	var hasPendingLocalDetails bool
 	// Consume pending details
 	err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+		if len(pending.GetFields()) > 0 {
+			hasPendingLocalDetails = true
+		}
 		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pending, false)
 		return nil, nil
 	})
@@ -906,6 +910,10 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	s.InjectLocalDetails(storedLocalScopeDetails)
+	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
+		// inject for both current and parent state
+		p.InjectLocalDetails(storedLocalScopeDetails)
+	}
 	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
 		return nil
 	}
@@ -1293,12 +1301,33 @@ func hasStoreChanges(changes []*pb.ChangeContent) bool {
 	return false
 }
 
-func hasDetailsMsgs(msgs []simple.EventMessage) bool {
+func hasDetailsMsgs(msgs []simple.EventMessage, ignoredKeys ...bundle.RelationKey) bool {
 	for _, msg := range msgs {
-		if msg.Msg.GetObjectDetailsSet() != nil ||
-			msg.Msg.GetObjectDetailsUnset() != nil ||
-			msg.Msg.GetObjectDetailsAmend() != nil {
-			return true
+		switch msg.Msg.Value.(type) {
+		case *pb.EventMessageValueOfObjectDetailsAmend:
+			for _, k := range msg.Msg.GetObjectDetailsAmend().GetDetails() {
+				if lo.Contains(ignoredKeys, bundle.RelationKey(k.Key)) {
+					continue
+				} else {
+					return true
+				}
+			}
+		case *pb.EventMessageValueOfObjectDetailsSet:
+			for k := range msg.Msg.GetObjectDetailsSet().GetDetails().GetFields() {
+				if lo.Contains(ignoredKeys, bundle.RelationKey(k)) {
+					continue
+				} else {
+					return true
+				}
+			}
+		case *pb.EventMessageValueOfObjectDetailsUnset:
+			for _, k := range msg.Msg.GetObjectDetailsUnset().GetKeys() {
+				if lo.Contains(ignoredKeys, bundle.RelationKey(k)) {
+					continue
+				} else {
+					return true
+				}
+			}
 		}
 	}
 	return false
