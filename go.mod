@@ -259,7 +259,7 @@ replace github.com/textileio/go-ds-badger3 => github.com/anyproto/go-ds-badger3 
 
 replace github.com/dgraph-io/ristretto => github.com/dgraph-io/ristretto v0.1.1-0.20220403145359-8e850b710d6d
 
-replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
+replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20230314114314-79ca02e55cc2
 
 replace github.com/textileio/go-threads => github.com/anyproto/go-threads v1.1.6-0.20221213174125-89c8cdb03fe8
 

@@ -5,6 +5,8 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 type Zip struct{}
@@ -22,6 +24,15 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string) (map[strin
 	zipName := strings.TrimSuffix(importPath, filepath.Ext(importPath))
 	for _, f := range r.File {
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
+			continue
+		}
+		if f.FileInfo() != nil && f.FileInfo().IsDir() {
+			dir := NewDirectory()
+			fr, e := dir.GetFileReaders(f.Name, expectedExt)
+			if e != nil {
+				log.Errorf("failed to get files from directory, %s", e)
+			}
+			files = lo.Assign(files, fr)
 			continue
 		}
 		ext := filepath.Ext(f.Name)

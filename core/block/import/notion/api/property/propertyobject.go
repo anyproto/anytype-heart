@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
@@ -109,6 +110,8 @@ func getPropertyObject(v interface{}) (Object, error) {
 			p = &LastEditedByItem{}
 		case PropertyConfigStatus:
 			p = &StatusItem{}
+		case PropertyConfigVerification:
+			p = &VerificationItem{}
 		default:
 			return nil, fmt.Errorf("unsupported property type: %s", rawProperty["type"].(string))
 		}
@@ -242,6 +245,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		}
 		if response.HasMore {
 			startCursor = response.NextCursor
+			time.Sleep(time.Millisecond * 5) // to avoid rate limit
 			continue
 		}
 		hasMore = false

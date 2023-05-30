@@ -53,6 +53,7 @@ const (
 	PropertyConfigLastEditedTime  ConfigType = "last_edited_time"
 	PropertyConfigLastEditedBy    ConfigType = "last_edited_by"
 	PropertyConfigStatus          ConfigType = "status"
+	PropertyConfigVerification    ConfigType = "verification"
 )
 
 type DetailSetter interface {
@@ -441,7 +442,7 @@ func (e *EmailItem) SetDetail(key string, details map[string]*types.Value) {
 }
 
 func (e *EmailItem) GetPropertyType() ConfigType {
-	return PropertyConfigTypeURL
+	return PropertyConfigTypeEmail
 }
 
 func (e *EmailItem) GetID() string {
@@ -692,4 +693,24 @@ func (r *RollupItem) GetFormat() model.RelationFormat {
 
 func (r *RollupItem) GetID() string {
 	return r.ID
+}
+
+type VerificationItem struct {
+	ID           string   `json:"id"`
+	Type         string   `json:"type"`
+	Verification struct{} `json:"verification"`
+}
+
+func (v VerificationItem) SetDetail(_ string, _ map[string]*types.Value) {}
+
+func (v VerificationItem) GetPropertyType() ConfigType {
+	return PropertyConfigVerification
+}
+
+func (v VerificationItem) GetID() string {
+	return v.ID
+}
+
+func (v VerificationItem) GetFormat() model.RelationFormat {
+	return model.RelationFormat_date
 }

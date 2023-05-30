@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -30,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const relationsLimit = 10
@@ -124,6 +124,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 			return nil, "", err
 		}
 	} else {
+		if st.Store() != nil {
+			oc.updateCollectionState(st, oldIDtoNew, relations, createdRelations)
+		}
 		respDetails = oc.updateExistingObject(ctx, st, oldIDtoNew, newID)
 	}
 	oc.setFavorite(snapshot, newID)
@@ -136,6 +139,16 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	return respDetails, newID, nil
+}
+
+func (oc *ObjectCreator) updateCollectionState(st *state.State,
+	oldIDtoNew map[string]string,
+	relations []*converter.Relation,
+	createdRelations map[string]RelationsIDToFormat) {
+	oc.updateLinksInCollections(st, oldIDtoNew)
+	if err := oc.addRelationsToCollectionDataView(st, relations, createdRelations); err != nil {
+		log.With("object", st.RootId()).Errorf("failed to add relations to object view: %s", err.Error())
+	}
 }
 
 func (oc *ObjectCreator) updateExistingObject(ctx *session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -342,25 +355,6 @@ func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
 	return filesToDelete
 }
 
-func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
-	var existedObjects []string
-	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
-		existedObjects = s.GetStoreSlice(template.CollectionStoreKey)
-		return nil
-	})
-	if err != nil {
-		log.Errorf("failed to get existed objects in collection, %s", err)
-	}
-	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
-	for i, id := range objectsInCollections {
-		if newID, ok := oldIDtoNew[id]; ok {
-			objectsInCollections[i] = newID
-		}
-	}
-	result := slice.Union(existedObjects, objectsInCollections)
-	st.UpdateStoreSlice(template.CollectionStoreKey, result)
-}
-
 func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
@@ -416,4 +410,25 @@ func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State
 		}
 		return true
 	})
+}
+
+func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
+	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
+		oc.mergeCollections(s.GetStoreSlice(template.CollectionStoreKey), st, oldIDtoNew)
+		return nil
+	})
+	if err != nil {
+		log.Errorf("failed to get existed objects in collection, %s", err)
+	}
+}
+
+func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.State, oldIDtoNew map[string]string) {
+	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
+	for i, id := range objectsInCollections {
+		if newID, ok := oldIDtoNew[id]; ok {
+			objectsInCollections[i] = newID
+		}
+	}
+	result := lo.Union(existedObjects, objectsInCollections)
+	st.UpdateStoreSlice(template.CollectionStoreKey, result)
 }

@@ -133,8 +133,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	relationsIdsToAnytypeID := make(map[string]*model.SmartBlockSnapshotBase, 0)
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			ce := converter.NewFromError(d.ID, err)
-			return nil, nil, ce
+			return nil, nil, nil, converter.NewFromError(d.ID, err)
 		}
 		snapshot, err := ds.makeDatabaseSnapshot(d, relationsIdsToAnytypeID, notionIdsToAnytype, databaseNameToID)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
