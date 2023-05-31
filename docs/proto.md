@@ -2234,7 +2234,7 @@ Front end to middleware request-to-create-an account
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
-| alphaInviteCode | [string](#string) |  |  |
+| alphaInviteCode | [string](#string) |  | DEPRECATED |
 
 
 
@@ -16404,6 +16404,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
 
 
 
