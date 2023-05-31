@@ -105,8 +105,9 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption // deprecated, used for migration
 
-	store           *types.Struct
-	storeKeyRemoved map[string]struct{}
+	store                   *types.Struct
+	storeKeyRemoved         map[string]struct{}
+	storeLastChangeIdByPath map[string]string
 
 	objectTypes          []string
 	objectTypesToMigrate []string
@@ -641,13 +642,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
-	if s.parent != nil && s.aggregatedOptionsByRelation != nil {
-		// todo: when we will have an external subscription for the aggregatedOptionsByRelation we should send events here for all relations
-		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
-	}
-
 	if s.parent != nil && s.store != nil {
 		s.parent.store = s.store
+	}
+
+	if s.parent != nil && s.storeLastChangeIdByPath != nil {
+		s.parent.storeLastChangeIdByPath = s.storeLastChangeIdByPath
 	}
 
 	if s.parent != nil && s.storeKeyRemoved != nil {
@@ -673,15 +673,11 @@ func (s *State) intermediateApply() {
 	if s.localDetails != nil {
 		s.parent.localDetails = s.localDetails
 	}
-	if s.aggregatedOptionsByRelation != nil {
-		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
-	}
+
 	if s.relationLinks != nil {
 		s.parent.relationLinks = s.relationLinks
 	}
-	if s.extraRelations != nil {
-		s.parent.extraRelations = s.extraRelations
-	}
+
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
 	}
@@ -690,6 +686,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.store != nil {
 		s.parent.store = s.store
+	}
+	if s.storeLastChangeIdByPath != nil {
+		s.parent.storeLastChangeIdByPath = s.storeLastChangeIdByPath
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
@@ -908,6 +907,32 @@ func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
 		}
 	}
 	return
+}
+
+func (s *State) setStoreChangeId(path string, changeId string) *State {
+	// do not copy map in purpose
+	p := s.StoreLastChangeById()
+	if p == nil {
+		p = map[string]string{}
+	}
+	p[path] = changeId
+	s.storeLastChangeIdByPath = p
+	return s
+}
+
+func (s *State) StoreLastChangeById() map[string]string {
+	if s.storeLastChangeIdByPath == nil && s.parent != nil {
+		return s.parent.StoreLastChangeById()
+	}
+	return s.storeLastChangeIdByPath
+}
+
+func (s *State) StoreChangeIdForPath(path string) string {
+	m := s.StoreLastChangeById()
+	if m == nil {
+		return ""
+	}
+	return m[path]
 }
 
 func (s *State) SetObjectType(objectType string) *State {
@@ -1130,6 +1155,9 @@ func (s *State) BlocksInit(st simple.DetailsService) {
 }
 
 func (s *State) CheckRestrictions() (err error) {
+	if s == nil {
+		fmt.Println()
+	}
 	if s.parent == nil {
 		return
 	}
@@ -1345,19 +1373,20 @@ func (s *State) Copy() *State {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
-		ctx:                  s.ctx,
-		blocks:               blocks,
-		rootId:               s.rootId,
-		details:              pbtypes.CopyStruct(s.Details()),
-		localDetails:         pbtypes.CopyStruct(s.LocalDetails()),
-		relationLinks:        s.GetRelationLinks(), // Get methods copy inside
-		extraRelations:       pbtypes.CopyRelations(s.OldExtraRelations()),
-		objectTypes:          objTypes,
-		objectTypesToMigrate: objTypesToMigrate,
-		noObjectType:         s.noObjectType,
-		migrationVersion:     s.migrationVersion,
-		store:                pbtypes.CopyStruct(s.Store()),
-		storeKeyRemoved:      storeKeyRemovedCopy,
+		ctx:                     s.ctx,
+		blocks:                  blocks,
+		rootId:                  s.rootId,
+		details:                 pbtypes.CopyStruct(s.Details()),
+		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
+		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
+		extraRelations:          pbtypes.CopyRelations(s.OldExtraRelations()),
+		objectTypes:             objTypes,
+		objectTypesToMigrate:    objTypesToMigrate,
+		noObjectType:            s.noObjectType,
+		migrationVersion:        s.migrationVersion,
+		store:                   pbtypes.CopyStruct(s.Store()),
+		storeLastChangeIdByPath: s.StoreLastChangeById(), // todo: do we need to copy it?
+		storeKeyRemoved:         storeKeyRemovedCopy,
 	}
 	return copy
 }
@@ -1579,19 +1608,24 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 	if store.Fields == nil {
 		store.Fields = map[string]*types.Value{}
 	}
+
+	pathJoined := strings.Join(path, collectionKeysRemovedSeparator)
 	if value != nil {
 		oldval := store.Fields[path[len(path)-1]]
 		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
+		s.setStoreChangeId(pathJoined, s.changeId)
 		// in case we have previously removed this key
-		delete(s.storeKeyRemoved, strings.Join(path, collectionKeysRemovedSeparator))
+		delete(s.storeKeyRemoved, pathJoined)
 		return
 	}
 	changed = true
 	delete(store.Fields, path[len(path)-1])
+
 	// store all keys that were removed, so we explicitly know this and can make an additional handling
 	s.storeKeyRemoved[strings.Join(path, collectionKeysRemovedSeparator)] = struct{}{}
 	// cleaning empty structs from collection to avoid empty pb values
+	s.setStoreChangeId(pathJoined, s.changeId)
 	idx := len(path) - 2
 	for len(store.Fields) == 0 && idx >= 0 {
 		delete(storeStack[idx].Fields, path[idx])
