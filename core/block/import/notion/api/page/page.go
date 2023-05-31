@@ -108,7 +108,7 @@ func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcOb
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			pool.Stop()
-			return nil, nil, converter.NewFromError("cancel error", err)
+			return nil, nil, converter.NewCancelError("cancel error", err)
 		}
 		res := r.(*Result)
 		if res.ce != nil {
@@ -156,7 +156,7 @@ func (ds *Service) extractTitleFromPages(pages []Page) map[string]string {
 func (ds *Service) createIDsForPages(pages []Page, progress process.Progress, notionPagesIdsToAnytype map[string]string) converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
-			return converter.NewFromError(p.ID, err)
+			return converter.NewCancelError(p.ID, err)
 		}
 
 		notionPagesIdsToAnytype[p.ID] = uuid.New().String()

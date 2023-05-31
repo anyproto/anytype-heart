@@ -102,8 +102,7 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	result := &Result{}
 	for _, p := range params.GetPath() {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(p, err)
-			return nil, cancelError
+			return nil, converter.NewCancelError(p, err)
 		}
 		pathResult := c.handlePath(req, p, cErr, str)
 		if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
