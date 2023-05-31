@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
@@ -30,7 +31,10 @@ type ctxKey int
 var errAppIsNotRunning = errors.New("app is not running")
 
 const (
-	optsKey ctxKey = iota
+	optsKey                  ctxKey = iota
+	derivedObjectLoadTimeout        = time.Minute * 30
+	objectLoadTimeout               = time.Minute * 3
+	concurrentTrees                 = 10
 )
 
 type treeCreateCache struct {
@@ -107,6 +111,26 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 	return sb.(source.ObjectTreeProvider).Tree(), nil
 }
 
+func (s *Service) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
+	s.syncerLock.Lock()
+	defer s.syncerLock.Unlock()
+	s.syncer = newTreeSyncer(spaceId, objectLoadTimeout, concurrentTrees, treeManager)
+	if s.syncStarted {
+		log.Warn("creating tree syncer after run")
+		s.syncer.Run()
+	}
+	return s.syncer
+}
+
+func (s *Service) StartSync() {
+	s.syncerLock.Lock()
+	defer s.syncerLock.Unlock()
+	s.syncStarted = true
+	if s.syncer != nil {
+		s.syncer.Run()
+	}
+}
+
 func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartblock.SmartBlock, err error) {
 	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
 		opts.spaceId = spaceId
@@ -124,6 +148,11 @@ func (s *Service) GetAccountTree(ctx context.Context, id string) (tr objecttree.
 }
 
 func (s *Service) GetAccountObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, objectLoadTimeout)
+		defer cancel()
+	}
 	return s.GetObject(ctx, s.clientService.AccountId(), id)
 }
 
@@ -337,7 +366,8 @@ func (s *Service) getDerivedObject(
 		id     = payload.RootRawChange.Id
 	)
 	// timing out when getting objects from remote
-	ctx, cancel = context.WithTimeout(ctx, time.Minute)
+	// here we set very long timeout, because we must load these documents
+	ctx, cancel = context.WithTimeout(ctx, derivedObjectLoadTimeout)
 	ctx = context.WithValue(ctx,
 		optsKey,
 		cacheOpts{

@@ -46,12 +46,12 @@ const (
 	// ForceThreadsObjectsReindexCounter reindex thread-based objects
 	ForceThreadsObjectsReindexCounter int32 = 8
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
-	ForceFilesReindexCounter int32 = 10 //
+	ForceFilesReindexCounter int32 = 11 //
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 40
+	ForceIdxRebuildCounter int32 = 41
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -61,7 +61,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 var (
-	ftIndexInterval         = time.Minute
+	ftIndexInterval         = 10 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
 )
 
@@ -74,6 +74,7 @@ func New(
 		picker:       picker,
 		spaceService: spaceService,
 		fileService:  fileService,
+		indexedFiles: &sync.Map{},
 	}
 }
 
@@ -91,6 +92,10 @@ type subObjectCreator interface {
 	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
 
+type syncStarter interface {
+	StartSync()
+}
+
 type indexer struct {
 	store            objectstore.ObjectStore
 	fileStore        filestore.FileStore
@@ -99,6 +104,7 @@ type indexer struct {
 	picker           block.Picker
 	ftsearch         ftsearch.FTSearch
 	subObjectCreator subObjectCreator
+	syncStarter      syncStarter
 	fileService      files.Service
 
 	quit       chan struct{}
@@ -109,6 +115,8 @@ type indexer struct {
 
 	typeProvider typeprovider.SmartBlockTypeProvider
 	spaceService space.Service
+
+	indexedFiles *sync.Map
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -121,6 +129,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
+	i.syncStarter = app.MustComponent[syncStarter](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -256,10 +265,22 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	}
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
-		err = i.store.AddToIndexQueue(id)
-		if err != nil {
-			log.With("id", id).Error(err.Error())
-		}
+		go func(id string) {
+			// Deduplicate
+			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
+			if ok {
+				return
+			}
+			// file's hash is id
+			err = i.reindexDoc(ctx, id)
+			if err != nil {
+				log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
+			}
+			err = i.store.AddToIndexQueue(id)
+			if err != nil {
+				log.With("id", id).Error(err.Error())
+			}
+		}(id)
 	}
 }
 
@@ -353,6 +374,9 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	if err != nil {
 		return err
 	}
+	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
+	// due to parallel load which can overload the stream
+	i.syncStarter.StartSync()
 
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
@@ -404,15 +428,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
-		}
-		fileIDs, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
-		for _, fileID := range fileIDs {
-			if addErr := i.fileService.AddToSyncQueue(fileID); addErr != nil {
-				log.Errorf("failed to add file %s to sync queue: %s", fileID, addErr.Error())
-			}
-		}
-		if err != nil {
-			return fmt.Errorf("get all file ids: %w", err)
 		}
 	}
 	if flags.bundledRelations {
@@ -554,22 +569,6 @@ func (i *indexer) saveLatestChecksums() error {
 	return i.store.SaveChecksums(&checksums)
 }
 
-func (i *indexer) saveLatestCounters() error {
-	// todo: add layout indexing when needed
-	checksums := model.ObjectStoreChecksums{
-		BundledObjectTypes:               bundle.TypeChecksum,
-		BundledRelations:                 bundle.RelationChecksum,
-		BundledTemplates:                 i.btHash.Hash(),
-		ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
-		FilesForceReindexCounter:         ForceFilesReindexCounter,
-		IdxRebuildCounter:                ForceIdxRebuildCounter,
-		FulltextRebuild:                  ForceFulltextIndexCounter,
-		BundledObjects:                   ForceBundledObjectsReindexCounter,
-		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-	}
-	return i.store.SaveChecksums(&checksums)
-}
-
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
 	spc, err := i.spaceService.AccountSpace(context.Background())
@@ -615,7 +614,6 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 }
 
 func (i *indexer) reindexDoc(ctx context.Context, id string) error {
-	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	err := block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
 		d := sb.GetDocInfo()
 		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
@@ -637,6 +635,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
+	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, id)
 		if err != nil {

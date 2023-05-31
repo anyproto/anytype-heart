@@ -37,7 +37,7 @@ type FileSync interface {
 	SyncStatus() (ss SyncStatus, err error)
 	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
 	HasUpload(spaceId, fileId string) (ok bool, err error)
-
+	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
 	app.ComponentRunnable
 }
 

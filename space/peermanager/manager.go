@@ -3,11 +3,11 @@ package peermanager
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/space/peerstore"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/anytype-heart/space/peerstore"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"storj.io/drpc"
@@ -27,7 +27,7 @@ func (n *clientPeerManager) init() {
 }
 
 func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *spacesyncproto.ObjectSyncMessage) (err error) {
-	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
+	ctx = logger.CtxWithFields(ctx, logger.CtxGetFields(ctx)...)
 	var drpcMsg drpc.Message
 	drpcMsg = msg
 	if msg.ReplyId != "" || msg.RequestId != "" {
@@ -40,7 +40,7 @@ func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *sp
 }
 
 func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.ObjectSyncMessage) (err error) {
-	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
+	ctx = logger.CtxWithFields(ctx, logger.CtxGetFields(ctx)...)
 	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
 		return n.getStreamResponsiblePeers(ctx)
 	})

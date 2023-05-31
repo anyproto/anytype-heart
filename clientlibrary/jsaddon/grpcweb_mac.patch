@@ -3,9 +3,9 @@ IDEA additional info:
 Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
 <+>UTF-8
 ===================================================================
-diff --git a/grpc-web/javascript/net/grpc/web/generator/Makefile b/grpc-web/javascript/net/grpc/web/generator/Makefile
---- a/grpc-web/javascript/net/grpc/web/generator/Makefile	
-+++ b/grpc-web/javascript/net/grpc/web/generator/Makefile	
+diff --git a/deps/grpc-web/javascript/net/grpc/web/generator/Makefile b/deps/grpc-web/javascript/net/grpc/web/generator/Makefile
+--- a/deps/grpc-web/javascript/net/grpc/web/generator/Makefile
++++ b/deps/grpc-web/javascript/net/grpc/web/generator/Makefile
 @@ -13,9 +13,9 @@
  # limitations under the License.
  

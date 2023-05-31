@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -149,6 +150,10 @@ type Service struct {
 
 	fileSync    filesync.FileSync
 	fileService files.Service
+	// TODO: move all this into separate treecache component or something like this
+	syncer      *treeSyncer
+	syncStarted bool
+	syncerLock  sync.Mutex
 }
 
 func (s *Service) Name() string {
