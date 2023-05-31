@@ -429,15 +429,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		if err != nil {
 			return err
 		}
-		// fileIDs, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
-		// if err != nil {
-		// 	return fmt.Errorf("failed to get file ids: %w", err)
-		// }
-		// for _, id := range fileIDs {
-		// 	if err := i.fileService.AddToSyncQueue(id); err != nil {
-		// 		log.With("fileID", id).Errorf("failed to add file to sync queue: %s", err)
-		// 	}
-		// }
 	}
 	if flags.bundledRelations {
 		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledRelations, indexesWereRemoved, smartblock.SmartBlockTypeBundledRelation)
