@@ -113,10 +113,13 @@ func (f *ftSearch) Index(doc SearchDoc) (err error) {
 }
 
 func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
+	if len(docs) == 0 {
+		return nil
+	}
 	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
 	b := f.index.NewBatch()
+	log.Errorf("index %d docs", len(docs))
 	for _, doc := range docs {
-
 		doc.TitleNoTerms = doc.Title
 		doc.TextNoTerms = doc.Text
 		if err := b.Index(doc.Id, doc); err != nil {
