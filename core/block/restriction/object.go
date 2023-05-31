@@ -178,7 +178,9 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	if hasLayout {
 		switch layout {
 		case model.ObjectType_objectType, model.ObjectType_relation:
-			return GetRestrictionsForSubobject(rh.Id())
+			if rh.Type() == model.SmartBlockType_SubObject {
+				return GetRestrictionsForSubobject(rh.Id())
+			}
 		}
 	}
 
