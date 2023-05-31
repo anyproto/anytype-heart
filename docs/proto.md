@@ -466,6 +466,19 @@
     - [Rpc.BlockVideo.SetWidth.Request](#anytype-Rpc-BlockVideo-SetWidth-Request)
     - [Rpc.BlockVideo.SetWidth.Response](#anytype-Rpc-BlockVideo-SetWidth-Response)
     - [Rpc.BlockVideo.SetWidth.Response.Error](#anytype-Rpc-BlockVideo-SetWidth-Response-Error)
+    - [Rpc.BlockWidget](#anytype-Rpc-BlockWidget)
+    - [Rpc.BlockWidget.SetLayout](#anytype-Rpc-BlockWidget-SetLayout)
+    - [Rpc.BlockWidget.SetLayout.Request](#anytype-Rpc-BlockWidget-SetLayout-Request)
+    - [Rpc.BlockWidget.SetLayout.Response](#anytype-Rpc-BlockWidget-SetLayout-Response)
+    - [Rpc.BlockWidget.SetLayout.Response.Error](#anytype-Rpc-BlockWidget-SetLayout-Response-Error)
+    - [Rpc.BlockWidget.SetLimit](#anytype-Rpc-BlockWidget-SetLimit)
+    - [Rpc.BlockWidget.SetLimit.Request](#anytype-Rpc-BlockWidget-SetLimit-Request)
+    - [Rpc.BlockWidget.SetLimit.Response](#anytype-Rpc-BlockWidget-SetLimit-Response)
+    - [Rpc.BlockWidget.SetLimit.Response.Error](#anytype-Rpc-BlockWidget-SetLimit-Response-Error)
+    - [Rpc.BlockWidget.SetTargetId](#anytype-Rpc-BlockWidget-SetTargetId)
+    - [Rpc.BlockWidget.SetTargetId.Request](#anytype-Rpc-BlockWidget-SetTargetId-Request)
+    - [Rpc.BlockWidget.SetTargetId.Response](#anytype-Rpc-BlockWidget-SetTargetId-Response)
+    - [Rpc.BlockWidget.SetTargetId.Response.Error](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
@@ -992,6 +1005,9 @@
     - [Rpc.BlockText.SetText.Response.Error.Code](#anytype-Rpc-BlockText-SetText-Response-Error-Code)
     - [Rpc.BlockVideo.SetName.Response.Error.Code](#anytype-Rpc-BlockVideo-SetName-Response-Error-Code)
     - [Rpc.BlockVideo.SetWidth.Response.Error.Code](#anytype-Rpc-BlockVideo-SetWidth-Response-Error-Code)
+    - [Rpc.BlockWidget.SetLayout.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLayout-Response-Error-Code)
+    - [Rpc.BlockWidget.SetLimit.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code)
+    - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
@@ -1591,6 +1607,10 @@
 | BlockTableRowListClean | [Rpc.BlockTable.RowListClean.Request](#anytype-Rpc-BlockTable-RowListClean-Request) | [Rpc.BlockTable.RowListClean.Response](#anytype-Rpc-BlockTable-RowListClean-Response) |  |
 | BlockTableColumnListFill | [Rpc.BlockTable.ColumnListFill.Request](#anytype-Rpc-BlockTable-ColumnListFill-Request) | [Rpc.BlockTable.ColumnListFill.Response](#anytype-Rpc-BlockTable-ColumnListFill-Response) |  |
 | BlockTableSort | [Rpc.BlockTable.Sort.Request](#anytype-Rpc-BlockTable-Sort-Request) | [Rpc.BlockTable.Sort.Response](#anytype-Rpc-BlockTable-Sort-Response) |  |
+| BlockCreateWidget | [Rpc.Block.CreateWidget.Request](#anytype-Rpc-Block-CreateWidget-Request) | [Rpc.Block.CreateWidget.Response](#anytype-Rpc-Block-CreateWidget-Response) | Widget commands *** |
+| BlockWidgetSetTargetId | [Rpc.BlockWidget.SetTargetId.Request](#anytype-Rpc-BlockWidget-SetTargetId-Request) | [Rpc.BlockWidget.SetTargetId.Response](#anytype-Rpc-BlockWidget-SetTargetId-Response) |  |
+| BlockWidgetSetLayout | [Rpc.BlockWidget.SetLayout.Request](#anytype-Rpc-BlockWidget-SetLayout-Request) | [Rpc.BlockWidget.SetLayout.Response](#anytype-Rpc-BlockWidget-SetLayout-Response) |  |
+| BlockWidgetSetLimit | [Rpc.BlockWidget.SetLimit.Request](#anytype-Rpc-BlockWidget-SetLimit-Request) | [Rpc.BlockWidget.SetLimit.Response](#anytype-Rpc-BlockWidget-SetLimit-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -1599,7 +1619,6 @@
 | BlockRelationAdd | [Rpc.BlockRelation.Add.Request](#anytype-Rpc-BlockRelation-Add-Request) | [Rpc.BlockRelation.Add.Response](#anytype-Rpc-BlockRelation-Add-Response) |  |
 | BlockDivListSetStyle | [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request) | [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response) |  |
 | BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
-| BlockCreateWidget | [Rpc.Block.CreateWidget.Request](#anytype-Rpc-Block-CreateWidget-Request) | [Rpc.Block.CreateWidget.Response](#anytype-Rpc-Block-CreateWidget-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
@@ -8368,6 +8387,193 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockVideo.SetWidth.Response.Error.Code](#anytype-Rpc-BlockVideo-SetWidth-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget"></a>
+
+### Rpc.BlockWidget
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout"></a>
+
+### Rpc.BlockWidget.SetLayout
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout-Request"></a>
+
+### Rpc.BlockWidget.SetLayout.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| layout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout-Response"></a>
+
+### Rpc.BlockWidget.SetLayout.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetLayout.Response.Error](#anytype-Rpc-BlockWidget-SetLayout-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout-Response-Error"></a>
+
+### Rpc.BlockWidget.SetLayout.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetLayout.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLayout-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit"></a>
+
+### Rpc.BlockWidget.SetLimit
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Request"></a>
+
+### Rpc.BlockWidget.SetLimit.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| limit | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Response"></a>
+
+### Rpc.BlockWidget.SetLimit.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetLimit.Response.Error](#anytype-Rpc-BlockWidget-SetLimit-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Response-Error"></a>
+
+### Rpc.BlockWidget.SetLimit.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetLimit.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId"></a>
+
+### Rpc.BlockWidget.SetTargetId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Request"></a>
+
+### Rpc.BlockWidget.SetTargetId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Response"></a>
+
+### Rpc.BlockWidget.SetTargetId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetTargetId.Response.Error](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Response-Error"></a>
+
+### Rpc.BlockWidget.SetTargetId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -15867,6 +16073,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetLayout.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetLimit.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetTargetId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

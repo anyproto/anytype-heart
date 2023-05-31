@@ -57,6 +57,11 @@ func (b *block) Diff(ob simple.Block) (msgs []simple.EventMessage, err error) {
 		changes.Layout = &pb.EventBlockSetWidgetLayout{Value: other.content.Layout}
 	}
 
+	if b.content.Limit != other.content.Limit {
+		hasChanges = true
+		changes.Limit = &pb.EventBlockSetWidgetLimit{Value: other.content.Limit}
+	}
+
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetWidget{BlockSetWidget: changes}}})
 	}

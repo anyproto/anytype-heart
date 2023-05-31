@@ -5107,6 +5107,80 @@ message Rpc {
         }
     }
 
+    message BlockWidget {
+        message SetTargetId {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                string targetId = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message SetLayout {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                anytype.model.Block.Content.Widget.Layout layout = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message SetLimit {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                int32 limit = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+    }
+
     message Debug {
 
         message TreeInfo {
