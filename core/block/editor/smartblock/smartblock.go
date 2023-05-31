@@ -686,7 +686,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
 			// means we have only local details changed, so lets index but skip full text
-			sb.runIndexer(st, SkipFullText)
+			sb.runIndexer(st, SkipFullTextIfHeadsNotChanged)
 		} else {
 			// we may skip indexing in case we are sure that we have previously indexed the same version of object
 			sb.runIndexer(st, SkipIfHeadsNotChanged)
@@ -1348,8 +1348,8 @@ func hasDetailsMsgs(msgs []simple.EventMessage, ignoredKeys ...bundle.RelationKe
 }
 
 type IndexOptions struct {
-	SkipIfHeadsNotChanged bool
-	SkipFullText          bool
+	SkipIfHeadsNotChanged         bool
+	SkipFullTextIfHeadsNotChanged bool
 }
 
 type IndexOption func(*IndexOptions)
@@ -1358,6 +1358,6 @@ func SkipIfHeadsNotChanged(o *IndexOptions) {
 	o.SkipIfHeadsNotChanged = true
 }
 
-func SkipFullText(o *IndexOptions) {
-	o.SkipFullText = true
+func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
+	o.SkipFullTextIfHeadsNotChanged = true
 }

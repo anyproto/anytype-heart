@@ -210,15 +210,20 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		return nil
 	}
 
+	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
+	if err != nil {
+		log.With("thread", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
+	}
+
 	if opts.SkipIfHeadsNotChanged {
-		lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
-		if err != nil {
-			log.With("thread", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
+		if headHashToIndex == "" {
+			log.With("thread", info.Id).Errorf("heads hash is empty")
 		} else if lastIndexedHash == headHashToIndex {
 			log.With("thread", info.Id).Debugf("heads not changed, skipping indexing")
 			return nil
 		}
 	}
+
 	details := info.State.CombinedDetails()
 	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
@@ -241,7 +246,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
 		}
 
-		if !opts.SkipFullText {
+		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			if err := i.store.AddToIndexQueue(info.Id); err != nil {
 				log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
 			} else {
