@@ -49,7 +49,7 @@ jobs:
           cd open
           python3 tools/generate.py --platform golang
           cd ..
-          sudo gem install license_finder
+          gem install license_finder
           license_finder inherited_decisions add open/decisions.yml
           license_finder --enabled-package-managers gomodules
       - name: Generate mocks
