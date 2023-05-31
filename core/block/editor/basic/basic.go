@@ -393,10 +393,9 @@ func (bs *basic) FeaturedRelationAdd(ctx *session.Context, relations ...string) 
 	copy(frc, fr)
 	for _, r := range relations {
 		if slice.FindPos(frc, r) == -1 {
-			// special cases
-			switch r {
-			case bundle.RelationKeyDescription.String():
-				// todo: looks like it's not ok to ise templates here but it has a lot of logic inside
+			// special case
+			if r == bundle.RelationKeyDescription.String() {
+				// todo: looks like it's not ok to use templates here but it has a lot of logic inside
 				template.WithForcedDescription(s)
 			}
 			frc = append(frc, r)
