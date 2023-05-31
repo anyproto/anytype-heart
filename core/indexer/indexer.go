@@ -272,13 +272,13 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 				return
 			}
 			// file's hash is id
-			err = i.reindexDoc(ctx, id)
-			if err != nil {
-				log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
+			idxErr := i.reindexDoc(ctx, id)
+			if idxErr != nil {
+				log.With("id", id).Errorf("failed to reindex file: %s", idxErr.Error())
 			}
-			err = i.store.AddToIndexQueue(id)
-			if err != nil {
-				log.With("id", id).Error(err.Error())
+			idxErr = i.store.AddToIndexQueue(id)
+			if idxErr != nil {
+				log.With("id", id).Error(idxErr.Error())
 			}
 		}(id)
 	}

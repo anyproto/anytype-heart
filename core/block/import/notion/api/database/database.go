@@ -75,7 +75,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, nil, converter.NewFromError(d.ID, err)
+			return nil, nil, nil, converter.NewCancelError(d.ID, err)
 		}
 
 		id := uuid.New().String()
