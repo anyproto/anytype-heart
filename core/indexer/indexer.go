@@ -51,7 +51,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 41
+	ForceIdxRebuildCounter int32 = 42
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -429,6 +429,15 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		if err != nil {
 			return err
 		}
+		// fileIDs, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
+		// if err != nil {
+		// 	return fmt.Errorf("failed to get file ids: %w", err)
+		// }
+		// for _, id := range fileIDs {
+		// 	if err := i.fileService.AddToSyncQueue(id); err != nil {
+		// 		log.With("fileID", id).Errorf("failed to add file to sync queue: %s", err)
+		// 	}
+		// }
 	}
 	if flags.bundledRelations {
 		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledRelations, indexesWereRemoved, smartblock.SmartBlockTypeBundledRelation)

@@ -80,13 +80,19 @@ func (s *fileWatcher) loadFilesToWatch() error {
 	})
 }
 
-func (s *fileWatcher) run() error {
+func (s *fileWatcher) init() error {
+	// Init badger here because some services will call Watch before file watcher started
+	// and Watch writes fileID to badger
 	db, err := s.dbProvider.SpaceStorage()
 	if err != nil {
 		return fmt.Errorf("get badger from provider: %w", err)
 	}
 	s.badger = db
-	err = s.loadFilesToWatch()
+	return nil
+}
+
+func (s *fileWatcher) run() error {
+	err := s.loadFilesToWatch()
 	if err != nil {
 		return fmt.Errorf("load files to watch: %w", err)
 	}
@@ -100,11 +106,7 @@ func (s *fileWatcher) run() error {
 				return
 			case key := <-s.updateCh:
 				if err := s.updateFileStatus(ctx, key); err != nil {
-					log.Error("check file",
-						zap.String("spaceID", key.spaceID),
-						zap.String("fileID", key.fileID),
-						zap.Error(err),
-					)
+					log.With("spaceID", key.spaceID, "fileID", key.fileID).Errorf("check file: %s", err)
 				}
 			}
 		}
