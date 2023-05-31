@@ -1235,6 +1235,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
+	// todo: heads in source and the state may be inconsistent?
 	heads := sb.source.Heads()
 	if len(heads) == 0 {
 		lastChangeId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyLastChangeId.String())
