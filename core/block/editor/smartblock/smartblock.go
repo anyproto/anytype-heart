@@ -685,7 +685,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
-			sb.runIndexer(st, false)
+			// means we have only local details changed, so lets index but skip full text
+			sb.runIndexer(st, SkipFullText)
+		} else {
+			// we may skip indexing in case we are sure that we have previously indexed the same version of object
+			sb.runIndexer(st, SkipIfHeadsNotChanged)
 		}
 		return nil
 	}
@@ -739,12 +743,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	var skipIfHeadsNotChanged = false
 	if changeId == "" && len(msgs) == 0 {
-		skipIfHeadsNotChanged = true
+		// means we probably
+		sb.runIndexer(st, SkipIfHeadsNotChanged)
+	} else {
+		sb.runIndexer(st)
 	}
-
-	sb.runIndexer(st, skipIfHeadsNotChanged)
 
 	afterPushChangeTime := time.Now()
 	if sendEvent {
@@ -997,7 +1001,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
-	sb.runIndexer(s, false)
+	sb.runIndexer(s)
 	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
 
 	return nil
@@ -1027,7 +1031,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
-	sb.runIndexer(sb.Doc.(*state.State), false)
+	sb.runIndexer(sb.Doc.(*state.State))
 	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
 	return nil
 }
@@ -1248,12 +1252,9 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	}
 }
 
-func (sb *smartBlock) runIndexer(s *state.State, skipIfHeadsNotChanged bool) {
+func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
-	var opts []IndexOption
-	if skipIfHeadsNotChanged {
-		opts = append(opts, SkipIfHeadsNotChanged)
-	}
+
 	if err := sb.indexer.Index(context.TODO(), docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
@@ -1348,9 +1349,15 @@ func hasDetailsMsgs(msgs []simple.EventMessage, ignoredKeys ...bundle.RelationKe
 
 type IndexOptions struct {
 	SkipIfHeadsNotChanged bool
+	SkipFullText          bool
 }
+
 type IndexOption func(*IndexOptions)
 
 func SkipIfHeadsNotChanged(o *IndexOptions) {
 	o.SkipIfHeadsNotChanged = true
+}
+
+func SkipFullText(o *IndexOptions) {
+	o.SkipFullText = true
 }

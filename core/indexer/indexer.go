@@ -240,10 +240,13 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			hasError = true
 			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
 		}
-		if err := i.store.AddToIndexQueue(info.Id); err != nil {
-			log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
-		} else {
-			log.With("thread", info.Id).Debugf("to index queue")
+
+		if !opts.SkipFullText {
+			if err := i.store.AddToIndexQueue(info.Id); err != nil {
+				log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
+			} else {
+				log.With("thread", info.Id).Debugf("to index queue")
+			}
 		}
 
 		i.indexLinkedFiles(ctx, info.FileHashes)
