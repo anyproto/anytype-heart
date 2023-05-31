@@ -32,20 +32,22 @@ func (fs FileRelationSyncer) Sync(state *state.State, relationName string) []str
 
 func (fs FileRelationSyncer) handleFileRelation(st *state.State, name string) []string {
 	allFiles := fs.getFilesFromRelations(st, name)
-
 	allFilesHashes := make([]string, 0)
 	filesToDelete := make([]string, 0, len(allFiles))
 	for _, f := range allFiles {
 		if f == "" {
 			continue
 		}
-		if _, err := fs.fileStore.GetByHash(f); err == nil {
-			allFilesHashes = append(allFilesHashes, f)
-			continue
-		}
-		if hash := fs.syncRelationFiles(f); hash != "" {
+		var hash string
+		if hash = fs.syncRelationFiles(f); hash != "" {
 			allFilesHashes = append(allFilesHashes, hash)
 			filesToDelete = append(filesToDelete, hash)
+		}
+		if hash == "" {
+			if _, err := fs.fileStore.GetByHash(f); err == nil {
+				allFilesHashes = append(allFilesHashes, f)
+				continue
+			}
 		}
 	}
 	fs.updateFileRelationsDetails(st, name, allFilesHashes)
