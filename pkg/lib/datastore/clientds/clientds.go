@@ -93,11 +93,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 	}
 
 	r.migrations = []migration{}
-	return nil
-}
 
-func (r *clientds) Run(context.Context) error {
-	var err error
 	if _, err := os.Stat(filepath.Join(r.getRepoPath(oldLitestoreDir))); !os.IsNotExist(err) {
 		return fmt.Errorf("old repo found")
 	}
@@ -120,6 +116,11 @@ func (r *clientds) Run(context.Context) error {
 	}
 
 	r.running = true
+
+	return nil
+}
+
+func (r *clientds) Run(context.Context) error {
 	return nil
 }
 

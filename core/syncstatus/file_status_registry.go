@@ -115,7 +115,7 @@ func validStatusTransition(from, to FileStatus) bool {
 	case FileStatusLimited:
 		return to == FileStatusSynced || to == FileStatusSyncing
 	default:
-		return false
+		return from == to
 	}
 }
 
