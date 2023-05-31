@@ -80,7 +80,7 @@ func New(
 
 type Indexer interface {
 	ForceFTIndex()
-	Index(ctx context.Context, info smartblock2.DocInfo) error
+	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -181,18 +181,26 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
+func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
+	opts := &smartblock2.IndexOptions{}
+	for _, o := range options {
+		o(opts)
+	}
 	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
+	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
-		if headsHash := headsHash(info.Heads); headsHash != "" {
-			err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
-			if err != nil {
-				log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
-			}
+		if headHashToIndex == "" {
+			return
+		}
+
+		err = i.store.SaveLastIndexedHeadsHash(info.Id, headHashToIndex)
+		if err != nil {
+			log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
 	}
 
@@ -202,6 +210,15 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 		return nil
 	}
 
+	if opts.SkipIfHeadsNotChanged {
+		lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
+		if err != nil {
+			log.With("thread", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
+		} else if lastIndexedHash == headHashToIndex {
+			log.With("thread", info.Id).Debugf("heads not changed, skipping indexing")
+			return nil
+		}
+	}
 	details := info.State.CombinedDetails()
 	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())

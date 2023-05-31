@@ -180,7 +180,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx context.Context, info DocInfo) error
+	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -685,7 +685,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
-			sb.runIndexer(st)
+			sb.runIndexer(st, false)
 		}
 		return nil
 	}
@@ -739,11 +739,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if changeId != "" || hasDetailsMsgs(msgs, bundle.RelationKeyLastOpenedDate, bundle.RelationKeyLastModifiedDate, bundle.RelationKeyIsArchived, bundle.RelationKeyIsFavorite, bundle.RelationKeyRestrictions, bundle.RelationKeyInternalFlags) {
-		// if changeId is empty, it means that we didn't push any changes to the source
-		// but we can also have some local details changes, so check the events
-		sb.runIndexer(st)
+	var skipIfHeadsNotChanged = false
+	if changeId == "" && len(msgs) == 0 {
+		skipIfHeadsNotChanged = true
 	}
+
+	sb.runIndexer(st, skipIfHeadsNotChanged)
+
 	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -995,7 +997,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
-	sb.runIndexer(s)
+	sb.runIndexer(s, false)
 	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
 
 	return nil
@@ -1025,7 +1027,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
-	sb.runIndexer(sb.Doc.(*state.State))
+	sb.runIndexer(sb.Doc.(*state.State), false)
 	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
 	return nil
 }
@@ -1229,19 +1231,30 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
+	heads := sb.source.Heads()
+	if len(heads) == 0 {
+		lastChangeId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyLastChangeId.String())
+		if lastChangeId != "" {
+			heads = []string{lastChangeId}
+		}
+	}
 	return DocInfo{
 		Id:         sb.Id(),
 		Links:      links,
-		Heads:      sb.source.Heads(),
+		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
 		State:      st.Copy(),
 	}
 }
 
-func (sb *smartBlock) runIndexer(s *state.State) {
+func (sb *smartBlock) runIndexer(s *state.State, skipIfHeadsNotChanged bool) {
 	docInfo := sb.getDocInfo(s)
-	if err := sb.indexer.Index(context.TODO(), docInfo); err != nil {
+	var opts []IndexOption
+	if skipIfHeadsNotChanged {
+		opts = append(opts, SkipIfHeadsNotChanged)
+	}
+	if err := sb.indexer.Index(context.TODO(), docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
 }
@@ -1331,4 +1344,13 @@ func hasDetailsMsgs(msgs []simple.EventMessage, ignoredKeys ...bundle.RelationKe
 		}
 	}
 	return false
+}
+
+type IndexOptions struct {
+	SkipIfHeadsNotChanged bool
+}
+type IndexOption func(*IndexOptions)
+
+func SkipIfHeadsNotChanged(o *IndexOptions) {
+	o.SkipIfHeadsNotChanged = true
 }
