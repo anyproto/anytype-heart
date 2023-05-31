@@ -207,11 +207,11 @@ func GetRestrictionsForSubobject(id string) (r ObjectRestrictions) {
 	}
 	switch parts[0] + sep {
 	case addr.ObjectTypeKeyToIdPrefix:
-		if !lo.Contains(bundle.SystemTypes, bundle.TypeKey(parts[1])) {
+		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(parts[1])) {
 			return sysTypesRestrictions
 		}
 	case addr.RelationKeyToIdPrefix:
-		if !lo.Contains(bundle.SystemRelations, bundle.RelationKey(parts[1])) {
+		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(parts[1])) {
 			return sysRelationsRestrictions
 		}
 	}
