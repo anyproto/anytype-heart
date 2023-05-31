@@ -3,9 +3,6 @@ package editor
 import (
 	"strings"
 
-	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/slices"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
@@ -14,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -23,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 type ObjectType struct {
@@ -63,9 +60,15 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	return nil
+}
+
+func (ot *ObjectType) InitState(st *state.State) {
+	id := st.RootId()
+
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source: []string{t.Id()},
+			Source: []string{id},
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   "_view1_1",
@@ -85,7 +88,7 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	var templatesSource string
 	var isBundled bool
-	if strings.HasPrefix(t.Id(), addr.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		isBundled = true
 	}
 
@@ -115,17 +118,17 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 							Operator:    model.BlockContentDataviewFilter_And,
 							RelationKey: bundle.RelationKeyTargetObjectType.String(),
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String(t.RootId()),
+							Value:       pbtypes.String(id),
 						}},
 				},
 			},
 		},
 	}
 	var recommendedRelationsKeys []string
-	for _, relId := range pbtypes.GetStringList(ctx.State.Details(), bundle.RelationKeyRecommendedRelations.String()) {
+	for _, relId := range pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String()) {
 		relKey, err := pbtypes.RelationIdToKey(relId)
 		if err != nil {
-			log.Errorf("recommendedRelations of %s has incorrect id: %s", t.Id(), relId)
+			log.Errorf("recommendedRelations of %s has incorrect id: %s", id, relId)
 			continue
 		}
 		if slice.FindPos(recommendedRelationsKeys, relKey) == -1 {
@@ -141,7 +144,7 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			}
 		}*/
 
-	recommendedLayout := pbtypes.GetInt64(t.Details(), bundle.RelationKeyRecommendedLayout.String())
+	recommendedLayout := pbtypes.GetInt64(st.Details(), bundle.RelationKeyRecommendedLayout.String())
 	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(recommendedLayout))
 	for _, rel := range recommendedLayoutObj.RequiredRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.Key) == -1 {
@@ -160,61 +163,23 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	})
 
 	var relIds []string
-	var r *relationutils.Relation
 	for _, rel := range recommendedRelationsKeys {
-		if isBundled {
-			relIds = append(relIds, addr.BundledRelationURLPrefix+rel)
-		} else {
-			relIds = append(relIds, addr.RelationKeyToIdPrefix+rel)
+		r, _ := bundle.GetRelation(bundle.RelationKey(rel))
+
+		if r != nil && r.Hidden {
+			continue
 		}
 
-		if r2, _ := bundle.GetRelation(bundle.RelationKey(rel)); r2 != nil {
-			if r2.Hidden {
-				continue
-			}
-			r = &relationutils.Relation{Relation: r2}
-		} else {
-			// nolint:errcheck
-			r, _ = t.relationService.FetchKey(rel)
-			if r == nil {
-				continue
-			}
-		}
 		// add recommended relation to the dataview
-		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())
+		// todo: fix it
+		//dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
 			Key:       r.Key,
 			IsVisible: true,
 		})
 	}
 
-	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(t.RootId())}}
-
-	fixMissingSmartblockTypes := func(s *state.State) {
-		if isBundled {
-			return
-		}
-
-		// we have a bug in internal release that was not adding smartblocktype to newly created custom types
-		currTypes := pbtypes.GetIntList(s.Details(), bundle.RelationKeySmartblockTypes.String())
-		sourceObject := pbtypes.GetString(s.Details(), bundle.RelationKeySourceObject.String())
-		var (
-			err     error
-			sbTypes []int
-		)
-		if sourceObject != "" {
-			sbTypes, err = state.ListSmartblockTypes(sourceObject)
-			if err != nil {
-				log.Errorf("failed to list smartblock types for %s: %v", sourceObject, err)
-			}
-		} else {
-			sbTypes = []int{int(model.SmartBlockType_Page)}
-		}
-
-		if !slices.Equal(currTypes, sbTypes) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeySmartblockTypes, pbtypes.IntList(sbTypes...))
-		}
-	}
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(id)}}
 
 	var objectType string
 	if isBundled {
@@ -222,7 +187,8 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	} else {
 		objectType = bundle.TypeKeyObjectType.URL()
 	}
-	return smartblock.ObjectApplyTemplate(t, ctx.State,
+
+	template.InitTemplate(st,
 		template.WithForcedObjectTypes([]string{objectType}),
 		template.WithDetail(bundle.RelationKeyRecommendedLayout, pbtypes.Int64(recommendedLayout)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType))),
@@ -234,20 +200,10 @@ func (t *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDataviewID("templates", templatesDataview, true),
 		template.WithDataview(dataview, true),
 		template.WithForcedDetail(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds)),
-		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject),
-		template.WithChildrenSorter(t.RootId(), func(blockIds []string) {
-			i := slice.FindPos(blockIds, "templates")
-			j := slice.FindPos(blockIds, template.DataviewBlockId)
-			// templates dataview must come before the type dataview
-			if i > j {
-				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
-			}
-		}),
 		template.WithCondition(!isBundled, template.WithAddedFeaturedRelation(bundle.RelationKeySourceObject)),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
-		fixMissingSmartblockTypes,
 	)
 }
 
