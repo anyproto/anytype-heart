@@ -26,6 +26,7 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Install patched gox
         run: |
+          rm -rf $GOPATH/src/github.com/mitchellh
           mkdir -p $GOPATH/src/github.com/mitchellh
           cd $GOPATH/src/github.com/mitchellh
           git clone https://github.com/aslakhellesoy/gox
@@ -35,13 +36,6 @@ jobs:
           go install github.com/mitchellh/gox
       - name: Checkout
         uses: actions/checkout@v2
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Set env vars
         env:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
@@ -52,15 +46,15 @@ jobs:
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
-          echo PATH=deps:$(GOPATH)/bin:$(PATH) >> $GITHUB_ENV
+          echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
           go mod download
       - name: install protoc
         run: |
-          make setup-protoc
-
+          make setup-protoc-go
       - name: setup go
         run: |
           make setup-go
@@ -198,12 +192,13 @@ jobs:
           cd open
           python3 tools/generate.py --platform golang
           cd ..
-          gem install license_finder
+          sudo gem install license_finder
           license_finder inherited_decisions add open/decisions.yml
           license_finder --enabled-package-managers gomodules
 
       - name: Install patched gox
         run: |
+          rm -rf $GOPATH/src/github.com/mitchellh
           mkdir -p $GOPATH/src/github.com/mitchellh
           cd $GOPATH/src/github.com/mitchellh
           git clone https://github.com/aslakhellesoy/gox
