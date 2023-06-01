@@ -320,7 +320,7 @@ func TestMakeAndFilter(t *testing.T) {
 		}
 		andFilter, err := MakeAndFilter(filters, nil)
 		require.NoError(t, err)
-		assert.Len(t, andFilter.(AndFilters), 14)
+		assert.Len(t, andFilter, 14)
 	})
 	t.Run("not valid list", func(t *testing.T) {
 		for _, cond := range []model.BlockContentDataviewFilterCondition{
