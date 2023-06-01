@@ -159,6 +159,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) error {
 		template.WithForcedObjectTypes([]string{bundle.TypeKeySpace.URL()}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedBlocks().Profile)),
+		template.WithForcedDetail(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix())),
 		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 	)
 }
