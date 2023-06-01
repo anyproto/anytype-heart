@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"github.com/samber/lo"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -15,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("anytype-database")
@@ -186,7 +186,7 @@ func applyFilterDateOnlyWhenExactDate(
 	dateKeys []string,
 ) []*model.BlockContentDataviewFilter {
 	for _, filtr := range filters {
-		if slice.FindPos(dateKeys, filtr.RelationKey) != -1 && filtr.QuickOption == 0 {
+		if lo.Contains(dateKeys, filtr.RelationKey) && filtr.QuickOption == model.BlockContentDataviewFilter_ExactDate {
 			filtr.Value = dateOnly(filtr.Value)
 		}
 	}
@@ -257,7 +257,7 @@ type filterGetter struct {
 
 func (f filterGetter) Get(key string) *types.Value {
 	res := pbtypes.Get(f.curEl, key)
-	if res != nil && slice.FindPos(f.dateKeys, key) != -1 {
+	if res != nil && lo.Contains(f.dateKeys, key) {
 		res = dateOnly(res)
 	}
 	return res

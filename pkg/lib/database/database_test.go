@@ -9,10 +9,21 @@ import (
 
 func TestDatabase(t *testing.T) {
 
-	testIncludeTimeWhenSingleDateSort(t)
-	testIncludeTimeWhenSortContainsIncludeTime(t)
-	testDoNotIncludeTimeWhenNotSingleSort(t)
-	testDoNotIncludeTimeWhenSingleNotDateSort(t)
+	t.Run("include time - when single date sort", func(t *testing.T) {
+		testIncludeTimeWhenSingleDateSort(t)
+	})
+
+	t.Run("include time - when sort contains include time", func(t *testing.T) {
+		testIncludeTimeWhenSortContainsIncludeTime(t)
+	})
+
+	t.Run("do not include time - when not single sort", func(t *testing.T) {
+		testDoNotIncludeTimeWhenNotSingleSort(t)
+	})
+
+	t.Run("do not include time - when single not date sort", func(t *testing.T) {
+		testDoNotIncludeTimeWhenSingleNotDateSort(t)
+	})
 }
 
 func testIncludeTimeWhenSingleDateSort(t *testing.T) {
