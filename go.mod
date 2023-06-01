@@ -89,7 +89,7 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/image v0.6.0
-	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028
+	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c
 	golang.org/x/net v0.10.0
 	golang.org/x/oauth2 v0.8.0
 	golang.org/x/text v0.9.0

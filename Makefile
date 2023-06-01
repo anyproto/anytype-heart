@@ -12,7 +12,7 @@ ifndef $(GOROOT)
     export GOROOT
 endif
 
-export PATH:=deps:$(GOPATH)/bin:$(PATH)
+export PATH:=$(pwd)/deps:$(GOPATH)/bin:$(PATH)
 
 all:
 	@set -e;
