@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func TestDsObjectStore_IndexQueue(t *testing.T) {
@@ -34,50 +33,24 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 
-	require.NoError(t, ds.AddToIndexQueue("one"))
-	require.NoError(t, ds.AddToIndexQueue("one"))
-	require.NoError(t, ds.AddToIndexQueue("two"))
-	var count int
-	require.NoError(t, ds.IndexForEach(func(id string, tm time.Time) error {
-		assert.NotEqual(t, -1, slice.FindPos([]string{"one", "two"}, id))
-		assert.NotEmpty(t, tm)
-		count++
-		if id == "one" {
-			return nil
-		} else {
-			// should be still removed from the queue
-			return fmt.Errorf("test err")
-		}
-	}))
-	assert.Equal(t, 2, count)
-	count = 0
-	require.NoError(t, ds.AddToIndexQueue("two"))
-	require.NoError(t, ds.IndexForEach(func(id string, tm time.Time) error {
-		assert.Equal(t, "two", id)
-		assert.NotEmpty(t, tm)
-		count++
-		return nil
-	}))
-	assert.Equal(t, 1, count)
+	t.Run("add to queue", func(t *testing.T) {
+		require.NoError(t, ds.AddToIndexQueue("one"))
+		require.NoError(t, ds.AddToIndexQueue("one"))
+		require.NoError(t, ds.AddToIndexQueue("two"))
 
-	count = 0
-	require.NoError(t, ds.IndexForEach(func(id string, tm time.Time) error {
-		count++
-		return nil
-	}))
+		ids, err := ds.ListIDsFromFullTextQueue()
+		require.NoError(t, err)
 
-	assert.Equal(t, 0, count)
+		assert.ElementsMatch(t, []string{"one", "two"}, ids)
+	})
 
-	require.NoError(t, ds.AddToIndexQueue("one"))
-	require.NoError(t, ds.AddToIndexQueue("one"))
-	require.NoError(t, ds.AddToIndexQueue("two"))
+	t.Run("remove from queue", func(t *testing.T) {
+		ds.RemoveIDsFromFullTextQueue([]string{"one"})
+		ids, err := ds.ListIDsFromFullTextQueue()
+		require.NoError(t, err)
 
-	count = 0
-	require.NoError(t, ds.IndexForEach(func(id string, tm time.Time) error {
-		count++
-		return nil
-	}))
-	assert.Equal(t, 2, count)
+		assert.ElementsMatch(t, []string{"two"}, ids)
+	})
 }
 
 func TestDsObjectStore_PrefixQuery(t *testing.T) {

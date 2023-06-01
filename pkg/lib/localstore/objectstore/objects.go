@@ -164,7 +164,8 @@ type ObjectStore interface {
 	QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
 
 	AddToIndexQueue(id string) error
-	IndexForEach(f func(id string, tm time.Time) error) error
+	ListIDsFromFullTextQueue() ([]string, error)
+	RemoveIDsFromFullTextQueue(ids []string)
 	FTSearch() ftsearch.FTSearch
 
 	// EraseIndexes erase all indexes for objectstore.. All objects needs to be reindexed
@@ -1420,6 +1421,40 @@ func (m *dsObjectStore) removeFromIndexQueue(id string) error {
 	return txn.Commit()
 }
 
+func (m *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	res, err := txn.Query(query.Query{Prefix: indexQueueBase.String()})
+	if err != nil {
+		return nil, fmt.Errorf("error query txn in datastore: %w", err)
+	}
+
+	var ids []string
+	for entry := range res.Next() {
+		ids = append(ids, extractIdFromKey(entry.Key))
+	}
+
+	err = res.Close()
+	if err != nil {
+		return nil, fmt.Errorf("close query result: %w", err)
+	}
+	return ids, nil
+}
+
+func (m *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
+	for _, id := range ids {
+		err := m.removeFromIndexQueue(id)
+		if err != nil {
+			// if we have the error here we have nothing to do but retry later
+			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", id, err)
+		}
+	}
+}
+
 func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) error {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -1500,8 +1535,6 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		return nil
 	}
 
-	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
-	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(diff))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err

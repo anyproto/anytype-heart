@@ -16467,6 +16467,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
 
 
 

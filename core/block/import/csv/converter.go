@@ -26,6 +26,9 @@ type Result struct {
 }
 
 func (r *Result) Merge(r2 *Result) {
+	if r2 == nil {
+		return
+	}
 	r.objectIDs = append(r.objectIDs, r2.objectIDs...)
 	r.snapshots = append(r.snapshots, r2.snapshots...)
 	r.relations = mergeRelationsMaps(r.relations, r2.relations)
@@ -99,8 +102,7 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	result := &Result{}
 	for _, p := range params.GetPath() {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(p, err)
-			return nil, cancelError
+			return nil, converter.NewCancelError(p, err)
 		}
 		pathResult := c.handlePath(req, p, cErr, str)
 		if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -124,6 +126,10 @@ func (c *CSV) handlePath(req *pb.RpcObjectImportRequest, p string, cErr converte
 		if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil
 		}
+	}
+	if len(readers) == 0 {
+		cErr.Add(p, converter.ErrNoObjectsToImport)
+		return nil
 	}
 	return c.handleCSVTables(req.Mode, readers, params, str, p, cErr)
 }

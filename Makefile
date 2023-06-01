@@ -27,9 +27,7 @@ setup: setup-go
 setup-go:
 	@echo 'Setting up go modules...'
 	@go mod download
-	go install github.com/ahmetb/govvv@latest
-	go install golang.org/x/mobile/cmd/gomobile@latest
-	go install golang.org/x/mobile/cmd/gobind@latest
+	@go install github.com/ahmetb/govvv@v0.2.0
 
 fmt:
 	@echo 'Formatting with prettier...'
@@ -93,7 +91,7 @@ build-js-addon:
 	@npm install -C ./clientlibrary/jsaddon
 	@rm clientlibrary/jsaddon/lib.a clientlibrary/jsaddon/lib.h clientlibrary/jsaddon/bridge.h
 
-build-ios: setup-go
+build-ios: setup-go setup-gomobile
 	gomobile init
 	@echo 'Clear xcframework'
 	@rm -rf ./dist/ios/Lib.xcframework
@@ -107,7 +105,7 @@ build-ios: setup-go
 	@cp pkg/lib/bundle/internal*.json dist/ios/json/
 	@go mod tidy
 
-build-android: setup-go
+build-android: setup-go setup-gomobile
 	gomobile init
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
@@ -123,21 +121,24 @@ endif
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 	@go mod tidy
 
+setup-gomobile:
+	go build -o deps golang.org/x/mobile/cmd/gomobile
+	go build -o deps golang.org/x/mobile/cmd/gobind
+
 setup-protoc-go:
 	@echo 'Setting up protobuf compiler...'
-	go build -o deps/ github.com/gogo/protobuf/protoc-gen-gogofaster
-	go build -o deps/ github.com/gogo/protobuf/protoc-gen-gogofast
-	go build -o deps/ github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-	#go build -o deps/ github.com/gogo/protobuf/protoc-gen-gogo/gomobile
+	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofaster
+	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofast
+	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 
 
 setup-protoc-jsweb:
 	@echo 'Installing grpc-web plugin...'
-	@rm -rf grpc-web
-	@git clone http://github.com/grpc/grpc-web
+	@rm -rf deps/grpc-web
+	@git clone http://github.com/grpc/grpc-web deps/grpc-web
 	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
-	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C grpc-web install-plugin || $(MAKE) -C grpc-web install-plugin
-	@rm -rf grpc-web
+	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C deps/grpc-web install-plugin || $(MAKE) -C deps/grpc-web install-plugin
+	@rm -rf deps/grpc-web
 
 setup-protoc: setup-protoc-go setup-protoc-jsweb
 
@@ -274,7 +275,7 @@ run-linter:
 ifdef GOLANGCI_LINT_BRANCH
 	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m
+	@golangci-lint run -v ./... --new-from-rev=main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m
 endif
 
 run-linter-fix:

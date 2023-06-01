@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -34,8 +33,12 @@ func newLinkedFilesWatcher(
 }
 
 func (w *linkedFilesWatcher) close() {
-	for _, closeCh := range w.linkedFilesCloseCh {
+	w.Lock()
+	defer w.Unlock()
+
+	for key, closeCh := range w.linkedFilesCloseCh {
 		close(closeCh)
+		delete(w.linkedFilesCloseCh, key)
 	}
 }
 
@@ -50,12 +53,14 @@ func (w *linkedFilesWatcher) WatchLinkedFiles(parentObjectID string, filesGetter
 		return
 	}
 
+	w.Lock()
 	closeCh, ok := w.linkedFilesCloseCh[parentObjectID]
 	if ok {
 		close(closeCh)
 	}
 	closeCh = make(chan struct{})
 	w.linkedFilesCloseCh[parentObjectID] = closeCh
+	w.Unlock()
 
 	go func() {
 		w.updateLinkedFilesSummary(parentObjectID, filesGetter)
@@ -83,9 +88,11 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, fil
 		}
 
 		switch status {
-		case syncstatus.StatusUnknown, syncstatus.StatusNotSynced:
+		case FileStatusUnknown, FileStatusSyncing:
 			summary.Pinning++
-		case syncstatus.StatusSynced:
+		case FileStatusLimited:
+			summary.Failed++
+		case FileStatusSynced:
 			summary.Pinned++
 		}
 	}
@@ -96,6 +103,9 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, fil
 }
 
 func (w *linkedFilesWatcher) UnwatchLinkedFiles(parentObjectID string) {
+	w.Lock()
+	defer w.Unlock()
+
 	if ch, ok := w.linkedFilesCloseCh[parentObjectID]; ok {
 		close(ch)
 		delete(w.linkedFilesCloseCh, parentObjectID)

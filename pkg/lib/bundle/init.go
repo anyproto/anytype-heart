@@ -216,17 +216,18 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) *types2.Struct {
 	}
 
 	return &types2.Struct{Fields: map[string]*types2.Value{
-		RelationKeyName.String():                  pbtypes.String(rel.Name),
-		RelationKeyDescription.String():           pbtypes.String(rel.Description),
-		RelationKeyId.String():                    pbtypes.String(prefix + rel.Key),
-		RelationKeyRelationKey.String():           pbtypes.String(rel.Key),
-		RelationKeyType.String():                  pbtypes.String(TypeKeyRelation.URL()),
-		RelationKeyCreator.String():               pbtypes.String(rel.Creator),
-		RelationKeyLayout.String():                pbtypes.Float64(float64(model.ObjectType_relation)),
-		RelationKeyRelationFormat.String():        pbtypes.Float64(float64(rel.Format)),
-		RelationKeyIsHidden.String():              pbtypes.Bool(rel.Hidden),
-		RelationKeyIsReadonly.String():            pbtypes.Bool(rel.ReadOnlyRelation),
-		RelationKeyRelationReadonlyValue.String(): pbtypes.Bool(rel.ReadOnly),
+		RelationKeyName.String():                      pbtypes.String(rel.Name),
+		RelationKeyDescription.String():               pbtypes.String(rel.Description),
+		RelationKeyId.String():                        pbtypes.String(prefix + rel.Key),
+		RelationKeyRelationKey.String():               pbtypes.String(rel.Key),
+		RelationKeyType.String():                      pbtypes.String(TypeKeyRelation.URL()),
+		RelationKeyCreator.String():                   pbtypes.String(rel.Creator),
+		RelationKeyLayout.String():                    pbtypes.Float64(float64(model.ObjectType_relation)),
+		RelationKeyRelationFormat.String():            pbtypes.Float64(float64(rel.Format)),
+		RelationKeyIsHidden.String():                  pbtypes.Bool(rel.Hidden),
+		RelationKeyIsReadonly.String():                pbtypes.Bool(rel.ReadOnlyRelation),
+		RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(rel.ReadOnly),
+		RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(rel.ObjectTypes),
 	}}
 }
 

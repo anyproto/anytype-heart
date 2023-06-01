@@ -94,10 +94,12 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest,
 	allErrors := converter.NewError()
 	for _, path := range allPaths {
 		if err := progress.TryStep(1); err != nil {
-			ce := converter.NewFromError(path, err)
-			return nil, nil, ce
+			return nil, nil, converter.NewCancelError(path, err)
 		}
 		snapshots, objects := p.handlePath(req, path, allErrors, isMigration)
+		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			return nil, nil, allErrors
+		}
 		allSnapshots = append(allSnapshots, snapshots...)
 		targetObjects = append(targetObjects, objects...)
 	}
@@ -310,6 +312,9 @@ func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
 	readers, err := s.GetFileReaders(importPath, []string{".pb", ".json", ""})
 	if err != nil {
 		return nil, err
+	}
+	if len(readers) == 0 {
+		return nil, converter.ErrNoObjectsToImport
 	}
 	return readers, nil
 }

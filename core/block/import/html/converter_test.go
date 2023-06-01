@@ -1,6 +1,7 @@
 package html
 
 import (
+	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -30,5 +31,6 @@ func TestHTML_GetSnapshots(t *testing.T) {
 	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
 	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
 
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
+	assert.Equal(t, err["testdata/test"], cv.ErrNoObjectsToImport)
 }

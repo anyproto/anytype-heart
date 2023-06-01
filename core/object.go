@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -775,10 +776,18 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
 	err := importer.Import(ctx, req)
 
-	if err != nil {
+	if err == nil {
+		return response(pb.RpcObjectImportResponseError_NULL, nil)
+	}
+
+	switch err {
+	case converter.ErrNoObjectsToImport:
+		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, err)
+	case converter.ErrCancel:
+		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, err)
+	default:
 		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, err)
 	}
-	return response(pb.RpcObjectImportResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {

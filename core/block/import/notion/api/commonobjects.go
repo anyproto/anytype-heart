@@ -96,7 +96,8 @@ func (rt *RichText) BuildMarkdownFromAnnotations(from, to int32) []*model.BlockC
 			Type: model.BlockContentTextMark_Underscored,
 		})
 	}
-	if rt.Annotations.Color != "" {
+	// not add marks for default color
+	if rt.Annotations.Color != "" && rt.Annotations.Color != DefaultColor {
 		markType := model.BlockContentTextMark_TextColor
 		if strings.HasSuffix(rt.Annotations.Color, NotionBackgroundColorSuffix) {
 			markType = model.BlockContentTextMark_BackgroundColor
@@ -187,7 +188,7 @@ const (
 	AnytypePurple  string = "purple"
 	AnytypePink    string = "pink"
 	AnytypeRed     string = "red"
-	AnytypeDefault string = "default"
+	AnytypeDefault string = ""
 )
 
 var NotionColorToAnytype = map[string]string{

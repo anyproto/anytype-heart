@@ -143,7 +143,7 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
 	largest, err := i.GetFileForLargestWidth(ctx)

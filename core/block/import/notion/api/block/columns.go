@@ -110,6 +110,9 @@ func (c *ColumnListBlock) getChildBlocksForColumn(resp *MapResponse) []string {
 }
 
 func (c *ColumnListBlock) addRowBlock(resultResponse *MapResponse, rowBlock simple.Block) {
+	if rowBlock == nil || rowBlock.Model() == nil {
+		return
+	}
 	resultResponse.Blocks = append(resultResponse.Blocks, rowBlock.Model())
 	resultResponse.BlockIDs = append(resultResponse.BlockIDs, rowBlock.Model().Id)
 }

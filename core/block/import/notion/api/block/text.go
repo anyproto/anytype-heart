@@ -136,29 +136,21 @@ type CalloutObject struct {
 }
 
 func (c *CalloutBlock) GetBlocks(req *MapRequest) *MapResponse {
-	calloutResp := c.Callout.GetTextBlocks(model.BlockContentText_Callout, nil, req)
+	childResp := &MapResponse{}
+	if c.HasChild() {
+		mapper := ChildrenMapper(&c.Callout)
+		childResp = mapper.MapChildren(req)
+	}
+	calloutResp := c.Callout.GetTextBlocks(model.BlockContentText_Callout, childResp.BlockIDs, req)
 	extendedBlocks := make([]*model.Block, 0, len(calloutResp.Blocks))
 	for _, cb := range calloutResp.Blocks {
-		text, ok := cb.Content.(*model.BlockContentOfText)
-		if !ok {
-			extendedBlocks = append(extendedBlocks, cb)
-			continue
+		if text := c.makeTextContent(cb); text != nil {
+			cb.Content = text
 		}
-		if c.Callout.Icon != nil {
-			if c.Callout.Icon.Emoji != nil {
-				text.Text.IconEmoji = *c.Callout.Icon.Emoji
-			}
-			if c.Callout.Icon.Type == api.External && c.Callout.Icon.External != nil {
-				text.Text.IconImage = c.Callout.Icon.External.URL
-			}
-			if c.Callout.Icon.Type == api.File && c.Callout.Icon.File != nil {
-				text.Text.IconImage = c.Callout.Icon.File.URL
-			}
-		}
-		cb.Content = text
 		extendedBlocks = append(extendedBlocks, cb)
 	}
 	calloutResp.Blocks = extendedBlocks
+	calloutResp.Merge(childResp)
 	return calloutResp
 }
 
@@ -172,6 +164,25 @@ func (c *CalloutBlock) SetChildren(children []interface{}) {
 
 func (c *CalloutBlock) GetID() string {
 	return c.ID
+}
+
+func (c *CalloutBlock) makeTextContent(cb *model.Block) *model.BlockContentOfText {
+	text, ok := cb.Content.(*model.BlockContentOfText)
+	if !ok {
+		return nil
+	}
+	if c.Callout.Icon != nil {
+		if c.Callout.Icon.Emoji != nil {
+			text.Text.IconEmoji = *c.Callout.Icon.Emoji
+		}
+		if c.Callout.Icon.Type == api.External && c.Callout.Icon.External != nil {
+			text.Text.IconImage = c.Callout.Icon.External.URL
+		}
+		if c.Callout.Icon.Type == api.File && c.Callout.Icon.File != nil {
+			text.Text.IconImage = c.Callout.Icon.File.URL
+		}
+	}
+	return text
 }
 
 type QuoteBlock struct {
