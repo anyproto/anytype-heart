@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -178,5 +179,6 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithRootBlocks(blocks),
 		template.WithAllBlocksEditsRestricted,
+		template.WithDetail(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(time.Now().Unix())),
 	)
 }
