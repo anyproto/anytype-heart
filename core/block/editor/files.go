@@ -3,6 +3,8 @@ package editor
 import (
 	"context"
 	"fmt"
+	"strings"
+	
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -11,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"strings"
 )
 
 func NewFiles(sb smartblock.SmartBlock) *Files {
