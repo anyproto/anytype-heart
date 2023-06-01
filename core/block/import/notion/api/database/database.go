@@ -83,7 +83,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, converter.NewFromError(d.ID, err)
+			return nil, nil, converter.NewCancelError(d.ID, err)
 		}
 		snapshot, err := ds.makeDatabaseSnapshot(d, mapRequest, notionIdsToAnytype, databaseNameToID)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

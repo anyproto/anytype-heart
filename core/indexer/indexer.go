@@ -51,7 +51,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 41
+	ForceIdxRebuildCounter int32 = 42
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -272,13 +272,13 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 				return
 			}
 			// file's hash is id
-			err = i.reindexDoc(ctx, id)
-			if err != nil {
-				log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
+			idxErr := i.reindexDoc(ctx, id)
+			if idxErr != nil {
+				log.With("id", id).Errorf("failed to reindex file: %s", idxErr.Error())
 			}
-			err = i.store.AddToIndexQueue(id)
-			if err != nil {
-				log.With("id", id).Error(err.Error())
+			idxErr = i.store.AddToIndexQueue(id)
+			if idxErr != nil {
+				log.With("id", id).Error(idxErr.Error())
 			}
 		}(id)
 	}
