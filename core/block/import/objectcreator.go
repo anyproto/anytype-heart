@@ -137,9 +137,9 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 func (oc *ObjectCreator) updateExistingObject(ctx *session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
 	if st.Store() != nil {
 		oc.updateLinksInCollections(st, oldIDtoNew)
+		return nil
 	}
-	respDetails := oc.resetState(ctx, newID, st)
-	return respDetails
+	return oc.resetState(ctx, newID, st)
 }
 
 func (oc *ObjectCreator) createNewObject(ctx *session.Context,
@@ -161,7 +161,6 @@ func (oc *ObjectCreator) createNewObject(ctx *session.Context,
 	// update collection after we create it
 	if st.Store() != nil {
 		oc.updateLinksInCollections(st, oldIDtoNew)
-		oc.resetState(ctx, newID, st)
 	}
 	return respDetails, nil
 }
@@ -303,22 +302,22 @@ func (oc *ObjectCreator) setSpaceDashboardID(st *state.State) {
 
 func (oc *ObjectCreator) updateDetailsKey(st *state.State, oldIDtoNew map[string]string) {
 	details := st.Details()
-	keyToRemove := make([]string, 0)
+	keyToUpdate := make([]string, 0)
 	for k, v := range details.GetFields() {
 		if newKey, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+k]; ok && newKey != addr.RelationKeyToIdPrefix+k {
 			relKey := strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix)
 			st.SetDetail(relKey, v)
-			keyToRemove = append(keyToRemove, k)
+			keyToUpdate = append(keyToUpdate, k)
 		}
 	}
-	oc.updateRelationLinks(st, keyToRemove, oldIDtoNew)
-	st.RemoveRelation(keyToRemove...)
+	oc.updateRelationLinks(st, keyToUpdate, oldIDtoNew)
+	st.RemoveRelation(keyToUpdate...)
 
 }
 
-func (oc *ObjectCreator) updateRelationLinks(st *state.State, keyToRemove []string, oldToNewIDs map[string]string) {
+func (oc *ObjectCreator) updateRelationLinks(st *state.State, keyToUpdate []string, oldToNewIDs map[string]string) {
 	relLinksToUpdate := make([]*model.RelationLink, 0)
-	for _, key := range keyToRemove {
+	for _, key := range keyToUpdate {
 		if relLink := st.GetRelationLinks().Get(key); relLink != nil {
 			newKey := oldToNewIDs[addr.RelationKeyToIdPrefix+key]
 			relLinksToUpdate = append(relLinksToUpdate, &model.RelationLink{
@@ -396,9 +395,10 @@ func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
-	err := block.DoStateCtx(oc.service, nil, st.RootId(), func(s *state.State, b sb.SmartBlock) error {
-		oc.mergeCollections(s.GetStoreSlice(template.CollectionStoreKey), st, oldIDtoNew)
-		return nil
+	err := block.Do(oc.service, st.RootId(), func(b sb.SmartBlock) error {
+		originalState := b.NewState()
+		oc.mergeCollections(originalState.GetStoreSlice(template.CollectionStoreKey), st, oldIDtoNew)
+		return b.Apply(st)
 	})
 	if err != nil {
 		log.Errorf("failed to get existed objects in collection, %s", err)

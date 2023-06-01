@@ -3,6 +3,8 @@ package page
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -35,9 +37,11 @@ type Result struct {
 }
 
 type Task struct {
-	propertyService *property.Service
-	blockService    *block.Service
-	p               Page
+	relationCreateMutex    *sync.Mutex
+	relationOptCreateMutex *sync.Mutex
+	propertyService        *property.Service
+	blockService           *block.Service
+	p                      Page
 }
 
 func (pt *Task) ID() string {
@@ -160,48 +164,57 @@ func (pt *Task) retrieveRelation(ctx context.Context,
 		return nil, nil, err
 	}
 	pt.handleLinkRelationsIDWithAnytypeID(propObject, req)
-	if snapshot := req.ReadRelationsMap(propObject.GetID()); snapshot != nil {
-		id := pbtypes.GetString(snapshot.Details, bundle.RelationKeyRelationKey.String())
-		subObjectsSnapshots := pt.getRelationOptionsSnapshots(id, propObject, req)
-		if err := pt.setDetails(propObject, id, details); err != nil {
-			return nil, nil, err
+	return pt.makeRelationFromProperty(req, propObject, details, key)
+}
+
+func (pt *Task) makeRelationFromProperty(req *block.MapRequest,
+	propObject property.Object,
+	details map[string]*types.Value,
+	name string) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+	pt.relationCreateMutex.Lock()
+	defer pt.relationCreateMutex.Unlock()
+	var (
+		snapshot            *model.SmartBlockSnapshotBase
+		key                 string
+		subObjectsSnapshots []*model.SmartBlockSnapshotBase
+	)
+	if snapshot = req.ReadRelationsMap(propObject.GetID()); snapshot == nil {
+		snapshot, key = pt.getRelationSnapshot(name, propObject)
+		if snapshot != nil {
+			req.WriteToRelationsMap(propObject.GetID(), snapshot)
+			subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
 		}
-		relationLink := &model.RelationLink{
-			Key:    id,
-			Format: propObject.GetFormat(),
-		}
-		return subObjectsSnapshots, relationLink, nil
 	}
-	id := bson.NewObjectId().Hex()
-	subObjectsSnapshots := pt.getRelationOptionsSnapshots(id, propObject, req)
-	if err := pt.setDetails(propObject, id, details); err != nil {
+	if key == "" {
+		key = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyRelationKey.String())
+	}
+	subObjectsSnapshots = append(subObjectsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, req)...)
+	if err := pt.setDetails(propObject, key, details); err != nil {
 		return nil, nil, err
 	}
-	relation := pt.getRelationSnapshot(id, key, propObject)
-	if relation != nil {
-		req.WriteToRelationsMap(propObject.GetID(), relation)
-		subObjectsSnapshots = append(subObjectsSnapshots, relation)
-	}
 	relationLink := &model.RelationLink{
-		Key:    id,
+		Key:    key,
 		Format: propObject.GetFormat(),
 	}
 	return subObjectsSnapshots, relationLink, nil
 }
 
-func (pt *Task) getRelationSnapshot(id string, key string, propObject property.Object) *model.SmartBlockSnapshotBase {
+func (pt *Task) getRelationSnapshot(name string, propObject property.Object) (*model.SmartBlockSnapshotBase, string) {
 	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
-		return nil
+		return nil, bundle.RelationKeyName.String()
 	}
-	details := pt.getRelationDetails(id, key, propObject)
+	key := bson.NewObjectId().Hex()
+	details := pt.getRelationDetails(key, name, propObject)
 	rel := &model.SmartBlockSnapshotBase{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
 	}
-	return rel
+	return rel, key
 }
 
-func (pt *Task) getRelationOptionsSnapshots(id string, propObject property.Object, req *block.MapRequest) []*model.SmartBlockSnapshotBase {
+func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.Object, req *block.MapRequest) []*model.SmartBlockSnapshotBase {
+	pt.relationOptCreateMutex.Lock()
+	defer pt.relationOptCreateMutex.Unlock()
 	subObjectsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
 	if isPropertyTag(propObject) {
 		subObjectsSnapshots = append(subObjectsSnapshots, getRelationOptions(propObject, id, req)...)
@@ -209,12 +222,12 @@ func (pt *Task) getRelationOptionsSnapshots(id string, propObject property.Objec
 	return subObjectsSnapshots
 }
 
-func (pt *Task) getRelationDetails(id string, key string, propObject property.Object) *types.Struct {
+func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + id)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(id)
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
+	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	return details
 }
@@ -357,7 +370,7 @@ func peopleItemOptions(property *property.PeopleItem, rel string, req *block.Map
 	peopleOptions := make([]*model.SmartBlockSnapshotBase, 0, len(property.People))
 	for _, po := range property.People {
 		if po.Name == "" {
-			return nil
+			continue
 		}
 		exist, optionID := isOptionAlreadyExist(po.Name, rel, req)
 		if exist {
@@ -377,7 +390,7 @@ func multiselectItemOptions(property *property.MultiSelectItem, rel string, req 
 	multiSelectOptions := make([]*model.SmartBlockSnapshotBase, 0, len(property.MultiSelect))
 	for _, so := range property.MultiSelect {
 		if so.Name == "" {
-			return nil
+			continue
 		}
 		exist, optionID := isOptionAlreadyExist(so.Name, rel, req)
 		if exist {

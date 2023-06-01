@@ -99,7 +99,7 @@ func replaceRelationsToCollectionDataView(st *state.State, rel *model.RelationLi
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if dv, ok := bl.(simpleDataview.Block); ok {
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
-				return false
+				return true
 			}
 			for _, view := range bl.Model().GetDataview().GetViews() {
 				err := dv.ReplaceViewRelation(view.Id, rel.Key, &model.BlockContentDataviewRelation{
@@ -108,7 +108,7 @@ func replaceRelationsToCollectionDataView(st *state.State, rel *model.RelationLi
 					Width:     192,
 				})
 				if err != nil {
-					return false
+					return true
 				}
 			}
 		}

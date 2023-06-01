@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -22,7 +23,9 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 	details := make(map[string]*types.Value, 0)
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	p := property.SelectItem{
@@ -82,7 +85,9 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -114,7 +119,9 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 	c := client.NewClient()
 	c.BasePath = s.URL
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -137,7 +144,9 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 func Test_handlePagePropertiesStatus(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -202,7 +211,9 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 func Test_handlePagePropertiesNumber(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -230,7 +241,9 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -299,7 +312,9 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 func Test_handlePagePropertiesCheckbox(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -326,7 +341,9 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 func Test_handlePagePropertiesEmail(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -359,7 +376,9 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 	c := client.NewClient()
 	c.BasePath = s.URL
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -392,7 +411,9 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 	c := client.NewClient()
 	c.BasePath = s.URL
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -428,7 +449,9 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 func Test_handlePagePropertiesFormula(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -455,7 +478,9 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 func Test_handlePagePropertiesTitle(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)
@@ -477,7 +502,9 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 func Test_handleRollupProperties(t *testing.T) {
 	c := client.NewClient()
 	ps := Task{
-		propertyService: property.New(c),
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
 	}
 
 	details := make(map[string]*types.Value, 0)

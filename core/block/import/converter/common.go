@@ -82,8 +82,9 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
 		for _, relation := range view.Relations {
-			if newID, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+relation.Key]; ok && newID != addr.RelationKeyToIdPrefix+relation.Key {
-				updateRelationID(block, relation, view, newID)
+			relationID := addr.RelationKeyToIdPrefix + relation.Key
+			if newID, ok := oldIDtoNew[relationID]; ok && newID != relationID {
+				updateRelationID(block.(dataview.Block), relation, view, newID)
 			}
 		}
 	}
@@ -103,9 +104,8 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 	}
 }
 
-func updateRelationID(block simple.Block, relation *model.BlockContentDataviewRelation, view *model.BlockContentDataviewView, newID string) {
+func updateRelationID(db dataview.Block, relation *model.BlockContentDataviewRelation, view *model.BlockContentDataviewView, newID string) {
 	oldKey := relation.Key
-	db := block.(dataview.Block)
 	err := db.RemoveViewRelations(view.Id, []string{oldKey})
 	if err != nil {
 		log.Error("failed to remove relation from view, %s", err.Error())
@@ -119,7 +119,7 @@ func updateRelationID(block simple.Block, relation *model.BlockContentDataviewRe
 	}
 	for _, relationLink := range db.Model().GetDataview().GetRelationLinks() {
 		if relationLink.Key == oldKey {
-			relationLink.Key = strings.TrimPrefix(newID, addr.RelationKeyToIdPrefix)
+			relationLink.Key = relation.Key
 		}
 	}
 }
@@ -304,7 +304,7 @@ func AddRelationsToDataView(st *state.State, rel *model.RelationLink) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if dv, ok := bl.(dataview.Block); ok {
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
-				return false
+				return true
 			}
 			for _, view := range bl.Model().GetDataview().GetViews() {
 				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
@@ -313,7 +313,7 @@ func AddRelationsToDataView(st *state.State, rel *model.RelationLink) error {
 					Width:     192,
 				})
 				if err != nil {
-					return false
+					return true
 				}
 			}
 			err := dv.AddRelation(&model.RelationLink{
@@ -321,7 +321,7 @@ func AddRelationsToDataView(st *state.State, rel *model.RelationLink) error {
 				Format: rel.Format,
 			})
 			if err != nil {
-				return false
+				return true
 			}
 		}
 		return true

@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -79,12 +78,14 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		convertError       = converter.ConvertError{}
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
-	relationsIdsToAnytypeID := make(map[string]*model.SmartBlockSnapshotBase, 0)
+	mapRequest := &block.MapRequest{
+		RelationsIdsToAnytypeID: make(map[string]*model.SmartBlockSnapshotBase, 0),
+	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
 			return nil, nil, converter.NewFromError(d.ID, err)
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, relationsIdsToAnytypeID, notionIdsToAnytype, databaseNameToID)
+		snapshot, err := ds.makeDatabaseSnapshot(d, mapRequest, notionIdsToAnytype, databaseNameToID)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, converter.NewFromError(d.ID, err)
 		}
@@ -93,18 +94,17 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		}
 		allSnapshots = append(allSnapshots, snapshot...)
 	}
-	mapRequest := &block.MapRequest{
-		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
-		DatabaseNameToID:           databaseNameToID,
-		RelationsIdsToAnytypeID:    relationsIdsToAnytypeID,
-	}
+	mapRequest.NotionDatabaseIdsToAnytype = notionIdsToAnytype
+	mapRequest.DatabaseNameToID = databaseNameToID
 	if convertError.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots}, mapRequest, nil
 	}
 	return &converter.Response{Snapshots: allSnapshots}, mapRequest, convertError
 }
 
-func (ds *Service) makeDatabaseSnapshot(d Database, relationsIdsToAnytypeID map[string]*model.SmartBlockSnapshotBase, notionIdsToAnytype map[string]string, databaseNameToID map[string]string) ([]*converter.Snapshot, error) {
+func (ds *Service) makeDatabaseSnapshot(d Database,
+	req *block.MapRequest,
+	notionIdsToAnytype, databaseNameToID map[string]string) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
 	detailsStruct := &types.Struct{Fields: details}
@@ -115,18 +115,8 @@ func (ds *Service) makeDatabaseSnapshot(d Database, relationsIdsToAnytypeID map[
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := make([]*converter.Snapshot, 0)
 	for key, databaseProperty := range d.Properties {
-		rel, sn := ds.getRelationSnapshot(databaseProperty, key)
-		snapshots = append(snapshots, sn)
-		databaseProperty.SetDetail(strings.TrimPrefix(sn.Id, addr.RelationKeyToIdPrefix), st.Details().GetFields())
-		relationLinks := &model.RelationLink{
-			Key:    strings.TrimPrefix(sn.Id, addr.RelationKeyToIdPrefix),
-			Format: databaseProperty.GetFormat(),
-		}
-		st.AddRelationLinks(relationLinks)
-		relationsIdsToAnytypeID[databaseProperty.GetID()] = rel
-		err = converter.AddRelationsToDataView(st, relationLinks)
-		if err != nil {
-			logger.Errorf("failed to add relation to notion database, %s", err.Error())
+		if snapshot := ds.createRelationFromDatabaseProperty(req, databaseProperty, key, st); snapshot != nil {
+			snapshots = append(snapshots, snapshot)
 		}
 	}
 	id, converterSnapshot := ds.provideSnapshot(d, st, detailsStruct)
@@ -134,6 +124,32 @@ func (ds *Service) makeDatabaseSnapshot(d Database, relationsIdsToAnytypeID map[
 	databaseNameToID[d.ID] = pbtypes.GetString(converterSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	snapshots = append(snapshots, converterSnapshot)
 	return snapshots, nil
+}
+
+func (ds *Service) createRelationFromDatabaseProperty(req *block.MapRequest,
+	databaseProperty property.DatabasePropertyHandler,
+	key string,
+	st *state.State) *converter.Snapshot {
+	var (
+		rel *model.SmartBlockSnapshotBase
+		sn  *converter.Snapshot
+	)
+	if rel = req.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
+		rel, sn = ds.getRelationSnapshot(databaseProperty, key)
+		req.WriteToRelationsMap(databaseProperty.GetID(), rel)
+	}
+	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
+	databaseProperty.SetDetail(relKey, st.Details().GetFields())
+	relationLinks := &model.RelationLink{
+		Key:    relKey,
+		Format: databaseProperty.GetFormat(),
+	}
+	st.AddRelationLinks(relationLinks)
+	err := converter.AddRelationsToDataView(st, relationLinks)
+	if err != nil {
+		logger.Errorf("failed to add relation to notion database, %s", err.Error())
+	}
+	return sn
 }
 
 func (ds *Service) getRelationSnapshot(databaseProperty property.DatabasePropertyHandler, key string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {

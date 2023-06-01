@@ -2,6 +2,7 @@ package page
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -123,11 +124,17 @@ func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcOb
 }
 
 func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {
+	var (
+		relMutex    = &sync.Mutex{}
+		relOptMutex = &sync.Mutex{}
+	)
 	for _, p := range pages {
 		stop := pool.AddWork(&Task{
-			propertyService: ds.propertyService,
-			blockService:    ds.blockService,
-			p:               p,
+			relationCreateMutex:    relMutex,
+			relationOptCreateMutex: relOptMutex,
+			propertyService:        ds.propertyService,
+			blockService:           ds.blockService,
+			p:                      p,
 		})
 		if stop {
 			break

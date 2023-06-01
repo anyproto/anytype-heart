@@ -26,11 +26,11 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	return &FileRelationSyncer{service: service, fileStore: fileStore}
 }
 
-func (fs FileRelationSyncer) Sync(state *state.State, relationName string) []string {
+func (fs *FileRelationSyncer) Sync(state *state.State, relationName string) []string {
 	return fs.handleFileRelation(state, relationName)
 }
 
-func (fs FileRelationSyncer) handleFileRelation(st *state.State, name string) []string {
+func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) []string {
 	allFiles := fs.getFilesFromRelations(st, name)
 	allFilesHashes := make([]string, 0)
 	filesToDelete := make([]string, 0, len(allFiles))
@@ -39,12 +39,12 @@ func (fs FileRelationSyncer) handleFileRelation(st *state.State, name string) []
 			continue
 		}
 		var hash string
-		if hash = fs.syncRelationFiles(f); hash != "" {
+		if hash = fs.uploadFile(f); hash != "" {
 			allFilesHashes = append(allFilesHashes, hash)
 			filesToDelete = append(filesToDelete, hash)
 		}
 		if hash == "" {
-			if _, err := fs.fileStore.GetByHash(f); err == nil {
+			if _, err := fs.fileStore.ListByTarget(f); err == nil {
 				allFilesHashes = append(allFilesHashes, f)
 				continue
 			}
@@ -55,40 +55,41 @@ func (fs FileRelationSyncer) handleFileRelation(st *state.State, name string) []
 	return filesToDelete
 }
 
-func (fs FileRelationSyncer) getFilesFromRelations(st *state.State, name string) []string {
+func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string) []string {
 	var allFiles []string
-	if files := st.Details().Fields[name].GetListValue(); files != nil {
-		for _, f := range files.Values {
-			allFiles = append(allFiles, f.GetStringValue())
-		}
+	if files := pbtypes.GetStringList(st.Details(), name); files != nil {
+		allFiles = append(allFiles, files...)
 	}
 
-	if files := st.Details().Fields[name].GetStringValue(); files != "" {
+	if files := pbtypes.GetString(st.Details(), name); files != "" {
 		allFiles = append(allFiles, files)
 	}
 	return allFiles
 }
 
-func (fs FileRelationSyncer) syncRelationFiles(f string) string {
+func (fs *FileRelationSyncer) uploadFile(file string) string {
 	var (
 		hash string
 		err  error
 	)
-	if strings.HasPrefix(f, "http://") || strings.HasPrefix(f, "https://") {
-		req := pb.RpcFileUploadRequest{LocalPath: f}
-		req.Url = f
+	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
+		req := pb.RpcFileUploadRequest{LocalPath: file}
+		req.Url = file
 		req.LocalPath = ""
 		hash, err = fs.service.UploadFile(req)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		} else {
-			f = hash
+			file = hash
 		}
 	}
 	return hash
 }
 
-func (fs FileRelationSyncer) updateFileRelationsDetails(st *state.State, name string, allFilesHashes []string) {
+func (fs *FileRelationSyncer) updateFileRelationsDetails(st *state.State, name string, allFilesHashes []string) {
+	if st.Details() == nil || st.Details().GetFields() == nil {
+		return
+	}
 	if st.Details().Fields[name].GetListValue() != nil && len(allFilesHashes) != 0 {
 		st.SetDetail(name, pbtypes.StringList(allFilesHashes))
 	}

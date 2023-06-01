@@ -90,12 +90,12 @@ func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converte
 	return relations, relationsSnapshots
 }
 
-func getRelationDetails(key, id string, format float64) *types.Struct {
+func getRelationDetails(name, key string, format float64) *types.Struct {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(format)
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + id)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(id)
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
+	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	return details
 }
@@ -123,11 +123,7 @@ func getEmptyObjects(csvTable [][]string, relations []*model.Relation) []*conver
 func getDetailsForObject(csvTable [][]string, relations []*model.Relation, i int) (*types.Struct, []*model.RelationLink) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	relationLinks := make([]*model.RelationLink, 0)
-	var (
-		j     = 0
-		value string
-	)
-	for j, value = range csvTable[i] {
+	for j, value := range csvTable[i] {
 		if len(relations) <= j {
 			break
 		}
