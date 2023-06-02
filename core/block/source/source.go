@@ -278,9 +278,6 @@ func (s *source) ListIds() (ids []string, err error) {
 		return
 	}
 	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
-		if s.coreService.PredefinedBlocks().IsAccount(id) {
-			return false
-		}
 		t, err := s.sbtProvider.Type(id)
 		if err != nil {
 			return false
@@ -438,8 +435,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			if startId == change.Id {
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
-					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot).(*state.State)
-					st.SetChangeId(startId)
+					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
 					return true
 				} else {
 					st = st.NewState()
@@ -453,8 +449,8 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			}
 			ns := st.NewState()
 			appliedContent = append(appliedContent, model.Content...)
-			ns.ApplyChangeIgnoreErr(model.Content...)
 			ns.SetChangeId(change.Id)
+			ns.ApplyChangeIgnoreErr(model.Content...)
 			ns.AddFileKeys(model.FileKeys...)
 			_, _, err = state.ApplyStateFastOne(ns)
 			if err != nil {
