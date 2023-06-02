@@ -65,6 +65,7 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		Content: &model.BlockContentOfWidget{
 			Widget: &model.BlockContentWidget{
 				Layout: req.WidgetLayout,
+				Limit:  req.ObjectLimit,
 			},
 		},
 	})
