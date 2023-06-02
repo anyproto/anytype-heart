@@ -40,9 +40,9 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(arg0 *session.Context, arg1 *converter.Snapshot, arg3 map[string]string, arg4 map[string]treestorage.TreeStorageCreatePayload) (*types.Struct, string, error) {
+func (m *MockCreator) Create(arg0 *session.Context, arg1 *converter.Snapshot, arg2 map[string]string, arg3 map[string]treestorage.TreeStorageCreatePayload) (*types.Struct, string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg3, arg4)
+	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*types.Struct)
 	ret1, _ := ret[1].(string)
 	ret2, _ := ret[2].(error)
