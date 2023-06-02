@@ -644,7 +644,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return nil
 		}
 	}
-	if checkRestrictions {
+	if checkRestrictions && s.ParentState() != nil {
 		if err = s.ParentState().CheckRestrictions(); err != nil {
 			return
 		}
