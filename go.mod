@@ -62,7 +62,7 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.1
-	github.com/miolini/datacounter v1.0.2
+	github.com/miolini/datacounter v1.0.3
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-base32 v0.1.0
 	github.com/multiformats/go-multiaddr v0.9.0
