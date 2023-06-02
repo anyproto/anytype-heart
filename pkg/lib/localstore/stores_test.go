@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	badger "github.com/textileio/go-ds-badger3"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 )
 
 func Test_AddIndex(t *testing.T) {
