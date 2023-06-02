@@ -91,7 +91,7 @@ func (v *bundledRelation) Close() (err error) {
 }
 
 func (v *bundledRelation) Heads() []string {
-	return nil
+	return []string{"todo"} // todo hash of model
 }
 
 func (s *bundledRelation) GetFileKeysSnapshot() []*pb.ChangeFileKeys {

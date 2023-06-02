@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -80,7 +79,7 @@ func New(
 
 type Indexer interface {
 	ForceFTIndex()
-	Index(ctx context.Context, info smartblock2.DocInfo) error
+	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -181,18 +180,26 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
+func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
+	opts := &smartblock2.IndexOptions{}
+	for _, o := range options {
+		o(opts)
+	}
 	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
+	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
-		if headsHash := headsHash(info.Heads); headsHash != "" {
-			err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
-			if err != nil {
-				log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
-			}
+		if headHashToIndex == "" {
+			return
+		}
+
+		err = i.store.SaveLastIndexedHeadsHash(info.Id, headHashToIndex)
+		if err != nil {
+			log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
 	}
 
@@ -202,12 +209,24 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 		return nil
 	}
 
-	details := info.State.CombinedDetails()
-	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
-	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
-	if setCreator == "" {
-		setCreator = i.anytype.ProfileID()
+	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
+	if err != nil {
+		log.With("thread", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
 	}
+
+	if opts.SkipIfHeadsNotChanged {
+		if headHashToIndex == "" {
+			log.With("thread", info.Id).Errorf("heads hash is empty")
+		} else if lastIndexedHash == headHashToIndex {
+			log.With("thread", info.Id).Debugf("heads not changed, skipping indexing")
+
+			// todo: the optimization temporarily disabled to see the metrics
+			//return nil
+		}
+	}
+
+	details := info.State.CombinedDetails()
+
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
@@ -220,13 +239,37 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 	indexLinksTime := time.Now()
 	if indexDetails {
 		if err := i.store.UpdateObjectDetails(info.Id, details, false); err != nil {
-			hasError = true
-			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
-		}
-		if err := i.store.AddToIndexQueue(info.Id); err != nil {
-			log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
+			if errors.Is(err, objectstore.ErrDetailsNotChanged) {
+				metrics.ObjectDetailsHeadsNotChangedCounter.Add(1)
+				log.With("objectId", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
+			} else {
+				hasError = true
+				log.With("thread", info.Id).Errorf("can't update object store: %v", err)
+			}
 		} else {
-			log.With("thread", info.Id).Debugf("to index queue")
+			// todo: remove temp log
+			if lastIndexedHash == headHashToIndex {
+				l := log.With("objectId", info.Id).
+					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
+					With("lastHashIsEmpty", lastIndexedHash == "").
+					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
+				//With("old", pbtypes.Sprint(oldDetails.Details)).
+				//With("new", pbtypes.Sprint(info.State.CombinedDetails())).
+				//With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
+
+				if opts.SkipIfHeadsNotChanged {
+					l.Warnf("details have changed, but heads are equal")
+				} else {
+					l.Debugf("details have changed, but heads are equal")
+				}
+			}
+		}
+
+		// todo: the optimization temporarily disabled to see the metrics
+		if true || !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+			if err := i.store.AddToIndexQueue(info.Id); err != nil {
+				log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
+			}
 		}
 
 		i.indexLinkedFiles(ctx, info.FileHashes)
@@ -387,6 +430,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			smartblock.SmartBlockTypeTemplate,
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeWorkspace,
 		)
 		if err != nil {
 			return err

@@ -180,7 +180,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx context.Context, info DocInfo) error
+	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -685,7 +685,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
-			sb.runIndexer(st)
+			// means we have only local details changed, so lets index but skip full text
+			sb.runIndexer(st, SkipFullTextIfHeadsNotChanged)
+		} else {
+			// we may skip indexing in case we are sure that we have previously indexed the same version of object
+			sb.runIndexer(st, SkipIfHeadsNotChanged)
 		}
 		return nil
 	}
@@ -739,11 +743,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if changeId != "" || hasDetailsMsgs(msgs) {
-		// if changeId is empty, it means that we didn't push any changes to the source
-		// but we can also have some local details changes, so check the events
+	if changeId == "" && len(msgs) == 0 {
+		// means we probably don't have any actual change being made
+		// in case the heads are not changed, we may skip indexing
+		sb.runIndexer(st, SkipIfHeadsNotChanged)
+	} else {
 		sb.runIndexer(st)
 	}
+
 	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -876,6 +883,13 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	return
 }
 
+func (sb *smartBlock) injectLinksDetails(s *state.State) {
+	links := sb.navigationalLinks()
+	links = slice.Remove(links, sb.Id())
+	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
+	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
+}
+
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	if sb.objectStore == nil {
 		return nil
@@ -885,8 +899,12 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
+	var hasPendingLocalDetails bool
 	// Consume pending details
 	err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+		if len(pending.GetFields()) > 0 {
+			hasPendingLocalDetails = true
+		}
 		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pending, false)
 		return nil, nil
 	})
@@ -906,6 +924,10 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	s.InjectLocalDetails(storedLocalScopeDetails)
+	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
+		// inject for both current and parent state
+		p.InjectLocalDetails(storedLocalScopeDetails)
+	}
 	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
 		return nil
 	}
@@ -1216,24 +1238,32 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-	links := sb.navigationalLinks()
-	links = slice.Remove(links, sb.Id())
+	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
+	// todo: heads in source and the state may be inconsistent?
+	heads := sb.source.Heads()
+	if len(heads) == 0 {
+		lastChangeId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyLastChangeId.String())
+		if lastChangeId != "" {
+			heads = []string{lastChangeId}
+		}
+	}
 	return DocInfo{
 		Id:         sb.Id(),
 		Links:      links,
-		Heads:      sb.source.Heads(),
+		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
 		State:      st.Copy(),
 	}
 }
 
-func (sb *smartBlock) runIndexer(s *state.State) {
+func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
-	if err := sb.indexer.Index(context.TODO(), docInfo); err != nil {
+
+	if err := sb.indexer.Index(context.TODO(), docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
 }
@@ -1302,4 +1332,19 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 		}
 	}
 	return false
+}
+
+type IndexOptions struct {
+	SkipIfHeadsNotChanged         bool
+	SkipFullTextIfHeadsNotChanged bool
+}
+
+type IndexOption func(*IndexOptions)
+
+func SkipIfHeadsNotChanged(o *IndexOptions) {
+	o.SkipIfHeadsNotChanged = true
+}
+
+func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
+	o.SkipFullTextIfHeadsNotChanged = true
 }

@@ -52,8 +52,10 @@ func (r *Relation) Init(ctx *smartblock.InitContext) error {
 		return err
 	}
 
-	st := ctx.State
+	return nil
+}
 
+func (r *Relation) InitState(st *state.State) {
 	// temp fix for our internal accounts with inconsistent types (should be removed later)
 	// todo: remove after release
 	fixTypes := func(s *state.State) {
@@ -101,13 +103,12 @@ func (r *Relation) Init(ctx *smartblock.InitContext) error {
 		},
 	}
 
-	return smartblock.ObjectApplyTemplate(r, st,
+	template.InitTemplate(st,
 		template.WithAllBlocksEditsRestricted,
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relation))),
 		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(false)),
 		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeyRelation.URL())),
 		template.WithAddedFeaturedRelation(bundle.RelationKeySourceObject),
-		template.MigrateRelationValue(bundle.RelationKeySource, bundle.RelationKeySourceObject),
 		template.WithTitle,
 		template.WithDescription,
 		fixTypes,

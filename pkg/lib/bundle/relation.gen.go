@@ -5,11 +5,11 @@ source: pkg/lib/bundle/relations.json
 package bundle
 
 import (
-	addr "github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "c51bc0adad1c93aa09c98ebb241d724714d8aefa5520e360d9999410674a0942"
+const RelationChecksum = "add940877a8adadd3313f9eefcd6d89a70d1b10469a7ceed9d3bea0e7dea0eeb"
 
 type RelationKey string
 
@@ -162,6 +162,7 @@ const (
 	RelationKeySpaceAccessibility        RelationKey = "spaceAccessibility"
 	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            RelationKey = "fileSyncStatus"
+	RelationKeyLastChangeId              RelationKey = "lastChangeId"
 )
 
 var (
@@ -1023,6 +1024,20 @@ var (
 			MaxCount:         1,
 			Name:             "Job",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLastChangeId: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Last change ID",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brlastChangeId",
+			Key:              "lastChangeId",
+			MaxCount:         1,
+			Name:             "Last change ID of the object",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

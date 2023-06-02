@@ -5,7 +5,7 @@ on:
 name: Build
 jobs:
   build:
-    runs-on: macos-11
+    runs-on: self-hosted
     steps:
       - name: fix android ndk bundle
         run: |
@@ -26,6 +26,7 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Install patched gox
         run: |
+          rm -rf $GOPATH/src/github.com/mitchellh
           mkdir -p $GOPATH/src/github.com/mitchellh
           cd $GOPATH/src/github.com/mitchellh
           git clone https://github.com/aslakhellesoy/gox
@@ -33,24 +34,8 @@ jobs:
           git fetch
           git checkout db6184738b77fbd5089e5fa1112177f391c91b24
           go install github.com/mitchellh/gox
-      - name: Install brew and node deps
-        run: |
-          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
-          brew tap filosottile/musl-cross
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
-          npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Set env vars
         env:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
@@ -61,14 +46,15 @@ jobs:
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+          echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
           go mod download
       - name: install protoc
         run: |
-          make setup-protoc
-
+          make setup-protoc-go
       - name: setup go
         run: |
           make setup-go
@@ -144,7 +130,6 @@ jobs:
       - name: Compile ios lib
         run: |
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf json
           mv ios_framework_${VERSION}.tar.gz .release/
       - name: Make java protos
@@ -166,7 +151,6 @@ jobs:
       - name: Compile android lib
         run: |
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven
@@ -214,6 +198,7 @@ jobs:
 
       - name: Install patched gox
         run: |
+          rm -rf $GOPATH/src/github.com/mitchellh
           mkdir -p $GOPATH/src/github.com/mitchellh
           cd $GOPATH/src/github.com/mitchellh
           git clone https://github.com/aslakhellesoy/gox
