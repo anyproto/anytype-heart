@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"github.com/samber/lo"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -15,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("anytype-database")
@@ -79,7 +79,7 @@ type Query struct {
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	qq.Limit = q.Limit
 	qq.Offset = q.Offset
-	f, err := NewFilters(q, sch, nil, nil)
+	f, err := NewFilters(q, sch, nil)
 	if err != nil {
 		return
 	}
@@ -125,96 +125,129 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
-func NewFilters(q Query, sch schema.Schema, store filter.OptionsGetter, loc *time.Location) (f *Filters, err error) {
-	q.Filters = injectDefaultFilters(q.Filters)
+func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (filters *Filters, err error) {
+	qry.Filters = injectDefaultFilters(qry.Filters)
+	filters = new(Filters)
 
-	f = new(Filters)
-	mainFilter := filter.AndFilters{}
-	if sch != nil {
-		for _, rel := range sch.ListRelations() {
-			if rel.Format == model.RelationFormat_date {
-				if relation := getRelationByKey(q.Relations, rel.Key); relation == nil || !relation.DateIncludeTime {
-					f.dateKeys = append(f.dateKeys, rel.Key)
-				}
-			}
-		}
+	filterObj, dateKeys, qryFilters := applySchema(qry.Relations, schema, filters.dateKeys, qry.Filters)
+	qry.Filters = qryFilters
+	filters.dateKeys = dateKeys
 
-		for _, qf := range q.Filters {
-			if slice.FindPos(f.dateKeys, qf.RelationKey) != -1 && qf.QuickOption == 0 {
-				qf.Value = dateOnly(qf.Value)
-			}
-		}
-
-		if schFilters := sch.Filters(); schFilters != nil {
-			mainFilter = append(mainFilter, schFilters)
-		}
-	}
-
-	qFilter, err := filter.MakeAndFilter(q.Filters, store)
+	filterObj, err = compose(qry.Filters, store, filterObj)
 	if err != nil {
 		return
 	}
 
-	if len(qFilter.(filter.AndFilters)) > 0 {
-		mainFilter = append(mainFilter, qFilter)
+	filters.FilterObj = filterObj
+	filters.Order = extractOrder(qry.Sorts, store)
+	return
+}
+
+func compose(
+	filters []*model.BlockContentDataviewFilter,
+	store filter.OptionsGetter,
+	filterObj filter.AndFilters,
+) (filter.AndFilters, error) {
+	qryFilter, err := filter.MakeAndFilter(filters, store)
+	if err != nil {
+		return nil, err
 	}
-	// TODO: check if this logic should be finally removed
-	// if q.SearchInWorkspace {
-	//	if q.WorkspaceId != "" {
-	//		threads.WorkspaceLogger.
-	//			With("workspace id", q.WorkspaceId).
-	//			With("text", q.FullText).
-	//			Info("searching for text in workspace")
-	//		filterOr := filter.OrFilters{
-	//			filter.Eq{
-	//				Key:   bundle.RelationKeyWorkspaceId.String(),
-	//				Cond:  model.BlockContentDataviewFilter_Equal,
-	//				Value: pbtypes.String(q.WorkspaceId),
-	//			},
-	//			filter.Like{
-	//				Key:   bundle.RelationKeyType.String(),
-	//				Value: pbtypes.String(bundle.TypeKeyObjectType.String()),
-	//			},
-	//			filter.Like{
-	//				Key:   bundle.RelationKeyId.String(),
-	//				Value: pbtypes.String(addr.BundledRelationURLPrefix),
-	//			},
-	//		}
-	//		mainFilter = append(mainFilter, filterOr)
-	//	}
-	// } else {
-	//	threads.WorkspaceLogger.
-	//		Info("searching in all workspaces and account")
-	// }
-	f.FilterObj = mainFilter
-	if len(q.Sorts) > 0 {
-		ord := filter.SetOrder{}
-		for _, s := range q.Sorts {
 
-			var emptyLast bool
-			if s.RelationKey == bundle.RelationKeyName.String() {
-				emptyLast = true
+	if len(qryFilter) > 0 {
+		filterObj = append(filterObj, qryFilter)
+	}
+	return filterObj, nil
+}
+
+func applySchema(
+	relations []*model.BlockContentDataviewRelation,
+	schema schema.Schema,
+	dateKeys []string,
+	filters []*model.BlockContentDataviewFilter,
+) (filter.AndFilters, []string, []*model.BlockContentDataviewFilter) {
+	mainFilter := filter.AndFilters{}
+	if schema != nil {
+		dateKeys = extractDateRelationKeys(relations, schema, dateKeys)
+		filters = applyFilterDateOnlyWhenExactDate(filters, dateKeys)
+		mainFilter = appendSchemaFilters(schema, mainFilter)
+	}
+	return mainFilter, dateKeys, filters
+}
+
+func appendSchemaFilters(schema schema.Schema, mainFilter filter.AndFilters) filter.AndFilters {
+	if schemaFilter := schema.Filters(); schemaFilter != nil {
+		mainFilter = append(mainFilter, schemaFilter)
+	}
+	return mainFilter
+}
+
+func applyFilterDateOnlyWhenExactDate(
+	filters []*model.BlockContentDataviewFilter,
+	dateKeys []string,
+) []*model.BlockContentDataviewFilter {
+	for _, filtr := range filters {
+		if lo.Contains(dateKeys, filtr.RelationKey) && filtr.QuickOption == model.BlockContentDataviewFilter_ExactDate {
+			filtr.Value = dateOnly(filtr.Value)
+		}
+	}
+	return filters
+}
+
+func extractDateRelationKeys(
+	relations []*model.BlockContentDataviewRelation,
+	schema schema.Schema,
+	dateKeys []string,
+) []string {
+	for _, relationLink := range schema.ListRelations() {
+		if relationLink.Format == model.RelationFormat_date {
+			if relation := getRelationByKey(relations, relationLink.Key); relation == nil || !relation.DateIncludeTime {
+				dateKeys = append(dateKeys, relationLink.Key)
 			}
+		}
+	}
+	return dateKeys
+}
 
-			keyOrd := &filter.KeyOrder{
-				Key:            s.RelationKey,
-				Type:           s.Type,
-				EmptyLast:      emptyLast,
-				IncludeTime:    s.IncludeTime,
-				RelationFormat: s.Format,
+func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsGetter) filter.SetOrder {
+	if len(sorts) > 0 {
+		order := filter.SetOrder{}
+		for _, sort := range sorts {
+
+			keyOrder := &filter.KeyOrder{
+				Key:            sort.RelationKey,
+				Type:           sort.Type,
+				EmptyLast:      sort.RelationKey == bundle.RelationKeyName.String(),
+				IncludeTime:    isIncludeTime(sorts, sort),
+				RelationFormat: sort.Format,
 				Store:          store,
 			}
 
-			if s.Type == model.BlockContentDataviewSort_Custom && len(s.CustomOrder) > 0 {
-				ord = append(ord, filter.NewCustomOrder(s.RelationKey, s.CustomOrder, *keyOrd))
-				continue
-			}
-
-			ord = append(ord, keyOrd)
+			order = appendCustomOrder(sort, order, keyOrder)
 		}
-		f.Order = ord
+		return order
 	}
-	return
+	return nil
+}
+
+func appendCustomOrder(sort *model.BlockContentDataviewSort, order filter.SetOrder, keyOrder *filter.KeyOrder) filter.SetOrder {
+	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
+		order = append(order, filter.NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
+	} else {
+		order = append(order, keyOrder)
+	}
+	return order
+}
+
+func isIncludeTime(sorts []*model.BlockContentDataviewSort, s *model.BlockContentDataviewSort) bool {
+	if isSingleDateSort(sorts) {
+		return true
+	} else {
+		return s.IncludeTime
+	}
+}
+
+func isSingleDateSort(sorts []*model.BlockContentDataviewSort) bool {
+	return len(sorts) == 1 && sorts[0].Format == model.RelationFormat_date
 }
 
 type filterGetter struct {
@@ -224,7 +257,7 @@ type filterGetter struct {
 
 func (f filterGetter) Get(key string) *types.Value {
 	res := pbtypes.Get(f.curEl, key)
-	if res != nil && slice.FindPos(f.dateKeys, key) != -1 {
+	if res != nil && lo.Contains(f.dateKeys, key) {
 		res = dateOnly(res)
 	}
 	return res
