@@ -136,14 +136,6 @@ func (ot *ObjectType) InitState(st *state.State) {
 		}
 	}
 
-	// todo: remove this
-	/*
-		for _, rel := range bundle.RequiredInternalRelations {
-			if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
-				recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
-			}
-		}*/
-
 	recommendedLayout := pbtypes.GetInt64(st.Details(), bundle.RelationKeyRecommendedLayout.String())
 	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(recommendedLayout))
 	for _, rel := range recommendedLayoutObj.RequiredRelations {
@@ -163,16 +155,22 @@ func (ot *ObjectType) InitState(st *state.State) {
 	})
 
 	var relIds []string
-	for _, rel := range recommendedRelationsKeys {
-		r, _ := bundle.GetRelation(bundle.RelationKey(rel))
-
-		if r != nil && r.Hidden {
+	rels, err := ot.relationService.FetchKeys(recommendedRelationsKeys...)
+	if err != nil {
+		log.Errorf("failed to fetch relation keys: %s", err.Error())
+	}
+	for _, relKey := range recommendedRelationsKeys {
+		r := rels.GetByKey(relKey)
+		if r == nil {
+			log.Errorf("ot relation missing relation: %s", relKey)
 			continue
 		}
 
 		// add recommended relation to the dataview
-		// todo: fix it
-		//dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())
+		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())
+		if r.Hidden {
+			continue
+		}
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
 			Key:       r.Key,
 			IsVisible: true,
