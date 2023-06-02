@@ -77,5 +77,8 @@ func (b *block) ApplyEvent(e *pb.EventBlockSetWidget) error {
 	if e.Layout != nil {
 		b.content.Layout = e.Layout.GetValue()
 	}
+	if e.Limit != nil {
+		b.content.Limit = e.Limit.GetValue()
+	}
 	return nil
 }
