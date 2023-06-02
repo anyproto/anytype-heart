@@ -80,7 +80,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shirou/gopsutil/v3 v3.23.3
 	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
