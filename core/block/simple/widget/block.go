@@ -80,5 +80,8 @@ func (b *block) ApplyEvent(e *pb.EventBlockSetWidget) error {
 	if e.Limit != nil {
 		b.content.Limit = e.Limit.GetValue()
 	}
+	if e.ViewId != nil {
+		b.content.ViewId = e.ViewId.GetValue()
+	}
 	return nil
 }
