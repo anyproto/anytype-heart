@@ -44,7 +44,7 @@ func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) [
 			filesToDelete = append(filesToDelete, hash)
 		}
 		if hash == "" {
-			if _, err := fs.fileStore.ListByTarget(f); err == nil {
+			if targets, err := fs.fileStore.ListByTarget(f); err == nil && len(targets) > 0 {
 				allFilesHashes = append(allFilesHashes, f)
 				continue
 			}
@@ -57,7 +57,7 @@ func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) [
 
 func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string) []string {
 	var allFiles []string
-	if files := pbtypes.GetStringList(st.Details(), name); files != nil {
+	if files := pbtypes.GetStringList(st.Details(), name); len(files) > 0 {
 		allFiles = append(allFiles, files...)
 	}
 
