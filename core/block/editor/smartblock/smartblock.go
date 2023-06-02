@@ -1316,33 +1316,12 @@ func hasStoreChanges(changes []*pb.ChangeContent) bool {
 	return false
 }
 
-func hasDetailsMsgs(msgs []simple.EventMessage, ignoredKeys ...bundle.RelationKey) bool {
+func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 	for _, msg := range msgs {
-		switch msg.Msg.Value.(type) {
-		case *pb.EventMessageValueOfObjectDetailsAmend:
-			for _, k := range msg.Msg.GetObjectDetailsAmend().GetDetails() {
-				if lo.Contains(ignoredKeys, bundle.RelationKey(k.Key)) {
-					continue
-				} else {
-					return true
-				}
-			}
-		case *pb.EventMessageValueOfObjectDetailsSet:
-			for k := range msg.Msg.GetObjectDetailsSet().GetDetails().GetFields() {
-				if lo.Contains(ignoredKeys, bundle.RelationKey(k)) {
-					continue
-				} else {
-					return true
-				}
-			}
-		case *pb.EventMessageValueOfObjectDetailsUnset:
-			for _, k := range msg.Msg.GetObjectDetailsUnset().GetKeys() {
-				if lo.Contains(ignoredKeys, bundle.RelationKey(k)) {
-					continue
-				} else {
-					return true
-				}
-			}
+		if msg.Msg.GetObjectDetailsSet() != nil ||
+			msg.Msg.GetObjectDetailsUnset() != nil ||
+			msg.Msg.GetObjectDetailsAmend() != nil {
+			return true
 		}
 	}
 	return false
