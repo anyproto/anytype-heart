@@ -108,7 +108,7 @@ func (v *date) Close() (err error) {
 }
 
 func (v *date) Heads() []string {
-	return nil
+	return []string{v.id}
 }
 
 func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
