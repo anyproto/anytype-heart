@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -66,18 +67,18 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID 
 }
 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
-	dv := block.Model().GetDataview()
-	target := dv.TargetObjectId
+	dataView := block.Model().GetDataview()
+	target := dataView.TargetObjectId
 	if target != "" {
 		newTarget := oldIDtoNew[target]
 		if newTarget == "" {
 			newTarget = addr.MissingObject
 		}
-		dv.TargetObjectId = newTarget
+		dataView.TargetObjectId = newTarget
 		st.Set(simple.New(block.Model()))
 	}
 
-	for _, view := range dv.GetViews() {
+	for _, view := range dataView.GetViews() {
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
@@ -88,14 +89,14 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 			}
 		}
 	}
-	for _, group := range dv.GetGroupOrders() {
+	for _, group := range dataView.GetGroupOrders() {
 		for _, vg := range group.ViewGroups {
 			groups := replaceChunks(vg.GroupId, oldIDtoNew)
 			sort.Strings(groups)
 			vg.GroupId = strings.Join(groups, "")
 		}
 	}
-	for _, group := range dv.GetObjectOrders() {
+	for _, group := range dataView.GetObjectOrders() {
 		for i, id := range group.ObjectIds {
 			if newId, exist := oldIDtoNew[id]; exist {
 				group.ObjectIds[i] = newId
@@ -117,10 +118,10 @@ func updateRelationID(db dataview.Block, relation *model.BlockContentDataviewRel
 		log.Error("failed to add new relations from view, %s", err.Error())
 		return
 	}
-	for _, relationLink := range db.Model().GetDataview().GetRelationLinks() {
-		if relationLink.Key == oldKey {
-			relationLink.Key = relation.Key
-		}
+	if relationLink, ok := lo.Find(db.Model().GetDataview().GetRelationLinks(), func(relationLink *model.RelationLink) bool {
+		return relationLink.Key == oldKey
+	}); ok {
+		relationLink.Key = relation.Key
 	}
 }
 
@@ -300,15 +301,15 @@ func replaceChunks(s string, oldToNew map[string]string) []string {
 	return result
 }
 
-func AddRelationsToDataView(st *state.State, rel *model.RelationLink) error {
-	return st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if dv, ok := bl.(dataview.Block); ok {
-			if len(bl.Model().GetDataview().GetViews()) == 0 {
+func AddRelationsToDataView(collectionState *state.State, relationLink *model.RelationLink) error {
+	return collectionState.Iterate(func(block simple.Block) (isContinue bool) {
+		if dataView, ok := block.(dataview.Block); ok {
+			if len(block.Model().GetDataview().GetViews()) == 0 {
 				return true
 			}
-			for _, view := range bl.Model().GetDataview().GetViews() {
-				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
-					Key:       rel.Key,
+			for _, view := range block.Model().GetDataview().GetViews() {
+				err := dataView.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+					Key:       relationLink.Key,
 					IsVisible: true,
 					Width:     192,
 				})
@@ -316,9 +317,9 @@ func AddRelationsToDataView(st *state.State, rel *model.RelationLink) error {
 					return true
 				}
 			}
-			err := dv.AddRelation(&model.RelationLink{
-				Key:    rel.Key,
-				Format: rel.Format,
+			err := dataView.AddRelation(&model.RelationLink{
+				Key:    relationLink.Key,
+				Format: relationLink.Format,
 			})
 			if err != nil {
 				return true

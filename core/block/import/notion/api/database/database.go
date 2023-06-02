@@ -103,7 +103,7 @@ func (ds *Service) GetDatabase(ctx context.Context,
 }
 
 func (ds *Service) makeDatabaseSnapshot(d Database,
-	req *block.MapRequest,
+	request *block.MapRequest,
 	notionIdsToAnytype, databaseNameToID map[string]string) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
@@ -115,7 +115,7 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := make([]*converter.Snapshot, 0)
 	for key, databaseProperty := range d.Properties {
-		if snapshot := ds.createRelationFromDatabaseProperty(req, databaseProperty, key, st); snapshot != nil {
+		if snapshot := ds.createRelationFromDatabaseProperty(request, databaseProperty, key, st); snapshot != nil {
 			snapshots = append(snapshots, snapshot)
 		}
 	}
@@ -152,27 +152,27 @@ func (ds *Service) createRelationFromDatabaseProperty(req *block.MapRequest,
 	return sn
 }
 
-func (ds *Service) getRelationSnapshot(databaseProperty property.DatabasePropertyHandler, key string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {
-	relID := bson.NewObjectId().Hex()
-	relDetails := ds.getRelationDetails(databaseProperty, key, relID)
-	rel := &model.SmartBlockSnapshotBase{
-		Details:     relDetails,
+func (ds *Service) getRelationSnapshot(databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {
+	relationKey := bson.NewObjectId().Hex()
+	relationDetails := ds.getRelationDetails(databaseProperty, name, relationKey)
+	relationSnapshot := &model.SmartBlockSnapshotBase{
+		Details:     relationDetails,
 		ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
 	}
-	sn := &converter.Snapshot{
-		Id:       addr.RelationKeyToIdPrefix + relID,
-		Snapshot: &pb.ChangeSnapshot{Data: rel},
+	snapshot := &converter.Snapshot{
+		Id:       addr.RelationKeyToIdPrefix + relationKey,
+		Snapshot: &pb.ChangeSnapshot{Data: relationSnapshot},
 		SbType:   sb.SmartBlockTypeSubObject,
 	}
-	return rel, sn
+	return relationSnapshot, snapshot
 }
 
-func (ds *Service) getRelationDetails(propertyFormat property.DatabasePropertyHandler, key, id string) *types.Struct {
+func (ds *Service) getRelationDetails(propertyFormat property.DatabasePropertyHandler, name, key string) *types.Struct {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propertyFormat.GetFormat()))
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + id)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(id)
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
+	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	return details
 }

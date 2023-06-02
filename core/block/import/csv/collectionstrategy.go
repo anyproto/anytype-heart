@@ -141,7 +141,7 @@ func getDetailsForObject(csvTable [][]string, relations []*model.Relation, i int
 }
 
 func provideObjectSnapshot(st *state.State, details *types.Struct) *converter.Snapshot {
-	sn := &converter.Snapshot{
+	snapshot := &converter.Snapshot{
 		Id:     uuid.New().String(),
 		SbType: smartblock.SmartBlockTypePage,
 		Snapshot: &pb.ChangeSnapshot{
@@ -153,7 +153,7 @@ func provideObjectSnapshot(st *state.State, details *types.Struct) *converter.Sn
 			},
 		},
 	}
-	return sn
+	return snapshot
 }
 
 func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *state.State, p string, relations []*model.Relation) *converter.Snapshot {
