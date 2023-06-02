@@ -744,7 +744,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	if changeId == "" && len(msgs) == 0 {
-		// means we probably
+		// means we probably don't have any actual change being made
+		// in case the heads are not changed, we may skip indexing
 		sb.runIndexer(st, SkipIfHeadsNotChanged)
 	} else {
 		sb.runIndexer(st)
@@ -880,6 +881,13 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	}
 	s.AddRelationLinks(links...)
 	return
+}
+
+func (sb *smartBlock) injectLinksDetails(s *state.State) {
+	links := sb.navigationalLinks()
+	links = slice.Remove(links, sb.Id())
+	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
+	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
@@ -1230,8 +1238,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-	links := sb.navigationalLinks()
-	links = slice.Remove(links, sb.Id())
+	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)

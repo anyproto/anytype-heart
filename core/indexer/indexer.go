@@ -225,11 +225,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	}
 
 	details := info.State.CombinedDetails()
-	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
-	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
-	if setCreator == "" {
-		setCreator = i.anytype.ProfileID()
-	}
+
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
