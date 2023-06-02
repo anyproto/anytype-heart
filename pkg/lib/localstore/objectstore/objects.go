@@ -37,6 +37,7 @@ import (
 )
 
 var log = logging.Logger("anytype-localstore")
+var ErrDetailsNotChanged = errors.New("details not changed")
 
 const CName = "objectstore"
 
@@ -882,7 +883,9 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 		},
 	}, false)
 	if err != nil {
-		return fmt.Errorf("failed to overwrite details and relations: %w", err)
+		if !errors.Is(err, ErrDetailsNotChanged) {
+			return fmt.Errorf("failed to overwrite details and relations: %w", err)
+		}
 	}
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
@@ -1107,7 +1110,7 @@ func (m *dsObjectStore) CreateObject(id string, details *types.Struct, links []s
 	}
 
 	err = m.updateObjectDetails(txn, id, before, details)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrDetailsNotChanged) {
 		return err
 	}
 
@@ -1532,7 +1535,7 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	}
 
 	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
-		return nil
+		return ErrDetailsNotChanged
 	}
 
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)

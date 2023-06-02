@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -220,7 +219,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			log.With("thread", info.Id).Errorf("heads hash is empty")
 		} else if lastIndexedHash == headHashToIndex {
 			log.With("thread", info.Id).Debugf("heads not changed, skipping indexing")
-			return nil
+
+			// todo: the optimization temporarily disabled to see the metrics
+			//return nil
 		}
 	}
 
@@ -238,15 +239,36 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	indexLinksTime := time.Now()
 	if indexDetails {
 		if err := i.store.UpdateObjectDetails(info.Id, details, false); err != nil {
-			hasError = true
-			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
+			if errors.Is(err, objectstore.ErrDetailsNotChanged) {
+				metrics.ObjectDetailsHeadsNotChangedCounter.Add(1)
+				log.With("objectId", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
+			} else {
+				hasError = true
+				log.With("thread", info.Id).Errorf("can't update object store: %v", err)
+			}
+		} else {
+			// todo: remove temp log
+			if lastIndexedHash == headHashToIndex {
+				l := log.With("objectId", info.Id).
+					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
+					With("lastHashIsEmpty", lastIndexedHash == "").
+					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
+				//With("old", pbtypes.Sprint(oldDetails.Details)).
+				//With("new", pbtypes.Sprint(info.State.CombinedDetails())).
+				//With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
+
+				if opts.SkipIfHeadsNotChanged {
+					l.Warnf("details have changed, but heads are equal")
+				} else {
+					l.Debugf("details have changed, but heads are equal")
+				}
+			}
 		}
 
-		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+		// todo: the optimization temporarily disabled to see the metrics
+		if true || !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			if err := i.store.AddToIndexQueue(info.Id); err != nil {
 				log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
-			} else {
-				log.With("thread", info.Id).Debugf("to index queue")
 			}
 		}
 
