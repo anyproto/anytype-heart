@@ -107,7 +107,7 @@ type State struct {
 
 	store                   *types.Struct
 	storeKeyRemoved         map[string]struct{}
-	storeLastChangeIdByPath map[string]string
+	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
 	objectTypes          []string
 	objectTypesToMigrate []string
@@ -911,24 +911,24 @@ func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
 
 func (s *State) setStoreChangeId(path string, changeId string) *State {
 	// do not copy map in purpose
-	p := s.StoreLastChangeById()
-	if p == nil {
-		p = map[string]string{}
+	// we don't need to make diffs with parent stat
+	s.storeLastChangeIdByPath = s.StoreLastChangeIdByPath()
+	if s.storeLastChangeIdByPath == nil {
+		s.storeLastChangeIdByPath = map[string]string{}
 	}
-	p[path] = changeId
-	s.storeLastChangeIdByPath = p
+	s.storeLastChangeIdByPath[path] = changeId
 	return s
 }
 
-func (s *State) StoreLastChangeById() map[string]string {
+func (s *State) StoreLastChangeIdByPath() map[string]string {
 	if s.storeLastChangeIdByPath == nil && s.parent != nil {
-		return s.parent.StoreLastChangeById()
+		return s.parent.StoreLastChangeIdByPath()
 	}
 	return s.storeLastChangeIdByPath
 }
 
 func (s *State) StoreChangeIdForPath(path string) string {
-	m := s.StoreLastChangeById()
+	m := s.StoreLastChangeIdByPath()
 	if m == nil {
 		return ""
 	}
@@ -1155,9 +1155,6 @@ func (s *State) BlocksInit(st simple.DetailsService) {
 }
 
 func (s *State) CheckRestrictions() (err error) {
-	if s == nil {
-		fmt.Println()
-	}
 	if s.parent == nil {
 		return
 	}
@@ -1385,7 +1382,7 @@ func (s *State) Copy() *State {
 		noObjectType:            s.noObjectType,
 		migrationVersion:        s.migrationVersion,
 		store:                   pbtypes.CopyStruct(s.Store()),
-		storeLastChangeIdByPath: s.StoreLastChangeById(), // todo: do we need to copy it?
+		storeLastChangeIdByPath: s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
 		storeKeyRemoved:         storeKeyRemovedCopy,
 	}
 	return copy

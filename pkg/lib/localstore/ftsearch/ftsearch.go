@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
@@ -118,7 +119,16 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 	}
 	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
 	b := f.index.NewBatch()
-	log.Errorf("index %d docs", len(docs))
+	start := time.Now()
+	defer func() {
+		spentMs := time.Since(start).Milliseconds()
+		l := log.With("objects", len(docs)).With("total", time.Since(start).Milliseconds())
+		if spentMs > 1000 {
+			l.Warnf("ft index took too long")
+		} else {
+			l.Debugf("ft index done")
+		}
+	}()
 	for _, doc := range docs {
 		doc.TitleNoTerms = doc.Title
 		doc.TextNoTerms = doc.Text
