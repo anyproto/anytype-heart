@@ -130,10 +130,9 @@ func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigratio
 		return err
 	}
 
-	var oldId string
-	if isMigration {
-		oldId = migrationDashboardName
-	} else {
+	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
+	oldId := migrationDashboardName
+	if !isMigration {
 		oldId, err = b.getOldSpaceDashboardId(archive)
 		if err != nil {
 			log.Errorf("Failed to get old id of space dashboard object: %s", err.Error())

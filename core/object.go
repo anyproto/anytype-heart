@@ -867,5 +867,6 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 
-	return response(getService[builtinobjects.BuiltinObjects](mw).CreateObjectsForUseCase(ctx, req.UseCase))
+	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	return response(objCreator.CreateObjectsForUseCase(ctx, req.UseCase))
 }
