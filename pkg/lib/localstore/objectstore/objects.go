@@ -1633,12 +1633,6 @@ func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) 
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
 
-	for k, v := range details.GetDetails().GetFields() {
-		// todo: remove null cleanup(should be done when receiving from client)
-		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-			delete(details.Details.Fields, k)
-		}
-	}
 	return details, nil
 }
 
