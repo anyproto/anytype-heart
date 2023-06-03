@@ -517,11 +517,9 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 	return sb.Doc.(*state.State).DepSmartIds(true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
-func (sb *smartBlock) navigationalLinks() []string {
+func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 	includeDetails := true
 	includeRelations := sb.includeRelationObjectsAsDependents
-
-	s := sb.Doc.(*state.State)
 
 	var ids []string
 
@@ -884,7 +882,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 }
 
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
-	links := sb.navigationalLinks()
+	links := sb.navigationalLinks(s)
 	links = slice.Remove(links, sb.Id())
 	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
@@ -1284,6 +1282,7 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 	}
 
 	sb.setRestrictionsDetail(s)
+	sb.injectLinksDetails(s)
 	return
 }
 
