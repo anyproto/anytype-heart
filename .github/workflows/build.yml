@@ -70,10 +70,11 @@ jobs:
       - name: install protoc
         run: |
           make setup-protoc
-
       - name: setup go
         run: |
           make setup-go
+          make setup-gomobile
+          which gomobile
       - name: Cross-compile library mac/win
         run: |
           echo $FLAGS
@@ -261,7 +262,6 @@ jobs:
       - name: setup go
         run: |
           make setup-go
-          make setup-gomobile
       - name: Cross-compile library for linux amd64/arm64
         run: |
           echo $FLAGS
