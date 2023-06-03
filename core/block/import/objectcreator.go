@@ -136,8 +136,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 func (oc *ObjectCreator) updateExistingObject(ctx *session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
 	if st.Store() != nil {
-		oc.updateLinksInCollections(st, oldIDtoNew)
-		return nil
+		oc.updateLinksInCollections(st, oldIDtoNew, false)
 	}
 	return oc.resetState(ctx, newID, st)
 }
@@ -160,7 +159,8 @@ func (oc *ObjectCreator) createNewObject(ctx *session.Context,
 	respDetails := sb.Details()
 	// update collection after we create it
 	if st.Store() != nil {
-		oc.updateLinksInCollections(st, oldIDtoNew)
+		oc.updateLinksInCollections(st, oldIDtoNew, true)
+		oc.resetState(ctx, newID, st)
 	}
 	return respDetails, nil
 }
@@ -394,11 +394,15 @@ func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State
 	})
 }
 
-func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string) {
+func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {
 	err := block.Do(oc.service, st.RootId(), func(b sb.SmartBlock) error {
 		originalState := b.NewState()
-		oc.mergeCollections(originalState.GetStoreSlice(template.CollectionStoreKey), st, oldIDtoNew)
-		return b.Apply(st)
+		var existedObjects []string
+		if !isNewCollection {
+			existedObjects = originalState.GetStoreSlice(template.CollectionStoreKey)
+		}
+		oc.mergeCollections(existedObjects, st, oldIDtoNew)
+		return nil
 	})
 	if err != nil {
 		log.Errorf("failed to get existed objects in collection, %s", err)
