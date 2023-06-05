@@ -60,8 +60,6 @@ github.com/anyproto/go-slip10 v1.0.0 h1:uAEtSuudR3jJBOfkOXf3bErxVoxbuKwdoJN55M1i
 github.com/anyproto/go-slip10 v1.0.0/go.mod h1:BCmIlM1KB8wX6K4/8pOvxPl9oVKfEvZ5vsmO5rkK6vg=
 github.com/anyproto/go-slip21 v1.0.0 h1:CI7lUqTIwmPOEGVAj4jyNLoICvueh++0U2HoAi3m2ZY=
 github.com/anyproto/go-slip21 v1.0.0/go.mod h1:gbIJt7HAdr5DuT4f2pFTKCBSUWYsm/fysHBNqgsuxT0=
-github.com/anyproto/go-threads v1.1.6-0.20221213174125-89c8cdb03fe8 h1:oi1T4QWt3jZa4jTPT7H4ecxEzDuuBJgfx4wE9LGL2HQ=
-github.com/anyproto/go-threads v1.1.6-0.20221213174125-89c8cdb03fe8/go.mod h1:NEauq6UltosfQF8vw2eJfSdGmb6F5trjl0Om/hxn5I8=
 github.com/anyproto/html-to-markdown v0.0.0-20230314114314-79ca02e55cc2 h1:alXDhcDJtrvQQfsk6QjAEbnVZy2ZWX0RWfWUDBpAZrE=
 github.com/anyproto/html-to-markdown v0.0.0-20230314114314-79ca02e55cc2/go.mod h1:BzWBqKEgKeVFX4EHEF98koY2ZnAfUM6ahWmXSWAAq9o=
 github.com/anyproto/protobuf v1.3.3-0.20230114170705-8e2cb769640b h1:aRyhmcoIQ7jFHxFPHEAhihoDA5/7GtvAvvrlUW1K0aY=

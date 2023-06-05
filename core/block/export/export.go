@@ -136,9 +136,9 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		for docId := range docs {
 			did := docId
 			if err = queue.Wait(func() {
-				log.With("threadId", did).Debugf("write doc")
+				log.With("objectID", did).Debugf("write doc")
 				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
-					log.With("threadId", did).Warnf("can't export doc: %v", werr)
+					log.With("objectID", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
 				}
@@ -265,12 +265,12 @@ func (e *export) getExistedObjects(includeArchived bool) (map[string]*types.Stru
 func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
-			log.With("threadId", did).Debugf("write doc")
+			log.With("objectID", did).Debugf("write doc")
 			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
 				return mw.Add(b.NewState().Copy())
 			})
 			if err != nil {
-				log.With("threadId", did).Warnf("can't export doc: %v", werr)
+				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				succeed++
 			}

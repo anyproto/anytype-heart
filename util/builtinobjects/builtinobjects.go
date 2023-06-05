@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,9 +13,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -39,8 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
+	"github.com/gogo/protobuf/types"
 )
 
 const CName = "builtinobjects"
@@ -177,13 +174,7 @@ func (b *builtinObjects) inject(ctx context.Context) (err error) {
 		} else {
 			sbt, err = b.sbtProvider.Type(id)
 		}
-		if err != nil {
-			sbt, err = SmartBlockTypeFromThreadID(id)
-			if err != nil {
-
-				return err
-			}
-		}
+		sbt = smartblock.SmartBlockTypePage
 		if err := sbt.Valid(); err != nil {
 			sbt = smartblock.SmartBlockTypePage
 			log.Errorf("failed to get smartblock type for %s: %s; fallback to page", id, err.Error())
@@ -358,7 +349,7 @@ func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 			newTarget := b.idsMap[a.Model().GetLink().TargetBlockId]
 			if newTarget == "" {
 				// maybe we should panic here?
-				log.With("object", st.RootId()).Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
+				log.With("objectID", st.RootId()).Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
 				return true
 			}
 
@@ -368,7 +359,7 @@ func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 			newTarget := b.idsMap[a.Model().GetBookmark().TargetObjectId]
 			if newTarget == "" {
 				// maybe we should panic here?
-				log.With("object", oldId).Errorf("cant find target id for bookmark: %s", a.Model().GetBookmark().TargetObjectId)
+				log.With("objectID", oldId).Errorf("cant find target id for bookmark: %s", a.Model().GetBookmark().TargetObjectId)
 				return true
 			}
 
@@ -381,7 +372,7 @@ func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 				}
 				newTarget := b.idsMap[mark.Param]
 				if newTarget == "" {
-					log.With("object", oldId).Errorf("cant find target id for mention: %s", mark.Param)
+					log.With("objectID", oldId).Errorf("cant find target id for mention: %s", mark.Param)
 					continue
 				}
 
@@ -398,7 +389,7 @@ func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 			newTarget := b.idsMap[oldTarget]
 			if newTarget == "" {
 				// maybe we should panic here?
-				log.With("object", oldId).Errorf("cant find target id for dataview: %s", oldTarget)
+				log.With("objectID", oldId).Errorf("cant find target id for dataview: %s", oldTarget)
 				return true
 			}
 
@@ -411,7 +402,7 @@ func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 	for k, v := range st.Details().GetFields() {
 		rel, err := bundle.GetRelation(bundle.RelationKey(k))
 		if err != nil {
-			log.With("object", oldId).Errorf("failed to find relation %s: %s", k, err.Error())
+			log.With("objectID", oldId).Errorf("failed to find relation %s: %s", k, err.Error())
 			continue
 		}
 		if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
@@ -425,7 +416,7 @@ func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
 			}
 			newTarget, _ := b.idsMap[val]
 			if newTarget == "" {
-				log.With("object", oldId).Errorf("cant find target id for relation %s: %s", k, val)
+				log.With("objectID", oldId).Errorf("cant find target id for relation %s: %s", k, val)
 				continue
 			}
 			vals[i] = newTarget
@@ -514,44 +505,4 @@ func (b *builtinObjects) putFirstRelationInViews(st *state.State, oldID string, 
 		IsVisible: true,
 	}}, v.Relations...)
 	st.Set(simple.New((*bl).Model()))
-}
-
-func SmartBlockTypeFromThreadID(id string) (coresb.SmartBlockType, error) {
-	tid, err := thread.Decode(id)
-	if err != nil {
-		return coresb.SmartBlockTypePage, err
-	}
-
-	rawid := tid.KeyString()
-	// skip version
-	_, n := uvarint(rawid)
-	// skip variant
-	_, n2 := uvarint(rawid[n:])
-	blockType, _ := uvarint(rawid[n+n2:])
-
-	// checks in order to detect invalid sb type
-	if err := coresb.SmartBlockType(blockType).Valid(); err != nil {
-		return coresb.SmartBlockTypePage, nil
-		return 0, err
-	}
-
-	return coresb.SmartBlockType(blockType), nil
-}
-
-func uvarint(buf string) (uint64, int) {
-	var x uint64
-	var s uint
-	// we have a binary string so we can't use a range loope
-	for i := 0; i < len(buf); i++ {
-		b := buf[i]
-		if b < 0x80 {
-			if i > 9 || i == 9 && b > 1 {
-				return 0, -(i + 1) // overflow
-			}
-			return x | uint64(b)<<s, i + 1
-		}
-		x |= uint64(b&0x7f) << s
-		s += 7
-	}
-	return 0, 0
 }

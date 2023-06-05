@@ -82,7 +82,6 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/textileio/go-ds-badger3 v0.1.0
-	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/yuin/goldmark v1.5.4
 	go.uber.org/multierr v1.11.0
@@ -262,8 +261,6 @@ replace github.com/textileio/go-ds-badger3 => github.com/anyproto/go-ds-badger3 
 replace github.com/dgraph-io/ristretto => github.com/dgraph-io/ristretto v0.1.1-0.20220403145359-8e850b710d6d
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20230314114314-79ca02e55cc2
-
-replace github.com/textileio/go-threads => github.com/anyproto/go-threads v1.1.6-0.20221213174125-89c8cdb03fe8
 
 replace github.com/hsanjuan/ipfs-lite => github.com/anyproto/ipfs-lite v1.4.3-0.20221213154513-adb3ebf9381c
 

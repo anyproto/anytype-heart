@@ -257,7 +257,7 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 		} else if keyUnset := ch.GetStoreKeyUnset(); keyUnset != nil {
 			err = c.removeObject(st, strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator))
 			if err != nil {
-				log.With("threadId", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
+				log.With("objectID", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
 				return err
 			}
 		}

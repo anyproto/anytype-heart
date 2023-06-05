@@ -96,7 +96,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	}
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, newID); err != nil {
-		log.With("object", newID).Errorf("failed to update objects ids: %s", err.Error())
+		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
@@ -116,7 +116,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, payload, st, newID, oldIDtoNew)
 		if err != nil {
-			log.With("object", newID).Errorf("failed to create %s: %s", newID, err.Error())
+			log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
 			return nil, "", err
 		}
 	} else {
@@ -153,7 +153,7 @@ func (oc *ObjectCreator) createNewObject(ctx *session.Context,
 		}
 	})
 	if err != nil {
-		log.With("object", newID).Errorf("failed to create %s: %s", newID, err.Error())
+		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
 		return nil, err
 	}
 	respDetails := sb.Details()

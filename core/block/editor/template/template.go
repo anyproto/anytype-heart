@@ -709,7 +709,7 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) ||
 					forceViews && !pbtypes.DataviewViewsEqualSorted(dvBlock.Model().GetDataview().Views, dataview.Dataview.Views) {
 
-					/* log.With("thread", s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",
+					/* log.With("object" s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",
 					len(dvBlock.Model().GetDataview().Relations) == 0,
 					!slice.UnsortedEquals(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source),
 					len(dvBlock.Model().GetDataview().Views) == 0,
