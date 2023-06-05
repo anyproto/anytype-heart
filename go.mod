@@ -52,7 +52,7 @@ require (
 	github.com/ipfs/go-merkledag v0.10.0
 	github.com/ipfs/go-path v0.3.1
 	github.com/ipfs/go-unixfs v0.4.5
-	github.com/ipfs/interface-go-ipfs-core v0.10.0
+	github.com/ipfs/interface-go-ipfs-core v0.11.2
 	github.com/joho/godotenv v1.5.1
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
