@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pb"
@@ -17,7 +18,7 @@ type updateReceiver struct {
 
 	linkedFilesWatcher *linkedFilesWatcher
 	subObjectsWatcher  *subObjectsWatcher
-
+	nodeConfService    nodeconf.Service
 	sync.Mutex
 	nodeConnected bool
 }
@@ -26,6 +27,7 @@ func newUpdateReceiver(
 	coreService core.Service,
 	linkedFilesWatcher *linkedFilesWatcher,
 	subObjectsWatcher *subObjectsWatcher,
+	nodeConfService nodeconf.Service,
 	cfg *config.Config,
 	emitter func(event *pb.Event),
 ) *updateReceiver {
@@ -36,6 +38,7 @@ func newUpdateReceiver(
 		coreService:        coreService,
 		linkedFilesWatcher: linkedFilesWatcher,
 		subObjectsWatcher:  subObjectsWatcher,
+		nodeConfService:    nodeConfService,
 		emitter:            emitter,
 	}
 }
@@ -50,6 +53,7 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 	nodeConnected = r.isNodeConnected()
 	linkedFilesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
 
+	networkStatus := r.nodeConfService.NetworkCompatibilityStatus()
 	switch status {
 	case syncstatus.StatusUnknown:
 		objStatus = pb.EventStatusThread_Unknown
@@ -59,7 +63,12 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 		objStatus = pb.EventStatusThread_Syncing
 	}
 	if !nodeConnected {
-		objStatus = pb.EventStatusThread_Offline
+		switch networkStatus {
+		case nodeconf.NetworkCompatibilityStatusIncompatible:
+			objStatus = pb.EventStatusThread_IncompatibleVersion
+		default:
+			objStatus = pb.EventStatusThread_Offline
+		}
 	}
 	generalStatus = objStatus
 
