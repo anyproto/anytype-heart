@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
-func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
+func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err error) {
 	status, err := f.fileStore.GetSyncStatus(fileId)
 	if err != nil && !errors.Is(err, localstore.ErrNotFound) {
 		return fmt.Errorf("get file sync status: %w", err)
@@ -38,6 +38,13 @@ func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
 		return nil
 	}
 
+	if uploadedByUser {
+		err = f.checkAndNotifyAboutUploadLimits(spaceId, fileId)
+		if err != nil {
+			return fmt.Errorf("check upload limit: %w", err)
+		}
+	}
+
 	log.Info("add file to uploading queue", zap.String("fileID", fileId))
 	defer func() {
 		if err == nil {
@@ -49,6 +56,20 @@ func (f *fileSync) AddFile(spaceId, fileId string) (err error) {
 	}()
 	err = f.queue.QueueUpload(spaceId, fileId)
 	return
+}
+
+func (f *fileSync) checkAndNotifyAboutUploadLimits(spaceId string, fileId string) error {
+	ok, err := f.queue.isFileQueued(spaceId, fileId)
+	if err != nil {
+		return fmt.Errorf("check if file is queued: %w", err)
+	}
+	if !ok {
+		_, err = f.prepareToUpload(context.Background(), spaceId, fileId)
+		if isLimitReachedErr(err) {
+			f.sendLimitReachedEvent(spaceId, fileId)
+		}
+	}
+	return nil
 }
 
 func (f *fileSync) addLoop() {
@@ -77,17 +98,17 @@ func (f *fileSync) addOperation() {
 	}
 }
 
-func (f *fileSync) getUpload() (spaceId string, fileId string, wasDiscarded bool, err error) {
+func (f *fileSync) getUpload() (spaceId string, fileId string, err error) {
 	spaceId, fileId, err = f.queue.GetUpload()
 	if err == errQueueIsEmpty {
 		spaceId, fileId, err = f.queue.GetDiscardedUpload()
-		return spaceId, fileId, true, err
+		return spaceId, fileId, err
 	}
-	return spaceId, fileId, false, err
+	return spaceId, fileId, err
 }
 
 func (f *fileSync) tryToUpload() (string, error) {
-	spaceId, fileId, wasDiscarded, err := f.getUpload()
+	spaceId, fileId, err := f.getUpload()
 	if err != nil {
 		return fileId, err
 	}
@@ -100,10 +121,7 @@ func (f *fileSync) tryToUpload() (string, error) {
 		return fileId, f.queue.DoneUpload(spaceId, fileId)
 	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
-		if errors.Is(err, errReachedLimit) || strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error()) {
-			if !wasDiscarded {
-				f.sendLimitReachedEvent(spaceId, fileId)
-			}
+		if isLimitReachedErr(err) {
 			log.Info("reached limit, push to discarded queue", zap.String("fileId", fileId))
 			if qerr := f.queue.QueueDiscarded(spaceId, fileId); qerr != nil {
 				log.Warn("can't push upload task to discarded queue", zap.String("fileId", fileId), zap.Error(qerr))
@@ -124,6 +142,10 @@ func (f *fileSync) tryToUpload() (string, error) {
 	return fileId, f.queue.DoneUpload(spaceId, fileId)
 }
 
+func isLimitReachedErr(err error) bool {
+	return errors.Is(err, errReachedLimit) || strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error())
+}
+
 func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err error) {
 	log.Info("uploading file", zap.String("fileId", fileId))
 
@@ -136,30 +158,9 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 		_ = batcher.Close()
 	}()
 
-	fileBlocks, err := f.collectFileBlocks(ctx, fileId)
+	blocksToUpload, err := f.prepareToUpload(ctx, spaceId, fileId)
 	if err != nil {
-		return fmt.Errorf("collect file blocks: %w", err)
-	}
-
-	bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceId, fileId, fileBlocks)
-	if err != nil {
-		return fmt.Errorf("select blocks to upload: %w", err)
-	}
-
-	log.Info("collecting blocks to upload",
-		zap.String("fileID", fileId),
-		zap.Int("blocksToUpload", len(blocksToUpload)),
-		zap.Int("totalBlocks", len(fileBlocks)),
-	)
-
-	stat, err := f.SpaceStat(ctx, spaceId)
-	if err != nil {
-		return fmt.Errorf("get space stat: %w", err)
-	}
-
-	bytesLeft := stat.BytesLimit - stat.BytesUsage
-	if bytesToUpload > bytesLeft {
-		return errReachedLimit
+		return err
 	}
 
 	go func() {
@@ -192,6 +193,36 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 		}
 	}
 	return <-dagErr
+}
+
+func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId string) ([]blocks.Block, error) {
+	fileBlocks, err := f.collectFileBlocks(ctx, fileId)
+	if err != nil {
+		return nil, fmt.Errorf("collect file blocks: %w", err)
+	}
+
+	bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceId, fileId, fileBlocks)
+	if err != nil {
+		return nil, fmt.Errorf("select blocks to upload: %w", err)
+	}
+
+	log.Info("collecting blocks to upload",
+		zap.String("fileID", fileId),
+		zap.Int("blocksToUpload", len(blocksToUpload)),
+		zap.Int("totalBlocks", len(fileBlocks)),
+	)
+
+	stat, err := f.SpaceStat(ctx, spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space stat: %w", err)
+	}
+
+	bytesLeft := stat.BytesLimit - stat.BytesUsage
+	if len(blocksToUpload) > 0 && bytesToUpload > bytesLeft {
+		return nil, errReachedLimit
+	}
+
+	return blocksToUpload, nil
 }
 
 func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
