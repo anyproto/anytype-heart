@@ -155,28 +155,21 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 				}
 			}
 		}
-
-		tasks := make([]process.Task, 0, len(docs))
+		queue.SetMessage("export files")
 		for docId := range docs {
 			did := docId
-			err = queue.Add(func() {
+			if err = queue.Wait(func() {
 				log.With("threadId", did).Debugf("write doc")
-				if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
+				if werr := e.writeDoc(ctxCancel, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
 					log.With("threadId", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
 				}
-			})
-			if err != nil {
-				log.With("threadId", did).Warnf("can't add task to queue doc: %v", err)
-
+			}); err != nil {
+				e.cleanupFile(wr)
+				succeed = 0
+				return
 			}
-		}
-		queue.SetMessage("export files")
-		if err = queue.Wait(tasks...); err != nil {
-			e.cleanupFile(wr)
-			succeed = 0
-			return
 		}
 	}
 	err = queue.Finalize()
