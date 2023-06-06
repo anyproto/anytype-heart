@@ -982,6 +982,7 @@ message Event {
                 Syncing = 2;
                 Synced = 3;
                 Failed = 4;
+                IncompatibleVersion = 5;
             }
         }
     }
