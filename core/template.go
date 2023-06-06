@@ -115,6 +115,7 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+		// TODO: objstore: Only ids are used
 		res, _, err := ds.QueryObjectInfo(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -168,6 +169,7 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+		// TODO: objstore: Only ids are used
 		res, _, err := ds.QueryObjectInfo(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{

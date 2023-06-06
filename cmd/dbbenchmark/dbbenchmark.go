@@ -3,6 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/gogo/protobuf/types"
+	dsbadgerv3 "github.com/textileio/go-ds-badger3"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -10,12 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	dsbadgerv3 "github.com/textileio/go-ds-badger3"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 const localstoreDir string = "localstore"
@@ -176,11 +178,17 @@ func createObjects(store objectstore.ObjectStore, ids []string, detailsCount int
 	for _, id := range ids {
 		details := genRandomDetails(ids, detailsCount)
 		start := time.Now()
-		err := store.CreateObject(id, details, nil, "snippet")
+		err := store.UpdateObjectDetails(id, details, false)
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
 			return err
 		}
+		err = store.UpdateObjectSnippet(id, "snippet")
+		if err != nil {
+			fmt.Println("error occurred while updating snippet:", err.Error())
+			return err
+		}
+
 		taken := float32(time.Now().Sub(start).Nanoseconds())
 		avg = (avg*i + taken) / (i + 1)
 		i += 1.0

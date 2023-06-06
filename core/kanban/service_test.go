@@ -44,39 +44,42 @@ func Test_GrouperTags(t *testing.T) {
 		Start(context.Background())
 	require.NoError(t, err)
 
-	require.NoError(t, ds.CreateObject("rel-tag", &types.Struct{
+	require.NoError(t, ds.UpdateObjectDetails("rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":             pbtypes.String("rel-tag"),
 			"relationKey":    pbtypes.String("tag"),
 			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
 			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
 		},
-	}, nil, ""))
+	}, false))
 
 	idTag1 := bson.NewObjectId().Hex()
 	idTag2 := bson.NewObjectId().Hex()
 	idTag3 := bson.NewObjectId().Hex()
-	require.NoError(t, ds.CreateObject(idTag1, &types.Struct{
-		Fields: map[string]*types.Value{
-			"id":          pbtypes.String(idTag1),
-			"relationKey": pbtypes.String("tag"),
-			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
-		},
-	}, nil, ""))
-	require.NoError(t, ds.CreateObject(idTag2, &types.Struct{
+
+	require.NoError(t, ds.UpdateObjectDetails(
+		idTag1, &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":          pbtypes.String(idTag1),
+				"relationKey": pbtypes.String("tag"),
+				"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			},
+		}, false))
+
+	require.NoError(t, ds.UpdateObjectDetails(idTag2, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag2),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 		},
-	}, nil, ""))
-	require.NoError(t, ds.CreateObject(idTag3, &types.Struct{
+	}, false))
+	require.NoError(t, ds.UpdateObjectDetails(idTag3, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag3),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 		},
-	}, nil, ""))
+	}, false))
 
 	id1 := bson.NewObjectId().Hex()
 	id2 := bson.NewObjectId().Hex()
@@ -87,24 +90,28 @@ func Test_GrouperTags(t *testing.T) {
 	tp.RegisterStaticType(id3, smartblock2.SmartBlockTypePage)
 	tp.RegisterStaticType(id4, smartblock2.SmartBlockTypePage)
 
-	require.NoError(t, ds.CreateObject(id1, &types.Struct{
+	require.NoError(t, ds.UpdateObjectDetails(id1, &types.Struct{
 		Fields: map[string]*types.Value{"name": pbtypes.String("one")},
-	}, nil, "s1"))
+	}, false))
+	require.NoError(t, ds.UpdateObjectSnippet(id1, "s1"))
 
-	require.NoError(t, ds.CreateObject(id2, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, ds.UpdateObjectDetails(id2, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("two"),
 		"tag":  pbtypes.StringList([]string{idTag1}),
-	}}, nil, "s2"))
+	}}, false))
+	require.NoError(t, ds.UpdateObjectSnippet(id1, "s2"))
 
-	require.NoError(t, ds.CreateObject(id3, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, ds.UpdateObjectDetails(id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
-	}}, nil, "s3"))
+	}}, false))
+	require.NoError(t, ds.UpdateObjectSnippet(id1, "s3"))
 
-	require.NoError(t, ds.CreateObject(id4, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, ds.UpdateObjectDetails(id4, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("four"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
-	}}, nil, "s4"))
+	}}, false))
+	require.NoError(t, ds.UpdateObjectSnippet(id1, "s4"))
 
 	grouper, err := kanbanSrv.Grouper("tag")
 	require.NoError(t, err)

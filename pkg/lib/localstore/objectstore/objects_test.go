@@ -46,9 +46,9 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ds).Start(context.Background())
 	require.NoError(t, err)
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
-	err = ds.CreateObject(id.String(), &types.Struct{
+	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
-	}, nil, "")
+	}, false)
 	require.NoError(t, err)
 
 	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
@@ -139,9 +139,12 @@ func TestDsObjectStore_Query(t *testing.T) {
 	tp.RegisterStaticType(id2, smartblock.SmartBlockTypePage)
 	tp.RegisterStaticType(id3, smartblock.SmartBlockTypePage)
 
-	require.NoError(t, ds.CreateObject(id1, newDet("one"), nil, "s1"))
-	require.NoError(t, ds.CreateObject(id2, newDet("two"), nil, "s2"))
-	require.NoError(t, ds.CreateObject(id3, newDet("three"), nil, "s3"))
+	require.NoError(t, ds.UpdateObjectDetails(id1, newDet("one"), false))
+	require.NoError(t, ds.UpdateObjectSnippet(id1, "s1"))
+	require.NoError(t, ds.UpdateObjectDetails(id2, newDet("two"), false))
+	require.NoError(t, ds.UpdateObjectSnippet(id2, "s2"))
+	require.NoError(t, ds.UpdateObjectDetails(id3, newDet("three"), false))
+	require.NoError(t, ds.UpdateObjectSnippet(id3, "s3"))
 	require.NoError(t, fts.Index(ftsearch.SearchDoc{
 		Id:    id1,
 		Title: "one",
@@ -249,7 +252,8 @@ func Test_removeByPrefix(t *testing.T) {
 			rand.Read(key)
 			links = append(links, fmt.Sprintf("%x", key))
 		}
-		require.NoError(t, ds.CreateObject(objId, nil, links, ""))
+		require.NoError(t, ds.UpdateObjectDetails(objId, nil, false))
+		require.NoError(t, ds.UpdateObjectLinks(objId, links))
 	}
 	tx, err := ds2.ds.NewTransaction(false)
 	_, err = removeByPrefixInTx(tx, pagesInboundLinksBase.String())
