@@ -7,3 +7,6 @@ packages:
   github.com/anyproto/anytype-heart/space/typeprovider:
     interfaces:
       SmartBlockTypeProvider:
+  github.com/anyproto/anytype-heart/core/wallet:
+    interfaces:
+      Wallet:
