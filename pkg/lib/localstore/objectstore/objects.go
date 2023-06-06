@@ -4,20 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -31,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("anytype-localstore")
@@ -312,22 +308,6 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 	return
 }
 
-func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
-	var sbTypes []smartblock.SmartBlockType
-	for _, otUrl := range ots {
-		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
-			for _, sbt := range ot.Types {
-				sbTypes = append(sbTypes, smartblock.SmartBlockType(sbt))
-			}
-			continue
-		}
-		if sbt, err := m.sbtProvider.Type(otUrl); err == nil {
-			sbTypes = append(sbTypes, sbt)
-		}
-	}
-	return newSmartblockTypesFilter(m.sbtProvider, false, sbTypes)
-}
-
 // unsafe, use under mutex
 func (m *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (existed bool) {
 	for _, s := range m.subscriptions {
@@ -353,137 +333,6 @@ func (m *dsObjectStore) closeAndRemoveSubscription(sub database.Subscription) {
 	}
 }
 
-func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, close func(), err error) {
-	m.l.Lock()
-	defer m.l.Unlock()
-
-	if sub == nil {
-		err = fmt.Errorf("subscription func is nil")
-		return
-	}
-	sub.Subscribe(ids)
-	records, err = m.QueryById(ids)
-	if err != nil {
-		// can mean only the datastore is already closed, so we can resign and return
-		log.Errorf("QueryByIdAndSubscribeForChanges failed to query ids: %v", err)
-		return nil, nil, err
-	}
-
-	close = func() {
-		m.closeAndRemoveSubscription(sub)
-	}
-
-	m.addSubscriptionIfNotExists(sub)
-
-	return
-}
-
-func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []database.Record, total int, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	dsq, err := q.DSQuery(sch)
-	if err != nil {
-		return
-	}
-	dsq.Offset = 0
-	dsq.Limit = 0
-	dsq.Prefix = pagesDetailsBase.String() + "/"
-	if !q.WithSystemObjects {
-		filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
-			smartblock.SmartBlockTypeArchive,
-			smartblock.SmartBlockTypeHome,
-		})
-
-		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
-	}
-
-	if len(q.ObjectTypeFilter) > 0 {
-		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
-	}
-
-	if q.FullText != "" {
-		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
-			return
-		}
-	}
-	for _, f := range dsq.Filters {
-		log.Debugf("query filter: %+v", f)
-	}
-	res, err := txn.Query(dsq)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
-	}
-
-	var (
-		results []database.Record
-		offset  = q.Offset
-	)
-
-	// We use own limit/offset implementation in order to find out
-	// total number of records matching specified filters. Query
-	// returns this number for handy pagination on clients.
-	for rec := range res.Next() {
-		total++
-
-		if offset > 0 {
-			offset--
-			continue
-		}
-
-		if q.Limit > 0 && len(results) >= q.Limit {
-			continue
-		}
-
-		key := ds.NewKey(rec.Key)
-		keyList := key.List()
-		id := keyList[len(keyList)-1]
-
-		var details *model.ObjectDetails
-		details, err = unmarshalDetails(id, rec.Value)
-		if err != nil {
-			total--
-			log.Errorf("failed to unmarshal: %s", err.Error())
-			continue
-		}
-		results = append(results, database.Record{Details: details.Details})
-	}
-
-	return results, total, nil
-}
-
-func (m *dsObjectStore) QueryRaw(dsq query.Query) (records []database.Record, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	dsq.Prefix = pagesDetailsBase.String() + "/"
-
-	res, err := txn.Query(dsq)
-	if err != nil {
-		return nil, fmt.Errorf("error when querying ds: %w", err)
-	}
-
-	for rec := range res.Next() {
-		key := ds.NewKey(rec.Key)
-		keyList := key.List()
-		id := keyList[len(keyList)-1]
-
-		var details *model.ObjectDetails
-		details, err = unmarshalDetails(id, rec.Value)
-		if err != nil {
-			log.Errorf("failed to unmarshal: %s", err.Error())
-			continue
-		}
-		records = append(records, database.Record{Details: details.Details})
-	}
-	return
-}
-
 func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
 	var details model.ObjectDetails
 	if err := proto.Unmarshal(rawValue, &details); err != nil {
@@ -503,166 +352,6 @@ func (m *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	m.l.Lock()
 	m.onChangeCallback = callback
 	m.l.Unlock()
-}
-
-func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	dsq, err := q.DSQuery(nil)
-	if err != nil {
-		return
-	}
-	dsq.Offset = 0
-	dsq.Limit = 0
-	dsq.Prefix = pagesDetailsBase.String() + "/"
-	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, objectTypes)}, dsq.Filters...)
-	}
-	if q.FullText != "" {
-		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
-			return
-		}
-	}
-	res, err := txn.Query(dsq)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
-	}
-
-	var (
-		offset = q.Offset
-	)
-
-	// We use own limit/offset implementation in order to find out
-	// total number of records matching specified filters. Query
-	// returns this number for handy pagination on clients.
-	for rec := range res.Next() {
-		if rec.Error != nil {
-			return nil, 0, rec.Error
-		}
-		total++
-
-		if offset > 0 {
-			offset--
-			continue
-		}
-
-		if q.Limit > 0 && len(results) >= q.Limit {
-			continue
-		}
-
-		key := ds.NewKey(rec.Key)
-		keyList := key.List()
-		id := keyList[len(keyList)-1]
-		oi, err := m.getObjectInfo(txn, id)
-		if err != nil {
-			// probably details are not yet indexed, let's skip it
-			log.Errorf("QueryObjectInfo getObjectInfo error: %s", err.Error())
-			total--
-			continue
-		}
-		results = append(results, oi)
-	}
-	return results, total, nil
-}
-
-// TODO objstore: it looks like Query but with additional filters
-func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	dsq, err := q.DSQuery(nil)
-	if err != nil {
-		return
-	}
-	dsq.Offset = 0
-	dsq.Limit = 0
-	dsq.Prefix = pagesDetailsBase.String() + "/"
-	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, objectTypes)}, dsq.Filters...)
-	}
-	if q.FullText != "" {
-		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
-			return
-		}
-	}
-	res, err := txn.Query(dsq)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
-	}
-
-	var (
-		offset = q.Offset
-	)
-
-	// We use own limit/offset implementation in order to find out
-	// total number of records matching specified filters. Query
-	// returns this number for handy pagination on clients.
-	for rec := range res.Next() {
-		if rec.Error != nil {
-			return nil, 0, rec.Error
-		}
-		total++
-
-		if offset > 0 {
-			offset--
-			continue
-		}
-
-		if q.Limit > 0 && len(ids) >= q.Limit {
-			continue
-		}
-
-		key := ds.NewKey(rec.Key)
-		keyList := key.List()
-		id := keyList[len(keyList)-1]
-		ids = append(ids, id)
-	}
-	return ids, total, nil
-}
-
-func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	for _, id := range ids {
-		if sbt, err := m.sbtProvider.Type(id); err == nil {
-			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
-				details, err := m.sourceService.DetailsFromIdBasedSource(id)
-				if err != nil {
-					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
-					continue
-				}
-				details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-				records = append(records, database.Record{Details: details})
-				continue
-			}
-		}
-		v, err := txn.Get(pagesDetailsBase.ChildString(id))
-		if err != nil {
-			log.Infof("QueryByIds failed to find id: %s", id)
-			continue
-		}
-
-		var details *model.ObjectDetails
-		details, err = unmarshalDetails(id, v)
-		if err != nil {
-			log.Errorf("QueryByIds failed to unmarshal id: %s", id)
-			continue
-		}
-		records = append(records, database.Record{Details: details.Details})
-	}
-
-	return
 }
 
 func (m *dsObjectStore) GetRelationById(id string) (*model.Relation, error) {
@@ -910,193 +599,6 @@ func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	return m.getObjectsInfo(txn, ids)
 }
 
-func (m *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	err = m.updateObjectLinks(txn, id, links)
-	if err != nil {
-		return err
-	}
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
-		if err := m.updateSnippet(txn, id, snippet); err != nil {
-			return err
-		}
-	}
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	// todo: review this method. Any other way to do this?
-	for {
-		err := m.updatePendingLocalDetails(id, proc)
-		if errors.Is(err, badger.ErrConflict) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-}
-
-func (m *dsObjectStore) updatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	key := pendingDetailsBase.ChildString(id)
-
-	objDetails, err := m.getPendingLocalDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
-		return fmt.Errorf("get pending details: %w", err)
-	}
-
-	details := objDetails.GetDetails()
-	if details == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	if details.Fields == nil {
-		details.Fields = map[string]*types.Value{}
-	}
-	details, err = proc(details)
-	if err != nil {
-		return fmt.Errorf("run a modifier: %w", err)
-	}
-	if details == nil {
-		err = txn.Delete(key)
-		if err != nil {
-			return err
-		}
-		return txn.Commit()
-	}
-	b, err := proto.Marshal(&model.ObjectDetails{Details: details})
-	if err != nil {
-		return err
-	}
-	err = txn.Put(key, b)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, discardLocalDetailsChanges bool) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	var (
-		before model.ObjectInfo
-	)
-
-	if details != nil {
-		exInfo, err := m.getObjectInfo(txn, id)
-		if err != nil {
-			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
-		}
-
-		if exInfo != nil {
-			before = *exInfo
-		} else {
-			// init an empty state to skip nil checks later
-			before = model.ObjectInfo{
-				Details: &types.Struct{Fields: map[string]*types.Value{}},
-			}
-		}
-
-		if discardLocalDetailsChanges && details != nil {
-			injectedDetails := pbtypes.StructFilterKeys(before.Details, bundle.LocalRelationsKeys)
-			for k, v := range injectedDetails.Fields {
-				details.Fields[k] = pbtypes.CopyVal(v)
-			}
-		}
-	}
-
-	err = m.updateObjectDetails(txn, id, before, details)
-	if err != nil {
-		return err
-	}
-	err = txn.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
-	exLinks, _ := findOutboundLinks(txn, id)
-	var addedLinks, removedLinks []string
-
-	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
-	if len(addedLinks) > 0 {
-		for _, k := range pageLinkKeys(id, nil, addedLinks) {
-			if err := txn.Put(k, nil); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(removedLinks) > 0 {
-		for _, k := range pageLinkKeys(id, nil, removedLinks) {
-			if err := txn.Delete(k); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (m *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before model.ObjectInfo, details *types.Struct) error {
-	if details != nil {
-		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// should be called under the mutex
-func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
-	detCopy := pbtypes.CopyStruct(details)
-	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	if m.onChangeCallback != nil {
-		m.onChangeCallback(database.Record{
-			Details: detCopy,
-		})
-	}
-	for i := range m.subscriptions {
-		go func(sub database.Subscription) {
-			_ = sub.Publish(id, detCopy)
-		}(m.subscriptions[i])
-	}
-}
-
 func (m *dsObjectStore) ListIds() ([]string, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -1105,53 +607,6 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 	defer txn.Discard()
 
 	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
-}
-
-func (m *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string) error {
-	snippetKey := pagesSnippetBase.ChildString(id)
-	return txn.Put(snippetKey, []byte(snippet))
-}
-
-func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
-	t, err := m.sbtProvider.Type(id)
-	if err != nil {
-		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
-	} else if indexdetails, _ := t.Indexable(); !indexdetails {
-		log.Errorf("updateDetails: trying to index non-indexable sb %s(%d): %s", id, t, string(debug.Stack()))
-		return fmt.Errorf("updateDetails: trying to index non-indexable sb %s(%d)", id, t)
-	}
-
-	metrics.ObjectDetailsUpdatedCounter.Inc()
-	detailsKey := pagesDetailsBase.ChildString(id)
-
-	if newDetails.GetDetails().GetFields() == nil {
-		return fmt.Errorf("newDetails is nil")
-	}
-
-	newDetails.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id) // always ensure we have id set
-	b, err := proto.Marshal(newDetails)
-	if err != nil {
-		return err
-	}
-	err = txn.Put(detailsKey, b)
-	if err != nil {
-		return err
-	}
-
-	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
-		return ErrDetailsNotChanged
-	}
-
-	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
-	if err != nil {
-		return err
-	}
-
-	if newDetails != nil && newDetails.Details.Fields != nil {
-		m.sendUpdatesToSubscriptions(id, newDetails.Details)
-	}
-
-	return nil
 }
 
 func (m *dsObjectStore) Prefix() string {
@@ -1181,7 +636,6 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 	return dsq, nil
 }
 
-/* internal */
 // getObjectDetails returns empty(not nil) details when not found in the DS
 func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
 	val, err := txn.Get(pagesDetailsBase.ChildString(id))
@@ -1201,14 +655,6 @@ func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) 
 	}
 
 	return details, nil
-}
-
-func (m *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
-	val, err := txn.Get(pendingDetailsBase.ChildString(id))
-	if err != nil {
-		return nil, err
-	}
-	return unmarshalDetails(id, val)
 }
 
 func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
