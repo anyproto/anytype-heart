@@ -134,7 +134,7 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 		if len(docIds) == 0 {
 			return fmt.Errorf("no templates")
 		}
-		path, _, err = es.Export(pb.RpcObjectListExportRequest{
+		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
 			Path:      req.Path,
 			ObjectIds: docIds,
 			Format:    pb.RpcObjectListExport_Protobuf,
@@ -192,7 +192,7 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 		if len(docIds) == 0 {
 			return fmt.Errorf("no objects in workspace")
 		}
-		path, _, err = es.Export(pb.RpcObjectListExportRequest{
+		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
 			Path:          req.Path,
 			ObjectIds:     docIds,
 			Format:        pb.RpcObjectListExport_Protobuf,
