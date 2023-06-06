@@ -140,7 +140,6 @@ type ObjectStore interface {
 	SubscribeForAll(callback func(rec database.Record))
 
 	Query(schema schema.Schema, q database.Query) (records []database.Record, total int, err error)
-	QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, subscription database.Subscription) (records []database.Record, close func(), total int, err error)
 	QueryRaw(q query.Query) (records []database.Record, err error)
 	QueryById(ids []string) (records []database.Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
@@ -441,26 +440,6 @@ func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
 	return newSmartblockTypesFilter(m.sbtProvider, false, sbTypes)
 }
 
-func (m *dsObjectStore) QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
-	m.l.Lock()
-	defer m.l.Unlock()
-
-	records, total, err = m.Query(schema, q)
-
-	var ids []string
-	for _, record := range records {
-		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
-	}
-
-	sub.Subscribe(ids)
-	m.addSubscriptionIfNotExists(sub)
-	close = func() {
-		m.closeAndRemoveSubscription(sub)
-	}
-
-	return
-}
-
 // unsafe, use under mutex
 func (m *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (existed bool) {
 	for _, s := range m.subscriptions {
@@ -702,6 +681,7 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 	return results, total, nil
 }
 
+// TODO objstore: it looks like Query but with additional filters
 func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -831,13 +811,7 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		},
 	}
 
-	f, err := database.NewFilters(q, nil, m)
-	if err != nil {
-		return nil, err
-	}
-	records, err := m.QueryRaw(query.Query{
-		Filters: []query.Filter{f},
-	})
+	records, _, err := m.Query(nil, q)
 	if err != nil {
 		return nil, err
 	}

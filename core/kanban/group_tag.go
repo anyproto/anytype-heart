@@ -2,6 +2,11 @@ package kanban
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/ipfs/go-datastore/query"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
@@ -9,9 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/ipfs/go-datastore/query"
-	"sort"
-	"strings"
 )
 
 type GroupTag struct {

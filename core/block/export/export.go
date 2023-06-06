@@ -179,6 +179,7 @@ func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchi
 func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
 	var res []*model.ObjectInfo
 	docs := make(map[string]*types.Struct)
+	// TODO: objstore: only ids are used
 	res, _, err := e.objectStore.QueryObjectInfo(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{

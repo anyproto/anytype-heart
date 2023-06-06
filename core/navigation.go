@@ -44,6 +44,7 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 	}
 
 	store := app.MustComponent[objectstore.ObjectStore](mw.app)
+	// TODO: objstore: probably method is unused
 	records, _, err := store.QueryObjectInfo(database.Query{
 		FullText: req.FullText,
 		Limit:    int(req.Limit),
