@@ -133,11 +133,25 @@ func (m *dsObjectStore) Name() (name string) {
 
 type ObjectStore interface {
 	app.ComponentRunnable
+	IndexerStore
+	AccountStore
 	localstore.Indexable
-	database.Reader
 
-	// CreateObject create or overwrite an existing object. Should be used if
-	CreateObject(id string, details *types.Struct, links []string, snippet string) error
+	SubscribeForAll(callback func(rec database.Record))
+
+	Query(schema schema.Schema, q database.Query) (records []database.Record, total int, err error)
+	QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, subscription database.Subscription) (records []database.Record, close func(), total int, err error)
+	QueryRaw(q query.Query) (records []database.Record, err error)
+	QueryById(ids []string) (records []database.Record, err error)
+	QueryByIdAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
+	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
+	QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
+
+	HasIDs(ids ...string) (exists []string, err error)
+	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
+	List() ([]*model.ObjectInfo, error)
+	ListIds() ([]string, error)
+
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(id string, details *types.Struct, discardLocalDetailsChanges bool) error
@@ -147,30 +161,23 @@ type ObjectStore interface {
 
 	DeleteObject(id string) error
 	DeleteDetails(id string) error
+	// EraseIndexes erase all indexes for objectstore.. All objects needs to be reindexed
+	EraseIndexes() error
 
-	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
-	GetOutboundLinksById(id string) ([]string, error)
-	GetInboundLinksById(id string) ([]string, error)
-
-	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
-	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error)
+	GetDetails(id string) (*model.ObjectDetails, error)
+	GetInboundLinksById(id string) ([]string, error)
+	GetOutboundLinksById(id string) ([]string, error)
+	GetRelationById(id string) (relation *model.Relation, err error)
+	GetRelationByKey(key string) (relation *model.Relation, err error)
+	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+}
 
-	HasIDs(ids ...string) (exists []string, err error)
-	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
-	List() ([]*model.ObjectInfo, error)
-	ListIds() ([]string, error)
-
-	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
-	QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
-
+type IndexerStore interface {
 	AddToIndexQueue(id string) error
 	ListIDsFromFullTextQueue() ([]string, error)
 	RemoveIDsFromFullTextQueue(ids []string)
 	FTSearch() ftsearch.FTSearch
-
-	// EraseIndexes erase all indexes for objectstore.. All objects needs to be reindexed
-	EraseIndexes() error
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums() (checksums *model.ObjectStoreChecksums, err error)
@@ -179,7 +186,9 @@ type ObjectStore interface {
 
 	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
+}
 
+type AccountStore interface {
 	GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error)
 	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
 
@@ -842,16 +851,6 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	return rel.Relation, nil
 }
 
-func (m *dsObjectStore) ListRelationsKeys() ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return m.listRelationsKeys(txn)
-}
-
 func (m *dsObjectStore) DeleteDetails(id string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -996,39 +995,6 @@ func (m *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
 	defer txn.Discard()
 
 	return findInboundLinks(txn, id)
-}
-
-func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	pages, err := m.getObjectsInfo(txn, []string{id})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(pages) == 0 {
-		return nil, fmt.Errorf("page not found")
-	}
-	page := pages[0]
-
-	outboundsIds, err := findOutboundLinks(txn, id)
-	if err != nil {
-		return nil, err
-	}
-
-	outbound, err := m.getObjectsInfo(txn, outboundsIds)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.ObjectInfoWithOutboundLinks{
-		Info:          page,
-		OutboundLinks: outbound,
-	}, nil
 }
 
 func (m *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
@@ -1580,25 +1546,6 @@ func (m *dsObjectStore) listRelationsKeys(txn noctxds.Txn) ([]string, error) {
 	defer txn.Discard()
 
 	return findByPrefix(txn, relationsBase.String()+"/", 0)
-}
-
-func getRelation(txn noctxds.Txn, key string) (*model.Relation, error) {
-	br, err := bundle.GetRelation(bundle.RelationKey(key))
-	if br != nil {
-		return br, nil
-	}
-
-	res, err := txn.Get(relationsBase.ChildString(key))
-	if err != nil {
-		return nil, err
-	}
-
-	var rel model.Relation
-	if err = proto.Unmarshal(res, &rel); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal relation: %s", err.Error())
-	}
-
-	return &rel, nil
 }
 
 /* internal */
