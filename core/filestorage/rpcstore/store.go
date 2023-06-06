@@ -45,6 +45,7 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 		ready = make(chan result, 1)
 		data  []byte
 	)
+	ctx = context.WithValue(ctx, operationNameKey, "get")
 	if err = s.cm.ReadOp(ctx, ready, func(c *client) (e error) {
 		data, e = c.get(ctx, fileblockstore.CtxGetSpaceId(ctx), k)
 		return
@@ -78,6 +79,7 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 			return nil
 		}
 	}
+	ctx = context.WithValue(ctx, operationNameKey, "getMany")
 	for _, k := range ks {
 		if err := s.cm.ReadOp(ctx, ready, newGetFunc(k), k); err != nil {
 			log.Error("getMany: can't add tasks", zap.Error(err))
@@ -133,6 +135,7 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 			return c.put(ctx, spaceID, fileID, b.Cid(), b.RawData())
 		}
 	}
+	ctx = context.WithValue(ctx, operationNameKey, "addToFile")
 	for _, b := range bs {
 		if err := s.cm.WriteOp(ctx, ready, newPutFunc(b), b.Cid()); err != nil {
 			return err
@@ -158,6 +161,7 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error) {
 	var ready = make(chan result, 1)
 	// check blocks availability
+	ctx = context.WithValue(ctx, operationNameKey, "checkAvailability")
 	if err = s.cm.WriteOp(ctx, ready, func(c *client) (err error) {
 		checkResult, err = c.checkBlocksAvailability(ctx, spaceID, cids...)
 		return err
@@ -179,6 +183,7 @@ func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []ci
 func (s *store) BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error) {
 	var ready = make(chan result, 1)
 	// check blocks availability
+	ctx = context.WithValue(ctx, operationNameKey, "bindCids")
 	if err = s.cm.WriteOp(ctx, ready, func(c *client) (err error) {
 		return c.bind(ctx, spaceID, fileID, cids...)
 	}, cid.Cid{}); err != nil {
@@ -202,6 +207,7 @@ func (s *store) Delete(ctx context.Context, c cid.Cid) error {
 
 func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) error {
 	var ready = make(chan result, 1)
+	ctx = context.WithValue(ctx, operationNameKey, "deleteFiles")
 	if err := s.cm.WriteOp(ctx, ready, func(c *client) error {
 		return c.delete(ctx, spaceId, fileIds...)
 	}, cid.Cid{}); err != nil {
@@ -216,6 +222,7 @@ func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...stri
 }
 func (s *store) SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
 	var ready = make(chan result, 1)
+	ctx = context.WithValue(ctx, operationNameKey, "spaceInfo")
 	if err = s.cm.WriteOp(ctx, ready, func(c *client) error {
 		info, err = c.spaceInfo(ctx, spaceId)
 		return err
@@ -235,6 +242,7 @@ func (s *store) SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.
 
 func (s *store) FilesInfo(ctx context.Context, spaceId string, fileIds ...string) (info []*fileproto.FileInfo, err error) {
 	var ready = make(chan result, 1)
+	ctx = context.WithValue(ctx, operationNameKey, "filesInfo")
 	if err = s.cm.WriteOp(ctx, ready, func(c *client) error {
 		info, err = c.filesInfo(ctx, spaceId, fileIds)
 		return err

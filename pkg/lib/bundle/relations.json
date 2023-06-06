@@ -1371,5 +1371,15 @@
     "name": "File sync status",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Last change ID",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "lastChangeId",
+    "maxCount": 1,
+    "name": "Last change ID of the object",
+    "readonly": true,
+    "source": "derived"
   }
 ]

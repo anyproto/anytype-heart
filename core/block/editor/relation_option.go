@@ -4,6 +4,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -50,8 +51,11 @@ func (ro *RelationOption) Init(ctx *smartblock.InitContext) error {
 		return err
 	}
 
-	st := ctx.State
+	return nil
+}
 
+func (ro *RelationOption) InitState(st *state.State) {
+	id := st.RootId()
 	relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
@@ -71,19 +75,19 @@ func (ro *RelationOption) Init(ctx *smartblock.InitContext) error {
 					Filters: []*model.BlockContentDataviewFilter{{
 						RelationKey: relKey,
 						Condition:   model.BlockContentDataviewFilter_In,
-						Value:       pbtypes.String(st.RootId()),
+						Value:       pbtypes.String(id),
 					}},
 				},
 			},
 		},
 	}
 
-	return smartblock.ObjectApplyTemplate(ro, st,
+	// inject blocks here on init because they can't be saved to the changes
+	template.InitTemplate(st,
+		template.WithTitle,
+		template.WithDataview(dataview, false),
 		template.WithAllBlocksEditsRestricted,
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_relationOption))),
-		template.WithForcedDetail(bundle.RelationKeyIsReadonly, pbtypes.Bool(false)),
 		template.WithForcedDetail(bundle.RelationKeyType, pbtypes.String(bundle.TypeKeyRelationOption.URL())),
-		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
-		template.WithDataview(dataview, false))
+	)
 }

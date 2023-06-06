@@ -2,6 +2,7 @@ package page
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,44 +93,48 @@ func (ds *Service) GetPages(ctx context.Context,
 	do := NewDataObject(ctx, apiKey, mode, request)
 	go pool.Start(do)
 
-	allSnapshots, relationsToPageID, converterError := ds.readResultFromPool(pool, mode, progress)
+	allSnapshots, converterError := ds.readResultFromPool(pool, mode, progress)
 	if converterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots, Relations: relationsToPageID}, notionPagesIdsToAnytype, nil
+		return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, nil
 	}
 
 	return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, converterError
 }
 
-func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, map[string][]*converter.Relation, converter.ConvertError) {
+func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, converter.ConvertError) {
 	allSnapshots := make([]*converter.Snapshot, 0)
-	relations := make(map[string][]*converter.Relation, 0)
 	ce := converter.NewError()
 
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			pool.Stop()
-			return nil, nil, converter.NewFromError("cancel error", err)
+			return nil, converter.NewCancelError("cancel error", err)
 		}
 		res := r.(*Result)
 		if res.ce != nil {
 			ce.Merge(res.ce)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				pool.Stop()
-				return nil, nil, ce
+				return nil, ce
 			}
 		}
-		allSnapshots = append(allSnapshots, res.snapshot)
-		relations[res.snapshot.Id] = res.relations
+		allSnapshots = append(allSnapshots, res.snapshot...)
 	}
-	return allSnapshots, relations, ce
+	return allSnapshots, ce
 }
 
 func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {
+	var (
+		relMutex    = &sync.Mutex{}
+		relOptMutex = &sync.Mutex{}
+	)
 	for _, p := range pages {
 		stop := pool.AddWork(&Task{
-			propertyService: ds.propertyService,
-			blockService:    ds.blockService,
-			p:               p,
+			relationCreateMutex:    relMutex,
+			relationOptCreateMutex: relOptMutex,
+			propertyService:        ds.propertyService,
+			blockService:           ds.blockService,
+			p:                      p,
 		})
 		if stop {
 			break
@@ -156,7 +161,7 @@ func (ds *Service) extractTitleFromPages(pages []Page) map[string]string {
 func (ds *Service) createIDsForPages(pages []Page, progress process.Progress, notionPagesIdsToAnytype map[string]string) converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
-			return converter.NewFromError(p.ID, err)
+			return converter.NewCancelError(p.ID, err)
 		}
 
 		notionPagesIdsToAnytype[p.ID] = uuid.New().String()

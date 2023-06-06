@@ -65,15 +65,12 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	doc, err := ctx.Source.ReadDoc(ctx.Ctx, nil, true)
-	if err != nil {
-		return err
-	}
-	d := doc.CombinedDetails()
-	fileType := detectFileType(pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String()))
 
-	fname := pbtypes.GetString(d, bundle.RelationKeyName.String())
-	ext := pbtypes.GetString(d, bundle.RelationKeyFileExt.String())
+	details := p.NewState().CombinedDetails()
+	fileType := detectFileType(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
+
+	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	ext := pbtypes.GetString(details, bundle.RelationKeyFileExt.String())
 
 	if ext != "" && !strings.HasSuffix(fname, "."+ext) {
 		fname = fname + "." + ext
@@ -85,18 +82,18 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
 				Name:    fname,
-				Mime:    pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String()),
+				Mime:    pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
 				Hash:    p.Id(),
-				Type:    detectFileType(pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String())),
-				Size_:   int64(pbtypes.GetFloat64(d, bundle.RelationKeySizeInBytes.String())),
+				Type:    detectFileType(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String())),
+				Size_:   int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
 				State:   model.BlockContentFile_Done,
-				AddedAt: int64(pbtypes.GetFloat64(d, bundle.RelationKeyFileMimeType.String())),
+				AddedAt: int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),
 			},
 		}})
 
 	switch fileType {
 	case model.BlockContentFile_Image:
-		if pbtypes.GetInt64(d, bundle.RelationKeyWidthInPixels.String()) != 0 {
+		if pbtypes.GetInt64(details, bundle.RelationKeyWidthInPixels.String()) != 0 {
 			blocks = append(blocks, &model.Block{
 				Id: "rel1",
 				Content: &model.BlockContentOfRelation{
@@ -107,7 +104,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 			})
 		}
 
-		if pbtypes.GetInt64(d, bundle.RelationKeyHeightInPixels.String()) != 0 {
+		if pbtypes.GetInt64(details, bundle.RelationKeyHeightInPixels.String()) != 0 {
 			blocks = append(blocks, &model.Block{
 				Id: "rel2",
 				Content: &model.BlockContentOfRelation{
@@ -118,7 +115,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 			})
 		}
 
-		if pbtypes.GetString(d, bundle.RelationKeyCamera.String()) != "" {
+		if pbtypes.GetString(details, bundle.RelationKeyCamera.String()) != "" {
 			blocks = append(blocks, &model.Block{
 				Id: "rel3",
 				Content: &model.BlockContentOfRelation{
@@ -129,7 +126,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 			})
 		}
 
-		if pbtypes.GetInt64(d, bundle.RelationKeySizeInBytes.String()) != 0 {
+		if pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()) != 0 {
 			blocks = append(blocks, &model.Block{
 				Id: "rel4",
 				Content: &model.BlockContentOfRelation{
@@ -139,7 +136,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 				},
 			})
 		}
-		if pbtypes.GetString(d, bundle.RelationKeyMediaArtistName.String()) != "" {
+		if pbtypes.GetString(details, bundle.RelationKeyMediaArtistName.String()) != "" {
 			blocks = append(blocks, &model.Block{
 				Id: "rel6",
 				Content: &model.BlockContentOfRelation{
@@ -149,7 +146,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 				},
 			})
 		}
-		if pbtypes.GetString(d, bundle.RelationKeyMediaArtistURL.String()) != "" {
+		if pbtypes.GetString(details, bundle.RelationKeyMediaArtistURL.String()) != "" {
 			blocks = append(blocks, &model.Block{
 				Id: "rel7",
 				Content: &model.BlockContentOfRelation{

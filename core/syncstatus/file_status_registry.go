@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -16,6 +14,17 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+type FileStatus int
+
+// First constants must repeat syncstatus.SyncStatus constants for
+// avoiding inconsistency with data stored in filestore
+const (
+	FileStatusUnknown FileStatus = iota
+	FileStatusSynced
+	FileStatusSyncing
+	FileStatusLimited
 )
 
 type fileStatusRegistry struct {
@@ -44,7 +53,7 @@ func newFileStatusRegistry(
 	}
 }
 
-func (r *fileStatusRegistry) GetFileStatus(ctx context.Context, spaceID string, fileID string) (syncstatus.SyncStatus, error) {
+func (r *fileStatusRegistry) GetFileStatus(ctx context.Context, spaceID string, fileID string) (FileStatus, error) {
 	key := fileWithSpace{
 		spaceID: spaceID,
 		fileID:  fileID,
@@ -57,13 +66,13 @@ func (r *fileStatusRegistry) GetFileStatus(ctx context.Context, spaceID string, 
 
 	status, err = r.updateFileStatus(ctx, status, key)
 	if err != nil {
-		return syncstatus.StatusUnknown, err
+		return FileStatusUnknown, err
 	}
 
 	return r.setFileStatus(key, status)
 }
 
-func (r *fileStatusRegistry) setFileStatus(key fileWithSpace, status fileStatus) (syncstatus.SyncStatus, error) {
+func (r *fileStatusRegistry) setFileStatus(key fileWithSpace, status fileStatus) (FileStatus, error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -71,7 +80,7 @@ func (r *fileStatusRegistry) setFileStatus(key fileWithSpace, status fileStatus)
 	if validStatusTransition(prevStatus.status, status.status) {
 		err := r.fileStore.SetSyncStatus(key.fileID, int(status.status))
 		if err != nil {
-			return syncstatus.StatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
+			return FileStatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
 		}
 		r.files[key] = status
 		go r.indexFileSyncStatus(key.fileID, status.status)
@@ -87,29 +96,32 @@ func (r *fileStatusRegistry) getFileStatus(key fileWithSpace) (fileStatus, error
 	if !ok {
 		rawStatus, err := r.fileStore.GetSyncStatus(key.fileID)
 		if err != nil && err != localstore.ErrNotFound {
-			return fileStatus{status: syncstatus.StatusUnknown}, fmt.Errorf("failed to get file sync status: %w", err)
+			return fileStatus{status: FileStatusUnknown}, fmt.Errorf("failed to get file sync status: %w", err)
 		}
 		status = fileStatus{
-			status: syncstatus.SyncStatus(rawStatus),
+			status: FileStatus(rawStatus),
 		}
 	}
 	return status, nil
 }
 
-func validStatusTransition(from, to syncstatus.SyncStatus) bool {
+func validStatusTransition(from, to FileStatus) bool {
 	switch from {
-	case syncstatus.StatusUnknown:
-		return to == syncstatus.StatusNotSynced || to == syncstatus.StatusSynced
-	case syncstatus.StatusNotSynced:
-		return to == syncstatus.StatusSynced
+	case FileStatusUnknown:
+		// To any status expect itself
+		return to != FileStatusUnknown
+	case FileStatusSyncing:
+		return to == FileStatusSynced || to == FileStatusLimited
+	case FileStatusLimited:
+		return to == FileStatusSynced || to == FileStatusSyncing
 	default:
-		return false
+		return from == to
 	}
 }
 
 func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileStatus, key fileWithSpace) (fileStatus, error) {
 	now := time.Now()
-	if status.status == syncstatus.StatusSynced {
+	if status.status == FileStatusSynced {
 		return status, nil
 	}
 
@@ -118,12 +130,21 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 	}
 	status.updatedAt = now
 
+	isLimited, err := r.fileSyncService.IsFileUploadLimited(key.spaceID, key.fileID)
+	if err != nil {
+		return status, fmt.Errorf("check that file upload is limited: %w", err)
+	}
+	if isLimited {
+		status.status = FileStatusLimited
+		return status, nil
+	}
+
 	isUploading, err := r.fileSyncService.HasUpload(key.spaceID, key.fileID)
 	if err != nil {
 		return status, fmt.Errorf("check queue: %w", err)
 	}
 	if isUploading {
-		status.status = syncstatus.StatusNotSynced
+		status.status = FileStatusSyncing
 		return status, nil
 	}
 
@@ -132,13 +153,13 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 		return status, fmt.Errorf("file stat: %w", err)
 	}
 	if fstat.UploadedChunksCount == fstat.TotalChunksCount {
-		status.status = syncstatus.StatusSynced
+		status.status = FileStatusSynced
 	}
 
 	return status, nil
 }
 
-func (r *fileStatusRegistry) indexFileSyncStatus(fileID string, status syncstatus.SyncStatus) {
+func (r *fileStatusRegistry) indexFileSyncStatus(fileID string, status FileStatus) {
 	err := getblock.Do(r.picker, fileID, func(b basic.DetailsSettable) (err error) {
 		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 			{

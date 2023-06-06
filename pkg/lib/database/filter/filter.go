@@ -16,7 +16,7 @@ var (
 	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
-func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store OptionsGetter) (Filter, error) {
+func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store OptionsGetter) (AndFilters, error) {
 
 	protoFilters = TransformQuickOption(protoFilters, nil)
 

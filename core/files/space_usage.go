@@ -17,11 +17,16 @@ func (s *service) GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageRespo
 		return nil, err
 	}
 
+	left := stat.BytesLimit - stat.BytesUsage
+	if left < 0 {
+		left = 0
+	}
+
 	return &pb.RpcFileSpaceUsageResponseUsage{
 		FilesCount:      uint64(stat.FileCount),
 		CidsCount:       uint64(stat.CidsCount),
 		BytesUsage:      uint64(stat.BytesUsage),
-		BytesLeft:       uint64(stat.BytesLimit - stat.BytesUsage),
+		BytesLeft:       uint64(left),
 		BytesLimit:      uint64(stat.BytesLimit),
 		LocalBytesUsage: usage,
 	}, nil

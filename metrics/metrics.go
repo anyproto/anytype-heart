@@ -215,11 +215,11 @@ var (
 		Name:      "details_index_updated",
 		Help:      "Details updated for an object",
 	})
-	ObjectRelationsUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
+	ObjectDetailsHeadsNotChangedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "anytype",
 		Subsystem: "mw",
-		Name:      "relations_index_updated",
-		Help:      "Relations updated for an object",
+		Name:      "details_index_heads_not_changed",
+		Help:      "Details head not changed optimization",
 	})
 )
 

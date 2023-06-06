@@ -6,7 +6,7 @@ def githubProperties = new Properties()
 
 
 def getArtificatId = { ->
- return "android-mw" // Replace with library name ID
+ return "anytype-heart-android"
 }
 
 buildscript {
@@ -24,7 +24,7 @@ buildscript {
 publishing {
  publications {
    bar(MavenPublication) {
-      groupId 'io.anytype' // Replace with group ID
+      groupId 'io.anyproto' // Replace with group ID
       artifactId getArtificatId()
       artifact("lib.aar")
     }

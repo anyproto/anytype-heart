@@ -61,6 +61,8 @@ jobs:
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+          echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
@@ -68,10 +70,11 @@ jobs:
       - name: install protoc
         run: |
           make setup-protoc
-
       - name: setup go
         run: |
           make setup-go
+          make setup-gomobile
+          which gomobile
       - name: Cross-compile library mac/win
         run: |
           echo $FLAGS
@@ -214,6 +217,7 @@ jobs:
 
       - name: Install patched gox
         run: |
+          rm -rf $GOPATH/src/github.com/mitchellh
           mkdir -p $GOPATH/src/github.com/mitchellh
           cd $GOPATH/src/github.com/mitchellh
           git clone https://github.com/aslakhellesoy/gox

@@ -69,7 +69,7 @@ func (s *static) Close() (err error) {
 }
 
 func (v *static) Heads() []string {
-	return nil
+	return []string{"todo"} // todo hash of the details
 }
 
 func (s *static) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
