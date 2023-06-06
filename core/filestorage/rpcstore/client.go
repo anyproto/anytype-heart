@@ -2,6 +2,7 @@ package rpcstore
 
 import (
 	"context"
+	"storj.io/drpc"
 	"sync"
 	"time"
 
@@ -78,14 +79,16 @@ func (c *client) delete(ctx context.Context, spaceID string, fileIds ...string) 
 	if err != nil {
 		return
 	}
-	if _, err = fileproto.NewDRPCFileClient(p).FilesDelete(ctx, &fileproto.FilesDeleteRequest{
-		SpaceId: spaceID,
-		FileIds: fileIds,
-	}); err != nil {
-		return rpcerr.Unwrap(err)
-	}
-	c.stat.UpdateLastUsage()
-	return
+	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		if _, err = fileproto.NewDRPCFileClient(conn).FilesDelete(ctx, &fileproto.FilesDeleteRequest{
+			SpaceId: spaceID,
+			FileIds: fileIds,
+		}); err != nil {
+			return rpcerr.Unwrap(err)
+		}
+		c.stat.UpdateLastUsage()
+		return nil
+	})
 }
 
 func (c *client) put(ctx context.Context, spaceID string, fileID string, cd cid.Cid, data []byte) (err error) {
@@ -94,17 +97,19 @@ func (c *client) put(ctx context.Context, spaceID string, fileID string, cd cid.
 		return
 	}
 	st := time.Now()
-	if _, err = fileproto.NewDRPCFileClient(p).BlockPush(ctx, &fileproto.BlockPushRequest{
-		SpaceId: spaceID,
-		FileId:  fileID,
-		Cid:     cd.Bytes(),
-		Data:    data,
-	}); err != nil {
-		return rpcerr.Unwrap(err)
-	}
-	log.Debug("put cid", zap.String("cid", cd.String()))
-	c.stat.Add(st, len(data))
-	return
+	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		if _, err = fileproto.NewDRPCFileClient(conn).BlockPush(ctx, &fileproto.BlockPushRequest{
+			SpaceId: spaceID,
+			FileId:  fileID,
+			Cid:     cd.Bytes(),
+			Data:    data,
+		}); err != nil {
+			return rpcerr.Unwrap(err)
+		}
+		log.Debug("put cid", zap.String("cid", cd.String()))
+		c.stat.Add(st, len(data))
+		return nil
+	})
 }
 
 // get sends the get request to the stream and adds task to waiting list
@@ -114,15 +119,22 @@ func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []by
 		return
 	}
 	st := time.Now()
-	resp, err := fileproto.NewDRPCFileClient(p).BlockGet(ctx, &fileproto.BlockGetRequest{
-		SpaceId: spaceID,
-		Cid:     cd.Bytes(),
+	var resp *fileproto.BlockGetResponse
+	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		resp, err = fileproto.NewDRPCFileClient(conn).BlockGet(ctx, &fileproto.BlockGetRequest{
+			SpaceId: spaceID,
+			Cid:     cd.Bytes(),
+		})
+		if err != nil {
+			return rpcerr.Unwrap(err)
+		}
+		log.Debug("get cid", zap.String("cid", cd.String()))
+		c.stat.Add(st, len(resp.Data))
+		return nil
 	})
 	if err != nil {
-		return nil, rpcerr.Unwrap(err)
+		return
 	}
-	log.Debug("get cid", zap.String("cid", cd.String()))
-	c.stat.Add(st, len(resp.Data))
 	return resp.Data, nil
 }
 
@@ -135,9 +147,13 @@ func (c *client) checkBlocksAvailability(ctx context.Context, spaceID string, ci
 	for i, c := range cids {
 		cidsB[i] = c.Bytes()
 	}
-	resp, err := fileproto.NewDRPCFileClient(p).BlocksCheck(ctx, &fileproto.BlocksCheckRequest{
-		SpaceId: spaceID,
-		Cids:    cidsB,
+	var resp *fileproto.BlocksCheckResponse
+	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		resp, err = fileproto.NewDRPCFileClient(conn).BlocksCheck(ctx, &fileproto.BlocksCheckRequest{
+			SpaceId: spaceID,
+			Cids:    cidsB,
+		})
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -154,12 +170,14 @@ func (c *client) bind(ctx context.Context, spaceID string, fileID string, cids .
 	for i, c := range cids {
 		cidsB[i] = c.Bytes()
 	}
-	_, err = fileproto.NewDRPCFileClient(p).BlocksBind(ctx, &fileproto.BlocksBindRequest{
-		SpaceId: spaceID,
-		FileId:  fileID,
-		Cids:    cidsB,
+	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		_, err = fileproto.NewDRPCFileClient(conn).BlocksBind(ctx, &fileproto.BlocksBindRequest{
+			SpaceId: spaceID,
+			FileId:  fileID,
+			Cids:    cidsB,
+		})
+		return err
 	})
-	return err
 }
 
 func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
@@ -167,9 +185,13 @@ func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto
 	if err != nil {
 		return
 	}
-	return fileproto.NewDRPCFileClient(p).SpaceInfo(ctx, &fileproto.SpaceInfoRequest{
-		SpaceId: spaceId,
+	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		info, err = fileproto.NewDRPCFileClient(conn).SpaceInfo(ctx, &fileproto.SpaceInfoRequest{
+			SpaceId: spaceId,
+		})
+		return err
 	})
+	return
 }
 
 func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []string) (info []*fileproto.FileInfo, err error) {
@@ -177,9 +199,13 @@ func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []string
 	if err != nil {
 		return
 	}
-	resp, err := fileproto.NewDRPCFileClient(p).FilesInfo(ctx, &fileproto.FilesInfoRequest{
-		SpaceId: spaceId,
-		FileIds: fileIds,
+	var resp *fileproto.FilesInfoResponse
+	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		resp, err = fileproto.NewDRPCFileClient(conn).FilesInfo(ctx, &fileproto.FilesInfoRequest{
+			SpaceId: spaceId,
+			FileIds: fileIds,
+		})
+		return err
 	})
 	if err != nil {
 		return
@@ -192,7 +218,11 @@ func (c *client) checkConnectivity(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	resp, err := fileproto.NewDRPCFileClient(p).Check(ctx, &fileproto.CheckRequest{})
+	var resp *fileproto.CheckResponse
+	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		resp, err = fileproto.NewDRPCFileClient(conn).Check(ctx, &fileproto.CheckRequest{})
+		return err
+	})
 	if err != nil {
 		return
 	}

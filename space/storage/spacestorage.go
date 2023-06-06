@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	storage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -17,6 +19,18 @@ type spaceStorage struct {
 	keys            spaceKeys
 	aclStorage      liststorage.ListStorage
 	header          *spacesyncproto.RawSpaceHeaderWithId
+}
+
+func (s *spaceStorage) Run(ctx context.Context) (err error) {
+	return nil
+}
+
+func (s *spaceStorage) Init(a *app.App) (err error) {
+	return nil
+}
+
+func (s *spaceStorage) Name() (name string) {
+	return spacestorage.CName
 }
 
 func newSpaceStorage(objDb *badger.DB, spaceId string) (store spacestorage.SpaceStorage, err error) {
@@ -224,6 +238,6 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 	return
 }
 
-func (s *spaceStorage) Close() (err error) {
+func (s *spaceStorage) Close(ctx context.Context) (err error) {
 	return nil
 }

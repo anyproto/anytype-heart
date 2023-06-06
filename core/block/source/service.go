@@ -3,12 +3,12 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/gogo/protobuf/types"
@@ -74,8 +74,8 @@ type BuildOptions struct {
 	Listener          updatelistener.UpdateListener
 }
 
-func (b *BuildOptions) BuildTreeOpts() commonspace.BuildTreeOpts {
-	return commonspace.BuildTreeOpts{
+func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
+	return objecttreebuilder.BuildTreeOpts{
 		Listener:           b.Listener,
 		WaitTreeRemoteSync: b.RetryRemoteLoad,
 	}
@@ -112,7 +112,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		return
 	}
 	var ot objecttree.ObjectTree
-	ot, err = spc.BuildTree(ctx, id, buildOptions.BuildTreeOpts())
+	ot, err = spc.TreeBuilder().BuildTree(ctx, id, buildOptions.BuildTreeOpts())
 	if err != nil {
 		return
 	}

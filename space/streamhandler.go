@@ -2,10 +2,10 @@ package space
 
 import (
 	"errors"
+	"github.com/anyproto/any-sync/commonspace/objectsync"
 	"sync/atomic"
 	"time"
 
-	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"golang.org/x/net/context"
@@ -27,7 +27,11 @@ func (s *streamHandler) OpenStream(ctx context.Context, p peer.Peer) (stream drp
 }
 
 func (s *streamHandler) OpenSpaceStream(ctx context.Context, p peer.Peer, spaceIds []string) (stream drpc.Stream, tags []string, err error) {
-	objectStream, err := spacesyncproto.NewDRPCSpaceSyncClient(p).ObjectSyncStream(ctx)
+	conn, err := p.AcquireDrpcConn(ctx)
+	if err != nil {
+		return
+	}
+	objectStream, err := spacesyncproto.NewDRPCSpaceSyncClient(conn).ObjectSyncStream(ctx)
 	if err != nil {
 		return
 	}
@@ -66,7 +70,7 @@ func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg dr
 	if err != nil {
 		return
 	}
-	err = space.HandleMessage(ctx, commonspace.HandleMessage{
+	err = space.HandleMessage(ctx, objectsync.HandleMessage{
 		Id:       lastMsgId.Add(1),
 		Deadline: time.Now().Add(time.Minute),
 		SenderId: peerId,

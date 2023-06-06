@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc/clientdebugrpcproto"
 	"github.com/anyproto/anytype-heart/space/storage"
 )
 
@@ -60,32 +59,12 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	if !s.cfg.IsEnabled {
-		return
-	}
-	params := server.Params{
-		BufferSizeMb:  s.cfg.Stream.MaxMsgSizeMb,
-		TimeoutMillis: s.cfg.Stream.TimeoutMilliseconds,
-		ListenAddrs:   s.cfg.Server.ListenAddrs,
-		Wrapper: func(handler drpc.Handler) drpc.Handler {
-			return handler
-		},
-	}
-	err = s.BaseDrpcServer.Run(ctx, params)
-	if err != nil {
-		return
-	}
-	return clientdebugrpcproto.DRPCRegisterClientApi(s, &rpcHandler{
-		spaceService:   s.spaceService,
-		storageService: s.storage,
-		file:           s.file,
-		blockService:   s.blockService,
-	})
+	return nil
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
 	if !s.cfg.IsEnabled {
 		return
 	}
-	return s.BaseDrpcServer.Close(ctx)
+	return nil
 }

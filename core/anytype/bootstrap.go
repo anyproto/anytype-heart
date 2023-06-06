@@ -2,6 +2,12 @@ package anytype
 
 import (
 	"context"
+	"github.com/anyproto/any-sync/metric"
+	"github.com/anyproto/any-sync/net/peerservice"
+	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/rpc/server"
+	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/anytype-heart/space/syncstatusprovider"
 	"os"
 	"time"
 
@@ -10,8 +16,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
-	"github.com/anyproto/any-sync/net/dialer"
-	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
@@ -56,9 +60,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/credentialprovider"
-	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peermanager"
 	"github.com/anyproto/anytype-heart/space/peerstore"
@@ -144,12 +146,15 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
+		Register(syncstatusprovider.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
-		Register(dialer.New()).
+		Register(metric.New()).
+		Register(server.New()).
 		Register(pool.New()).
+		Register(peerservice.New()).
+		Register(yamux.New()).
 		Register(streampool.New()).
-		Register(clientserver.New()).
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
@@ -182,7 +187,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New(tempDirService)).
 		Register(restriction.New(sbtProvider, objectStore)).
 		Register(debug.New()).
-		Register(clientdebugrpc.New()).
 		Register(collectionService).
 		Register(subscription.New(collectionService, sbtProvider)).
 		Register(builtinobjects.New(sbtProvider)).

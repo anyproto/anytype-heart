@@ -2,12 +2,13 @@ package config
 
 import (
 	"fmt"
+	"github.com/anyproto/any-sync/commonspace/config"
+	yamux2 "github.com/anyproto/any-sync/net/transport/yamux"
 	"net"
 	"path/filepath"
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/metric"
 	commonnet "github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/nodeconf"
@@ -257,8 +258,8 @@ func getRandomPort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-func (c *Config) GetSpace() commonspace.Config {
-	return commonspace.Config{
+func (c *Config) GetSpace() config.Config {
+	return config.Config{
 		GCTTL:                60,
 		SyncPeriod:           20,
 		KeepTreeDataInMemory: true,
@@ -305,4 +306,13 @@ func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
 
 func (c *Config) GetNodeConfStorePath() string {
 	return filepath.Join(c.RepoPath, "nodeconf")
+}
+
+func (c *Config) GetYamux() yamux2.Config {
+	return yamux2.Config{
+		ListenAddrs:     []string{},
+		WriteTimeoutSec: 2,
+		DialTimeoutSec:  2,
+		MaxStreams:      1000,
+	}
 }

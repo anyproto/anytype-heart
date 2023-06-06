@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace"
 	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -85,7 +85,7 @@ func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
 	if err != nil {
 		return
 	}
-	tree, err := spc.BuildHistoryTree(context.Background(), id, commonspace.HistoryTreeOpts{})
+	tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), id, objecttreebuilder.HistoryTreeOpts{})
 	if err != nil {
 		return
 	}
@@ -103,7 +103,7 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 	if err != nil {
 		return
 	}
-	tree, err := spc.BuildHistoryTree(context.Background(), blockId, commonspace.HistoryTreeOpts{BuildFullTree: true})
+	tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), blockId, objecttreebuilder.HistoryTreeOpts{BuildFullTree: true})
 	if err != nil {
 		return
 	}
