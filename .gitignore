@@ -18,3 +18,4 @@ grpc-web
 .gradle
 tests/.cache/
 .env
+build

@@ -39,6 +39,12 @@ var (
 		Name:      "details_index_updated",
 		Help:      "Details updated for an object",
 	})
+	ObjectDetailsHeadsNotChangedCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "mw",
+		Name:      "details_index_heads_not_changed",
+		Help:      "Details head not changed optimization",
+	})
 )
 
 func registerPrometheusExpvars() {

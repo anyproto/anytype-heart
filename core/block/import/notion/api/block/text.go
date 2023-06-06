@@ -141,7 +141,8 @@ func (c *CalloutBlock) GetBlocks(req *MapRequest) *MapResponse {
 		mapper := ChildrenMapper(&c.Callout)
 		childResp = mapper.MapChildren(req)
 	}
-	calloutResp := c.Callout.GetTextBlocks(model.BlockContentText_Callout, childResp.BlockIDs, req)
+	childIDs := getChildID(childResp)
+	calloutResp := c.Callout.GetTextBlocks(model.BlockContentText_Callout, childIDs, req)
 	extendedBlocks := make([]*model.Block, 0, len(calloutResp.Blocks))
 	for _, cb := range calloutResp.Blocks {
 		if text := c.makeTextContent(cb); text != nil {

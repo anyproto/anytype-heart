@@ -79,5 +79,5 @@ func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) er
 			initCtx.State.SetMigrationVersion(m.Version)
 		}
 	}
-	return sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
+	return nil
 }

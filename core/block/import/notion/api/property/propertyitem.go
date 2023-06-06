@@ -18,10 +18,18 @@ import (
 
 type ConfigType string
 
+type FormatGetter interface {
+	GetFormat() model.RelationFormat
+}
+
+type IDGetter interface {
+	GetID() string
+}
+
 type Object interface {
 	GetPropertyType() ConfigType
-	GetID() string
-	GetFormat() model.RelationFormat
+	IDGetter
+	FormatGetter
 }
 
 const (
@@ -155,7 +163,7 @@ type SelectOption struct {
 }
 
 func (sp *SelectItem) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.StringList([]string{sp.Select.Name})
+	details[key] = pbtypes.StringList([]string{sp.Select.ID})
 }
 
 func (sp *SelectItem) GetPropertyType() ConfigType {
@@ -180,7 +188,7 @@ type MultiSelectItem struct {
 func (ms *MultiSelectItem) SetDetail(key string, details map[string]*types.Value) {
 	msList := make([]string, 0)
 	for _, so := range ms.MultiSelect {
-		msList = append(msList, so.Name)
+		msList = append(msList, so.ID)
 	}
 	details[key] = pbtypes.StringList(msList)
 }
@@ -324,7 +332,7 @@ type PeopleItem struct {
 func (p *PeopleItem) SetDetail(key string, details map[string]*types.Value) {
 	peopleList := make([]string, 0, len(p.People))
 	for _, people := range p.People {
-		peopleList = append(peopleList, people.Name)
+		peopleList = append(peopleList, people.ID)
 	}
 	details[key] = pbtypes.StringList(peopleList)
 }
@@ -585,7 +593,7 @@ type Status struct {
 }
 
 func (sp *StatusItem) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.StringList([]string{sp.Status.Name})
+	details[key] = pbtypes.StringList([]string{sp.Status.ID})
 }
 
 func (sp *StatusItem) GetPropertyType() ConfigType {

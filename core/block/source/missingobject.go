@@ -68,7 +68,7 @@ func (m *missingObject) Close() (err error) {
 }
 
 func (m *missingObject) Heads() []string {
-	return nil
+	return []string{"todo"}
 }
 
 func (m *missingObject) GetFileKeysSnapshot() []*pb.ChangeFileKeys {

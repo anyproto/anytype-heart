@@ -21,7 +21,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, map[string][]*converter.Relation, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -33,7 +33,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]strin
 	if len(csvTable) != 0 {
 		err := c.createTable(st, csvTable)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -52,7 +52,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]strin
 		FileName: path,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 	}
-	return []string{snapshot.Id}, []*converter.Snapshot{snapshot}, nil, nil
+	return []string{snapshot.Id}, []*converter.Snapshot{snapshot}, nil
 }
 
 func (c *TableStrategy) createTable(st *state.State, csvTable [][]string) error {

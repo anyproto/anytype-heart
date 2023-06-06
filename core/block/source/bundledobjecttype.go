@@ -84,7 +84,7 @@ func (v *bundledObjectType) Close() (err error) {
 }
 
 func (v *bundledObjectType) Heads() []string {
-	return nil
+	return []string{"todo"} // todo hash of model
 }
 
 func (s *bundledObjectType) GetFileKeysSnapshot() []*pb.ChangeFileKeys {

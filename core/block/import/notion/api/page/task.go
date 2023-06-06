@@ -3,7 +3,9 @@ package page
 import (
 	"context"
 	"fmt"
+	"sync"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
@@ -13,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -29,15 +32,16 @@ func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRe
 }
 
 type Result struct {
-	snapshot  *converter.Snapshot
-	relations []*converter.Relation
-	ce        converter.ConvertError
+	snapshot []*converter.Snapshot
+	ce       converter.ConvertError
 }
 
 type Task struct {
-	propertyService *property.Service
-	blockService    *block.Service
-	p               Page
+	relationCreateMutex    *sync.Mutex
+	relationOptCreateMutex *sync.Mutex
+	propertyService        *property.Service
+	blockService           *block.Service
+	p                      Page
 }
 
 func (pt *Task) ID() string {
@@ -46,33 +50,42 @@ func (pt *Task) ID() string {
 
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
-
-	snapshot, relations, ce := pt.transformPages(do.ctx, do.apiKey, pt.p, do.mode, do.request)
+	snapshot, subObjectsSnapshots, ce := pt.makeSnapshotFromPages(do.ctx, do.apiKey, pt.p, do.mode, do.request)
 	if ce != nil {
 		if do.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return &Result{ce: ce}
 		}
 	}
 	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
+	resultSnapshots := make([]*converter.Snapshot, 0, 1+len(subObjectsSnapshots))
 	sn := &converter.Snapshot{
 		Id:       pageID,
 		FileName: pt.p.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		SbType:   smartblock.SmartBlockTypePage,
 	}
-	return &Result{snapshot: sn, relations: relations, ce: ce}
+	resultSnapshots = append(resultSnapshots, sn)
+	for _, objectsSnapshot := range subObjectsSnapshots {
+		id := pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String())
+		resultSnapshots = append(resultSnapshots, &converter.Snapshot{
+			Id:       id,
+			SbType:   smartblock.SmartBlockTypeSubObject,
+			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
+		})
+	}
+	return &Result{snapshot: resultSnapshots, ce: ce}
 }
 
-func (pt *Task) transformPages(
+func (pt *Task) makeSnapshotFromPages(
 	ctx context.Context,
 	apiKey string,
 	p Page,
 	mode pb.RpcObjectImportRequestMode,
-	request *block.MapRequest) (*model.SmartBlockSnapshotBase, []*converter.Relation, converter.ConvertError,
+	request *block.MapRequest) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase, converter.ConvertError,
 ) {
 
 	allErrors := converter.ConvertError{}
-	details, relations := pt.handleDetails(ctx, apiKey, p, request)
+	details, subObjectsSnapshots, relationLinks := pt.provideDetails(ctx, apiKey, p, request)
 
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(ctx, p.ID, apiKey, pageSize, mode)
 	if blocksAndChildrenErr != nil {
@@ -82,25 +95,26 @@ func (pt *Task) transformPages(
 		}
 	}
 
-	snapshot := pt.provideSnapshot(request, notionBlocks, details)
-
-	return snapshot, relations, nil
-}
-
-func (pt *Task) handleDetails(ctx context.Context, apiKey string, p Page, request *block.MapRequest) (map[string]*types.Value, []*converter.Relation) {
-	details := pt.prepareDetails(p)
-	relations := pt.handlePageProperties(ctx, apiKey, p.ID, p.Properties, details, request)
-	addCoverDetail(p, details)
-	return details, relations
-}
-
-func (pt *Task) provideSnapshot(request *block.MapRequest, notionBlocks []interface{}, details map[string]*types.Value) *model.SmartBlockSnapshotBase {
 	request.Blocks = notionBlocks
 	resp := pt.blockService.MapNotionBlocksToAnytype(request)
+	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
+
+	return snapshot, subObjectsSnapshots, nil
+}
+
+func (pt *Task) provideDetails(ctx context.Context, apiKey string, p Page, request *block.MapRequest) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
+	details := pt.prepareDetails(p)
+	relations, relationLinks := pt.handlePageProperties(ctx, apiKey, p.ID, p.Properties, details, request)
+	addCoverDetail(p, details)
+	return details, relations, relationLinks
+}
+
+func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]*types.Value, relationLinks []*model.RelationLink) *model.SmartBlockSnapshotBase {
 	snapshot := &model.SmartBlockSnapshotBase{
-		Blocks:      resp.Blocks,
-		Details:     &types.Struct{Fields: details},
-		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
+		Blocks:        notionBlocks,
+		Details:       &types.Struct{Fields: details},
+		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
+		RelationLinks: relationLinks,
 	}
 	return snapshot
 }
@@ -126,37 +140,100 @@ func (pt *Task) handlePageProperties(ctx context.Context,
 	apiKey, pageID string,
 	p property.Properties,
 	d map[string]*types.Value,
-	req *block.MapRequest) []*converter.Relation {
-	relations := make([]*converter.Relation, 0)
+	req *block.MapRequest) ([]*model.SmartBlockSnapshotBase, []*model.RelationLink) {
+	relations := make([]*model.SmartBlockSnapshotBase, 0)
+	relationsLinks := make([]*model.RelationLink, 0)
 	for k, v := range p {
-		relation, err := pt.retrieveRelation(ctx, apiKey, pageID, k, v, req, d)
+		relation, relationLink, err := pt.retrieveRelation(ctx, apiKey, pageID, k, v, req, d)
 		if err != nil {
 			logger.With("method", "handlePageProperties").Error(err)
 			continue
 		}
-		relations = append(relations, relation)
+		relations = append(relations, relation...)
+		relationsLinks = append(relationsLinks, relationLink)
 	}
-	return relations
+	return relations, relationsLinks
 }
 
 func (pt *Task) retrieveRelation(ctx context.Context,
 	apiKey, pageID, key string,
-	propObject property.Object, req *block.MapRequest,
-	details map[string]*types.Value) (*converter.Relation, error) {
-
+	propObject property.Object,
+	req *block.MapRequest,
+	details map[string]*types.Value) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	if err := pt.handlePagination(ctx, apiKey, pageID, propObject); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pt.handleLinkRelationsIDWithAnytypeID(propObject, req)
+	return pt.makeRelationFromProperty(req, propObject, details, key)
+}
 
-	if err := pt.setDetails(propObject, key, details); err != nil {
-		return nil, err
+func (pt *Task) makeRelationFromProperty(req *block.MapRequest,
+	propObject property.Object,
+	details map[string]*types.Value,
+	name string) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+	pt.relationCreateMutex.Lock()
+	defer pt.relationCreateMutex.Unlock()
+	var (
+		snapshot            *model.SmartBlockSnapshotBase
+		key                 string
+		subObjectsSnapshots []*model.SmartBlockSnapshotBase
+	)
+	if snapshot = req.ReadRelationsMap(propObject.GetID()); snapshot == nil {
+		snapshot, key = pt.getRelationSnapshot(name, propObject)
+		if snapshot != nil {
+			req.WriteToRelationsMap(propObject.GetID(), snapshot)
+			subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
+		}
 	}
-	return pt.handleRelation(key, propObject), nil
+	if key == "" {
+		key = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyRelationKey.String())
+	}
+	subObjectsSnapshots = append(subObjectsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, req)...)
+	if err := pt.setDetails(propObject, key, details); err != nil {
+		return nil, nil, err
+	}
+	relationLink := &model.RelationLink{
+		Key:    key,
+		Format: propObject.GetFormat(),
+	}
+	return subObjectsSnapshots, relationLink, nil
+}
+
+func (pt *Task) getRelationSnapshot(name string, propObject property.Object) (*model.SmartBlockSnapshotBase, string) {
+	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
+		return nil, bundle.RelationKeyName.String()
+	}
+	key := bson.NewObjectId().Hex()
+	details := pt.getRelationDetails(key, name, propObject)
+	rel := &model.SmartBlockSnapshotBase{
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
+	}
+	return rel, key
+}
+
+func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.Object, req *block.MapRequest) []*model.SmartBlockSnapshotBase {
+	pt.relationOptCreateMutex.Lock()
+	defer pt.relationOptCreateMutex.Unlock()
+	subObjectsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
+	if isPropertyTag(propObject) {
+		subObjectsSnapshots = append(subObjectsSnapshots, getRelationOptions(propObject, id, req)...)
+	}
+	return subObjectsSnapshots
+}
+
+func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
+	details := &types.Struct{Fields: map[string]*types.Value{}}
+	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
+	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+	return details
 }
 
 // linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
-// In property we get id from Notion, so we somehow need to map this ID with anytype for correct Relation.
+// In property, we get id from Notion, so we somehow need to map this ID with anytype for correct Relation.
 // We use two maps notionPagesIdsToAnytype, notionDatabaseIdsToAnytype for this
 func (pt *Task) handleLinkRelationsIDWithAnytypeID(propObject property.Object, req *block.MapRequest) {
 	if r, ok := propObject.(*property.RelationItem); ok {
@@ -203,6 +280,18 @@ func (pt *Task) handlePaginatedProperties(propObject property.Object, properties
 	}
 }
 
+func (pt *Task) setDetails(propObject property.Object, key string, details map[string]*types.Value) error {
+	var (
+		ds property.DetailSetter
+		ok bool
+	)
+	if ds, ok = propObject.(property.DetailSetter); !ok {
+		return fmt.Errorf("failed to convert to interface DetailSetter, %s", propObject.GetPropertyType())
+	}
+	ds.SetDetail(key, details)
+	return nil
+}
+
 func handlePeopleItem(properties []interface{}, pr *property.PeopleItem) {
 	pList := make([]*api.User, 0, len(properties))
 	for _, o := range properties {
@@ -225,31 +314,6 @@ func handleRelationItem(properties []interface{}, pr *property.RelationItem) {
 		relationItems = append(relationItems, o.(*property.Relation))
 	}
 	pr.Relation = relationItems
-}
-
-func (pt *Task) setDetails(propObject property.Object, key string, details map[string]*types.Value) error {
-	var (
-		ds property.DetailSetter
-		ok bool
-	)
-	if ds, ok = propObject.(property.DetailSetter); !ok {
-		return fmt.Errorf("failed to convert to interface DetailSetter, %s", propObject.GetPropertyType())
-	}
-	ds.SetDetail(key, details)
-	return nil
-}
-
-func (pt *Task) handleRelation(key string, propObject property.Object) *converter.Relation {
-	rel := &converter.Relation{
-		Relation: &model.Relation{
-			Name:   key,
-			Format: propObject.GetFormat(),
-		},
-	}
-	if isPropertyTag(propObject) {
-		setOptionsForListRelation(propObject, rel.Relation)
-	}
-	return rel
 }
 
 func addCoverDetail(p Page, details map[string]*types.Value) {
@@ -281,61 +345,126 @@ func isPropertyTag(pr property.Object) bool {
 		pr.GetPropertyType() == property.PropertyConfigTypePeople
 }
 
-func setOptionsForListRelation(pr property.Object, rel *model.Relation) {
-	appendToSelectDict(rel, getRelationOptions(pr))
-}
-
-func getRelationOptions(pr property.Object) []*model.RelationOption {
-	var opts []*model.RelationOption
+func getRelationOptions(pr property.Object, rel string, req *block.MapRequest) []*model.SmartBlockSnapshotBase {
+	var opts []*model.SmartBlockSnapshotBase
 	switch property := pr.(type) {
 	case *property.StatusItem:
-		opts = append(opts, statusItemOptions(property))
+		options := statusItemOptions(property, rel, req)
+		if options != nil {
+			opts = append(opts, options)
+		}
 	case *property.SelectItem:
-		opts = append(opts, selectItemOptions(property))
+		options := selectItemOptions(property, rel, req)
+		if options != nil {
+			opts = append(opts, options)
+		}
 	case *property.MultiSelectItem:
-		opts = append(opts, multiselectItemOptions(property)...)
+		opts = append(opts, multiselectItemOptions(property, rel, req)...)
 	case *property.PeopleItem:
-		opts = append(opts, peopleItemOptions(property)...)
+		opts = append(opts, peopleItemOptions(property, rel, req)...)
 	}
 	return opts
 }
 
-func appendToSelectDict(rel *model.Relation, opts []*model.RelationOption) {
-	rel.SelectDict = append(rel.SelectDict, opts...)
-}
-
-func peopleItemOptions(property *property.PeopleItem) []*model.RelationOption {
-	res := make([]*model.RelationOption, 0, len(property.People))
-	for _, so := range property.People {
-		res = append(res, &model.RelationOption{
-			Text:  so.Name,
-			Color: api.DefaultColor,
-		})
+func peopleItemOptions(property *property.PeopleItem, rel string, req *block.MapRequest) []*model.SmartBlockSnapshotBase {
+	peopleOptions := make([]*model.SmartBlockSnapshotBase, 0, len(property.People))
+	for _, po := range property.People {
+		if po.Name == "" {
+			continue
+		}
+		exist, optionID := isOptionAlreadyExist(po.Name, rel, req)
+		if exist {
+			po.ID = optionID
+			continue
+		}
+		details, optSnapshot := provideRelationOptionSnapshot(po.Name, "", rel)
+		peopleOptions = append(peopleOptions, optSnapshot)
+		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+		po.ID = optionID
 	}
-	return res
+	req.WriteToRelationsOptionsMap(rel, peopleOptions)
+	return peopleOptions
 }
 
-func multiselectItemOptions(property *property.MultiSelectItem) []*model.RelationOption {
-	res := make([]*model.RelationOption, 0, len(property.MultiSelect))
+func multiselectItemOptions(property *property.MultiSelectItem, rel string, req *block.MapRequest) []*model.SmartBlockSnapshotBase {
+	multiSelectOptions := make([]*model.SmartBlockSnapshotBase, 0, len(property.MultiSelect))
 	for _, so := range property.MultiSelect {
-		res = append(res, &model.RelationOption{
-			Text:  so.Name,
-			Color: api.NotionColorToAnytype[so.Color],
-		})
+		if so.Name == "" {
+			continue
+		}
+		exist, optionID := isOptionAlreadyExist(so.Name, rel, req)
+		if exist {
+			so.ID = optionID
+			continue
+		}
+		details, optSnapshot := provideRelationOptionSnapshot(so.Name, so.Color, rel)
+		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+		so.ID = optionID
+		multiSelectOptions = append(multiSelectOptions, optSnapshot)
 	}
-	return res
+	req.WriteToRelationsOptionsMap(rel, multiSelectOptions)
+	return multiSelectOptions
 }
 
-func selectItemOptions(property *property.SelectItem) *model.RelationOption {
-	return &model.RelationOption{
-		Text:  property.Select.Name,
-		Color: api.NotionColorToAnytype[property.Select.Color],
+func selectItemOptions(property *property.SelectItem, rel string, req *block.MapRequest) *model.SmartBlockSnapshotBase {
+	if property.Select.Name == "" {
+		return nil
 	}
+	exist, optionID := isOptionAlreadyExist(property.Select.Name, rel, req)
+	if exist {
+		property.Select.ID = optionID
+		return nil
+	}
+	details, optSnapshot := provideRelationOptionSnapshot(property.Select.Name, property.Select.Color, rel)
+	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+	property.Select.ID = optionID
+	req.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
+	return optSnapshot
 }
 
-func statusItemOptions(property *property.StatusItem) *model.RelationOption {
-	return &model.RelationOption{
-		Text:  property.Status.Name,
-		Color: api.NotionColorToAnytype[property.Status.Color],
+func statusItemOptions(property *property.StatusItem, rel string, req *block.MapRequest) *model.SmartBlockSnapshotBase {
+	if property.Status.Name == "" {
+		return nil
 	}
+	exist, optionID := isOptionAlreadyExist(property.Status.Name, rel, req)
+	if exist {
+		property.Status.ID = optionID
+		return nil
+	}
+	details, optSnapshot := provideRelationOptionSnapshot(property.Status.Name, property.Status.Color, rel)
+	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+	property.Status.ID = optionID
+	req.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
+	return optSnapshot
+}
+
+func isOptionAlreadyExist(optName, rel string, req *block.MapRequest) (bool, string) {
+	options := req.ReadRelationsOptionsMap(rel)
+	for _, option := range options {
+		name := pbtypes.GetString(option.Details, bundle.RelationKeyName.String())
+		id := pbtypes.GetString(option.Details, bundle.RelationKeyId.String())
+		if optName == name {
+			return true, id
+		}
+	}
+	return false, ""
+}
+
+func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *model.SmartBlockSnapshotBase) {
+	details := getDetailsForRelationOption(name, rel)
+	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
+	optSnapshot := &model.SmartBlockSnapshotBase{
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
+	}
+	return details, optSnapshot
+}
+
+func getDetailsForRelationOption(name, rel string) *types.Struct {
+	details := &types.Struct{Fields: map[string]*types.Value{}}
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(bson.NewObjectId().Hex())
+	return details
 }

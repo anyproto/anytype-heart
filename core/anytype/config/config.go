@@ -102,6 +102,14 @@ func WithLocalServer(addr string) func(*Config) {
 	}
 }
 
+func WithCreateBuiltinObjects(createBuiltinObjects bool) func(*Config) {
+	return func(c *Config) {
+		c.CreateBuiltinObjects = createBuiltinObjects
+	}
+}
+
+// WithCreateBuiltinTemplates flag had wrong meaning and is no longer used
+// deprecated
 func WithCreateBuiltinTemplates(createBuiltinTemplates bool) func(*Config) {
 	return func(c *Config) {
 		c.CreateBuiltinTemplates = createBuiltinTemplates

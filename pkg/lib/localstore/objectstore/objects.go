@@ -37,6 +37,7 @@ import (
 )
 
 var log = logging.Logger("anytype-localstore")
+var ErrDetailsNotChanged = errors.New("details not changed")
 
 const CName = "objectstore"
 
@@ -885,7 +886,9 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 		},
 	}, false)
 	if err != nil {
-		return fmt.Errorf("failed to overwrite details and relations: %w", err)
+		if !errors.Is(err, ErrDetailsNotChanged) {
+			return fmt.Errorf("failed to overwrite details and relations: %w", err)
+		}
 	}
 
 	m.l.Lock()
@@ -1094,7 +1097,7 @@ func (m *dsObjectStore) CreateObject(id string, details *types.Struct, links []s
 	}
 
 	err = m.updateObjectDetails(txn, id, before, details)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrDetailsNotChanged) {
 		return err
 	}
 
@@ -1519,7 +1522,7 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	}
 
 	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
-		return nil
+		return ErrDetailsNotChanged
 	}
 
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
@@ -1617,12 +1620,6 @@ func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) 
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
 
-	for k, v := range details.GetDetails().GetFields() {
-		// todo: remove null cleanup(should be done when receiving from client)
-		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-			delete(details.Details.Fields, k)
-		}
-	}
 	return details, nil
 }
 
