@@ -23,14 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func makeDetails(fields map[bundle.RelationKey]*types.Value) *types.Struct {
-	f := map[string]*types.Value{}
-	for k, v := range fields {
-		f[string(k)] = v
-	}
-	return &types.Struct{Fields: f}
-}
-
 type storeFixture struct {
 	*dsObjectStore
 }
@@ -63,7 +55,17 @@ func newStoreFixture(t *testing.T) *storeFixture {
 	}}
 }
 
-func (fx *storeFixture) addObjects(t *testing.T, objects []map[bundle.RelationKey]*types.Value) {
+type testObject map[bundle.RelationKey]*types.Value
+
+func makeDetails(fields testObject) *types.Struct {
+	f := map[string]*types.Value{}
+	for k, v := range fields {
+		f[string(k)] = v
+	}
+	return &types.Struct{Fields: f}
+}
+
+func (fx *storeFixture) addObjects(t *testing.T, objects []testObject) {
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)
@@ -72,7 +74,7 @@ func (fx *storeFixture) addObjects(t *testing.T, objects []map[bundle.RelationKe
 	}
 }
 
-func assertRecordsEqual(t *testing.T, want []map[bundle.RelationKey]*types.Value, got []database.Record) {
+func assertRecordsEqual(t *testing.T, want []testObject, got []database.Record) {
 	wantRaw := make([]database.Record, 0, len(want))
 	for _, w := range want {
 		wantRaw = append(wantRaw, database.Record{Details: makeDetails(w)})
@@ -80,7 +82,7 @@ func assertRecordsEqual(t *testing.T, want []map[bundle.RelationKey]*types.Value
 	assert.Equal(t, wantRaw, got)
 }
 
-func assertRecordsMatch(t *testing.T, want []map[bundle.RelationKey]*types.Value, got []database.Record) {
+func assertRecordsMatch(t *testing.T, want []testObject, got []database.Record) {
 	wantRaw := make([]database.Record, 0, len(want))
 	for _, w := range want {
 		wantRaw = append(wantRaw, database.Record{Details: makeDetails(w)})
@@ -91,56 +93,45 @@ func assertRecordsMatch(t *testing.T, want []map[bundle.RelationKey]*types.Value
 func TestQuery(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		s := newStoreFixture(t)
-		s.addObjects(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:   pbtypes.String("id1"),
-				bundle.RelationKeyName: pbtypes.String("name1"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id2"),
-				bundle.RelationKeyName: pbtypes.String("name2"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id3"),
-				bundle.RelationKeyName: pbtypes.String("name3"),
-			},
-		})
+		obj1 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyName: pbtypes.String("name1"),
+		}
+		obj2 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id2"),
+			bundle.RelationKeyName: pbtypes.String("name2"),
+		}
+		obj3 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id3"),
+			bundle.RelationKeyName: pbtypes.String("name3"),
+		}
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
 		recs, _, err := s.Query(nil, database.Query{})
 		require.NoError(t, err)
 
-		assertRecordsEqual(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:   pbtypes.String("id1"),
-				bundle.RelationKeyName: pbtypes.String("name1"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id2"),
-				bundle.RelationKeyName: pbtypes.String("name2"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id3"),
-				bundle.RelationKeyName: pbtypes.String("name3"),
-			},
+		assertRecordsEqual(t, []testObject{
+			obj1,
+			obj2,
+			obj3,
 		}, recs)
 	})
 
 	t.Run("with filter", func(t *testing.T) {
 		s := newStoreFixture(t)
-		s.addObjects(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:   pbtypes.String("id1"),
-				bundle.RelationKeyName: pbtypes.String("name1"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id2"),
-				bundle.RelationKeyName: pbtypes.String("name2"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id3"),
-				bundle.RelationKeyName: pbtypes.String("name3"),
-			},
-		})
+		obj1 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyName: pbtypes.String("name1"),
+		}
+		obj2 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id2"),
+			bundle.RelationKeyName: pbtypes.String("name2"),
+		}
+		obj3 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id3"),
+			bundle.RelationKeyName: pbtypes.String("name3"),
+		}
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
 		recs, _, err := s.Query(nil, database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
@@ -153,32 +144,28 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assertRecordsEqual(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:   pbtypes.String("id2"),
-				bundle.RelationKeyName: pbtypes.String("name2"),
-			},
+		assertRecordsEqual(t, []testObject{
+			obj2,
 		}, recs)
 	})
 
 	t.Run("with multiple filters", func(t *testing.T) {
 		s := newStoreFixture(t)
-		s.addObjects(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:   pbtypes.String("id1"),
-				bundle.RelationKeyName: pbtypes.String("name"),
-			},
-			{
-				bundle.RelationKeyId:          pbtypes.String("id2"),
-				bundle.RelationKeyName:        pbtypes.String("name"),
-				bundle.RelationKeyDescription: pbtypes.String("description"),
-			},
-			{
-				bundle.RelationKeyId:          pbtypes.String("id3"),
-				bundle.RelationKeyName:        pbtypes.String("name"),
-				bundle.RelationKeyDescription: pbtypes.String("description"),
-			},
-		})
+		obj1 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyName: pbtypes.String("name"),
+		}
+		obj2 := testObject{
+			bundle.RelationKeyId:          pbtypes.String("id2"),
+			bundle.RelationKeyName:        pbtypes.String("name"),
+			bundle.RelationKeyDescription: pbtypes.String("description"),
+		}
+		obj3 := testObject{
+			bundle.RelationKeyId:          pbtypes.String("id3"),
+			bundle.RelationKeyName:        pbtypes.String("name"),
+			bundle.RelationKeyDescription: pbtypes.String("description"),
+		}
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
 		recs, _, err := s.Query(nil, database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
@@ -196,36 +183,27 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assertRecordsEqual(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:          pbtypes.String("id2"),
-				bundle.RelationKeyName:        pbtypes.String("name"),
-				bundle.RelationKeyDescription: pbtypes.String("description"),
-			},
-			{
-				bundle.RelationKeyId:          pbtypes.String("id3"),
-				bundle.RelationKeyName:        pbtypes.String("name"),
-				bundle.RelationKeyDescription: pbtypes.String("description"),
-			},
+		assertRecordsEqual(t, []testObject{
+			obj2,
+			obj3,
 		}, recs)
 	})
 
 	t.Run("full text search", func(t *testing.T) {
 		s := newStoreFixture(t)
-		s.addObjects(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:   pbtypes.String("id1"),
-				bundle.RelationKeyName: pbtypes.String("name"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id2"),
-				bundle.RelationKeyName: pbtypes.String("some important note"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id3"),
-				bundle.RelationKeyName: pbtypes.String(""),
-			},
-		})
+		obj1 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyName: pbtypes.String("name"),
+		}
+		obj2 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id2"),
+			bundle.RelationKeyName: pbtypes.String("some important note"),
+		}
+		obj3 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id3"),
+			bundle.RelationKeyName: pbtypes.String(""),
+		}
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
 		err := s.fts.Index(ftsearch.SearchDoc{
 			Id:    "id1",
@@ -252,15 +230,9 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
-		assertRecordsMatch(t, []map[bundle.RelationKey]*types.Value{
-			{
-				bundle.RelationKeyId:   pbtypes.String("id2"),
-				bundle.RelationKeyName: pbtypes.String("some important note"),
-			},
-			{
-				bundle.RelationKeyId:   pbtypes.String("id3"),
-				bundle.RelationKeyName: pbtypes.String(""),
-			},
+		assertRecordsMatch(t, []testObject{
+			obj2,
+			obj3,
 		}, recs)
 	})
 
