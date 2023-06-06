@@ -71,7 +71,7 @@ func (e *export) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (e *export) Close() (err error) {
+func (e *export) Close(ctx context.Context) (err error) {
 	if e.canceledFunc != nil {
 		e.canceledFunc()
 	}
@@ -159,7 +159,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		tasks := make([]process.Task, 0, len(docs))
 		for docId := range docs {
 			did := docId
-			tasks = append(tasks, func() {
+			err = queue.Add(func() {
 				log.With("threadId", did).Debugf("write doc")
 				if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
 					log.With("threadId", did).Warnf("can't export doc: %v", werr)
@@ -167,6 +167,10 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 					succeed++
 				}
 			})
+			if err != nil {
+				log.With("threadId", did).Warnf("can't add task to queue doc: %v", err)
+
+			}
 		}
 		queue.SetMessage("export files")
 		if err = queue.Wait(tasks...); err != nil {
@@ -175,12 +179,8 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 			return
 		}
 	}
-	if err = queue.Finalize(); err != nil {
-		e.cleanupFile(wr)
-		succeed = 0
-		return
-	}
-	if e.canceled {
+	err = queue.Finalize()
+	if err != nil || e.canceled {
 		e.cleanupFile(wr)
 		succeed = 0
 		return
