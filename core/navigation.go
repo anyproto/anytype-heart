@@ -9,8 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/pb"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -21,40 +19,9 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
-	if mw.app == nil {
-		return response(pb.RpcNavigationListObjectsResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
-	}
-
-	objectTypes := []coresb.SmartBlockType{
-		coresb.SmartBlockTypePage,
-		coresb.SmartBlockTypeProfilePage,
-		coresb.SmartBlockTypeHome,
-	}
-	if req.Context != pb.RpcNavigation_Navigation {
-		objectTypes = []coresb.SmartBlockType{
-			coresb.SmartBlockTypePage,
-			coresb.SmartBlockTypeProfilePage,
-		}
-	}
-
-	store := app.MustComponent[objectstore.ObjectStore](mw.app)
-	// TODO: objstore: probably method is unused
-	records, _, err := store.QueryObjectInfo(database.Query{
-		FullText: req.FullText,
-		Limit:    int(req.Limit),
-		Offset:   int(req.Offset),
-	}, objectTypes)
-	if err != nil {
-		return response(pb.RpcNavigationListObjectsResponseError_UNKNOWN_ERROR, nil, err)
-	}
-
-	return response(pb.RpcNavigationListObjectsResponseError_NULL, records, nil)
+	return response(pb.RpcNavigationListObjectsResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("not implemented"))
 }
 
 func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {

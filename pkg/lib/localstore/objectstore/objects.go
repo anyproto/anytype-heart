@@ -2,13 +2,11 @@ package objectstore
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"runtime/debug"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
@@ -198,38 +196,6 @@ type AccountStore interface {
 
 var ErrNotAnObject = fmt.Errorf("not an object")
 
-type filterSmartblockTypes struct {
-	smartBlockTypes []smartblock.SmartBlockType
-	not             bool
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-}
-
-func newSmartblockTypesFilter(sbtProvider typeprovider.SmartBlockTypeProvider, not bool, smartBlockTypes []smartblock.SmartBlockType) *filterSmartblockTypes {
-	return &filterSmartblockTypes{
-		smartBlockTypes: smartBlockTypes,
-		not:             not,
-		sbtProvider:     sbtProvider,
-	}
-}
-
-func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
-	keyParts := strings.Split(e.Key, "/")
-	id := keyParts[len(keyParts)-1]
-
-	t, err := m.sbtProvider.Type(id)
-	if err != nil {
-		log.Errorf("failed to detect smartblock type for %s: %s", id, err.Error())
-		return false
-	}
-
-	for _, ot := range m.smartBlockTypes {
-		if t == ot {
-			return !m.not
-		}
-	}
-	return m.not
-}
-
 type dsObjectStore struct {
 	// underlying storage
 	ds            noctxds.DSTxnBatching
@@ -247,84 +213,6 @@ type dsObjectStore struct {
 	depSubscriptions []database.Subscription
 
 	sbtProvider typeprovider.SmartBlockTypeProvider
-}
-
-func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return "", fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	val, err := txn.Get(currentWorkspace)
-	if err != nil {
-		return "", err
-	}
-	return string(val), nil
-}
-
-func (m *dsObjectStore) SetCurrentWorkspaceId(threadId string) (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if err := txn.Put(currentWorkspace, []byte(threadId)); err != nil {
-		return fmt.Errorf("failed to put into ds: %w", err)
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if err := txn.Delete(currentWorkspace); err != nil {
-		return fmt.Errorf("failed to delete from ds: %w", err)
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	b, err := status.Marshal()
-	if err != nil {
-		return err
-	}
-
-	if err := txn.Put(accountStatus, b); err != nil {
-		return fmt.Errorf("failed to put into ds: %w", err)
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	status = &coordinatorproto.SpaceStatusPayload{}
-	if val, err := txn.Get(accountStatus); err != nil {
-		return nil, err
-	} else if err := proto.Unmarshal(val, status); err != nil {
-		return nil, err
-	}
-
-	return status, nil
 }
 
 func (m *dsObjectStore) EraseIndexes() (err error) {
@@ -1022,32 +910,6 @@ func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	return m.getObjectsInfo(txn, ids)
 }
 
-func (m *dsObjectStore) CreateObject(id string, details *types.Struct, links []string, snippet string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	// init an empty state to skip nil checks later
-	before := model.ObjectInfo{
-		Details: &types.Struct{Fields: map[string]*types.Value{}},
-	}
-
-	err = m.updateObjectDetails(txn, id, before, details)
-	if err != nil && !errors.Is(err, ErrDetailsNotChanged) {
-		return err
-	}
-
-	err = m.updateObjectLinksAndSnippet(txn, id, links, snippet)
-	if err != nil {
-		return err
-	}
-	return txn.Commit()
-}
-
 func (m *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -1185,79 +1047,6 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, di
 	return nil
 }
 
-// GetLastIndexedHeadsHash return empty hash without error if record was not found
-func (m *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return "", fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if val, err := txn.Get(indexedHeadsState.ChildString(id)); err != nil && err != ds.ErrNotFound {
-		return "", fmt.Errorf("failed to get heads hash: %w", err)
-	} else if val == nil {
-		return "", nil
-	} else {
-		return string(val), nil
-	}
-}
-
-func (m *dsObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if err := txn.Put(indexedHeadsState.ChildString(id), []byte(headsHash)); err != nil {
-		return fmt.Errorf("failed to put into ds: %w", err)
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	val, err := txn.Get(bundledChecksums)
-	if err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get details: %w", err)
-	}
-	if err == ds.ErrNotFound {
-		return nil, err
-	}
-
-	var objChecksum model.ObjectStoreChecksums
-	if err := proto.Unmarshal(val, &objChecksum); err != nil {
-		return nil, err
-	}
-
-	return &objChecksum, nil
-}
-
-func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	b, err := checksums.Marshal()
-	if err != nil {
-		return err
-	}
-
-	if err := txn.Put(bundledChecksums, b); err != nil {
-		return fmt.Errorf("failed to put into ds: %w", err)
-	}
-
-	return txn.Commit()
-}
-
 func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
 	exLinks, _ := findOutboundLinks(txn, id)
 	var addedLinks, removedLinks []string
@@ -1276,21 +1065,6 @@ func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []st
 			if err := txn.Delete(k); err != nil {
 				return err
 			}
-		}
-	}
-
-	return nil
-}
-
-func (m *dsObjectStore) updateObjectLinksAndSnippet(txn noctxds.Txn, id string, links []string, snippet string) error {
-	err := m.updateObjectLinks(txn, id, links)
-	if err != nil {
-		return err
-	}
-
-	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
-		if err := m.updateSnippet(txn, id, snippet); err != nil {
-			return err
 		}
 	}
 
@@ -1321,103 +1095,6 @@ func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 			_ = sub.Publish(id, detCopy)
 		}(m.subscriptions[i])
 	}
-}
-
-func (m *dsObjectStore) AddToIndexQueue(id string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	var buf [8]byte
-	size := binary.PutVarint(buf[:], time.Now().Unix())
-	if err = txn.Put(indexQueueBase.ChildString(id), buf[:size]); err != nil {
-		return err
-	}
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) removeFromIndexQueue(id string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if err := txn.Delete(indexQueueBase.ChildString(id)); err != nil {
-		return fmt.Errorf("failed to remove id from full text index queue: %s", err.Error())
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	res, err := txn.Query(query.Query{Prefix: indexQueueBase.String()})
-	if err != nil {
-		return nil, fmt.Errorf("error query txn in datastore: %w", err)
-	}
-
-	var ids []string
-	for entry := range res.Next() {
-		ids = append(ids, extractIdFromKey(entry.Key))
-	}
-
-	err = res.Close()
-	if err != nil {
-		return nil, fmt.Errorf("close query result: %w", err)
-	}
-	return ids, nil
-}
-
-func (m *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
-	for _, id := range ids {
-		err := m.removeFromIndexQueue(id)
-		if err != nil {
-			// if we have the error here we have nothing to do but retry later
-			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", id, err)
-		}
-	}
-}
-
-func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) error {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	res, err := txn.Query(query.Query{Prefix: indexQueueBase.String()})
-	if err != nil {
-		return fmt.Errorf("error query txn in datastore: %w", err)
-	}
-	for entry := range res.Next() {
-		id := extractIdFromKey(entry.Key)
-		ts, _ := binary.Varint(entry.Value)
-		indexErr := f(id, time.Unix(ts, 0))
-		if indexErr != nil {
-			log.Warnf("can't index '%s'(ts %d): %v", id, ts, indexErr)
-			// in case indexation is has failed it's better to remove this document from the index
-			// so we will not stuck with this object forever
-		}
-
-		err = m.removeFromIndexQueue(id)
-		if err != nil {
-			// if we have the error here we have nothing to do but retry later
-			log.Errorf("failed to remove %s(ts %d) from index, will redo the fulltext index: %v", id, ts, err)
-		}
-	}
-
-	err = res.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (m *dsObjectStore) ListIds() ([]string, error) {
@@ -1485,6 +1162,7 @@ func (m *dsObjectStore) Indexes() []localstore.Index {
 	return []localstore.Index{indexObjectTypeObject}
 }
 
+// TODO objstore: Just use dependency injection
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return m.fts
 }
@@ -1501,25 +1179,6 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 	dsq.Filters = append([]query.Filter{idsQuery}, dsq.Filters...)
 	dsq.Orders = append([]query.Order{idsQuery}, dsq.Orders...)
 	return dsq, nil
-}
-
-func (m *dsObjectStore) listIdsOfType(txn noctxds.Txn, ot string) ([]string, error) {
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	return localstore.GetLeavesFromResults(res)
-}
-
-func (m *dsObjectStore) listRelationsKeys(txn noctxds.Txn) ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return findByPrefix(txn, relationsBase.String()+"/", 0)
 }
 
 /* internal */
@@ -1762,33 +1421,6 @@ func inboundLinkKey(from, to string) ds.Key {
 	return pagesInboundLinksBase.ChildString(to).ChildString(from)
 }
 
-func newIdsFilter(ids []string) idsFilter {
-	f := make(idsFilter)
-	for i, id := range ids {
-		f[id] = i
-	}
-	return f
-}
-
-type idsFilter map[string]int
-
-func (f idsFilter) Filter(e query.Entry) bool {
-	_, ok := f[extractIdFromKey(e.Key)]
-	return ok
-}
-
-func (f idsFilter) Compare(a, b query.Entry) int {
-	aIndex := f[extractIdFromKey(a.Key)]
-	bIndex := f[extractIdFromKey(b.Key)]
-	if aIndex == bIndex {
-		return 0
-	} else if aIndex < bIndex {
-		return -1
-	} else {
-		return 1
-	}
-}
-
 func extractIdFromKey(key string) (id string) {
 	i := strings.LastIndexByte(key, '/')
 	if i == -1 || len(key)-1 == i {
@@ -1811,6 +1443,7 @@ func objTypeCompactEncode(objType string) (string, error) {
 	return "", fmt.Errorf("invalid objType")
 }
 
+// TODO: objstore: move to service interface
 func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 	objectType := &model.ObjectType{}
 	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
@@ -1870,6 +1503,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 	return objectType, err
 }
 
+// TODO: objstore: move to service interface
 func GetObjectTypes(store ObjectStore, urls []string) (ots []*model.ObjectType, err error) {
 	ots = make([]*model.ObjectType, 0, len(urls))
 	for _, url := range urls {
