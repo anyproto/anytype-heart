@@ -27,11 +27,10 @@ type Record struct {
 
 type Query struct {
 	FullText          string
-	Relations         []*model.BlockContentDataviewRelation // relations used to provide relations options
-	Filters           []*model.BlockContentDataviewFilter   // filters results. apply sequentially
-	Sorts             []*model.BlockContentDataviewSort     // order results. apply hierarchically
-	Limit             int                                   // maximum number of results
-	Offset            int                                   // skip given number of results
+	Filters           []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts             []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit             int                                 // maximum number of results
+	Offset            int                                 // skip given number of results
 	WithSystemObjects bool
 	ObjectTypeFilter  []string
 	WorkspaceId       string
@@ -90,7 +89,7 @@ func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (fi
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
-	filterObj, dateKeys, qryFilters := applySchema(qry.Relations, schema, filters.dateKeys, qry.Filters)
+	filterObj, dateKeys, qryFilters := applySchema(nil, schema, filters.dateKeys, qry.Filters)
 	qry.Filters = qryFilters
 	filters.dateKeys = dateKeys
 
