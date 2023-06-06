@@ -62,11 +62,12 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 	case syncstatus.StatusNotSynced:
 		objStatus = pb.EventStatusThread_Syncing
 	}
-	if !nodeConnected {
-		switch networkStatus {
-		case nodeconf.NetworkCompatibilityStatusIncompatible:
-			objStatus = pb.EventStatusThread_IncompatibleVersion
-		default:
+
+	switch networkStatus {
+	case nodeconf.NetworkCompatibilityStatusIncompatible:
+		objStatus = pb.EventStatusThread_IncompatibleVersion
+	default:
+		if !nodeConnected {
 			objStatus = pb.EventStatusThread_Offline
 		}
 	}
