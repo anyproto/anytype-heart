@@ -204,4 +204,16 @@ func TestExtractObjects(t *testing.T) {
 
 		})
 	}
+
+	t.Run("do not add relation name - when creating note", func(t *testing.T) {
+		fields := extractDetailsFields("whatever type", "whatever name", model.ObjectType_note).Fields
+
+		assert.NotContains(t, fields, bundle.RelationKeyName.String())
+	})
+
+	t.Run("add relation name - when creating not note", func(t *testing.T) {
+		fields := extractDetailsFields("whatever type", "whatever name", model.ObjectType_basic).Fields
+
+		assert.Contains(t, fields, bundle.RelationKeyName.String())
+	})
 }
