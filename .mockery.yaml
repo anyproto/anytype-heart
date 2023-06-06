@@ -1,0 +1,9 @@
+dir: "{{.InterfaceDir}}/mock_{{.PackageName}}"
+testonly: True
+with-expecter: True
+all: False
+outpkg: "mock_{{.PackageName}}"
+packages:
+  github.com/anyproto/anytype-heart/space/typeprovider:
+    interfaces:
+      SmartBlockTypeProvider:

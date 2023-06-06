@@ -124,6 +124,7 @@ func (m *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record
 }
 
 // TODO objstore: it looks like Query but with additional filters
+// TODO: objstore: no one uses total
 func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
