@@ -137,7 +137,6 @@ type ObjectStore interface {
 	QueryRaw(f *database.Filters) (records []database.Record, err error)
 	QueryById(ids []string) (records []database.Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
-	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
 	QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
 
 	HasIDs(ids ...string) (exists []string, err error)
