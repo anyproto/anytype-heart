@@ -143,6 +143,9 @@ func (f *fileSync) tryToUpload() (string, error) {
 }
 
 func isLimitReachedErr(err error) bool {
+	if err == nil {
+		return false
+	}
 	return errors.Is(err, errReachedLimit) || strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error())
 }
 
