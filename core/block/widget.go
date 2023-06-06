@@ -48,3 +48,14 @@ func (s *Service) SetWidgetBlockLimit(ctx *session.Context, req *pb.RpcBlockWidg
 		}, req.BlockId)
 	})
 }
+
+func (s *Service) SetWidgetBlockViewId(ctx *session.Context, req *pb.RpcBlockWidgetSetViewIdRequest) error {
+	return Do(s, req.ContextId, func(b basic.Updatable) error {
+		return b.Update(ctx, func(b simple.Block) error {
+			if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
+				wc.Widget.ViewId = req.ViewId
+			}
+			return nil
+		}, req.BlockId)
+	})
+}
