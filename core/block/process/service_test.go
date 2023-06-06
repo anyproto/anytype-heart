@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

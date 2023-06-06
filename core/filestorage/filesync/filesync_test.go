@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
@@ -45,6 +46,8 @@ func TestFileSync_AddFile(t *testing.T) {
 	fileId := n.Cid().String()
 	spaceId := "spaceId"
 
+	fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
+
 	fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
 		{}, // We can use just empty struct here, because we don't use any fields
 	}, nil).AnyTimes()
@@ -61,7 +64,7 @@ func TestFileSync_AddFile(t *testing.T) {
 	fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
 	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), spaceId).Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
-	require.NoError(t, fx.AddFile(spaceId, fileId))
+	require.NoError(t, fx.AddFile(spaceId, fileId, false))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
 

@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -46,12 +45,12 @@ const (
 	// ForceThreadsObjectsReindexCounter reindex thread-based objects
 	ForceThreadsObjectsReindexCounter int32 = 8
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
-	ForceFilesReindexCounter int32 = 10 //
+	ForceFilesReindexCounter int32 = 11 //
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 41
+	ForceIdxRebuildCounter int32 = 43
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -74,12 +73,13 @@ func New(
 		picker:       picker,
 		spaceService: spaceService,
 		fileService:  fileService,
+		indexedFiles: &sync.Map{},
 	}
 }
 
 type Indexer interface {
 	ForceFTIndex()
-	Index(ctx context.Context, info smartblock2.DocInfo) error
+	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -114,6 +114,8 @@ type indexer struct {
 
 	typeProvider typeprovider.SmartBlockTypeProvider
 	spaceService space.Service
+
+	indexedFiles *sync.Map
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -178,18 +180,26 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
+func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
+	opts := &smartblock2.IndexOptions{}
+	for _, o := range options {
+		o(opts)
+	}
 	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
+	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
-		if headsHash := headsHash(info.Heads); headsHash != "" {
-			err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
-			if err != nil {
-				log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
-			}
+		if headHashToIndex == "" {
+			return
+		}
+
+		err = i.store.SaveLastIndexedHeadsHash(info.Id, headHashToIndex)
+		if err != nil {
+			log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
 	}
 
@@ -199,12 +209,24 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 		return nil
 	}
 
-	details := info.State.CombinedDetails()
-	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
-	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
-	if setCreator == "" {
-		setCreator = i.anytype.ProfileID()
+	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
+	if err != nil {
+		log.With("thread", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
 	}
+
+	if opts.SkipIfHeadsNotChanged {
+		if headHashToIndex == "" {
+			log.With("thread", info.Id).Errorf("heads hash is empty")
+		} else if lastIndexedHash == headHashToIndex {
+			log.With("thread", info.Id).Debugf("heads not changed, skipping indexing")
+
+			// todo: the optimization temporarily disabled to see the metrics
+			//return nil
+		}
+	}
+
+	details := info.State.CombinedDetails()
+
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
@@ -217,16 +239,40 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo) error {
 	indexLinksTime := time.Now()
 	if indexDetails {
 		if err := i.store.UpdateObjectDetails(info.Id, details, false); err != nil {
-			hasError = true
-			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
-		}
-		if err := i.store.AddToIndexQueue(info.Id); err != nil {
-			log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
+			if errors.Is(err, objectstore.ErrDetailsNotChanged) {
+				metrics.ObjectDetailsHeadsNotChangedCounter.Add(1)
+				log.With("objectId", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
+			} else {
+				hasError = true
+				log.With("thread", info.Id).Errorf("can't update object store: %v", err)
+			}
 		} else {
-			log.With("thread", info.Id).Debugf("to index queue")
+			// todo: remove temp log
+			if lastIndexedHash == headHashToIndex {
+				l := log.With("objectId", info.Id).
+					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
+					With("lastHashIsEmpty", lastIndexedHash == "").
+					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
+				//With("old", pbtypes.Sprint(oldDetails.Details)).
+				//With("new", pbtypes.Sprint(info.State.CombinedDetails())).
+				//With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
+
+				if opts.SkipIfHeadsNotChanged {
+					l.Warnf("details have changed, but heads are equal")
+				} else {
+					l.Debugf("details have changed, but heads are equal")
+				}
+			}
 		}
 
-		go i.indexLinkedFiles(ctx, info.FileHashes)
+		// todo: the optimization temporarily disabled to see the metrics
+		if true || !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+			if err := i.store.AddToIndexQueue(info.Id); err != nil {
+				log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
+			}
+		}
+
+		i.indexLinkedFiles(ctx, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -262,16 +308,22 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	}
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
-		// TODO ensure that file is added to sync queue
-		// file's hash is id
-		err = i.reindexDoc(ctx, id)
-		if err != nil {
-			log.With("id", id).Errorf("failed to reindex file: %s", err.Error())
-		}
-		err = i.store.AddToIndexQueue(id)
-		if err != nil {
-			log.With("id", id).Error(err.Error())
-		}
+		go func(id string) {
+			// Deduplicate
+			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
+			if ok {
+				return
+			}
+			// file's hash is id
+			idxErr := i.reindexDoc(ctx, id)
+			if idxErr != nil {
+				log.With("id", id).Errorf("failed to reindex file: %s", idxErr.Error())
+			}
+			idxErr = i.store.AddToIndexQueue(id)
+			if idxErr != nil {
+				log.With("id", id).Error(idxErr.Error())
+			}
+		}(id)
 	}
 }
 
@@ -327,11 +379,11 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	if flags.fileKeys {
-		err = i.fileStore.RemoveEmpty()
+		err = i.fileStore.RemoveEmptyFileKeys()
 		if err != nil {
-			log.Errorf("reindex failed to RemoveEmpty filekeys: %v", err.Error())
+			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err.Error())
 		} else {
-			log.Infof("RemoveEmpty filekeys succeed")
+			log.Infof("RemoveEmptyFileKeys filekeys succeed")
 		}
 	}
 
@@ -378,6 +430,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			smartblock.SmartBlockTypeTemplate,
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeWorkspace,
 		)
 		if err != nil {
 			return err
@@ -419,15 +472,6 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
-		}
-		fileIDs, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
-		for _, fileID := range fileIDs {
-			if addErr := i.fileService.AddToSyncQueue(fileID); addErr != nil {
-				log.Errorf("failed to add file %s to sync queue: %s", fileID, addErr.Error())
-			}
-		}
-		if err != nil {
-			return fmt.Errorf("get all file ids: %w", err)
 		}
 	}
 	if flags.bundledRelations {
@@ -561,22 +605,6 @@ func (i *indexer) saveLatestChecksums() error {
 		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 
-		IdxRebuildCounter:                ForceIdxRebuildCounter,
-		FulltextRebuild:                  ForceFulltextIndexCounter,
-		BundledObjects:                   ForceBundledObjectsReindexCounter,
-		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-	}
-	return i.store.SaveChecksums(&checksums)
-}
-
-func (i *indexer) saveLatestCounters() error {
-	// todo: add layout indexing when needed
-	checksums := model.ObjectStoreChecksums{
-		BundledObjectTypes:               bundle.TypeChecksum,
-		BundledRelations:                 bundle.RelationChecksum,
-		BundledTemplates:                 i.btHash.Hash(),
-		ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
-		FilesForceReindexCounter:         ForceFilesReindexCounter,
 		IdxRebuildCounter:                ForceIdxRebuildCounter,
 		FulltextRebuild:                  ForceFulltextIndexCounter,
 		BundledObjects:                   ForceBundledObjectsReindexCounter,

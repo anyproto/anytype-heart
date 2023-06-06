@@ -76,7 +76,7 @@ func (v *anytypeProfile) Close() (err error) {
 }
 
 func (v *anytypeProfile) Heads() []string {
-	return nil
+	return []string{"todo"} // todo hash of details
 }
 
 func (s *anytypeProfile) GetFileKeysSnapshot() []*pb.ChangeFileKeys {

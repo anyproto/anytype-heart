@@ -118,7 +118,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, nil, s.objectStore, time.Now().Location())
+	f, err := database.NewFilters(q, nil, s.objectStore)
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -284,7 +284,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		Filters: req.Filters,
 	}
 
-	flt, err := database.NewFilters(q, nil, s.objectStore, time.Now().Location())
+	flt, err := database.NewFilters(q, nil, s.objectStore)
 	if err != nil {
 		return nil, err
 	}

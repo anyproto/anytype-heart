@@ -30,6 +30,13 @@ type fileSyncStore struct {
 
 func (s *fileSyncStore) QueueUpload(spaceId, fileId string) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
+		ok, err := isKeyExists(txn, discardedKey(spaceId, fileId))
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
 		return txn.Set(uploadKey(spaceId, fileId), binTime())
 	})
 }
@@ -91,17 +98,48 @@ func (s *fileSyncStore) GetDiscardedUpload() (spaceId, fileId string, err error)
 	return s.getOne(discardedKeyPrefix)
 }
 
-func (s *fileSyncStore) HasUpload(spaceId, fileId string) (ok bool, err error) {
+func isKeyExists(txn *badger.Txn, key []byte) (bool, error) {
+	_, err := txn.Get(key)
+	if err == badger.ErrKeyNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *fileSyncStore) isFileQueued(spaceId, fileId string) (ok bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
-		_, err := txn.Get(uploadKey(spaceId, fileId))
-		if err == badger.ErrKeyNotFound {
+		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
+		if err != nil {
+			return fmt.Errorf("check upload key: %w", err)
+		}
+		if ok {
 			return nil
 		}
+
+		ok, err = isKeyExists(txn, discardedKey(spaceId, fileId))
 		if err != nil {
-			return err
+			return fmt.Errorf("check discarded key: %w", err)
 		}
-		ok = true
 		return nil
+	})
+	return
+}
+
+func (s *fileSyncStore) HasUpload(spaceId, fileId string) (ok bool, err error) {
+	err = s.db.View(func(txn *badger.Txn) error {
+		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
+		return err
+	})
+	return
+}
+
+func (s *fileSyncStore) IsFileUploadLimited(spaceId, fileId string) (ok bool, err error) {
+	err = s.db.View(func(txn *badger.Txn) error {
+		ok, err = isKeyExists(txn, discardedKey(spaceId, fileId))
+		return err
 	})
 	return
 }

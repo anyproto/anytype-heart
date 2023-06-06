@@ -141,7 +141,9 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	if err != nil {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
-	return
+
+	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
+
 }
 
 func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
