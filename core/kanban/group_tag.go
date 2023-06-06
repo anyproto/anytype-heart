@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ipfs/go-datastore/query"
-
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
@@ -43,9 +41,7 @@ func (t *GroupTag) InitGroups(f *database.Filters) error {
 		},
 	}}
 
-	records, err := t.store.QueryRaw(query.Query{
-		Filters: []query.Filter{f},
-	})
+	records, err := t.store.QueryRaw(f)
 	if err != nil {
 		return fmt.Errorf("init kanban by tag, objectStore query error: %v", err)
 	}

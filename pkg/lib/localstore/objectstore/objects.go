@@ -134,7 +134,7 @@ type ObjectStore interface {
 	SubscribeForAll(callback func(rec database.Record))
 
 	Query(schema schema.Schema, q database.Query) (records []database.Record, total int, err error)
-	QueryRaw(q query.Query) (records []database.Record, err error)
+	QueryRaw(f *database.Filters) (records []database.Record, err error)
 	QueryById(ids []string) (records []database.Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)

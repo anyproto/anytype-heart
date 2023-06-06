@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+// TODO: objstore: no one uses total
 func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []database.Record, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -90,7 +91,10 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	return results, total, nil
 }
 
-func (m *dsObjectStore) QueryRaw(dsq query.Query) (records []database.Record, err error) {
+func (m *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record, err error) {
+	dsq := query.Query{
+		Filters: []query.Filter{f},
+	}
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -119,6 +123,7 @@ func (m *dsObjectStore) QueryRaw(dsq query.Query) (records []database.Record, er
 	return
 }
 
+// TODO objstore: it looks like Query but with some additional logic
 func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
