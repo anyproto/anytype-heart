@@ -115,8 +115,7 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-		// TODO: objstore: Only ids are used
-		res, _, err := ds.QueryObjectInfo(database.Query{
+		docIds, _, err := ds.QueryObjectIds(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
@@ -127,10 +126,6 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 		}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeTemplate})
 		if err != nil {
 			return err
-		}
-		var docIds []string
-		for _, r := range res {
-			docIds = append(docIds, r.Id)
 		}
 		if len(docIds) == 0 {
 			return fmt.Errorf("no templates")
@@ -169,8 +164,7 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-		// TODO: objstore: Only ids are used
-		res, _, err := ds.QueryObjectInfo(database.Query{
+		docIds, _, err := ds.QueryObjectIds(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
@@ -186,10 +180,6 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 		}, []smartblock.SmartBlockType{})
 		if err != nil {
 			return err
-		}
-		var docIds []string
-		for _, r := range res {
-			docIds = append(docIds, r.Id)
 		}
 		if len(docIds) == 0 {
 			return fmt.Errorf("no objects in workspace")
