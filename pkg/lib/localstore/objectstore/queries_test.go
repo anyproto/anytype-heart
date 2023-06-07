@@ -2,6 +2,7 @@ package objectstore
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -58,6 +59,21 @@ func newStoreFixture(t *testing.T) *storeFixture {
 }
 
 type testObject map[bundle.RelationKey]*types.Value
+
+func generateSimpleObject(index int) testObject {
+	id := fmt.Sprintf("%02d", index)
+	return testObject{
+		bundle.RelationKeyId:   pbtypes.String("id" + id),
+		bundle.RelationKeyName: pbtypes.String("name" + id),
+	}
+}
+
+func makeObjectWithName(id string, name string) testObject {
+	return testObject{
+		bundle.RelationKeyId:   pbtypes.String(id),
+		bundle.RelationKeyName: pbtypes.String(name),
+	}
+}
 
 func makeDetails(fields testObject) *types.Struct {
 	f := map[string]*types.Value{}
@@ -271,14 +287,6 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with limit", func(t *testing.T) {
-
-	})
-
-	t.Run("with limit and offset", func(t *testing.T) {
-
-	})
-
 	t.Run("with ascending order", func(t *testing.T) {
 
 	})
@@ -289,5 +297,93 @@ func TestQuery(t *testing.T) {
 
 	t.Run("with multiple orders", func(t *testing.T) {
 
+	})
+
+	t.Run("with limit", func(t *testing.T) {
+		s := newStoreFixture(t)
+		var objects []testObject
+		for i := 0; i < 100; i++ {
+			objects = append(objects, generateSimpleObject(i))
+		}
+		s.addObjects(t, objects)
+
+		recs, _, err := s.Query(nil, database.Query{
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Type:        model.BlockContentDataviewSort_Asc,
+				},
+			},
+			Limit: 15,
+		})
+		require.NoError(t, err)
+
+		assertRecordsEqual(t, objects[:15], recs)
+	})
+
+	t.Run("with limit and offset", func(t *testing.T) {
+		s := newStoreFixture(t)
+		var objects []testObject
+		for i := 0; i < 100; i++ {
+			objects = append(objects, generateSimpleObject(i))
+		}
+		s.addObjects(t, objects)
+
+		limit := 15
+		offset := 20
+		recs, _, err := s.Query(nil, database.Query{
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Type:        model.BlockContentDataviewSort_Asc,
+				},
+			},
+			Limit:  limit,
+			Offset: offset,
+		})
+		require.NoError(t, err)
+
+		assertRecordsEqual(t, objects[offset:offset+limit], recs)
+	})
+
+	t.Run("with filter, limit and offset", func(t *testing.T) {
+		s := newStoreFixture(t)
+		var objects []testObject
+		var filteredObjects []testObject
+		for i := 0; i < 100; i++ {
+			if i%2 == 0 {
+				objects = append(objects, generateSimpleObject(i))
+			} else {
+				obj := makeObjectWithName(fmt.Sprintf("id%02d", i), "this name")
+				filteredObjects = append(filteredObjects, obj)
+				objects = append(objects, obj)
+			}
+
+		}
+		s.addObjects(t, objects)
+
+		limit := 60
+		offset := 20
+		recs, _, err := s.Query(nil, database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyName.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("this name"),
+				},
+			},
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Type:        model.BlockContentDataviewSort_Asc,
+				},
+			},
+			Limit:  limit,
+			Offset: offset,
+		})
+		require.NoError(t, err)
+
+		// Limit is much bigger than the number of filtered objects, so we should get all of them, considering offset
+		assertRecordsEqual(t, filteredObjects[offset:], recs)
 	})
 }
