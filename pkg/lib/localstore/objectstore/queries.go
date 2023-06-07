@@ -34,10 +34,6 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	})
 	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 
-	if len(q.ObjectTypeFilter) > 0 {
-		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
-	}
-
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
 			return
