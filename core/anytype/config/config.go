@@ -3,7 +3,8 @@ package config
 import (
 	"fmt"
 	"github.com/anyproto/any-sync/commonspace/config"
-	yamux2 "github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/any-sync/net/transport/yamux"
+	"gopkg.in/yaml.v3"
 	"net"
 	"path/filepath"
 	"strings"
@@ -12,13 +13,11 @@ import (
 	"github.com/anyproto/any-sync/metric"
 	commonnet "github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/kelseyhightower/envconfig"
-	"gopkg.in/yaml.v2"
-
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/kelseyhightower/envconfig"
 )
 
 var log = logging.Logger("anytype-config")
@@ -303,11 +302,10 @@ func (c *Config) GetNodeConfStorePath() string {
 	return filepath.Join(c.RepoPath, "nodeconf")
 }
 
-func (c *Config) GetYamux() yamux2.Config {
-	return yamux2.Config{
+func (c *Config) GetYamux() yamux.Config {
+	return yamux.Config{
 		ListenAddrs:     []string{},
-		WriteTimeoutSec: 2,
-		DialTimeoutSec:  2,
-		MaxStreams:      1000,
+		WriteTimeoutSec: 10,
+		DialTimeoutSec:  10,
 	}
 }
