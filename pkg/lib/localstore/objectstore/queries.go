@@ -21,27 +21,11 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	}
 	defer txn.Discard()
 
-	dsq, err := q.DSQuery(sch)
+	dsq, err := m.buildQuery(sch, q)
 	if err != nil {
-		return
+		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
-	dsq.Offset = 0
-	dsq.Limit = 0
-	dsq.Prefix = pagesDetailsBase.String() + "/"
-	filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeArchive,
-		smartblock.SmartBlockTypeHome,
-	})
-	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 
-	if q.FullText != "" {
-		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
-			return
-		}
-	}
-	for _, f := range dsq.Filters {
-		log.Debugf("query filter: %+v", f)
-	}
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
@@ -84,6 +68,29 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	return results, total, nil
 }
 
+func (m *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (query.Query, error) {
+	dsq, err := q.DSQuery(sch)
+	if err != nil {
+		return query.Query{}, fmt.Errorf("init datastore query: %w", err)
+	}
+	dsq.Offset = 0
+	dsq.Limit = 0
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+	filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeHome,
+	})
+	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+
+	if q.FullText != "" {
+		dsq, err = m.makeFTSQuery(q.FullText, dsq)
+		if err != nil {
+			return query.Query{}, fmt.Errorf("append full text search query: %w", err)
+		}
+	}
+	return dsq, nil
+}
+
 func (m *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record, err error) {
 	dsq := query.Query{
 		Filters: []query.Filter{f},
@@ -116,9 +123,8 @@ func (m *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record
 	return
 }
 
-// TODO objstore: it looks like Query but with additional filters
 // TODO: objstore: no one uses total
-func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
+func (m *dsObjectStore) QueryObjectIds(q database.Query, smartBlockTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -132,8 +138,8 @@ func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartbloc
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, objectTypes)}, dsq.Filters...)
+	if len(smartBlockTypes) > 0 {
+		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, smartBlockTypes)}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {

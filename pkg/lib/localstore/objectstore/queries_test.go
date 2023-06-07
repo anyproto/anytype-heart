@@ -494,3 +494,66 @@ func TestQuery(t *testing.T) {
 		assertRecordsEqual(t, filteredObjects[offset:], recs)
 	})
 }
+
+func TestQueryObjectIds(t *testing.T) {
+	t.Run("no filters", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		ids, _, err := s.QueryObjectIds(database.Query{}, nil)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id2", "id3"}, ids)
+	})
+
+	t.Run("with smartblock types filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		s.sbtProvider = typeProvider
+
+		obj1 := makeObjectWithName("id1", "file1")
+		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeFile, nil)
+
+		obj2 := makeObjectWithName("id2", "type2")
+		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypeSubObject, nil)
+
+		obj3 := makeObjectWithName("id3", "page3")
+		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		ids, _, err := s.QueryObjectIds(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id3"}, ids)
+	})
+
+	t.Run("with basic filter and smartblock types filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		s.sbtProvider = typeProvider
+
+		obj1 := makeObjectWithNameAndDescription("id1", "file1", "foo")
+		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeFile, nil)
+
+		obj2 := makeObjectWithNameAndDescription("id2", "page2", "foo")
+		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
+
+		obj3 := makeObjectWithNameAndDescription("id3", "page3", "bar")
+		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		ids, _, err := s.QueryObjectIds(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyDescription.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("foo"),
+				},
+			},
+		}, []smartblock.SmartBlockType{smartblock.SmartBlockTypePage})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id2"}, ids)
+	})
+}
