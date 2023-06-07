@@ -63,16 +63,11 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 		}
 		objState.Set(simple.New(rootBlock))
 
-		fields := map[string]*types.Value{
-			bundle.RelationKeyName.String(): pbtypes.String(root.Model().GetText().Text),
-		}
-		if req.ObjectType != "" {
-			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
-		}
-		det := &types.Struct{Fields: fields}
+		layout, _ := st.Layout()
+		details := extractDetailsFields(req.ObjectType, root.Model().GetText().Text, layout)
 
-		s.InjectWorkspaceID(det, req.ContextId)
-		objectID, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, det, objState)
+		s.InjectWorkspaceID(details, req.ContextId)
+		objectID, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, objState)
 		if err != nil {
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
@@ -97,6 +92,22 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 	}
 
 	return linkIds, bs.Apply(st)
+}
+
+func extractDetailsFields(objectType string, nameText string, layout model.ObjectTypeLayout) *types.Struct {
+	fields := map[string]*types.Value{}
+
+	// Without this check title will be duplicated in template.WithNameToFirstBlock
+	if layout != model.ObjectType_note {
+		fields[bundle.RelationKeyName.String()] = pbtypes.String(nameText)
+	}
+
+	if objectType != "" {
+		fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
+	}
+
+	details := &types.Struct{Fields: fields}
+	return details
 }
 
 // reassignSubtreeIds makes a copy of a subtree of blocks and assign a new id for each block

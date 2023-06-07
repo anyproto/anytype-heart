@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -51,6 +52,7 @@ func New(
 	spaceService space.Service,
 	coreService core.Service,
 	fileSyncService filesync.FileSync,
+	nodeConfService nodeconf.Service,
 	fileStore filestore.FileStore,
 	picker getblock.Picker,
 	cfg *config.Config,
@@ -60,7 +62,7 @@ func New(
 	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, fileWatcherUpdateInterval)
 	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
 	subObjectsWatcher := newSubObjectsWatcher()
-	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, cfg, sendEvent)
+	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, nodeConfService, cfg, sendEvent)
 	fileWatcher := newFileWatcher(spaceService, dbProvider, fileStatusRegistry, updateReceiver, fileWatcherUpdateInterval)
 	objectWatcher := newObjectWatcher(spaceService, updateReceiver)
 	return &service{
