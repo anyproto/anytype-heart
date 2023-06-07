@@ -5,11 +5,11 @@ source: pkg/lib/bundle/relations.json
 package bundle
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	addr "github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "add940877a8adadd3313f9eefcd6d89a70d1b10469a7ceed9d3bea0e7dea0eeb"
+const RelationChecksum = "bdf22215a4bcb7224e913b76a529483cd4a720630e4620eb18e66f35c542f876"
 
 type RelationKey string
 
@@ -963,7 +963,6 @@ var (
 			DataSource:       model.Relation_account,
 			Description:      "Adds the object to the home dashboard",
 			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
 			Id:               "_brisFavorite",
 			Key:              "isFavorite",
 			MaxCount:         1,
