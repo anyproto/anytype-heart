@@ -20534,7 +20534,7 @@ Precondition: user A and user B opened the same block
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED |
 | snippet | [string](#string) |  |  |
-| hasInboundLinks | [bool](#bool) |  |  |
+| hasInboundLinks | [bool](#bool) |  | DEPRECATED |
 | objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 
 
