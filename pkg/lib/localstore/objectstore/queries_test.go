@@ -557,3 +557,59 @@ func TestQueryObjectIds(t *testing.T) {
 		assert.Equal(t, []string{"id2"}, ids)
 	})
 }
+
+func TestQueryRaw(t *testing.T) {
+	t.Run("with nil filter expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		_, err := s.QueryRaw(nil)
+		require.Error(t, err)
+	})
+
+	t.Run("with uninitialized filter expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		s.addObjects(t, []testObject{obj1})
+
+		_, err := s.QueryRaw(&database.Filters{})
+		require.Error(t, err)
+	})
+
+	t.Run("no filters", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		flt, err := database.NewFilters(database.Query{}, nil, nil)
+		require.NoError(t, err)
+
+		recs, err := s.QueryRaw(flt)
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj1, obj2, obj3}, recs)
+	})
+
+	t.Run("with filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithNameAndDescription("id1", "name1", "foo")
+		obj2 := makeObjectWithNameAndDescription("id2", "name2", "bar")
+		obj3 := makeObjectWithNameAndDescription("id3", "name3", "foo")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		flt, err := database.NewFilters(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyDescription.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("foo"),
+				},
+			},
+		}, nil, nil)
+		require.NoError(t, err)
+
+		recs, err := s.QueryRaw(flt)
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
+	})
+}

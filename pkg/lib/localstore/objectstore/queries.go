@@ -92,6 +92,9 @@ func (m *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (query.Q
 }
 
 func (m *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record, err error) {
+	if f == nil || f.FilterObj == nil {
+		return nil, fmt.Errorf("filter cannot be nil or unitialized")
+	}
 	dsq := query.Query{
 		Filters: []query.Filter{f},
 	}
