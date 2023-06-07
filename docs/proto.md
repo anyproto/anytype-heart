@@ -10466,7 +10466,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+DEPRECATED |
 | keys | [string](#string) | repeated |  |
 
 
@@ -11393,7 +11395,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
-deprecated, to be removed |
+DEPRECATED |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 
 

@@ -271,10 +271,6 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with object type filter", func(t *testing.T) {
-
-	})
-
 	t.Run("with limit", func(t *testing.T) {
 
 	})

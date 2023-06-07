@@ -69,7 +69,7 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 	return m.not
 }
 
-func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
+func (m *dsObjectStore) extractSBTypeFilterFromObjectTypes(ots ...string) query.Filter {
 	var sbTypes []smartblock.SmartBlockType
 	for _, otUrl := range ots {
 		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
