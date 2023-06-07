@@ -785,6 +785,7 @@ func (m *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 		return objectType, nil
 	}
 
+	// TODO objstore: use QueryByIds
 	ois, err := m.GetByIDs(url)
 	if err != nil {
 		return nil, err
@@ -794,6 +795,11 @@ func (m *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 	}
 
 	details := ois[0].Details
+
+	if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
+		return nil, fmt.Errorf("object %s is not an object type", url)
+	}
+
 	// relationKeys := ois[0].RelationKeys
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
 		rk, err := pbtypes.RelationIdToKey(relId)

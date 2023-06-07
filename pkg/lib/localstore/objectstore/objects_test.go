@@ -197,3 +197,68 @@ func TestList(t *testing.T) {
 
 	assert.Equal(t, want, got)
 }
+
+func TestGetObjectType(t *testing.T) {
+	t.Run("get bundled type", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		got, err := s.GetObjectType(bundle.TypeKeyTask.BundledURL())
+		require.NoError(t, err)
+
+		want := bundle.MustGetType(bundle.TypeKeyTask)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("with object is not type expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		obj := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyType: pbtypes.String(bundle.TypeKeyNote.URL()),
+		}
+		s.addObjects(t, []testObject{obj})
+
+		_, err := s.GetObjectType("id1")
+		require.Error(t, err)
+	})
+
+	t.Run("with object is type", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		obj := testObject{
+			bundle.RelationKeyId:                   pbtypes.String("id1"),
+			bundle.RelationKeyType:                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
+			bundle.RelationKeyName:                 pbtypes.String("my note"),
+			bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{bundle.RelationKeyAssignee.URL()}),
+			bundle.RelationKeyRecommendedLayout:    pbtypes.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyIconEmoji:            pbtypes.String("📝"),
+			bundle.RelationKeyIsArchived:           pbtypes.Bool(true),
+		}
+		relObj := testObject{
+			bundle.RelationKeyId:          pbtypes.String("id2"),
+			bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAssignee.String()),
+			bundle.RelationKeyType:        pbtypes.String(bundle.TypeKeyRelation.URL()),
+		}
+		s.addObjects(t, []testObject{obj, relObj})
+
+		got, err := s.GetObjectType("id1")
+		require.NoError(t, err)
+
+		want := &model.ObjectType{
+			Url:        "id1",
+			Name:       "my note",
+			Layout:     model.ObjectType_note,
+			IconEmoji:  "📝",
+			IsArchived: true,
+			Types:      []model.SmartBlockType{model.SmartBlockType_Page},
+			RelationLinks: []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyAssignee.String(),
+					Format: model.RelationFormat_longtext,
+				},
+			},
+		}
+
+		assert.Equal(t, want, got)
+	})
+}
