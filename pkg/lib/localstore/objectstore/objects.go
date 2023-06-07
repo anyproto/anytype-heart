@@ -636,18 +636,11 @@ func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 		snippet = string(val)
 	}
 
-	// omit decoding page state
-	hasInbound, err := hasInboundLinks(txn, id)
-	if err != nil {
-		return nil, err
-	}
-
 	return &model.ObjectInfo{
-		Id:              id,
-		ObjectType:      sbt.ToProto(),
-		Details:         details,
-		Snippet:         snippet,
-		HasInboundLinks: hasInbound,
+		Id:         id,
+		ObjectType: sbt.ToProto(),
+		Details:    details,
+		Snippet:    snippet,
 	}, nil
 }
 
@@ -671,21 +664,6 @@ func (m *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.
 	}
 
 	return objects, nil
-}
-
-func hasInboundLinks(txn noctxds.Txn, id string) (bool, error) {
-	inboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesInboundLinksBase.String() + "/" + id + "/",
-		Limit:    1, // we only need to know if there is at least 1 inbound link
-		KeysOnly: true,
-	})
-	if err != nil {
-		return false, err
-	}
-
-	// max is 1
-	inboundLinks, err := localstore.CountAllKeysFromResults(inboundResults)
-	return inboundLinks > 0, err
 }
 
 // Find to which IDs specified one has outbound links.
@@ -807,6 +785,7 @@ func (m *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 		return objectType, nil
 	}
 
+	// TODO objstore: use QueryByIds
 	ois, err := m.GetByIDs(url)
 	if err != nil {
 		return nil, err
@@ -816,6 +795,11 @@ func (m *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 	}
 
 	details := ois[0].Details
+
+	if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
+		return nil, fmt.Errorf("object %s is not an object type", url)
+	}
+
 	// relationKeys := ois[0].RelationKeys
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
 		rk, err := pbtypes.RelationIdToKey(relId)

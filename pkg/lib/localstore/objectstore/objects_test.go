@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -155,4 +156,160 @@ func Test_removeByPrefix(t *testing.T) {
 	got, err = removeByPrefix(ds2.ds, pagesOutboundLinksBase.String())
 	require.NoError(t, err)
 	require.Equal(t, 10*8000, got)
+}
+
+func TestList(t *testing.T) {
+	s := newStoreFixture(t)
+	typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	s.sbtProvider = typeProvider
+
+	obj1 := makeObjectWithName("id1", "name1")
+	err := s.UpdateObjectSnippet("id1", "snippet1")
+	require.NoError(t, err)
+	typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypePage, nil)
+
+	obj2 := makeObjectWithName("id2", "name2")
+	typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypeFile, nil)
+
+	obj3 := makeObjectWithName("id3", "date")
+	obj3[bundle.RelationKeyIsDeleted] = pbtypes.Bool(true)
+	typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+
+	s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+	got, err := s.List()
+	require.NoError(t, err)
+
+	want := []*model.ObjectInfo{
+		{
+			Id:         "id1",
+			Details:    makeDetails(obj1),
+			Snippet:    "snippet1",
+			ObjectType: model.SmartBlockType_Page,
+		},
+		{
+			Id:         "id2",
+			Details:    makeDetails(obj2),
+			ObjectType: model.SmartBlockType_File,
+		},
+		// Skip deleted id3
+	}
+
+	assert.Equal(t, want, got)
+}
+
+func TestListIds(t *testing.T) {
+	t.Run("with empty store", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		got, err := s.ListIds()
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+	t.Run("with not empty store", func(t *testing.T) {
+		s := newStoreFixture(t)
+		s.addObjects(t, []testObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+		})
+
+		got, err := s.ListIds()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id2"}, got)
+	})
+}
+
+func TestHasIDs(t *testing.T) {
+	s := newStoreFixture(t)
+	s.addObjects(t, []testObject{
+		makeObjectWithName("id1", "name1"),
+		makeObjectWithName("id2", "name2"),
+		makeObjectWithName("id3", "name3"),
+	})
+
+	t.Run("none found", func(t *testing.T) {
+		got, err := s.HasIDs("id4", "id5")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+	t.Run("some found", func(t *testing.T) {
+		got, err := s.HasIDs("id2", "id3", "id4")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id2", "id3"}, got)
+	})
+	t.Run("all found", func(t *testing.T) {
+		got, err := s.HasIDs("id1", "id3")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id3"}, got)
+	})
+	t.Run("all found, check that input and output orders are equal by reversing arguments", func(t *testing.T) {
+		got, err := s.HasIDs("id3", "id1")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id3", "id1"}, got)
+	})
+}
+
+func TestGetObjectType(t *testing.T) {
+	t.Run("get bundled type", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		got, err := s.GetObjectType(bundle.TypeKeyTask.BundledURL())
+		require.NoError(t, err)
+
+		want := bundle.MustGetType(bundle.TypeKeyTask)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("with object is not type expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		obj := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyType: pbtypes.String(bundle.TypeKeyNote.URL()),
+		}
+		s.addObjects(t, []testObject{obj})
+
+		_, err := s.GetObjectType("id1")
+		require.Error(t, err)
+	})
+
+	t.Run("with object is type", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		obj := testObject{
+			bundle.RelationKeyId:                   pbtypes.String("id1"),
+			bundle.RelationKeyType:                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
+			bundle.RelationKeyName:                 pbtypes.String("my note"),
+			bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{bundle.RelationKeyAssignee.URL()}),
+			bundle.RelationKeyRecommendedLayout:    pbtypes.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyIconEmoji:            pbtypes.String("📝"),
+			bundle.RelationKeyIsArchived:           pbtypes.Bool(true),
+		}
+		relObj := testObject{
+			bundle.RelationKeyId:          pbtypes.String("id2"),
+			bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAssignee.String()),
+			bundle.RelationKeyType:        pbtypes.String(bundle.TypeKeyRelation.URL()),
+		}
+		s.addObjects(t, []testObject{obj, relObj})
+
+		got, err := s.GetObjectType("id1")
+		require.NoError(t, err)
+
+		want := &model.ObjectType{
+			Url:        "id1",
+			Name:       "my note",
+			Layout:     model.ObjectType_note,
+			IconEmoji:  "📝",
+			IsArchived: true,
+			Types:      []model.SmartBlockType{model.SmartBlockType_Page},
+			RelationLinks: []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyAssignee.String(),
+					Format: model.RelationFormat_longtext,
+				},
+			},
+		}
+
+		assert.Equal(t, want, got)
+	})
 }
