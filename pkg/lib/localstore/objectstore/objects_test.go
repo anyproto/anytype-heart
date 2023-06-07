@@ -48,7 +48,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
-	}, false)
+	})
 	require.NoError(t, err)
 
 	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
@@ -59,18 +59,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 
 	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
-	}, true)
-	require.NoError(t, err)
-
-	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
-	require.NoError(t, err)
-	require.Len(t, recs, 1)
-	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
-	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
-
-	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
-	}, false)
+	})
 	require.NoError(t, err)
 
 	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
@@ -139,11 +128,11 @@ func TestDsObjectStore_Query(t *testing.T) {
 	tp.RegisterStaticType(id2, smartblock.SmartBlockTypePage)
 	tp.RegisterStaticType(id3, smartblock.SmartBlockTypePage)
 
-	require.NoError(t, ds.UpdateObjectDetails(id1, newDet("one"), false))
+	require.NoError(t, ds.UpdateObjectDetails(id1, newDet("one")))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s1"))
-	require.NoError(t, ds.UpdateObjectDetails(id2, newDet("two"), false))
+	require.NoError(t, ds.UpdateObjectDetails(id2, newDet("two")))
 	require.NoError(t, ds.UpdateObjectSnippet(id2, "s2"))
-	require.NoError(t, ds.UpdateObjectDetails(id3, newDet("three"), false))
+	require.NoError(t, ds.UpdateObjectDetails(id3, newDet("three")))
 	require.NoError(t, ds.UpdateObjectSnippet(id3, "s3"))
 	require.NoError(t, fts.Index(ftsearch.SearchDoc{
 		Id:    id1,
@@ -252,7 +241,7 @@ func Test_removeByPrefix(t *testing.T) {
 			rand.Read(key)
 			links = append(links, fmt.Sprintf("%x", key))
 		}
-		require.NoError(t, ds.UpdateObjectDetails(objId, nil, false))
+		require.NoError(t, ds.UpdateObjectDetails(objId, nil))
 		require.NoError(t, ds.UpdateObjectLinks(objId, links))
 	}
 	tx, err := ds2.ds.NewTransaction(false)

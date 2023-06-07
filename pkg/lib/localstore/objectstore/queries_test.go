@@ -95,7 +95,7 @@ func (fx *storeFixture) addObjects(t *testing.T, objects []testObject) {
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)
-		err := fx.UpdateObjectDetails(id, makeDetails(obj), false)
+		err := fx.UpdateObjectDetails(id, makeDetails(obj))
 		require.NoError(t, err)
 	}
 }
