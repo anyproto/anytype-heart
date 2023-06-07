@@ -406,7 +406,7 @@ func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []
 		}
 	}
 	if hasType {
-		objectType, err := objectstore.GetObjectType(store, sources[0])
+		objectType, err := store.GetObjectType(sources[0])
 		if err != nil {
 			return nil, err
 		}

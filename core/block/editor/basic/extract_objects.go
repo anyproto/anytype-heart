@@ -3,7 +3,6 @@ package basic
 import (
 	"context"
 	"fmt"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -25,65 +24,31 @@ type ObjectCreator interface {
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
-func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
-	st := bs.NewStateCtx(ctx)
+func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+	newState := bs.NewStateCtx(ctx)
+	rootIds := newState.SelectRoots(req.BlockIds)
 
-	rootIds := st.SelectRoots(req.BlockIds)
-	for _, id := range rootIds {
-		root := st.Pick(id)
-		descendants := st.Descendants(id)
-		newRoot, newBlocks := reassignSubtreeIds(id, append(descendants, root))
+	for _, rootId := range rootIds {
+		rootBlock := newState.Pick(rootId)
 
-		// Remove children
-		for _, b := range descendants {
-			st.Unlink(b.Model().Id)
+		objState := prepareTargetObjectState(newState, rootId, rootBlock, req)
+
+		details, err := bs.prepareTargetObjectDetails(req, rootBlock, objectCreator)
+		if err != nil {
+			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}
 
-		// Build a state for the new object from child blocks
-		objState := state.NewDoc("", nil).NewState()
-		for _, b := range newBlocks {
-			objState.Add(b)
-		}
-
-		// For note objects we have to create special block structure to
-		// avoid messing up with note content
-		if req.ObjectType == bundle.TypeKeyNote.URL() {
-			objState.Add(base.NewBase(&model.Block{
-				// This id will be replaced by id of the new object
-				Id:          "_root",
-				ChildrenIds: []string{newRoot},
-			}))
-		}
-
-		// Root block have to have Smartblock content
-		rootId := objState.RootId()
-		rootBlock := objState.Get(rootId).Model()
-		rootBlock.Content = &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		}
-		objState.Set(simple.New(rootBlock))
-
-		layout, _ := st.Layout()
-		details := extractDetailsFields(req.ObjectType, root.Model().GetText().Text, layout)
-
-		s.InjectWorkspaceID(details, req.ContextId)
-		objectID, _, err := s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, objState)
+		objectID, _, err := objectCreator.CreateSmartBlockFromState(
+			context.TODO(),
+			coresb.SmartBlockTypePage,
+			details,
+			objState,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
-		linkId, err := bs.CreateBlock(st, pb.RpcBlockCreateRequest{
-			TargetId: root.Model().Id,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: objectID,
-						Style:         model.BlockContentLink_Page,
-					},
-				},
-			},
-			Position: model.Block_Replace,
-		})
+		linkId, err := bs.changeToBlockWithLink(newState, rootBlock, objectID)
 		if err != nil {
 			return nil, fmt.Errorf("create link to object %s: %w", objectID, err)
 		}
@@ -91,7 +56,85 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, s ObjectCreator, r
 		linkIds = append(linkIds, linkId)
 	}
 
-	return linkIds, bs.Apply(st)
+	return linkIds, bs.Apply(newState)
+}
+
+func (bs *basic) prepareTargetObjectDetails(
+	req pb.RpcBlockListConvertToObjectsRequest,
+	rootBlock simple.Block,
+	objectCreator ObjectCreator,
+) (*types.Struct, error) {
+	objType, err := bs.objectStore.GetObjectType(req.ObjectType)
+	if err != nil {
+		return nil, err
+	}
+
+	details := extractDetailsFields(req.ObjectType, rootBlock.Model().GetText().Text, objType.Layout)
+	objectCreator.InjectWorkspaceID(details, req.ContextId)
+	return details, nil
+}
+
+func prepareTargetObjectState(newState *state.State, rootId string, rootBlock simple.Block, req pb.RpcBlockListConvertToObjectsRequest) *state.State {
+	descendants := newState.Descendants(rootId)
+	newRoot, newBlocks := reassignSubtreeIds(rootId, append(descendants, rootBlock))
+	removeChildren(newState, descendants)
+
+	objState := buildStateForNewObjectFromChildBlocks(newBlocks)
+	createSpecificBlockStructureForNote(objState, req, newRoot)
+	injectSmartBlockContentToRootBlock(objState)
+	return objState
+}
+
+func (bs *basic) changeToBlockWithLink(newState *state.State, rootBlock simple.Block, objectID string) (string, error) {
+	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
+		TargetId: rootBlock.Model().Id,
+		Block: &model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: objectID,
+					Style:         model.BlockContentLink_Page,
+				},
+			},
+		},
+		Position: model.Block_Replace,
+	})
+}
+
+func injectSmartBlockContentToRootBlock(objState *state.State) {
+	rootId := objState.RootId()
+	rootBlock := objState.Get(rootId).Model()
+	rootBlock.Content = &model.BlockContentOfSmartblock{
+		Smartblock: &model.BlockContentSmartblock{},
+	}
+	objState.Set(simple.New(rootBlock))
+}
+
+func createSpecificBlockStructureForNote(
+	objState *state.State,
+	req pb.RpcBlockListConvertToObjectsRequest,
+	newRoot string,
+) {
+	if req.ObjectType == bundle.TypeKeyNote.URL() {
+		objState.Add(base.NewBase(&model.Block{
+			// This id will be replaced by id of the new object
+			Id:          "_root",
+			ChildrenIds: []string{newRoot},
+		}))
+	}
+}
+
+func buildStateForNewObjectFromChildBlocks(newBlocks []simple.Block) *state.State {
+	objState := state.NewDoc("", nil).NewState()
+	for _, b := range newBlocks {
+		objState.Add(b)
+	}
+	return objState
+}
+
+func removeChildren(state *state.State, descendants []simple.Block) {
+	for _, b := range descendants {
+		state.Unlink(b.Model().Id)
+	}
 }
 
 func extractDetailsFields(objectType string, nameText string, layout model.ObjectTypeLayout) *types.Struct {

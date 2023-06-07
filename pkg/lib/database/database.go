@@ -37,6 +37,8 @@ type Reader interface {
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetRelationById(id string) (relation *model.Relation, err error)
 
+	GetObjectType(url string) (*model.ObjectType, error)
+
 	ListRelationsKeys() ([]string, error)
 
 	SubscribeForAll(callback func(rec Record))
