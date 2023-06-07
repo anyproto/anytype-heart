@@ -442,7 +442,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
-	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
+	objectTypes, _ = sb.objectStore.GetObjectTypes(uniqueObjTypes)
 	go sb.metaListener(recordsCh)
 	return
 }

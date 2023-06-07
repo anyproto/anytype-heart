@@ -33,7 +33,7 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 	}
 
 	store := app.MustComponent[objectstore.ObjectStore](mw.app)
-	objType, err := objectstore.GetObjectType(store, req.ObjectTypeUrl)
+	objType, err := store.GetObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
