@@ -218,16 +218,19 @@ func TestQuery(t *testing.T) {
 	t.Run("full text search", func(t *testing.T) {
 		s := newStoreFixture(t)
 		obj1 := testObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("name"),
+			bundle.RelationKeyId:          pbtypes.String("id1"),
+			bundle.RelationKeyName:        pbtypes.String("name"),
+			bundle.RelationKeyDescription: pbtypes.String("foo"),
 		}
 		obj2 := testObject{
-			bundle.RelationKeyId:   pbtypes.String("id2"),
-			bundle.RelationKeyName: pbtypes.String("some important note"),
+			bundle.RelationKeyId:          pbtypes.String("id2"),
+			bundle.RelationKeyName:        pbtypes.String("some important note"),
+			bundle.RelationKeyDescription: pbtypes.String("foo"),
 		}
 		obj3 := testObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyName: pbtypes.String(""),
+			bundle.RelationKeyId:          pbtypes.String("id3"),
+			bundle.RelationKeyName:        pbtypes.String(""),
+			bundle.RelationKeyDescription: pbtypes.String("bar"),
 		}
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
@@ -250,16 +253,38 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		recs, _, err := s.Query(nil, database.Query{
-			FullText: "important",
-		})
-		require.NoError(t, err)
+		t.Run("just full-text", func(t *testing.T) {
+			recs, _, err := s.Query(nil, database.Query{
+				FullText: "important",
+			})
+			require.NoError(t, err)
 
-		// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
-		assertRecordsMatch(t, []testObject{
-			obj2,
-			obj3,
-		}, recs)
+			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
+			assertRecordsMatch(t, []testObject{
+				obj2,
+				obj3,
+			}, recs)
+		})
+
+		t.Run("full-text and filter", func(t *testing.T) {
+			recs, _, err := s.Query(nil, database.Query{
+				FullText: "important",
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyDescription.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("foo"),
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
+			assertRecordsMatch(t, []testObject{
+				obj2,
+			}, recs)
+		})
+
 	})
 
 	t.Run("without system objects", func(t *testing.T) {
