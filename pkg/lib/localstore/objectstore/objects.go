@@ -54,31 +54,6 @@ var (
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
 
-	// /pages/type/<objType>/<objId>
-	indexObjectTypeObject = localstore.Index{
-		Prefix: pagesPrefix,
-		Name:   "type",
-		Keys: func(val interface{}) []localstore.IndexKeyParts {
-			if v, ok := val.(*model.ObjectDetails); ok {
-				var indexes []localstore.IndexKeyParts
-				types := pbtypes.GetStringList(v.Details, bundle.RelationKeyType.String())
-
-				for _, ot := range types {
-					otCompact, err := objTypeCompactEncode(ot)
-					if err != nil {
-						log.Errorf("type index construction error('%s'): %s", ot, err.Error())
-						continue
-					}
-					indexes = append(indexes, localstore.IndexKeyParts([]string{otCompact}))
-				}
-				return indexes
-			}
-			return nil
-		},
-		Unique: false,
-		Hash:   false,
-	}
-
 	ErrObjectNotFound = errors.New("object not found")
 
 	_ ObjectStore = (*dsObjectStore)(nil)
@@ -575,7 +550,7 @@ func (m *dsObjectStore) Prefix() string {
 }
 
 func (m *dsObjectStore) Indexes() []localstore.Index {
-	return []localstore.Index{indexObjectTypeObject}
+	return []localstore.Index{}
 }
 
 // TODO objstore: Just use dependency injection
@@ -814,20 +789,6 @@ func extractIdFromKey(key string) (id string) {
 		return
 	}
 	return key[i+1:]
-}
-
-// temp func until we move to the proper ids
-func objTypeCompactEncode(objType string) (string, error) {
-	if strings.HasPrefix(objType, addr.BundledObjectTypeURLPrefix) {
-		return objType, nil
-	}
-	if strings.HasPrefix(objType, addr.ObjectTypeKeyToIdPrefix) {
-		return objType, nil
-	}
-	if strings.HasPrefix(objType, "ba") {
-		return objType, nil
-	}
-	return "", fmt.Errorf("invalid objType")
 }
 
 // TODO: objstore: move to service interface
