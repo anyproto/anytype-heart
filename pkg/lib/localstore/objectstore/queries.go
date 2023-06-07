@@ -76,11 +76,11 @@ func (m *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (query.Q
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
+	discardSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
 	})
-	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	dsq.Filters = append([]query.Filter{discardSystemObjects}, dsq.Filters...)
 
 	if q.FullText != "" {
 		dsq, err = m.makeFTSQuery(q.FullText, dsq)
@@ -131,21 +131,14 @@ func (m *dsObjectStore) QueryObjectIds(q database.Query, smartBlockTypes []smart
 	}
 	defer txn.Discard()
 
-	dsq, err := q.DSQuery(nil)
+	dsq, err := m.buildQuery(nil, q)
 	if err != nil {
 		return
 	}
-	dsq.Offset = 0
-	dsq.Limit = 0
-	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if len(smartBlockTypes) > 0 {
 		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, smartBlockTypes)}, dsq.Filters...)
 	}
-	if q.FullText != "" {
-		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
-			return
-		}
-	}
+
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
