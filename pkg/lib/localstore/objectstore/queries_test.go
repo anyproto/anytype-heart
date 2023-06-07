@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -492,5 +493,243 @@ func TestQuery(t *testing.T) {
 
 		// Limit is much bigger than the number of filtered objects, so we should get all of them, considering offset
 		assertRecordsEqual(t, filteredObjects[offset:], recs)
+	})
+}
+
+func TestQueryObjectIds(t *testing.T) {
+	t.Run("no filters", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		ids, _, err := s.QueryObjectIds(database.Query{}, nil)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id2", "id3"}, ids)
+	})
+
+	t.Run("with smartblock types filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		s.sbtProvider = typeProvider
+
+		obj1 := makeObjectWithName("id1", "file1")
+		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeFile, nil)
+
+		obj2 := makeObjectWithName("id2", "type2")
+		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypeSubObject, nil)
+
+		obj3 := makeObjectWithName("id3", "page3")
+		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		ids, _, err := s.QueryObjectIds(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id3"}, ids)
+
+		t.Run("with limit", func(t *testing.T) {
+			ids, _, err := s.QueryObjectIds(database.Query{
+				Limit: 1,
+			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"id1"}, ids)
+		})
+		t.Run("with limit and offset", func(t *testing.T) {
+			ids, _, err := s.QueryObjectIds(database.Query{
+				Limit:  1,
+				Offset: 1,
+			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"id3"}, ids)
+		})
+	})
+
+	t.Run("with basic filter and smartblock types filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		s.sbtProvider = typeProvider
+
+		obj1 := makeObjectWithNameAndDescription("id1", "file1", "foo")
+		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeFile, nil)
+
+		obj2 := makeObjectWithNameAndDescription("id2", "page2", "foo")
+		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
+
+		obj3 := makeObjectWithNameAndDescription("id3", "page3", "bar")
+		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		ids, _, err := s.QueryObjectIds(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyDescription.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("foo"),
+				},
+			},
+		}, []smartblock.SmartBlockType{smartblock.SmartBlockTypePage})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id2"}, ids)
+	})
+}
+
+func TestQueryRaw(t *testing.T) {
+	t.Run("with nil filter expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		_, err := s.QueryRaw(nil)
+		require.Error(t, err)
+	})
+
+	t.Run("with uninitialized filter expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		s.addObjects(t, []testObject{obj1})
+
+		_, err := s.QueryRaw(&database.Filters{})
+		require.Error(t, err)
+	})
+
+	t.Run("no filters", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		flt, err := database.NewFilters(database.Query{}, nil, nil)
+		require.NoError(t, err)
+
+		recs, err := s.QueryRaw(flt)
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj1, obj2, obj3}, recs)
+	})
+
+	t.Run("with filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithNameAndDescription("id1", "name1", "foo")
+		obj2 := makeObjectWithNameAndDescription("id2", "name2", "bar")
+		obj3 := makeObjectWithNameAndDescription("id3", "name3", "foo")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		flt, err := database.NewFilters(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyDescription.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("foo"),
+				},
+			},
+		}, nil, nil)
+		require.NoError(t, err)
+
+		recs, err := s.QueryRaw(flt)
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
+	})
+}
+
+type dummySourceService struct {
+	objectToReturn testObject
+}
+
+func (s dummySourceService) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	return makeDetails(s.objectToReturn), nil
+}
+
+func TestQueryById(t *testing.T) {
+	t.Run("no ids", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		recs, err := s.QueryById(nil)
+		require.NoError(t, err)
+		assert.Empty(t, recs)
+	})
+
+	t.Run("just ordinary objects", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		recs, err := s.QueryById([]string{"id1", "id3"})
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
+
+		t.Run("reverse order", func(t *testing.T) {
+			recs, err := s.QueryById([]string{"id3", "id1"})
+			require.NoError(t, err)
+			assertRecordsEqual(t, []testObject{obj3, obj1}, recs)
+		})
+	})
+
+	t.Run("some objects are not indexable and derive details from its source", func(t *testing.T) {
+		s := newStoreFixture(t)
+		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		s.sbtProvider = typeProvider
+
+		obj1 := makeObjectWithName("id1", "name1")
+		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypePage, nil)
+
+		obj2 := makeObjectWithName("id2", "name2")
+		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
+
+		obj3 := makeObjectWithName("id3", "name3")
+		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+
+		// obj4 is not indexable, so don't try to add it to store
+		obj4 := makeObjectWithName("id4", "i'm special")
+		typeProvider.EXPECT().Type("id4").Return(smartblock.SmartBlockTypeDate, nil)
+
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		s.sourceService = dummySourceService{objectToReturn: obj4}
+
+		recs, err := s.QueryById([]string{"id2", "id4"})
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj2, obj4}, recs)
+	})
+}
+
+func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
+	s := newStoreFixture(t)
+	obj1 := makeObjectWithName("id1", "name1")
+	obj2 := makeObjectWithName("id2", "name2")
+	obj3 := makeObjectWithName("id3", "name3")
+	s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+	recordsCh := make(chan *types.Struct)
+	sub := database.NewSubscription(nil, recordsCh)
+
+	recs, closeSub, err := s.QueryByIdAndSubscribeForChanges([]string{"id1", "id3"}, sub)
+	require.NoError(t, err)
+	defer closeSub()
+
+	assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
+
+	t.Run("update details called, but there are no changes", func(t *testing.T) {
+		err = s.UpdateObjectDetails("id1", makeDetails(obj1))
+		require.ErrorIs(t, err, ErrDetailsNotChanged)
+
+		select {
+		case <-recordsCh:
+			require.Fail(t, "unexpected record")
+		case <-time.After(10 * time.Millisecond):
+		}
+	})
+
+	t.Run("update details", func(t *testing.T) {
+		err = s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "name1 updated")))
+		require.NoError(t, err)
+
+		select {
+		case rec := <-recordsCh:
+			assert.Equal(t, "name1 updated", pbtypes.GetString(rec, bundle.RelationKeyName.String()))
+		case <-time.After(10 * time.Millisecond):
+			require.Fail(t, "update has not been received")
+		}
 	})
 }
