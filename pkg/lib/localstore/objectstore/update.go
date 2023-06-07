@@ -3,7 +3,6 @@ package objectstore
 import (
 	"errors"
 	"fmt"
-	"runtime/debug"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
@@ -200,14 +199,6 @@ func (m *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before m
 }
 
 func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
-	t, err := m.sbtProvider.Type(id)
-	if err != nil {
-		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
-	} else if indexdetails, _ := t.Indexable(); !indexdetails {
-		log.Errorf("updateDetails: trying to index non-indexable sb %s(%d): %s", id, t, string(debug.Stack()))
-		return fmt.Errorf("updateDetails: trying to index non-indexable sb %s(%d)", id, t)
-	}
-
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
 
