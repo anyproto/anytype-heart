@@ -51,20 +51,19 @@ func Test_GrouperTags(t *testing.T) {
 			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
 			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
 		},
-	}, false))
+	}))
 
 	idTag1 := bson.NewObjectId().Hex()
 	idTag2 := bson.NewObjectId().Hex()
 	idTag3 := bson.NewObjectId().Hex()
 
-	require.NoError(t, ds.UpdateObjectDetails(
-		idTag1, &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":          pbtypes.String(idTag1),
-				"relationKey": pbtypes.String("tag"),
-				"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
-			},
-		}, false))
+	require.NoError(t, ds.UpdateObjectDetails(idTag1, &types.Struct{
+		Fields: map[string]*types.Value{
+			"id":          pbtypes.String(idTag1),
+			"relationKey": pbtypes.String("tag"),
+			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		},
+	}))
 
 	require.NoError(t, ds.UpdateObjectDetails(idTag2, &types.Struct{
 		Fields: map[string]*types.Value{
@@ -72,14 +71,14 @@ func Test_GrouperTags(t *testing.T) {
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 		},
-	}, false))
+	}))
 	require.NoError(t, ds.UpdateObjectDetails(idTag3, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag3),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 		},
-	}, false))
+	}))
 
 	id1 := bson.NewObjectId().Hex()
 	id2 := bson.NewObjectId().Hex()
@@ -92,25 +91,25 @@ func Test_GrouperTags(t *testing.T) {
 
 	require.NoError(t, ds.UpdateObjectDetails(id1, &types.Struct{
 		Fields: map[string]*types.Value{"name": pbtypes.String("one")},
-	}, false))
+	}))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s1"))
 
 	require.NoError(t, ds.UpdateObjectDetails(id2, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("two"),
 		"tag":  pbtypes.StringList([]string{idTag1}),
-	}}, false))
+	}}))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s2"))
 
 	require.NoError(t, ds.UpdateObjectDetails(id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
-	}}, false))
+	}}))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s3"))
 
 	require.NoError(t, ds.UpdateObjectDetails(id4, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("four"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
-	}}, false))
+	}}))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s4"))
 
 	grouper, err := kanbanSrv.Grouper("tag")

@@ -146,7 +146,7 @@ type ObjectStore interface {
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(id string, details *types.Struct, discardLocalDetailsChanges bool) error
+	UpdateObjectDetails(id string, details *types.Struct) error
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
@@ -433,7 +433,7 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 			bundle.RelationKeyId.String():        pbtypes.String(id),
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
 		},
-	}, false)
+	})
 	if err != nil {
 		if !errors.Is(err, ErrDetailsNotChanged) {
 			return fmt.Errorf("failed to overwrite details and relations: %w", err)

@@ -178,7 +178,7 @@ func createObjects(store objectstore.ObjectStore, ids []string, detailsCount int
 	for _, id := range ids {
 		details := genRandomDetails(ids, detailsCount)
 		start := time.Now()
-		err := store.UpdateObjectDetails(id, details, false)
+		err := store.UpdateObjectDetails(id, details)
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
 			return err
@@ -203,7 +203,7 @@ func updateDetails(store objectstore.ObjectStore, ids []string, detailsCount int
 	for _, id := range ids {
 		details := genRandomDetails(ids, detailsCount)
 		start := time.Now()
-		err := store.UpdateObjectDetails(id, details, false)
+		err := store.UpdateObjectDetails(id, details)
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
 			return err

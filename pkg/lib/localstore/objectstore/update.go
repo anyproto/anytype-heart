@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, discardLocalDetailsChanges bool) error {
+func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -43,13 +43,6 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, di
 			// init an empty state to skip nil checks later
 			before = model.ObjectInfo{
 				Details: &types.Struct{Fields: map[string]*types.Value{}},
-			}
-		}
-
-		if discardLocalDetailsChanges && details != nil {
-			injectedDetails := pbtypes.StructFilterKeys(before.Details, bundle.LocalRelationsKeys)
-			for k, v := range injectedDetails.Fields {
-				details.Fields[k] = pbtypes.CopyVal(v)
 			}
 		}
 	}
