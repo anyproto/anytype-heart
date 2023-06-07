@@ -34,7 +34,7 @@ func newStoreFixture(t *testing.T) *storeFixture {
 	noCtxDS := noctxds.New(ds)
 
 	typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	typeProvider.EXPECT().Type(mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
+	typeProvider.EXPECT().Type(mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
 
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
@@ -48,11 +48,13 @@ func newStoreFixture(t *testing.T) *storeFixture {
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	return &storeFixture{&dsObjectStore{
-		ds:          noCtxDS,
-		sbtProvider: typeProvider,
-		fts:         fullText,
-	}}
+	return &storeFixture{
+		dsObjectStore: &dsObjectStore{
+			ds:          noCtxDS,
+			sbtProvider: typeProvider,
+			fts:         fullText,
+		},
+	}
 }
 
 type testObject map[bundle.RelationKey]*types.Value
@@ -236,8 +238,37 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with system objects", func(t *testing.T) {
+	t.Run("without system objects", func(t *testing.T) {
+		s := newStoreFixture(t)
+		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		s.sbtProvider = typeProvider
 
+		obj1 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyName: pbtypes.String("Favorites page"),
+		}
+		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeHome, nil)
+
+		obj2 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id2"),
+			bundle.RelationKeyName: pbtypes.String("name2"),
+		}
+		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
+
+		obj3 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id3"),
+			bundle.RelationKeyName: pbtypes.String("Archive page"),
+		}
+		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypeArchive, nil)
+
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		recs, _, err := s.Query(nil, database.Query{})
+		require.NoError(t, err)
+
+		assertRecordsEqual(t, []testObject{
+			obj2,
+		}, recs)
 	})
 
 	t.Run("with object type filter", func(t *testing.T) {

@@ -28,14 +28,11 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	if !q.WithSystemObjects {
-		filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
-			smartblock.SmartBlockTypeArchive,
-			smartblock.SmartBlockTypeHome,
-		})
-
-		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
-	}
+	filterNotSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeHome,
+	})
+	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 
 	if len(q.ObjectTypeFilter) > 0 {
 		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
