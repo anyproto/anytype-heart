@@ -75,6 +75,14 @@ func makeObjectWithName(id string, name string) testObject {
 	}
 }
 
+func makeObjectWithNameAndDescription(id string, name string, description string) testObject {
+	return testObject{
+		bundle.RelationKeyId:          pbtypes.String(id),
+		bundle.RelationKeyName:        pbtypes.String(name),
+		bundle.RelationKeyDescription: pbtypes.String(description),
+	}
+}
+
 func makeDetails(fields testObject) *types.Struct {
 	f := map[string]*types.Value{}
 	for k, v := range fields {
@@ -287,16 +295,90 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with ascending order", func(t *testing.T) {
+	t.Run("with ascending order and filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "dfg")
+		obj2 := makeObjectWithName("id2", "abc")
+		obj3 := makeObjectWithName("id3", "012")
+		obj4 := makeObjectWithName("id4", "ignore")
+		s.addObjects(t, []testObject{obj1, obj2, obj3, obj4})
 
+		recs, _, err := s.Query(nil, database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyName.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String("ignore"),
+				},
+			},
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyName.String(),
+					Type:        model.BlockContentDataviewSort_Asc,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assertRecordsEqual(t, []testObject{
+			obj3,
+			obj2,
+			obj1,
+		}, recs)
 	})
 
 	t.Run("with descending order", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "dfg")
+		obj2 := makeObjectWithName("id2", "abc")
+		obj3 := makeObjectWithName("id3", "012")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
+		recs, _, err := s.Query(nil, database.Query{
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyName.String(),
+					Type:        model.BlockContentDataviewSort_Desc,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assertRecordsEqual(t, []testObject{
+			obj1,
+			obj2,
+			obj3,
+		}, recs)
 	})
 
 	t.Run("with multiple orders", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithNameAndDescription("id1", "dfg", "foo")
+		obj2 := makeObjectWithNameAndDescription("id2", "abc", "foo")
+		obj3 := makeObjectWithNameAndDescription("id3", "012", "bar")
+		obj4 := makeObjectWithNameAndDescription("id4", "bcd", "bar")
+		s.addObjects(t, []testObject{obj1, obj2, obj3, obj4})
 
+		recs, _, err := s.Query(nil, database.Query{
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyDescription.String(),
+					Type:        model.BlockContentDataviewSort_Desc,
+				},
+				{
+					RelationKey: bundle.RelationKeyName.String(),
+					Type:        model.BlockContentDataviewSort_Asc,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assertRecordsEqual(t, []testObject{
+			obj2,
+			obj1,
+			obj3,
+			obj4,
+		}, recs)
 	})
 
 	t.Run("with limit", func(t *testing.T) {
