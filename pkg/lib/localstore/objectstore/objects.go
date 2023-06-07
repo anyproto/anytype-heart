@@ -122,7 +122,7 @@ type ObjectStore interface {
 
 	DeleteObject(id string) error
 	DeleteDetails(id string) error
-	// EraseIndexes erase all indexes for objectstore.. All objects needs to be reindexed
+	// EraseIndexes erase all indexes for objectstore. All objects need to be reindexed
 	EraseIndexes() error
 
 	GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error)
@@ -132,6 +132,8 @@ type ObjectStore interface {
 	GetRelationById(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetObjectType(url string) (*model.ObjectType, error)
+	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
 }
 
 type IndexerStore interface {
@@ -791,8 +793,7 @@ func extractIdFromKey(key string) (id string) {
 	return key[i+1:]
 }
 
-// TODO: objstore: move to service interface
-func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
+func (m *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 	objectType := &model.ObjectType{}
 	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
 		var err error
@@ -806,7 +807,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 		return objectType, nil
 	}
 
-	ois, err := store.GetByIDs(url)
+	ois, err := m.GetByIDs(url)
 	if err != nil {
 		return nil, err
 	}
@@ -823,7 +824,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 			continue
 		}
 
-		rel, err := store.GetRelationByKey(rk)
+		rel, err := m.GetRelationByKey(rk)
 		if err != nil {
 			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relId)
 			continue
@@ -851,11 +852,10 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 	return objectType, err
 }
 
-// TODO: objstore: move to service interface
-func GetObjectTypes(store ObjectStore, urls []string) (ots []*model.ObjectType, err error) {
+func (m *dsObjectStore) GetObjectTypes(urls []string) (ots []*model.ObjectType, err error) {
 	ots = make([]*model.ObjectType, 0, len(urls))
 	for _, url := range urls {
-		ot, e := GetObjectType(store, url)
+		ot, e := m.GetObjectType(url)
 		if e != nil {
 			err = e
 		} else {
