@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
@@ -690,5 +691,45 @@ func TestQueryById(t *testing.T) {
 		recs, err := s.QueryById([]string{"id2", "id4"})
 		require.NoError(t, err)
 		assertRecordsEqual(t, []testObject{obj2, obj4}, recs)
+	})
+}
+
+func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
+	s := newStoreFixture(t)
+	obj1 := makeObjectWithName("id1", "name1")
+	obj2 := makeObjectWithName("id2", "name2")
+	obj3 := makeObjectWithName("id3", "name3")
+	s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+	recordsCh := make(chan *types.Struct)
+	sub := database.NewSubscription(nil, recordsCh)
+
+	recs, closeSub, err := s.QueryByIdAndSubscribeForChanges([]string{"id1", "id3"}, sub)
+	require.NoError(t, err)
+	defer closeSub()
+
+	assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
+
+	t.Run("update details called, but there are no changes", func(t *testing.T) {
+		err = s.UpdateObjectDetails("id1", makeDetails(obj1))
+		require.ErrorIs(t, err, ErrDetailsNotChanged)
+
+		select {
+		case <-recordsCh:
+			require.Fail(t, "unexpected record")
+		case <-time.After(10 * time.Millisecond):
+		}
+	})
+
+	t.Run("update details", func(t *testing.T) {
+		err = s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "name1 updated")))
+		require.NoError(t, err)
+
+		select {
+		case rec := <-recordsCh:
+			assert.Equal(t, "name1 updated", pbtypes.GetString(rec, bundle.RelationKeyName.String()))
+		case <-time.After(10 * time.Millisecond):
+			require.Fail(t, "update has not been received")
+		}
 	})
 }
