@@ -40,8 +40,6 @@ var (
 	pagesPrefix        = "pages"
 	pagesDetailsBase   = ds.NewKey("/" + pagesPrefix + "/details")
 	pendingDetailsBase = ds.NewKey("/" + pagesPrefix + "/pending")
-	pagesRelationsBase = ds.NewKey("/" + pagesPrefix + "/relations")     // store the list of full relation model for /objectId
-	setRelationsBase   = ds.NewKey("/" + pagesPrefix + "/set/relations") // store the list of full relation model for /setId
 
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
@@ -55,10 +53,6 @@ var (
 
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
-
-	relationsPrefix = "relations"
-	// /relations/relations/<relKey>: relation model
-	relationsBase = ds.NewKey("/" + relationsPrefix + "/relations")
 
 	// /pages/type/<objType>/<objId>
 	indexObjectTypeObject = localstore.Index{
@@ -217,10 +211,6 @@ func (m *dsObjectStore) EraseIndexes() (err error) {
 			return
 		}
 	}
-	err = m.eraseStoredRelations()
-	if err != nil {
-		log.Errorf("eraseStoredRelations failed: %s", err.Error())
-	}
 
 	err = m.eraseLinks()
 	if err != nil {
@@ -228,32 +218,6 @@ func (m *dsObjectStore) EraseIndexes() (err error) {
 	}
 
 	return
-}
-
-func (m *dsObjectStore) eraseStoredRelations() (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return err
-	}
-
-	defer txn.Discard()
-	res, err := localstore.GetKeys(txn, setRelationsBase.String(), 0)
-	if err != nil {
-		return err
-	}
-
-	keys, err := localstore.ExtractKeysFromResults(res)
-	if err != nil {
-		return err
-	}
-
-	for _, key := range keys {
-		err = txn.Delete(ds.NewKey(key))
-		if err != nil {
-			log.Errorf("eraseStoredRelations: failed to delete key %s: %s", key, err.Error())
-		}
-	}
-	return txn.Commit()
 }
 
 func (m *dsObjectStore) eraseLinks() (err error) {
@@ -415,7 +379,6 @@ func (m *dsObjectStore) DeleteDetails(id string) error {
 	for _, k := range []ds.Key{
 		pagesSnippetBase.ChildString(id),
 		pagesDetailsBase.ChildString(id),
-		setRelationsBase.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
 			return err
@@ -452,7 +415,6 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 	for _, k := range []ds.Key{
 		pagesSnippetBase.ChildString(id),
 		indexQueueBase.ChildString(id),
-		setRelationsBase.ChildString(id),
 		indexedHeadsState.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
@@ -664,20 +626,6 @@ func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	}
 }
 
-// getObjectRelations returns the list of relations last time indexed for the object
-func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
-	var relations model.Relations
-	if val, err := txn.Get(pagesRelationsBase.ChildString(id)); err != nil {
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get relations: %w", err)
-		}
-	} else if err := proto.Unmarshal(val, &relations); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
-	}
-
-	return relations.GetRelations(), nil
-}
-
 func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := m.sbtProvider.Type(id)
 	if err != nil {
@@ -704,11 +652,6 @@ func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 		details = detailsWrapped.GetDetails()
 	}
 
-	relations, err := getObjectRelations(txn, id)
-	if err != nil {
-		return nil, err
-	}
-
 	var snippet string
 	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
@@ -726,7 +669,6 @@ func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 		Id:              id,
 		ObjectType:      sbt.ToProto(),
 		Details:         details,
-		Relations:       relations,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
 	}, nil

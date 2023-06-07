@@ -20530,9 +20530,9 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| objectTypeUrls | [string](#string) | repeated | deprecated |
+| objectTypeUrls | [string](#string) | repeated | DEPRECATED |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| relations | [Relation](#anytype-model-Relation) | repeated |  |
+| relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
 | objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
