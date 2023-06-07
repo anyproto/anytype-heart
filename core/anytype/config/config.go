@@ -266,9 +266,6 @@ func (c *Config) GetMetric() metric.Config {
 
 func (c *Config) GetNet() commonnet.Config {
 	return commonnet.Config{
-		Server: commonnet.ServerConfig{
-			ListenAddrs: []string{c.LocalServerAddr},
-		},
 		Stream: commonnet.StreamConfig{
 			TimeoutMilliseconds: 1000,
 			MaxMsgSizeMb:        256,
@@ -279,9 +276,6 @@ func (c *Config) GetNet() commonnet.Config {
 func (c *Config) GetDebugAPIConfig() DebugAPIConfig {
 	return DebugAPIConfig{
 		Config: commonnet.Config{
-			Server: commonnet.ServerConfig{
-				ListenAddrs: []string{c.DebugAddr},
-			},
 			Stream: commonnet.StreamConfig{
 				TimeoutMilliseconds: 1000,
 				MaxMsgSizeMb:        256,
