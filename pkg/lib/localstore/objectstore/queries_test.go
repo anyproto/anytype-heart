@@ -629,3 +629,66 @@ func TestQueryRaw(t *testing.T) {
 		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
 	})
 }
+
+type dummySourceService struct {
+	objectToReturn testObject
+}
+
+func (s dummySourceService) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	return makeDetails(s.objectToReturn), nil
+}
+
+func TestQueryById(t *testing.T) {
+	t.Run("no ids", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		recs, err := s.QueryById(nil)
+		require.NoError(t, err)
+		assert.Empty(t, recs)
+	})
+
+	t.Run("just ordinary objects", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		recs, err := s.QueryById([]string{"id1", "id3"})
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
+
+		t.Run("reverse order", func(t *testing.T) {
+			recs, err := s.QueryById([]string{"id3", "id1"})
+			require.NoError(t, err)
+			assertRecordsEqual(t, []testObject{obj3, obj1}, recs)
+		})
+	})
+
+	t.Run("some objects are not indexable and derive details from its source", func(t *testing.T) {
+		s := newStoreFixture(t)
+		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		s.sbtProvider = typeProvider
+
+		obj1 := makeObjectWithName("id1", "name1")
+		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypePage, nil)
+
+		obj2 := makeObjectWithName("id2", "name2")
+		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
+
+		obj3 := makeObjectWithName("id3", "name3")
+		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+
+		// obj4 is not indexable, so don't try to add it to store
+		obj4 := makeObjectWithName("id4", "i'm special")
+		typeProvider.EXPECT().Type("id4").Return(smartblock.SmartBlockTypeDate, nil)
+
+		s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+		s.sourceService = dummySourceService{objectToReturn: obj4}
+
+		recs, err := s.QueryById([]string{"id2", "id4"})
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj2, obj4}, recs)
+	})
+}
