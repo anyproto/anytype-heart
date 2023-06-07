@@ -526,6 +526,22 @@ func TestQueryObjectIds(t *testing.T) {
 		ids, _, err := s.QueryObjectIds(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id3"}, ids)
+
+		t.Run("with limit", func(t *testing.T) {
+			ids, _, err := s.QueryObjectIds(database.Query{
+				Limit: 1,
+			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"id1"}, ids)
+		})
+		t.Run("with limit and offset", func(t *testing.T) {
+			ids, _, err := s.QueryObjectIds(database.Query{
+				Limit:  1,
+				Offset: 1,
+			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"id3"}, ids)
+		})
 	})
 
 	t.Run("with basic filter and smartblock types filter", func(t *testing.T) {
