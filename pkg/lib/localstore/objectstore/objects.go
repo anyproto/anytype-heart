@@ -37,6 +37,7 @@ import (
 )
 
 var log = logging.Logger("anytype-localstore")
+var ErrDetailsNotChanged = errors.New("details not changed")
 
 const CName = "objectstore"
 
@@ -821,7 +822,7 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		},
 	}
 
-	f, err := database.NewFilters(q, nil, m, nil)
+	f, err := database.NewFilters(q, nil, m)
 	if err != nil {
 		return nil, err
 	}
@@ -852,6 +853,9 @@ func (m *dsObjectStore) ListRelationsKeys() ([]string, error) {
 }
 
 func (m *dsObjectStore) DeleteDetails(id string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -882,8 +886,13 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 		},
 	}, false)
 	if err != nil {
-		return fmt.Errorf("failed to overwrite details and relations: %w", err)
+		if !errors.Is(err, ErrDetailsNotChanged) {
+			return fmt.Errorf("failed to overwrite details and relations: %w", err)
+		}
 	}
+
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -919,25 +928,6 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 			return err
 		}
 	}
-	return txn.Commit()
-}
-
-// RemoveRelationFromCache removes cached relation data
-func (m *dsObjectStore) RemoveRelationFromCache(key string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	for _, k := range []ds.Key{
-		relationsBase.ChildString(key),
-	} {
-		if err = txn.Delete(k); err != nil {
-			return err
-		}
-	}
-
 	return txn.Commit()
 }
 
@@ -1107,7 +1097,7 @@ func (m *dsObjectStore) CreateObject(id string, details *types.Struct, links []s
 	}
 
 	err = m.updateObjectDetails(txn, id, before, details)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrDetailsNotChanged) {
 		return err
 	}
 
@@ -1532,7 +1522,7 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	}
 
 	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
-		return nil
+		return ErrDetailsNotChanged
 	}
 
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
@@ -1630,12 +1620,6 @@ func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) 
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
 
-	for k, v := range details.GetDetails().GetFields() {
-		// todo: remove null cleanup(should be done when receiving from client)
-		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
-			delete(details.Details.Fields, k)
-		}
-	}
 	return details, nil
 }
 

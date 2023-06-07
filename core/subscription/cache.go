@@ -16,17 +16,20 @@ type entry struct {
 	id   string
 	data *types.Struct
 
-	subIds      []string
-	subIsActive []bool
+	subIds             []string
+	subIsActive        []bool
+	subFullDetailsSent []bool
 }
 
 // SetSub marks provided subscription for the entry as active (within the current pagination window) or inactive
-func (e *entry) SetSub(subId string, isActive bool) {
+func (e *entry) SetSub(subId string, isActive bool, isFullDetailSent bool) {
 	if pos := slice.FindPos(e.subIds, subId); pos == -1 {
 		e.subIds = append(e.subIds, subId)
 		e.subIsActive = append(e.subIsActive, isActive)
+		e.subFullDetailsSent = append(e.subFullDetailsSent, isFullDetailSent)
 	} else {
 		e.subIsActive[pos] = isActive
+		e.subFullDetailsSent[pos] = isFullDetailSent
 	}
 }
 
@@ -47,10 +50,29 @@ func (e *entry) IsActive(subIds ...string) bool {
 	return true
 }
 
+// IsFullDetailsSent that in the context of ALL provided subscriptions we have previously sent the full ObjectSetDetails event
+// if true this means that we can send incremental diff updates
+func (e *entry) IsFullDetailsSent(subIds ...string) bool {
+	if len(subIds) == 0 {
+		return false
+	}
+	for _, id := range subIds {
+		if pos := slice.FindPos(e.subIds, id); pos != -1 {
+			if !e.subFullDetailsSent[pos] {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
 func (e *entry) RemoveSubId(subId string) {
 	if pos := slice.FindPos(e.subIds, subId); pos != -1 {
 		e.subIds = slice.Remove(e.subIds, subId)
 		e.subIsActive = append(e.subIsActive[:pos], e.subIsActive[pos+1:]...)
+		e.subFullDetailsSent = append(e.subFullDetailsSent[:pos], e.subFullDetailsSent[pos+1:]...)
 	}
 }
 

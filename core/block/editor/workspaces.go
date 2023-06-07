@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -96,26 +96,16 @@ func NewWorkspace(
 
 // nolint:funlen
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
+	// init template before sub-object initialization because sub-objects could fire onSubObjectChange callback
+	// and index incomplete workspace template
+
 	err = p.SubObjectCollection.Init(ctx)
 	if err != nil {
 		return err
 	}
+	p.initTemplate(ctx)
 
 	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
-	if p.config.AnalyticsId != "" {
-		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(p.config.AnalyticsId))
-	} else if ctx.State.GetSetting(state.SettingsAnalyticsId) == nil {
-		// add analytics id for existing users so it will be active from the next start
-		log.Warnf("analyticsID is missing, generating new one")
-		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
-	}
-
-	// init template before sub-object initialization because sub-objects could fire onSubObjectChange callback
-	// and index incomplete workspace template
-	err = p.initTemplate(ctx)
-	if err != nil {
-		return fmt.Errorf("init template: %w", err)
-	}
 
 	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
@@ -146,9 +136,17 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
-func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) error {
+func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
-	return smartblock.ObjectApplyTemplate(p, ctx.State,
+	if p.config.AnalyticsId != "" {
+		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(p.config.AnalyticsId))
+	} else if ctx.State.GetSetting(state.SettingsAnalyticsId) == nil {
+		// add analytics id for existing users so it will be active from the next start
+		log.Warnf("analyticsID is missing, generating new one")
+		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
+	}
+
+	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,

@@ -68,7 +68,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	for i, e := range entries {
 		e = s.cache.GetOrSet(e)
 		entries[i] = e
-		e.SetSub(s.id, false)
+		e.SetSub(s.id, false, false)
 		s.skl.Set(e, nil)
 	}
 	if s.afterId != "" {
@@ -114,7 +114,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	activeEntries := s.getActiveEntries()
 	var activeIds = make([]string, len(activeEntries))
 	for i, ae := range activeEntries {
-		ae.SetSub(s.id, true)
+		ae.SetSub(s.id, true, false)
 		activeIds[i] = ae.id
 	}
 	s.diff = newListDiff(activeIds)
@@ -167,7 +167,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	hasChanges := false
 	for _, e := range ctx.entries {
 		if _, ok := s.diff.afterIdsM[e.id]; ok {
-			e.SetSub(s.id, true)
+			e.SetSub(s.id, true, false)
 			ctx.change = append(ctx.change, opChange{
 				id:    e.id,
 				subId: s.id,
@@ -203,14 +203,14 @@ func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
 	// add
 	if !curInSet && newInSet {
 		s.skl.Set(e, nil)
-		e.SetSub(s.id, false)
+		e.SetSub(s.id, false, false)
 		return
 	}
 	// change
 	if curInSet && newInSet {
 		s.skl.Remove(curr)
 		s.skl.Set(e, nil)
-		e.SetSub(s.id, false)
+		e.SetSub(s.id, false, false)
 		return
 	}
 	panic("subscription: check algo")

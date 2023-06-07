@@ -1,11 +1,9 @@
 package subscription
 
 import (
-	"testing"
-	"time"
-
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -63,7 +61,7 @@ func TestGroupTag(t *testing.T) {
 
 	q := database.Query{}
 
-	f, err := database.NewFilters(q, nil, nil, time.Now().Location())
+	f, err := database.NewFilters(q, nil, nil)
 	require.NoError(t, err)
 	filterTag := filter.Not{Filter: filter.Empty{Key: kanbanKey}}
 	f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}

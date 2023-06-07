@@ -1,6 +1,8 @@
 package bookmarkimporter
 
 import (
+	"github.com/anyproto/any-sync/app"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
@@ -10,8 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 )
 
 const CName = "bookmark-importer"

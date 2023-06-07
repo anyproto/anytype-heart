@@ -394,7 +394,7 @@ func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID str
 	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
 	}
-	if err := s.AddToSyncQueue(fileID); err != nil {
+	if err := s.addToSyncQueue(fileID, true); err != nil {
 		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 	}
 	return nil
@@ -806,9 +806,13 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 }
 
 func (s *service) AddToSyncQueue(fileID string) error {
+	return s.addToSyncQueue(fileID, false)
+}
+
+func (s *service) addToSyncQueue(fileID string, uploadedByUser bool) error {
 	spaceID := s.spaceService.AccountId()
 
-	if err := s.fileSync.AddFile(spaceID, fileID); err != nil {
+	if err := s.fileSync.AddFile(spaceID, fileID, uploadedByUser); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	if _, err := s.syncStatusWatcher.Watch(fileID, nil); err != nil {

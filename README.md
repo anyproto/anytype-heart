@@ -42,6 +42,11 @@ GO test:
 ```
 make test
 ```
+You'll need to install latest (at least clang 15)
+```
+brew install llvm 
+echo 'export PATH="/<homebrew location>/llvm/bin:$PATH"' >> ~/.zshrc 
+```
 
 NodeJS addon test:
 ```

@@ -214,7 +214,7 @@ func (s *Service) OpenBlock(
 	st := ob.NewState()
 
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-	if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent); err != nil {
+	if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
 	afterApplyTime := time.Now()
@@ -726,7 +726,7 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 					},
 				},
 			}
-			f, err := database.NewFilters(q, nil, s.objectStore, nil)
+			f, err := database.NewFilters(q, nil, s.objectStore)
 			if err != nil {
 				return nil
 			}
