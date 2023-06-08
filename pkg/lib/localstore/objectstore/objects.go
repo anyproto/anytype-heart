@@ -739,19 +739,12 @@ func removeByPrefixInTx(txn noctxds.Txn, prefix string) (int, error) {
 	return removed, nil
 }
 
-func pageLinkKeys(id string, in []string, out []string) []ds.Key {
-	var keys = make([]ds.Key, 0, len(in)+len(out))
-
-	// links incoming into specified node id
-	for _, from := range in {
-		keys = append(keys, inboundLinkKey(from, id), outgoingLinkKey(from, id))
-	}
-
+func pageLinkKeys(id string, out []string) []ds.Key {
+	keys := make([]ds.Key, 0, 2*len(out))
 	// links outgoing from specified node id
 	for _, to := range out {
 		keys = append(keys, outgoingLinkKey(id, to), inboundLinkKey(id, to))
 	}
-
 	return keys
 }
 
