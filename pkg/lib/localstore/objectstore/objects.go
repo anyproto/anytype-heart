@@ -306,6 +306,10 @@ func (m *dsObjectStore) GetRelationById(id string) (*model.Relation, error) {
 		return nil, err
 	}
 
+	if pbtypes.GetString(s.GetDetails(), bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
+		return nil, fmt.Errorf("object %s is not a relation", id)
+	}
+
 	rel := relationutils.RelationFromStruct(s.GetDetails())
 	return rel.Relation, nil
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -358,4 +359,36 @@ func makeRelationOptionObject(id, name, color, relationKey string) testObject {
 		bundle.RelationKeyRelationOptionColor: pbtypes.String(color),
 		bundle.RelationKeyRelationKey:         pbtypes.String(relationKey),
 	}
+}
+
+func TestGetRelationById(t *testing.T) {
+	t.Run("relation is not found", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		_, err := s.GetRelationById(bundle.RelationKeyTag.URL())
+		require.Error(t, err)
+	})
+
+	t.Run("requested object is not relation", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		s.addObjects(t, []testObject{makeObjectWithName("id1", "name1")})
+
+		_, err := s.GetRelationById("id1")
+		require.Error(t, err)
+	})
+
+	t.Run("relation is found", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		rel := &relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyName)}
+		rel.Id = bundle.RelationKeyName.URL()
+		relObject := rel.ToStruct()
+		err := s.UpdateObjectDetails(rel.Id, relObject)
+		require.NoError(t, err)
+
+		got, err := s.GetRelationById(bundle.RelationKeyName.URL())
+		require.NoError(t, err)
+		assert.Equal(t, relationutils.RelationFromStruct(relObject).Relation, got)
+	})
 }
