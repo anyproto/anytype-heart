@@ -3,9 +3,7 @@ package objectstore
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
@@ -17,54 +15,37 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/app/testapp"
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-	app := testapp.New()
-	defer app.Close(context.Background())
-
-	tp := typeprovider.New(nil)
-	tp.Init(nil)
-	ds := New(tp)
+	s := newStoreFixture(t)
 	id := bson.NewObjectId()
-	tp.RegisterStaticType(id.String(), smartblock.SmartBlockTypePage)
-
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ds).Start(context.Background())
-	require.NoError(t, err)
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
-	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
+	err := s.UpdateObjectDetails(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
 	})
 	require.NoError(t, err)
 
 	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
-	recs, _, err := ds.Query(schema.NewByType(ot, nil), database.Query{})
+	recs, _, err := s.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 
-	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
+	err = s.UpdateObjectDetails(id.String(), &types.Struct{
 		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
 	})
 	require.NoError(t, err)
 
-	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
+	recs, _, err = s.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -88,16 +69,7 @@ func TestDsObjectStore_PrefixQuery(t *testing.T) {
 }
 
 func Test_removeByPrefix(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-
-	app := testapp.New()
-	defer app.Close(context.Background())
-	ds := New(nil)
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ftsearch.New()).With(ds).Start(context.Background())
-	require.NoError(t, err)
-
-	ds2 := ds.(*dsObjectStore)
+	s := newStoreFixture(t)
 	var key = make([]byte, 32)
 	for i := 0; i < 10; i++ {
 
@@ -111,19 +83,19 @@ func Test_removeByPrefix(t *testing.T) {
 			rand.Read(key)
 			links = append(links, fmt.Sprintf("%x", key))
 		}
-		require.NoError(t, ds.UpdateObjectDetails(objId, nil))
-		require.NoError(t, ds.UpdateObjectLinks(objId, links))
+		require.NoError(t, s.UpdateObjectDetails(objId, nil))
+		require.NoError(t, s.UpdateObjectLinks(objId, links))
 	}
-	tx, err := ds2.ds.NewTransaction(false)
+	tx, err := s.ds.NewTransaction(false)
 	_, err = removeByPrefixInTx(tx, pagesInboundLinksBase.String())
 	require.NotNil(t, err)
 	tx.Discard()
 
-	got, err := removeByPrefix(ds2.ds, pagesInboundLinksBase.String())
+	got, err := removeByPrefix(s.ds, pagesInboundLinksBase.String())
 	require.NoError(t, err)
 	require.Equal(t, 10*8000, got)
 
-	got, err = removeByPrefix(ds2.ds, pagesOutboundLinksBase.String())
+	got, err = removeByPrefix(s.ds, pagesOutboundLinksBase.String())
 	require.NoError(t, err)
 	require.Equal(t, 10*8000, got)
 }

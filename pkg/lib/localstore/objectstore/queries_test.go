@@ -285,7 +285,6 @@ func TestQuery(t *testing.T) {
 				obj2,
 			}, recs)
 		})
-
 	})
 
 	t.Run("without system objects", func(t *testing.T) {
