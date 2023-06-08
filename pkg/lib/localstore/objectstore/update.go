@@ -163,7 +163,7 @@ func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []st
 
 	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
 	if len(addedLinks) > 0 {
-		for _, k := range pageLinkKeys(id, nil, addedLinks) {
+		for _, k := range pageLinkKeys(id, addedLinks) {
 			if err := txn.Put(k, nil); err != nil {
 				return err
 			}
@@ -171,7 +171,7 @@ func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []st
 	}
 
 	if len(removedLinks) > 0 {
-		for _, k := range pageLinkKeys(id, nil, removedLinks) {
+		for _, k := range pageLinkKeys(id, removedLinks) {
 			if err := txn.Delete(k); err != nil {
 				return err
 			}
