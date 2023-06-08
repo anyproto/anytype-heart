@@ -2,6 +2,7 @@ package syncstatusprovider
 
 import (
 	"github.com/anyproto/any-sync/app"
+	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 )
 

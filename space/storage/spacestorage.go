@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -21,11 +22,11 @@ type spaceStorage struct {
 	header          *spacesyncproto.RawSpaceHeaderWithId
 }
 
-func (s *spaceStorage) Run(ctx context.Context) (err error) {
+func (s *spaceStorage) Run(_ context.Context) (err error) {
 	return nil
 }
 
-func (s *spaceStorage) Init(a *app.App) (err error) {
+func (s *spaceStorage) Init(_ *app.App) (err error) {
 	return nil
 }
 

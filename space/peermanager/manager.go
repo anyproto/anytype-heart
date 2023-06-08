@@ -3,15 +3,18 @@ package peermanager
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/anyproto/anytype-heart/space/peerstore"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
-	"sync"
+
+	"github.com/anyproto/anytype-heart/space/peerstore"
 )
 
 type clientPeerManager struct {

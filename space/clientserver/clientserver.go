@@ -3,15 +3,17 @@ package clientserver
 import (
 	"context"
 	"errors"
-	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/net/transport/yamux"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/dgraph-io/badger/v3"
-	"go.uber.org/zap"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/dgraph-io/badger/v3"
+	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 )
 
 const CName = "client.space.clientserver"
@@ -103,6 +105,7 @@ func (s *clientServer) prepareListener(port int) (net.Listener, error) {
 		}
 	}
 	// otherwise listening to new port
+	//nolint: gosec
 	return net.Listen("tcp", ":")
 }
 

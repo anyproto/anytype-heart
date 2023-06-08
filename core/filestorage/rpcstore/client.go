@@ -2,7 +2,6 @@ package rpcstore
 
 import (
 	"context"
-	"storj.io/drpc"
 	"sync"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"storj.io/drpc"
 )
 
 func newClient(ctx context.Context, s *service, peerId string, tq *mb.MB[*task]) (*client, error) {

@@ -2,23 +2,24 @@ package config
 
 import (
 	"fmt"
-	"github.com/anyproto/any-sync/commonspace/config"
-	"github.com/anyproto/any-sync/net/rpc"
-	"github.com/anyproto/any-sync/net/rpc/debugserver"
-	"github.com/anyproto/any-sync/net/transport/yamux"
-	"gopkg.in/yaml.v3"
 	"net"
 	"path/filepath"
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
+	"github.com/anyproto/any-sync/net/rpc"
+	"github.com/anyproto/any-sync/net/rpc/debugserver"
+	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/kelseyhightower/envconfig"
+	"gopkg.in/yaml.v3"
+
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/kelseyhightower/envconfig"
 )
 
 var log = logging.Logger("anytype-config")

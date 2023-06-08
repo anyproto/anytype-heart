@@ -2,18 +2,19 @@ package clientdebugrpc
 
 import (
 	"context"
-	"github.com/anyproto/any-sync/accountservice"
-	"github.com/anyproto/any-sync/net/rpc/debugserver"
-	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc/clientdebugrpcproto"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/secureservice"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc/clientdebugrpcproto"
 	"github.com/anyproto/anytype-heart/space/storage"
 )
 
