@@ -61,6 +61,7 @@ test-deps:
 	@echo 'Generating test mocks...'
 	@go install github.com/golang/mock/mockgen
 	@go generate ./...
+	@mockery --all
 
 clear-test-deps:
 	@echo 'Removing test mocks...'
