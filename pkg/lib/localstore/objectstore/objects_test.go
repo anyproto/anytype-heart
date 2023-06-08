@@ -306,7 +306,7 @@ func TestGetRelationById(t *testing.T) {
 	t.Run("relation is not found", func(t *testing.T) {
 		s := newStoreFixture(t)
 
-		_, err := s.GetRelationById(bundle.RelationKeyTag.URL())
+		_, err := s.GetRelationByID(bundle.RelationKeyTag.URL())
 		require.Error(t, err)
 	})
 
@@ -315,7 +315,7 @@ func TestGetRelationById(t *testing.T) {
 
 		s.addObjects(t, []testObject{makeObjectWithName("id1", "name1")})
 
-		_, err := s.GetRelationById("id1")
+		_, err := s.GetRelationByID("id1")
 		require.Error(t, err)
 	})
 
@@ -328,7 +328,7 @@ func TestGetRelationById(t *testing.T) {
 		err := s.UpdateObjectDetails(rel.Id, relObject)
 		require.NoError(t, err)
 
-		got, err := s.GetRelationById(bundle.RelationKeyName.URL())
+		got, err := s.GetRelationByID(bundle.RelationKeyName.URL())
 		require.NoError(t, err)
 		assert.Equal(t, relationutils.RelationFromStruct(relObject).Relation, got)
 	})
@@ -444,11 +444,11 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, objects)
 
-		outbound, err := s.GetOutboundLinksById("id1")
+		outbound, err := s.GetOutboundLinksByID("id1")
 		require.NoError(t, err)
 		assert.Empty(t, outbound)
 
-		inbound, err := s.GetInboundLinksById("id2")
+		inbound, err := s.GetInboundLinksByID("id2")
 		require.NoError(t, err)
 		assert.Empty(t, inbound)
 

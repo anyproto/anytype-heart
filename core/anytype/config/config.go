@@ -50,9 +50,6 @@ type Config struct {
 	DebugAddr       string
 	LocalServerAddr string
 
-	InviteServerURL       string
-	InviteServerPublicKey string
-
 	DS                     clientds.Config
 	FS                     FSConfig
 	DisableFileConfig      bool `ignored:"true"` // set in order to skip reading/writing config from/to file
@@ -76,10 +73,8 @@ const (
 var DefaultConfig = Config{
 	Offline: false,
 
-	LocalServerAddr:       ":0",
-	DS:                    clientds.DefaultConfig,
-	InviteServerPublicKey: "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw",
-	InviteServerURL:       "https://cafe1.anytype.io",
+	LocalServerAddr: ":0",
+	DS:              clientds.DefaultConfig,
 }
 
 func WithNewAccount(isNewAccount bool) func(*Config) {

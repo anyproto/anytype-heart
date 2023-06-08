@@ -75,22 +75,22 @@ type SourceDetailsFromId interface {
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
 
-func (m *dsObjectStore) Init(a *app.App) (err error) {
-	m.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
-	s := a.Component("source")
-	if s != nil {
-		m.sourceService = a.MustComponent("source").(SourceDetailsFromId)
+func (s *dsObjectStore) Init(a *app.App) (err error) {
+	s.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
+	src := a.Component("source")
+	if src != nil {
+		s.sourceService = a.MustComponent("source").(SourceDetailsFromId)
 	}
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
 	} else {
-		m.fts = fts.(ftsearch.FTSearch)
+		s.fts = fts.(ftsearch.FTSearch)
 	}
 	return nil
 }
 
-func (m *dsObjectStore) Name() (name string) {
+func (s *dsObjectStore) Name() (name string) {
 	return CName
 }
 
@@ -104,9 +104,9 @@ type ObjectStore interface {
 
 	Query(schema schema.Schema, q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters) (records []database.Record, err error)
-	QueryById(ids []string) (records []database.Record, err error)
-	QueryByIdAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
-	QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
+	QueryByID(ids []string) (records []database.Record, err error)
+	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
+	QueryObjectIDs(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
@@ -127,9 +127,9 @@ type ObjectStore interface {
 
 	GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error)
 	GetDetails(id string) (*model.ObjectDetails, error)
-	GetInboundLinksById(id string) ([]string, error)
-	GetOutboundLinksById(id string) ([]string, error)
-	GetRelationById(id string) (relation *model.Relation, err error)
+	GetInboundLinksByID(id string) ([]string, error)
+	GetOutboundLinksByID(id string) ([]string, error)
+	GetRelationByID(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetObjectType(url string) (*model.ObjectType, error)
@@ -155,9 +155,9 @@ type AccountStore interface {
 	GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error)
 	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
 
-	GetCurrentWorkspaceId() (string, error)
-	SetCurrentWorkspaceId(threadId string) (err error)
-	RemoveCurrentWorkspaceId() (err error)
+	GetCurrentWorkspaceID() (string, error)
+	SetCurrentWorkspaceID(threadId string) (err error)
+	RemoveCurrentWorkspaceID() (err error)
 }
 
 var ErrNotAnObject = fmt.Errorf("not an object")
@@ -181,15 +181,15 @@ type dsObjectStore struct {
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-func (m *dsObjectStore) EraseIndexes() (err error) {
-	for _, idx := range m.Indexes() {
-		err = localstore.EraseIndex(idx, m.ds)
+func (s *dsObjectStore) EraseIndexes() (err error) {
+	for _, idx := range s.Indexes() {
+		err = localstore.EraseIndex(idx, s.ds)
 		if err != nil {
 			return
 		}
 	}
 
-	err = m.eraseLinks()
+	err = s.eraseLinks()
 	if err != nil {
 		log.Errorf("eraseLinks failed: %s", err.Error())
 	}
@@ -197,14 +197,14 @@ func (m *dsObjectStore) EraseIndexes() (err error) {
 	return
 }
 
-func (m *dsObjectStore) eraseLinks() (err error) {
-	n, err := removeByPrefix(m.ds, pagesOutboundLinksBase.String())
+func (s *dsObjectStore) eraseLinks() (err error) {
+	n, err := removeByPrefix(s.ds, pagesOutboundLinksBase.String())
 	if err != nil {
 		return err
 	}
 
 	log.Infof("eraseLinks: removed %d outbound links", n)
-	n, err = removeByPrefix(m.ds, pagesInboundLinksBase.String())
+	n, err = removeByPrefix(s.ds, pagesInboundLinksBase.String())
 	if err != nil {
 		return err
 	}
@@ -214,20 +214,20 @@ func (m *dsObjectStore) eraseLinks() (err error) {
 	return nil
 }
 
-func (m *dsObjectStore) Run(context.Context) (err error) {
-	lds, err := m.dsIface.LocalstoreDS()
-	m.ds = noctxds.New(lds)
+func (s *dsObjectStore) Run(context.Context) (err error) {
+	lds, err := s.dsIface.LocalstoreDS()
+	s.ds = noctxds.New(lds)
 	return
 }
 
-func (m *dsObjectStore) Close(ctx context.Context) (err error) {
+func (s *dsObjectStore) Close(ctx context.Context) (err error) {
 	return nil
 }
 
 // GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
-func (m *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error) {
+func (s *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error) {
 	// todo: add workspace
-	records, _, err := m.Query(nil, database.Query{
+	records, _, err := s.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -249,25 +249,25 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 }
 
 // unsafe, use under mutex
-func (m *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (existed bool) {
-	for _, s := range m.subscriptions {
+func (s *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (existed bool) {
+	for _, s := range s.subscriptions {
 		if s == sub {
 			return true
 		}
 	}
 
-	m.subscriptions = append(m.subscriptions, sub)
+	s.subscriptions = append(s.subscriptions, sub)
 	return false
 }
 
-func (m *dsObjectStore) closeAndRemoveSubscription(sub database.Subscription) {
-	m.l.Lock()
-	defer m.l.Unlock()
-	sub.Close()
+func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscription) {
+	s.l.Lock()
+	defer s.l.Unlock()
+	subscription.Close()
 
-	for i, s := range m.subscriptions {
-		if s == sub {
-			m.subscriptions = append(m.subscriptions[:i], m.subscriptions[i+1:]...)
+	for i, sub := range s.subscriptions {
+		if sub == subscription {
+			s.subscriptions = append(s.subscriptions[:i], s.subscriptions[i+1:]...)
 			break
 		}
 	}
@@ -288,34 +288,34 @@ func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) 
 	return &details, nil
 }
 
-func (m *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
-	m.l.Lock()
-	m.onChangeCallback = callback
-	m.l.Unlock()
+func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
+	s.l.Lock()
+	s.onChangeCallback = callback
+	s.l.Unlock()
 }
 
-func (m *dsObjectStore) GetRelationById(id string) (*model.Relation, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	s, err := m.GetDetails(id)
+	det, err := s.GetDetails(id)
 	if err != nil {
 		return nil, err
 	}
 
-	if pbtypes.GetString(s.GetDetails(), bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
+	if pbtypes.GetString(det.GetDetails(), bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
 		return nil, fmt.Errorf("object %s is not a relation", id)
 	}
 
-	rel := relationutils.RelationFromStruct(s.GetDetails())
+	rel := relationutils.RelationFromStruct(det.GetDetails())
 	return rel.Relation, nil
 }
 
 // GetRelationByKey is deprecated, should be used from relationService
-func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
+func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	// todo: should pass workspace
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -332,7 +332,7 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		},
 	}
 
-	records, _, err := m.Query(nil, q)
+	records, _, err := s.Query(nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -346,11 +346,11 @@ func (m *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	return rel.Relation, nil
 }
 
-func (m *dsObjectStore) DeleteDetails(id string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
+func (s *dsObjectStore) DeleteDetails(id string) error {
+	s.l.Lock()
+	defer s.l.Unlock()
 
-	txn, err := m.ds.NewTransaction(false)
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -370,9 +370,9 @@ func (m *dsObjectStore) DeleteDetails(id string) error {
 }
 
 // DeleteObject removes all details, leaving only id and isDeleted
-func (m *dsObjectStore) DeleteObject(id string) error {
+func (s *dsObjectStore) DeleteObject(id string) error {
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err := m.UpdateObjectDetails(id, &types.Struct{
+	err := s.UpdateObjectDetails(id, &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():        pbtypes.String(id),
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
@@ -384,9 +384,9 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 		}
 	}
 
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
+	s.l.Lock()
+	defer s.l.Unlock()
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -413,24 +413,24 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 		return err
 	}
 
-	if m.fts != nil {
-		_ = m.removeFromIndexQueue(id)
+	if s.fts != nil {
+		_ = s.removeFromIndexQueue(id)
 
-		if err := m.fts.Delete(id); err != nil {
+		if err := s.fts.Delete(id); err != nil {
 			return err
 		}
 	}
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	pages, err := m.getObjectsInfo(txn, []string{id})
+	pages, err := s.getObjectsInfo(txn, []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -450,12 +450,12 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 		return nil, err
 	}
 
-	inbound, err := m.getObjectsInfo(txn, inboundIds)
+	inbound, err := s.getObjectsInfo(txn, inboundIds)
 	if err != nil {
 		return nil, err
 	}
 
-	outbound, err := m.getObjectsInfo(txn, outboundsIds)
+	outbound, err := s.getObjectsInfo(txn, outboundsIds)
 	if err != nil {
 		return nil, err
 	}
@@ -470,8 +470,8 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 	}, nil
 }
 
-func (m *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -480,8 +480,8 @@ func (m *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
 	return findOutboundLinks(txn, id)
 }
 
-func (m *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -490,8 +490,8 @@ func (m *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
 	return findInboundLinks(txn, id)
 }
 
-func (m *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -500,8 +500,8 @@ func (m *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	return getObjectDetails(txn, id)
 }
 
-func (m *dsObjectStore) List() ([]*model.ObjectInfo, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) List() ([]*model.ObjectInfo, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -512,11 +512,11 @@ func (m *dsObjectStore) List() ([]*model.ObjectInfo, error) {
 		return nil, err
 	}
 
-	return m.getObjectsInfo(txn, ids)
+	return s.getObjectsInfo(txn, ids)
 }
 
-func (m *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -531,18 +531,18 @@ func (m *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
 	return exists, nil
 }
 
-func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	return m.getObjectsInfo(txn, ids)
+	return s.getObjectsInfo(txn, ids)
 }
 
-func (m *dsObjectStore) ListIds() ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) ListIds() ([]string, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -551,24 +551,24 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
 }
 
-func (m *dsObjectStore) Prefix() string {
+func (s *dsObjectStore) Prefix() string {
 	return pagesPrefix
 }
 
-func (m *dsObjectStore) Indexes() []localstore.Index {
+func (s *dsObjectStore) Indexes() []localstore.Index {
 	return []localstore.Index{}
 }
 
 // TODO objstore: Just use dependency injection
-func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
-	return m.fts
+func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
+	return s.fts
 }
 
-func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query, error) {
-	if m.fts == nil {
+func (s *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query, error) {
+	if s.fts == nil {
 		return dsq, fmt.Errorf("fullText search not configured")
 	}
-	ids, err := m.fts.Search(text)
+	ids, err := s.fts.Search(text)
 	if err != nil {
 		return dsq, err
 	}
@@ -607,8 +607,8 @@ func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	}
 }
 
-func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
-	sbt, err := m.sbtProvider.Type(id)
+func (s *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
+	sbt, err := s.sbtProvider.Type(id)
 	if err != nil {
 		log.With("thread", id).Errorf("failed to extract smartblock type %s", id) // todo rq: surpess error?
 		return nil, ErrNotAnObject
@@ -619,8 +619,8 @@ func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 
 	var details *types.Struct
 	if indexDetails, _ := sbt.Indexable(); !indexDetails {
-		if m.sourceService != nil {
-			details, err = m.sourceService.DetailsFromIdBasedSource(id)
+		if s.sourceService != nil {
+			details, err = s.sourceService.DetailsFromIdBasedSource(id)
 			if err != nil {
 				return nil, ErrObjectNotFound
 			}
@@ -648,10 +648,10 @@ func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 	}, nil
 }
 
-func (m *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.ObjectInfo, error) {
 	var objects []*model.ObjectInfo
 	for _, id := range ids {
-		info, err := m.getObjectInfo(txn, id)
+		info, err := s.getObjectInfo(txn, id)
 		if err != nil {
 			if strings.HasSuffix(err.Error(), "key not found") || err == ErrObjectNotFound || err == ErrNotAnObject {
 				continue
@@ -768,75 +768,65 @@ func extractIdFromKey(key string) (id string) {
 	return key[i+1:]
 }
 
-func (m *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
-	objectType := &model.ObjectType{}
+func (s *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
-		var err error
-		objectType, err = bundle.GetTypeByUrl(url)
-		if err != nil {
-			if err == bundle.ErrNotFound {
-				return nil, fmt.Errorf("unknown object type")
-			}
-			return nil, err
-		}
-		return objectType, nil
+		return bundle.GetTypeByUrl(url)
 	}
-
-	// TODO objstore: use QueryByIds
-	ois, err := m.GetByIDs(url)
+	objectInfos, err := s.GetByIDs(url)
 	if err != nil {
 		return nil, err
 	}
-	if len(ois) == 0 {
+	if len(objectInfos) == 0 {
 		return nil, fmt.Errorf("object type not found in the index")
 	}
-
-	details := ois[0].Details
+	details := objectInfos[0].Details
 
 	if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
 		return nil, fmt.Errorf("object %s is not an object type", url)
 	}
 
-	// relationKeys := ois[0].RelationKeys
-	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
-		rk, err := pbtypes.RelationIdToKey(relId)
-		if err != nil {
-			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relId)
-			continue
-		}
-
-		rel, err := m.GetRelationByKey(rk)
-		if err != nil {
-			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relId)
-			continue
-		}
-
-		objectType.RelationLinks = append(objectType.RelationLinks, (&relationutils.Relation{rel}).RelationLink())
-	}
-
-	objectType.Url = url
-	if details != nil && details.Fields != nil {
-		if v, ok := details.Fields[bundle.RelationKeyName.String()]; ok {
-			objectType.Name = v.GetStringValue()
-		}
-		if v, ok := details.Fields[bundle.RelationKeyRecommendedLayout.String()]; ok {
-			objectType.Layout = model.ObjectTypeLayout(int(v.GetNumberValue()))
-		}
-		if v, ok := details.Fields[bundle.RelationKeyIconEmoji.String()]; ok {
-			objectType.IconEmoji = v.GetStringValue()
-		}
-	}
-
-	objectType.IsArchived = pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
-	// we use Page for all custom object types
-	objectType.Types = []model.SmartBlockType{model.SmartBlockType_Page}
-	return objectType, err
+	return s.extractObjectTypeFromDetails(details, url), nil
 }
 
-func (m *dsObjectStore) GetObjectTypes(urls []string) (ots []*model.ObjectType, err error) {
+func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {
+	objectType := &model.ObjectType{}
+	s.fillObjectTypeWithRecommendedRelations(details, objectType)
+	objectType.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
+	objectType.Layout = model.ObjectTypeLayout(int(pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())))
+	objectType.IconEmoji = pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String())
+	objectType.Url = url
+	objectType.IsArchived = pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
+
+	// we use Page for all custom object types
+	objectType.Types = []model.SmartBlockType{model.SmartBlockType_Page}
+	return objectType
+}
+
+func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.Struct, objectType *model.ObjectType) {
+	// relationKeys := objectInfos[0].RelationKeys
+	for _, relationID := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		relationKey, err := pbtypes.RelationIdToKey(relationID)
+		if err == nil {
+			//nolint:govet
+			relation, err := s.GetRelationByKey(relationKey)
+			if err == nil {
+				objectType.RelationLinks = append(
+					objectType.RelationLinks,
+					(&relationutils.Relation{Relation: relation}).RelationLink(),
+				)
+			} else {
+				log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relationID)
+			}
+		} else {
+			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relationID)
+		}
+	}
+}
+
+func (s *dsObjectStore) GetObjectTypes(urls []string) (ots []*model.ObjectType, err error) {
 	ots = make([]*model.ObjectType, 0, len(urls))
 	for _, url := range urls {
-		ot, e := m.GetObjectType(url)
+		ot, e := s.GetObjectType(url)
 		if e != nil {
 			err = e
 		} else {

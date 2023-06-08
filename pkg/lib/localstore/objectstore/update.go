@@ -19,10 +19,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
+	s.l.Lock()
+	defer s.l.Unlock()
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -32,7 +32,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	)
 
 	if details != nil {
-		exInfo, err := m.getObjectInfo(txn, id)
+		exInfo, err := s.getObjectInfo(txn, id)
 		if err != nil {
 			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
 		}
@@ -47,7 +47,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		}
 	}
 
-	err = m.updateObjectDetails(txn, id, before, details)
+	err = s.updateObjectDetails(txn, id, before, details)
 	if err != nil {
 		return err
 	}
@@ -59,43 +59,43 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	return nil
 }
 
-func (m *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
+	s.l.Lock()
+	defer s.l.Unlock()
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	err = m.updateObjectLinks(txn, id, links)
+	err = s.updateObjectLinks(txn, id, links)
 	if err != nil {
 		return err
 	}
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
+	s.l.Lock()
+	defer s.l.Unlock()
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
 	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
-		if err := m.updateSnippet(txn, id, snippet); err != nil {
+		if err := s.updateSnippet(txn, id, snippet); err != nil {
 			return err
 		}
 	}
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
 	// todo: review this method. Any other way to do this?
 	for {
-		err := m.updatePendingLocalDetails(id, proc)
+		err := s.updatePendingLocalDetails(id, proc)
 		if errors.Is(err, badger.ErrConflict) {
 			continue
 		}
@@ -106,15 +106,15 @@ func (m *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	}
 }
 
-func (m *dsObjectStore) updatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) updatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 	key := pendingDetailsBase.ChildString(id)
 
-	objDetails, err := m.getPendingLocalDetails(txn, id)
+	objDetails, err := s.getPendingLocalDetails(txn, id)
 	if err != nil && err != ds.ErrNotFound {
 		return fmt.Errorf("get pending details: %w", err)
 	}
@@ -149,7 +149,7 @@ func (m *dsObjectStore) updatePendingLocalDetails(id string, proc func(details *
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
+func (s *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
 	val, err := txn.Get(pendingDetailsBase.ChildString(id))
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (m *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*mod
 	return unmarshalDetails(id, val)
 }
 
-func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
+func (s *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
 	exLinks, _ := findOutboundLinks(txn, id)
 	var addedLinks, removedLinks []string
 
@@ -181,9 +181,9 @@ func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []st
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before model.ObjectInfo, details *types.Struct) error {
+func (s *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before model.ObjectInfo, details *types.Struct) error {
 	if details != nil {
-		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
+		if err := s.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
 	}
@@ -191,7 +191,7 @@ func (m *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before m
 	return nil
 }
 
-func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
+func (s *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
 
@@ -213,35 +213,35 @@ func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		return ErrDetailsNotChanged
 	}
 
-	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
+	err = localstore.UpdateIndexesWithTxn(s, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
 	}
 
 	if newDetails != nil && newDetails.Details.Fields != nil {
-		m.sendUpdatesToSubscriptions(id, newDetails.Details)
+		s.sendUpdatesToSubscriptions(id, newDetails.Details)
 	}
 
 	return nil
 }
 
 // should be called under the mutex
-func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
+func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	if m.onChangeCallback != nil {
-		m.onChangeCallback(database.Record{
+	if s.onChangeCallback != nil {
+		s.onChangeCallback(database.Record{
 			Details: detCopy,
 		})
 	}
-	for i := range m.subscriptions {
+	for i := range s.subscriptions {
 		go func(sub database.Subscription) {
 			_ = sub.Publish(id, detCopy)
-		}(m.subscriptions[i])
+		}(s.subscriptions[i])
 	}
 }
 
-func (m *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string) error {
+func (s *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
 	return txn.Put(snippetKey, []byte(snippet))
 }

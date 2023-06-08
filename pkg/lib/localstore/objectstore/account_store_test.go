@@ -13,7 +13,7 @@ func TestWorkspace(t *testing.T) {
 	t.Run("no saved workspace", func(t *testing.T) {
 		s := newStoreFixture(t)
 
-		_, err := s.GetCurrentWorkspaceId()
+		_, err := s.GetCurrentWorkspaceID()
 		require.Error(t, err)
 	})
 
@@ -21,23 +21,23 @@ func TestWorkspace(t *testing.T) {
 		s := newStoreFixture(t)
 
 		want := "workspace1"
-		err := s.SetCurrentWorkspaceId(want)
+		err := s.SetCurrentWorkspaceID(want)
 		require.NoError(t, err)
 
-		got, err := s.GetCurrentWorkspaceId()
+		got, err := s.GetCurrentWorkspaceID()
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
 	t.Run("remove and load", func(t *testing.T) {
 		s := newStoreFixture(t)
-		err := s.SetCurrentWorkspaceId("workspace1")
+		err := s.SetCurrentWorkspaceID("workspace1")
 		require.NoError(t, err)
 
-		err = s.RemoveCurrentWorkspaceId()
+		err = s.RemoveCurrentWorkspaceID()
 		require.NoError(t, err)
 
-		_, err = s.GetCurrentWorkspaceId()
+		_, err = s.GetCurrentWorkspaceID()
 		require.Error(t, err)
 	})
 }

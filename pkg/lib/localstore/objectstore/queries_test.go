@@ -503,7 +503,7 @@ func TestQueryObjectIds(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
-		ids, _, err := s.QueryObjectIds(database.Query{}, nil)
+		ids, _, err := s.QueryObjectIDs(database.Query{}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id2", "id3"}, ids)
 	})
@@ -523,19 +523,19 @@ func TestQueryObjectIds(t *testing.T) {
 		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
-		ids, _, err := s.QueryObjectIds(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
+		ids, _, err := s.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id3"}, ids)
 
 		t.Run("with limit", func(t *testing.T) {
-			ids, _, err := s.QueryObjectIds(database.Query{
+			ids, _, err := s.QueryObjectIDs(database.Query{
 				Limit: 1,
 			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
 			require.NoError(t, err)
 			assert.Equal(t, []string{"id1"}, ids)
 		})
 		t.Run("with limit and offset", func(t *testing.T) {
-			ids, _, err := s.QueryObjectIds(database.Query{
+			ids, _, err := s.QueryObjectIDs(database.Query{
 				Limit:  1,
 				Offset: 1,
 			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
@@ -560,7 +560,7 @@ func TestQueryObjectIds(t *testing.T) {
 
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
-		ids, _, err := s.QueryObjectIds(database.Query{
+		ids, _, err := s.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
@@ -642,7 +642,7 @@ func TestQueryById(t *testing.T) {
 	t.Run("no ids", func(t *testing.T) {
 		s := newStoreFixture(t)
 
-		recs, err := s.QueryById(nil)
+		recs, err := s.QueryByID(nil)
 		require.NoError(t, err)
 		assert.Empty(t, recs)
 	})
@@ -654,12 +654,12 @@ func TestQueryById(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
-		recs, err := s.QueryById([]string{"id1", "id3"})
+		recs, err := s.QueryByID([]string{"id1", "id3"})
 		require.NoError(t, err)
 		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
 
 		t.Run("reverse order", func(t *testing.T) {
-			recs, err := s.QueryById([]string{"id3", "id1"})
+			recs, err := s.QueryByID([]string{"id3", "id1"})
 			require.NoError(t, err)
 			assertRecordsEqual(t, []testObject{obj3, obj1}, recs)
 		})
@@ -687,7 +687,7 @@ func TestQueryById(t *testing.T) {
 
 		s.sourceService = dummySourceService{objectToReturn: obj4}
 
-		recs, err := s.QueryById([]string{"id2", "id4"})
+		recs, err := s.QueryByID([]string{"id2", "id4"})
 		require.NoError(t, err)
 		assertRecordsEqual(t, []testObject{obj2, obj4}, recs)
 	})
@@ -703,7 +703,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	recordsCh := make(chan *types.Struct)
 	sub := database.NewSubscription(nil, recordsCh)
 
-	recs, closeSub, err := s.QueryByIdAndSubscribeForChanges([]string{"id1", "id3"}, sub)
+	recs, closeSub, err := s.QueryByIDAndSubscribeForChanges([]string{"id1", "id3"}, sub)
 	require.NoError(t, err)
 	defer closeSub()
 

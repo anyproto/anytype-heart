@@ -246,7 +246,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 		err := s.UpdateObjectLinks("id1", []string{})
 		require.NoError(t, err)
 
-		out, err := s.GetOutboundLinksById("id1")
+		out, err := s.GetOutboundLinksByID("id1")
 		require.NoError(t, err)
 		assert.Empty(t, out)
 	})
@@ -290,7 +290,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 }
 
 func (fx *storeFixture) assertInboundLinks(t *testing.T, id string, links []string) {
-	in, err := fx.GetInboundLinksById(id)
+	in, err := fx.GetInboundLinksByID(id)
 	assert.NoError(t, err)
 	if len(links) == 0 {
 		assert.Empty(t, in)
@@ -300,7 +300,7 @@ func (fx *storeFixture) assertInboundLinks(t *testing.T, id string, links []stri
 }
 
 func (fx *storeFixture) assertOutboundLinks(t *testing.T, id string, links []string) {
-	out, err := fx.GetOutboundLinksById(id)
+	out, err := fx.GetOutboundLinksByID(id)
 	assert.NoError(t, err)
 	if len(links) == 0 {
 		assert.Empty(t, out)

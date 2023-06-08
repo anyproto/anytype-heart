@@ -7,8 +7,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetCurrentWorkspaceID() (string, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return "", fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -21,8 +21,8 @@ func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
 	return string(val), nil
 }
 
-func (m *dsObjectStore) SetCurrentWorkspaceId(threadId string) (err error) {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) SetCurrentWorkspaceID(threadId string) (err error) {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -35,8 +35,8 @@ func (m *dsObjectStore) SetCurrentWorkspaceId(threadId string) (err error) {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) RemoveCurrentWorkspaceID() (err error) {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -49,8 +49,8 @@ func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error) {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error) {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -68,8 +68,8 @@ func (m *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPa
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}

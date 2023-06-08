@@ -14,14 +14,14 @@ import (
 )
 
 // TODO: objstore: no one uses total
-func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []database.Record, total int, err error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []database.Record, total int, err error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	dsq, err := m.buildQuery(sch, q)
+	dsq, err := s.buildQuery(sch, q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
@@ -68,7 +68,7 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	return results, total, nil
 }
 
-func (m *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (query.Query, error) {
+func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (query.Query, error) {
 	dsq, err := q.DSQuery(sch)
 	if err != nil {
 		return query.Query{}, fmt.Errorf("init datastore query: %w", err)
@@ -76,14 +76,14 @@ func (m *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (query.Q
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	discardSystemObjects := newSmartblockTypesFilter(m.sbtProvider, true, []smartblock.SmartBlockType{
+	discardSystemObjects := newSmartblockTypesFilter(s.sbtProvider, true, []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
 	})
 	dsq.Filters = append([]query.Filter{discardSystemObjects}, dsq.Filters...)
 
 	if q.FullText != "" {
-		dsq, err = m.makeFTSQuery(q.FullText, dsq)
+		dsq, err = s.makeFTSQuery(q.FullText, dsq)
 		if err != nil {
 			return query.Query{}, fmt.Errorf("append full text search query: %w", err)
 		}
@@ -91,14 +91,14 @@ func (m *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (query.Q
 	return dsq, nil
 }
 
-func (m *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record, err error) {
+func (s *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record, err error) {
 	if f == nil || f.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
 	dsq := query.Query{
 		Filters: []query.Filter{f},
 	}
-	txn, err := m.ds.NewTransaction(true)
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -127,19 +127,19 @@ func (m *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record
 }
 
 // TODO: objstore: no one uses total
-func (m *dsObjectStore) QueryObjectIds(q database.Query, smartBlockTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	dsq, err := m.buildQuery(nil, q)
+	dsq, err := s.buildQuery(nil, q)
 	if err != nil {
 		return
 	}
 	if len(smartBlockTypes) > 0 {
-		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(m.sbtProvider, false, smartBlockTypes)}, dsq.Filters...)
+		dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes)}, dsq.Filters...)
 	}
 
 	res, err := txn.Query(dsq)
@@ -177,17 +177,17 @@ func (m *dsObjectStore) QueryObjectIds(q database.Query, smartBlockTypes []smart
 	return ids, total, nil
 }
 
-func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
 	for _, id := range ids {
-		if sbt, err := m.sbtProvider.Type(id); err == nil {
-			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
-				details, err := m.sourceService.DetailsFromIdBasedSource(id)
+		if sbt, err := s.sbtProvider.Type(id); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+				details, err := s.sourceService.DetailsFromIdBasedSource(id)
 				if err != nil {
 					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
@@ -215,27 +215,27 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	return
 }
 
-func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, close func(), err error) {
-	m.l.Lock()
-	defer m.l.Unlock()
+func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, close func(), err error) {
+	s.l.Lock()
+	defer s.l.Unlock()
 
 	if sub == nil {
 		err = fmt.Errorf("subscription func is nil")
 		return
 	}
 	sub.Subscribe(ids)
-	records, err = m.QueryById(ids)
+	records, err = s.QueryByID(ids)
 	if err != nil {
 		// can mean only the datastore is already closed, so we can resign and return
-		log.Errorf("QueryByIdAndSubscribeForChanges failed to query ids: %v", err)
+		log.Errorf("QueryByIDAndSubscribeForChanges failed to query ids: %v", err)
 		return nil, nil, err
 	}
 
 	close = func() {
-		m.closeAndRemoveSubscription(sub)
+		s.closeAndRemoveSubscription(sub)
 	}
 
-	m.addSubscriptionIfNotExists(sub)
+	s.addSubscriptionIfNotExists(sub)
 
 	return
 }

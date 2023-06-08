@@ -12,8 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func (m *dsObjectStore) AddToIndexQueue(id string) error {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) AddToIndexQueue(id string) error {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -26,8 +26,8 @@ func (m *dsObjectStore) AddToIndexQueue(id string) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) removeFromIndexQueue(id string) error {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) removeFromIndexQueue(id string) error {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -40,8 +40,8 @@ func (m *dsObjectStore) removeFromIndexQueue(id string) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -64,9 +64,9 @@ func (m *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
 	return ids, nil
 }
 
-func (m *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
+func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
 	for _, id := range ids {
-		err := m.removeFromIndexQueue(id)
+		err := s.removeFromIndexQueue(id)
 		if err != nil {
 			// if we have the error here we have nothing to do but retry later
 			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", id, err)
@@ -74,8 +74,8 @@ func (m *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
 	}
 }
 
-func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -97,8 +97,8 @@ func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, e
 	return &objChecksum, nil
 }
 
-func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (err error) {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (err error) {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -117,8 +117,8 @@ func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 }
 
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
-func (m *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
-	txn, err := m.ds.NewTransaction(true)
+func (s *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
+	txn, err := s.ds.NewTransaction(true)
 	if err != nil {
 		return "", fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -133,8 +133,8 @@ func (m *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, er
 	}
 }
 
-func (m *dsObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) (err error) {
-	txn, err := m.ds.NewTransaction(false)
+func (s *dsObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) (err error) {
+	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
