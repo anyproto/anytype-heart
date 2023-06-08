@@ -6,9 +6,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,9 +15,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -147,6 +148,7 @@ func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigratio
 	}
 
 	b.handleSpaceDashboard(newId)
+	b.createNotesAndTaskTrackerWidgets()
 	return
 }
 
@@ -240,7 +242,7 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 }
 
 func (b *builtinObjects) createSpaceDashboardWidget(id string) {
-	targetID, err := b.getFirstWidgetBlockId()
+	targetID, err := b.getWidgetBlockIdByNumber(0)
 	if err != nil {
 		log.Errorf(err.Error())
 		return
@@ -269,16 +271,76 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 	}
 }
 
-func (b *builtinObjects) getFirstWidgetBlockId() (string, error) {
+func (b *builtinObjects) createNotesAndTaskTrackerWidgets() {
+	targetID, err := b.getWidgetBlockIdByNumber(1)
+	if err != nil {
+		log.Errorf("Failed to get id of second widget block: %s", err.Error())
+		return
+	}
+	for _, setOf := range []string{bundle.TypeKeyNote.String(), bundle.TypeKeyTask.String()} {
+		id, err := b.getObjectIdBySetOfValue(setOf)
+		if err != nil {
+			log.Errorf("Failed to get id of set by '%s' to create widget object: %s", setOf, err.Error())
+			continue
+		}
+		if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    b.coreService.PredefinedBlocks().Widgets,
+			TargetId:     targetID,
+			Position:     model.Block_Bottom,
+			WidgetLayout: model.BlockContentWidget_CompactList,
+			Block: &model.Block{
+				Id:          "",
+				ChildrenIds: nil,
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: id,
+						Style:         model.BlockContentLink_Page,
+						IconSize:      model.BlockContentLink_SizeNone,
+						CardStyle:     model.BlockContentLink_Inline,
+						Description:   model.BlockContentLink_None,
+					},
+				},
+			},
+		}); err != nil {
+			log.Errorf("Failed to make Widget block for set by '%s': %s", setOf, err.Error())
+		}
+	}
+}
+
+func (b *builtinObjects) getObjectIdBySetOfValue(setOfValue string) (string, error) {
+	ids, _, err := b.store.QueryObjectIds(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySetOf.String(),
+				Value:       pbtypes.StringList([]string{addr.ObjectTypeKeyToIdPrefix + setOfValue}),
+			},
+		},
+	}, nil)
+	if err == nil && len(ids) > 0 {
+		return ids[0], nil
+	}
+	if len(ids) == 0 {
+		err = fmt.Errorf("no object found")
+	}
+	return "", err
+}
+
+func (b *builtinObjects) getWidgetBlockIdByNumber(index int) (string, error) {
 	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
 	if err != nil {
 		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
 	}
-	if len(w.Blocks()) < 2 {
-		return "", fmt.Errorf("failed to get first block of Widget object: %s", err.Error())
+	root := w.Pick(w.RootId())
+	if root == nil {
+		return "", fmt.Errorf("failed to pick root block of Widget object: %s", err.Error())
 	}
-	if w.Blocks()[1] == nil {
+	if len(root.Model().ChildrenIds) < index+1 {
+		return "", fmt.Errorf("failed to get %d block of Widget object as there olny %d of them", index+1, len(root.Model().ChildrenIds))
+	}
+	target := w.Pick(root.Model().ChildrenIds[index])
+	if target == nil {
 		return "", fmt.Errorf("failed to get id of first block of Widget object: %s", err.Error())
 	}
-	return w.Blocks()[1].Id, nil
+	return target.Model().Id, nil
 }
