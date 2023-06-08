@@ -72,8 +72,12 @@ func combineCodeBlocks(accum []*model.Block) (res []*model.Block) {
 }
 
 func provideCodeBlock(textArr []string, language string) *model.Block {
+	var field *types.Struct
+	if language != "" {
+		field = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
+	}
 	return &model.Block{
-		Fields: &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}},
+		Fields: field,
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  strings.Join(textArr, "\n"),
