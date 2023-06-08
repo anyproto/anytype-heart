@@ -12,8 +12,139 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+func TestUpdateObjectDetails(t *testing.T) {
+	t.Run("with nil field expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		err := s.UpdateObjectDetails("id1", &types.Struct{})
+		require.Error(t, err)
+	})
+
+	t.Run("with empty details expect just id detail is written", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		err := s.UpdateObjectDetails("id1", &types.Struct{Fields: map[string]*types.Value{}})
+		require.NoError(t, err)
+
+		want := makeDetails(testObject{
+			bundle.RelationKeyId: pbtypes.String("id1"),
+		})
+		got, err := s.GetDetails("id1")
+		require.NoError(t, err)
+		assert.Equal(t, want, got.GetDetails())
+	})
+
+	t.Run("with no id in details expect id is added on write", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		err := s.UpdateObjectDetails("id1", makeDetails(testObject{
+			bundle.RelationKeyName: pbtypes.String("some name"),
+		}))
+		require.NoError(t, err)
+
+		want := makeDetails(testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyName: pbtypes.String("some name"),
+		})
+		got, err := s.GetDetails("id1")
+		require.NoError(t, err)
+		assert.Equal(t, want, got.GetDetails())
+	})
+
+	t.Run("with no existing details try to write nil details and expect nothing is changed", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		err := s.UpdateObjectDetails("id1", nil)
+		require.NoError(t, err)
+
+		det, err := s.GetDetails("id1")
+		assert.NoError(t, err)
+		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, det.GetDetails())
+	})
+
+	t.Run("with existing details write nil details and expect nothing is changed", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj := makeObjectWithName("id1", "foo")
+		s.addObjects(t, []testObject{obj})
+
+		err := s.UpdateObjectDetails("id1", nil)
+		require.NoError(t, err)
+
+		det, err := s.GetDetails("id1")
+		assert.NoError(t, err)
+		assert.Equal(t, makeDetails(obj), det.GetDetails())
+	})
+
+	t.Run("with write same details expect error", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj := makeObjectWithName("id1", "foo")
+		s.addObjects(t, []testObject{obj})
+
+		err := s.UpdateObjectDetails("id1", makeDetails(obj))
+		require.Equal(t, ErrDetailsNotChanged, err)
+	})
+
+	t.Run("with updated details just store them", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj := makeObjectWithName("id1", "foo")
+		s.addObjects(t, []testObject{obj})
+
+		newObj := makeObjectWithNameAndDescription("id1", "foo", "bar")
+		err := s.UpdateObjectDetails("id1", makeDetails(newObj))
+		require.NoError(t, err)
+
+		det, err := s.GetDetails("id1")
+		assert.NoError(t, err)
+		assert.Equal(t, makeDetails(newObj), det.GetDetails())
+	})
+}
+
+func TestSendUpdatesToSubscriptions(t *testing.T) {
+	t.Run("with details are not changed expect no updates are sent", func(t *testing.T) {
+		s := newStoreFixture(t)
+		s.addObjects(t, []testObject{makeObjectWithName("id1", "foo")})
+
+		s.SubscribeForAll(func(rec database.Record) {
+			require.Fail(t, "unexpected call")
+		})
+
+		err := s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "foo")))
+		require.Equal(t, ErrDetailsNotChanged, err)
+	})
+
+	t.Run("with new details", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj := makeObjectWithName("id1", "foo")
+
+		var called int
+		s.SubscribeForAll(func(rec database.Record) {
+			called++
+			assert.Equal(t, makeDetails(obj), rec.Details)
+		})
+
+		s.addObjects(t, []testObject{obj})
+		assert.Equal(t, 1, called)
+	})
+
+	t.Run("with updated details", func(t *testing.T) {
+		s := newStoreFixture(t)
+		s.addObjects(t, []testObject{makeObjectWithName("id1", "foo")})
+
+		updatedObj := makeObjectWithNameAndDescription("id1", "foobar", "bar")
+		var called int
+		s.SubscribeForAll(func(rec database.Record) {
+			called++
+			assert.Equal(t, makeDetails(updatedObj), rec.Details)
+		})
+
+		s.addObjects(t, []testObject{updatedObj})
+		assert.Equal(t, 1, called)
+	})
+}
 
 func TestUpdatePendingLocalDetails(t *testing.T) {
 	t.Run("with error in process function expect previous details are not touched", func(t *testing.T) {
