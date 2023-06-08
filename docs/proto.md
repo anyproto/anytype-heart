@@ -2261,7 +2261,7 @@ Front end to middleware request-to-create-an account
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
-| alphaInviteCode | [string](#string) |  |  |
+| alphaInviteCode | [string](#string) |  | DEPRECATED |
 
 
 

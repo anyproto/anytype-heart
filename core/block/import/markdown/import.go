@@ -21,14 +21,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (
 	emojiAproxRegexp = regexp.MustCompile(`[\x{2194}-\x{329F}\x{1F000}-\x{1FADF}]`)
-
-	log          = logging.Logger("markdown-import")
-	articleIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔", "📒", "📝", "📄", "📑"}
+	log              = logging.Logger("markdown-import")
 )
 
 const numberOfStages = 9 // 8 cycles to get snaphots and 1 cycle to create objects
@@ -557,30 +554,13 @@ func (m *Markdown) setNewID(
 	return nil
 }
 
-func (m *Markdown) setDetails(file *FileInfo, name string, details map[string]*types.Struct) {
+func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[string]*types.Struct) {
 	var title, emoji string
 	if len(file.ParsedBlocks) > 0 {
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
-
-	if emoji == "" {
-		emoji = slice.GetRandomString(articleIcons, name)
-	}
-
-	if title == "" {
-		title = strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
-		titleParts := strings.Split(title, " ")
-		title = strings.Join(titleParts[:len(titleParts)-1], " ")
-	}
-
-	file.Title = title
-	// FIELD-BLOCK
-	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():           pbtypes.String(title),
-		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
-		bundle.RelationKeySourceFilePath.String(): pbtypes.String(file.Source),
-	}
-	details[name] = &types.Struct{Fields: fields}
+	details[fileName] = converter.GetCommonDetails(fileName, title, emoji)
+	file.Title = pbtypes.GetString(details[fileName], bundle.RelationKeyName.String())
 }
 
 func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string) {

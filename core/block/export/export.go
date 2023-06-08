@@ -230,7 +230,7 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 			if !validType(sbt) {
 				continue
 			}
-			rec, qErr := e.objectStore.QueryById(links)
+			rec, qErr := e.objectStore.QueryById([]string{link})
 			if qErr != nil {
 				log.Errorf("failed to query id %s, err: %s", qErr, err.Error())
 				continue
