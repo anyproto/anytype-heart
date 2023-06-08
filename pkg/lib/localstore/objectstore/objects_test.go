@@ -313,3 +313,49 @@ func TestGetObjectType(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 }
+
+func TestGetAggregatedOptions(t *testing.T) {
+	t.Run("with no options", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		got, err := s.GetAggregatedOptions(bundle.RelationKeyTag.String())
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("with options", func(t *testing.T) {
+		s := newStoreFixture(t)
+		opt1 := makeRelationOptionObject("id1", "name1", "color1", bundle.RelationKeyTag.String())
+		opt2 := makeRelationOptionObject("id2", "name2", "color2", bundle.RelationKeyStatus.String())
+		opt3 := makeRelationOptionObject("id3", "name3", "color3", bundle.RelationKeyTag.String())
+		s.addObjects(t, []testObject{opt1, opt2, opt3})
+
+		got, err := s.GetAggregatedOptions(bundle.RelationKeyTag.String())
+		require.NoError(t, err)
+		want := []*model.RelationOption{
+			{
+				Id:          "id1",
+				Text:        "name1",
+				Color:       "color1",
+				RelationKey: bundle.RelationKeyTag.String(),
+			},
+			{
+				Id:          "id3",
+				Text:        "name3",
+				Color:       "color3",
+				RelationKey: bundle.RelationKeyTag.String(),
+			},
+		}
+		assert.Equal(t, want, got)
+	})
+}
+
+func makeRelationOptionObject(id, name, color, relationKey string) testObject {
+	return testObject{
+		bundle.RelationKeyId:                  pbtypes.String(id),
+		bundle.RelationKeyType:                pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		bundle.RelationKeyName:                pbtypes.String(name),
+		bundle.RelationKeyRelationOptionColor: pbtypes.String(color),
+		bundle.RelationKeyRelationKey:         pbtypes.String(relationKey),
+	}
+}
