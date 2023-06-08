@@ -25,7 +25,7 @@ type clientPeerManager struct {
 	sync.Mutex
 }
 
-func (n *clientPeerManager) Init(a *app.App) (err error) {
+func (n *clientPeerManager) Init(_ *app.App) (err error) {
 	n.responsiblePeerIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 	return
 }

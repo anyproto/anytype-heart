@@ -2,10 +2,10 @@ package space
 
 import (
 	"errors"
-	"github.com/anyproto/any-sync/commonspace/objectsync"
 	"sync/atomic"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/objectsync"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"golang.org/x/net/context"

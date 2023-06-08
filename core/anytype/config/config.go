@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
+	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/rpc"

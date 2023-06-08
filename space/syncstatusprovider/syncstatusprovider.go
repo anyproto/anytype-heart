@@ -13,7 +13,7 @@ func New() syncstatus.StatusServiceProvider {
 type statusProvider struct {
 }
 
-func (s statusProvider) Init(a *app.App) (err error) {
+func (s statusProvider) Init(_ *app.App) (err error) {
 	return nil
 }
 

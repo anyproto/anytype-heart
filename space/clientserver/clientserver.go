@@ -51,7 +51,7 @@ func (s *clientServer) Name() (name string) {
 }
 
 func (s *clientServer) Run(ctx context.Context) error {
-	if err := s.startServer(ctx); err != nil {
+	if err := s.startServer(); err != nil {
 		log.InfoCtx(ctx, "failed to start drpc server", zap.Error(err))
 	} else {
 		s.serverStarted = true
@@ -63,7 +63,7 @@ func (s *clientServer) Port() int {
 	return s.port
 }
 
-func (s *clientServer) startServer(ctx context.Context) (err error) {
+func (s *clientServer) startServer() (err error) {
 	db, err := s.provider.SpaceStorage()
 	if err != nil {
 		return
@@ -109,6 +109,6 @@ func (s *clientServer) prepareListener(port int) (net.Listener, error) {
 	return net.Listen("tcp", ":")
 }
 
-func (s *clientServer) Close(ctx context.Context) (err error) {
+func (s *clientServer) Close(_ context.Context) (err error) {
 	return nil
 }

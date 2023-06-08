@@ -3,14 +3,12 @@ package space
 import (
 	"context"
 	"errors"
-	"storj.io/drpc"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/net/peerservice"
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -20,11 +18,13 @@ import (
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
+	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
