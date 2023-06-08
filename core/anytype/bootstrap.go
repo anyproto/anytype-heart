@@ -5,6 +5,7 @@ import (
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/anytype-heart/space/syncstatusprovider"
@@ -153,6 +154,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(secureservice.New()).
 		Register(metric.New()).
 		Register(server.New()).
+		Register(debugserver.New()).
 		Register(pool.New()).
 		Register(peerservice.New()).
 		Register(yamux.New()).
