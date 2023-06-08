@@ -198,6 +198,57 @@ func TestList(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestListIds(t *testing.T) {
+	t.Run("with empty store", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		got, err := s.ListIds()
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+	t.Run("with not empty store", func(t *testing.T) {
+		s := newStoreFixture(t)
+		s.addObjects(t, []testObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+		})
+
+		got, err := s.ListIds()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id2"}, got)
+	})
+}
+
+func TestHasIDs(t *testing.T) {
+	s := newStoreFixture(t)
+	s.addObjects(t, []testObject{
+		makeObjectWithName("id1", "name1"),
+		makeObjectWithName("id2", "name2"),
+		makeObjectWithName("id3", "name3"),
+	})
+
+	t.Run("none found", func(t *testing.T) {
+		got, err := s.HasIDs("id4", "id5")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+	t.Run("some found", func(t *testing.T) {
+		got, err := s.HasIDs("id2", "id3", "id4")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id2", "id3"}, got)
+	})
+	t.Run("all found", func(t *testing.T) {
+		got, err := s.HasIDs("id1", "id3")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id1", "id3"}, got)
+	})
+	t.Run("all found, check that input and output orders are equal by reversing arguments", func(t *testing.T) {
+		got, err := s.HasIDs("id3", "id1")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id3", "id1"}, got)
+	})
+}
+
 func TestGetObjectType(t *testing.T) {
 	t.Run("get bundled type", func(t *testing.T) {
 		s := newStoreFixture(t)
