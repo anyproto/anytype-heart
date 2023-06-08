@@ -3,7 +3,10 @@ package anymark
 import (
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
@@ -16,7 +19,7 @@ func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 			accum = append(accum, b)
 		} else {
 			if len(accum) > 0 {
-				blocksOut = append(blocksOut, combineCodeBlocks(accum))
+				blocksOut = append(blocksOut, combineCodeBlocks(accum)...)
 				accum = []*model.Block{}
 			}
 
@@ -26,7 +29,7 @@ func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 	}
 
 	if len(accum) > 0 {
-		blocksOut = append(blocksOut, combineCodeBlocks(accum))
+		blocksOut = append(blocksOut, combineCodeBlocks(accum)...)
 	}
 
 	for _, b := range blocks {
@@ -40,16 +43,41 @@ func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 	return blocksOut
 }
 
-func combineCodeBlocks(accum []*model.Block) (res *model.Block) {
-	var textArr []string
+func combineCodeBlocks(accum []*model.Block) (res []*model.Block) {
+	var (
+		textArr         []string
+		currLanguage    string
+		resultCodeBlock []*model.Block
+	)
 
+	if len(accum) > 0 {
+		currLanguage = pbtypes.GetString(accum[0].GetFields(), "lang")
+	}
 	for _, b := range accum {
-		if b.GetText() != nil {
+		blockLanguage := pbtypes.GetString(b.GetFields(), "lang")
+		if b.GetText() != nil && blockLanguage == currLanguage {
 			textArr = append(textArr, b.GetText().Text)
+			continue
+		}
+		if blockLanguage != currLanguage {
+			resultCodeBlock = append(resultCodeBlock, provideCodeBlock(textArr, currLanguage))
+			textArr = []string{b.GetText().Text}
+			currLanguage = blockLanguage
 		}
 	}
+	if len(textArr) > 0 {
+		resultCodeBlock = append(resultCodeBlock, provideCodeBlock(textArr, currLanguage))
+	}
+	return resultCodeBlock
+}
 
-	res = &model.Block{
+func provideCodeBlock(textArr []string, language string) *model.Block {
+	var field *types.Struct
+	if language != "" {
+		field = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
+	}
+	return &model.Block{
+		Fields: field,
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  strings.Join(textArr, "\n"),
@@ -60,6 +88,4 @@ func combineCodeBlocks(accum []*model.Block) (res *model.Block) {
 			},
 		},
 	}
-
-	return res
 }
