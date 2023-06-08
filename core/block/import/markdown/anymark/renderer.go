@@ -136,7 +136,10 @@ func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter,
 	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.FencedCodeBlock)
 	language := string(n.Language(source))
-	fields := &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
+	var fields *types.Struct
+	if language != "" {
+		fields = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
+	}
 	if entering {
 		r.OpenNewTextBlock(model.BlockContentText_Code, fields)
 		r.writeLines(source, n)
