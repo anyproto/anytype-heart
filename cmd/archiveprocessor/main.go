@@ -44,6 +44,7 @@ var (
 		model.SmartBlockType_Workspace:   {},
 		model.SmartBlockType_Widget:      {},
 		model.SmartBlockType_ProfilePage: {},
+		model.SmartBlockType_Template:    {},
 	}
 )
 
