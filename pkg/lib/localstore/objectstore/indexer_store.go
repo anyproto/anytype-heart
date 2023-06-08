@@ -74,41 +74,6 @@ func (m *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
 	}
 }
 
-func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) error {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	res, err := txn.Query(query.Query{Prefix: indexQueueBase.String()})
-	if err != nil {
-		return fmt.Errorf("error query txn in datastore: %w", err)
-	}
-	for entry := range res.Next() {
-		id := extractIdFromKey(entry.Key)
-		ts, _ := binary.Varint(entry.Value)
-		indexErr := f(id, time.Unix(ts, 0))
-		if indexErr != nil {
-			log.Warnf("can't index '%s'(ts %d): %v", id, ts, indexErr)
-			// in case indexation is has failed it's better to remove this document from the index
-			// so we will not stuck with this object forever
-		}
-
-		err = m.removeFromIndexQueue(id)
-		if err != nil {
-			// if we have the error here we have nothing to do but retry later
-			log.Errorf("failed to remove %s(ts %d) from index, will redo the fulltext index: %v", id, ts, err)
-		}
-	}
-
-	err = res.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {

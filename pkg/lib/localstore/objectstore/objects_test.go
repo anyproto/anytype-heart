@@ -19,6 +19,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -68,37 +69,6 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
-}
-
-func TestDsObjectStore_IndexQueue(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-
-	app := testapp.New()
-	defer app.Close(context.Background())
-
-	ds := New(nil)
-	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).With(clientds.New()).With(ds).Start(context.Background())
-	require.NoError(t, err)
-
-	t.Run("add to queue", func(t *testing.T) {
-		require.NoError(t, ds.AddToIndexQueue("one"))
-		require.NoError(t, ds.AddToIndexQueue("one"))
-		require.NoError(t, ds.AddToIndexQueue("two"))
-
-		ids, err := ds.ListIDsFromFullTextQueue()
-		require.NoError(t, err)
-
-		assert.ElementsMatch(t, []string{"one", "two"}, ids)
-	})
-
-	t.Run("remove from queue", func(t *testing.T) {
-		ds.RemoveIDsFromFullTextQueue([]string{"one"})
-		ids, err := ds.ListIDsFromFullTextQueue()
-		require.NoError(t, err)
-
-		assert.ElementsMatch(t, []string{"two"}, ids)
-	})
 }
 
 func TestDsObjectStore_PrefixQuery(t *testing.T) {
@@ -312,4 +282,224 @@ func TestGetObjectType(t *testing.T) {
 
 		assert.Equal(t, want, got)
 	})
+}
+
+func TestGetAggregatedOptions(t *testing.T) {
+	t.Run("with no options", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		got, err := s.GetAggregatedOptions(bundle.RelationKeyTag.String())
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("with options", func(t *testing.T) {
+		s := newStoreFixture(t)
+		opt1 := makeRelationOptionObject("id1", "name1", "color1", bundle.RelationKeyTag.String())
+		opt2 := makeRelationOptionObject("id2", "name2", "color2", bundle.RelationKeyStatus.String())
+		opt3 := makeRelationOptionObject("id3", "name3", "color3", bundle.RelationKeyTag.String())
+		s.addObjects(t, []testObject{opt1, opt2, opt3})
+
+		got, err := s.GetAggregatedOptions(bundle.RelationKeyTag.String())
+		require.NoError(t, err)
+		want := []*model.RelationOption{
+			{
+				Id:          "id1",
+				Text:        "name1",
+				Color:       "color1",
+				RelationKey: bundle.RelationKeyTag.String(),
+			},
+			{
+				Id:          "id3",
+				Text:        "name3",
+				Color:       "color3",
+				RelationKey: bundle.RelationKeyTag.String(),
+			},
+		}
+		assert.Equal(t, want, got)
+	})
+}
+
+func makeRelationOptionObject(id, name, color, relationKey string) testObject {
+	return testObject{
+		bundle.RelationKeyId:                  pbtypes.String(id),
+		bundle.RelationKeyType:                pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+		bundle.RelationKeyName:                pbtypes.String(name),
+		bundle.RelationKeyRelationOptionColor: pbtypes.String(color),
+		bundle.RelationKeyRelationKey:         pbtypes.String(relationKey),
+	}
+}
+
+func TestGetRelationById(t *testing.T) {
+	t.Run("relation is not found", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		_, err := s.GetRelationById(bundle.RelationKeyTag.URL())
+		require.Error(t, err)
+	})
+
+	t.Run("requested object is not relation", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		s.addObjects(t, []testObject{makeObjectWithName("id1", "name1")})
+
+		_, err := s.GetRelationById("id1")
+		require.Error(t, err)
+	})
+
+	t.Run("relation is found", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		rel := &relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyName)}
+		rel.Id = bundle.RelationKeyName.URL()
+		relObject := rel.ToStruct()
+		err := s.UpdateObjectDetails(rel.Id, relObject)
+		require.NoError(t, err)
+
+		got, err := s.GetRelationById(bundle.RelationKeyName.URL())
+		require.NoError(t, err)
+		assert.Equal(t, relationutils.RelationFromStruct(relObject).Relation, got)
+	})
+}
+
+func TestGetWithLinksInfoByID(t *testing.T) {
+	s := newStoreFixture(t)
+	obj1 := makeObjectWithName("id1", "name1")
+	obj2 := makeObjectWithName("id2", "name2")
+	obj3 := makeObjectWithName("id3", "name3")
+	s.addObjects(t, []testObject{obj1, obj2, obj3})
+
+	err := s.UpdateObjectLinks("id1", []string{"id2", "id3"})
+	require.NoError(t, err)
+
+	t.Run("links of first object", func(t *testing.T) {
+		got, err := s.GetWithLinksInfoByID("id1")
+		require.NoError(t, err)
+
+		assert.Equal(t, makeDetails(obj1), got.Info.Details)
+		require.Len(t, got.Links.Outbound, 2)
+		assert.Equal(t, makeDetails(obj2), got.Links.Outbound[0].Details)
+		assert.Equal(t, makeDetails(obj3), got.Links.Outbound[1].Details)
+	})
+
+	t.Run("links of second object", func(t *testing.T) {
+		got, err := s.GetWithLinksInfoByID("id2")
+		require.NoError(t, err)
+
+		assert.Equal(t, makeDetails(obj2), got.Info.Details)
+		require.Len(t, got.Links.Inbound, 1)
+		assert.Equal(t, makeDetails(obj1), got.Links.Inbound[0].Details)
+	})
+
+	t.Run("links of third object", func(t *testing.T) {
+		got, err := s.GetWithLinksInfoByID("id3")
+		require.NoError(t, err)
+
+		assert.Equal(t, makeDetails(obj3), got.Info.Details)
+		require.Len(t, got.Links.Inbound, 1)
+		assert.Equal(t, makeDetails(obj1), got.Links.Inbound[0].Details)
+	})
+}
+
+func TestDeleteObject(t *testing.T) {
+	t.Run("object is not found", func(t *testing.T) {
+		s := newStoreFixture(t)
+
+		err := s.DeleteObject("id1")
+		require.NoError(t, err)
+
+		got, err := s.GetDetails("id1")
+		require.NoError(t, err)
+		assert.Equal(t, &model.ObjectDetails{
+			Details: makeDetails(testObject{
+				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			}),
+		}, got)
+	})
+
+	t.Run("object is already deleted", func(t *testing.T) {
+		s := newStoreFixture(t)
+		err := s.DeleteObject("id1")
+		require.NoError(t, err)
+
+		err = s.DeleteObject("id1")
+		require.NoError(t, err)
+
+		got, err := s.GetDetails("id1")
+		require.NoError(t, err)
+		assert.Equal(t, &model.ObjectDetails{
+			Details: makeDetails(testObject{
+				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			}),
+		}, got)
+	})
+
+	t.Run("delete object", func(t *testing.T) {
+		// Arrange
+		s := newStoreFixture(t)
+		obj := makeObjectWithName("id1", "name1")
+		s.addObjects(t, []testObject{obj})
+
+		err := s.UpdateObjectSnippet("id1", "snippet1")
+		require.NoError(t, err)
+
+		err = s.UpdateObjectLinks("id2", []string{"id1"})
+		require.NoError(t, err)
+
+		err = s.SaveLastIndexedHeadsHash("id1", "hash1")
+		require.NoError(t, err)
+
+		err = s.AddToIndexQueue("id1")
+		require.NoError(t, err)
+
+		// Act
+		err = s.DeleteObject("id1")
+		require.NoError(t, err)
+
+		// Assert
+		got, err := s.GetDetails("id1")
+		require.NoError(t, err)
+		assert.Equal(t, &model.ObjectDetails{
+			Details: makeDetails(testObject{
+				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			}),
+		}, got)
+
+		objects, err := s.GetByIDs("id1")
+		require.NoError(t, err)
+		assert.Empty(t, objects)
+
+		outbound, err := s.GetOutboundLinksById("id1")
+		require.NoError(t, err)
+		assert.Empty(t, outbound)
+
+		inbound, err := s.GetInboundLinksById("id2")
+		require.NoError(t, err)
+		assert.Empty(t, inbound)
+
+		hash, err := s.GetLastIndexedHeadsHash("id1")
+		require.NoError(t, err)
+		assert.Empty(t, hash)
+
+		ids, err := s.ListIDsFromFullTextQueue()
+		require.NoError(t, err)
+		assert.Empty(t, ids)
+	})
+}
+
+func TestDeleteDetails(t *testing.T) {
+	s := newStoreFixture(t)
+	s.addObjects(t, []testObject{makeObjectWithName("id1", "name1")})
+
+	err := s.DeleteDetails("id1")
+	require.NoError(t, err)
+
+	got, err := s.GetDetails("id1")
+	require.NoError(t, err)
+	assert.Equal(t, &model.ObjectDetails{Details: &types.Struct{
+		Fields: map[string]*types.Value{},
+	}}, got)
 }

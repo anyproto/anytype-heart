@@ -5,7 +5,6 @@ import (
 
 	"github.com/ipfs/go-datastore/query"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
@@ -67,20 +66,4 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 		}
 	}
 	return m.not
-}
-
-func (m *dsObjectStore) extractSBTypeFilterFromObjectTypes(ots ...string) query.Filter {
-	var sbTypes []smartblock.SmartBlockType
-	for _, otUrl := range ots {
-		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
-			for _, sbt := range ot.Types {
-				sbTypes = append(sbTypes, smartblock.SmartBlockType(sbt))
-			}
-			continue
-		}
-		if sbt, err := m.sbtProvider.Type(otUrl); err == nil {
-			sbTypes = append(sbTypes, sbt)
-		}
-	}
-	return newSmartblockTypesFilter(m.sbtProvider, false, sbTypes)
 }
