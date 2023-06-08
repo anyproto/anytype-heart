@@ -41,7 +41,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_object,
 		}, nil).AnyTimes()
 
-		fx.store.EXPECT().QueryById([]string{"author1"}).Return([]database.Record{
+		fx.store.EXPECT().QueryByID([]string{"author1"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("author1"),
 				"name": pbtypes.String("author1"),
@@ -65,7 +65,7 @@ func TestService_Search(t *testing.T) {
 
 		newSub(fx, "test")
 
-		fx.store.EXPECT().QueryById([]string{"author2", "author3"}).Return([]database.Record{
+		fx.store.EXPECT().QueryByID([]string{"author2", "author3"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("author2"),
 				"name": pbtypes.String("author2"),
@@ -144,7 +144,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_object,
 		}, nil).AnyTimes()
 
-		fx.store.EXPECT().QueryById([]string{"force1", "force2"}).Return([]database.Record{
+		fx.store.EXPECT().QueryByID([]string{"force1", "force2"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("force1"),
 				"name": pbtypes.String("force1"),

@@ -418,7 +418,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 			}))
 		tb := NewText(sb, os)
 
-		os.EXPECT().QueryById([]string{"targetId"}).Return([]database.Record{
+		os.EXPECT().QueryByID([]string{"targetId"}).Return([]database.Record{
 			{
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{

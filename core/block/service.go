@@ -384,7 +384,7 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	workspaceID, err := s.objectStore.GetCurrentWorkspaceId()
+	workspaceID, err := s.objectStore.GetCurrentWorkspaceID()
 	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
 		return "", nil
 	}

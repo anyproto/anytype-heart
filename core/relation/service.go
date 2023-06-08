@@ -81,7 +81,7 @@ func (s *service) fetchKeys(keys ...string) (relations []*relationutils.Relation
 	for _, key := range keys {
 		ids = append(ids, addr.RelationKeyToIdPrefix+key)
 	}
-	records, err := s.objectStore.QueryById(ids)
+	records, err := s.objectStore.QueryByID(ids)
 	if err != nil {
 		return
 	}

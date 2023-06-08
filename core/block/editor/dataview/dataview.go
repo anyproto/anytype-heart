@@ -433,7 +433,7 @@ func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []
 
 		var relations []*model.RelationLink
 		for _, relId := range sources {
-			rel, err := store.GetRelationById(relId)
+			rel, err := store.GetRelationByID(relId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get relation %s: %s", relId, err.Error())
 			}

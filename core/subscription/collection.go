@@ -210,7 +210,7 @@ func fetchEntries(cache *cache, objectStore objectstore.ObjectStore, ids []strin
 	if len(missingIDs) == 0 {
 		return res
 	}
-	recs, err := objectStore.QueryById(missingIDs)
+	recs, err := objectStore.QueryByID(missingIDs)
 	if err != nil {
 		log.Error("can't query by ids:", err)
 	}

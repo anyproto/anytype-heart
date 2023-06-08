@@ -28,10 +28,10 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, objectCreator Obje
 	newState := bs.NewStateCtx(ctx)
 	rootIds := newState.SelectRoots(req.BlockIds)
 
-	for _, rootId := range rootIds {
-		rootBlock := newState.Pick(rootId)
+	for _, rootID := range rootIds {
+		rootBlock := newState.Pick(rootID)
 
-		objState := prepareTargetObjectState(newState, rootId, rootBlock, req)
+		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
 
 		details, err := bs.prepareTargetObjectDetails(req, rootBlock, objectCreator)
 		if err != nil {
@@ -48,12 +48,12 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, objectCreator Obje
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
-		linkId, err := bs.changeToBlockWithLink(newState, rootBlock, objectID)
+		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID)
 		if err != nil {
 			return nil, fmt.Errorf("create link to object %s: %w", objectID, err)
 		}
 
-		linkIds = append(linkIds, linkId)
+		linkIds = append(linkIds, linkID)
 	}
 
 	return linkIds, bs.Apply(newState)
@@ -69,25 +69,25 @@ func (bs *basic) prepareTargetObjectDetails(
 		return nil, err
 	}
 
-	details := extractDetailsFields(req.ObjectType, rootBlock.Model().GetText().Text, objType.Layout)
+	details := createTargetObjectDetails(req.ObjectType, rootBlock.Model().GetText().GetText(), objType.Layout)
 	objectCreator.InjectWorkspaceID(details, req.ContextId)
 	return details, nil
 }
 
-func prepareTargetObjectState(newState *state.State, rootId string, rootBlock simple.Block, req pb.RpcBlockListConvertToObjectsRequest) *state.State {
-	descendants := newState.Descendants(rootId)
-	newRoot, newBlocks := reassignSubtreeIds(rootId, append(descendants, rootBlock))
-	removeChildren(newState, descendants)
+func prepareTargetObjectState(newState *state.State, rootID string, rootBlock simple.Block, req pb.RpcBlockListConvertToObjectsRequest) *state.State {
+	descendants := newState.Descendants(rootID)
+	newRoot, newBlocks := reassignSubtreeIds(rootID, append(descendants, rootBlock))
+	removeBlocks(newState, descendants)
 
-	objState := buildStateForNewObjectFromChildBlocks(newBlocks)
-	createSpecificBlockStructureForNote(objState, req, newRoot)
+	objState := buildStateFromBlocks(newBlocks)
+	fixStateForNoteLayout(objState, req, newRoot)
 	injectSmartBlockContentToRootBlock(objState)
 	return objState
 }
 
-func (bs *basic) changeToBlockWithLink(newState *state.State, rootBlock simple.Block, objectID string) (string, error) {
+func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simple.Block, objectID string) (string, error) {
 	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
-		TargetId: rootBlock.Model().Id,
+		TargetId: blockToChange.Model().Id,
 		Block: &model.Block{
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
@@ -101,15 +101,15 @@ func (bs *basic) changeToBlockWithLink(newState *state.State, rootBlock simple.B
 }
 
 func injectSmartBlockContentToRootBlock(objState *state.State) {
-	rootId := objState.RootId()
-	rootBlock := objState.Get(rootId).Model()
+	rootID := objState.RootId()
+	rootBlock := objState.Get(rootID).Model()
 	rootBlock.Content = &model.BlockContentOfSmartblock{
 		Smartblock: &model.BlockContentSmartblock{},
 	}
 	objState.Set(simple.New(rootBlock))
 }
 
-func createSpecificBlockStructureForNote(
+func fixStateForNoteLayout(
 	objState *state.State,
 	req pb.RpcBlockListConvertToObjectsRequest,
 	newRoot string,
@@ -123,7 +123,7 @@ func createSpecificBlockStructureForNote(
 	}
 }
 
-func buildStateForNewObjectFromChildBlocks(newBlocks []simple.Block) *state.State {
+func buildStateFromBlocks(newBlocks []simple.Block) *state.State {
 	objState := state.NewDoc("", nil).NewState()
 	for _, b := range newBlocks {
 		objState.Add(b)
@@ -131,13 +131,13 @@ func buildStateForNewObjectFromChildBlocks(newBlocks []simple.Block) *state.Stat
 	return objState
 }
 
-func removeChildren(state *state.State, descendants []simple.Block) {
+func removeBlocks(state *state.State, descendants []simple.Block) {
 	for _, b := range descendants {
 		state.Unlink(b.Model().Id)
 	}
 }
 
-func extractDetailsFields(objectType string, nameText string, layout model.ObjectTypeLayout) *types.Struct {
+func createTargetObjectDetails(objectType string, nameText string, layout model.ObjectTypeLayout) *types.Struct {
 	fields := map[string]*types.Value{}
 
 	// Without this check title will be duplicated in template.WithNameToFirstBlock

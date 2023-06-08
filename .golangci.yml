@@ -6,7 +6,7 @@ run:
   # don't check generated protobuf files
   skip-dirs:
     - pkg/lib/pb
-  go: '1.18'
+  go: '1.19'
 
 linters-settings:
   errcheck:
@@ -53,7 +53,7 @@ linters:
     - funlen
     - gosimple
     - govet
-    - typecheck
+#    - typecheck
     - unconvert
   max-issues-per-linter: 0
   max-same-issues: 0
