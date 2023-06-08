@@ -53,7 +53,7 @@ func TestSubscription_Remove(t *testing.T) {
 	newSub := func() *sortedSub {
 		ctrl := gomock.NewController(t)
 		store := testMock.NewMockObjectStore(ctrl)
-		store.EXPECT().QueryById([]string{"id7"}).Return([]database.Record{
+		store.EXPECT().QueryByID([]string{"id7"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("id7"),
 				"name": pbtypes.String("id7"),

@@ -152,7 +152,8 @@ func (bs *basic) SetObjectTypes(ctx *session.Context, objectTypes []string) (err
 
 	var toLayout model.ObjectTypeLayout
 	if len(objectTypes) > 0 {
-		ot, err := objectstore.GetObjectType(bs.objectStore, objectTypes[0])
+		//nolint:govet
+		ot, err := bs.objectStore.GetObjectType(objectTypes[0])
 		if err != nil {
 			return err
 		}
@@ -193,8 +194,8 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 	}
 
 	ot := otypes[len(otypes)-1]
-
-	prevType, _ := objectstore.GetObjectType(bs.objectStore, s.ObjectType())
+	// nolint:errcheck
+	prevType, _ := bs.objectStore.GetObjectType(s.ObjectType())
 
 	s.SetObjectTypes(objectTypes)
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet

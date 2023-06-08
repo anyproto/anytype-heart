@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/testMock"
+	"github.com/golang/mock/gomock"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
@@ -172,6 +174,9 @@ func TestExtractObjects(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			fixture := newFixture(t)
+			defer fixture.cleanUp()
+
 			ts := testExtractObjects{
 				objects: map[string]*smarttest.SmartTest{},
 			}
@@ -185,7 +190,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, nil, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string
@@ -206,14 +211,39 @@ func TestExtractObjects(t *testing.T) {
 	}
 
 	t.Run("do not add relation name - when creating note", func(t *testing.T) {
-		fields := extractDetailsFields("whatever type", "whatever name", model.ObjectType_note).Fields
+		fields := createTargetObjectDetails("whatever type", "whatever name", model.ObjectType_note).Fields
 
 		assert.NotContains(t, fields, bundle.RelationKeyName.String())
 	})
 
 	t.Run("add relation name - when creating not note", func(t *testing.T) {
-		fields := extractDetailsFields("whatever type", "whatever name", model.ObjectType_basic).Fields
+		fields := createTargetObjectDetails("whatever type", "whatever name", model.ObjectType_basic).Fields
 
 		assert.Contains(t, fields, bundle.RelationKeyName.String())
 	})
+}
+
+type fixture struct {
+	t     *testing.T
+	ctrl  *gomock.Controller
+	store *testMock.MockObjectStore
+}
+
+func newFixture(t *testing.T) *fixture {
+	ctrl := gomock.NewController(t)
+	objectStore := testMock.NewMockObjectStore(ctrl)
+	objectStore.EXPECT().
+		GetObjectType(gomock.Any()).
+		AnyTimes().
+		Return(&model.ObjectType{Layout: model.ObjectType_basic}, nil)
+
+	return &fixture{
+		t:     t,
+		ctrl:  ctrl,
+		store: objectStore,
+	}
+}
+
+func (fx *fixture) cleanUp() {
+	fx.ctrl.Finish()
 }

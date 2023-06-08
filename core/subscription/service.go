@@ -234,7 +234,7 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
-	records, err := s.objectStore.QueryById(req.Ids)
+	records, err := s.objectStore.QueryByID(req.Ids)
 	if err != nil {
 		return
 	}

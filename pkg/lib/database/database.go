@@ -31,11 +31,13 @@ type Reader interface {
 	QueryAndSubscribeForChanges(schema schema.Schema, q Query, subscription Subscription) (records []Record, close func(), total int, err error)
 	QueryRaw(q query.Query) (records []Record, err error)
 
-	QueryById(ids []string) (records []Record, err error)
-	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
+	QueryByID(ids []string) (records []Record, err error)
+	QueryByIDAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
 	GetRelationByKey(key string) (relation *model.Relation, err error)
-	GetRelationById(id string) (relation *model.Relation, err error)
+	GetRelationByID(id string) (relation *model.Relation, err error)
+
+	GetObjectType(url string) (*model.ObjectType, error)
 
 	ListRelationsKeys() ([]string, error)
 
