@@ -42,8 +42,6 @@ github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxB
 github.com/andybalholm/cascadia v1.3.1 h1:nhxRkql1kdYCc8Snf7D5/D3spOX+dBgjA6u8x004T2c=
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/anyproto/any-sync v0.1.6-0.20230607185209-5a6661eab180 h1:OfPk2YmNf3mWTE/E3bJs/XDHDgm6zM5+ZKGs8hmru54=
-github.com/anyproto/any-sync v0.1.6-0.20230607185209-5a6661eab180/go.mod h1:9mBFhqgDbUcxU9gxiyniNUQMfsUcD0eCjLIc6rgh2uk=
 github.com/anyproto/any-sync v0.1.6-0.20230608123754-15326da736ee h1:/GeLg1DATqA1TPSyjP/rfG8MvyB+Fw2PjELupoT7/IA=
 github.com/anyproto/any-sync v0.1.6-0.20230608123754-15326da736ee/go.mod h1:9mBFhqgDbUcxU9gxiyniNUQMfsUcD0eCjLIc6rgh2uk=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=

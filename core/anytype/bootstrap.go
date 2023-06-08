@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/syncstatusprovider"
 	"os"
 	"time"
@@ -158,6 +159,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pool.New()).
 		Register(peerservice.New()).
 		Register(yamux.New()).
+		Register(clientserver.New()).
 		Register(streampool.New()).
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
