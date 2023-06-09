@@ -3,6 +3,7 @@ package typeprovider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -109,7 +110,8 @@ func smartBlockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 
 	c, err := cid.Decode(id)
 	if err != nil {
-		return smartblock.SmartBlockTypePage, err
+		return smartblock.SmartBlockTypePage,
+			fmt.Errorf("failed to determine smartblock type, objectID: %s, err: %s", id, err.Error())
 	}
 	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
 	if c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256 {
