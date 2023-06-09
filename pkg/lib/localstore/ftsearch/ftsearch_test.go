@@ -41,6 +41,44 @@ func TestNewFTSearch(t *testing.T) {
 	assertThaiSubstrFound(t, tmpDir)
 	assertChineseFound(t, tmpDir)
 	assertFoundPartsOfTheWords(t, tmpDir)
+	assertFoundCaseSensitivePartsOfTheWords(t, tmpDir)
+}
+
+func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "2",
+		Title: "Advanced",
+		Text:  "first second",
+	}))
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "3",
+		Title: "Another object",
+		Text:  "third",
+	}))
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "4",
+		Title: "This object is Interesting",
+		Text:  "third",
+	}))
+
+	validateSearch(t, ft, "Advanced", 1)
+	validateSearch(t, ft, "advanced", 1)
+	validateSearch(t, ft, "Advanc", 1)
+	validateSearch(t, ft, "advanc", 1)
+
+	validateSearch(t, ft, "first", 1)
+	validateSearch(t, ft, "second", 1)
+	validateSearch(t, ft, "Interesting", 1)
+	validateSearch(t, ft, "Interes", 1)
+	validateSearch(t, ft, "interes", 1)
+	validateSearch(t, ft, "third", 2)
+
+	_ = ft.Close(nil)
 }
 
 func assertChineseFound(t *testing.T, tmpDir string) {
