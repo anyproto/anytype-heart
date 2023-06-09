@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/core/block"
