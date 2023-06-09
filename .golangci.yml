@@ -31,6 +31,10 @@ linters-settings:
     statements: 100
   lll:
     line-length: 120
+  misspell:
+    locale: US
+    ignore-words:
+      - commonspace
 
 linters:
   disable-all: true

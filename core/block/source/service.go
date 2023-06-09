@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"strings"
 	"sync"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"

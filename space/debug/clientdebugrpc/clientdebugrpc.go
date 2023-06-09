@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/secureservice"

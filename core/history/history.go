@@ -2,11 +2,11 @@ package history
 
 import (
 	"context"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block"
