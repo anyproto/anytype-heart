@@ -21,14 +21,14 @@ func (s *dsObjectStore) GetCurrentWorkspaceID() (string, error) {
 	return string(val), nil
 }
 
-func (s *dsObjectStore) SetCurrentWorkspaceID(threadId string) (err error) {
+func (s *dsObjectStore) SetCurrentWorkspaceID(workspaceID string) (err error) {
 	txn, err := s.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	if err := txn.Put(currentWorkspace, []byte(threadId)); err != nil {
+	if err := txn.Put(currentWorkspace, []byte(workspaceID)); err != nil {
 		return fmt.Errorf("failed to put into ds: %w", err)
 	}
 

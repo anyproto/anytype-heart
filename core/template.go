@@ -110,9 +110,8 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 	}
 	var (
 		path string
-		err  error
 	)
-	err = mw.doBlockService(func(_ *block.Service) error {
+	err := mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		docIds, _, err := ds.QueryObjectIDs(database.Query{
@@ -159,9 +158,8 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 	}
 	var (
 		path string
-		err  error
 	)
-	err = mw.doBlockService(func(_ *block.Service) error {
+	err := mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		docIds, _, err := ds.QueryObjectIDs(database.Query{

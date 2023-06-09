@@ -26,12 +26,11 @@ type Record struct {
 }
 
 type Query struct {
-	FullText    string
-	Filters     []*model.BlockContentDataviewFilter // filters results. apply sequentially
-	Sorts       []*model.BlockContentDataviewSort   // order results. apply hierarchically
-	Limit       int                                 // maximum number of results
-	Offset      int                                 // skip given number of results
-	WorkspaceId string
+	FullText string
+	Filters  []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts    []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit    int                                 // maximum number of results
+	Offset   int                                 // skip given number of results
 }
 
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {

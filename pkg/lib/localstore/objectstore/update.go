@@ -158,7 +158,10 @@ func (s *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*mod
 }
 
 func (s *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
-	exLinks, _ := findOutboundLinks(txn, id)
+	exLinks, err := findOutboundLinks(txn, id)
+	if err != nil {
+		log.Errorf("error while finding outbound links for %s: %s", id, err)
+	}
 	var addedLinks, removedLinks []string
 
 	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)

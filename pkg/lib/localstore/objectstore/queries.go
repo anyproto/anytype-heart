@@ -215,7 +215,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 	return
 }
 
-func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, close func(), err error) {
+func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
 	s.l.Lock()
 	defer s.l.Unlock()
 
@@ -231,7 +231,7 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 		return nil, nil, err
 	}
 
-	close = func() {
+	closeFunc = func() {
 		s.closeAndRemoveSubscription(sub)
 	}
 

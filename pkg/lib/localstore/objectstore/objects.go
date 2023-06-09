@@ -156,7 +156,7 @@ type AccountStore interface {
 	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
 
 	GetCurrentWorkspaceID() (string, error)
-	SetCurrentWorkspaceID(threadId string) (err error)
+	SetCurrentWorkspaceID(workspaceID string) (err error)
 	RemoveCurrentWorkspaceID() (err error)
 }
 
@@ -220,7 +220,7 @@ func (s *dsObjectStore) Run(context.Context) (err error) {
 	return
 }
 
-func (s *dsObjectStore) Close(ctx context.Context) (err error) {
+func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	return nil
 }
 
@@ -414,8 +414,10 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	}
 
 	if s.fts != nil {
-		_ = s.removeFromIndexQueue(id)
-
+		err = s.removeFromIndexQueue(id)
+		if err != nil {
+			log.Errorf("error removing %s from index queue: %s", id, err)
+		}
 		if err := s.fts.Delete(id); err != nil {
 			return err
 		}
