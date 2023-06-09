@@ -3,15 +3,18 @@ package peermanager
 import (
 	"context"
 	"fmt"
+	"sync"
+
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	//nolint:misspell
+	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/anyproto/any-sync/net/streampool"
-	"github.com/anyproto/anytype-heart/space/peerstore"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
-	"storj.io/drpc"
-	"sync"
+
+	"github.com/anyproto/anytype-heart/space/peerstore"
 )
 
 type clientPeerManager struct {
@@ -22,8 +25,13 @@ type clientPeerManager struct {
 	sync.Mutex
 }
 
-func (n *clientPeerManager) init() {
+func (n *clientPeerManager) Init(_ *app.App) (err error) {
 	n.responsiblePeerIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
+	return
+}
+
+func (n *clientPeerManager) Name() (name string) {
+	return peermanager.CName
 }
 
 func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *spacesyncproto.ObjectSyncMessage) (err error) {
@@ -34,13 +42,7 @@ func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *sp
 	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
 	// because the stream will be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
-	var drpcMsg drpc.Message
-	drpcMsg = msg
-	if msg.ReplyId != "" || msg.RequestId != "" {
-		// prioritize messages with the request or reply by sending it to a separate queue
-		drpcMsg = streampool.WithQueueId(msg, "replyQueue")
-	}
-	return n.p.streamPool.Send(ctx, drpcMsg, func(ctx context.Context) (peers []peer.Peer, err error) {
+	return n.p.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
 		return n.getExactPeer(ctx, peerId)
 	})
 }

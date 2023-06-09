@@ -1,10 +1,12 @@
 package storage
 
 import (
+	"context"
+
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	storage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	// nolint: misspell
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/dgraph-io/badger/v3"
@@ -17,6 +19,18 @@ type spaceStorage struct {
 	keys            spaceKeys
 	aclStorage      liststorage.ListStorage
 	header          *spacesyncproto.RawSpaceHeaderWithId
+}
+
+func (s *spaceStorage) Run(_ context.Context) (err error) {
+	return nil
+}
+
+func (s *spaceStorage) Init(_ *app.App) (err error) {
+	return nil
+}
+
+func (s *spaceStorage) Name() (name string) {
+	return spacestorage.CName
 }
 
 func newSpaceStorage(objDb *badger.DB, spaceId string) (store spacestorage.SpaceStorage, err error) {
@@ -69,7 +83,7 @@ func createSpaceStorage(db *badger.DB, payload spacestorage.SpaceStorageCreatePa
 		spaceSettingsId: payload.SpaceSettingsWithId.Id,
 		header:          payload.SpaceHeaderWithId,
 	}
-	_, err = spaceStore.CreateTreeStorage(storage.TreeStorageCreatePayload{
+	_, err = spaceStore.CreateTreeStorage(treestorage.TreeStorageCreatePayload{
 		RootRawChange: payload.SpaceSettingsWithId,
 		Changes:       []*treechangeproto.RawTreeChangeWithId{payload.SpaceSettingsWithId},
 		Heads:         []string{payload.SpaceSettingsWithId.Id},
@@ -112,11 +126,11 @@ func (s *spaceStorage) HasTree(id string) (bool, error) {
 	return hasDB(s.objDb, keys.RootIdKey()), nil
 }
 
-func (s *spaceStorage) TreeStorage(id string) (storage.TreeStorage, error) {
+func (s *spaceStorage) TreeStorage(id string) (treestorage.TreeStorage, error) {
 	return newTreeStorage(s.objDb, s.spaceId, id)
 }
 
-func (s *spaceStorage) CreateTreeStorage(payload storage.TreeStorageCreatePayload) (ts storage.TreeStorage, err error) {
+func (s *spaceStorage) CreateTreeStorage(payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
 	return createTreeStorage(s.objDb, s.spaceId, payload)
 }
 
@@ -224,6 +238,6 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 	return
 }
 
-func (s *spaceStorage) Close() (err error) {
+func (s *spaceStorage) Close(_ context.Context) (err error) {
 	return nil
 }

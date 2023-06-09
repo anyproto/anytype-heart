@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -194,7 +194,7 @@ func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht obje
 	if err != nil {
 		return
 	}
-	ht, err = spc.BuildHistoryTree(context.Background(), id, commonspace.HistoryTreeOpts{
+	ht, err = spc.TreeBuilder().BuildHistoryTree(context.Background(), id, objecttreebuilder.HistoryTreeOpts{
 		BeforeId: beforeId,
 		Include:  includeBeforeId,
 	})
