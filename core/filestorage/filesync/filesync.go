@@ -87,7 +87,10 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	f.queue = &fileSyncStore{db: db}
+	f.queue, err = newFileSyncStore(db)
+	if err != nil {
+		return
+	}
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.addLoop()
 	go f.removeLoop()

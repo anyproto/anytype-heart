@@ -49,13 +49,14 @@ func (f *fileSync) removeOperation() {
 }
 
 func (f *fileSync) tryToRemove() (string, error) {
-	spaceID, fileID, err := f.queue.GetRemove()
+	it, err := f.queue.GetRemove()
 	if err == errQueueIsEmpty {
-		return fileID, errQueueIsEmpty
+		return "", errQueueIsEmpty
 	}
 	if err != nil {
-		return fileID, fmt.Errorf("get remove task from queue: %w", err)
+		return "", fmt.Errorf("get remove task from queue: %w", err)
 	}
+	spaceID, fileID := it.SpaceID, it.FileID
 	if err = f.removeFile(f.loopCtx, spaceID, fileID); err != nil {
 		return fileID, fmt.Errorf("remove file: %w", err)
 	}
