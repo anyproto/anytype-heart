@@ -89,7 +89,12 @@ var (
 	}
 
 	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
-		model.SmartBlockType_ProfilePage:    {model.Restrictions_LayoutChange, model.Restrictions_TypeChange, model.Restrictions_Delete},
+		model.SmartBlockType_ProfilePage: {
+			model.Restrictions_LayoutChange,
+			model.Restrictions_TypeChange,
+			model.Restrictions_Delete,
+			model.Restrictions_Duplicate,
+		},
 		model.SmartBlockType_AnytypeProfile: objRestrictAll,
 		model.SmartBlockType_Home: {
 			model.Restrictions_Details,
