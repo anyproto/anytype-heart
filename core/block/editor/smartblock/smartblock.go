@@ -926,28 +926,29 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		// inject for both current and parent state
 		p.InjectLocalDetails(storedLocalScopeDetails)
 	}
-	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
-		return nil
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) == "" || pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) == 0 {
+		provider, conforms := sb.source.(source.CreationInfoProvider)
+		if !conforms {
+			return nil
+		}
+
+		creator, createdDate, err := provider.GetCreationInfo()
+		if err != nil {
+			return err
+		}
+
+		if creator != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+		}
+
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	}
 
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		return nil
-	}
-
-	creator, createdDate, err := provider.GetCreationInfo()
-	if err != nil {
-		return err
-	}
-
-	if creator != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
-	}
-
-	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
-	if wsId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
+		wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		if wsId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		}
 	}
 	return nil
 }

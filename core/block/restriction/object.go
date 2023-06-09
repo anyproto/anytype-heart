@@ -199,8 +199,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 			return
 		}
 	}
-	l, has := rh.Layout()
-	log.Warnf("restrctions not found for object: id='%s' type='%v' layout='%v'(%v); fallback to empty", rh.Id(), rh.Type(), l, has)
+
 	return ObjectRestrictions{}
 }
 
