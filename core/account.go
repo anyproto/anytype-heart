@@ -2,37 +2,27 @@ package core
 
 import (
 	"archive/zip"
-	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
-	"time"
-
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/configfetcher"
-	"github.com/anyproto/anytype-heart/util/builtinobjects"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/net/secureservice/handshake"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/libp2p/go-libp2p/core/peer"
 	cp "github.com/otiai10/copy"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -43,128 +33,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // we cannot check the constant error from badger because they hardcoded it there
 const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
-
-type AlphaInviteRequest struct {
-	Code    string `json:"code"`
-	Account string `json:"account"`
-}
-
-type AlphaInviteResponse struct {
-	Signature string `json:"signature"`
-}
-
-type AlphaInviteErrorResponse struct {
-	Error string `json:"error"`
-}
-
-func checkInviteCode(cfg *config.Config, code string, account string) (errorCode pb.RpcAccountCreateResponseErrorCode, err error) {
-	if code == "" {
-		return pb.RpcAccountCreateResponseError_BAD_INPUT, fmt.Errorf("invite code is empty")
-	}
-
-	jsonStr, err := json.Marshal(AlphaInviteRequest{
-		Code:    code,
-		Account: account,
-	})
-
-	// TODO: here we always using the default cafe address, because we want to check invite code only on our server
-	// this code should be removed with a public release
-	req, err := http.NewRequest("POST", cfg.InviteServerURL+"/alpha-invite", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	checkNetError := func(err error) (netOpError bool, dnsError bool, offline bool) {
-		if err == nil {
-			return false, false, false
-		}
-		if netErr, ok := err.(*net.OpError); ok {
-			if syscallErr, ok := netErr.Err.(*os.SyscallError); ok {
-				if syscallErr.Err == syscall.ENETDOWN || syscallErr.Err == syscall.ENETUNREACH {
-					return true, false, true
-				}
-			}
-			if _, ok := netErr.Err.(*net.DNSError); ok {
-				return true, true, false
-			}
-			return true, false, false
-		}
-		return false, false, false
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		var netOpErr, dnsError bool
-		if urlErr, ok := err.(*url.Error); ok {
-			var offline bool
-			if netOpErr, dnsError, offline = checkNetError(urlErr.Err); offline {
-				return pb.RpcAccountCreateResponseError_NET_OFFLINE, err
-			}
-		}
-		if dnsError {
-			// we can receive DNS error in case device is offline, lets check the SHOULD-BE-ALWAYS-ONLINE OpenDNS IP address on the 80 port
-			c, err2 := net.DialTimeout("tcp", "1.1.1.1:80", time.Second*5)
-			if c != nil {
-				_ = c.Close()
-			}
-			_, _, offline := checkNetError(err2)
-			if offline {
-				return pb.RpcAccountCreateResponseError_NET_OFFLINE, err
-			}
-		}
-
-		if netOpErr {
-			return pb.RpcAccountCreateResponseError_NET_CONNECTION_REFUSED, err
-		}
-
-		return pb.RpcAccountCreateResponseError_NET_ERROR, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return pb.RpcAccountCreateResponseError_NET_ERROR, fmt.Errorf("failed to read response body: %s", err.Error())
-	}
-
-	if resp.StatusCode != 200 {
-		respJson := AlphaInviteErrorResponse{}
-		err = json.Unmarshal(body, &respJson)
-		return pb.RpcAccountCreateResponseError_BAD_INVITE_CODE, fmt.Errorf(respJson.Error)
-	}
-
-	respJson := AlphaInviteResponse{}
-	err = json.Unmarshal(body, &respJson)
-	if err != nil {
-		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode response json: %s", err.Error())
-	}
-	peerID, err := peer.Decode(cfg.InviteServerPublicKey)
-	if err != nil {
-		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
-	}
-	pk, err := peerID.ExtractPublicKey()
-	if err != nil {
-		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
-	}
-	signature, err := base64.RawStdEncoding.DecodeString(respJson.Signature)
-	if err != nil {
-		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode cafe signature: %s", err.Error())
-	}
-	valid, err := pk.Verify([]byte(code+account), signature)
-	if err != nil {
-		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to verify cafe signature: %s", err.Error())
-	}
-	if !valid {
-		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("invalid signature")
-	}
-
-	return pb.RpcAccountCreateResponseError_NULL, nil
-}
 
 func (mw *Middleware) refreshRemoteAccountState() {
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
@@ -255,9 +130,6 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 	address := derivationResult.Identity.GetPublic().Account()
-	if code, err := checkInviteCode(cfg, req.AlphaInviteCode, address); err != nil {
-		return response(nil, code, err)
-	}
 
 	if err = core.WalletInitRepo(mw.rootPath, derivationResult.Identity); err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
@@ -441,7 +313,9 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
 			return response(nil, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
 		}
-
+		if errors.Is(err, handshake.ErrIncompatibleVersion) {
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION, fmt.Errorf("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version"))
+		}
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
 

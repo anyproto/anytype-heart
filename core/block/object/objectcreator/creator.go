@@ -137,7 +137,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
 			relId := addr.RelationKeyToIdPrefix + k
-			if _, err2 := c.objectStore.GetRelationById(relId); err != nil {
+			if _, err2 := c.objectStore.GetRelationByID(relId); err != nil {
 				// check if installed
 				err = fmt.Errorf("failed to get installed relation %s: %w", relId, err2)
 				return

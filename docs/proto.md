@@ -479,6 +479,10 @@
     - [Rpc.BlockWidget.SetTargetId.Request](#anytype-Rpc-BlockWidget-SetTargetId-Request)
     - [Rpc.BlockWidget.SetTargetId.Response](#anytype-Rpc-BlockWidget-SetTargetId-Response)
     - [Rpc.BlockWidget.SetTargetId.Response.Error](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error)
+    - [Rpc.BlockWidget.SetViewId](#anytype-Rpc-BlockWidget-SetViewId)
+    - [Rpc.BlockWidget.SetViewId.Request](#anytype-Rpc-BlockWidget-SetViewId-Request)
+    - [Rpc.BlockWidget.SetViewId.Response](#anytype-Rpc-BlockWidget-SetViewId-Response)
+    - [Rpc.BlockWidget.SetViewId.Response.Error](#anytype-Rpc-BlockWidget-SetViewId-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
@@ -1012,6 +1016,7 @@
     - [Rpc.BlockWidget.SetLayout.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLayout-Response-Error-Code)
     - [Rpc.BlockWidget.SetLimit.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code)
     - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
+    - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
@@ -1255,6 +1260,7 @@
     - [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget)
     - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
     - [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit)
+    - [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
@@ -1618,6 +1624,7 @@
 | BlockWidgetSetTargetId | [Rpc.BlockWidget.SetTargetId.Request](#anytype-Rpc-BlockWidget-SetTargetId-Request) | [Rpc.BlockWidget.SetTargetId.Response](#anytype-Rpc-BlockWidget-SetTargetId-Response) |  |
 | BlockWidgetSetLayout | [Rpc.BlockWidget.SetLayout.Request](#anytype-Rpc-BlockWidget-SetLayout-Request) | [Rpc.BlockWidget.SetLayout.Response](#anytype-Rpc-BlockWidget-SetLayout-Response) |  |
 | BlockWidgetSetLimit | [Rpc.BlockWidget.SetLimit.Request](#anytype-Rpc-BlockWidget-SetLimit-Request) | [Rpc.BlockWidget.SetLimit.Response](#anytype-Rpc-BlockWidget-SetLimit-Response) |  |
+| BlockWidgetSetViewId | [Rpc.BlockWidget.SetViewId.Request](#anytype-Rpc-BlockWidget-SetViewId-Request) | [Rpc.BlockWidget.SetViewId.Response](#anytype-Rpc-BlockWidget-SetViewId-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -2261,7 +2268,7 @@ Front end to middleware request-to-create-an account
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
-| alphaInviteCode | [string](#string) |  |  |
+| alphaInviteCode | [string](#string) |  | DEPRECATED |
 
 
 
@@ -3009,6 +3016,7 @@ common simple block command
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | widgetLayout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
 | objectLimit | [int32](#int32) |  |  |
+| viewId | [string](#string) |  |  |
 
 
 
@@ -8581,6 +8589,65 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId"></a>
+
+### Rpc.BlockWidget.SetViewId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Request"></a>
+
+### Rpc.BlockWidget.SetViewId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| viewId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Response"></a>
+
+### Rpc.BlockWidget.SetViewId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetViewId.Response.Error](#anytype-Rpc-BlockWidget-SetViewId-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Response-Error"></a>
+
+### Rpc.BlockWidget.SetViewId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14869,7 +14936,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
-| ACCOUNT_IS_DELETED | 109 |  |
 
 
 
@@ -14905,6 +14971,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
 | FAILED_TO_RECOVER_PREDEFINED_BLOCKS | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
+| ACCOUNT_IS_DELETED | 109 |  |
+| FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 
 
 
@@ -16168,6 +16236,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code"></a>
 
 ### Rpc.BlockWidget.SetTargetId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetViewId.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -19690,6 +19771,7 @@ Precondition: user A opened a block
 | id | [string](#string) |  |  |
 | layout | [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout) |  |  |
 | limit | [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit) |  |  |
+| viewId | [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId) |  |  |
 
 
 
@@ -19720,6 +19802,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Widget-ViewId"></a>
+
+### Event.Block.Set.Widget.ViewId
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
 
 
 
@@ -20494,6 +20591,7 @@ Precondition: user A and user B opened the same block
 | Syncing | 2 |  |
 | Synced | 3 |  |
 | Failed | 4 |  |
+| IncompatibleVersion | 5 |  |
 
 
 
@@ -21404,6 +21502,7 @@ Link: block to link some content from an external sources.
 | ----- | ---- | ----- | ----------- |
 | layout | [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
 | limit | [int32](#int32) |  |  |
+| viewId | [string](#string) |  |  |
 
 
 

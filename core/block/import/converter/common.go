@@ -22,7 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔", "📒", "📝", "📄", "📑"}
 
 var log = logging.Logger("import")
 
@@ -36,16 +39,17 @@ func GetSourceDetail(fileName, importPath string) string {
 	return source.String()
 }
 
-func GetDetails(name string) *types.Struct {
-	var title string
-
-	if title == "" {
-		title = strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
+func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
+	if name == "" {
+		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
 	}
-
+	if emoji == "" {
+		emoji = slice.GetRandomString(randomIcons, name)
+	}
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():           pbtypes.String(title),
-		bundle.RelationKeySourceFilePath.String(): pbtypes.String(name),
+		bundle.RelationKeyName.String():           pbtypes.String(name),
+		bundle.RelationKeySourceFilePath.String(): pbtypes.String(sourcePath),
+		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
 	}
 	return &types.Struct{Fields: fields}
 }

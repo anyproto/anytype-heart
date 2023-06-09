@@ -91,3 +91,24 @@ func (mw *Middleware) BlockWidgetSetLimit(cctx context.Context, req *pb.RpcBlock
 	}
 	return response(pb.RpcBlockWidgetSetLimitResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockWidgetSetViewId(cctx context.Context, req *pb.RpcBlockWidgetSetViewIdRequest) *pb.RpcBlockWidgetSetViewIdResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockWidgetSetViewIdResponseErrorCode, id string, err error) *pb.RpcBlockWidgetSetViewIdResponse {
+		m := &pb.RpcBlockWidgetSetViewIdResponse{Error: &pb.RpcBlockWidgetSetViewIdResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetWidgetBlockViewId(ctx, req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockWidgetSetViewIdResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockWidgetSetViewIdResponseError_NULL, id, nil)
+}

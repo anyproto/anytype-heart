@@ -264,7 +264,7 @@ func (s *Service) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Context, 
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	return space.CreateTree(ctx, treePayload)
+	return space.TreeBuilder().CreateTree(ctx, treePayload)
 }
 
 func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
@@ -272,7 +272,7 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload trees
 	if err != nil {
 		return nil, err
 	}
-	tr, err := space.PutTree(ctx, payload, nil)
+	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
@@ -291,7 +291,7 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 		return nil, err
 	}
 
-	tr, err := space.PutTree(ctx, payload, nil)
+	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
@@ -323,7 +323,7 @@ func (s *Service) DeriveTreeCreatePayload(
 		return nil, err
 	}
 	treePayload := derivePayload(space.Id(), s.commonAccount.Account().SignKey, changePayload)
-	create, err := space.CreateTree(context.Background(), treePayload)
+	create, err := space.TreeBuilder().CreateTree(context.Background(), treePayload)
 	return &create, err
 }
 
@@ -348,7 +348,7 @@ func (s *Service) getDerivedObject(
 	space, err := s.clientService.AccountSpace(ctx)
 	if newAccount {
 		var tr objecttree.ObjectTree
-		tr, err = space.PutTree(ctx, *payload, nil)
+		tr, err = space.TreeBuilder().PutTree(ctx, *payload, nil)
 		if err != nil {
 			if !errors.Is(err, treestorage.ErrTreeExists) {
 				err = fmt.Errorf("failed to put tree: %w", err)

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -114,6 +115,9 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	}
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := make([]*converter.Snapshot, 0)
+	if snapshot := ds.handleNameProperty(d, request, st); snapshot != nil {
+		snapshots = append(snapshots, snapshot)
+	}
 	for key, databaseProperty := range d.Properties {
 		if snapshot := ds.createRelationFromDatabaseProperty(request, databaseProperty, key, st); snapshot != nil {
 			snapshots = append(snapshots, snapshot)
@@ -124,6 +128,28 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	databaseNameToID[d.ID] = pbtypes.GetString(converterSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	snapshots = append(snapshots, converterSnapshot)
 	return snapshots, nil
+}
+
+func (ds *Service) handleNameProperty(d Database, request *block.MapRequest, st *state.State) *converter.Snapshot {
+	var (
+		snapshot     *converter.Snapshot
+		key          = "Name"
+		nameProperty property.DatabasePropertyHandler
+		ok           bool
+	)
+	if nameProperty, ok = d.Properties[key]; !ok {
+		if nameProperty, ok = d.Properties[strings.ToUpper(key)]; ok {
+			key = strings.ToUpper(key)
+		} else if nameProperty, ok = d.Properties[strings.ToLower(key)]; ok {
+			key = strings.ToLower(key)
+		}
+	}
+	if nameProperty == nil {
+		return nil
+	}
+	snapshot = ds.createRelationFromDatabaseProperty(request, nameProperty, key, st)
+	delete(d.Properties, key)
+	return snapshot
 }
 
 func (ds *Service) createRelationFromDatabaseProperty(req *block.MapRequest,

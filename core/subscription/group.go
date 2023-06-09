@@ -38,7 +38,7 @@ type groupSub struct {
 func (gs *groupSub) init(entries []*entry) (err error) {
 	for _, e := range entries {
 		e = gs.cache.GetOrSet(e)
-		e.SetSub(gs.id, true)
+		e.SetSub(gs.id, true, false)
 		gs.set[e.id] = struct{}{}
 	}
 	return
@@ -64,7 +64,8 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 				delete(gs.set, ctxEntry.id)
 				checkGroups = true
 			}
-		} else if inFilter { // if not in cache but has been added new tags
+		} else if inFilter {
+			// if not in cache but has been added new tags
 			gs.cache.Set(ctxEntry)
 			gs.set[ctxEntry.id] = struct{}{}
 			checkGroups = true

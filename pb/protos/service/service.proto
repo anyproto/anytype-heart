@@ -241,6 +241,7 @@ service ClientCommands {
     rpc BlockWidgetSetTargetId (anytype.Rpc.BlockWidget.SetTargetId.Request) returns (anytype.Rpc.BlockWidget.SetTargetId.Response);
     rpc BlockWidgetSetLayout (anytype.Rpc.BlockWidget.SetLayout.Request) returns (anytype.Rpc.BlockWidget.SetLayout.Response);
     rpc BlockWidgetSetLimit (anytype.Rpc.BlockWidget.SetLimit.Request) returns (anytype.Rpc.BlockWidget.SetLimit.Response);
+    rpc BlockWidgetSetViewId (anytype.Rpc.BlockWidget.SetViewId.Request) returns (anytype.Rpc.BlockWidget.SetViewId.Response);
 
 
     // Other specific block commands
