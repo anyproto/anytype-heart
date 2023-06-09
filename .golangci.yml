@@ -43,6 +43,7 @@ linters:
     - gosec
     - interfacebloat
     - importas
+    - ineffassign
 #    - lll
     - misspell
     - nestif
