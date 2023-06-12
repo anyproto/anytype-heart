@@ -102,7 +102,6 @@ func (f *fileSync) tryToUpload() (string, error) {
 			if it.AddedByUser {
 				f.sendLimitReachedEvent(spaceId, fileId)
 			}
-			log.Info("reached limit, push to discarded queue", zap.String("fileId", fileId))
 			if qerr := f.queue.QueueDiscarded(spaceId, fileId); qerr != nil {
 				log.Warn("can't push upload task to discarded queue", zap.String("fileId", fileId), zap.Error(qerr))
 			}
@@ -130,7 +129,7 @@ func isLimitReachedErr(err error) bool {
 }
 
 func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err error) {
-	log.Info("uploading file", zap.String("fileId", fileId))
+	log.Debug("uploading file", zap.String("fileId", fileId))
 
 	var (
 		batcher = mb.New[blocks.Block](10)
@@ -189,7 +188,7 @@ func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId s
 		return nil, fmt.Errorf("select blocks to upload: %w", err)
 	}
 
-	log.Info("collecting blocks to upload",
+	log.Debug("collecting blocks to upload",
 		zap.String("fileID", fileId),
 		zap.Int("blocksToUpload", len(blocksToUpload)),
 		zap.Int("totalBlocks", len(fileBlocks)),
