@@ -14,7 +14,13 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id: "",
 		tp: model.SmartBlockType_AnytypeProfile,
-	}).Object.Check(model.Restrictions_Blocks),
+	}).Object.Check(
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
+		model.Restrictions_Delete,
+		model.Restrictions_Duplicate,
+	),
 		ErrRestricted,
 	)
 

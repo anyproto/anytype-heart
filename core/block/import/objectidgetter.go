@@ -94,7 +94,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 
 func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
 	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
-	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -157,7 +157,7 @@ func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
 func (ou *ObjectIDGetter) getAlreadyExistingSubObject(snapshot *converter.Snapshot) ([]string, error) {
 	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
-	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -182,7 +182,7 @@ func (ou *ObjectIDGetter) getAlreadyExistingSubObject(snapshot *converter.Snapsh
 func (ou *ObjectIDGetter) getExistingRelation(snapshot *converter.Snapshot, ids []string) ([]string, error) {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	format := pbtypes.GetFloat64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -202,7 +202,7 @@ func (ou *ObjectIDGetter) getExistingRelation(snapshot *converter.Snapshot, ids 
 func (ou *ObjectIDGetter) getExistingRelationOption(snapshot *converter.Snapshot, ids []string) ([]string, error) {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -237,7 +237,7 @@ func (ou *ObjectIDGetter) removePrefixesFromSubID(subID string) string {
 
 func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
-	ids, _, err := ou.objectStore.QueryObjectIds(database.Query{
+	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

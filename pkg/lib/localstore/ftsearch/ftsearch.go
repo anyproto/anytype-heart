@@ -147,7 +147,7 @@ func (f *ftSearch) Search(qry string) (results []string, err error) {
 
 	queries = append(
 		getFullQueries(qry),
-		bleve.NewQueryStringQuery(qry),
+		bleve.NewMatchQuery(qry),
 	)
 
 	if len(terms) > 0 {

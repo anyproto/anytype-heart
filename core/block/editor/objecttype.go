@@ -162,7 +162,7 @@ func (ot *ObjectType) InitState(st *state.State) {
 	for _, relKey := range recommendedRelationsKeys {
 		r := rels.GetByKey(relKey)
 		if r == nil {
-			log.Errorf("ot relation missing relation: %s", relKey)
+			log.Debugf("ot relation missing relation: %s", relKey)
 			continue
 		}
 
