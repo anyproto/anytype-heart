@@ -34,6 +34,8 @@ make protos
 
 ### Run tests
 Generate mocks:
+
+Install Mockery https://vektra.github.io/mockery/installation/
 ```
 make test-deps
 ```

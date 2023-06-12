@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -81,7 +80,7 @@ func (s *service) fetchKeys(keys ...string) (relations []*relationutils.Relation
 	for _, key := range keys {
 		ids = append(ids, addr.RelationKeyToIdPrefix+key)
 	}
-	records, err := s.objectStore.QueryById(ids)
+	records, err := s.objectStore.QueryByID(ids)
 	if err != nil {
 		return
 	}
@@ -174,13 +173,10 @@ func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationu
 			Value:       pbtypes.String(*o.workspaceId),
 		})
 	}
-	f, err := database.NewFilters(q, nil, s.objectStore)
+	records, _, err := s.objectStore.Query(nil, q)
 	if err != nil {
 		return
 	}
-	records, err := s.objectStore.QueryRaw(query.Query{
-		Filters: []query.Filter{f},
-	})
 	for _, rec := range records {
 		return relationutils.RelationFromStruct(rec.Details), nil
 	}

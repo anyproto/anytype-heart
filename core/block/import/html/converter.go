@@ -154,7 +154,7 @@ func (h *HTML) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
 func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetDetails(p),
+		Details:     converter.GetCommonDetails(p, "", ""),
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
 

@@ -140,13 +140,14 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 }
 
 func (f *ftSearch) Search(qry string) (results []string, err error) {
+	qry = strings.ToLower(qry)
 	var queries = make([]query.Query, 0, 4)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
 
 	queries = append(
 		getFullQueries(qry),
-		bleve.NewQueryStringQuery(qry),
+		bleve.NewMatchQuery(qry),
 	)
 
 	if len(terms) > 0 {

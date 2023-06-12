@@ -35,7 +35,7 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
-	details := converter.GetDetails(path)
+	details := converter.GetCommonDetails(path, "", "")
 	details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 	_, _, st, err := c.collectionService.CreateCollection(details, nil)
 	if err != nil {

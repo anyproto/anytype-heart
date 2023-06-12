@@ -210,7 +210,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	// TODO: add creator in profile
+	creator = s.coreService.PredefinedBlocks().Profile
 	return
 }
 

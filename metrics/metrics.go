@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-logger")

@@ -11,7 +11,6 @@ import (
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
@@ -160,9 +159,7 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 		sub.forceSubIds = filterDepIds
 	}
 
-	records, err := s.objectStore.QueryRaw(query.Query{
-		Filters: []query.Filter{f},
-	})
+	records, err := s.objectStore.QueryRaw(f)
 	if err != nil {
 		return nil, fmt.Errorf("objectStore query error: %v", err)
 	}
@@ -234,7 +231,7 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
-	records, err := s.objectStore.QueryById(req.Ids)
+	records, err := s.objectStore.QueryByID(req.Ids)
 	if err != nil {
 		return
 	}

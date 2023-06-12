@@ -1,14 +1,13 @@
 package database
 
 import (
-	"context"
 	"fmt"
-	"github.com/samber/lo"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
@@ -26,54 +25,12 @@ type Record struct {
 	Details *types.Struct
 }
 
-type Reader interface {
-	Query(schema schema.Schema, q Query) (records []Record, total int, err error)
-	QueryAndSubscribeForChanges(schema schema.Schema, q Query, subscription Subscription) (records []Record, close func(), total int, err error)
-	QueryRaw(q query.Query) (records []Record, err error)
-
-	QueryById(ids []string) (records []Record, err error)
-	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
-
-	GetRelationByKey(key string) (relation *model.Relation, err error)
-	GetRelationById(id string) (relation *model.Relation, err error)
-
-	ListRelationsKeys() ([]string, error)
-
-	SubscribeForAll(callback func(rec Record))
-}
-
-type Writer interface {
-	// Creating record involves some additional operations that may change
-	// the record. So we return potentially modified record as a result.
-	// in case subscription is not nil it will be subscribed to the record updates
-	Create(ctx context.Context, relations []*model.Relation, rec Record, sub Subscription, templateId string) (Record, error)
-
-	Update(id string, relations []*model.Relation, rec Record) error
-	DeleteRelationOption(id string, relKey string, optionId string) error
-
-	ModifyExtraRelations(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error
-	UpdateRelationOption(id string, relKey string, option model.RelationOption) (optionId string, err error)
-
-	Delete(id string) error
-}
-
-type Database interface {
-	Reader
-	Writer
-
-	// Schema() string
-}
-
 type Query struct {
-	FullText          string
-	Relations         []*model.BlockContentDataviewRelation // relations used to provide relations options
-	Filters           []*model.BlockContentDataviewFilter   // filters results. apply sequentially
-	Sorts             []*model.BlockContentDataviewSort     // order results. apply hierarchically
-	Limit             int                                   // maximum number of results
-	Offset            int                                   // skip given number of results
-	WithSystemObjects bool
-	ObjectTypeFilter  []string
-	WorkspaceId       string
+	FullText string
+	Filters  []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts    []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit    int                                 // maximum number of results
+	Offset   int                                 // skip given number of results
 }
 
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
@@ -129,7 +86,7 @@ func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (fi
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
-	filterObj, dateKeys, qryFilters := applySchema(qry.Relations, schema, filters.dateKeys, qry.Filters)
+	filterObj, dateKeys, qryFilters := applySchema(nil, schema, filters.dateKeys, qry.Filters)
 	qry.Filters = qryFilters
 	filters.dateKeys = dateKeys
 

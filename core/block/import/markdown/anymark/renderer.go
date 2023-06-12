@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/yuin/goldmark/ast"
 	ext "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/renderer"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -98,7 +100,7 @@ func (r *Renderer) renderHeading(_ util.BufWriter,
 	}
 
 	if entering {
-		r.OpenNewTextBlock(style)
+		r.OpenNewTextBlock(style, nil)
 	} else {
 		r.CloseTextBlock(style)
 	}
@@ -121,7 +123,7 @@ func (r *Renderer) renderCodeBlock(_ util.BufWriter,
 	n ast.Node,
 	entering bool) (ast.WalkStatus, error) {
 	if entering {
-		r.OpenNewTextBlock(model.BlockContentText_Code)
+		r.OpenNewTextBlock(model.BlockContentText_Code, nil)
 	} else {
 		r.CloseTextBlock(model.BlockContentText_Code)
 	}
@@ -133,8 +135,13 @@ func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter,
 	node ast.Node,
 	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.FencedCodeBlock)
+	language := string(n.Language(source))
+	var fields *types.Struct
+	if language != "" {
+		fields = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
+	}
 	if entering {
-		r.OpenNewTextBlock(model.BlockContentText_Code)
+		r.OpenNewTextBlock(model.BlockContentText_Code, fields)
 		r.writeLines(source, n)
 	} else {
 		r.CloseTextBlock(model.BlockContentText_Code)
@@ -172,7 +179,7 @@ func (r *Renderer) renderListItem(_ util.BufWriter,
 	}
 
 	if entering {
-		r.OpenNewTextBlock(tag)
+		r.OpenNewTextBlock(tag, nil)
 	} else {
 		r.CloseTextBlock(tag)
 	}
@@ -184,7 +191,7 @@ func (r *Renderer) renderParagraph(_ util.BufWriter,
 	n ast.Node,
 	entering bool) (ast.WalkStatus, error) {
 	if entering {
-		r.OpenNewTextBlock(model.BlockContentText_Paragraph)
+		r.OpenNewTextBlock(model.BlockContentText_Paragraph, nil)
 	} else {
 		r.CloseTextBlock(model.BlockContentText_Paragraph)
 	}

@@ -186,7 +186,7 @@ func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
 func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (err error) {
 	collection, key := c.getCollectionAndKeyFromId(objectId)
 	// todo: check inbound links
-	links, err := c.objectStore.GetInboundLinksById(objectId)
+	links, err := c.objectStore.GetInboundLinksByID(objectId)
 	if err != nil {
 		return err
 	}

@@ -406,7 +406,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub)
+	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.depIds, sb.recordsSub)
 	if err != nil {
 		// datastore unavailable, cancel the subscription
 		sb.recordsSub.Close()
@@ -442,7 +442,10 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
-	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
+	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
+	if err != nil {
+		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
+	}
 	go sb.metaListener(recordsCh)
 	return
 }
@@ -809,7 +812,7 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryById(newIDs)
+	records, err := sb.objectStore.QueryByID(newIDs)
 	if err != nil {
 		log.Errorf("queryById error: %v", err)
 	}
@@ -925,28 +928,29 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		// inject for both current and parent state
 		p.InjectLocalDetails(storedLocalScopeDetails)
 	}
-	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
-		return nil
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) == "" || pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) == 0 {
+		provider, conforms := sb.source.(source.CreationInfoProvider)
+		if !conforms {
+			return nil
+		}
+
+		creator, createdDate, err := provider.GetCreationInfo()
+		if err != nil {
+			return err
+		}
+
+		if creator != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+		}
+
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	}
 
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		return nil
-	}
-
-	creator, createdDate, err := provider.GetCreationInfo()
-	if err != nil {
-		return err
-	}
-
-	if creator != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
-	}
-
-	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
-	if wsId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
+		wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		if wsId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		}
 	}
 	return nil
 }

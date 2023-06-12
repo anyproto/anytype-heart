@@ -177,9 +177,8 @@ func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchi
 }
 
 func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
-	var res []*model.ObjectInfo
 	docs := make(map[string]*types.Struct)
-	res, _, err := e.objectStore.QueryObjectInfo(database.Query{
+	res, _, err := e.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -197,14 +196,15 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 				Value:       pbtypes.Bool(false),
 			},
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
 	ids := make([]string, 0, len(res))
 	for _, r := range res {
-		docs[r.Id] = r.Details
-		ids = append(ids, r.Id)
+		id := pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
+		docs[id] = r.Details
+		ids = append(ids, id)
 	}
 	if includeNested {
 		for _, id := range ids {
@@ -215,7 +215,7 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 }
 
 func (e *export) getNested(id string, docs map[string]*types.Struct) {
-	links, err := e.objectStore.GetOutboundLinksById(id)
+	links, err := e.objectStore.GetOutboundLinksByID(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err.Error())
 		return
@@ -230,7 +230,7 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 			if !validType(sbt) {
 				continue
 			}
-			rec, qErr := e.objectStore.QueryById(links)
+			rec, qErr := e.objectStore.QueryByID([]string{link})
 			if qErr != nil {
 				log.Errorf("failed to query id %s, err: %s", qErr, err.Error())
 				continue
