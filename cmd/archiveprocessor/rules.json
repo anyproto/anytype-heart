@@ -54,13 +54,6 @@
   {
     "action": "remove",
     "entity": "detail",
-    "objectID": "bafyreidepxxcg45olhfqdy4nbevky6zqe7lgfai3cjmdkfohuwcv2e5amu",
-    "detailKey": "sourceObject"
-  },
-  {
-    "action": "remove",
-    "entity": "detail",
-    "objectID": "bafyreigpflnwibaxxrrx74zap52hh27ky4zf24uuwvljr4cd27mp65usba",
     "detailKey": "sourceObject"
   },
   {

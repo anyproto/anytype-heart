@@ -74,11 +74,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/unsplash"
 )
 
-func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects, createBuiltinTemplates bool) *config.Config {
+func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
-		config.WithCreateBuiltinObjects(createBuiltinObjects),
 		config.WithCreateBuiltinTemplates(createBuiltinTemplates),
 	)
 }
@@ -195,7 +194,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collectionService).
 		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New(sbtProvider)).
+		Register(builtinobjects.New()).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
 		Register(importer.New(tempDirService, sbtProvider)).
