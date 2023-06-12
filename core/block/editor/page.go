@@ -111,7 +111,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			layout, ok := ctx.State.Layout()
 			if !ok {
 				// nolint:errcheck
-				otypes, _ := objectstore.GetObjectTypes(p.objectStore, ctx.ObjectTypeUrls)
+				otypes, _ := p.objectStore.GetObjectTypes(ctx.ObjectTypeUrls)
 				for _, ot := range otypes {
 					layout = ot.Layout
 				}

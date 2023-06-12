@@ -238,7 +238,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(info.Id, details, false); err != nil {
+		if err := i.store.UpdateObjectDetails(info.Id, details); err != nil {
 			if errors.Is(err, objectstore.ErrDetailsNotChanged) {
 				metrics.ObjectDetailsHeadsNotChangedCounter.Add(1)
 				log.With("objectId", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
@@ -496,7 +496,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	if flags.bundledTemplates {
-		existing, _, err := i.store.QueryObjectIds(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
+		existing, _, err := i.store.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
 		if err != nil {
 			return err
 		}
