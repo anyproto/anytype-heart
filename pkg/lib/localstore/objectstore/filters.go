@@ -56,7 +56,7 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 
 	t, err := m.sbtProvider.Type(id)
 	if err != nil {
-		log.Errorf("failed to detect smartblock type for %s: %s", id, err.Error())
+		log.Debugf("failed to detect smartblock type for %s: %s", id, err.Error())
 		return false
 	}
 
