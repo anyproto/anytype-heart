@@ -1387,8 +1387,6 @@
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
-    - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
-    - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
     - [Account.StatusType](#anytype.model.Account.StatusType)
     - [Block.Align](#anytype.model.Block.Align)
@@ -21900,38 +21898,6 @@ stored |
 | collections | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype.model.RelationLink) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.model.ThreadCreateQueueEntry"></a>
-
-### ThreadCreateQueueEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| collectionThread | [string](#string) |  |  |
-| threadId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.ThreadDeeplinkPayload"></a>
-
-### ThreadDeeplinkPayload
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| addrs | [string](#string) | repeated |  |
 
 
 

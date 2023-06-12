@@ -144,6 +144,7 @@ func (c ReindexEvent) ToEvent() *Event {
 
 const RecordCreateEventThresholdMs = 30
 
+// todo: reimplement or remove
 type RecordCreateEvent struct {
 	PrepareMs       int64
 	NewRecordMs     int64

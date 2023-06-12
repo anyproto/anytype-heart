@@ -28,10 +28,6 @@ updates:
   - dependency-name: github.com/improbable-eng/grpc-web
     versions:
     - 0.14.0
-  - dependency-name: github.com/hsanjuan/ipfs-lite
-    versions:
-    - 1.1.18
-    - 1.1.19
   - dependency-name: golang.org/x/text
     versions:
     - 0.3.6

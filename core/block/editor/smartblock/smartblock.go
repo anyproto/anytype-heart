@@ -485,7 +485,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
 			if len(diff.GetFields()) > 0 {
-				log.With("thread", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
+				log.With("objectID", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
 			}
 		}
 
@@ -553,7 +553,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 		return true
 	})
 	if err != nil {
-		log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 	}
 
 	var det *types.Struct
@@ -771,7 +771,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	afterReportChangeTime := time.Now()
 	if hooks {
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
-			log.With("thread", sb.Id()).Warnf("after apply execHooks error: %v", e)
+			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
 	afterApplyHookTime := time.Now()
@@ -910,9 +910,8 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return nil, nil
 	})
 	if err != nil {
-		log.With("thread", sb.Id()).
-			With("sbType", sb.Type()).
-			Errorf("failed to update pending details: %v", err)
+		log.With("objectID", sb.Id()).
+			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
 	}
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,

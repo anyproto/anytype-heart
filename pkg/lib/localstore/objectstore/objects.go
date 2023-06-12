@@ -612,7 +612,7 @@ func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 func (s *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := s.sbtProvider.Type(id)
 	if err != nil {
-		log.With("thread", id).Errorf("failed to extract smartblock type %s", id) // todo rq: surpess error?
+		log.With("objectID", id).Errorf("failed to extract smartblock type %s", id) // todo rq: surpess error?
 		return nil, ErrNotAnObject
 	}
 	if sbt == smartblock.SmartBlockTypeArchive {
