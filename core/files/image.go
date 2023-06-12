@@ -133,14 +133,11 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 }
 
 func (i *image) Details(ctx context.Context) (*types.Struct, error) {
+	commonDetails := calculateCommonDetails(i.hash, bundle.TypeKeyImage, model.ObjectType_image)
+	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.hash)
+
 	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():         pbtypes.String(i.hash),
-			bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-			bundle.RelationKeyIconImage.String():  pbtypes.String(i.hash),
-			bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeyImage.URL()),
-			bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_image)),
-		},
+		Fields: commonDetails,
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
