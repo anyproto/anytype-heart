@@ -211,7 +211,7 @@ func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err 
 }
 
 func (b *builtinObjects) getNewSpaceDashboardId(oldId string) (id string, err error) {
-	ids, _, err := b.store.QueryObjectIds(database.Query{
+	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -308,7 +308,7 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets() {
 }
 
 func (b *builtinObjects) getObjectIdBySetOfValue(setOfValue string) (string, error) {
-	ids, _, err := b.store.QueryObjectIds(database.Query{
+	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
