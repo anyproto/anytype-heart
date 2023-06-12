@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -185,7 +184,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
 
-	otypes, err := objectstore.GetObjectTypes(bs.objectStore, objectTypes)
+	otypes, err := bs.objectStore.GetObjectTypes(objectTypes)
 	if err != nil {
 		return
 	}

@@ -442,7 +442,10 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
-	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
+	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
+	if err != nil {
+		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
+	}
 	go sb.metaListener(recordsCh)
 	return
 }

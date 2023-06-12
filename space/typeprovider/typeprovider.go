@@ -29,7 +29,6 @@ var (
 	ErrUnknownChangeType = errors.New("error unknown change type")
 )
 
-//go:generate mockgen -package mock_typeprovider -destination ./mock_typeprovider/provider_mock.go github.com/anyproto/anytype-heart/space/typeprovider SmartBlockTypeProvider
 type SmartBlockTypeProvider interface {
 	app.Component
 	Type(id string) (smartblock.SmartBlockType, error)

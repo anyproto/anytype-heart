@@ -416,7 +416,7 @@ func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []
 
 	if hasRelations {
 		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		ids, _, err := store.QueryObjectIds(database.Query{
+		ids, _, err := store.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyRecommendedRelations.String(),

@@ -111,9 +111,8 @@ func (gr *Builder) queryRecords(req *pb.RpcObjectGraphRequest) ([]database.Recor
 	records, _, err := gr.objectStore.Query(
 		nil,
 		database.Query{
-			Filters:          req.Filters,
-			Limit:            int(req.Limit),
-			ObjectTypeFilter: req.ObjectTypeFilter,
+			Filters: req.Filters,
+			Limit:   int(req.Limit),
 		},
 	)
 	return records, err
