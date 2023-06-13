@@ -133,7 +133,12 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 }
 
 func (i *image) Details(ctx context.Context) (*types.Struct, error) {
-	commonDetails := calculateCommonDetails(i.hash, bundle.TypeKeyImage, model.ObjectType_image)
+	commonDetails := calculateCommonDetails(
+		i.hash,
+		bundle.TypeKeyImage,
+		model.ObjectType_image,
+		i.extractLastModifiedDate(ctx),
+	)
 	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.hash)
 
 	details := &types.Struct{
@@ -165,7 +170,6 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
 		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
 		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
-
 	}
 
 	exif, err := i.Exif(ctx)
@@ -259,6 +263,14 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	}
 
 	return nil, ErrFileNotFound
+}
+
+func (i *image) extractLastModifiedDate(ctx context.Context) int64 {
+	largest, err := i.GetFileForLargestWidth(ctx)
+	if err != nil {
+		return time.Now().Unix()
+	}
+	return largest.Meta().LastModifiedDate
 }
 
 var imageWidthByName = map[string]int{

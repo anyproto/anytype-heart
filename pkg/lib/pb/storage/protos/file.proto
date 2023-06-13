@@ -28,6 +28,7 @@ message FileInfo {
     repeated string targets = 12;
     EncryptionMode encMode = 13;
     string metaHash = 14;
+    int64 lastModifiedDate = 15;
 
     enum EncryptionMode {
         AES_GCM = 0;

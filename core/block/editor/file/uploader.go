@@ -58,6 +58,7 @@ type Uploader interface {
 	SetBytes(b []byte) Uploader
 	SetUrl(url string) Uploader
 	SetFile(path string) Uploader
+	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
@@ -97,17 +98,18 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
-	service      BlockService
-	block        file.Block
-	getReader    func(ctx context.Context) (*fileReader, error)
-	name         string
-	typeDetect   bool
-	forceType    bool
-	smartBlockId string
-	fileType     model.BlockContentFileType
-	fileStyle    model.BlockContentFileStyle
-	opts         []files.AddOption
-	groupId      string
+	service          BlockService
+	block            file.Block
+	getReader        func(ctx context.Context) (*fileReader, error)
+	name             string
+	lastModifiedDate int64
+	typeDetect       bool
+	forceType        bool
+	smartBlockID     string
+	fileType         model.BlockContentFileType
+	fileStyle        model.BlockContentFileStyle
+	opts             []files.AddOption
+	groupID          string
 
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
@@ -148,7 +150,7 @@ func (u *uploader) SetBlock(block file.Block) Uploader {
 }
 
 func (u *uploader) SetGroupId(groupId string) Uploader {
-	u.groupId = groupId
+	u.groupID = groupId
 	return u
 }
 
@@ -189,7 +191,7 @@ func (u *uploader) SetUrl(url string) Uploader {
 	if err != nil {
 		// do nothing
 	}
-	u.name = strings.Split(filepath.Base(url), "?")[0]
+	u.SetName(strings.Split(filepath.Base(url), "?")[0])
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
@@ -250,7 +252,9 @@ func (u *uploader) SetUrl(url string) Uploader {
 }
 
 func (u *uploader) SetFile(path string) Uploader {
-	u.name = filepath.Base(path)
+	u.SetName(filepath.Base(path))
+	u.setLastModifiedDate(path)
+
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		f, err := os.Open(path)
 		if err != nil {
@@ -273,13 +277,27 @@ func (u *uploader) SetFile(path string) Uploader {
 	return u
 }
 
+func (u *uploader) SetLastModifiedDate() Uploader {
+	u.lastModifiedDate = time.Now().Unix()
+	return u
+}
+
+func (u *uploader) setLastModifiedDate(path string) {
+	stat, err := os.Stat(path)
+	if err == nil {
+		u.lastModifiedDate = stat.ModTime().Unix()
+	} else {
+		u.lastModifiedDate = time.Now().Unix()
+	}
+}
+
 func (u *uploader) AutoType(enable bool) Uploader {
 	u.typeDetect = enable
 	return u
 }
 
 func (u *uploader) AsyncUpdates(smartBlockId string) Uploader {
-	u.smartBlockId = smartBlockId
+	u.smartBlockID = smartBlockId
 	return u
 }
 
@@ -323,7 +341,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	if fileName := buf.GetFileName(); fileName != "" {
-		u.name = fileName
+		u.SetName(fileName)
 	}
 
 	if u.block != nil {
@@ -341,6 +359,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 	var opts = []files.AddOption{
 		files.WithName(u.name),
+		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
 	}
 
@@ -390,7 +409,8 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	if u.block != nil {
 		u.block.SetName(u.name).
 			SetState(model.BlockContentFile_Done).
-			SetType(u.fileType).SetHash(result.Hash).
+			SetType(u.fileType).
+			SetHash(result.Hash).
 			SetSize(result.Size).
 			SetStyle(u.fileStyle).
 			SetMIME(result.MIME)
@@ -426,9 +446,9 @@ func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
 }
 
 func (u *uploader) updateBlock() {
-	if u.smartBlockId != "" && u.block != nil {
-		err := u.service.DoFile(u.smartBlockId, func(f File) error {
-			return f.UpdateFile(u.block.Model().Id, u.groupId, func(b file.Block) error {
+	if u.smartBlockID != "" && u.block != nil {
+		err := u.service.DoFile(u.smartBlockID, func(f File) error {
+			return f.UpdateFile(u.block.Model().Id, u.groupID, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil
 			})
