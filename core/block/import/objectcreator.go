@@ -212,7 +212,6 @@ func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model
 	}
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
 	if err != nil {
-		// todo: GO-1304 I catch this during the import, we need find the root cause and fix it
 		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", newID, err.Error())
 	}
 
