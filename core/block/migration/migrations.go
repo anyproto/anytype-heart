@@ -5,10 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
-
-var logger = logging.Logger("migrator")
 
 type Migrator interface {
 	CreationStateMigration(ctx *smartblock.InitContext) Migration
@@ -64,7 +61,6 @@ func Compose(parent, child Migration) Migration {
 func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) {
 	migrator, ok := sb.(Migrator)
 	if !ok {
-		logger.Errorf("smartblock does not support Migrator interface, %s, %s", sb.Id(), sb.Type())
 		return
 	}
 
