@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -75,9 +76,14 @@ type BuildOptions struct {
 }
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
+	var retryTimeout time.Duration
+	// we will try to reconnect during the ctx timeout if RetryRemoteLoad is set
+	if b.RetryRemoteLoad {
+		retryTimeout = time.Minute
+	}
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:           b.Listener,
-		WaitTreeRemoteSync: b.RetryRemoteLoad,
+		Listener:     b.Listener,
+		RetryTimeout: retryTimeout,
 	}
 }
 

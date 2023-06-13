@@ -16,6 +16,7 @@ func (mw *Middleware) MetricsSetParameters(cctx context.Context, req *pb.RpcMetr
 
 		return m
 	}
+	mw.clientVersion = req.Version
 	metrics.SharedClient.SetPlatform(req.Platform)
 
 	return response(pb.RpcMetricsSetParametersResponseError_NULL, nil)

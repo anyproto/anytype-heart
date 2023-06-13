@@ -72,6 +72,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
@@ -86,8 +87,9 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
-func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, err error) {
+func StartNewApp(ctx context.Context, clientVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
+	a.SetVersionName(appVersion(a, clientVersion))
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
@@ -98,6 +100,12 @@ func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, 
 	}
 
 	return
+}
+
+func appVersion(a *app.App, clientVersion string) string {
+	middleVersion := vcs.GetVCSInfo().Version()
+	anySyncVersion := a.AnySyncVersion()
+	return "client:" + clientVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
 func Bootstrap(a *app.App, components ...app.Component) {
