@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -71,19 +70,12 @@ func (s *service) Name() (name string) {
 
 type BuildOptions struct {
 	DisableRemoteLoad bool
-	RetryRemoteLoad   bool // anysync only; useful for account cold load from p2p nodes
 	Listener          updatelistener.UpdateListener
 }
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
-	var retryTimeout time.Duration
-	// we will try to reconnect during the ctx timeout if RetryRemoteLoad is set
-	if b.RetryRemoteLoad {
-		retryTimeout = time.Minute
-	}
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:     b.Listener,
-		RetryTimeout: retryTimeout,
+		Listener: b.Listener,
 	}
 }
 

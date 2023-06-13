@@ -372,7 +372,7 @@ func (s *Service) getDerivedObject(
 		optsKey,
 		cacheOpts{
 			buildOption: source.BuildOptions{
-				RetryRemoteLoad: true,
+				// TODO: revive p2p (right now we are not ready to load from local clients due to the fact that we need to know when local peers connect)
 			},
 		},
 	)
