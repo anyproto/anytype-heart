@@ -99,7 +99,6 @@ type ObjectStore interface {
 	app.ComponentRunnable
 	IndexerStore
 	AccountStore
-	localstore.Indexable
 
 	SubscribeForAll(callback func(rec database.Record))
 
@@ -184,13 +183,6 @@ type dsObjectStore struct {
 }
 
 func (s *dsObjectStore) EraseIndexes() (err error) {
-	for _, idx := range s.Indexes() {
-		err = localstore.EraseIndex(idx, s.ds)
-		if err != nil {
-			return
-		}
-	}
-
 	err = s.eraseLinks()
 	if err != nil {
 		log.Errorf("eraseLinks failed: %s", err.Error())
@@ -359,6 +351,8 @@ func (s *dsObjectStore) DeleteDetails(id string) error {
 	defer txn.Discard()
 
 	// todo: remove all indexes with this object
+
+	// TODO delete snippet
 	for _, k := range []ds.Key{
 		pagesSnippetBase.ChildString(id),
 		pagesDetailsBase.ChildString(id),
@@ -395,6 +389,7 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	defer txn.Discard()
 
 	// TODO Remove indexed heads state
+	// TODO Remove snippet
 	for _, k := range []ds.Key{
 		pagesSnippetBase.ChildString(id),
 		indexQueueBase.ChildString(id),
@@ -559,10 +554,6 @@ func (s *dsObjectStore) Prefix() string {
 	return pagesPrefix
 }
 
-func (s *dsObjectStore) Indexes() []localstore.Index {
-	return []localstore.Index{}
-}
-
 // TODO objstore: Just use dependency injection
 func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return s.fts
@@ -637,11 +628,10 @@ func (s *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 		details = detailsWrapped.GetDetails()
 	}
 
-	var snippet string
-	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err != nil && err != ds.ErrNotFound {
+	// TODO move to one TX
+	snippet, err := getValue(s.db, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
+	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
-	} else {
-		snippet = string(val)
 	}
 
 	return &model.ObjectInfo{

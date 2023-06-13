@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -76,20 +75,7 @@ func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 }
 
 func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
-		if err := s.updateSnippet(txn, id, snippet); err != nil {
-			return err
-		}
-	}
-	return txn.Commit()
+	return setValue(s.db, pagesSnippetBase.ChildString(id).Bytes(), snippet)
 }
 
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
@@ -216,11 +202,6 @@ func (s *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		return ErrDetailsNotChanged
 	}
 
-	err = localstore.UpdateIndexesWithTxn(s, txn, oldDetails, newDetails, id)
-	if err != nil {
-		return err
-	}
-
 	if newDetails != nil && newDetails.Details.Fields != nil {
 		s.sendUpdatesToSubscriptions(id, newDetails.Details)
 	}
@@ -242,9 +223,4 @@ func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 			_ = sub.Publish(id, detCopy)
 		}(s.subscriptions[i])
 	}
-}
-
-func (s *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string) error {
-	snippetKey := pagesSnippetBase.ChildString(id)
-	return txn.Put(snippetKey, []byte(snippet))
 }
